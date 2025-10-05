@@ -8,6 +8,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <future>
 
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -155,10 +156,16 @@ class EventsManager {
         std::string cachePath;
     };
 
+    struct FileUploadRetryPolicy {
+        int maxAttempts = 10;
+        float factor = 2.0f;
+        std::chrono::milliseconds baseDelay{100};
+    };
+
     /**
      * Prepare and upload files from snapBuffer in batch
      */
-    void uploadFileBatch();
+    void uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputSnapBatch);
     /**
      * Upload events from eventBuffer in batch
      */
@@ -166,7 +173,7 @@ class EventsManager {
     /**
      * Upload a file using the chosen url
      */
-    void uploadFile(const std::shared_ptr<FileData>& file, const std::string& url);
+    bool uploadFile(std::shared_ptr<FileData> file, std::string url);
     /**
      * // TO DO: Add description
      */
@@ -199,21 +206,27 @@ class EventsManager {
     std::string cacheDir;
     bool cacheIfCannotSend;
     std::unique_ptr<std::thread> uploadThread;
-    std::vector<std::shared_ptr<proto::event::Event>> eventBuffer;
-    std::vector<std::shared_ptr<SnapData>> snapBuffer;
+    std::deque<std::shared_ptr<proto::event::Event>> eventBuffer;
+    std::deque<std::shared_ptr<SnapData>> snapBuffer;
+    std::vector<std::future<void>> uploadFileBatchFutures;
     std::mutex eventBufferMutex;
     std::mutex snapBufferMutex;
     std::mutex stopThreadConditionMutex;
     std::atomic<bool> stopUploadThread;
     std::condition_variable eventBufferCondition;
 
-    uint64_t maximumFileSize;
-    uint64_t remainingStorage;
-    uint64_t warningStorage;
+    uint64_t maxFileSizeBytes;
+    uint64_t remainingStorageBytes;
+    uint64_t warningStorageBytes;
     uint64_t bytesPerHour;
     uint32_t uploadsPerHour;
+    uint32_t maxGroupsPerBatch;
+    uint32_t maxFilesPerGroup;
     uint32_t eventsPerHour;
     uint32_t snapsPerHour;
+    uint32_t eventsPerRequest;
+
+    FileUploadRetryPolicy fileUploadRetryPolicy;
 
     static constexpr int eventValidationNameLength = 56;
     static constexpr int eventValidationMaxTags = 20;

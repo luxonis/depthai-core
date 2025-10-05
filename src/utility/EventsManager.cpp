@@ -18,7 +18,7 @@ namespace dai {
 namespace utility {
 using std::move;
 
-
+// TO DO: Keyboard shutdown and stuff, and killing threads must be handled!
 FileData::FileData(const std::string& data, const std::string& fileName, const std::string& mimeType)
     : mimeType(mimeType),
       fileName(fileName),
@@ -161,35 +161,50 @@ std::string FileData::calculateSHA256Checksum(const std::string& data) {
 
 EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float publishInterval)
     : url(std::move(url)),
-      queueSize(10),
+      queueSize(100),
       publishInterval(publishInterval),
       logResponse(false),
       verifySsl(true),
       cacheDir("/internal/private"),
       cacheIfCannotSend(false),
       stopUploadThread(false),
-      warningStorage(52428800) {
+      warningStorageBytes(52428800) {
     auto appId = utility::getEnvAs<std::string>("OAKAGENT_APP_ID", "");
     auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
     sourceAppId = appId == "" ? containerId : appId;
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     dai::Logging::getInstance().logger.set_level(spdlog::level::info); // TO DO: Remove
-    // Separate thread handling uploads
+    // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
         auto nextTime = std::chrono::steady_clock::now();
         while(!stopUploadThread) {
+            // TO DO: remove
+            logger::info("Currently there are {} events in the buffer", eventBuffer.size());
+            logger::info("Currently there are {} snaps in the buffer", snapBuffer.size());
             // Hourly check for fetching configuration and limits
             auto currentTime = std::chrono::steady_clock::now();
             if (currentTime >= nextTime) {
+                // TO DO: Fetching should be done for as long as needed, otherwise empty limits and config values 
                 fetchConfigurationLimits();
                 nextTime += std::chrono::hours(1);
-                if (remainingStorage <= warningStorage) {
-                    logger::warn("Current remaining storage is running low: {} MB", remainingStorage / (1024*1024));
+                if (remainingStorageBytes <= warningStorageBytes) {
+                    logger::warn("Current remaining storage is running low: {} MB", remainingStorageBytes / (1024*1024));
                 }
             }
+            // Prepare the batch first to reduce contention
+            std::deque<std::shared_ptr<SnapData>> snapBatch;
+            {
+                std::lock_guard<std::mutex> lock(snapBufferMutex);
+                const std::size_t size = std::min<std::size_t>(snapBuffer.size(), maxGroupsPerBatch);
+                snapBatch.insert(snapBatch.end(), std::make_move_iterator(snapBuffer.begin()), std::make_move_iterator(snapBuffer.begin() + size));
+                snapBuffer.erase(snapBuffer.begin(), snapBuffer.begin() + size);
+            }
+            // TO DO: Handle the clearing of these futures
+            uploadFileBatchFutures.emplace_back(std::async(std::launch::async, [&]() {
+                uploadFileBatch(std::move(snapBatch));
+            }));
 
-            uploadFileBatch();
             uploadEventBatch();
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock,
@@ -247,104 +262,157 @@ bool EventsManager::fetchConfigurationLimits() {
         if(logResponse) {
             logger::info("ApiUsage response: \n{}", apiUsage->DebugString());
         }
-        // TO DO: Use this data to set the limits
-        maximumFileSize = apiUsage->files().max_file_size_bytes();
-        remainingStorage = apiUsage->files().remaining_storage_bytes();
+        // TO DO: Use this data 
+        maxFileSizeBytes = apiUsage->files().max_file_size_bytes(); //
+        remainingStorageBytes = apiUsage->files().remaining_storage_bytes(); //
+        bytesPerHour = apiUsage->files().bytes_per_hour_rate();
+        uploadsPerHour = apiUsage->files().uploads_per_hour_rate();
+        maxGroupsPerBatch = apiUsage->files().groups_per_allocation();
+        maxFilesPerGroup = apiUsage->files().files_per_group_in_allocation(); //
+        eventsPerHour = apiUsage->events().events_per_hour_rate();
+        snapsPerHour = apiUsage->events().snaps_per_hour_rate();
+        eventsPerRequest = apiUsage->events().events_per_request();
     }
     return true;
 }
 
-void EventsManager::uploadFileBatch() {
-    // Prepare files for upload
+void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputSnapBatch) {
+    // Prepare files for upload 
     auto fileGroupBatchPrepare = std::make_unique<proto::event::BatchPrepareFileUpload>();
-    {
-        std::lock_guard<std::mutex> lock(snapBufferMutex);
-        if (snapBuffer.empty()) {
-            return;
+    if (inputSnapBatch.empty()) {
+        return;
+    }
+    if(token.empty()) {
+        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
+        return;
+    }
+    // Fill the batch with the groups from inputSnapBatch and their corresponding files
+    for (size_t i = 0; i < inputSnapBatch.size(); ++i) {
+        auto fileGroup = std::make_unique<proto::event::PrepareFileUploadGroup>();
+        for (auto& file : inputSnapBatch.at(i)->fileGroup) {
+            auto addedFile = fileGroup->add_files();
+            addedFile->set_checksum(file->checksum);
+            addedFile->set_mime_type(file->mimeType);
+            addedFile->set_size(file->size);
+            addedFile->set_filename(file->fileName);
+            addedFile->set_classification(file->classification);
         }
-        if(token.empty()) {
-            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
-            return;
+        fileGroupBatchPrepare->add_groups()->Swap(fileGroup.get());
+    }
+
+    while (!stopUploadThread) {
+        std::string serializedBatch;
+        fileGroupBatchPrepare->SerializeToString(&serializedBatch);
+        cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/files/prepare-batch");
+        cpr::Response response = cpr::Post(
+            cpr::Url{requestUrl},
+            cpr::Body{serializedBatch},
+            cpr::Header{{"Authorization", "Bearer " + token}},
+            cpr::VerifySsl(verifySsl),
+            cpr::ProgressCallback(
+                [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                    (void)userdata;
+                    (void)downloadTotal;
+                    (void)downloadNow;
+                    (void)uploadTotal;
+                    (void)uploadNow;
+                    if(stopUploadThread) {
+                        return false;
+                    }
+                    return true;
+                }));
+        if (response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
+            logger::error("Failed to prepare a batch of file groups, status code: {}", response.status_code);
+            // TO DO: After a few tries, we can determine that the connection is not established. 
+            // We can then check if caching is chosen. and do it
         }
-        //if(!checkConnection()) {
-            // TO DO: Caching is ignored for now. Fix this later
-            //if(cacheIfCannotSend) {
-            //    cacheEvents();
-            //}
-        //    return;
-        //}
-        // Fill the batch with the groups from snapBuffer and their corresponding files
-        for (auto& snapData : snapBuffer) {
-            auto fileGroup = std::make_unique<proto::event::PrepareFileUploadGroup>();
-            for (auto& file : snapData->fileGroup) {
-                auto addedFile = fileGroup->add_files();
-                addedFile->set_checksum(file->checksum);
-                addedFile->set_mime_type(file->mimeType);
-                addedFile->set_size(file->size);
-                addedFile->set_filename(file->fileName);
-                addedFile->set_classification(file->classification);
+        else {
+            logger::info("Batch of file groups has been successfully prepared");
+            auto fileGroupBatchUpload = std::make_unique<proto::event::BatchFileUploadResult>();
+            fileGroupBatchUpload->ParseFromString(response.text);
+            if (logResponse) {
+                logger::info("BatchFileUploadResult response: \n{}", fileGroupBatchUpload->DebugString());
             }
-            fileGroupBatchPrepare->add_groups()->Swap(fileGroup.get());
-        }
-    }
 
-    std::string serializedBatch;
-    fileGroupBatchPrepare->SerializeToString(&serializedBatch);
-    cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/files/prepare-batch");
-    cpr::Response response = cpr::Post(
-        cpr::Url{requestUrl},
-        cpr::Body{serializedBatch},
-        cpr::Header{{"Authorization", "Bearer " + token}},
-        cpr::VerifySsl(verifySsl),
-        cpr::ProgressCallback(
-            [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
-                (void)userdata;
-                (void)downloadTotal;
-                (void)downloadNow;
-                (void)uploadTotal;
-                (void)uploadNow;
-                if(stopUploadThread) {
-                    return false;
-                }
-                return true;
-            }));
-    if (response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
-        logger::error("Failed to prepare a batch of file groups, status code: {}", response.status_code);
-    }
-    else {
-        logger::info("Batch of file groups has been successfully prepared");
-        auto fileGroupBatchUpload = std::make_unique<proto::event::BatchFileUploadResult>();
-        fileGroupBatchUpload->ParseFromString(response.text);
-        if (logResponse) {
-            logger::info("BatchFileUploadResult response: \n{}", fileGroupBatchUpload->DebugString());
-        }
-
-        // Upload accepted files
-        for (int i = 0; i < fileGroupBatchUpload->groups_size(); i++) {
-            auto snapData = snapBuffer.at(i);
-            auto uploadGroupResult = fileGroupBatchUpload->groups(i);
-            // Rejected group
-            if (!uploadGroupResult.has_rejected()) {
-                for (int j = 0; j < uploadGroupResult.files_size(); j++) {
-                    auto uploadFileResult = uploadGroupResult.files(j);
-                    if(uploadFileResult.result_case() == proto::event::FileUploadResult::kAccepted) {
-                        // TO DO: Make this parallel upload
-                        auto addedFile = snapData->event->add_associate_files();
-                        addedFile->set_id(uploadFileResult.accepted().id());
-                        uploadFile(snapData->fileGroup.at(j), uploadFileResult.accepted().upload_url());
+            // Upload accepted files
+            for (int i = 0; i < fileGroupBatchUpload->groups_size(); i++) {
+                auto snapData = inputSnapBatch.at(i);
+                auto uploadGroupResult = fileGroupBatchUpload->groups(i);
+                // Rejected group
+                if (!uploadGroupResult.has_rejected()) {
+                    std::vector<std::future<bool>> fileUploadResponses;
+                    for (int j = 0; j < uploadGroupResult.files_size(); j++) {
+                        auto uploadFileResult = uploadGroupResult.files(j);
+                        if(uploadFileResult.result_case() == proto::event::FileUploadResult::kAccepted) {
+                            auto addedFile = snapData->event->add_associate_files();
+                            addedFile->set_id(uploadFileResult.accepted().id());
+                            fileUploadResponses.emplace_back(std::async(std::launch::async, [=]() { // TO DO: Determine & vs =
+                                return uploadFile(std::move(snapData->fileGroup.at(j)), std::move(uploadFileResult.accepted().upload_url()));
+                            }));
+                        }
+                    }
+                    // Wait for all the reponses, indicating the finish of file uploads
+                    bool skipGroup = false;
+                    for (auto& responseFuture : fileUploadResponses) {
+                        if (!responseFuture.valid() || !responseFuture.get()) {
+                            logger::info("Failed to upload all of the files in a group, skipping this group");
+                            skipGroup = true;
+                        }
+                    }
+                    if (skipGroup) {
+                        continue;
+                    }
+                    // Once all of the files are uploaded, the event can be sent
+                    if(eventBuffer.size() <= queueSize) {
+                        std::lock_guard<std::mutex> lock(eventBufferMutex);
+                        eventBuffer.push_back(std::move(snapData->event));
+                    } else {
+                        logger::warn("Event buffer is full, dropping event");
                     }
                 }
-                if(eventBuffer.size() <= queueSize) {
-                    std::lock_guard<std::mutex> lock(eventBufferMutex);
-                    eventBuffer.push_back(std::move(snapData->event));
-                } else {
-                    logger::warn("Event buffer is full, dropping event");
-                }
             }
+            return;
         }
-
-        snapBuffer.clear();
     }
+}
+
+bool EventsManager::uploadFile(std::shared_ptr<FileData> file, std::string url) {
+    logger::info("Uploading file {} to: {}", file->fileName, url);
+    auto header = cpr::Header();
+    header["File-Size"] = file->size;
+    header["Content-Type"] = file->mimeType;
+    for (int i = 0; i < fileUploadRetryPolicy.maxAttempts; ++i) {
+        cpr::Response response = cpr::Put(
+            cpr::Url{url},
+            cpr::Body{file->data},
+            cpr::Header{header},
+            cpr::VerifySsl(verifySsl),
+            cpr::ProgressCallback(
+                [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                    (void)userdata;
+                    (void)downloadTotal;
+                    (void)downloadNow;
+                    (void)uploadTotal;
+                    (void)uploadNow;
+                    if(stopUploadThread) {
+                        return false;
+                    }
+                    return true;
+                }));
+        if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
+            logger::error("Failed to upload file {}, status code: {}", file->fileName, response.status_code);
+            if (logResponse) {
+                logger::info("Response {}", response.text);
+            }
+            auto factor = std::pow(fileUploadRetryPolicy.factor, i+1);
+            std::chrono::milliseconds duration = std::chrono::milliseconds(fileUploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
+            logger::info("Retrying upload of file {}, (attempt {}/{}) in {} ms", file->fileName, i+1, fileUploadRetryPolicy.maxAttempts, duration.count());
+            std::this_thread::sleep_for(duration);
+        } else {
+            return true;
+        }
+    }
+    return false;
 }
 
 void EventsManager::uploadEventBatch() {
@@ -358,15 +426,8 @@ void EventsManager::uploadEventBatch() {
             logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
             return;
         }
-        //if(!checkConnection()) {
-            // TO DO: Caching is ignored for now. Fix this later
-            //if(cacheIfCannotSend) {
-            //    cacheEvents();
-            //}
-        //    return;
-        //}
-        for(auto& event : eventBuffer) {
-            eventBatch->add_events()->Swap(event.get());
+        for (size_t i = 0; i < eventBuffer.size() && i < eventsPerRequest; ++i) {
+            eventBatch->add_events()->Swap(eventBuffer.at(i).get());
         }
     }
     std::string serializedBatch;
@@ -391,6 +452,7 @@ void EventsManager::uploadEventBatch() {
             }));
     if(response.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event, status code: {}", response.status_code);
+        // TO DO: In case of repeated errors, caching of the events could be added if needed
     } else {
         logger::info("Event sent successfully");
         if(logResponse) {
@@ -398,15 +460,8 @@ void EventsManager::uploadEventBatch() {
             eventBatchUploadResults->ParseFromString(response.text);
             logger::info("BatchUploadEvents response: \n{}", eventBatchUploadResults->DebugString());
         }
-
-        // TO DO: Caching is ignored for now. Fix this later
-        //for(auto& eventM : eventBuffer) {
-        //    if(!eventM->cachePath.empty() && std::filesystem::exists(eventM->cachePath)) {
-        //        std::filesystem::remove_all(eventM->cachePath);
-        //    }
-        //}
-
-        eventBuffer.clear();
+        std::lock_guard<std::mutex> lock(eventBufferMutex);
+        eventBuffer.erase(eventBuffer.begin(), eventBuffer.begin() + eventBatch->events_size());
     }
 }
 
@@ -476,9 +531,13 @@ bool EventsManager::sendSnap(const std::string& name,
         return false;
     }
     snapData->event->add_tags("snap");
+    if (fileGroup.size() > maxFilesPerGroup) {
+        logger::error("Failed to send snap, the number of files in a file group {} exceeds {}", fileGroup.size(), maxFilesPerGroup);
+        return false;
+    }
     for (const auto& file : fileGroup) {
-        if (file->size >= maximumFileSize) {
-            logger::error("Failed to send snap, file: {} is bigger then the configured maximum size: {}", file->fileName, maximumFileSize);
+        if (file->size >= maxFileSizeBytes) {
+            logger::error("Failed to send snap, file: {} is bigger then the configured maximum size: {}", file->fileName, maxFileSizeBytes);
             return false;
         }
     }
@@ -556,33 +615,6 @@ bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
     }
 
     return true;
-}
-
-void EventsManager::uploadFile(const std::shared_ptr<FileData>& file, const std::string& url) {
-    logger::info("Uploading file to: {}", url);
-    auto header = cpr::Header();
-    header["File-Size"] = file->size;
-    header["Content-Type"] = file->mimeType;
-    cpr::Response response = cpr::Put(
-        cpr::Url{url},
-        cpr::Body{file->data},
-        cpr::Header{header},
-        cpr::VerifySsl(verifySsl),
-        cpr::ProgressCallback(
-            [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
-                (void)userdata;
-                (void)downloadTotal;
-                (void)downloadNow;
-                (void)uploadTotal;
-                (void)uploadNow;
-                if(stopUploadThread) {
-                    return false;
-                }
-                return true;
-            }));
-    if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
-        logger::error("Failed to upload file, status code: {}", response.status_code);
-    }
 }
 
 void EventsManager::cacheEvents() {

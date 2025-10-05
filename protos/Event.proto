@@ -119,11 +119,14 @@ message FileLimits {
     uint64 remaining_storage_bytes = 2;
     uint64 bytes_per_hour_rate = 3;
     uint32 uploads_per_hour_rate = 4;
+    uint32 groups_per_allocation = 5;
+    uint32 files_per_group_in_allocation = 6;
 }
 
 message EventLimits {
     uint32 events_per_hour_rate = 1;
     uint32 snaps_per_hour_rate = 2;
+    uint32 events_per_request = 3;
 }
 
 message ApiUsage {
