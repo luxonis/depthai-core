@@ -18,7 +18,6 @@ namespace dai {
 namespace utility {
 using std::move;
 
-// TO DO: Keyboard shutdown and stuff, and killing threads must be handled!
 FileData::FileData(const std::string& data, const std::string& fileName, const std::string& mimeType)
     : mimeType(mimeType),
       fileName(fileName),
@@ -161,7 +160,6 @@ std::string FileData::calculateSHA256Checksum(const std::string& data) {
 
 EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float publishInterval)
     : url(std::move(url)),
-      queueSize(100),
       publishInterval(publishInterval),
       logResponse(false),
       verifySsl(true),
@@ -201,8 +199,8 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
                 snapBuffer.erase(snapBuffer.begin(), snapBuffer.begin() + size);
             }
             // TO DO: Handle the clearing of these futures
-            uploadFileBatchFutures.emplace_back(std::async(std::launch::async, [&]() {
-                uploadFileBatch(std::move(snapBatch));
+            uploadFileBatchFutures.emplace_back(std::async(std::launch::async, [&, inputSnapBatch = std::move(snapBatch)]() mutable {
+                uploadFileBatch(std::move(inputSnapBatch));
             }));
 
             uploadEventBatch();
@@ -221,10 +219,7 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
 
 EventsManager::~EventsManager() {
     stopUploadThread = true;
-    {
-        std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
-        eventBufferCondition.notify_one();
-    }
+    eventBufferCondition.notify_all();
     if(uploadThread && uploadThread->joinable()) {
         uploadThread->join();
     }
@@ -328,47 +323,34 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
         }
         else {
             logger::info("Batch of file groups has been successfully prepared");
-            auto fileGroupBatchUpload = std::make_unique<proto::event::BatchFileUploadResult>();
-            fileGroupBatchUpload->ParseFromString(response.text);
+            auto prepareBatchResults = std::make_unique<proto::event::BatchFileUploadResult>();
+            prepareBatchResults->ParseFromString(response.text);
             if (logResponse) {
-                logger::info("BatchFileUploadResult response: \n{}", fileGroupBatchUpload->DebugString());
+                logger::info("BatchFileUploadResult response: \n{}", prepareBatchResults->DebugString());
             }
 
-            // Upload accepted files
-            for (int i = 0; i < fileGroupBatchUpload->groups_size(); i++) {
+            // Upload groups of files
+            std::vector<std::future<bool>> groupUploadResults;
+            for (int i = 0; i < prepareBatchResults->groups_size(); i++) {
                 auto snapData = inputSnapBatch.at(i);
-                auto uploadGroupResult = fileGroupBatchUpload->groups(i);
-                // Rejected group
-                if (!uploadGroupResult.has_rejected()) {
-                    std::vector<std::future<bool>> fileUploadResponses;
-                    for (int j = 0; j < uploadGroupResult.files_size(); j++) {
-                        auto uploadFileResult = uploadGroupResult.files(j);
-                        if(uploadFileResult.result_case() == proto::event::FileUploadResult::kAccepted) {
-                            auto addedFile = snapData->event->add_associate_files();
-                            addedFile->set_id(uploadFileResult.accepted().id());
-                            fileUploadResponses.emplace_back(std::async(std::launch::async, [=]() { // TO DO: Determine & vs =
-                                return uploadFile(std::move(snapData->fileGroup.at(j)), std::move(uploadFileResult.accepted().upload_url()));
-                            }));
-                        }
-                    }
-                    // Wait for all the reponses, indicating the finish of file uploads
-                    bool skipGroup = false;
-                    for (auto& responseFuture : fileUploadResponses) {
-                        if (!responseFuture.valid() || !responseFuture.get()) {
-                            logger::info("Failed to upload all of the files in a group, skipping this group");
-                            skipGroup = true;
-                        }
-                    }
-                    if (skipGroup) {
-                        continue;
-                    }
-                    // Once all of the files are uploaded, the event can be sent
-                    if(eventBuffer.size() <= queueSize) {
-                        std::lock_guard<std::mutex> lock(eventBufferMutex);
-                        eventBuffer.push_back(std::move(snapData->event));
-                    } else {
-                        logger::warn("Event buffer is full, dropping event");
-                    }
+                auto prepareGroupResult = prepareBatchResults->groups(i);
+                // Skip rejected groups
+                if (prepareGroupResult.has_rejected()) {
+                    std::string rejectionReason = dai::proto::event::RejectedFileGroupReason_descriptor()
+                        ->FindValueByNumber(static_cast<int>(prepareGroupResult.rejected().reason()))->name();
+                    logger::info("A group has been rejected because of {}", rejectionReason);
+                    continue;
+                }
+                // Handle groups asynchronously
+                groupUploadResults.emplace_back(std::async(std::launch::async, 
+                    [&, snap = std::move(snapData), group = std::move(prepareGroupResult)]() mutable {
+                        return uploadGroup(std::move(snap), std::move(group));
+                }));
+            }
+            // Wait for all of the reponses, indicating the finish of group uploads
+            for (auto& uploadResult : groupUploadResults) {
+                if (!uploadResult.valid() || !uploadResult.get()) {
+                    logger::info("Failed to upload all of the groups in the given batch");
                 }
             }
             return;
@@ -376,15 +358,45 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
     }
 }
 
-bool EventsManager::uploadFile(std::shared_ptr<FileData> file, std::string url) {
-    logger::info("Uploading file {} to: {}", file->fileName, url);
+bool EventsManager::uploadGroup(std::shared_ptr<SnapData> snapData, dai::proto::event::FileUploadGroupResult prepareGroupResult) {
+    std::vector<std::future<bool>> fileUploadResults;
+    for (int i = 0; i < prepareGroupResult.files_size(); i++) {
+        auto prepareFileResult = prepareGroupResult.files(i);
+        if(prepareFileResult.result_case() == proto::event::FileUploadResult::kAccepted) {
+            // Add an associate file to the event
+            auto associateFile = snapData->event->add_associate_files();
+            associateFile->set_id(prepareFileResult.accepted().id());
+            // Upload files asynchronously
+            fileUploadResults.emplace_back(std::async(std::launch::async, 
+                [&, fileData = std::move(snapData->fileGroup.at(i)), uploadUrl = std::move(prepareFileResult.accepted().upload_url())]() mutable {
+                    return uploadFile(std::move(fileData), std::move(uploadUrl));
+            }));
+        } else {
+            return false;
+        }
+    }
+    // Wait for all of the results, indicating the finish of file uploads
+    for (auto& uploadResult : fileUploadResults) {
+        if (!uploadResult.valid() || !uploadResult.get()) {
+            logger::info("Failed to upload all of the files in the given group");
+            return false;
+        }
+    }
+    // Once all of the files are uploaded, the event can be sent
+    std::lock_guard<std::mutex> lock(eventBufferMutex);
+    eventBuffer.push_back(std::move(snapData->event));
+    return true;
+}
+
+bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string uploadUrl) {
+    logger::info("Uploading file {} to: {}", fileData->fileName, uploadUrl);
     auto header = cpr::Header();
-    header["File-Size"] = file->size;
-    header["Content-Type"] = file->mimeType;
-    for (int i = 0; i < fileUploadRetryPolicy.maxAttempts; ++i) {
+    header["File-Size"] = fileData->size; // TO DO: Remove this fix
+    header["Content-Type"] = fileData->mimeType;
+    for (int i = 0; i < fileUploadRetryPolicy.maxAttempts && !stopUploadThread; ++i) {
         cpr::Response response = cpr::Put(
-            cpr::Url{url},
-            cpr::Body{file->data},
+            cpr::Url{uploadUrl},
+            cpr::Body{fileData->data},
             cpr::Header{header},
             cpr::VerifySsl(verifySsl),
             cpr::ProgressCallback(
@@ -400,14 +412,19 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> file, std::string url) 
                     return true;
                 }));
         if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
-            logger::error("Failed to upload file {}, status code: {}", file->fileName, response.status_code);
+            logger::error("Failed to upload file {}, status code: {}", fileData->fileName, response.status_code);
             if (logResponse) {
                 logger::info("Response {}", response.text);
             }
+            // Apply exponential backoff
             auto factor = std::pow(fileUploadRetryPolicy.factor, i+1);
             std::chrono::milliseconds duration = std::chrono::milliseconds(fileUploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
-            logger::info("Retrying upload of file {}, (attempt {}/{}) in {} ms", file->fileName, i+1, fileUploadRetryPolicy.maxAttempts, duration.count());
-            std::this_thread::sleep_for(duration);
+            logger::info("Retrying upload of file {}, (attempt {}/{}) in {} ms", fileData->fileName, i+1, fileUploadRetryPolicy.maxAttempts, duration.count());
+            
+            std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
+            eventBufferCondition.wait_for(lock, duration, [this]() {
+                return stopUploadThread.load();
+            });
         } else {
             return true;
         }
@@ -494,13 +511,8 @@ bool EventsManager::sendEvent(const std::string& name,
     }
 
     // Add event to eventBuffer
-    if(eventBuffer.size() <= queueSize) {
-        std::lock_guard<std::mutex> lock(eventBufferMutex);
-        eventBuffer.push_back(std::move(event));
-    } else {
-        logger::warn("Event buffer is full, dropping event");
-        return false;
-    }
+    std::lock_guard<std::mutex> lock(eventBufferMutex);
+    eventBuffer.push_back(std::move(event));
     return true;
 }
 
@@ -542,14 +554,8 @@ bool EventsManager::sendSnap(const std::string& name,
         }
     }
     // Add the snap to snapBuffer
-    // TO DO: Should a snap buffer be limited by size like eventbuffer
-    if(snapBuffer.size() <= queueSize) {
-        std::lock_guard<std::mutex> lock(snapBufferMutex);
-        snapBuffer.push_back(std::move(snapData));
-    } else {
-        logger::warn("Snap buffer is full, dropping snap");
-        return false;
-    }
+    std::lock_guard<std::mutex> lock(snapBufferMutex);
+    snapBuffer.push_back(std::move(snapData));
     return true;
 }
 
@@ -708,10 +714,6 @@ void EventsManager::setSourceAppIdentifier(const std::string& sourceAppIdentifie
 
 void EventsManager::setToken(const std::string& token) {
     this->token = token;
-}
-
-void EventsManager::setQueueSize(uint64_t queueSize) {
-    this->queueSize = queueSize;
 }
 
 void EventsManager::setLogResponse(bool logResponse) {

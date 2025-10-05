@@ -20,6 +20,7 @@ namespace dai {
 namespace proto {
 namespace event {
 class Event;
+class FileUploadGroupResult;
 enum PrepareFileUploadClass : int;
 }  // namespace event
 }  // namespace proto
@@ -111,12 +112,6 @@ class EventsManager {
      */
     void setToken(const std::string& token);
     /**
-     * Set the queue size for the amount of events that can be added and sent. By default, the queue size is set to 10
-     * @param queueSize Queue size
-     * @return void
-     */
-    void setQueueSize(uint64_t queuSize);
-    /**
      * Set whether to log the responses from the server. By default, logResponse is set to false
      * @param logResponse bool
      * @return void
@@ -163,17 +158,21 @@ class EventsManager {
     };
 
     /**
-     * Prepare and upload files from snapBuffer in batch
+     * Prepare a batch of file groups from inputSnapBatch
      */
     void uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputSnapBatch);
+    /**
+     * Upload a prepared group of files from snapData, using prepareGroupResult
+     */
+    bool uploadGroup(std::shared_ptr<SnapData> snapData, dai::proto::event::FileUploadGroupResult prepareGroupResult);
+    /**
+     * Upload a file from fileData using the chosen uploadUrl
+     */
+    bool uploadFile(std::shared_ptr<FileData> fileData, std::string uploadUrl);
     /**
      * Upload events from eventBuffer in batch
      */
     void uploadEventBatch();
-    /**
-     * Upload a file using the chosen url
-     */
-    bool uploadFile(std::shared_ptr<FileData> file, std::string url);
     /**
      * // TO DO: Add description
      */
@@ -199,7 +198,6 @@ class EventsManager {
     std::string url;
     std::string sourceAppId;
     std::string sourceAppIdentifier;
-    uint64_t queueSize;
     float publishInterval;
     bool logResponse;
     bool verifySsl;
