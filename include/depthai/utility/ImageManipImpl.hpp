@@ -59,7 +59,7 @@ void loop(N& node,
 
     std::shared_ptr<ImgFrame> inImage;
 
-    while(node.isRunning()) {
+    while(node.mainLoop()) {
         std::shared_ptr<ImageManipConfig> pConfig;
         bool hasConfig = false;
         bool needsImage = true;

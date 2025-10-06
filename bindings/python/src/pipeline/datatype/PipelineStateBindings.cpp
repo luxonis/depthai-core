@@ -39,7 +39,8 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
     durationEvent.def(py::init<>())
         .def("__repr__", &NodeState::DurationEvent::str)
         .def_readwrite("startEvent", &NodeState::DurationEvent::startEvent, DOC(dai, NodeState, DurationEvent, startEvent))
-        .def_readwrite("durationUs", &NodeState::DurationEvent::durationUs, DOC(dai, NodeState, TimingStats, durationUs));
+        .def_readwrite("durationUs", &NodeState::DurationEvent::durationUs, DOC(dai, NodeState, TimingStats, durationUs))
+        .def_readwrite("fps", &NodeState::DurationEvent::fps, DOC(dai, NodeState, TimingStats, fps));
 
     nodeStateTimingStats.def(py::init<>())
         .def("__repr__", &NodeState::TimingStats::str)

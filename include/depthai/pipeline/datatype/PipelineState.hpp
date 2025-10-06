@@ -13,7 +13,8 @@ class NodeState {
     struct DurationEvent {
         PipelineEvent startEvent;
         uint64_t durationUs;
-        DEPTHAI_SERIALIZE(DurationEvent, startEvent, durationUs);
+        float fps;
+        DEPTHAI_SERIALIZE(DurationEvent, startEvent, durationUs, fps);
     };
     struct TimingStats {
         uint64_t minMicros = -1;
@@ -23,7 +24,8 @@ class NodeState {
         uint64_t minMicrosRecent = -1;
         uint64_t maxMicrosRecent;
         uint64_t medianMicrosRecent;
-        DEPTHAI_SERIALIZE(TimingStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent);
+        float fps;
+        DEPTHAI_SERIALIZE(TimingStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent, fps);
     };
     struct QueueStats {
         uint32_t maxQueued;
@@ -58,13 +60,14 @@ class PipelineState : public Buffer {
     virtual ~PipelineState() = default;
 
     std::unordered_map<int64_t, NodeState> nodeStates;
+    uint32_t configSequenceNum = 0;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::PipelineState;
     };
 
-    DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeStates);
+    DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeStates, configSequenceNum);
 };
 
 }  // namespace dai

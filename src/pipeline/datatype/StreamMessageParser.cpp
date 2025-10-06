@@ -16,6 +16,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
+#include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
@@ -245,6 +246,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::PipelineState:
             return parseDatatype<PipelineState>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::PipelineEventAggregationConfig:
+            return parseDatatype<PipelineEventAggregationConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
         case DatatypeEnum::MessageGroup:
             return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data, fd);

@@ -99,6 +99,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::CoverageData:
         case DatatypeEnum::PipelineEvent:
         case DatatypeEnum::PipelineState:
+        case DatatypeEnum::PipelineEventAggregationConfig:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -170,6 +171,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::CoverageData:
         case DatatypeEnum::PipelineEvent:
         case DatatypeEnum::PipelineState:
+        case DatatypeEnum::PipelineEventAggregationConfig:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};

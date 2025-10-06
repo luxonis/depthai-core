@@ -98,7 +98,7 @@ void ObjectTracker::run() {
 
     impl::OCSTracker tracker(properties);
 
-    while(isRunning()) {
+    while(mainLoop()) {
         std::shared_ptr<ImgFrame> inputTrackerImg;
         std::shared_ptr<ImgFrame> inputDetectionImg;
         std::shared_ptr<ImgDetections> inputImgDetections;

@@ -8,7 +8,7 @@
 class TestNode : public dai::node::CustomThreadedNode<TestNode> {
    public:
     void run() override {
-        while(isRunning()) {
+        while(mainLoop()) {
             // do nothing
         }
     }

@@ -50,7 +50,7 @@ void Sync::run() {
     auto syncThresholdNs = properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
-    while(isRunning()) {
+    while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::unordered_map<std::string, std::shared_ptr<dai::Buffer>> inputFrames;
         for(auto name : inputNames) {

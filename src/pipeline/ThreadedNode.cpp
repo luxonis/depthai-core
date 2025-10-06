@@ -89,9 +89,13 @@ dai::LogLevel ThreadedNode::getLogLevel() const {
     return spdlogLevelToLogLevel(pimpl->logger->level(), LogLevel::WARN);
 }
 
-bool ThreadedNode::isRunning() {
-    this->pipelineEventDispatcher->pingEvent("_mainLoop");
+bool ThreadedNode::isRunning() const {
     return running;
+}
+
+bool ThreadedNode::mainLoop() {
+    this->pipelineEventDispatcher->pingEvent("_mainLoop");
+    return isRunning();
 }
 
 }  // namespace dai

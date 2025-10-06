@@ -53,7 +53,7 @@ void XLinkOutHost::run() {
             stream = XLinkStream(this->conn, this->streamName, maxSize);
             currentMaxSize = maxSize;
         };
-        while(isRunning()) {
+        while(mainLoop()) {
             try {
                 auto outgoing = in.get();
                 auto metadata = StreamMessageParser::serializeMetadata(outgoing);

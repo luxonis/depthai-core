@@ -1,0 +1,37 @@
+#pragma once
+#include <cstdint>
+#include <vector>
+
+#include "depthai/common/optional.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+
+namespace dai {
+
+class NodeEventAggregationConfig {
+    public:
+    int64_t nodeId = -1;
+    std::optional<std::vector<std::string>> inputs;
+    std::optional<std::vector<std::string>> outputs;
+    std::optional<std::vector<std::string>> others;
+    bool summary = false;
+    bool events = false;
+
+    DEPTHAI_SERIALIZE(NodeEventAggregationConfig, nodeId, inputs, outputs, others, summary, events);
+};
+
+/// PipelineEventAggregationConfig configuration structure
+class PipelineEventAggregationConfig : public Buffer {
+   public:
+    std::vector<NodeEventAggregationConfig> nodes;
+    bool repeat = false; // Keep sending the aggregated state without waiting for new config
+
+    PipelineEventAggregationConfig() = default;
+    virtual ~PipelineEventAggregationConfig();
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, nodes, repeat);
+};
+
+}  // namespace dai

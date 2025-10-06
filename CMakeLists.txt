@@ -355,6 +355,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/PipelineEvent.cpp
     src/pipeline/datatype/PipelineState.cpp
+    src/pipeline/datatype/PipelineEventAggregationConfig.cpp
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/ThermalConfig.cpp

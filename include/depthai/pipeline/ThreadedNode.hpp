@@ -51,7 +51,9 @@ class ThreadedNode : public Node {
     virtual void run() = 0;
 
     // check if still running
-    bool isRunning();
+    bool isRunning() const;
+
+    bool mainLoop();
 
     /**
      * @brief Sets the logging severity level for this node.

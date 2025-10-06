@@ -1,7 +1,7 @@
 #include "depthai/pipeline/node/internal/PipelineStateMerge.hpp"
 
+#include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
-
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
@@ -17,7 +17,8 @@ void mergeStates(std::shared_ptr<PipelineState>& outState, const std::shared_ptr
     for(const auto& [key, value] : inState->nodeStates) {
         if(outState->nodeStates.find(key) != outState->nodeStates.end()) {
             throw std::runtime_error("PipelineStateMerge: Duplicate node state for nodeId " + std::to_string(key));
-        } else outState->nodeStates[key] = value;
+        } else
+            outState->nodeStates[key] = value;
     }
 }
 void PipelineStateMerge::run() {
@@ -25,11 +26,27 @@ void PipelineStateMerge::run() {
     if(!hasDeviceNodes && !hasHostNodes) {
         logger->warn("PipelineStateMerge: both device and host nodes are disabled. Have you built the node?");
     }
+    std::optional<PipelineEventAggregationConfig> currentConfig;
     uint32_t sequenceNum = 0;
-    while(isRunning()) {
+    while(mainLoop()) {
         auto outState = std::make_shared<PipelineState>();
+        bool waitForMatch = false;
+        if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeat) || request.has()) {
+            auto req = request.get<PipelineEventAggregationConfig>();
+            if(req != nullptr) {
+                currentConfig = *req;
+                currentConfig->setSequenceNum(++sequenceNum);
+                waitForMatch = true;
+            }
+        }
         if(hasDeviceNodes) {
             auto deviceState = inputDevice.get<dai::PipelineState>();
+            if(waitForMatch && deviceState != nullptr && currentConfig.has_value()) {
+                while(isRunning() && deviceState->sequenceNum != currentConfig->sequenceNum) {
+                    deviceState = inputDevice.get<dai::PipelineState>();
+                    if(!isRunning()) break;
+                }
+            }
             if(deviceState != nullptr) {
                 *outState = *deviceState;
             }

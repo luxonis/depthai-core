@@ -13,7 +13,7 @@ class HostCamera(dai.node.ThreadedHostNode):
         if not cap.isOpened():
             p.stop()
             raise RuntimeError("Error: Couldn't open host camera")
-        while self.isRunning():
+        while self.mainLoop():
             # Read the frame from the camera
             ret, frame = cap.read()
             if not ret:

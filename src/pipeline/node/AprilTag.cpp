@@ -206,7 +206,7 @@ void AprilTag::run() {
     // Handle possible errors during configuration
     handleErrors(errno);
 
-    while(isRunning()) {
+    while(mainLoop()) {
         // Retrieve config from user if available
         if(properties.inputConfigSync) {
             inConfig = inputConfig.get<AprilTagConfig>();

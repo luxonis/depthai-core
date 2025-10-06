@@ -29,6 +29,16 @@ class CircularBuffer {
         }
         return result;
     }
+    T first() const {
+        if(buffer.empty()) {
+            throw std::runtime_error("CircularBuffer is empty");
+        }
+        if(buffer.size() < maxSize) {
+            return buffer.front();
+        } else {
+            return buffer[index];
+        }
+    }
     T last() const {
         if(buffer.empty()) {
             throw std::runtime_error("CircularBuffer is empty");

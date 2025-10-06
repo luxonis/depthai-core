@@ -10,7 +10,7 @@ class TestPassthrough : public dai::node::CustomThreadedNode<TestPassthrough> {
     Output output = dai::Node::Output{*this, {}};
 
     void run() override {
-        while(isRunning()) {
+        while(mainLoop()) {
             auto buffer = input.get<dai::Buffer>();
             if(buffer) {
                 std::cout << "The passthrough node received a buffer!" << std::endl;
@@ -25,7 +25,7 @@ class TestSink : public dai::node::CustomThreadedNode<TestSink> {
     Input input = dai::Node::Input{*this, {}};
 
     void run() override {
-        while(isRunning()) {
+        while(mainLoop()) {
             auto buffer = input.get<dai::Buffer>();
             if(buffer) {
                 std::cout << "The sink node received a buffer!" << std::endl;
@@ -39,7 +39,7 @@ class TestSource : public dai::node::CustomThreadedNode<TestSource> {
     Output output = dai::Node::Output{*this, {}};
 
     void run() override {
-        while(isRunning()) {
+        while(mainLoop()) {
             auto buffer = std::make_shared<dai::Buffer>();
             std::cout << "The source node is sending a buffer!" << std::endl;
             output.send(buffer);

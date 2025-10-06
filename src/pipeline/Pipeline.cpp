@@ -671,9 +671,11 @@ void PipelineImpl::build() {
         auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, hasHostNodes);
         if(deviceEventAgg) {
             deviceEventAgg->out.link(stateMerge->inputDevice);
+            stateMerge->outRequest.link(deviceEventAgg->request);
         }
         if(hostEventAgg) {
             hostEventAgg->out.link(stateMerge->inputHost);
+            stateMerge->outRequest.link(hostEventAgg->request);
         }
         pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
     }

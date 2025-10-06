@@ -45,6 +45,7 @@ enum class DatatypeEnum : std::int32_t {
     CoverageData,
     PipelineEvent,
     PipelineState,
+    PipelineEventAggregationConfig,
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 
