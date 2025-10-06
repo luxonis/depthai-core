@@ -12,6 +12,7 @@
     "recommended": {
       "description": "Use recommended dependencies",
       "dependencies": [
+        "boost-asio",
         "openssl",
         "zlib"
       ]
