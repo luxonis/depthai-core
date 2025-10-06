@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
+#include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
 #include "depthai/utility/CircularBuffer.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -334,6 +335,7 @@ bool PipelineEventAggregation::runOnHost() const {
 void PipelineEventAggregation::run() {
     auto& logger = pimpl->logger;
     std::unordered_map<int64_t, NodeEventAggregation> nodeStates;
+    std::optional<PipelineEventAggregationConfig> currentConfig;
     uint32_t sequenceNum = 0;
     while(mainLoop()) {
         std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
@@ -357,10 +359,21 @@ void PipelineEventAggregation::run() {
                 shouldSend = true;
             }
         }
-        outState->sequenceNum = sequenceNum++;
-        outState->setTimestamp(std::chrono::steady_clock::now());
-        outState->tsDevice = outState->ts;
-        if(shouldSend) out.send(outState);
+        bool gotConfig = false;
+        if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeat) || request.has()) {
+            auto req = request.get<PipelineEventAggregationConfig>();
+            if(req != nullptr) {
+                currentConfig = *req;
+                gotConfig = true;
+            }
+        }
+        if(gotConfig || (currentConfig.has_value() && currentConfig->repeat)) {
+            outState->sequenceNum = sequenceNum++;
+            outState->configSequenceNum = currentConfig.has_value() ? currentConfig->sequenceNum : 0;
+            outState->setTimestamp(std::chrono::steady_clock::now());
+            outState->tsDevice = outState->ts;
+            if(gotConfig || shouldSend) out.send(outState);
+        }
     }
 }
 

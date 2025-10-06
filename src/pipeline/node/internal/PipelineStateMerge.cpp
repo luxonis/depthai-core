@@ -28,6 +28,7 @@ void PipelineStateMerge::run() {
     }
     std::optional<PipelineEventAggregationConfig> currentConfig;
     uint32_t sequenceNum = 0;
+    uint32_t configSequenceNum = 0;
     while(mainLoop()) {
         auto outState = std::make_shared<PipelineState>();
         bool waitForMatch = false;
@@ -35,14 +36,14 @@ void PipelineStateMerge::run() {
             auto req = request.get<PipelineEventAggregationConfig>();
             if(req != nullptr) {
                 currentConfig = *req;
-                currentConfig->setSequenceNum(++sequenceNum);
+                currentConfig->setSequenceNum(++configSequenceNum);
                 waitForMatch = true;
             }
         }
         if(hasDeviceNodes) {
             auto deviceState = inputDevice.get<dai::PipelineState>();
             if(waitForMatch && deviceState != nullptr && currentConfig.has_value()) {
-                while(isRunning() && deviceState->sequenceNum != currentConfig->sequenceNum) {
+                while(isRunning() && deviceState->configSequenceNum != currentConfig->sequenceNum) {
                     deviceState = inputDevice.get<dai::PipelineState>();
                     if(!isRunning()) break;
                 }
@@ -53,6 +54,12 @@ void PipelineStateMerge::run() {
         }
         if(hasHostNodes) {
             auto hostState = inputHost.get<dai::PipelineState>();
+            if(waitForMatch && hostState != nullptr && currentConfig.has_value()) {
+                while(isRunning() && hostState->configSequenceNum != currentConfig->sequenceNum) {
+                    hostState = inputHost.get<dai::PipelineState>();
+                    if(!isRunning()) break;
+                }
+            }
             if(hostState != nullptr) {
                 if(hasDeviceNodes) {
                     // merge
