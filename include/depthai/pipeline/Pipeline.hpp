@@ -260,7 +260,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
  */
 template <typename T>
 class NodeStateApi {
-    static_assert(false);
 };
 template <>
 class NodeStateApi<std::vector<Node::Id>> {
