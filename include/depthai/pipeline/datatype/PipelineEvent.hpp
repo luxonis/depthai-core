@@ -17,6 +17,8 @@ class PipelineEvent : public Buffer {
         LOOP = 1,
         INPUT = 2,
         OUTPUT = 3,
+        INPUT_BLOCK = 4,
+        OUTPUT_BLOCK = 5,
     };
     enum class Interval : std::int32_t {
         NONE = 0,
@@ -28,7 +30,6 @@ class PipelineEvent : public Buffer {
     virtual ~PipelineEvent() = default;
 
     int64_t nodeId = -1;
-    std::optional<Buffer> metadata;
     std::optional<uint32_t> queueSize;
     Interval interval = Interval::NONE;
     Type type = Type::CUSTOM;
@@ -39,7 +40,7 @@ class PipelineEvent : public Buffer {
         datatype = DatatypeEnum::PipelineEvent;
     };
 
-    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, metadata, interval, type, source);
+    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, interval, type, source);
 };
 
 }  // namespace dai

@@ -22,11 +22,7 @@ MessageQueue::MessageQueue(std::string name,
                            unsigned int maxSize,
                            bool blocking,
                            std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher)
-    : queue(maxSize, blocking), name(std::move(name)), pipelineEventDispatcher(pipelineEventDispatcher) {
-    if(pipelineEventDispatcher) {
-        pipelineEventDispatcher->addEvent(this->name, PipelineEvent::Type::INPUT);
-    }
-}
+    : queue(maxSize, blocking), name(std::move(name)), pipelineEventDispatcher(pipelineEventDispatcher) {}
 
 MessageQueue::MessageQueue(unsigned int maxSize, bool blocking) : queue(maxSize, blocking) {}
 

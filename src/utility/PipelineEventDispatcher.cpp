@@ -1,10 +1,32 @@
 #include "depthai/utility/PipelineEventDispatcher.hpp"
 
 #include <optional>
-#include <thread>
 
 namespace dai {
 namespace utility {
+
+std::string typeToString(PipelineEvent::Type type) {
+    switch(type) {
+        case PipelineEvent::Type::CUSTOM:
+            return "CUSTOM";
+        case PipelineEvent::Type::LOOP:
+            return "LOOP";
+        case PipelineEvent::Type::INPUT:
+            return "INPUT";
+        case PipelineEvent::Type::OUTPUT:
+            return "OUTPUT";
+        case PipelineEvent::Type::INPUT_BLOCK:
+            return "INPUT_BLOCK";
+        case PipelineEvent::Type::OUTPUT_BLOCK:
+            return "OUTPUT_BLOCK";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+std::string makeKey(PipelineEvent::Type type, const std::string& source) {
+    return typeToString(type) + "#" + source;
+}
 
 void PipelineEventDispatcher::checkNodeId() {
     if(nodeId == -1) {
@@ -14,24 +36,10 @@ void PipelineEventDispatcher::checkNodeId() {
 void PipelineEventDispatcher::setNodeId(int64_t id) {
     nodeId = id;
 }
-void PipelineEventDispatcher::addEvent(const std::string& source, PipelineEvent::Type type) {
-    if(!source.empty()) {
-        if(events.find(source) != events.end()) {
-            throw std::runtime_error("Event with name '" + source + "' already exists");
-        }
-        PipelineEvent event;
-        event.type = type;
-        event.source = source;
-        events[source] = {event, false};
-    }
-}
-void PipelineEventDispatcher::startEvent(const std::string& source, std::optional<uint32_t> queueSize, std::optional<Buffer> metadata) {
+void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
     // TODO add mutex
     checkNodeId();
-    if(events.find(source) == events.end()) {
-        throw std::runtime_error("Event with name " + source + " does not exist");
-    }
-    auto& event = events[source];
+    auto& event = events[makeKey(type, source)];
     if(event.ongoing) {
         throw std::runtime_error("Event with name " + source + " is already ongoing");
     }
@@ -39,25 +47,30 @@ void PipelineEventDispatcher::startEvent(const std::string& source, std::optiona
     event.event.tsDevice = event.event.ts;
     ++event.event.sequenceNum;
     event.event.nodeId = nodeId;
-    event.event.metadata = std::move(metadata);
     event.event.queueSize = std::move(queueSize);
     event.event.interval = PipelineEvent::Interval::START;
     // type and source are already set
     event.ongoing = true;
 
     if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(event.event));
+        out->send(std::make_shared<dai::PipelineEvent>(event));
     }
 }
-void PipelineEventDispatcher::endEvent(const std::string& source, std::optional<uint32_t> queueSize, std::optional<Buffer> metadata) {
+void PipelineEventDispatcher::startInputEvent(const std::string& source, std::optional<uint32_t> queueSize) {
+    startEvent(PipelineEvent::Type::INPUT, source, std::move(queueSize));
+}
+void PipelineEventDispatcher::startOutputEvent(const std::string& source) {
+    startEvent(PipelineEvent::Type::OUTPUT, source, std::nullopt);
+}
+void PipelineEventDispatcher::startCustomEvent(const std::string& source) {
+    startEvent(PipelineEvent::Type::CUSTOM, source, std::nullopt);
+}
+void PipelineEventDispatcher::endEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
     // TODO add mutex
     checkNodeId();
     auto now = std::chrono::steady_clock::now();
 
-    if(events.find(source) == events.end()) {
-        throw std::runtime_error("Event with name " + source + " does not exist");
-    }
-    auto& event = events[source];
+    auto& event = events[makeKey(type, source)];
     if(!event.ongoing) {
         throw std::runtime_error("Event with name " + source + " has not been started");
     }
@@ -65,7 +78,6 @@ void PipelineEventDispatcher::endEvent(const std::string& source, std::optional<
     event.event.setTimestamp(now);
     event.event.tsDevice = event.event.ts;
     event.event.nodeId = nodeId;
-    event.event.metadata = std::move(metadata);
     event.event.queueSize = std::move(queueSize);
     event.event.interval = PipelineEvent::Interval::END;
     // type and source are already set
@@ -75,18 +87,23 @@ void PipelineEventDispatcher::endEvent(const std::string& source, std::optional<
         out->send(std::make_shared<dai::PipelineEvent>(event.event));
     }
 
-    event.event.metadata = std::nullopt;
     event.event.queueSize = std::nullopt;
 }
-void PipelineEventDispatcher::pingEvent(const std::string& source) {
+void PipelineEventDispatcher::endInputEvent(const std::string& source, std::optional<uint32_t> queueSize) {
+    endEvent(PipelineEvent::Type::INPUT, source, std::move(queueSize));
+}
+void PipelineEventDispatcher::endOutputEvent(const std::string& source) {
+    endEvent(PipelineEvent::Type::OUTPUT, source, std::nullopt);
+}
+void PipelineEventDispatcher::endCustomEvent(const std::string& source) {
+    endEvent(PipelineEvent::Type::CUSTOM, source, std::nullopt);
+}
+void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::string& source) {
     // TODO add mutex
     checkNodeId();
     auto now = std::chrono::steady_clock::now();
 
-    if(events.find(source) == events.end()) {
-        throw std::runtime_error("Event with name " + source + " does not exist");
-    }
-    auto& event = events[source];
+    auto& event = events[makeKey(type, source)];
     if(event.ongoing) {
         throw std::runtime_error("Event with name " + source + " is already ongoing");
     }
@@ -100,6 +117,27 @@ void PipelineEventDispatcher::pingEvent(const std::string& source) {
     if(out) {
         out->send(std::make_shared<dai::PipelineEvent>(event.event));
     }
+}
+void PipelineEventDispatcher::pingMainLoopEvent() {
+    pingEvent(PipelineEvent::Type::LOOP, "_mainLoop");
+}
+void PipelineEventDispatcher::pingCustomEvent(const std::string& source) {
+    pingEvent(PipelineEvent::Type::CUSTOM, source);
+}
+PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::blockEvent(PipelineEvent::Type type, const std::string& source) {
+    return BlockPipelineEvent(*this, type, source);
+}
+PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::inputBlockEvent(const std::string& source) {
+    // For convenience due to the default source
+    return blockEvent(PipelineEvent::Type::INPUT_BLOCK, source);
+}
+PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::outputBlockEvent(const std::string& source) {
+    // For convenience due to the default source
+    return blockEvent(PipelineEvent::Type::OUTPUT_BLOCK, source);
+}
+PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::customBlockEvent(const std::string& source) {
+    // For convenience due to the default source
+    return blockEvent(PipelineEvent::Type::CUSTOM, source);
 }
 
 }  // namespace utility

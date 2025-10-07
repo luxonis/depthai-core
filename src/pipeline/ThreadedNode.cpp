@@ -2,6 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <memory>
+
+#include "depthai/utility/PipelineEventDispatcher.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -23,7 +26,6 @@ ThreadedNode::ThreadedNode() {
 
 void ThreadedNode::initPipelineEventDispatcher(int64_t nodeId) {
     pipelineEventDispatcher->setNodeId(nodeId);
-    pipelineEventDispatcher->addEvent("_mainLoop", PipelineEvent::Type::LOOP);
 }
 
 ThreadedNode::~ThreadedNode() = default;
@@ -94,8 +96,20 @@ bool ThreadedNode::isRunning() const {
 }
 
 bool ThreadedNode::mainLoop() {
-    this->pipelineEventDispatcher->pingEvent("_mainLoop");
+    this->pipelineEventDispatcher->pingMainLoopEvent();
     return isRunning();
+}
+
+utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::blockEvent(PipelineEvent::Type type, const std::string& source) {
+    return pipelineEventDispatcher->blockEvent(type, source);
+}
+utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::inputBlockEvent(const std::string& source) {
+    // Just for convenience due to the default source
+    return blockEvent(PipelineEvent::Type::INPUT_BLOCK, source);
+}
+utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::outputBlockEvent(const std::string& source) {
+    // Just for convenience due to the default source
+    return blockEvent(PipelineEvent::Type::OUTPUT_BLOCK, source);
 }
 
 }  // namespace dai

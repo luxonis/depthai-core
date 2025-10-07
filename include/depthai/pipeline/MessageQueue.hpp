@@ -201,16 +201,15 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::shared_ptr<T> tryGet() {
-        if(pipelineEventDispatcher) pipelineEventDispatcher->startEvent(name, getSize());
+        if(pipelineEventDispatcher) pipelineEventDispatcher->startInputEvent(name, getSize());
         if(queue.isDestroyed()) {
             throw QueueException(CLOSED_QUEUE_MESSAGE);
         }
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.tryPop(val)) {
-            if(pipelineEventDispatcher) pipelineEventDispatcher->endEvent(name, getSize());
             return nullptr;
         }
-        if(pipelineEventDispatcher) pipelineEventDispatcher->endEvent(name, getSize());
+        if(pipelineEventDispatcher) pipelineEventDispatcher->endInputEvent(name, getSize());
         return std::dynamic_pointer_cast<T>(val);
     }
 
@@ -230,12 +229,12 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::shared_ptr<T> get() {
-        if(pipelineEventDispatcher) pipelineEventDispatcher->startEvent(name, getSize());
+        if(pipelineEventDispatcher) pipelineEventDispatcher->startInputEvent(name, getSize());
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.waitAndPop(val)) {
             throw QueueException(CLOSED_QUEUE_MESSAGE);
         }
-        if(pipelineEventDispatcher) pipelineEventDispatcher->endEvent(name, getSize());
+        if(pipelineEventDispatcher) pipelineEventDispatcher->endInputEvent(name, getSize());
         return std::dynamic_pointer_cast<T>(val);
     }
 

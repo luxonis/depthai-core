@@ -24,8 +24,12 @@ class NodeState {
         uint64_t minMicrosRecent = -1;
         uint64_t maxMicrosRecent;
         uint64_t medianMicrosRecent;
+        DEPTHAI_SERIALIZE(TimingStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent);
+    };
+    struct Timing {
         float fps;
-        DEPTHAI_SERIALIZE(TimingStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent, fps);
+        TimingStats durationStats;
+        DEPTHAI_SERIALIZE(Timing, fps, durationStats);
     };
     struct QueueStats {
         uint32_t maxQueued;
@@ -34,21 +38,42 @@ class NodeState {
         uint32_t medianQueuedRecent;
         DEPTHAI_SERIALIZE(QueueStats, maxQueued, minQueuedRecent, maxQueuedRecent, medianQueuedRecent);
     };
-    struct QueueState {
-        bool waiting;
+    struct InputQueueState {
+        enum class State : std::int32_t {
+            IDLE = 0,
+            WAITING = 1,
+            BLOCKED = 2
+        } state = State::IDLE;
         uint32_t numQueued;
-        TimingStats timingStats;
+        Timing timing;
         QueueStats queueStats;
-        DEPTHAI_SERIALIZE(QueueState, waiting, numQueued, timingStats);
+        DEPTHAI_SERIALIZE(InputQueueState, state, numQueued, timing);
     };
-    std::vector<DurationEvent> events;
-    std::unordered_map<PipelineEvent::Type, TimingStats> timingsByType;
-    std::unordered_map<std::string, TimingStats> outputStats;
-    std::unordered_map<std::string, QueueState> inputStates;
-    TimingStats mainLoopStats;
-    std::unordered_map<std::string, TimingStats> otherStats;
+    struct OutputQueueState {
+        enum class State : std::int32_t {
+            IDLE = 0,
+            BLOCKED = 1
+        } state = State::IDLE;
+        Timing timing;
+        DEPTHAI_SERIALIZE(OutputQueueState, state, timing);
+    };
+    enum class State : std::int32_t {
+        IDLE = 0,
+        GETTING_INPUTS = 1,
+        PROCESSING = 2,
+        SENDING_OUTPUTS = 3
+    };
 
-    DEPTHAI_SERIALIZE(NodeState, events, timingsByType, outputStats, inputStates, mainLoopStats, otherStats);
+    State state = State::IDLE;
+    std::vector<DurationEvent> events;
+    std::unordered_map<std::string, OutputQueueState> outputStates;
+    std::unordered_map<std::string, InputQueueState> inputStates;
+    Timing inputsGetTiming;
+    Timing outputsSendTiming;
+    Timing mainLoopTiming;
+    std::unordered_map<std::string, Timing> otherTimings;
+
+    DEPTHAI_SERIALIZE(NodeState, events, outputStates, inputStates, inputsGetTiming, outputsSendTiming, mainLoopTiming, otherTimings);
 };
 
 /**

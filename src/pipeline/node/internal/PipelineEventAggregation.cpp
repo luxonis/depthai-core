@@ -30,9 +30,10 @@ class NodeEventAggregation {
         : logger(logger), windowSize(windowSize), eventBatchSize(eventBatchSize), eventsBuffer(windowSize) {}
     NodeState state;
     utility::CircularBuffer<NodeState::DurationEvent> eventsBuffer;
-    std::unordered_map<PipelineEvent::Type, std::unique_ptr<utility::CircularBuffer<uint64_t>>> timingsBufferByType;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> inputTimingsBuffers;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> outputTimingsBuffers;
+    std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> inputGroupTimingsBuffers;
+    std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> outputGroupTimingsBuffers;
     std::unique_ptr<utility::CircularBuffer<uint64_t>> mainLoopTimingsBuffer;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> otherTimingsBuffers;
 
@@ -40,10 +41,14 @@ class NodeEventAggregation {
 
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>> inputFpsBuffers;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>> outputFpsBuffers;
+    std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>> inputGroupFpsBuffers;
+    std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>> outputGroupFpsBuffers;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>> otherFpsBuffers;
 
     std::unordered_map<std::string, std::optional<PipelineEvent>> ongoingInputEvents;
     std::unordered_map<std::string, std::optional<PipelineEvent>> ongoingOutputEvents;
+    std::unordered_map<std::string, std::optional<PipelineEvent>> ongoingInputGroupEvents;
+    std::unordered_map<std::string, std::optional<PipelineEvent>> ongoingOutputGroupEvents;
     std::optional<PipelineEvent> ongoingMainLoopEvent;
     std::unordered_map<std::string, std::optional<PipelineEvent>> ongoingOtherEvents;
 
@@ -65,6 +70,10 @@ class NodeEventAggregation {
                     return ongoingOutputEvents[event.source];
                 case PipelineEvent::Type::CUSTOM:
                     return ongoingOtherEvents[event.source];
+                case PipelineEvent::Type::INPUT_GROUP:
+                    return ongoingInputGroupEvents[event.source];
+                case PipelineEvent::Type::OUTPUT_GROUP:
+                    return ongoingOutputGroupEvents[event.source];
             }
             return ongoingMainLoopEvent;  // To silence compiler warning
         }();
@@ -87,6 +96,16 @@ class NodeEventAggregation {
                         otherTimingsBuffers[event.source] = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
                     }
                     return otherTimingsBuffers[event.source];
+                case PipelineEvent::Type::INPUT_GROUP:
+                    if(inputGroupTimingsBuffers.find(event.source) == inputGroupTimingsBuffers.end()) {
+                        inputGroupTimingsBuffers[event.source] = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
+                    }
+                    return inputGroupTimingsBuffers[event.source];
+                case PipelineEvent::Type::OUTPUT_GROUP:
+                    if(outputGroupTimingsBuffers.find(event.source) == outputGroupTimingsBuffers.end()) {
+                        outputGroupTimingsBuffers[event.source] = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
+                    }
+                    return outputGroupTimingsBuffers[event.source];
             }
             return emptyIntBuffer;  // To silence compiler warning
         }();
@@ -109,6 +128,16 @@ class NodeEventAggregation {
                         otherFpsBuffers[event.source] = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
                     }
                     return otherFpsBuffers[event.source];
+                case PipelineEvent::Type::INPUT_GROUP:
+                    if(inputGroupFpsBuffers.find(event.source) == inputGroupFpsBuffers.end()) {
+                        inputGroupFpsBuffers[event.source] = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
+                    }
+                    return inputGroupFpsBuffers[event.source];
+                case PipelineEvent::Type::OUTPUT_GROUP:
+                    if(outputGroupFpsBuffers.find(event.source) == outputGroupFpsBuffers.end()) {
+                        outputGroupFpsBuffers[event.source] = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
+                    }
+                    return outputGroupFpsBuffers[event.source];
             }
             return emptyTimeBuffer;  // To silence compiler warning
         }();
@@ -120,10 +149,6 @@ class NodeEventAggregation {
             eventsBuffer.add(durationEvent);
             state.events = eventsBuffer.getBuffer();
 
-            if(timingsBufferByType.find(event.type) == timingsBufferByType.end()) {
-                timingsBufferByType[event.type] = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
-            }
-            timingsBufferByType[event.type]->add(durationEvent.durationUs);
             timingsBuffer->add(durationEvent.durationUs);
             fpsBuffer->add({durationEvent.startEvent.getTimestamp(), durationEvent.startEvent.getSequenceNum()});
 
@@ -132,6 +157,7 @@ class NodeEventAggregation {
             return true;
         } else {
             if(ongoingEvent.has_value()) {
+                // TODO: add ability to wait for multiple events (nn hailo threaded processing time)
                 logger->warn("Ongoing event (seq {}) not finished before new one (seq {}) started. Event source: {}, node {}",
                              ongoingEvent->sequenceNum,
                              event.sequenceNum,
@@ -159,6 +185,8 @@ class NodeEventAggregation {
                     return ongoingOtherEvents[event.source];
                 case PipelineEvent::Type::INPUT:
                 case PipelineEvent::Type::OUTPUT:
+                case PipelineEvent::Type::INPUT_GROUP:
+                case PipelineEvent::Type::OUTPUT_GROUP:
                     throw std::runtime_error("INPUT and OUTPUT events should not be pings");
             }
             return ongoingMainLoopEvent;  // To silence compiler warning
@@ -174,15 +202,14 @@ class NodeEventAggregation {
                     return otherTimingsBuffers[event.source];
                 case PipelineEvent::Type::INPUT:
                 case PipelineEvent::Type::OUTPUT:
+                case PipelineEvent::Type::INPUT_GROUP:
+                case PipelineEvent::Type::OUTPUT_GROUP:
                     throw std::runtime_error("INPUT and OUTPUT events should not be pings");
             }
             return emptyIntBuffer;  // To silence compiler warning
         }();
         auto& fpsBuffer = [&]() -> std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>& {
             switch(event.type) {
-                case PipelineEvent::Type::INPUT:
-                case PipelineEvent::Type::OUTPUT:
-                    throw std::runtime_error("INPUT and OUTPUT events should not be pings");
                 case PipelineEvent::Type::LOOP:
                     break;
                 case PipelineEvent::Type::CUSTOM:
@@ -190,6 +217,11 @@ class NodeEventAggregation {
                         otherFpsBuffers[event.source] = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
                     }
                     return otherFpsBuffers[event.source];
+                case PipelineEvent::Type::INPUT:
+                case PipelineEvent::Type::OUTPUT:
+                case PipelineEvent::Type::INPUT_GROUP:
+                case PipelineEvent::Type::OUTPUT_GROUP:
+                    throw std::runtime_error("INPUT and OUTPUT events should not be pings");
             }
             return emptyTimeBuffer;  // To silence compiler warning
         }();
@@ -201,13 +233,9 @@ class NodeEventAggregation {
             eventsBuffer.add(durationEvent);
             state.events = eventsBuffer.getBuffer();
 
-            if(timingsBufferByType.find(event.type) == timingsBufferByType.end()) {
-                timingsBufferByType[event.type] = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
-            }
             if(timingsBuffer == nullptr) {
                 timingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
             }
-            timingsBufferByType[event.type]->add(durationEvent.durationUs);
             timingsBuffer->add(durationEvent.durationUs);
             if(fpsBuffer) fpsBuffer->add({durationEvent.startEvent.getTimestamp(), durationEvent.startEvent.getSequenceNum()});
 
@@ -285,9 +313,7 @@ class NodeEventAggregation {
         } else {
             addedEvent = updateIntervalBuffers(event);
         }
-        if(addedEvent && ++count % eventBatchSize == 0) {
-            // By type
-            updateTimingStats(state.timingsByType[event.type], *timingsBufferByType[event.type]);
+        if(addedEvent /*  && ++count % eventBatchSize == 0 */) {  // TODO
             // By instance
             switch(event.type) {
                 case PipelineEvent::Type::CUSTOM:
@@ -306,9 +332,17 @@ class NodeEventAggregation {
                     updateTimingStats(state.outputStats[event.source], *outputTimingsBuffers[event.source]);
                     updateFpsStats(state.outputStats[event.source], *outputFpsBuffers[event.source]);
                     break;
+                case PipelineEvent::Type::INPUT_GROUP:
+                    updateTimingStats(state.inputGroupStats[event.source], *inputGroupTimingsBuffers[event.source]);
+                    updateFpsStats(state.inputGroupStats[event.source], *inputGroupFpsBuffers[event.source]);
+                    break;
+                case PipelineEvent::Type::OUTPUT_GROUP:
+                    updateTimingStats(state.outputGroupStats[event.source], *outputGroupTimingsBuffers[event.source]);
+                    updateFpsStats(state.outputGroupStats[event.source], *outputGroupFpsBuffers[event.source]);
+                    break;
             }
         }
-        if(event.type == PipelineEvent::Type::INPUT && event.interval == PipelineEvent::Interval::END && ++count % eventBatchSize == 0) {
+        if(event.type == PipelineEvent::Type::INPUT && event.interval == PipelineEvent::Interval::END /*  && ++count % eventBatchSize == 0 */) {  // TODO
             auto& qStats = state.inputStates[event.source].queueStats;
             auto& qBuffer = *inputQueueSizesBuffers[event.source];
             qStats.maxQueued = std::max(qStats.maxQueued, *event.queueSize);
@@ -339,8 +373,7 @@ class PipelineEventHandler {
     std::shared_mutex mutex;
 
    public:
-    PipelineEventHandler(
-        Node::InputMap* inputs, uint32_t aggregationWindowSize, uint32_t eventBatchSize, std::shared_ptr<spdlog::async_logger> logger)
+    PipelineEventHandler(Node::InputMap* inputs, uint32_t aggregationWindowSize, uint32_t eventBatchSize, std::shared_ptr<spdlog::async_logger> logger)
         : inputs(inputs), aggregationWindowSize(aggregationWindowSize), eventBatchSize(eventBatchSize), logger(logger) {}
     void threadedRun() {
         while(running) {

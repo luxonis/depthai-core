@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -33,15 +32,23 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
 
     void setNodeId(int64_t id) override;
 
-    void addEvent(const std::string& source, PipelineEvent::Type type) override;
-
-    void startEvent(const std::string& source,
-                    std::optional<uint32_t> queueSize = std::nullopt,
-                    std::optional<Buffer> metadata = std::nullopt) override;  // Start event with a start and an end
-    void endEvent(const std::string& source,
-                  std::optional<uint32_t> queueSize = std::nullopt,
-                  std::optional<Buffer> metadata = std::nullopt) override;  // Stop event with a start and an end
-    void pingEvent(const std::string& source) override;                     // Event where stop and start are the same (eg. loop)
+    void startEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) override;
+    void startInputEvent(const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) override;
+    void startOutputEvent(const std::string& source) override;
+    void startCustomEvent(const std::string& source) override;
+    void endEvent(PipelineEvent::Type type,
+                  const std::string& source,
+                  std::optional<uint32_t> queueSize = std::nullopt) override;
+    void endInputEvent(const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) override;
+    void endOutputEvent(const std::string& source) override;
+    void endCustomEvent(const std::string& source) override;
+    void pingEvent(PipelineEvent::Type type, const std::string& source) override;
+    void pingMainLoopEvent() override;
+    void pingCustomEvent(const std::string& source) override;
+    BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source) override;
+    BlockPipelineEvent inputBlockEvent(const std::string& source = "defaultInputGroup") override;
+    BlockPipelineEvent outputBlockEvent(const std::string& source = "defaultOutputGroup") override;
+    BlockPipelineEvent customBlockEvent(const std::string& source) override;
 };
 
 }  // namespace utility

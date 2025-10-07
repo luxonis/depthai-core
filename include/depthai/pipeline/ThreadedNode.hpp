@@ -5,7 +5,6 @@
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
 #include "depthai/utility/spimpl.h"
-#include "depthai/utility/PipelineEventDispatcher.hpp"
 
 namespace dai {
 
@@ -16,7 +15,7 @@ class ThreadedNode : public Node {
     JoiningThread thread;
     AtomicBool running{false};
 
-  protected:
+   protected:
     Output pipelineEventOutput{*this, {"pipelineEventOutput", DEFAULT_GROUP, {{{DatatypeEnum::PipelineEvent, false}}}}};
 
     void initPipelineEventDispatcher(int64_t nodeId);
@@ -68,6 +67,10 @@ class ThreadedNode : public Node {
      * @returns Logging severity level
      */
     virtual dai::LogLevel getLogLevel() const;
+
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent inputBlockEvent(const std::string& source = "defaultInputGroup");
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent outputBlockEvent(const std::string& source = "defaultOutputGroup");
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source);
 
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;
