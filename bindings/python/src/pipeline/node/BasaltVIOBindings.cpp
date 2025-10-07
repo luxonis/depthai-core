@@ -37,7 +37,12 @@ void bind_basaltnode(pybind11::module& m, void* pCallstack) {
         .def("setImuUpdateRate", &BasaltVIO::setImuUpdateRate, py::arg("rate"), DOC(dai, node, BasaltVIO, setImuUpdateRate))
         .def("setConfigPath", &BasaltVIO::setConfigPath, py::arg("path"), DOC(dai, node, BasaltVIO, setConfigPath))
         .def_readwrite("vioConfig", &BasaltVIO::vioConfig)
-        .def("setLocalTransform", &BasaltVIO::setLocalTransform, py::arg("transform"), DOC(dai, node, BasaltVIO, setLocalTransform));
+        .def("setLocalTransform", &BasaltVIO::setLocalTransform, py::arg("transform"), DOC(dai, node, BasaltVIO, setLocalTransform))
+        .def("setRunSyncOnHost", &BasaltVIO::setRunSyncOnHost, py::arg("sync"), DOC(dai, node, BasaltVIO, setRunSyncOnHost))
+        .def("setAccelBias", &BasaltVIO::setAccelBias, py::arg("bias"), DOC(dai, node, BasaltVIO, setAccelBias))
+        .def("setAccelNoiseStd", &BasaltVIO::setAccelNoiseStd, py::arg("std"), DOC(dai, node, BasaltVIO, setAccelNoiseStd))
+        .def("setGyroBias", &BasaltVIO::setGyroBias, py::arg("bias"), DOC(dai, node, BasaltVIO, setGyroBias))
+        .def("setGyroNoiseStd", &BasaltVIO::setGyroNoiseStd, py::arg("std"), DOC(dai, node, BasaltVIO, setGyroNoiseStd));
     // VioConfig
     vioConfig.def(py::init<>())
         .def_readwrite("optical_flow_type", &basalt::VioConfig::optical_flow_type)
