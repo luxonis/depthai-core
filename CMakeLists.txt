@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
+include(cmake/depthaiOptions.cmake)
 if(CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Including toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
     include("${CMAKE_TOOLCHAIN_FILE}")
