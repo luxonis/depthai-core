@@ -26,6 +26,7 @@ void PipelineEventDispatcher::addEvent(const std::string& source, PipelineEvent:
     }
 }
 void PipelineEventDispatcher::startEvent(const std::string& source, std::optional<uint32_t> queueSize, std::optional<Buffer> metadata) {
+    // TODO add mutex
     checkNodeId();
     if(events.find(source) == events.end()) {
         throw std::runtime_error("Event with name " + source + " does not exist");
@@ -49,6 +50,7 @@ void PipelineEventDispatcher::startEvent(const std::string& source, std::optiona
     }
 }
 void PipelineEventDispatcher::endEvent(const std::string& source, std::optional<uint32_t> queueSize, std::optional<Buffer> metadata) {
+    // TODO add mutex
     checkNodeId();
     auto now = std::chrono::steady_clock::now();
 
@@ -77,6 +79,7 @@ void PipelineEventDispatcher::endEvent(const std::string& source, std::optional<
     event.event.queueSize = std::nullopt;
 }
 void PipelineEventDispatcher::pingEvent(const std::string& source) {
+    // TODO add mutex
     checkNodeId();
     auto now = std::chrono::steady_clock::now();
 

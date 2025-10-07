@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/internal/PipelineEventAggregation.hpp"
 
 #include <chrono>
+#include <shared_mutex>
 
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
 #include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
@@ -274,6 +275,8 @@ class NodeEventAggregation {
                     inputQueueSizesBuffers[event.source] = std::make_unique<utility::CircularBuffer<uint32_t>>(windowSize);
                 }
                 inputQueueSizesBuffers[event.source]->add(*event.queueSize);
+            } else {
+                throw std::runtime_error(fmt::format("INPUT END event must have queue size set source: {}, node {}", event.source, event.nodeId));
             }
         }
         bool addedEvent = false;
@@ -321,6 +324,67 @@ class NodeEventAggregation {
     }
 };
 
+class PipelineEventHandler {
+    std::unordered_map<int64_t, NodeEventAggregation> nodeStates;
+    Node::InputMap* inputs;
+    uint32_t aggregationWindowSize;
+    uint32_t eventBatchSize;
+
+    std::atomic<bool> running;
+
+    std::thread thread;
+
+    std::shared_ptr<spdlog::async_logger> logger;
+
+    std::shared_mutex mutex;
+
+   public:
+    PipelineEventHandler(
+        Node::InputMap* inputs, uint32_t aggregationWindowSize, uint32_t eventBatchSize, std::shared_ptr<spdlog::async_logger> logger)
+        : inputs(inputs), aggregationWindowSize(aggregationWindowSize), eventBatchSize(eventBatchSize), logger(logger) {}
+    void threadedRun() {
+        while(running) {
+            std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
+            bool gotEvents = false;
+            for(auto& [k, v] : *inputs) {
+                events[k.second] = v.tryGet<PipelineEvent>();
+                gotEvents = gotEvents || (events[k.second] != nullptr);
+            }
+            for(auto& [k, event] : events) {
+                if(event != nullptr) {
+                    if(nodeStates.find(event->nodeId) == nodeStates.end()) {
+                        nodeStates.insert_or_assign(event->nodeId, NodeEventAggregation(aggregationWindowSize, eventBatchSize, logger));
+                    }
+                    {
+                        std::unique_lock lock(mutex);
+                        nodeStates.at(event->nodeId).add(*event);
+                    }
+                }
+            }
+            if(!gotEvents) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+    }
+    void run() {
+        running = true;
+        thread = std::thread(&PipelineEventHandler::threadedRun, this);
+    }
+    void stop() {
+        running = false;
+        if(thread.joinable()) thread.join();
+    }
+    bool getState(std::shared_ptr<PipelineState> outState) {
+        std::shared_lock lock(mutex);
+        bool updated = false;
+        for(auto& [nodeId, nodeState] : nodeStates) {
+            outState->nodeStates[nodeId] = nodeState.state;
+            if(nodeState.count % eventBatchSize == 0) updated = true;
+        }
+        return updated;
+    }
+};
+
 void PipelineEventAggregation::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
@@ -334,31 +398,14 @@ bool PipelineEventAggregation::runOnHost() const {
 
 void PipelineEventAggregation::run() {
     auto& logger = pimpl->logger;
-    std::unordered_map<int64_t, NodeEventAggregation> nodeStates;
+
+    PipelineEventHandler handler(&inputs, properties.aggregationWindowSize, properties.eventBatchSize, logger);
+    handler.run();
+
     std::optional<PipelineEventAggregationConfig> currentConfig;
     uint32_t sequenceNum = 0;
     while(mainLoop()) {
-        std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
-        for(auto& [k, v] : inputs) {
-            events[k.second] = v.tryGet<PipelineEvent>();
-        }
-        for(auto& [k, event] : events) {
-            if(event != nullptr) {
-                if(nodeStates.find(event->nodeId) == nodeStates.end()) {
-                    nodeStates.insert_or_assign(event->nodeId, NodeEventAggregation(properties.aggregationWindowSize, properties.eventBatchSize, logger));
-                }
-                nodeStates.at(event->nodeId).add(*event);
-            }
-        }
         auto outState = std::make_shared<PipelineState>();
-        bool shouldSend = false;
-        for(auto& [nodeId, nodeState] : nodeStates) {
-            if(nodeState.count % properties.eventBatchSize == 0) {
-                outState->nodeStates[nodeId] = nodeState.state;
-                if(!properties.sendEvents) outState->nodeStates[nodeId].events.clear();
-                shouldSend = true;
-            }
-        }
         bool gotConfig = false;
         if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeat) || request.has()) {
             auto req = request.get<PipelineEventAggregationConfig>();
@@ -368,14 +415,21 @@ void PipelineEventAggregation::run() {
             }
         }
         if(gotConfig || (currentConfig.has_value() && currentConfig->repeat)) {
+            bool updated = handler.getState(outState);
+            for(auto& [nodeId, nodeState] : outState->nodeStates) {
+                if(!properties.sendEvents) nodeState.events.clear();
+            }
+
             outState->sequenceNum = sequenceNum++;
             outState->configSequenceNum = currentConfig.has_value() ? currentConfig->sequenceNum : 0;
             outState->setTimestamp(std::chrono::steady_clock::now());
             outState->tsDevice = outState->ts;
             // TODO: send only requested data
-            if(gotConfig || shouldSend) out.send(outState);
+            if(gotConfig || (currentConfig.has_value() && currentConfig->repeat && updated)) out.send(outState);
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+    handler.stop();
 }
 
 }  // namespace internal

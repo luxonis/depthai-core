@@ -214,7 +214,7 @@ void ReplayVideo::run() {
     uint64_t index = 0;
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
-    while(isRunning()) {
+    while(mainLoop()) {
         std::shared_ptr<proto::img_frame::ImgFrame> metadata;
         std::vector<uint8_t> frame;
         if(hasMetadata) {
@@ -341,7 +341,7 @@ void ReplayMetadataOnly::run() {
     bool first = true;
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
-    while(isRunning()) {
+    while(mainLoop()) {
         std::shared_ptr<google::protobuf::Message> metadata;
         std::vector<uint8_t> frame;
         if(!utility::deserializationSupported(datatype)) {
