@@ -40,6 +40,8 @@ class FileData {
    private:
     /**
      * Calculate SHA256 checksum for the given data
+     * @param data Data for checksum calculation
+     * @return checksum string
      */
     std::string calculateSHA256Checksum(const std::string& data);
 
@@ -138,7 +140,7 @@ class EventsManager {
         std::string cachePath;
     };
 
-    struct FileUploadRetryPolicy {
+    struct UploadRetryPolicy {
         int maxAttempts = 10;
         float factor = 2.0f;
         std::chrono::milliseconds baseDelay{100};
@@ -210,7 +212,7 @@ class EventsManager {
     uint32_t snapsPerHour;
     uint32_t eventsPerRequest;
 
-    FileUploadRetryPolicy fileUploadRetryPolicy;
+    UploadRetryPolicy uploadRetryPolicy;
 
     static constexpr int eventValidationNameLength = 56;
     static constexpr int eventValidationMaxTags = 20;

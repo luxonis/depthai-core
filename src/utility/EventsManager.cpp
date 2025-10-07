@@ -228,7 +228,7 @@ bool EventsManager::fetchConfigurationLimits() {
     header["Content-Type"] = "application/x-protobuf";
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
     // Might change to infinte retrying in the future
-    for (int i = 0; i < fileUploadRetryPolicy.maxAttempts && !stopUploadThread; i++) {
+    for (int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread; i++) {
     cpr::Response response = cpr::Get(
         cpr::Url{requestUrl},
         cpr::Header{header},
@@ -249,9 +249,9 @@ bool EventsManager::fetchConfigurationLimits() {
         logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
 
             // Apply exponential backoff
-            auto factor = std::pow(fileUploadRetryPolicy.factor, i+1);
-            std::chrono::milliseconds duration = std::chrono::milliseconds(fileUploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
-            logger::info("Retrying to fetch configuration limits, (attempt {}/{}) in {} ms", i+1, fileUploadRetryPolicy.maxAttempts, duration.count());
+            auto factor = std::pow(uploadRetryPolicy.factor, i+1);
+            std::chrono::milliseconds duration = std::chrono::milliseconds(uploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
+            logger::info("Retrying to fetch configuration limits, (attempt {}/{}) in {} ms", i+1, uploadRetryPolicy.maxAttempts, duration.count());
             
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock, duration, [this]() {
@@ -330,8 +330,8 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
         if (response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
             logger::error("Failed to prepare a batch of file groups, status code: {}", response.status_code);
             // Apply exponential backoff
-            auto factor = std::pow(fileUploadRetryPolicy.factor, ++retryAttempt);
-            std::chrono::milliseconds duration = std::chrono::milliseconds(fileUploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
+            auto factor = std::pow(uploadRetryPolicy.factor, ++retryAttempt);
+            std::chrono::milliseconds duration = std::chrono::milliseconds(uploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
             logger::info("Retrying to prepare a batch of file groups (attempt {} in {} ms)", retryAttempt, duration.count());
             
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
@@ -412,7 +412,7 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
     logger::info("Uploading file {} to: {}", fileData->fileName, uploadUrl);
     auto header = cpr::Header();
     header["Content-Type"] = fileData->mimeType;
-    for (int i = 0; i < fileUploadRetryPolicy.maxAttempts && !stopUploadThread; ++i) {
+    for (int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread; ++i) {
         cpr::Response response = cpr::Put(
             cpr::Url{uploadUrl},
             cpr::Body{fileData->data},
@@ -436,9 +436,9 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
                 logger::info("Response {}", response.text);
             }
             // Apply exponential backoff
-            auto factor = std::pow(fileUploadRetryPolicy.factor, i+1);
-            std::chrono::milliseconds duration = std::chrono::milliseconds(fileUploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
-            logger::info("Retrying upload of file {}, (attempt {}/{}) in {} ms", fileData->fileName, i+1, fileUploadRetryPolicy.maxAttempts, duration.count());
+            auto factor = std::pow(uploadRetryPolicy.factor, i+1);
+            std::chrono::milliseconds duration = std::chrono::milliseconds(uploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
+            logger::info("Retrying upload of file {}, (attempt {}/{}) in {} ms", fileData->fileName, i+1, uploadRetryPolicy.maxAttempts, duration.count());
             
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock, duration, [this]() {
@@ -517,7 +517,7 @@ bool EventsManager::sendEvent(const std::string& name,
     for(const auto& entry : extras) {
         extrasData->insert({entry.first, entry.second});
     }
-    event->set_source_serial_number(deviceSerialNo.empty() ? deviceSerialNumber : deviceSerialNo);
+    event->set_source_serial_number(deviceSerialNo);
     event->set_source_app_id(sourceAppId);
     event->set_source_app_identifier(sourceAppIdentifier);
     for (const auto& file : associateFiles) {
@@ -554,7 +554,7 @@ bool EventsManager::sendSnap(const std::string& name,
     for(const auto& entry : extras) {
         extrasData->insert({entry.first, entry.second});
     }
-    snapData->event->set_source_serial_number(deviceSerialNo.empty() ? deviceSerialNumber : deviceSerialNo);
+    snapData->event->set_source_serial_number(deviceSerialNo);
     snapData->event->set_source_app_id(sourceAppId);
     snapData->event->set_source_app_identifier(sourceAppIdentifier);
     if (!validateEvent(*snapData->event)) {
