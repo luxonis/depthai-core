@@ -33,18 +33,8 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(py::init<>())
         .def(py::init<std::string, bool, float>(), py::arg("url"), py::arg("uploadCachedOnStart") = false, py::arg("publishInterval") = 10.0)
         .def("setUrl", &EventsManager::setUrl, py::arg("url"), DOC(dai, utility, EventsManager, setUrl))
-        .def("setSourceAppId", &EventsManager::setSourceAppId, py::arg("sourceAppId"), DOC(dai, utility, EventsManager, setSourceAppId))
-        .def("setSourceAppIdentifier",
-             &EventsManager::setSourceAppIdentifier,
-             py::arg("sourceAppIdentifier"),
-             DOC(dai, utility, EventsManager, setSourceAppIdentifier))
         .def("setToken", &EventsManager::setToken, py::arg("token"), DOC(dai, utility, EventsManager, setToken))
-        .def("setQueueSize", &EventsManager::setQueueSize, py::arg("queueSize"), DOC(dai, utility, EventsManager, setQueueSize))
         .def("setLogResponse", &EventsManager::setLogResponse, py::arg("logResponse"), DOC(dai, utility, EventsManager, setLogResponse))
-        .def("setDeviceSerialNumber",
-             &EventsManager::setDeviceSerialNumber,
-             py::arg("deviceSerialNumber"),
-             DOC(dai, utility, EventsManager, setDeviceSerialNumber))
         .def("setVerifySsl", &EventsManager::setVerifySsl, py::arg("verifySsl"), DOC(dai, utility, EventsManager, setVerifySsl))
         .def("setCacheDir", &EventsManager::setCacheDir, py::arg("cacheDir"), DOC(dai, utility, EventsManager, setCacheDir))
         .def("setCacheIfCannotSend",

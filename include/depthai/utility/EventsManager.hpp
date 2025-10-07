@@ -86,25 +86,12 @@ class EventsManager {
                   const std::string& deviceSerialNo = "",
                   const std::vector<std::shared_ptr<FileData>>& fileGroup = {});
 
-    void setDeviceSerialNumber(const std::string& deviceSerialNumber);
     /**
      * Set the URL of the events service. By default, the URL is set to https://events.cloud.luxonis.com
      * @param url URL of the events service
      * @return void
      */
     void setUrl(const std::string& url);
-    /**
-     * Set the source app ID. By default, the source app ID is taken from the environment variable AGENT_APP_ID
-     * @param sourceAppId Source app ID
-     * @return void
-     */
-    void setSourceAppId(const std::string& sourceAppId);
-    /**
-     * Set the source app identifier. By default, the source app identifier is taken from the environment variable AGENT_APP_IDENTIFIER
-     * @param sourceAppIdentifier Source app identifier
-     * @return void
-     */
-    void setSourceAppIdentifier(const std::string& sourceAppIdentifier);
     /**
      * Set the token for the events service. By default, the token is taken from the environment variable DEPTHAI_HUB_API_KEY
      * @param token Token for the events service
@@ -158,6 +145,11 @@ class EventsManager {
     };
 
     /**
+     * Fetch the configuration limits and quotas for snaps & events
+     * @return bool
+     */
+    bool fetchConfigurationLimits();
+    /**
      * Prepare a batch of file groups from inputSnapBatch
      */
     void uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputSnapBatch);
@@ -174,6 +166,12 @@ class EventsManager {
      */
     void uploadEventBatch();
     /**
+     * Validate the input event by checking that its fields adhere to defined limitations
+     * @param inputEvent Input event to be validated
+     * @return bool
+     */
+    bool validateEvent(const proto::event::Event& inputEvent);
+    /**
      * // TO DO: Add description
      */
     void cacheEvents();
@@ -181,20 +179,8 @@ class EventsManager {
      * // TO DO: Add description
      */
     bool checkForCachedData();
-    /**
-     * Validate the input event by checking that its fields adhere to defined limitations
-     * @param inputEvent Input event to be validated
-     * @return bool
-     */
-    bool validateEvent(const proto::event::Event& inputEvent);
-    /**
-     * Fetch configuration limits and quotas for snaps, through the api
-     * @return bool
-     */
-    bool fetchConfigurationLimits();
 
     std::string token;
-    std::string deviceSerialNumber;
     std::string url;
     std::string sourceAppId;
     std::string sourceAppIdentifier;

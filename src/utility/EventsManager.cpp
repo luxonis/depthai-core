@@ -177,13 +177,9 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
     uploadThread = std::make_unique<std::thread>([this]() {
         auto nextTime = std::chrono::steady_clock::now();
         while(!stopUploadThread) {
-            // TO DO: remove
-            logger::info("Currently there are {} events in the buffer", eventBuffer.size());
-            logger::info("Currently there are {} snaps in the buffer", snapBuffer.size());
             // Hourly check for fetching configuration and limits
             auto currentTime = std::chrono::steady_clock::now();
             if (currentTime >= nextTime) {
-                // TO DO: Fetching should be done for as long as needed, otherwise empty limits and config values 
                 fetchConfigurationLimits();
                 nextTime += std::chrono::hours(1);
                 if (remainingStorageBytes <= warningStorageBytes) {
@@ -231,6 +227,8 @@ bool EventsManager::fetchConfigurationLimits() {
     header["Authorization"] = "Bearer " + token;
     header["Content-Type"] = "application/x-protobuf";
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
+    // Might change to infinte retrying in the future
+    for (int i = 0; i < fileUploadRetryPolicy.maxAttempts && !stopUploadThread; i++) {
     cpr::Response response = cpr::Get(
         cpr::Url{requestUrl},
         cpr::Header{header},
@@ -249,7 +247,16 @@ bool EventsManager::fetchConfigurationLimits() {
             }));
     if(response.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
-        return false;
+
+            // Apply exponential backoff
+            auto factor = std::pow(fileUploadRetryPolicy.factor, i+1);
+            std::chrono::milliseconds duration = std::chrono::milliseconds(fileUploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
+            logger::info("Retrying to fetch configuration limits, (attempt {}/{}) in {} ms", i+1, fileUploadRetryPolicy.maxAttempts, duration.count());
+            
+            std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
+            eventBufferCondition.wait_for(lock, duration, [this]() {
+                return stopUploadThread.load();
+            });
     } else {
         logger::info("Configuration limits fetched successfully");
         auto apiUsage = std::make_unique<proto::event::ApiUsage>();
@@ -262,13 +269,16 @@ bool EventsManager::fetchConfigurationLimits() {
         remainingStorageBytes = apiUsage->files().remaining_storage_bytes(); //
         bytesPerHour = apiUsage->files().bytes_per_hour_rate();
         uploadsPerHour = apiUsage->files().uploads_per_hour_rate();
-        maxGroupsPerBatch = apiUsage->files().groups_per_allocation();
+            maxGroupsPerBatch = apiUsage->files().groups_per_allocation(); //
         maxFilesPerGroup = apiUsage->files().files_per_group_in_allocation(); //
         eventsPerHour = apiUsage->events().events_per_hour_rate();
         snapsPerHour = apiUsage->events().snaps_per_hour_rate();
-        eventsPerRequest = apiUsage->events().events_per_request();
+            eventsPerRequest = apiUsage->events().events_per_request(); //
+
+            return true;
+        }
     }
-    return true;
+    return false;
 }
 
 void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputSnapBatch) {
@@ -295,6 +305,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
         fileGroupBatchPrepare->add_groups()->Swap(fileGroup.get());
     }
 
+    int retryAttempt = 0;
     while (!stopUploadThread) {
         std::string serializedBatch;
         fileGroupBatchPrepare->SerializeToString(&serializedBatch);
@@ -318,6 +329,15 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
                 }));
         if (response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
             logger::error("Failed to prepare a batch of file groups, status code: {}", response.status_code);
+            // Apply exponential backoff
+            auto factor = std::pow(fileUploadRetryPolicy.factor, ++retryAttempt);
+            std::chrono::milliseconds duration = std::chrono::milliseconds(fileUploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
+            logger::info("Retrying to prepare a batch of file groups (attempt {} in {} ms)", retryAttempt, duration.count());
+            
+            std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
+            eventBufferCondition.wait_for(lock, duration, [this]() {
+                return stopUploadThread.load();
+            });
             // TO DO: After a few tries, we can determine that the connection is not established. 
             // We can then check if caching is chosen. and do it
         }
@@ -391,7 +411,6 @@ bool EventsManager::uploadGroup(std::shared_ptr<SnapData> snapData, dai::proto::
 bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string uploadUrl) {
     logger::info("Uploading file {} to: {}", fileData->fileName, uploadUrl);
     auto header = cpr::Header();
-    header["File-Size"] = fileData->size; // TO DO: Remove this fix
     header["Content-Type"] = fileData->mimeType;
     for (int i = 0; i < fileUploadRetryPolicy.maxAttempts && !stopUploadThread; ++i) {
         cpr::Response response = cpr::Put(
@@ -545,6 +564,9 @@ bool EventsManager::sendSnap(const std::string& name,
     snapData->event->add_tags("snap");
     if (fileGroup.size() > maxFilesPerGroup) {
         logger::error("Failed to send snap, the number of files in a file group {} exceeds {}", fileGroup.size(), maxFilesPerGroup);
+        return false;
+    } else if (fileGroup.empty()) {
+        logger::error("Failed to send snap, the file group is empty");
         return false;
     }
     for (const auto& file : fileGroup) {
@@ -704,24 +726,12 @@ void EventsManager::setUrl(const std::string& url) {
     this->url = url;
 }
 
-void EventsManager::setSourceAppId(const std::string& sourceAppId) {
-    this->sourceAppId = sourceAppId;
-}
-
-void EventsManager::setSourceAppIdentifier(const std::string& sourceAppIdentifier) {
-    this->sourceAppIdentifier = sourceAppIdentifier;
-}
-
 void EventsManager::setToken(const std::string& token) {
     this->token = token;
 }
 
 void EventsManager::setLogResponse(bool logResponse) {
     this->logResponse = logResponse;
-}
-
-void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber) {
-    this->deviceSerialNumber = deviceSerialNumber;
 }
 
 void EventsManager::setVerifySsl(bool verifySsl) {
