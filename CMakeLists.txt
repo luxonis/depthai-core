@@ -1,13 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 
-include(cmake/depthaiOptions.cmake)
-include("${CMAKE_TOOLCHAIN_FILE}")
-message(STATUS "CMAKE_TOOLCHAIN_FILE = ${CMAKE_TOOLCHAIN_FILE}")
-message(STATUS "DEPTHAI_ENABLE_DEVICE_RVC4_FW = ${DEPTHAI_ENABLE_DEVICE_RVC4_FW}")
-message(STATUS "DEPTHAI_SANITIZE              = ${DEPTHAI_SANITIZE}")
-message(STATUS "SANITIZE_THREAD              = ${SANITIZE_THREAD}")
-message(STATUS "DEPTHAI_DEVICE_RVC4_VERSION  = ${DEPTHAI_DEVICE_RVC4_VERSION}")
-
+if(CMAKE_TOOLCHAIN_FILE)
+    message(STATUS "Including toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
+    include("${CMAKE_TOOLCHAIN_FILE}")
+else()
+    message(STATUS "No toolchain file specified, skipping include.")
+endif()
 
 if(WIN32)
     add_compile_options(/MP)
@@ -53,13 +51,6 @@ set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
 # Create a custom toolchain to pass certain options to dependencies
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
 
-message(STATUS "CMAKE_TOOLCHAIN_FILE_2 = ${CMAKE_TOOLCHAIN_FILE}")
-message(STATUS "DEPTHAI_ENABLE_DEVICE_RVC4_FW = ${DEPTHAI_ENABLE_DEVICE_RVC4_FW}")
-message(STATUS "DEPTHAI_SANITIZE              = ${DEPTHAI_SANITIZE}")
-message(STATUS "SANITIZE_THREAD              = ${SANITIZE_THREAD}")
-message(STATUS "DEPTHAI_DEVICE_RVC4_VERSION  = ${DEPTHAI_DEVICE_RVC4_VERSION}")
-
-
 if(EXISTS "${gen_toolchain}" AND ("${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE}" STREQUAL "${CMAKE_TOOLCHAIN_FILE}" OR NOT "${CMAKE_TOOLCHAIN_FILE}" STREQUAL ""))
     message(STATUS "Using existing generated toolchain")
 else()
@@ -78,7 +69,6 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
-message(STATUS "CMAKE_TOOLCHAIN_FILE_3 = ${CMAKE_TOOLCHAIN_FILE}")
 # Create depthai project
 project(depthai VERSION "3.2.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
@@ -703,19 +693,6 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
     )
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_KB_RESOURCE_LIST})
 endif()
-
-# --- User overlay toolchain (optional) ---
-# set(DEPTHAI_USER_TOOLCHAIN "" CACHE PATH "Extra toolchain to include after vcpkg")
-# if(DEPTHAI_USER_TOOLCHAIN AND EXISTS "${DEPTHAI_USER_TOOLCHAIN}")
-#   message(STATUS "Including user toolchain: ${DEPTHAI_USER_TOOLCHAIN}")
-#   include("${DEPTHAI_USER_TOOLCHAIN}")
-# endif()
-
-message(STATUS "CMAKE_TOOLCHAIN_FILE_4 = ${CMAKE_TOOLCHAIN_FILE}")
-message(STATUS "DEPTHAI_ENABLE_DEVICE_RVC4_FW = ${DEPTHAI_ENABLE_DEVICE_RVC4_FW}")
-message(STATUS "DEPTHAI_SANITIZE              = ${DEPTHAI_SANITIZE}")
-message(STATUS "SANITIZE_THREAD              = ${SANITIZE_THREAD}")
-message(STATUS "DEPTHAI_DEVICE_RVC4_VERSION  = ${DEPTHAI_DEVICE_RVC4_VERSION}")
 
 if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
     if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
