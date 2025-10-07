@@ -65,7 +65,6 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
-message(STATUS "CMAKE_TOOLCHAIN_FILE_3 = ${CMAKE_TOOLCHAIN_FILE}")
 # Create depthai project
 project(depthai VERSION "3.2.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
