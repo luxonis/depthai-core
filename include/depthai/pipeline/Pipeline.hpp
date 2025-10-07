@@ -20,6 +20,7 @@
 
 // shared
 #include "depthai/device/BoardConfig.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
@@ -28,6 +29,244 @@
 namespace dai {
 
 namespace fs = std::filesystem;
+
+/**
+ * pipeline.getState().nodes({nodeId1}).summary() -> std::unordered_map<std::string, TimingStats>;
+ * pipeline.getState().nodes({nodeId1}).detailed() -> std::unordered_map<std::string, NodeState>;
+ * pipeline.getState().nodes(nodeId1).detailed() -> NodeState;
+ * pipeline.getState().nodes({nodeId1}).outputs() -> std::unordered_map<std::string, TimingStats>;
+ * pipeline.getState().nodes({nodeId1}).outputs({outputName1}) -> std::unordered_map<std::string, TimingStats>;
+ * pipeline.getState().nodes({nodeId1}).outputs(outputName) -> TimingStats;
+ * pipeline.getState().nodes({nodeId1}).events();
+ * pipeline.getState().nodes({nodeId1}).inputs() -> std::unordered_map<std::string, QueueState>;
+ * pipeline.getState().nodes({nodeId1}).inputs({inputName1}) -> std::unordered_map<std::string, QueueState>;
+ * pipeline.getState().nodes({nodeId1}).inputs(inputName) -> QueueState;
+ * pipeline.getState().nodes({nodeId1}).otherStats() -> std::unordered_map<std::string, TimingStats>;
+ * pipeline.getState().nodes({nodeId1}).otherStats({statName1}) -> std::unordered_map<std::string, TimingStats>;
+ * pipeline.getState().nodes({nodeId1}).outputs(statName) -> TimingStats;
+ */
+template <typename T>
+class NodeStateApi {};
+template <>
+class NodeStateApi<std::vector<Node::Id>> {
+    std::vector<Node::Id> nodeIds;
+
+    std::shared_ptr<MessageQueue> pipelineStateOut;
+    std::shared_ptr<InputQueue> pipelineStateRequest;
+
+   public:
+    explicit NodeStateApi(std::vector<Node::Id> nodeIds, std::shared_ptr<MessageQueue> pipelineStateOut, std::shared_ptr<InputQueue> pipelineStateRequest)
+        : nodeIds(std::move(nodeIds)), pipelineStateOut(pipelineStateOut), pipelineStateRequest(pipelineStateRequest) {}
+    std::unordered_map<Node::Id, std::unordered_map<PipelineEvent::Type, NodeState::TimingStats>> summary() {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        for(auto id : nodeIds) {
+            NodeEventAggregationConfig nodeCfg;
+            nodeCfg.nodeId = id;
+            nodeCfg.summary = true;
+            cfg.nodes.push_back(nodeCfg);
+        }
+
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        return {};  // TODO
+    }
+    PipelineState detailed() {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        for(auto id : nodeIds) {
+            NodeEventAggregationConfig nodeCfg;
+            nodeCfg.nodeId = id;
+            nodeCfg.summary = true;  // contains main loop timing
+            nodeCfg.inputs = {};     // send all
+            nodeCfg.outputs = {};    // send all
+            nodeCfg.others = {};     // send all
+            cfg.nodes.push_back(nodeCfg);
+        }
+
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        return *state;
+    }
+    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::TimingStats>> outputs() {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        for(auto id : nodeIds) {
+            NodeEventAggregationConfig nodeCfg;
+            nodeCfg.nodeId = id;
+            nodeCfg.outputs = {};  // send all
+            cfg.nodes.push_back(nodeCfg);
+        }
+
+        // TODO send and get
+        return {};
+    }
+    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::QueueState>> inputs() {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        for(auto id : nodeIds) {
+            NodeEventAggregationConfig nodeCfg;
+            nodeCfg.nodeId = id;
+            nodeCfg.inputs = {};  // send all
+            cfg.nodes.push_back(nodeCfg);
+        }
+
+        // TODO send and get
+        return {};
+    }
+    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::TimingStats>> otherStats() {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        for(auto id : nodeIds) {
+            NodeEventAggregationConfig nodeCfg;
+            nodeCfg.nodeId = id;
+            nodeCfg.others = {};  // send all
+            cfg.nodes.push_back(nodeCfg);
+        }
+
+        // TODO send and get
+        return {};
+    }
+};
+template <>
+class NodeStateApi<Node::Id> {
+    Node::Id nodeId;
+
+    std::shared_ptr<MessageQueue> pipelineStateOut;
+    std::shared_ptr<InputQueue> pipelineStateRequest;
+
+   public:
+    explicit NodeStateApi(Node::Id nodeId, std::shared_ptr<MessageQueue> pipelineStateOut, std::shared_ptr<InputQueue> pipelineStateRequest)
+        : nodeId(nodeId), pipelineStateOut(pipelineStateOut), pipelineStateRequest(pipelineStateRequest) {}
+    std::unordered_map<PipelineEvent::Type, NodeState::TimingStats> summary() {
+        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).summary()[nodeId];
+    }
+    NodeState detailed() {
+        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).detailed().nodeStates[nodeId];
+    }
+    std::unordered_map<std::string, NodeState::TimingStats> outputs() {
+        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).outputs()[nodeId];
+    }
+    std::unordered_map<std::string, NodeState::QueueState> inputs() {
+        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).inputs()[nodeId];
+    }
+    std::unordered_map<std::string, NodeState::TimingStats> otherStats() {
+        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).otherStats()[nodeId];
+    }
+    std::unordered_map<std::string, NodeState::TimingStats> outputs(const std::vector<std::string>& outputNames) {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        NodeEventAggregationConfig nodeCfg;
+        nodeCfg.nodeId = nodeId;
+        nodeCfg.outputs = outputNames;
+        cfg.nodes.push_back(nodeCfg);
+
+        // TODO send and get
+        return {};
+    }
+    NodeState::TimingStats outputs(const std::string& outputName) {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        NodeEventAggregationConfig nodeCfg;
+        nodeCfg.nodeId = nodeId;
+        nodeCfg.outputs = {outputName};
+        cfg.nodes.push_back(nodeCfg);
+
+        // TODO send and get
+        return {};
+    }
+    std::unordered_map<Node::Id, std::vector<PipelineEvent>> events() {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        NodeEventAggregationConfig nodeCfg;
+        nodeCfg.nodeId = nodeId;
+        nodeCfg.events = true;
+        cfg.nodes.push_back(nodeCfg);
+
+        // TODO send and get
+        return {};
+    }
+    std::unordered_map<std::string, NodeState::QueueState> inputs(const std::vector<std::string>& inputNames) {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        NodeEventAggregationConfig nodeCfg;
+        nodeCfg.nodeId = nodeId;
+        nodeCfg.inputs = inputNames;
+        cfg.nodes.push_back(nodeCfg);
+
+        // TODO send and get
+        return {};
+    }
+    NodeState::QueueState inputs(const std::string& inputName) {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        NodeEventAggregationConfig nodeCfg;
+        nodeCfg.nodeId = nodeId;
+        nodeCfg.inputs = {inputName};
+        cfg.nodes.push_back(nodeCfg);
+
+        // TODO send and get
+        return {};
+    }
+    std::unordered_map<std::string, NodeState::TimingStats> otherStats(const std::vector<std::string>& statNames) {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        NodeEventAggregationConfig nodeCfg;
+        nodeCfg.nodeId = nodeId;
+        nodeCfg.others = statNames;
+        cfg.nodes.push_back(nodeCfg);
+
+        // TODO send and get
+        return {};
+    }
+    NodeState::TimingStats otherStats(const std::string& statName) {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        NodeEventAggregationConfig nodeCfg;
+        nodeCfg.nodeId = nodeId;
+        nodeCfg.others = {statName};
+        cfg.nodes.push_back(nodeCfg);
+
+        // TODO send and get
+        return {};
+    }
+};
+class PipelineStateApi {
+    std::shared_ptr<MessageQueue> pipelineStateOut;
+    std::shared_ptr<InputQueue> pipelineStateRequest;
+    std::vector<Node::Id> nodeIds;  // empty means all nodes
+
+   public:
+    PipelineStateApi(std::shared_ptr<MessageQueue> pipelineStateOut, std::shared_ptr<InputQueue> pipelineStateRequest, const std::vector<std::shared_ptr<Node>>& allNodes)
+        : pipelineStateOut(std::move(pipelineStateOut)), pipelineStateRequest(std::move(pipelineStateRequest)) {
+        for(const auto& n : allNodes) {
+            nodeIds.push_back(n->id);
+        }
+    }
+    NodeStateApi<std::vector<Node::Id>> nodes() {
+        return NodeStateApi<std::vector<Node::Id>>(nodeIds, pipelineStateOut, pipelineStateRequest);
+    }
+    NodeStateApi<std::vector<Node::Id>> nodes(const std::vector<Node::Id>& nodeIds) {
+        return NodeStateApi<std::vector<Node::Id>>(nodeIds, pipelineStateOut, pipelineStateRequest);
+    }
+    NodeStateApi<Node::Id> nodes(Node::Id nodeId) {
+        return NodeStateApi<Node::Id>(nodeId, pipelineStateOut, pipelineStateRequest);
+    }
+};
 
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
@@ -88,7 +327,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool isDeviceOnly() const;
 
     // Pipeline state getters
-    std::shared_ptr<PipelineState> getPipelineState();
+    PipelineStateApi getPipelineState();
 
     // Must be incremented and unique for each node
     Node::Id latestId = 0;
@@ -123,6 +362,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Pipeline events
     std::shared_ptr<MessageQueue> pipelineStateOut;
+    std::shared_ptr<InputQueue> pipelineStateRequest;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
@@ -241,220 +481,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Resource
     std::vector<uint8_t> loadResource(fs::path uri);
     std::vector<uint8_t> loadResourceCwd(fs::path uri, fs::path cwd, bool moveAsset = false);
-};
-
-/**
- * pipeline.getState().nodes({nodeId1}).summary() -> std::unordered_map<std::string, TimingStats>;
- * pipeline.getState().nodes({nodeId1}).detailed() -> std::unordered_map<std::string, NodeState>;
- * pipeline.getState().nodes(nodeId1).detailed() -> NodeState;
- * pipeline.getState().nodes({nodeId1}).outputs() -> std::unordered_map<std::string, TimingStats>;
- * pipeline.getState().nodes({nodeId1}).outputs({outputName1}) -> std::unordered_map<std::string, TimingStats>;
- * pipeline.getState().nodes({nodeId1}).outputs(outputName) -> TimingStats;
- * pipeline.getState().nodes({nodeId1}).events();
- * pipeline.getState().nodes({nodeId1}).inputs() -> std::unordered_map<std::string, QueueState>;
- * pipeline.getState().nodes({nodeId1}).inputs({inputName1}) -> std::unordered_map<std::string, QueueState>;
- * pipeline.getState().nodes({nodeId1}).inputs(inputName) -> QueueState;
- * pipeline.getState().nodes({nodeId1}).otherStats() -> std::unordered_map<std::string, TimingStats>;
- * pipeline.getState().nodes({nodeId1}).otherStats({statName1}) -> std::unordered_map<std::string, TimingStats>;
- * pipeline.getState().nodes({nodeId1}).outputs(statName) -> TimingStats;
- */
-template <typename T>
-class NodeStateApi {
-};
-template <>
-class NodeStateApi<std::vector<Node::Id>> {
-    std::vector<Node::Id> nodeIds;
-
-   public:
-    explicit NodeStateApi(std::vector<Node::Id> nodeIds) : nodeIds(std::move(nodeIds)) {}
-    std::unordered_map<Node::Id, std::unordered_map<PipelineEvent::Type, NodeState::TimingStats>> summary() {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        for(auto id : nodeIds) {
-            NodeEventAggregationConfig nodeCfg;
-            nodeCfg.nodeId = id;
-            nodeCfg.summary = true;
-            cfg.nodes.push_back(nodeCfg);
-        }
-
-        // TODO send and get
-        return {};
-    }
-    PipelineState detailed() {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        for(auto id : nodeIds) {
-            NodeEventAggregationConfig nodeCfg;
-            nodeCfg.nodeId = id;
-            nodeCfg.summary = true;  // contains main loop timing
-            nodeCfg.inputs = {};     // send all
-            nodeCfg.outputs = {};    // send all
-            nodeCfg.others = {};     // send all
-            cfg.nodes.push_back(nodeCfg);
-        }
-
-        // TODO send and get
-        return {};
-    }
-    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::TimingStats>> outputs() {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        for(auto id : nodeIds) {
-            NodeEventAggregationConfig nodeCfg;
-            nodeCfg.nodeId = id;
-            nodeCfg.outputs = {};  // send all
-            cfg.nodes.push_back(nodeCfg);
-        }
-
-        // TODO send and get
-        return {};
-    }
-    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::QueueState>> inputs() {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        for(auto id : nodeIds) {
-            NodeEventAggregationConfig nodeCfg;
-            nodeCfg.nodeId = id;
-            nodeCfg.inputs = {};  // send all
-            cfg.nodes.push_back(nodeCfg);
-        }
-
-        // TODO send and get
-        return {};
-    }
-    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::TimingStats>> otherStats() {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        for(auto id : nodeIds) {
-            NodeEventAggregationConfig nodeCfg;
-            nodeCfg.nodeId = id;
-            nodeCfg.others = {};  // send all
-            cfg.nodes.push_back(nodeCfg);
-        }
-
-        // TODO send and get
-        return {};
-    }
-};
-template <>
-class NodeStateApi<Node::Id> {
-    Node::Id nodeId;
-
-   public:
-    explicit NodeStateApi(Node::Id nodeId) : nodeId(nodeId) {}
-    std::unordered_map<PipelineEvent::Type, NodeState::TimingStats> summary() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}).summary()[nodeId];
-    }
-    NodeState detailed() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}).detailed().nodeStates[nodeId];
-    }
-    std::unordered_map<std::string, NodeState::TimingStats> outputs() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}).outputs()[nodeId];
-    }
-    std::unordered_map<std::string, NodeState::QueueState> inputs() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}).inputs()[nodeId];
-    }
-    std::unordered_map<std::string, NodeState::TimingStats> otherStats() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}).otherStats()[nodeId];
-    }
-    std::unordered_map<std::string, NodeState::TimingStats> outputs(const std::vector<std::string>& outputNames) {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        NodeEventAggregationConfig nodeCfg;
-        nodeCfg.nodeId = nodeId;
-        nodeCfg.outputs = outputNames;
-        cfg.nodes.push_back(nodeCfg);
-
-        // TODO send and get
-        return {};
-    }
-    NodeState::TimingStats outputs(const std::string& outputName) {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        NodeEventAggregationConfig nodeCfg;
-        nodeCfg.nodeId = nodeId;
-        nodeCfg.outputs = {outputName};
-        cfg.nodes.push_back(nodeCfg);
-
-        // TODO send and get
-        return {};
-    }
-    std::unordered_map<Node::Id, std::vector<PipelineEvent>> events() {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        NodeEventAggregationConfig nodeCfg;
-        nodeCfg.nodeId = nodeId;
-        nodeCfg.events = true;
-        cfg.nodes.push_back(nodeCfg);
-
-        // TODO send and get
-        return {};
-    }
-    std::unordered_map<std::string, NodeState::QueueState> inputs(const std::vector<std::string>& inputNames) {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        NodeEventAggregationConfig nodeCfg;
-        nodeCfg.nodeId = nodeId;
-        nodeCfg.inputs = inputNames;
-        cfg.nodes.push_back(nodeCfg);
-
-        // TODO send and get
-        return {};
-    }
-    NodeState::QueueState inputs(const std::string& inputName) {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        NodeEventAggregationConfig nodeCfg;
-        nodeCfg.nodeId = nodeId;
-        nodeCfg.inputs = {inputName};
-        cfg.nodes.push_back(nodeCfg);
-
-        // TODO send and get
-        return {};
-    }
-    std::unordered_map<std::string, NodeState::TimingStats> otherStats(const std::vector<std::string>& statNames) {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        NodeEventAggregationConfig nodeCfg;
-        nodeCfg.nodeId = nodeId;
-        nodeCfg.others = statNames;
-        cfg.nodes.push_back(nodeCfg);
-
-        // TODO send and get
-        return {};
-    }
-    NodeState::TimingStats otherStats(const std::string& statName) {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        NodeEventAggregationConfig nodeCfg;
-        nodeCfg.nodeId = nodeId;
-        nodeCfg.others = {statName};
-        cfg.nodes.push_back(nodeCfg);
-
-        // TODO send and get
-        return {};
-    }
-};
-class PipelineStateApi {
-   public:
-    NodeStateApi<std::vector<Node::Id>> nodes(const std::vector<Node::Id>& nodeIds) {
-        return NodeStateApi<std::vector<Node::Id>>(nodeIds);
-    }
-    NodeStateApi<Node::Id> nodes(Node::Id nodeId) {
-        return NodeStateApi<Node::Id>(nodeId);
-    }
 };
 
 /**
@@ -735,7 +761,7 @@ class Pipeline {
     void enableHolisticReplay(const std::string& pathToRecording);
 
     // Pipeline state getters
-    std::shared_ptr<PipelineState> getPipelineState();
+    PipelineStateApi getPipelineState();
 };
 
 }  // namespace dai

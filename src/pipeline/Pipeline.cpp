@@ -479,9 +479,8 @@ bool PipelineImpl::isDeviceOnly() const {
     return deviceOnly;
 }
 
-std::shared_ptr<PipelineState> PipelineImpl::getPipelineState() {
-    auto pipelineState = pipelineStateOut->get<PipelineState>();
-    return pipelineState;
+PipelineStateApi PipelineImpl::getPipelineState() {
+    return PipelineStateApi(pipelineStateOut, pipelineStateRequest, getAllNodes());
 }
 
 void PipelineImpl::add(std::shared_ptr<Node> node) {
@@ -678,6 +677,7 @@ void PipelineImpl::build() {
             stateMerge->outRequest.link(hostEventAgg->request);
         }
         pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
+        pipelineStateRequest = stateMerge->request.createInputQueue();
     }
 
     isBuild = true;
@@ -1094,7 +1094,7 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->enableHolisticRecordReplay = true;
 }
 
-std::shared_ptr<PipelineState> Pipeline::getPipelineState() {
+PipelineStateApi Pipeline::getPipelineState() {
     return impl()->getPipelineState();
 }
 

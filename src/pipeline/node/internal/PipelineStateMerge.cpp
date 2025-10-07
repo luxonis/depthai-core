@@ -37,6 +37,7 @@ void PipelineStateMerge::run() {
             if(req != nullptr) {
                 currentConfig = *req;
                 currentConfig->setSequenceNum(++configSequenceNum);
+                outRequest.send(std::make_shared<PipelineEventAggregationConfig>(currentConfig.value()));
                 waitForMatch = true;
             }
         }

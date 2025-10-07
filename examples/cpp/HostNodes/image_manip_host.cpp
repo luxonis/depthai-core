@@ -40,5 +40,10 @@ int main(int argc, char** argv) {
 
     pipeline.start();
 
-    pipeline.wait();
+    while(pipeline.isRunning()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        std::cout << "Pipeline state: " << pipeline.getPipelineState().nodes().detailed().str() << std::endl;
+    }
+
+    pipeline.stop();
 }

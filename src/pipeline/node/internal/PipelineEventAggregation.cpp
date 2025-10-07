@@ -372,6 +372,7 @@ void PipelineEventAggregation::run() {
             outState->configSequenceNum = currentConfig.has_value() ? currentConfig->sequenceNum : 0;
             outState->setTimestamp(std::chrono::steady_clock::now());
             outState->tsDevice = outState->ts;
+            // TODO: send only requested data
             if(gotConfig || shouldSend) out.send(outState);
         }
     }
