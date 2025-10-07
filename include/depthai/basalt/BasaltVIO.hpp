@@ -60,7 +60,13 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
         useSpecTranslation = use;
     }
     void setLocalTransform(const std::shared_ptr<TransformData>& transform);
+    void setImuExtrinsics(const std::shared_ptr<TransformData>& imuExtr);
+    void setAccelBias(const std::vector<double>& accelBias);
+    void setAccelNoiseStd(const std::vector<double>& accelNoiseStd);
+    void setGyroBias(const std::vector<double>& gyroBias);
+    void setGyroNoiseStd(const std::vector<double>& gyroNoiseStd);
     void setDefaultVIOConfig();
+    void runSyncOnHost(bool runOnHost);
 
    private:
     // pimpl
@@ -79,6 +85,11 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     int imuUpdateRate = 200;
     int threadNum = 1;
     bool useSpecTranslation = true;
+    std::optional<std::shared_ptr<TransformData>> imuExtrinsics;
+    std::optional<std::vector<double>> accelBias;
+    std::optional<std::vector<double>> accelNoiseStd;
+    std::optional<std::vector<double>> gyroBias;
+    std::optional<std::vector<double>> gyroNoiseStd;
 };
 }  // namespace node
 }  // namespace dai

@@ -9,6 +9,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "pipeline/datatype/TransformData.hpp"
 #include "tbb/concurrent_queue.h"
 #include "tbb/global_control.h"
 namespace dai {
@@ -149,6 +150,40 @@ void BasaltVIO::stop() {
     ThreadedHostNode::stop();
 }
 
+void BasaltVIO::setImuExtrinsics(const std::shared_ptr<TransformData>& imuExtr) {
+    imuExtrinsics = imuExtr;
+}
+
+void BasaltVIO::setAccelBias(const std::vector<double>& accelBias) {
+    if(accelBias.size() != 9) {
+        throw std::invalid_argument("Accelerometer bias vector must have 9 elements.");
+    }
+    this->accelBias = accelBias;
+}
+
+void BasaltVIO::setAccelNoiseStd(const std::vector<double>& accelNoiseStd) {
+    if(accelNoiseStd.size() != 3) {
+        throw std::invalid_argument("Accelerometer noise vector must have 3 elements.");
+    }
+    this->accelNoiseStd = accelNoiseStd;
+    ;
+}
+
+void BasaltVIO::setGyroNoiseStd(const std::vector<double>& gyroNoiseStd) {
+    if(gyroNoiseStd.size() != 3) {
+        throw std::invalid_argument("Gyroscope noise vector must have 3 elements.");
+    }
+    this->gyroNoiseStd = gyroNoiseStd;
+}
+
+void BasaltVIO::setGyroBias(const std::vector<double>& gyroBias) {
+    if(gyroBias.size() != 12) {
+        throw std::invalid_argument("Gyroscope bias vector must have 9 elements.");
+    }
+
+    this->gyroBias = gyroBias;
+}
+
 void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     if(threadNum > 0) {
         pimpl->tbbGlobalControl = std::make_shared<tbb::global_control>(tbb::global_control::max_allowed_parallelism, threadNum);
@@ -167,15 +202,51 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
         pimpl->calib->resolution.push_back(resolution);
         auto camID = static_cast<CameraBoardSocket>(frame->getInstanceNum());
         // imu extrinsics
-        std::vector<std::vector<float>> imuExtr = calibHandler.getCameraToImuExtrinsics(camID, useSpecTranslation);
+        if(imuExtrinsics.has_value()) {
+            Eigen::Vector3d trans(
+                imuExtrinsics.value()->getTranslation().x, imuExtrinsics.value()->getTranslation().y, imuExtrinsics.value()->getTranslation().z);
+            Eigen::Quaterniond q(imuExtrinsics.value()->getQuaternion().qw,
+                                 imuExtrinsics.value()->getQuaternion().qx,
+                                 imuExtrinsics.value()->getQuaternion().qy,
+                                 imuExtrinsics.value()->getQuaternion().qz);
+            basalt::Calibration<Scalar>::SE3 T_i_c(q, trans);
+            pimpl->calib->T_i_c.push_back(T_i_c);
+        } else {
+            std::vector<std::vector<float>> imuExtr = calibHandler.getCameraToImuExtrinsics(camID, useSpecTranslation);
 
-        Eigen::Matrix<Scalar, 3, 3> R;
-        R << imuExtr[0][0], imuExtr[0][1], imuExtr[0][2], imuExtr[1][0], imuExtr[1][1], imuExtr[1][2], imuExtr[2][0], imuExtr[2][1], imuExtr[2][2];
-        Eigen::Quaterniond q(R);
+            Eigen::Matrix<Scalar, 3, 3> R;
+            R << double(imuExtr[0][0]), double(imuExtr[0][1]), double(imuExtr[0][2]), double(imuExtr[1][0]), double(imuExtr[1][1]), double(imuExtr[1][2]),
+                double(imuExtr[2][0]), double(imuExtr[2][1]), double(imuExtr[2][2]);
+            Eigen::Quaterniond q(R);
 
-        Eigen::Vector3d trans(double(imuExtr[0][3]) * 0.01, double(imuExtr[1][3]) * 0.01, double(imuExtr[2][3]) * 0.01);
-        basalt::Calibration<Scalar>::SE3 T_i_c(q, trans);
-        pimpl->calib->T_i_c.push_back(T_i_c);
+            Eigen::Vector3d trans(double(imuExtr[0][3]) * 0.01, double(imuExtr[1][3]) * 0.01, double(imuExtr[2][3]) * 0.01);
+            basalt::Calibration<Scalar>::SE3 T_i_c(q, trans);
+            pimpl->calib->T_i_c.push_back(T_i_c);
+        }
+        if(accelBias.has_value()) {
+            Eigen::Matrix<Scalar, 9, 1> accelBiasFull;
+
+            accelBiasFull << accelBias.value()[3] + 1, 0, 0, accelBias.value()[4], accelBias.value()[6] + 1, 0, accelBias.value()[5], accelBias.value()[7],
+                accelBias.value()[8] + 1;
+            basalt::CalibAccelBias<Scalar> accel_bias;
+            accel_bias.getParam() = accelBiasFull;
+            pimpl->calib->calib_accel_bias = accel_bias;
+        }
+        if(gyroBias.has_value()) {
+            Eigen::Matrix<Scalar, 12, 1> gyroBiasFull;
+
+            gyroBiasFull << gyroBias.value()[3] + 1, gyroBias.value()[4], gyroBias.value()[5], gyroBias.value()[6], gyroBias.value()[7] + 1,
+                gyroBias.value()[8], gyroBias.value()[9], gyroBias.value()[10], gyroBias.value()[11] + 1;
+            basalt::CalibGyroBias<Scalar> gyro_bias;
+            gyro_bias.getParam() = gyroBiasFull;
+            pimpl->calib->calib_gyro_bias = gyro_bias;
+        }
+        if(accelNoiseStd.has_value()) {
+            pimpl->calib->accel_noise_std = Eigen::Vector3d(accelNoiseStd.value()[0], accelNoiseStd.value()[1], accelNoiseStd.value()[2]).cwiseSqrt();
+        }
+        if(gyroNoiseStd.has_value()) {
+            pimpl->calib->gyro_noise_std = Eigen::Vector3d(gyroNoiseStd.value()[0], gyroNoiseStd.value()[1], gyroNoiseStd.value()[2]).cwiseSqrt();
+        }
 
         // camera intrinsics
         auto intrinsics = calibHandler.getCameraIntrinsics(camID, frame->getWidth(), frame->getHeight());
@@ -185,31 +256,31 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
         if(model == CameraModel::Perspective) {
             basalt::PinholeRadtan8Camera<Scalar>::VecN params;
             // fx, fy, cx, cy
-            double fx = intrinsics[0][0];
-            double fy = intrinsics[1][1];
-            double cx = intrinsics[0][2];
-            double cy = intrinsics[1][2];
-            double k1 = distCoeffs[0];
-            double k2 = distCoeffs[1];
-            double p1 = distCoeffs[2];
-            double p2 = distCoeffs[3];
-            double k3 = distCoeffs[4];
-            double k4 = distCoeffs[5];
-            double k5 = distCoeffs[6];
-            double k6 = distCoeffs[7];
+            double fx = double(intrinsics[0][0]);
+            double fy = double(intrinsics[1][1]);
+            double cx = double(intrinsics[0][2]);
+            double cy = double(intrinsics[1][2]);
+            double k1 = double(distCoeffs[0]);
+            double k2 = double(distCoeffs[1]);
+            double p1 = double(distCoeffs[2]);
+            double p2 = double(distCoeffs[3]);
+            double k3 = double(distCoeffs[4]);
+            double k4 = double(distCoeffs[5]);
+            double k5 = double(distCoeffs[6]);
+            double k6 = double(distCoeffs[7]);
             params << fx, fy, cx, cy, k1, k2, p1, p2, k3, k4, k5, k6;
             basalt::PinholeRadtan8Camera<Scalar> pinhole(params);
             camera.variant = pinhole;
         } else if(model == CameraModel::Fisheye) {
             // fx, fy, cx, cy
-            double fx = intrinsics[0][0];
-            double fy = intrinsics[1][1];
-            double cx = intrinsics[0][2];
-            double cy = intrinsics[1][2];
-            double k1 = distCoeffs[0];
-            double k2 = distCoeffs[1];
-            double k3 = distCoeffs[2];
-            double k4 = distCoeffs[3];
+            double fx = double(intrinsics[0][0]);
+            double fy = double(intrinsics[1][1]);
+            double cx = double(intrinsics[0][2]);
+            double cy = double(intrinsics[1][2]);
+            double k1 = double(distCoeffs[0]);
+            double k2 = double(distCoeffs[1]);
+            double k3 = double(distCoeffs[2]);
+            double k4 = double(distCoeffs[3]);
             basalt::KannalaBrandtCamera4<Scalar>::VecN params;
             params << fx, fy, cx, cy, k1, k2, k3, k4;
             basalt::KannalaBrandtCamera4<Scalar> kannala(params);
@@ -238,7 +309,9 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     pimpl->vio->opt_flow_lm_bundle_queue = pimpl->optFlowPtr->input_lm_bundle_queue;
     initialized = true;
 }
-
+void BasaltVIO::runSyncOnHost(bool runOnHost) {
+    sync->setRunOnHost(runOnHost);
+}
 void BasaltVIO::setDefaultVIOConfig() {
     pimpl->vioConfig.optical_flow_type = "frame_to_frame";
     pimpl->vioConfig.optical_flow_detection_grid_size = 50;
