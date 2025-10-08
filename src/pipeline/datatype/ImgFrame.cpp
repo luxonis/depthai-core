@@ -10,6 +10,13 @@
 #endif
 namespace dai {
 
+ImgFrame::~ImgFrame() = default;
+
+void ImgFrame::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::ImgFrame;
+}
+
 ImgFrame::ImgFrame() {
     // Set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());

@@ -24,6 +24,8 @@ Pipeline Node::getParentPipeline() {
     return Pipeline(impl);
 }
 
+Node::Input::~Input() = default;
+
 Node::Connection::Connection(Output out, Input in) {
     outputId = out.getParent().id;
     outputName = out.getName();

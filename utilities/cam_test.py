@@ -485,6 +485,8 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     dotIntensity = 0
     floodIntensity = 0
 
+    expTimeLimit = 700
+
     awb_mode = Cycle(dai.CameraControl.AutoWhiteBalanceMode)
     anti_banding_mode = Cycle(dai.CameraControl.AntiBandingMode)
     effect_mode = Cycle(dai.CameraControl.EffectMode)
@@ -663,6 +665,15 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             print("Setting manual exposure, time: ", expTime, "iso: ", sensIso)
             ctrl = dai.CameraControl()
             ctrl.setManualExposure(expTime, sensIso)
+            controlQueueSend(ctrl)
+        elif key in [ord('g'), ord('h')]:
+            if key == ord('g'):
+                expTimeLimit -= 50
+            else:
+                expTimeLimit += 50
+            print("Exposure time limit: ", expTimeLimit)
+            ctrl = dai.CameraControl()
+            ctrl.setAutoExposureLimit(expTimeLimit)
             controlQueueSend(ctrl)
         elif key == ord('1'):
             awb_lock = not awb_lock
