@@ -31,7 +31,8 @@ typedef std::variant<MedianFilterParams, SpatialFilterParams, SpeckleFilterParam
 
 class ImageFiltersConfig : public Buffer {
    public:
-    virtual ~ImageFiltersConfig() = default;
+    virtual ~ImageFiltersConfig();
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     /**
      * Insert filter parameters describing how a filter at index index should be updated
@@ -67,7 +68,8 @@ class ImageFiltersConfig : public Buffer {
 
 class ToFDepthConfidenceFilterConfig : public Buffer {
    public:
-    virtual ~ToFDepthConfidenceFilterConfig() = default;
+    virtual ~ToFDepthConfidenceFilterConfig();
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     /**
      * Threshold for the confidence filter

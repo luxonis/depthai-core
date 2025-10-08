@@ -53,8 +53,9 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
      * Specify backend properties
      */
     std::map<std::string, std::string> backendProperties;
-};
 
+    ~NeuralNetworkProperties() override;
+};
 DEPTHAI_SERIALIZE_EXT(
     NeuralNetworkProperties, modelSource, blobSize, blobUri, modelUri, numFrames, numThreads, numNCEPerThread, numShavesPerThread, backend, backendProperties);
 

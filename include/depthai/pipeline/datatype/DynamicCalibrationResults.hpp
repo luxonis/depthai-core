@@ -18,12 +18,9 @@ namespace dai {
  */
 struct CoverageData : public Buffer {
     CoverageData() = default;
-    virtual ~CoverageData() = default;
+    virtual ~CoverageData();
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::CoverageData;
-    }
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     /**
      * 2D coverage matrix for input A (e.g. left image).
@@ -103,7 +100,7 @@ struct CalibrationQuality : public Buffer {
      * Construct empty CalibrationQuality message.
      */
     CalibrationQuality() = default;
-    virtual ~CalibrationQuality() = default;
+    virtual ~CalibrationQuality();
 
     /**
      * Construct CalibrationQuality with quality metrics and info string.
@@ -126,10 +123,7 @@ struct CalibrationQuality : public Buffer {
      */
     std::string info;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::CalibrationQuality;
-    }
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DEPTHAI_SERIALIZE(CalibrationQuality, qualityData, info);
 };
@@ -168,7 +162,7 @@ struct DynamicCalibrationResult : public Buffer {
      * Construct empty DynamicCalibrationResult message.
      */
     DynamicCalibrationResult() = default;
-    virtual ~DynamicCalibrationResult() = default;
+    virtual ~DynamicCalibrationResult();
 
     /**
      * Construct with result data and informational string.
@@ -195,10 +189,7 @@ struct DynamicCalibrationResult : public Buffer {
      */
     std::string info;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::DynamicCalibrationResult;
-    }
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DEPTHAI_SERIALIZE(DynamicCalibrationResult, calibrationData, info);
 };

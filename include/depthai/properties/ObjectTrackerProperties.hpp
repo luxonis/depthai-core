@@ -72,6 +72,8 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
      * Tracklet birth threshold. Minimum consecutive tracked frames required to consider a tracklet as a new instance.
      */
     uint32_t trackletBirthThreshold = 3;
+
+    ~ObjectTrackerProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(ObjectTrackerProperties,

@@ -21,21 +21,13 @@ class VectorMemory : public std::vector<std::uint8_t>, public Memory {
         std::vector<std::uint8_t>::operator=(std::move(d));
         return *this;
     }
-    span<std::uint8_t> getData() override {
-        return {data(), size()};
-    }
-    span<const std::uint8_t> getData() const override {
-        return {data(), size()};
-    }
-    std::size_t getMaxSize() const override {
-        return capacity();
-    }
-    std::size_t getOffset() const override {
-        return 0;
-    }
-    void setSize(std::size_t size) override {
-        resize(size);
-    }
+
+    ~VectorMemory() override;
+    span<std::uint8_t> getData() override;
+    span<const std::uint8_t> getData() const override;
+    std::size_t getMaxSize() const override;
+    std::size_t getOffset() const override;
+    void setSize(std::size_t size) override;
 };
 
 }  // namespace dai
