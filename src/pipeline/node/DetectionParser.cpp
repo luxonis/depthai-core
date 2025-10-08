@@ -273,6 +273,10 @@ void DetectionParser::setClasses(const std::vector<std::string>& classes) {
     properties.parser.classNames = classes;
 }
 
+void DetectionParser::setStrides(const std::vector<int>& strides) {
+    properties.parser.strides = strides;
+}
+
 /// Get coordianate size
 int DetectionParser::getCoordinateSize() const {
     return properties.parser.coordinates;
@@ -310,6 +314,10 @@ bool DetectionParser::getDecodeKeypoints() const {
 }
 bool DetectionParser::getDecodeSegmentation() const {
     return properties.parser.decodeSegmentation;
+}
+
+std::vector<int> DetectionParser::getStrides() const {
+    return properties.parser.strides;
 }
 
 }  // namespace node

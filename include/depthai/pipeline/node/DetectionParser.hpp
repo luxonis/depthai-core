@@ -149,6 +149,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     void setNKeypoints(int nKeypoints);
 
+    void setStrides(const std::vector<int>& strides);
+
     /// Get num classes
     int getNumClasses() const;
     std::optional<std::vector<std::string>> getClasses() const;
@@ -168,6 +170,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     bool getDecodeSegmentation() const;
 
     int getNKeypoints() const;
+
+    std::vector<int> getStrides() const;
 
     const NNArchiveVersionedConfig& getNNArchiveVersionedConfig() const;
 
