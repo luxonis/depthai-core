@@ -74,6 +74,10 @@ PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
     return pimpl->getPipelineSchema(type);
 }
 
+PipelineSchema Pipeline::getDevicePipelineSchema(SerializationType type) const {
+    return pimpl->getDevicePipelineSchema(type);
+}
+
 GlobalProperties PipelineImpl::getGlobalProperties() const {
     return globalProperties;
 }
@@ -117,7 +121,7 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getSourceNodes() {
 
 void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
     // Set schema
-    schema = getPipelineSchema(type);
+    schema = getDevicePipelineSchema(type);
 
     // Serialize all asset managers into asset storage
     assetStorage.clear();
@@ -188,6 +192,7 @@ std::vector<Node::Connection> PipelineImpl::getConnections() const {
 PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
+    schema.bridges = xlinkBridges;
     int latestIoId = 0;
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
@@ -195,94 +200,91 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) {
             continue;
         }
-        // Check if its a host node or device node
-        if(node->runOnHost()) {
-            // host node, no need to serialize to a schema
-            // TBD any additional changes
-        } else {
-            // Create 'node' info
-            NodeObjInfo info;
-            info.id = node->id;
-            info.name = node->getName();
-            info.alias = node->getAlias();
-            info.parentId = node->parentId;
-            const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
-            if(!deviceNode) {
-                throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
-            }
+        // Create 'node' info
+        NodeObjInfo info;
+        info.id = node->id;
+        info.name = node->getName();
+        info.alias = node->getAlias();
+        info.parentId = node->parentId;
+        info.device = node->runOnHost() ? "host" : "device";
+        const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
+        if(!node->runOnHost() && !deviceNode) {
+            throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
+        }
+        if(deviceNode) {
             deviceNode->getProperties().serialize(info.properties, type);
             info.logLevel = deviceNode->getLogLevel();
-            // Create Io information
-            auto inputs = node->getInputs();
-            auto outputs = node->getOutputs();
-
-            info.ioInfo.reserve(inputs.size() + outputs.size());
-
-            // Add inputs
-            for(const auto& input : inputs) {
-                NodeIoInfo io;
-                io.id = latestIoId;
-                latestIoId++;
-                io.blocking = input.getBlocking();
-                io.queueSize = input.getMaxSize();
-                io.name = input.getName();
-                io.group = input.getGroup();
-                auto ioKey = std::make_tuple(io.group, io.name);
-
-                io.waitForMessage = input.getWaitForMessage();
-                switch(input.getType()) {
-                    case Node::Input::Type::MReceiver:
-                        io.type = NodeIoInfo::Type::MReceiver;
-                        break;
-                    case Node::Input::Type::SReceiver:
-                        io.type = NodeIoInfo::Type::SReceiver;
-                        break;
-                }
-
-                if(info.ioInfo.count(ioKey) > 0) {
-                    if(io.group == "") {
-                        throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
-                    } else {
-                        throw std::invalid_argument(
-                            fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
-                    }
-                }
-                info.ioInfo[ioKey] = io;
-            }
-
-            // Add outputs
-            for(const auto& output : outputs) {
-                NodeIoInfo io;
-                io.id = latestIoId;
-                latestIoId++;
-                io.blocking = false;
-                io.name = output.getName();
-                io.group = output.getGroup();
-                auto ioKey = std::make_tuple(io.group, io.name);
-
-                switch(output.getType()) {
-                    case Node::Output::Type::MSender:
-                        io.type = NodeIoInfo::Type::MSender;
-                        break;
-                    case Node::Output::Type::SSender:
-                        io.type = NodeIoInfo::Type::SSender;
-                        break;
-                }
-
-                if(info.ioInfo.count(ioKey) > 0) {
-                    if(io.group == "") {
-                        throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
-                    } else {
-                        throw std::invalid_argument(
-                            fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
-                    }
-                }
-                info.ioInfo[ioKey] = io;
-            }
-
-            // At the end, add the constructed node information to the schema
-            schema.nodes[info.id] = info;
         }
+        // Create Io information
+        auto inputs = node->getInputs();
+        auto outputs = node->getOutputs();
+
+        info.ioInfo.reserve(inputs.size() + outputs.size());
+
+        // Add inputs
+        for(const auto& input : inputs) {
+            NodeIoInfo io;
+            io.id = latestIoId;
+            latestIoId++;
+            io.blocking = input.getBlocking();
+            io.queueSize = input.getMaxSize();
+            io.name = input.getName();
+            io.group = input.getGroup();
+            auto ioKey = std::make_tuple(io.group, io.name);
+
+            io.waitForMessage = input.getWaitForMessage();
+            switch(input.getType()) {
+                case Node::Input::Type::MReceiver:
+                    io.type = NodeIoInfo::Type::MReceiver;
+                    break;
+                case Node::Input::Type::SReceiver:
+                    io.type = NodeIoInfo::Type::SReceiver;
+                    break;
+            }
+
+            if(info.ioInfo.count(ioKey) > 0) {
+                if(io.group == "") {
+                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                } else {
+                    throw std::invalid_argument(
+                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                }
+            }
+            info.ioInfo[ioKey] = io;
+        }
+
+        // Add outputs
+        for(const auto& output : outputs) {
+            NodeIoInfo io;
+            io.id = latestIoId;
+            latestIoId++;
+            io.blocking = false;
+            io.name = output.getName();
+            io.group = output.getGroup();
+            auto ioKey = std::make_tuple(io.group, io.name);
+
+            switch(output.getType()) {
+                case Node::Output::Type::MSender:
+                    io.type = NodeIoInfo::Type::MSender;
+                    break;
+                case Node::Output::Type::SSender:
+                    io.type = NodeIoInfo::Type::SSender;
+                    break;
+            }
+
+            if(info.ioInfo.count(ioKey) > 0) {
+                if(io.group == "") {
+                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                } else {
+                    throw std::invalid_argument(
+                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                }
+            }
+            info.ioInfo[ioKey] = io;
+        }
+
+        // At the end, add the constructed node information to the schema
+        schema.nodes[info.id] = info;
     }
 
     // Create 'connections' info
@@ -314,11 +316,6 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         bool outputHost = outNode->runOnHost();
         bool inputHost = inNode->runOnHost();
 
-        if(outputHost && inputHost) {
-            // skip - connection between host nodes doesn't have to be represented to the device
-            continue;
-        }
-
         if(outputHost && !inputHost) {
             throw std::invalid_argument(
                 fmt::format("Connection from host node '{}' to device node '{}' is not allowed during serialization.", outNode->getName(), inNode->getName()));
@@ -333,6 +330,35 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         schema.connections.push_back(c);
     }
 
+    return schema;
+}
+
+PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type) const {
+    auto schema = getPipelineSchema(type);
+    // Remove bridge info
+    schema.bridges.clear();
+    // Remove host nodes
+    for(auto it = schema.nodes.begin(); it != schema.nodes.end();) {
+        if(it->second.device != "device") {
+            it = schema.nodes.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    // Remove connections between host nodes (host - device connections should not exist)
+    schema.connections.erase(std::remove_if(schema.connections.begin(),
+                                            schema.connections.end(),
+                                            [&schema](const NodeConnectionSchema& c) {
+                                                auto node1 = schema.nodes.find(c.node1Id);
+                                                auto node2 = schema.nodes.find(c.node2Id);
+                                                if(node1 == schema.nodes.end() && node2 == schema.nodes.end()) {
+                                                    return true;
+                                                } else if(node1 == schema.nodes.end() || node2 == schema.nodes.end()) {
+                                                    throw std::invalid_argument("Connection from host node to device node should not exist here");
+                                                }
+                                                return false;
+                                            }),
+                             schema.connections.end());
     return schema;
 }
 
@@ -759,6 +785,9 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkInHost->setStreamName(streamName);
                 xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
                 connection.out->link(xLinkBridge.xLinkOut->input);
+
+                // Note the created bridge for serialization (for visualization)
+                xlinkBridges.push_back({outNode->id, inNode->id});
             }
             auto xLinkBridge = bridgesOut[connection.out];
             connection.out->unlink(*connection.in);  // Unlink the connection
