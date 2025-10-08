@@ -14,7 +14,7 @@
 #include <optional>
 #include <string>
 
-#include "common/YoloDecodingFamily.hpp"
+#include "depthai/common/YoloDecodingFamily.hpp"
 
 namespace dai {
 namespace node {
