@@ -20,6 +20,8 @@ struct DetectionParserOptions {
     DetectionNetworkType nnFamily;
     std::string subtype;
     float confidenceThreshold;
+    int inputWidth;
+    int inputHeight;
 
     /// YOLO specific network properties
     YoloDecodingFamily decodingFamily = YoloDecodingFamily::TLBR;  // top left bottom right anchor free
@@ -42,6 +44,8 @@ DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
                       nnFamily,
                       subtype,
                       confidenceThreshold,
+                      inputWidth,
+                      inputHeight,
                       decodingFamily,
                       decodeKeypoints,
                       decodeSegmentation,

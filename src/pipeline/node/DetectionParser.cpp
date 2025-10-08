@@ -117,6 +117,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     if(head.metadata.confThreshold) {
         setConfidenceThreshold(static_cast<float>(*head.metadata.confThreshold));
     }
+
     setCoordinateSize(4);
     if(head.metadata.anchors) {
         const auto anchorsIn = *head.metadata.anchors;
