@@ -14,7 +14,6 @@ with dai.Pipeline() as pipeline:
 
     # Enter your hubs api-key
     eventMan = dai.EventsManager()
-    eventMan.setUrl("https://events.cloud-stg.luxonis.com")
     eventMan.setToken("")
 
     pipeline.start()
