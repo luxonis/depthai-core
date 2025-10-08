@@ -113,6 +113,7 @@ class EventsManager {
      */
     void setVerifySsl(bool verifySsl);
 
+    // TO DO: Should be private?
     /**
      * Upload cached data to the events service
      * @return void

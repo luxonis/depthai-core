@@ -229,24 +229,24 @@ bool EventsManager::fetchConfigurationLimits() {
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
     // Might change to infinte retrying in the future
     for (int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread; i++) {
-    cpr::Response response = cpr::Get(
-        cpr::Url{requestUrl},
-        cpr::Header{header},
-        cpr::VerifySsl(verifySsl),
-        cpr::ProgressCallback(
-            [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
-                (void)userdata;
-                (void)downloadTotal;
-                (void)downloadNow;
-                (void)uploadTotal;
-                (void)uploadNow;
-                if(stopUploadThread) {
-                    return false;
-                }
-                return true;
-            }));
-    if(response.status_code != cpr::status::HTTP_OK) {
-        logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
+        cpr::Response response = cpr::Get(
+            cpr::Url{requestUrl},
+            cpr::Header{header},
+            cpr::VerifySsl(verifySsl),
+            cpr::ProgressCallback(
+                [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                    (void)userdata;
+                    (void)downloadTotal;
+                    (void)downloadNow;
+                    (void)uploadTotal;
+                    (void)uploadNow;
+                    if(stopUploadThread) {
+                        return false;
+                    }
+                    return true;
+                }));
+        if(response.status_code != cpr::status::HTTP_OK) {
+            logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
 
             // Apply exponential backoff
             auto factor = std::pow(uploadRetryPolicy.factor, i+1);
@@ -257,22 +257,22 @@ bool EventsManager::fetchConfigurationLimits() {
             eventBufferCondition.wait_for(lock, duration, [this]() {
                 return stopUploadThread.load();
             });
-    } else {
-        logger::info("Configuration limits fetched successfully");
-        auto apiUsage = std::make_unique<proto::event::ApiUsage>();
-        apiUsage->ParseFromString(response.text);
-        if(logResponse) {
-            logger::info("ApiUsage response: \n{}", apiUsage->DebugString());
-        }
-        // TO DO: Use this data 
-        maxFileSizeBytes = apiUsage->files().max_file_size_bytes(); //
-        remainingStorageBytes = apiUsage->files().remaining_storage_bytes(); //
-        bytesPerHour = apiUsage->files().bytes_per_hour_rate();
-        uploadsPerHour = apiUsage->files().uploads_per_hour_rate();
+        } else {
+            logger::info("Configuration limits fetched successfully");
+            auto apiUsage = std::make_unique<proto::event::ApiUsage>();
+            apiUsage->ParseFromString(response.text);
+            if(logResponse) {
+                logger::info("ApiUsage response: \n{}", apiUsage->DebugString());
+            }
+            // TO DO: Use this data 
+            maxFileSizeBytes = apiUsage->files().max_file_size_bytes(); //
+            remainingStorageBytes = apiUsage->files().remaining_storage_bytes(); //
+            bytesPerHour = apiUsage->files().bytes_per_hour_rate();
+            uploadsPerHour = apiUsage->files().uploads_per_hour_rate();
             maxGroupsPerBatch = apiUsage->files().groups_per_allocation(); //
-        maxFilesPerGroup = apiUsage->files().files_per_group_in_allocation(); //
-        eventsPerHour = apiUsage->events().events_per_hour_rate();
-        snapsPerHour = apiUsage->events().snaps_per_hour_rate();
+            maxFilesPerGroup = apiUsage->files().files_per_group_in_allocation(); //
+            eventsPerHour = apiUsage->events().events_per_hour_rate();
+            snapsPerHour = apiUsage->events().snaps_per_hour_rate();
             eventsPerRequest = apiUsage->events().events_per_request(); //
 
             return true;
