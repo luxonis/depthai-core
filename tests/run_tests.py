@@ -113,7 +113,7 @@ if __name__ == "__main__":
         },
         {
             "name": "RVC4 - USB",
-            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_GATE_USB_CONNECTION": "1"},
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "usb"},
             "labels": ["rvc4"],
         },
         {
