@@ -1730,6 +1730,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     bool success = false;
     std::string errorMsg;
 
+    // Initialize the device (M8 Fsync slaves need to lock onto the signal first)    
     std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
 
     if (!success) {

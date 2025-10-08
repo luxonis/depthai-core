@@ -336,7 +336,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     
     // M8FsyncRole enum bindings
     m8FsyncRole.value("AUTO_DETECT", M8FsyncRole::AUTO_DETECT)
-        .value("MASTER_WITHOUT_OUTPUT", M8FsyncRole::MASTER_WITHOUT_OUTPUT)
+        .value("STANDALONE_NO_M8_FUNCTION", M8FsyncRole::STANDALONE_NO_M8_FUNCTION)
         .value("MASTER_WITH_OUTPUT", M8FsyncRole::MASTER_WITH_OUTPUT)
         .value("SLAVE", M8FsyncRole::SLAVE);
 
