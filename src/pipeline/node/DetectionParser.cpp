@@ -2,7 +2,9 @@
 
 #include <memory>
 
+#include "common/DetectionNetworkType.hpp"
 #include "common/ModelType.hpp"
+#include "common/YoloDecodingFamily.hpp"
 #include "common/YoloSubtype.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
@@ -92,6 +94,11 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             properties.parser.decodeKeypoints = true;
             properties.parser.nKeypoints = head.metadata.nKeypoints;
         }
+
+        if(properties.parser.decodingFamily == YoloDecodingFamily::v3AB) {
+            properties.parser.strides = {16, 32};
+        }
+
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
     } else {
