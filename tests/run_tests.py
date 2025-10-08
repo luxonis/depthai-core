@@ -118,7 +118,7 @@ if __name__ == "__main__":
         },
         {
             "name": "RVC4 - POE",
-            "env": {"DEPTHAI_PLATFORM": "rvc4"},
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
             "labels": ["rvc4"],
         },
 
