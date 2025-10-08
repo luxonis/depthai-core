@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "common/ModelType.hpp"
+#include "common/YoloSubtype.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -74,10 +75,22 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
     const auto head = (*model.heads)[0];
 
-    if(head.parser == "YOLO") {
+    if(head.parser == "YOLO") {  // yolo or YOLOExtendedParser
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
         if(head.metadata.subtype) {
             properties.parser.subtype = *head.metadata.subtype;
+            properties.parser.decodingFamily = yoloDecodingFamilyResolver(*head.metadata.subtype);
+        }
+
+        // check if there are keypoints or segmentations to decode
+        if(head.outputs && !head.outputs->empty()) {
+            // assert outputs is a non-empty vector
+            properties.parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
+        }
+
+        if(properties.parser.decodeKeypoints) {
+            properties.parser.decodeKeypoints = true;
+            properties.parser.nKeypoints = head.metadata.nKeypoints;
         }
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
@@ -114,6 +127,29 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         }
         setAnchors(anchorsOut);
     }
+}
+
+YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& subtypeStr) {
+    // convert string to lower case
+    std::transform(subtypeStr.begin(), subtypeStr.end(), subtypeStr.begin(), ::tolower);
+
+    if(subtypeStr == "yolov6r1") return YoloDecodingFamily::R1AF;
+    if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov6" || subtypeStr == "yolov8" || subtypeStr == "yolov10"
+       || subtypeStr == "yolov11")
+        return YoloDecodingFamily::TLBR;
+    if(subtypeStr == "yolov3" || subtypeStr == "yolov3-tiny") return YoloDecodingFamily::v3AB;
+    if(subtypeStr == "yolov5" || subtypeStr == "yolov7" || subtypeStr == "yolo-p" || subtypeStr == "yolov5-u") return YoloDecodingFamily::v5AB;
+
+    return YoloDecodingFamily::TLBR;  // default
+}
+
+bool decodeSegmentationResolver(const std::vector<std::string>& outputs) {
+    for(const auto& output : outputs) {
+        if(output.find("_masks") != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void DetectionParser::setNNArchiveBlob(const NNArchive& nnArchive) {
@@ -207,6 +243,23 @@ void DetectionParser::setIouThreshold(float thresh) {
     properties.parser.iouThreshold = thresh;
 }
 
+void DetectionParser::setSubtype(const std::string& subtype) {  // TODO add bindings
+    properties.parser.subtype = subtype;
+    properties.parser.decodingFamily = yoloDecodingFamilyResolver(subtype);
+}
+
+void DetectionParser::setDecodeKeypoints(bool decode) {
+    properties.parser.decodeKeypoints = decode;
+}
+
+void DetectionParser::setDecodeSegmentation(bool decode) {
+    properties.parser.decodeSegmentation = decode;
+}
+
+void DetectionParser::setNKeypoints(int nKeypoints) {
+    properties.parser.nKeypoints = nKeypoints;
+}
+
 /// Get num classes
 int DetectionParser::getNumClasses() const {
     return properties.parser.classes;
@@ -238,6 +291,25 @@ std::map<std::string, std::vector<int>> DetectionParser::getAnchorMasks() const 
 /// Get Iou threshold
 float DetectionParser::getIouThreshold() const {
     return properties.parser.iouThreshold;
+}
+
+std::string DetectionParser::getSubtype() const {
+    return properties.parser.subtype;
+}
+
+int DetectionParser::getNKeypoints() const {
+    if(properties.parser.nKeypoints.has_value()) {
+        return properties.parser.nKeypoints.value();
+    } else {
+        return 0;
+    }
+}
+
+bool DetectionParser::getDecodeKeypoints() const {
+    return properties.parser.decodeKeypoints;
+}
+bool DetectionParser::getDecodeSegmentation() const {
+    return properties.parser.decodeSegmentation;
 }
 
 }  // namespace node

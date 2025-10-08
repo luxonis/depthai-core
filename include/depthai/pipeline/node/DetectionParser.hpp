@@ -12,6 +12,9 @@
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 #include <optional>
+#include <string>
+
+#include "common/YoloDecodingFamily.hpp"
 
 namespace dai {
 namespace node {
@@ -138,6 +141,14 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /// Set Iou threshold
     void setIouThreshold(float thresh);
 
+    void setSubtype(const std::string& subtype);
+
+    void setDecodeKeypoints(bool decode);
+
+    void setDecodeSegmentation(bool decode);
+
+    void setNKeypoints(int nKeypoints);
+
     /// Get num classes
     int getNumClasses() const;
     std::optional<std::vector<std::string>> getClasses() const;
@@ -150,6 +161,14 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /// Get Iou threshold
     float getIouThreshold() const;
 
+    std::string getSubtype() const;
+
+    bool getDecodeKeypoints() const;
+
+    bool getDecodeSegmentation() const;
+
+    int getNKeypoints() const;
+
     const NNArchiveVersionedConfig& getNNArchiveVersionedConfig() const;
 
    private:
@@ -157,6 +176,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     void setConfig(const dai::NNArchiveVersionedConfig& config);
+    YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& subtype);
+    bool decodeSegmentationResolver(const std::vector<std::string>& outputs);
 
     std::optional<NNArchive> mArchive;
 
