@@ -39,21 +39,28 @@ class NodeState {
         DEPTHAI_SERIALIZE(QueueStats, maxQueued, minQueuedRecent, maxQueuedRecent, medianQueuedRecent);
     };
     struct InputQueueState {
+        // Current state of the input queue.
         enum class State : std::int32_t {
             IDLE = 0,
-            WAITING = 1,
-            BLOCKED = 2
+            WAITING = 1, // Waiting to receive a message
+            BLOCKED = 2 // An output attempted to send to this input, but the input queue was full
         } state = State::IDLE;
+        // Number of messages currently queued in the input queue
         uint32_t numQueued;
+        // Timing info about this input
         Timing timing;
+        // Queue usage stats
         QueueStats queueStats;
         DEPTHAI_SERIALIZE(InputQueueState, state, numQueued, timing);
     };
     struct OutputQueueState {
+        // Current state of the output queue. Send should ideally be instant. This is not the case when the input queue is full.
+        // In that case, the state will be SENDING until there is space in the input queue (unless trySend is used).
         enum class State : std::int32_t {
             IDLE = 0,
             SENDING = 1
         } state = State::IDLE;
+        // Timing info about this output
         Timing timing;
         DEPTHAI_SERIALIZE(OutputQueueState, state, timing);
     };
@@ -64,13 +71,21 @@ class NodeState {
         SENDING_OUTPUTS = 3
     };
 
+    // Current state of the node - idle only when not running
     State state = State::IDLE;
+    // Optional list of recent events
     std::vector<DurationEvent> events;
+    // Info about each output
     std::unordered_map<std::string, OutputQueueState> outputStates;
+    // Info about each input
     std::unordered_map<std::string, InputQueueState> inputStates;
+    // Time spent getting inputs in a loop
     Timing inputsGetTiming;
+    // Time spent sending outputs in a loop
     Timing outputsSendTiming;
+    // Main node loop timing (processing time + inputs get + outputs send)
     Timing mainLoopTiming;
+    // Other timings that the developer of the node decided to add
     std::unordered_map<std::string, Timing> otherTimings;
 
     DEPTHAI_SERIALIZE(NodeState, events, outputStates, inputStates, inputsGetTiming, outputsSendTiming, mainLoopTiming, otherTimings);
