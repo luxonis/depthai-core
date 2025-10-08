@@ -106,7 +106,7 @@ class NodeStateApi<std::vector<Node::Id>> {
         // TODO send and get
         return {};
     }
-    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::QueueState>> inputs() {
+    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::InputQueueState>> inputs() {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
@@ -154,7 +154,7 @@ class NodeStateApi<Node::Id> {
     std::unordered_map<std::string, NodeState::TimingStats> outputs() {
         return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).outputs()[nodeId];
     }
-    std::unordered_map<std::string, NodeState::QueueState> inputs() {
+    std::unordered_map<std::string, NodeState::InputQueueState> inputs() {
         return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).inputs()[nodeId];
     }
     std::unordered_map<std::string, NodeState::TimingStats> otherStats() {
@@ -196,7 +196,7 @@ class NodeStateApi<Node::Id> {
         // TODO send and get
         return {};
     }
-    std::unordered_map<std::string, NodeState::QueueState> inputs(const std::vector<std::string>& inputNames) {
+    std::unordered_map<std::string, NodeState::InputQueueState> inputs(const std::vector<std::string>& inputNames) {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
@@ -208,7 +208,7 @@ class NodeStateApi<Node::Id> {
         // TODO send and get
         return {};
     }
-    NodeState::QueueState inputs(const std::string& inputName) {
+    NodeState::InputQueueState inputs(const std::string& inputName) {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());

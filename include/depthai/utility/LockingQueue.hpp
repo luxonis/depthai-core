@@ -18,6 +18,8 @@ namespace dai {
 //     Mutex& operator=(Mutex&&) = delete;
 // };
 
+enum class LockingQueueState { OK, BLOCKED, CANCELLED };
+
 template <typename T>
 class LockingQueue {
    public:
@@ -149,7 +151,7 @@ class LockingQueue {
         return true;
     }
 
-    bool push(T const& data) {
+    bool push(T const& data, std::function<void(LockingQueueState)> callback = [](LockingQueueState) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
@@ -166,6 +168,9 @@ class LockingQueue {
                     queue.pop();
                 }
             } else {
+                if(queue.size() >= maxSize) {
+                    callback(LockingQueueState::BLOCKED);
+                }
                 signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
                 if(destructed) return false;
             }
@@ -176,7 +181,7 @@ class LockingQueue {
         return true;
     }
 
-    bool push(T&& data) {
+    bool push(T&& data, std::function<void(LockingQueueState)> callback = [](LockingQueueState) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
@@ -193,6 +198,9 @@ class LockingQueue {
                     queue.pop();
                 }
             } else {
+                if(queue.size() >= maxSize) {
+                    callback(LockingQueueState::BLOCKED);
+                }
                 signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
                 if(destructed) return false;
             }
@@ -204,7 +212,7 @@ class LockingQueue {
     }
 
     template <typename Rep, typename Period>
-    bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout) {
+    bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState)> callback = [](LockingQueueState) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
@@ -221,8 +229,14 @@ class LockingQueue {
                     queue.pop();
                 }
             } else {
+                if(queue.size() >= maxSize) {
+                    callback(LockingQueueState::BLOCKED);
+                }
                 // First checks predicate, then waits
                 bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
+                if(!pred) {
+                    callback(LockingQueueState::CANCELLED);
+                }
                 if(!pred) return false;
                 if(destructed) return false;
             }
@@ -234,7 +248,7 @@ class LockingQueue {
     }
 
     template <typename Rep, typename Period>
-    bool tryWaitAndPush(T&& data, std::chrono::duration<Rep, Period> timeout) {
+    bool tryWaitAndPush(T&& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState)> callback = [](LockingQueueState) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
@@ -252,7 +266,13 @@ class LockingQueue {
                 }
             } else {
                 // First checks predicate, then waits
+                if(queue.size() >= maxSize) {
+                    callback(LockingQueueState::BLOCKED);
+                }
                 bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
+                if(!pred) {
+                    callback(LockingQueueState::CANCELLED);
+                }
                 if(!pred) return false;
                 if(destructed) return false;
             }

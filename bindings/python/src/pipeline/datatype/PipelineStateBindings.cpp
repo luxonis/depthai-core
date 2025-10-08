@@ -1,8 +1,6 @@
 #include <memory>
-#include <unordered_map>
 
 #include "DatatypeBindings.hpp"
-#include "pipeline/CommonBindings.hpp"
 
 // depthai
 #include "depthai/pipeline/datatype/PipelineState.hpp"
@@ -19,9 +17,24 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
     py::class_<NodeState> nodeState(m, "NodeState", DOC(dai, NodeState));
     py::class_<NodeState::DurationEvent> durationEvent(nodeState, "DurationEvent", DOC(dai, NodeState, DurationEvent));
     py::class_<NodeState::TimingStats> nodeStateTimingStats(nodeState, "TimingStats", DOC(dai, NodeState, TimingStats));
+    py::class_<NodeState::Timing> nodeStateTiming(nodeState, "Timing", DOC(dai, NodeState, Timing));
     py::class_<NodeState::QueueStats> nodeStateQueueStats(nodeState, "QueueStats", DOC(dai, NodeState, QueueStats));
-    py::class_<NodeState::QueueState> nodeStateQueueState(nodeState, "QueueState", DOC(dai, NodeState, QueueState));
+    py::class_<NodeState::InputQueueState> nodeStateInputQueueState(nodeState, "InputQueueState", DOC(dai, NodeState, InputQueueState));
+    py::class_<NodeState::OutputQueueState> nodeStateOutputQueueState(nodeState, "OutputQueueState", DOC(dai, NodeState, OutputQueueState));
     py::class_<PipelineState, Py<PipelineState>, Buffer, std::shared_ptr<PipelineState>> pipelineState(m, "PipelineState", DOC(dai, PipelineState));
+
+    py::enum_<NodeState::InputQueueState::State>(nodeStateInputQueueState, "State", DOC(dai, NodeState, InputQueueState, State))
+        .value("IDLE", NodeState::InputQueueState::State::IDLE)
+        .value("WAITING", NodeState::InputQueueState::State::WAITING)
+        .value("BLOCKED", NodeState::InputQueueState::State::BLOCKED);
+    py::enum_<NodeState::OutputQueueState::State>(nodeStateOutputQueueState, "State", DOC(dai, NodeState, OutputQueueState, State))
+        .value("IDLE", NodeState::OutputQueueState::State::IDLE)
+        .value("SENDING", NodeState::OutputQueueState::State::SENDING);
+    py::enum_<NodeState::State>(nodeState, "State", DOC(dai, NodeState, State))
+        .value("IDLE", NodeState::State::IDLE)
+        .value("GETTING_INPUTS", NodeState::State::GETTING_INPUTS)
+        .value("PROCESSING", NodeState::State::PROCESSING)
+        .value("SENDING_OUTPUTS", NodeState::State::SENDING_OUTPUTS);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -52,6 +65,11 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def_readwrite("maxMicrosRecent", &NodeState::TimingStats::maxMicrosRecent, DOC(dai, NodeState, TimingStats, maxMicrosRecent))
         .def_readwrite("medianMicrosRecent", &NodeState::TimingStats::medianMicrosRecent, DOC(dai, NodeState, TimingStats, medianMicrosRecent));
 
+    nodeStateTiming.def(py::init<>())
+        .def("__repr__", &NodeState::Timing::str)
+        .def_readwrite("fps", &NodeState::Timing::fps, DOC(dai, NodeState, Timing, fps))
+        .def_readwrite("durationStats", &NodeState::Timing::durationStats, DOC(dai, NodeState, Timing, durationStats));
+
     nodeStateQueueStats.def(py::init<>())
         .def("__repr__", &NodeState::QueueStats::str)
         .def_readwrite("maxQueued", &NodeState::QueueStats::maxQueued, DOC(dai, NodeState, QueueStats, maxQueued))
@@ -59,22 +77,28 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def_readwrite("maxQueuedRecent", &NodeState::QueueStats::maxQueuedRecent, DOC(dai, NodeState, QueueStats, maxQueuedRecent))
         .def_readwrite("medianQueuedRecent", &NodeState::QueueStats::medianQueuedRecent, DOC(dai, NodeState, QueueStats, medianQueuedRecent));
 
-    nodeStateQueueState.def(py::init<>())
-        .def("__repr__", &NodeState::QueueState::str)
-        .def_readwrite("waiting", &NodeState::QueueState::waiting, DOC(dai, NodeState, QueueState, waiting))
-        .def_readwrite("numQueued", &NodeState::QueueState::numQueued, DOC(dai, NodeState, QueueState, numQueued))
-        .def_readwrite("timingStats", &NodeState::QueueState::timingStats, DOC(dai, NodeState, QueueState, timingStats))
-        .def_readwrite("queueStats", &NodeState::QueueState::queueStats, DOC(dai, NodeState, QueueState, queueStats));
+    nodeStateInputQueueState.def(py::init<>())
+        .def("__repr__", &NodeState::InputQueueState::str)
+        .def_readwrite("state", &NodeState::InputQueueState::state, DOC(dai, NodeState, InputQueueState, state))
+        .def_readwrite("numQueued", &NodeState::InputQueueState::numQueued, DOC(dai, NodeState, InputQueueState, numQueued))
+        .def_readwrite("timing", &NodeState::InputQueueState::timing, DOC(dai, NodeState, InputQueueState, timing))
+        .def_readwrite("queueStats", &NodeState::InputQueueState::queueStats, DOC(dai, NodeState, InputQueueState, queueStats));
+
+    nodeStateOutputQueueState.def(py::init<>())
+        .def("__repr__", &NodeState::OutputQueueState::str)
+        .def_readwrite("state", &NodeState::OutputQueueState::state, DOC(dai, NodeState, OutputQueueState, state))
+        .def_readwrite("timing", &NodeState::OutputQueueState::timing, DOC(dai, NodeState, OutputQueueState, timing));
 
     nodeState.def(py::init<>())
         .def("__repr__", &NodeState::str)
+        .def_readwrite("state", &NodeState::state, DOC(dai, NodeState, state))
         .def_readwrite("events", &NodeState::events, DOC(dai, NodeState, events))
         .def_readwrite("inputStates", &NodeState::inputStates, DOC(dai, NodeState, inputStates))
-        .def_readwrite("outputStats", &NodeState::outputStats, DOC(dai, NodeState, outputStats))
-        .def_readwrite("inputGroupStats", &NodeState::inputGroupStats, DOC(dai, NodeState, inputGroupStats))
-        .def_readwrite("outputGroupStats", &NodeState::outputGroupStats, DOC(dai, NodeState, outputGroupStats))
-        .def_readwrite("mainLoopStats", &NodeState::mainLoopStats, DOC(dai, NodeState, mainLoopStats))
-        .def_readwrite("otherStats", &NodeState::otherStats, DOC(dai, NodeState, otherStats));
+        .def_readwrite("outputStates", &NodeState::outputStates, DOC(dai, NodeState, outputStates))
+        .def_readwrite("inputsGetTiming", &NodeState::inputsGetTiming, DOC(dai, NodeState, inputsGetTiming))
+        .def_readwrite("outputsSendTiming", &NodeState::outputsSendTiming, DOC(dai, NodeState, outputsSendTiming))
+        .def_readwrite("mainLoopTiming", &NodeState::mainLoopTiming, DOC(dai, NodeState, mainLoopTiming))
+        .def_readwrite("otherTimings", &NodeState::otherTimings, DOC(dai, NodeState, otherTimings));
 
     // Message
     pipelineState.def(py::init<>())

@@ -52,7 +52,7 @@ class NodeState {
     struct OutputQueueState {
         enum class State : std::int32_t {
             IDLE = 0,
-            BLOCKED = 1
+            SENDING = 1
         } state = State::IDLE;
         Timing timing;
         DEPTHAI_SERIALIZE(OutputQueueState, state, timing);

@@ -23,9 +23,13 @@ std::string typeToString(PipelineEvent::Type type) {
             return "UNKNOWN";
     }
 }
-
 std::string makeKey(PipelineEvent::Type type, const std::string& source) {
     return typeToString(type) + "#" + source;
+}
+
+bool blacklist(PipelineEvent::Type type, const std::string& source) {
+    if(type == PipelineEvent::Type::OUTPUT && source == "pipelineEventOutput") return true;
+    return false;
 }
 
 void PipelineEventDispatcher::checkNodeId() {
@@ -39,6 +43,8 @@ void PipelineEventDispatcher::setNodeId(int64_t id) {
 void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
     // TODO add mutex
     checkNodeId();
+    if(blacklist(type, source)) return;
+
     auto& event = events[makeKey(type, source)];
     if(event.ongoing) {
         throw std::runtime_error("Event with name " + source + " is already ongoing");
@@ -53,7 +59,7 @@ void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::st
     event.ongoing = true;
 
     if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(event));
+        out->send(std::make_shared<dai::PipelineEvent>(event.event));
     }
 }
 void PipelineEventDispatcher::startInputEvent(const std::string& source, std::optional<uint32_t> queueSize) {
@@ -68,6 +74,8 @@ void PipelineEventDispatcher::startCustomEvent(const std::string& source) {
 void PipelineEventDispatcher::endEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
     // TODO add mutex
     checkNodeId();
+    if(blacklist(type, source)) return;
+
     auto now = std::chrono::steady_clock::now();
 
     auto& event = events[makeKey(type, source)];
@@ -101,6 +109,8 @@ void PipelineEventDispatcher::endCustomEvent(const std::string& source) {
 void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::string& source) {
     // TODO add mutex
     checkNodeId();
+    if(blacklist(type, source)) return;
+
     auto now = std::chrono::steady_clock::now();
 
     auto& event = events[makeKey(type, source)];
@@ -123,6 +133,26 @@ void PipelineEventDispatcher::pingMainLoopEvent() {
 }
 void PipelineEventDispatcher::pingCustomEvent(const std::string& source) {
     pingEvent(PipelineEvent::Type::CUSTOM, source);
+}
+void PipelineEventDispatcher::pingInputEvent(const std::string& source, std::optional<uint32_t> queueSize) {
+    // TODO add mutex
+    checkNodeId();
+    if(blacklist(PipelineEvent::Type::INPUT, source)) return;
+
+    auto now = std::chrono::steady_clock::now();
+
+    auto& event = events[makeKey(PipelineEvent::Type::INPUT, source)];
+    PipelineEvent eventCopy = event.event;
+    eventCopy.setTimestamp(now);
+    eventCopy.tsDevice = eventCopy.ts;
+    eventCopy.nodeId = nodeId;
+    eventCopy.queueSize = std::move(queueSize);
+    eventCopy.interval = PipelineEvent::Interval::NONE;
+    // type and source are already set
+
+    if(out) {
+        out->send(std::make_shared<dai::PipelineEvent>(eventCopy));
+    }
 }
 PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::blockEvent(PipelineEvent::Type type, const std::string& source) {
     return BlockPipelineEvent(*this, type, source);

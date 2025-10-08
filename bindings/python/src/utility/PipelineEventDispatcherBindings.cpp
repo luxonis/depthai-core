@@ -21,8 +21,10 @@ void PipelineEventDispatcherBindings::bind(pybind11::module& m, void* pCallstack
     pipelineEventDispatcher
         .def(py::init<Node::Output*>(), py::arg("output"))
         .def("setNodeId", &PipelineEventDispatcher::setNodeId, py::arg("id"), DOC(dai, utility, PipelineEventDispatcher, setNodeId))
-        .def("addEvent", &PipelineEventDispatcher::addEvent, py::arg("source"), py::arg("type"), DOC(dai, utility, PipelineEventDispatcher, addEvent))
-        .def("startEvent", &PipelineEventDispatcher::startEvent, py::arg("source"), py::arg("queueSize") = std::nullopt, py::arg("metadata") = std::nullopt, DOC(dai, utility, PipelineEventDispatcher, startEvent))
-        .def("endEvent", &PipelineEventDispatcher::endEvent, py::arg("source"), py::arg("queueSize") = std::nullopt, py::arg("metadata") = std::nullopt, DOC(dai, utility, PipelineEventDispatcher, endEvent))
-        .def("pingEvent", &PipelineEventDispatcher::pingEvent, py::arg("source"), DOC(dai, utility, PipelineEventDispatcher, pingEvent));
+        .def("startCustomEvent", &PipelineEventDispatcher::startCustomEvent, py::arg("source"), DOC(dai, utility, PipelineEventDispatcher, startCustomEvent))
+        .def("endCustomEvent", &PipelineEventDispatcher::endCustomEvent, py::arg("source"), DOC(dai, utility, PipelineEventDispatcher, endCustomEvent))
+        .def("pingCustomEvent", &PipelineEventDispatcher::pingCustomEvent, py::arg("source"), DOC(dai, utility, PipelineEventDispatcher, pingCustomEvent))
+        .def("inputBlockEvent", &PipelineEventDispatcher::inputBlockEvent, py::arg("source") = "defaultInputGroup", DOC(dai, utility, PipelineEventDispatcher, inputBlockEvent))
+        .def("outputBlockEvent", &PipelineEventDispatcher::outputBlockEvent, py::arg("source") = "defaultOutputGroup", DOC(dai, utility, PipelineEventDispatcher, outputBlockEvent))
+        .def("customBlockEvent", &PipelineEventDispatcher::customBlockEvent, py::arg("source"), DOC(dai, utility, PipelineEventDispatcher, customBlockEvent));
 }

@@ -117,7 +117,20 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     callCallbacks(msg);
-    auto queueNotClosed = queue.push(msg);
+    auto queueNotClosed = queue.push(msg, [&](LockingQueueState state) {
+        if(pipelineEventDispatcher) {
+            switch(state) {
+                case LockingQueueState::BLOCKED:
+                    pipelineEventDispatcher->pingInputEvent(name, -1);
+                    break;
+                case LockingQueueState::CANCELLED:
+                    pipelineEventDispatcher->pingInputEvent(name, -2);
+                    break;
+                case LockingQueueState::OK:
+                    break;
+            }
+        }
+    });
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
 }
 
@@ -127,7 +140,20 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
-    return queue.tryWaitAndPush(msg, timeout);
+    return queue.tryWaitAndPush(msg, timeout, [&](LockingQueueState state) {
+        if(pipelineEventDispatcher) {
+            switch(state) {
+                case LockingQueueState::BLOCKED:
+                    pipelineEventDispatcher->pingInputEvent(name, -1);
+                    break;
+                case LockingQueueState::CANCELLED:
+                    pipelineEventDispatcher->pingInputEvent(name, -2);
+                    break;
+                case LockingQueueState::OK:
+                    break;
+            }
+        }
+    });
 }
 
 bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
