@@ -99,6 +99,10 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             properties.parser.strides = {16, 32};
         }
 
+        if(head.metadata.yoloOutputs) {
+            properties.parser.outputNames = *head.metadata.yoloOutputs;
+        }
+
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
     } else {

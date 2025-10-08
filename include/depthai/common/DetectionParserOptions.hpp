@@ -35,6 +35,7 @@ struct DetectionParserOptions {
     std::vector<int> strides = {8, 16, 32};
     std::vector<float> anchors;
     std::map<std::string, std::vector<int>> anchorMasks;
+    std::vector<std::string> outputNames;
     /// see YoloDetectionNetwork::setAnchors() for format
     std::vector<std::vector<std::vector<float>>> anchorsV2;
     float iouThreshold;
@@ -56,6 +57,7 @@ DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
                       strides,
                       anchors,
                       anchorMasks,
+                      outputNames,
                       anchorsV2,
                       iouThreshold);
 
