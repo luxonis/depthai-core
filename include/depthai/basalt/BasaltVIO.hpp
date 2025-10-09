@@ -1,11 +1,6 @@
 #pragma once
 #define SOPHUS_USE_BASIC_LOGGING
 
-#include "basalt/calibration/calibration.hpp"
-#include "basalt/serialization/headers_serialization.h"
-#include "basalt/spline/se3_spline.h"
-#include "basalt/utils/vio_config.h"
-#include "basalt/vi_estimator/vio_estimator.h"
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
@@ -55,10 +50,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
      */
     Output passthrough{*this, {"imgPassthrough", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, true}}}};
 
-    /**
-     * VIO configuration file.
-     */
-    basalt::VioConfig vioConfig;
     void setImuUpdateRate(int rate) {
         imuUpdateRate = rate;
     }
@@ -82,14 +73,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void imuCB(std::shared_ptr<ADatatype> imuData);
     void stop() override;
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
-    std::shared_ptr<basalt::Calibration<double>> calib;
-
-    basalt::OpticalFlowBase::Ptr optFlowPtr;
-    basalt::VioEstimatorBase::Ptr vio;
-    basalt::OpticalFlowInput::Ptr lastImgData;
-
-    std::vector<int64_t> vioTNSec;
-    std::shared_ptr<basalt::PoseState<double>::SE3> localTransform;
     std::shared_ptr<ImgFrame> leftImg;
     bool initialized = false;
     std::string configPath = "";
