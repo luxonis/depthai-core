@@ -151,7 +151,7 @@ class LockingQueue {
         return true;
     }
 
-    bool push(T const& data, std::function<void(LockingQueueState)> callback = [](LockingQueueState) {}) {
+    bool push(T const& data, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
@@ -169,7 +169,7 @@ class LockingQueue {
                 }
             } else {
                 if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED);
+                    callback(LockingQueueState::BLOCKED, queue.size());
                 }
                 signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
                 if(destructed) return false;
@@ -181,7 +181,7 @@ class LockingQueue {
         return true;
     }
 
-    bool push(T&& data, std::function<void(LockingQueueState)> callback = [](LockingQueueState) {}) {
+    bool push(T&& data, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
@@ -199,7 +199,7 @@ class LockingQueue {
                 }
             } else {
                 if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED);
+                    callback(LockingQueueState::BLOCKED, queue.size());
                 }
                 signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
                 if(destructed) return false;
@@ -212,7 +212,7 @@ class LockingQueue {
     }
 
     template <typename Rep, typename Period>
-    bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState)> callback = [](LockingQueueState) {}) {
+    bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
@@ -230,12 +230,12 @@ class LockingQueue {
                 }
             } else {
                 if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED);
+                    callback(LockingQueueState::BLOCKED, queue.size());
                 }
                 // First checks predicate, then waits
                 bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
                 if(!pred) {
-                    callback(LockingQueueState::CANCELLED);
+                    callback(LockingQueueState::CANCELLED, queue.size());
                 }
                 if(!pred) return false;
                 if(destructed) return false;
@@ -248,7 +248,7 @@ class LockingQueue {
     }
 
     template <typename Rep, typename Period>
-    bool tryWaitAndPush(T&& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState)> callback = [](LockingQueueState) {}) {
+    bool tryWaitAndPush(T&& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
@@ -267,11 +267,11 @@ class LockingQueue {
             } else {
                 // First checks predicate, then waits
                 if(queue.size() >= maxSize) {
-                    callback(LockingQueueState::BLOCKED);
+                    callback(LockingQueueState::BLOCKED, queue.size());
                 }
                 bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
                 if(!pred) {
-                    callback(LockingQueueState::CANCELLED);
+                    callback(LockingQueueState::CANCELLED, queue.size());
                 }
                 if(!pred) return false;
                 if(destructed) return false;

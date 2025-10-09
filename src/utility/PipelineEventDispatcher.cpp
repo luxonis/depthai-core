@@ -134,7 +134,7 @@ void PipelineEventDispatcher::pingMainLoopEvent() {
 void PipelineEventDispatcher::pingCustomEvent(const std::string& source) {
     pingEvent(PipelineEvent::Type::CUSTOM, source);
 }
-void PipelineEventDispatcher::pingInputEvent(const std::string& source, std::optional<uint32_t> queueSize) {
+void PipelineEventDispatcher::pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize) {
     // TODO add mutex
     checkNodeId();
     if(blacklist(PipelineEvent::Type::INPUT, source)) return;
@@ -146,6 +146,7 @@ void PipelineEventDispatcher::pingInputEvent(const std::string& source, std::opt
     eventCopy.setTimestamp(now);
     eventCopy.tsDevice = eventCopy.ts;
     eventCopy.nodeId = nodeId;
+    eventCopy.status = std::move(status);
     eventCopy.queueSize = std::move(queueSize);
     eventCopy.interval = PipelineEvent::Interval::NONE;
     eventCopy.type = PipelineEvent::Type::INPUT;

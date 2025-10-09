@@ -117,14 +117,14 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     callCallbacks(msg);
-    auto queueNotClosed = queue.push(msg, [&](LockingQueueState state) {
+    auto queueNotClosed = queue.push(msg, [&](LockingQueueState state, size_t size) {
         if(pipelineEventDispatcher) {
             switch(state) {
                 case LockingQueueState::BLOCKED:
-                    pipelineEventDispatcher->pingInputEvent(name, -1);
+                    pipelineEventDispatcher->pingInputEvent(name, -1, size);
                     break;
                 case LockingQueueState::CANCELLED:
-                    pipelineEventDispatcher->pingInputEvent(name, -2);
+                    pipelineEventDispatcher->pingInputEvent(name, -2, size);
                     break;
                 case LockingQueueState::OK:
                     break;
@@ -140,14 +140,14 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
-    return queue.tryWaitAndPush(msg, timeout, [&](LockingQueueState state) {
+    return queue.tryWaitAndPush(msg, timeout, [&](LockingQueueState state, size_t size) {
         if(pipelineEventDispatcher) {
             switch(state) {
                 case LockingQueueState::BLOCKED:
-                    pipelineEventDispatcher->pingInputEvent(name, -1);
+                    pipelineEventDispatcher->pingInputEvent(name, -1, size);
                     break;
                 case LockingQueueState::CANCELLED:
-                    pipelineEventDispatcher->pingInputEvent(name, -2);
+                    pipelineEventDispatcher->pingInputEvent(name, -2, size);
                     break;
                 case LockingQueueState::OK:
                     break;

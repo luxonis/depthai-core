@@ -280,7 +280,7 @@ class NodeEventAggregation {
             case PipelineEvent::Type::LOOP:
                 break;
             case PipelineEvent::Type::INPUT:
-                state.inputStates[event.source].numQueued = *event.queueSize;
+                if(event.queueSize.has_value()) state.inputStates[event.source].numQueued = *event.queueSize;
                 switch(event.interval) {
                     case PipelineEvent::Interval::START:
                         state.inputStates[event.source].state = NodeState::InputQueueState::State::WAITING;
@@ -289,8 +289,7 @@ class NodeEventAggregation {
                         state.inputStates[event.source].state = NodeState::InputQueueState::State::IDLE;
                         break;
                     case PipelineEvent::Interval::NONE:
-                        if(event.queueSize.has_value() && (event.queueSize == -1 || event.queueSize == -2))
-                            state.inputStates[event.source].state = NodeState::InputQueueState::State::BLOCKED;
+                        if(event.status == -1 || event.status == -2) state.inputStates[event.source].state = NodeState::InputQueueState::State::BLOCKED;
                         break;
                 }
                 break;

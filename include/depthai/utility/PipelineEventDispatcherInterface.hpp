@@ -37,7 +37,7 @@ class PipelineEventDispatcherInterface {
     virtual void pingEvent(PipelineEvent::Type type, const std::string& source) = 0;
     virtual void pingMainLoopEvent() = 0;
     virtual void pingCustomEvent(const std::string& source) = 0;
-    virtual void pingInputEvent(const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) = 0;
+    virtual void pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize = std::nullopt) = 0;
     virtual BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source) = 0;
     virtual BlockPipelineEvent inputBlockEvent(const std::string& source = "defaultInputGroup") = 0;
     virtual BlockPipelineEvent outputBlockEvent(const std::string& source = "defaultOutputGroup") = 0;
