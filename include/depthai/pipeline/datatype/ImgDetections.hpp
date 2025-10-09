@@ -36,6 +36,8 @@ class ImgDetections : public Buffer, public ProtoSerializable {
     std::vector<ImgDetection> detections;
     std::optional<ImgTransformation> transformation;
 
+    void addDetection(const ImgDetection& detection);
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImgDetections;

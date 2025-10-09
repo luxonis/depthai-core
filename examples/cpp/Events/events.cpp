@@ -1,48 +1,101 @@
 #include <chrono>
 #include <iostream>
 #include <string>
+#include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
 #include "depthai/utility/EventsManager.hpp"
 
-int main(int argc, char* argv[]) {
+
+// Helper function to normalize frame coordinates
+cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai::Point2f& bottomRight) {
+    float width = frame.cols, height = frame.rows;
+    return cv::Rect(cv::Point(topLeft.x * width, topLeft.y * height), cv::Point(bottomRight.x * width, bottomRight.y * height));
+}
+
+int main() {
     dai::Pipeline pipeline(true);
 
+    // Enter you hub team's api-key
     auto eventsManager = std::make_shared<dai::utility::EventsManager>();
-
-    // Enter your hubs api-key
-    eventsManager->setUrl("https://events.cloud-stg.luxonis.com");
     eventsManager->setToken("");
+    eventsManager->setLogResponse(false);
 
-    // Color camera node
     auto camRgb = pipeline.create<dai::node::Camera>()->build();
-    auto* preview = camRgb->requestOutput(std::make_pair(256, 256));
+    auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
 
-    auto previewQ = preview->createOutputQueue();
+    dai::NNModelDescription modelDescription;
+    modelDescription.model = "yolov6-nano";
+    detectionNetwork->build(camRgb, modelDescription);
+    auto labelMap = detectionNetwork->getClasses();
+
+    // Create output queues
+    auto qRgb = detectionNetwork->passthrough.createOutputQueue();
+    auto qDet = detectionNetwork->out.createOutputQueue();
+
 
     pipeline.start();
 
-    std::vector<std::shared_ptr<dai::utility::FileData>> data;
-
+    int counter = 0; 
     while(pipeline.isRunning()) {
-        auto rgb = previewQ->get<dai::ImgFrame>();
-
-        std::string str = "image_";
-        std::stringstream ss;
-        ss << str << data.size();
-
-        auto rgbData = std::make_shared<dai::utility::FileData>(rgb, ss.str());
-        data.emplace_back(rgbData);
-
-        if (data.size() == 5)
-        {
-            eventsManager->sendSnap("ImgFrame", {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}}, "", data);
-            data.clear();
-            std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+        auto inRgb = qRgb->get<dai::ImgFrame>();
+        auto inDet = qDet->get<dai::ImgDetections>();
+        if (inRgb == nullptr || inDet == nullptr) {
+            continue;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(400));
+        // Display the video stream and detections
+        cv::Mat frame = inRgb->getCvFrame();
+        if(!frame.empty()) {
+            // Display detections
+            for(const auto& detection : inDet->detections) {
+                auto bbox = frameNorm(frame, dai::Point2f(detection.xmin, detection.ymin), dai::Point2f(detection.xmax, detection.ymax));
+
+                // Draw label
+                cv::putText(frame, labelMap.value()[detection.label], cv::Point(bbox.x + 10, bbox.y + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, cv::Scalar(255,255,255));
+
+                // Draw confidence
+                cv::putText(frame,
+                            std::to_string(static_cast<int>(detection.confidence * 100)) + "%",
+                            cv::Point(bbox.x + 10, bbox.y + 40),
+                            cv::FONT_HERSHEY_TRIPLEX,
+                            0.5,
+                            cv::Scalar(255,255,255));
+
+                // Draw rectangle
+                cv::rectangle(frame, bbox, cv::Scalar(255, 0, 0), 2);
+            }
+
+            // Show the frame
+            cv::imshow("rgb", frame);
+        }
+
+        // Suppose we are only interested in the detections with confidence between 50% and 60%
+        auto borderDetections = std::make_shared<dai::ImgDetections>();
+        for (const auto& detection : inDet->detections) {
+            if (detection.confidence > 0.5f && detection.confidence < 0.6f) {
+                borderDetections->detections.emplace_back(detection);
+            }
+        }
+        
+        // Are there any border detections
+        if (borderDetections->detections.size() > 0) {
+            std::string fileName = "ImageDetection_";
+            std::stringstream ss;
+            ss << fileName << counter;
+            
+            std::shared_ptr<dai::utility::FileGroup> fileGroup = std::make_shared<dai::utility::FileGroup>();
+            fileGroup->addImageDetectionsPair(inRgb, borderDetections, ss.str());
+            eventsManager->sendSnap("ImageDetection", {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}}, "", fileGroup);
+
+            counter++;
+        }
+
+        if(cv::waitKey(1) == 'q') {
+            break;
+        }
     }
+
 
     return EXIT_SUCCESS;
 }

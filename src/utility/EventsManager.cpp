@@ -18,15 +18,56 @@ namespace dai {
 namespace utility {
 using std::move;
 
-FileData::FileData(const std::string& data, const std::string& fileName, const std::string& mimeType)
-    : mimeType(mimeType),
-      fileName(fileName),
-      data(data),
+
+template<typename T, typename... Args>
+void addToFileData(std::vector<std::shared_ptr<FileData>>& container, Args&&... args) {
+    container.emplace_back(std::make_shared<T>(std::forward<Args>(args)...));
+}
+
+void FileGroup::addFile(std::string data, std::string fileName, std::string mimeType) {
+    addToFileData<dai::utility::FileData>(fileData, std::move(data), std::move(fileName), std::move(mimeType));
+}
+
+void FileGroup::addFile(std::string filePath, std::string fileName) {
+    addToFileData<dai::utility::FileData>(fileData, std::move(filePath), std::move(fileName));
+}
+
+void FileGroup::addFile(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName) {
+    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
+}
+
+void FileGroup::addFile(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName) {
+    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
+}
+
+void FileGroup::addFile(const std::shared_ptr<NNData>& nnData, std::string fileName) {
+    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+}
+
+void FileGroup::addFile(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName) {
+    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
+}
+
+void FileGroup::addImageDetectionsPair(const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName) {
+    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
+    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
+}
+
+void FileGroup::addImageDetectionsPair(const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName) {
+    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
+    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
+}
+
+
+FileData::FileData(std::string data, std::string fileName, std::string mimeType)
+    : mimeType(std::move(mimeType)),
+      fileName(std::move(fileName)),
+      data(std::move(data)),
       size(data.size()),
       checksum(calculateSHA256Checksum(data)),
       classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {}
 
-FileData::FileData(const std::string& filePath, std::string fileName) 
+FileData::FileData(std::string filePath, std::string fileName) 
     : fileName(std::move(fileName)) {
     static const std::unordered_map<std::string, std::string> mimeTypeExtensionMap = {
         {".html", "text/html"},
@@ -109,12 +150,24 @@ FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
 }
 
 FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName)
-    : mimeType("application/x-protobuf; proto=ImgDetections"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::ANNOTATION) {
-    // Serialize ImgDetections
-    std::vector<uint8_t> imgDetectionsSerialized = imgDetections->serializeProto();
-    std::stringstream ss;
-    ss.write((const char*)imgDetectionsSerialized.data(), imgDetectionsSerialized.size());
-    data = ss.str();
+    : mimeType("application/x-protobuf; proto=SnapAnnotation"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::ANNOTATION) {
+    // Serialize imgDetections object, add it to SnapAnnotation proto
+    proto::event::SnapAnnotations snapAnnotation;
+    proto::img_detections::ImgDetections imgDetectionsProto;
+
+    if (imgDetections) {
+        std::vector<uint8_t> imgDetectionsSerialized = imgDetections->serializeProto();
+        if (imgDetectionsProto.ParseFromArray(imgDetectionsSerialized.data(), imgDetectionsSerialized.size())) {
+            *snapAnnotation.mutable_detections() = imgDetectionsProto;
+        } else {
+            logger::error("Failed to parse ImgDetections proto from serialized bytes");
+            return;
+        } 
+    }
+    if (!snapAnnotation.SerializeToString(&data)) {
+        logger::error("Failed to serialize SnapAnnotations proto object to string");
+        return;
+    }
     size = data.size();
     checksum = calculateSHA256Checksum(data);
 }
@@ -294,7 +347,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
     // Fill the batch with the groups from inputSnapBatch and their corresponding files
     for (size_t i = 0; i < inputSnapBatch.size(); ++i) {
         auto fileGroup = std::make_unique<proto::event::PrepareFileUploadGroup>();
-        for (auto& file : inputSnapBatch.at(i)->fileGroup) {
+        for (auto& file : inputSnapBatch.at(i)->fileGroup->fileData) {
             auto addedFile = fileGroup->add_files();
             addedFile->set_checksum(file->checksum);
             addedFile->set_mime_type(file->mimeType);
@@ -388,7 +441,7 @@ bool EventsManager::uploadGroup(std::shared_ptr<SnapData> snapData, dai::proto::
             associateFile->set_id(prepareFileResult.accepted().id());
             // Upload files asynchronously
             fileUploadResults.emplace_back(std::async(std::launch::async, 
-                [&, fileData = std::move(snapData->fileGroup.at(i)), uploadUrl = std::move(prepareFileResult.accepted().upload_url())]() mutable {
+                [&, fileData = std::move(snapData->fileGroup->fileData.at(i)), uploadUrl = std::move(prepareFileResult.accepted().upload_url())]() mutable {
                     return uploadFile(std::move(fileData), std::move(uploadUrl));
             }));
         } else {
@@ -539,7 +592,7 @@ bool EventsManager::sendSnap(const std::string& name,
                              const std::vector<std::string>& tags,
                              const std::unordered_map<std::string, std::string>& extras,
                              const std::string& deviceSerialNo,
-                             const std::vector<std::shared_ptr<FileData>>& fileGroup) {
+                             const std::shared_ptr<FileGroup> fileGroup) {
     // Prepare snapData
     auto snapData = std::make_unique<SnapData>();
     snapData->fileGroup = fileGroup;
@@ -562,14 +615,14 @@ bool EventsManager::sendSnap(const std::string& name,
         return false;
     }
     snapData->event->add_tags("snap");
-    if (fileGroup.size() > maxFilesPerGroup) {
-        logger::error("Failed to send snap, the number of files in a file group {} exceeds {}", fileGroup.size(), maxFilesPerGroup);
+    if (fileGroup->fileData.size() > maxFilesPerGroup) {
+        logger::error("Failed to send snap, the number of files in a file group {} exceeds {}", fileGroup->fileData.size(), maxFilesPerGroup);
         return false;
-    } else if (fileGroup.empty()) {
+    } else if (fileGroup->fileData.empty()) {
         logger::error("Failed to send snap, the file group is empty");
         return false;
     }
-    for (const auto& file : fileGroup) {
+    for (const auto& file : fileGroup->fileData) {
         if (file->size >= maxFileSizeBytes) {
             logger::error("Failed to send snap, file: {} is bigger then the configured maximum size: {}", file->fileName, maxFileSizeBytes);
             return false;

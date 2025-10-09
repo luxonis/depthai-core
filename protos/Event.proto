@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+import "ImgDetections.proto";
 package dai.proto.event;
 
 message BatchPrepareFileUpload {
@@ -132,4 +133,8 @@ message EventLimits {
 message ApiUsage {
     FileLimits files = 1;
     EventLimits events = 2;
+}
+
+message SnapAnnotations {
+    optional img_detections.ImgDetections detections = 1;
 }

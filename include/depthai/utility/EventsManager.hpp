@@ -29,8 +29,8 @@ namespace utility {
 
 class FileData {
    public:
-    FileData(const std::string& data, const std::string& fileName, const std::string& mimeType);
-    explicit FileData(const std::string& filePath, std::string fileName);
+    FileData(std::string data, std::string fileName, std::string mimeType);
+    explicit FileData(std::string filePath, std::string fileName);
     explicit FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
     explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
     explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
@@ -51,6 +51,26 @@ class FileData {
     uint64_t size;
     std::string checksum;
     proto::event::PrepareFileUploadClass classification;
+    friend class EventsManager;
+};
+
+class FileGroup {
+   public:
+    void addFile(std::string data, std::string fileName, std::string mimeType);
+    void addFile(std::string filePath, std::string fileName);
+    void addFile(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
+    void addFile(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
+    void addFile(const std::shared_ptr<NNData>& nnData, std::string fileName);
+    void addFile(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName);
+    void addImageDetectionsPair(const std::shared_ptr<ImgFrame>& imgFrame, 
+                                const std::shared_ptr<ImgDetections>& imgDetections, 
+                                std::string fileName);
+    void addImageDetectionsPair(const std::shared_ptr<EncodedFrame>& encodedFrame, 
+                                const std::shared_ptr<ImgDetections>& imgDetections, 
+                                std::string fileName);
+
+   private:
+    std::vector<std::shared_ptr<FileData>> fileData;
     friend class EventsManager;
 };
 
@@ -79,14 +99,14 @@ class EventsManager {
      * @param tags List of tags to send
      * @param extras Extra data to send
      * @param deviceSerialNo Device serial number
-     * @param fileGroup List of FileData objects to send
+     * @param fileGroup FileGroup containing FileData objects to send
      * @return bool
      */
     bool sendSnap(const std::string& name,
                   const std::vector<std::string>& tags = {},
                   const std::unordered_map<std::string, std::string>& extras = {},
                   const std::string& deviceSerialNo = "",
-                  const std::vector<std::shared_ptr<FileData>>& fileGroup = {});
+                  const std::shared_ptr<FileGroup> fileGroup = nullptr);
 
     /**
      * Set the URL of the events service. By default, the URL is set to https://events.cloud.luxonis.com
@@ -137,7 +157,7 @@ class EventsManager {
    private:
     struct SnapData {
         std::shared_ptr<proto::event::Event> event;
-        std::vector<std::shared_ptr<FileData>> fileGroup;
+        std::shared_ptr<FileGroup> fileGroup;
         std::string cachePath;
     };
 
