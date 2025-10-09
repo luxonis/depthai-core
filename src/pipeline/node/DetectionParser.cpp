@@ -141,9 +141,10 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     }
 }
 
-YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& subtypeStr) {
+YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& name) {
     // convert string to lower case
-    std::transform(subtypeStr.begin(), subtypeStr.end(), subtypeStr.begin(), ::tolower);
+    std::string subtypeStr = name;
+    std::transform(subtypeStr.begin(), subtypeStr.end(), subtypeStr.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
     if(subtypeStr == "yolov6r1") return YoloDecodingFamily::R1AF;
     if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov6" || subtypeStr == "yolov8" || subtypeStr == "yolov10"

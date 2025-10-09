@@ -1,5 +1,7 @@
 #include "CommonBindings.hpp"
 
+#include <pybind11/pybind11.h>
+
 // Libraries
 #include "hedley/hedley.h"
 
@@ -34,6 +36,7 @@
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
+#include "depthai/common/YoloDecodingFamily.hpp"
 
 // depthai
 #include "depthai/common/CameraExposureOffset.hpp"
@@ -69,6 +72,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
+    py::enum_<YoloDecodingFamily> yoloDecodingFamily(m, "YoloDecodingFamily");
     py::enum_<SerializationType> serializationType(m, "SerializationType");
     py::class_<DetectionParserOptions> detectionParserOptions(m, "DetectionParserOptions", DOC(dai, DetectionParserOptions));
     py::class_<RotatedRect> rotatedRect(m, "RotatedRect", DOC(dai, RotatedRect));
@@ -394,6 +398,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("DSP", ProcessorType::DSP);
 
     detectionNetworkType.value("YOLO", DetectionNetworkType::YOLO).value("MOBILENET", DetectionNetworkType::MOBILENET);
+
+    yoloDecodingFamily.value("TLBR", YoloDecodingFamily::TLBR)
+        .value("R1AF", YoloDecodingFamily::R1AF)
+        .value("v5AB", YoloDecodingFamily::v5AB)
+        .value("v3AB", YoloDecodingFamily::v3AB);
 
     serializationType.value("LIBNOP", SerializationType::LIBNOP).value("JSON", SerializationType::JSON).value("JSON_MSGPACK", SerializationType::JSON_MSGPACK);
 
