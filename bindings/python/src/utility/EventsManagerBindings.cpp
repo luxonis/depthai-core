@@ -26,31 +26,31 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("clearFiles", &FileGroup::clearFiles, DOC(dai, utility, FileGroup, clearFiles))
         .def("addFile",
             static_cast<void (FileGroup::*)(std::string, std::string, std::string)>(&FileGroup::addFile),
-            py::arg("data"),
             py::arg("fileName"),
+            py::arg("data"),
             py::arg("mimeType"),
             DOC(dai, utility, FileGroup, addFile))
         .def("addFile", static_cast<void (FileGroup::*)(std::string, std::string)>(&FileGroup::addFile),
-            py::arg("filePath"), py::arg("fileName"), DOC(dai, utility, FileGroup, addFile))
-        .def("addFile", static_cast<void (FileGroup::*)(const std::shared_ptr<ImgFrame>&, std::string)>(&FileGroup::addFile),
-            py::arg("imgFrame"), py::arg("fileName"), DOC(dai, utility, FileGroup, addFile))
-        .def("addFile", static_cast<void (FileGroup::*)(const std::shared_ptr<EncodedFrame>&, std::string)>(&FileGroup::addFile),
-            py::arg("encodedFrame"), py::arg("fileName"), DOC(dai, utility, FileGroup, addFile))
-        .def("addFile", static_cast<void (FileGroup::*)(const std::shared_ptr<NNData>&, std::string)>(&FileGroup::addFile),
-            py::arg("nnData"), py::arg("fileName"), DOC(dai, utility, FileGroup, addFile))
-        .def("addFile", static_cast<void (FileGroup::*)(const std::shared_ptr<ImgDetections>&, std::string)>(&FileGroup::addFile),
-            py::arg("imgDetections"), py::arg("fileName"), DOC(dai, utility, FileGroup, addFile))
+            py::arg("fileName"), py::arg("filePath"), DOC(dai, utility, FileGroup, addFile))
+        .def("addFile", static_cast<void (FileGroup::*)(std::string, const std::shared_ptr<ImgFrame>&)>(&FileGroup::addFile),
+            py::arg("fileName"), py::arg("imgFrame"), DOC(dai, utility, FileGroup, addFile))
+        .def("addFile", static_cast<void (FileGroup::*)(std::string, const std::shared_ptr<EncodedFrame>&)>(&FileGroup::addFile),
+            py::arg("fileName"), py::arg("encodedFrame"), DOC(dai, utility, FileGroup, addFile))
+        .def("addFile", static_cast<void (FileGroup::*)(std::string, const std::shared_ptr<NNData>&)>(&FileGroup::addFile),
+            py::arg("fileName"), py::arg("nnData"), DOC(dai, utility, FileGroup, addFile))
+        .def("addFile", static_cast<void (FileGroup::*)(std::string, const std::shared_ptr<ImgDetections>&)>(&FileGroup::addFile),
+            py::arg("fileName"), py::arg("imgDetections"), DOC(dai, utility, FileGroup, addFile))
         .def("addImageDetectionsPair", 
-            static_cast<void (FileGroup::*)(const std::shared_ptr<ImgFrame>&, const std::shared_ptr<ImgDetections>&, std::string)>(&FileGroup::addImageDetectionsPair),
+            static_cast<void (FileGroup::*)(std::string, const std::shared_ptr<ImgFrame>&, const std::shared_ptr<ImgDetections>&)>(&FileGroup::addImageDetectionsPair),
+            py::arg("fileName"), 
             py::arg("imgFrame"), 
             py::arg("imgDetections"), 
-            py::arg("fileName"), 
             DOC(dai, utility, FileGroup, addImageDetectionsPair))
         .def("addImageDetectionsPair", 
-            static_cast<void (FileGroup::*)(const std::shared_ptr<EncodedFrame>&, const std::shared_ptr<ImgDetections>&, std::string)>(&FileGroup::addImageDetectionsPair),
+            static_cast<void (FileGroup::*)(std::string, const std::shared_ptr<EncodedFrame>&, const std::shared_ptr<ImgDetections>&)>(&FileGroup::addImageDetectionsPair),
+            py::arg("fileName"), 
             py::arg("encodedFrame"), 
             py::arg("imgDetections"), 
-            py::arg("fileName"), 
             DOC(dai, utility, FileGroup, addImageDetectionsPair));
 
     py::class_<EventsManager>(m, "EventsManager")

@@ -28,36 +28,36 @@ void FileGroup::clearFiles() {
     fileData.clear();
 }
 
-void FileGroup::addFile(std::string data, std::string fileName, std::string mimeType) {
+void FileGroup::addFile(std::string fileName, std::string data, std::string mimeType) {
     addToFileData<dai::utility::FileData>(fileData, std::move(data), std::move(fileName), std::move(mimeType));
 }
 
-void FileGroup::addFile(std::string filePath, std::string fileName) {
+void FileGroup::addFile(std::string fileName, std::string filePath) {
     addToFileData<dai::utility::FileData>(fileData, std::move(filePath), std::move(fileName));
 }
 
-void FileGroup::addFile(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName) {
+void FileGroup::addFile(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame) {
     addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
 }
 
-void FileGroup::addFile(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName) {
+void FileGroup::addFile(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame) {
     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
 }
 
-void FileGroup::addFile(const std::shared_ptr<NNData>& nnData, std::string fileName) {
+void FileGroup::addFile(std::string fileName, const std::shared_ptr<NNData>& nnData) {
     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
 }
 
-void FileGroup::addFile(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName) {
+void FileGroup::addFile(std::string fileName, const std::shared_ptr<ImgDetections>& imgDetections) {
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
 }
 
-void FileGroup::addImageDetectionsPair(const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName) {
+void FileGroup::addImageDetectionsPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<ImgDetections>& imgDetections) {
     addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
 }
 
-void FileGroup::addImageDetectionsPair(const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName) {
+void FileGroup::addImageDetectionsPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<ImgDetections>& imgDetections) {
     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
 }
