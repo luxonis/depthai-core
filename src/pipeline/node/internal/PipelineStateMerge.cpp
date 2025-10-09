@@ -46,7 +46,6 @@ void PipelineStateMerge::run() {
             if(waitForMatch && deviceState != nullptr && currentConfig.has_value()) {
                 while(isRunning() && deviceState->configSequenceNum != currentConfig->sequenceNum) {
                     deviceState = inputDevice.get<dai::PipelineState>();
-                    if(!isRunning()) break;
                 }
             }
             if(deviceState != nullptr) {

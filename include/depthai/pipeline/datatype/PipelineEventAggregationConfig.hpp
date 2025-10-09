@@ -31,7 +31,7 @@ class PipelineEventAggregationConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, nodes, repeat);
+    DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodes, repeat);
 };
 
 }  // namespace dai

@@ -4,7 +4,6 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
-#include "depthai/common/optional.hpp"
 
 namespace dai {
 
