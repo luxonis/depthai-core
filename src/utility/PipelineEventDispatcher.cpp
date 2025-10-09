@@ -42,6 +42,7 @@ void PipelineEventDispatcher::setNodeId(int64_t id) {
 }
 void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
     // TODO add mutex
+    if(!sendEvents) return;
     checkNodeId();
     if(blacklist(type, source)) return;
 
@@ -71,6 +72,7 @@ void PipelineEventDispatcher::startCustomEvent(const std::string& source) {
 }
 void PipelineEventDispatcher::endEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
     // TODO add mutex
+    if(!sendEvents) return;
     checkNodeId();
     if(blacklist(type, source)) return;
 
@@ -107,6 +109,7 @@ void PipelineEventDispatcher::endCustomEvent(const std::string& source) {
 }
 void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::string& source) {
     // TODO add mutex
+    if(!sendEvents) return;
     checkNodeId();
     if(blacklist(type, source)) return;
 
@@ -136,6 +139,7 @@ void PipelineEventDispatcher::pingCustomEvent(const std::string& source) {
 }
 void PipelineEventDispatcher::pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize) {
     // TODO add mutex
+    if(!sendEvents) return;
     checkNodeId();
     if(blacklist(PipelineEvent::Type::INPUT, source)) return;
 

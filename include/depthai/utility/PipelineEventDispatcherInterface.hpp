@@ -24,6 +24,8 @@ class PipelineEventDispatcherInterface {
         }
     };
 
+    bool sendEvents = true;
+
     virtual ~PipelineEventDispatcherInterface() = default;
     virtual void setNodeId(int64_t id) = 0;
     virtual void startEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) = 0;
