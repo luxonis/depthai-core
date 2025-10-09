@@ -77,7 +77,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
     const auto head = (*model.heads)[0];
 
-    if(head.parser == "YOLO") {  // yolo or YOLOExtendedParser
+    if(head.parser == "YOLO" || head.parser == "YOLOExtendedParser") {
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
         if(head.metadata.subtype) {
             properties.parser.subtype = *head.metadata.subtype;
@@ -90,7 +90,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             properties.parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
         }
 
-        if(properties.parser.decodeKeypoints) {
+        if(head.metadata.nKeypoints) {
             properties.parser.decodeKeypoints = true;
             properties.parser.nKeypoints = head.metadata.nKeypoints;
         }

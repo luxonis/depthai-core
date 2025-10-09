@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "depthai/common/DetectionNetworkType.hpp"
+#include "depthai/common/KeypointsList.hpp"
 #include "depthai/common/YoloDecodingFamily.hpp"
 #include "depthai/common/YoloSubtype.hpp"
 #include "depthai/common/optional.hpp"
