@@ -26,8 +26,7 @@ void bind_pipelineeventaggregation(pybind11::module& m, void* pCallstack) {
     //
     // // Properties
     // pipelineEventAggregationProperties.def_readwrite("aggregationWindowSize", &PipelineEventAggregationProperties::aggregationWindowSize)
-    //     .def_readwrite("eventBatchSize", &PipelineEventAggregationProperties::eventBatchSize)
-    //     .def_readwrite("sendEvents", &PipelineEventAggregationProperties::sendEvents);
+    //     .def_readwrite("eventBatchSize", &PipelineEventAggregationProperties::eventBatchSize);
     //
     // // Node
     // pipelineEventAggregation.def_readonly("out", &PipelineEventAggregation::out, DOC(dai, node, PipelineEventAggregation, out))

@@ -14,10 +14,9 @@ class NodeEventAggregationConfig {
     std::optional<std::vector<std::string>> inputs;
     std::optional<std::vector<std::string>> outputs;
     std::optional<std::vector<std::string>> others;
-    bool summary = false;
     bool events = false;
 
-    DEPTHAI_SERIALIZE(NodeEventAggregationConfig, nodeId, inputs, outputs, others, summary, events);
+    DEPTHAI_SERIALIZE(NodeEventAggregationConfig, nodeId, inputs, outputs, others, events);
 };
 
 /// PipelineEventAggregationConfig configuration structure

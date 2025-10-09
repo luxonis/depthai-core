@@ -87,7 +87,7 @@ class NodeState {
     // Other timings that the developer of the node decided to add
     std::unordered_map<std::string, Timing> otherTimings;
 
-    DEPTHAI_SERIALIZE(NodeState, events, outputStates, inputStates, inputsGetTiming, outputsSendTiming, mainLoopTiming, otherTimings);
+    DEPTHAI_SERIALIZE(NodeState, state, events, outputStates, inputStates, inputsGetTiming, outputsSendTiming, mainLoopTiming, otherTimings);
 };
 
 /**

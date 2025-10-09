@@ -45,45 +45,27 @@ namespace fs = std::filesystem;
  * pipeline.getState().nodes({nodeId1}).otherStats({statName1}) -> std::unordered_map<std::string, TimingStats>;
  * pipeline.getState().nodes({nodeId1}).outputs(statName) -> TimingStats;
  */
-template <typename T>
-class NodeStateApi {};
-template <>
-class NodeStateApi<std::vector<Node::Id>> {
+// TODO move this somewhere else
+class NodesStateApi {
     std::vector<Node::Id> nodeIds;
 
     std::shared_ptr<MessageQueue> pipelineStateOut;
     std::shared_ptr<InputQueue> pipelineStateRequest;
 
    public:
-    explicit NodeStateApi(std::vector<Node::Id> nodeIds, std::shared_ptr<MessageQueue> pipelineStateOut, std::shared_ptr<InputQueue> pipelineStateRequest)
+    explicit NodesStateApi(std::vector<Node::Id> nodeIds, std::shared_ptr<MessageQueue> pipelineStateOut, std::shared_ptr<InputQueue> pipelineStateRequest)
         : nodeIds(std::move(nodeIds)), pipelineStateOut(pipelineStateOut), pipelineStateRequest(pipelineStateRequest) {}
-    std::unordered_map<Node::Id, std::unordered_map<PipelineEvent::Type, NodeState::TimingStats>> summary() {
+    PipelineState summary() {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
         for(auto id : nodeIds) {
             NodeEventAggregationConfig nodeCfg;
             nodeCfg.nodeId = id;
-            nodeCfg.summary = true;
-            cfg.nodes.push_back(nodeCfg);
-        }
-
-        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
-        auto state = pipelineStateOut->get<PipelineState>();
-        if(!state) throw std::runtime_error("Failed to get PipelineState");
-        return {};  // TODO
-    }
-    PipelineState detailed() {
-        PipelineEventAggregationConfig cfg;
-        cfg.repeat = false;
-        cfg.setTimestamp(std::chrono::steady_clock::now());
-        for(auto id : nodeIds) {
-            NodeEventAggregationConfig nodeCfg;
-            nodeCfg.nodeId = id;
-            nodeCfg.summary = true;  // contains main loop timing
-            nodeCfg.inputs = {};     // send all
-            nodeCfg.outputs = {};    // send all
-            nodeCfg.others = {};     // send all
+            nodeCfg.events = false;
+            nodeCfg.inputs = {};   // Do not send any
+            nodeCfg.outputs = {};  // Do not send any
+            nodeCfg.others = {};   // Do not send any
             cfg.nodes.push_back(nodeCfg);
         }
 
@@ -92,19 +74,43 @@ class NodeStateApi<std::vector<Node::Id>> {
         if(!state) throw std::runtime_error("Failed to get PipelineState");
         return *state;
     }
-    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::TimingStats>> outputs() {
+    PipelineState detailed() {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
         for(auto id : nodeIds) {
             NodeEventAggregationConfig nodeCfg;
             nodeCfg.nodeId = id;
-            nodeCfg.outputs = {};  // send all
+            nodeCfg.events = false;
             cfg.nodes.push_back(nodeCfg);
         }
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        return *state;
+    }
+    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::OutputQueueState>> outputs() {
+        PipelineEventAggregationConfig cfg;
+        cfg.repeat = false;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        for(auto id : nodeIds) {
+            NodeEventAggregationConfig nodeCfg;
+            nodeCfg.nodeId = id;
+            nodeCfg.inputs = {};  // Do not send any
+            nodeCfg.others = {};  // Do not send any
+            nodeCfg.events = false;
+            cfg.nodes.push_back(nodeCfg);
+        }
+
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::OutputQueueState>> result;
+        for(auto& [nodeId, nodeState] : state->nodeStates) {
+            result[nodeId] = nodeState.outputStates;
+        }
+        return result;
     }
     std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::InputQueueState>> inputs() {
         PipelineEventAggregationConfig cfg;
@@ -113,30 +119,45 @@ class NodeStateApi<std::vector<Node::Id>> {
         for(auto id : nodeIds) {
             NodeEventAggregationConfig nodeCfg;
             nodeCfg.nodeId = id;
-            nodeCfg.inputs = {};  // send all
+            nodeCfg.outputs = {};  // Do not send any
+            nodeCfg.others = {};   // Do not send any
+            nodeCfg.events = false;
             cfg.nodes.push_back(nodeCfg);
         }
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::InputQueueState>> result;
+        for(auto& [nodeId, nodeState] : state->nodeStates) {
+            result[nodeId] = nodeState.inputStates;
+        }
+        return result;
     }
-    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::TimingStats>> otherStats() {
+    std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::Timing>> otherTimings() {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
         for(auto id : nodeIds) {
             NodeEventAggregationConfig nodeCfg;
             nodeCfg.nodeId = id;
-            nodeCfg.others = {};  // send all
+            nodeCfg.inputs = {};   // Do not send any
+            nodeCfg.outputs = {};  // Do not send any
+            nodeCfg.events = false;
             cfg.nodes.push_back(nodeCfg);
         }
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::Timing>> result;
+        for(auto& [nodeId, nodeState] : state->nodeStates) {
+            result[nodeId] = nodeState.otherTimings;
+        }
+        return result;
     }
 };
-template <>
-class NodeStateApi<Node::Id> {
+class NodeStateApi {
     Node::Id nodeId;
 
     std::shared_ptr<MessageQueue> pipelineStateOut;
@@ -145,56 +166,87 @@ class NodeStateApi<Node::Id> {
    public:
     explicit NodeStateApi(Node::Id nodeId, std::shared_ptr<MessageQueue> pipelineStateOut, std::shared_ptr<InputQueue> pipelineStateRequest)
         : nodeId(nodeId), pipelineStateOut(pipelineStateOut), pipelineStateRequest(pipelineStateRequest) {}
-    std::unordered_map<PipelineEvent::Type, NodeState::TimingStats> summary() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).summary()[nodeId];
+    NodeState summary() {
+        return NodesStateApi({nodeId}, pipelineStateOut, pipelineStateRequest).summary().nodeStates[nodeId];
     }
     NodeState detailed() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).detailed().nodeStates[nodeId];
+        return NodesStateApi({nodeId}, pipelineStateOut, pipelineStateRequest).detailed().nodeStates[nodeId];
     }
-    std::unordered_map<std::string, NodeState::TimingStats> outputs() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).outputs()[nodeId];
+    std::unordered_map<std::string, NodeState::OutputQueueState> outputs() {
+        return NodesStateApi({nodeId}, pipelineStateOut, pipelineStateRequest).outputs()[nodeId];
     }
     std::unordered_map<std::string, NodeState::InputQueueState> inputs() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).inputs()[nodeId];
+        return NodesStateApi({nodeId}, pipelineStateOut, pipelineStateRequest).inputs()[nodeId];
     }
-    std::unordered_map<std::string, NodeState::TimingStats> otherStats() {
-        return NodeStateApi<std::vector<Node::Id>>({nodeId}, pipelineStateOut, pipelineStateRequest).otherStats()[nodeId];
+    std::unordered_map<std::string, NodeState::Timing> otherTimings() {
+        return NodesStateApi({nodeId}, pipelineStateOut, pipelineStateRequest).otherTimings()[nodeId];
     }
-    std::unordered_map<std::string, NodeState::TimingStats> outputs(const std::vector<std::string>& outputNames) {
+    std::unordered_map<std::string, NodeState::OutputQueueState> outputs(const std::vector<std::string>& outputNames) {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = nodeId;
         nodeCfg.outputs = outputNames;
+        nodeCfg.inputs = {};  // Do not send any
+        nodeCfg.others = {};  // Do not send any
+        nodeCfg.events = false;
         cfg.nodes.push_back(nodeCfg);
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        if(state->nodeStates.find(nodeId) == state->nodeStates.end()) {
+            throw std::runtime_error("Node ID " + std::to_string(nodeId) + " not found in PipelineState");
+        }
+        std::unordered_map<std::string, NodeState::OutputQueueState> result;
+        for(const auto& outputName : outputNames) {
+            result[outputName] = state->nodeStates[nodeId].outputStates[outputName];
+        }
+        return result;
     }
-    NodeState::TimingStats outputs(const std::string& outputName) {
+    NodeState::OutputQueueState outputs(const std::string& outputName) {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = nodeId;
         nodeCfg.outputs = {outputName};
+        nodeCfg.inputs = {};  // Do not send any
+        nodeCfg.others = {};  // Do not send any
+        nodeCfg.events = false;
         cfg.nodes.push_back(nodeCfg);
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        if(state->nodeStates.find(nodeId) == state->nodeStates.end()) {
+            throw std::runtime_error("Node ID " + std::to_string(nodeId) + " not found in PipelineState");
+        }
+        if(state->nodeStates[nodeId].outputStates.find(outputName) == state->nodeStates[nodeId].outputStates.end()) {
+            throw std::runtime_error("Output name " + outputName + " not found in NodeState for node ID " + std::to_string(nodeId));
+        }
+        return state->nodeStates[nodeId].outputStates[outputName];
     }
-    std::unordered_map<Node::Id, std::vector<PipelineEvent>> events() {
+    std::vector<NodeState::DurationEvent> events() {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = nodeId;
+        nodeCfg.outputs = {};  // Do not send any
+        nodeCfg.inputs = {};   // Do not send any
+        nodeCfg.others = {};   // Do not send any
         nodeCfg.events = true;
         cfg.nodes.push_back(nodeCfg);
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        if(state->nodeStates.find(nodeId) == state->nodeStates.end()) {
+            throw std::runtime_error("Node ID " + std::to_string(nodeId) + " not found in PipelineState");
+        }
+        return state->nodeStates[nodeId].events;
     }
     std::unordered_map<std::string, NodeState::InputQueueState> inputs(const std::vector<std::string>& inputNames) {
         PipelineEventAggregationConfig cfg;
@@ -203,10 +255,22 @@ class NodeStateApi<Node::Id> {
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = nodeId;
         nodeCfg.inputs = inputNames;
+        nodeCfg.outputs = {};  // Do not send any
+        nodeCfg.others = {};   // Do not send any
+        nodeCfg.events = false;
         cfg.nodes.push_back(nodeCfg);
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        if(state->nodeStates.find(nodeId) == state->nodeStates.end()) {
+            throw std::runtime_error("Node ID " + std::to_string(nodeId) + " not found in PipelineState");
+        }
+        std::unordered_map<std::string, NodeState::InputQueueState> result;
+        for(const auto& inputName : inputNames) {
+            result[inputName] = state->nodeStates[nodeId].inputStates[inputName];
+        }
+        return result;
     }
     NodeState::InputQueueState inputs(const std::string& inputName) {
         PipelineEventAggregationConfig cfg;
@@ -215,34 +279,68 @@ class NodeStateApi<Node::Id> {
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = nodeId;
         nodeCfg.inputs = {inputName};
+        nodeCfg.outputs = {};  // Do not send any
+        nodeCfg.others = {};   // Do not send any
+        nodeCfg.events = false;
         cfg.nodes.push_back(nodeCfg);
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        if(state->nodeStates.find(nodeId) == state->nodeStates.end()) {
+            throw std::runtime_error("Node ID " + std::to_string(nodeId) + " not found in PipelineState");
+        }
+        if(state->nodeStates[nodeId].inputStates.find(inputName) == state->nodeStates[nodeId].inputStates.end()) {
+            throw std::runtime_error("Input name " + inputName + " not found in NodeState for node ID " + std::to_string(nodeId));
+        }
+        return state->nodeStates[nodeId].inputStates[inputName];
     }
-    std::unordered_map<std::string, NodeState::TimingStats> otherStats(const std::vector<std::string>& statNames) {
+    std::unordered_map<std::string, NodeState::Timing> otherTimings(const std::vector<std::string>& statNames) {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = nodeId;
         nodeCfg.others = statNames;
+        nodeCfg.outputs = {};  // Do not send any
+        nodeCfg.inputs = {};   // Do not send any
+        nodeCfg.events = false;
         cfg.nodes.push_back(nodeCfg);
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        if(state->nodeStates.find(nodeId) == state->nodeStates.end()) {
+            throw std::runtime_error("Node ID " + std::to_string(nodeId) + " not found in PipelineState");
+        }
+        std::unordered_map<std::string, NodeState::Timing> result;
+        for(const auto& otherName : statNames) {
+            result[otherName] = state->nodeStates[nodeId].otherTimings[otherName];
+        }
+        return result;
     }
-    NodeState::TimingStats otherStats(const std::string& statName) {
+    NodeState::Timing otherStats(const std::string& statName) {
         PipelineEventAggregationConfig cfg;
         cfg.repeat = false;
         cfg.setTimestamp(std::chrono::steady_clock::now());
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = nodeId;
         nodeCfg.others = {statName};
+        nodeCfg.outputs = {};  // Do not send any
+        nodeCfg.inputs = {};   // Do not send any
+        nodeCfg.events = false;
         cfg.nodes.push_back(nodeCfg);
 
-        // TODO send and get
-        return {};
+        pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+        auto state = pipelineStateOut->get<PipelineState>();
+        if(!state) throw std::runtime_error("Failed to get PipelineState");
+        if(state->nodeStates.find(nodeId) == state->nodeStates.end()) {
+            throw std::runtime_error("Node ID " + std::to_string(nodeId) + " not found in PipelineState");
+        }
+        if(state->nodeStates[nodeId].otherTimings.find(statName) == state->nodeStates[nodeId].otherTimings.end()) {
+            throw std::runtime_error("Stat name " + statName + " not found in NodeState for node ID " + std::to_string(nodeId));
+        }
+        return state->nodeStates[nodeId].otherTimings[statName];
     }
 };
 class PipelineStateApi {
@@ -259,14 +357,14 @@ class PipelineStateApi {
             nodeIds.push_back(n->id);
         }
     }
-    NodeStateApi<std::vector<Node::Id>> nodes() {
-        return NodeStateApi<std::vector<Node::Id>>(nodeIds, pipelineStateOut, pipelineStateRequest);
+    NodesStateApi nodes() {
+        return NodesStateApi(nodeIds, pipelineStateOut, pipelineStateRequest);
     }
-    NodeStateApi<std::vector<Node::Id>> nodes(const std::vector<Node::Id>& nodeIds) {
-        return NodeStateApi<std::vector<Node::Id>>(nodeIds, pipelineStateOut, pipelineStateRequest);
+    NodesStateApi nodes(const std::vector<Node::Id>& nodeIds) {
+        return NodesStateApi(nodeIds, pipelineStateOut, pipelineStateRequest);
     }
-    NodeStateApi<Node::Id> nodes(Node::Id nodeId) {
-        return NodeStateApi<Node::Id>(nodeId, pipelineStateOut, pipelineStateRequest);
+    NodeStateApi nodes(Node::Id nodeId) {
+        return NodeStateApi(nodeId, pipelineStateOut, pipelineStateRequest);
     }
 };
 
