@@ -387,17 +387,40 @@ jobs:
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
           python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+      - name: Upload combined wheels as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-combined-macos-${{ matrix.os }}
+          path: bindings/python/wheelhouse/audited/*
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Install combined wheel and run a smoke-test
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          set -euo pipefail
+
+          # Resolve the exact dev version (includes commit hash)
+          ver=$(python -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
+          echo "Installing depthai==$ver using $(python -V)"
+
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel=$(ls bindings/python/wheelhouse/audited/*.whl)
+
+          # Install wheel
+          python -m pip install -U pip
+          python -m pip install --force-reinstall $wheel
+
+          EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
+        if: success()
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-      - name: Upload the combined wheels as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: audited-wheels-combined-macos-${{ matrix.os }}
-          path: bindings/python/wheelhouse/audited/*
 
   # This job builds wheels for x86_64 arch
   build-linux-x86_64:
@@ -487,17 +510,43 @@ jobs:
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
           python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+      - name: Upload combined wheels as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-combined-linux-x86_64
+          path: bindings/python/wheelhouse/audited/*
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Install combined wheel and run a smoke-test
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          set -euo pipefail
+
+          PYBIN="/opt/python/cp310-cp310/bin/python"
+
+          # Resolve the exact dev version (includes commit hash)
+          ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
+          echo "Installing depthai==$ver using $($PYBIN -V)"
+
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel=$(ls bindings/python/wheelhouse/audited/*.whl)
+
+          "$PYBIN" -m ensurepip --upgrade || true
+          "$PYBIN" -m pip install -U pip
+          "$PYBIN" -m pip install --force-reinstall $wheel
+
+          # Smoke test: fail hard on any exception or version mismatch
+          EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
+        if: success()
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-      - name: Upload the combined wheels as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: audited-wheels-combined-linux-x86_64
-          path: bindings/python/wheelhouse/audited/*
 
   # This job builds wheels for ARM64 arch
   build-linux-arm64:
@@ -592,17 +641,43 @@ jobs:
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
           python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+      - name: Upload combined wheels as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-combined-linux-arm64
+          path: bindings/python/wheelhouse/audited/*
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Install combined wheel and run a smoke-test
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          set -euo pipefail
+
+          PYBIN="/opt/python/cp310-cp310/bin/python"
+
+          # Resolve the exact dev version (includes commit hash)
+          ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
+          echo "Installing depthai==$ver using $($PYBIN -V)"
+
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel=$(ls bindings/python/wheelhouse/audited/*.whl)
+
+          # Install combined wheel
+          "$PYBIN" -m ensurepip --upgrade || true
+          "$PYBIN" -m pip install -U pip
+          "$PYBIN" -m pip install --force-reinstall $wheel
+
+          EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
+        if: success()
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-      - name: Upload the combined wheels as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: audited-wheels-combined-linux-arm64
-          path: bindings/python/wheelhouse/audited/*
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
@@ -627,18 +702,44 @@ jobs:
           mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
           python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --log_level=debug
+      - name: Upload combined wheels as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-combined-windows-x86_64
+          path: bindings/python/wheelhouse/audited/*
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install combined wheel and run a smoke-test
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        shell: pwsh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          $env:PYTHONIOENCODING = 'utf-8'
+          $ErrorActionPreference = "Stop"  # Fail on any error
+
+          # Resolve the exact dev version (includes commit hash)
+          $ver = python -c "import os,sys,pathlib; sys.path.insert(0,str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))"
+          Write-Host "Installing depthai==$ver using:"; python -VV
+
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl).Name
+
+          # Install combined wheel
+          python -m pip install -U pip
+          python -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
+
+          # Smoke test (no heredoc; YAML-safe). Fail on import error or version mismatch.
+          $env:EXPECTED_VERSION = $ver
+          python bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
+        if: success()
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
-      - name: Upload the combined wheels as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: audited-wheels-combined-windows-x86_64
-          path: bindings/python/wheelhouse/audited/*
-
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     # needs: [pytest, build-linux-armhf, build-windows-x86_64, build-macos-x86_64, build-macos-arm64, build-linux-x86_64, build-linux-arm64]
