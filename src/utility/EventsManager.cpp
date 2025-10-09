@@ -24,6 +24,10 @@ void addToFileData(std::vector<std::shared_ptr<FileData>>& container, Args&&... 
     container.emplace_back(std::make_shared<T>(std::forward<Args>(args)...));
 }
 
+void FileGroup::clearFiles() {
+    fileData.clear();
+}
+
 void FileGroup::addFile(std::string data, std::string fileName, std::string mimeType) {
     addToFileData<dai::utility::FileData>(fileData, std::move(data), std::move(fileName), std::move(mimeType));
 }

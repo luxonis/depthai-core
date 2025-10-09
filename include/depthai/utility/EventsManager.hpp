@@ -56,6 +56,7 @@ class FileData {
 
 class FileGroup {
    public:
+    void clearFiles();
     void addFile(std::string data, std::string fileName, std::string mimeType);
     void addFile(std::string filePath, std::string fileName);
     void addFile(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);

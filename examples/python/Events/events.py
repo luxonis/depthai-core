@@ -12,6 +12,7 @@ with dai.Pipeline() as pipeline:
     eventMan = dai.EventsManager()
     eventMan.setToken("")
     eventMan.setLogResponse(False)
+    fileGroup = dai.FileGroup()
 
     cameraNode = pipeline.create(dai.node.Camera).build()
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
@@ -77,7 +78,7 @@ with dai.Pipeline() as pipeline:
         if len(borderDetections.detections) > 0:
             fileName = f"ImageDetection_{counter}"
 
-            fileGroup = dai.FileGroup()
+            fileGroup.clearFiles();
             fileGroup.addImageDetectionsPair(inRgb, borderDetections, fileName)
             eventMan.sendSnap("ImageDetection", ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1", "key_2" : "value_2"}, "", fileGroup)
 

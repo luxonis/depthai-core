@@ -23,6 +23,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai::utility;
     py::class_<FileGroup, std::shared_ptr<utility::FileGroup>>(m, "FileGroup")
         .def(py::init<>())
+        .def("clearFiles", &FileGroup::clearFiles, DOC(dai, utility, FileGroup, clearFiles))
         .def("addFile",
             static_cast<void (FileGroup::*)(std::string, std::string, std::string)>(&FileGroup::addFile),
             py::arg("data"),

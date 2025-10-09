@@ -20,6 +20,7 @@ int main() {
     auto eventsManager = std::make_shared<dai::utility::EventsManager>();
     eventsManager->setToken("");
     eventsManager->setLogResponse(false);
+    auto fileGroup = std::make_shared<dai::utility::FileGroup>();
 
     auto camRgb = pipeline.create<dai::node::Camera>()->build();
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
@@ -84,7 +85,7 @@ int main() {
             std::stringstream ss;
             ss << fileName << counter;
             
-            std::shared_ptr<dai::utility::FileGroup> fileGroup = std::make_shared<dai::utility::FileGroup>();
+            fileGroup->clearFiles();
             fileGroup->addImageDetectionsPair(inRgb, borderDetections, ss.str());
             eventsManager->sendSnap("ImageDetection", {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}}, "", fileGroup);
 
