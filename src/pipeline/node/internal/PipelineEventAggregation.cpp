@@ -129,7 +129,7 @@ class NodeEventAggregation {
             ongoingEvent = std::nullopt;
 
             return true;
-        } else {
+        } else if(event.interval == PipelineEvent::Interval::START) {
             if(ongoingEvent.has_value()) {
                 // TODO: add ability to wait for multiple events (nn hailo threaded processing time - events with custom ids for tracking)
                 logger->warn("Ongoing event (seq {}) not finished before new one (seq {}) started. Event source: {}, node {}",
@@ -138,12 +138,10 @@ class NodeEventAggregation {
                              ongoingEvent->source,
                              event.nodeId);
             }
-            if(event.interval == PipelineEvent::Interval::START) {
-                // Start event
-                ongoingEvent = event;
-            }
-            return false;
+            // Start event
+            ongoingEvent = event;
         }
+        return false;
     }
 
     inline bool updatePingBuffers(PipelineEvent& event) {

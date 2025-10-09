@@ -46,16 +46,14 @@ void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::st
     if(blacklist(type, source)) return;
 
     auto& event = events[makeKey(type, source)];
-    if(event.ongoing) {
-        throw std::runtime_error("Event with name " + source + " is already ongoing");
-    }
     event.event.setTimestamp(std::chrono::steady_clock::now());
     event.event.tsDevice = event.event.ts;
     ++event.event.sequenceNum;
     event.event.nodeId = nodeId;
     event.event.queueSize = std::move(queueSize);
     event.event.interval = PipelineEvent::Interval::START;
-    // type and source are already set
+    event.event.type = type;
+    event.event.source = source;
     event.ongoing = true;
 
     if(out) {
@@ -88,7 +86,8 @@ void PipelineEventDispatcher::endEvent(PipelineEvent::Type type, const std::stri
     event.event.nodeId = nodeId;
     event.event.queueSize = std::move(queueSize);
     event.event.interval = PipelineEvent::Interval::END;
-    // type and source are already set
+    event.event.type = type;
+    event.event.source = source;
     event.ongoing = false;
 
     if(out) {
@@ -122,7 +121,8 @@ void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::str
     ++event.event.sequenceNum;
     event.event.nodeId = nodeId;
     event.event.interval = PipelineEvent::Interval::NONE;
-    // type and source are already set
+    event.event.type = type;
+    event.event.source = source;
 
     if(out) {
         out->send(std::make_shared<dai::PipelineEvent>(event.event));
@@ -148,7 +148,8 @@ void PipelineEventDispatcher::pingInputEvent(const std::string& source, std::opt
     eventCopy.nodeId = nodeId;
     eventCopy.queueSize = std::move(queueSize);
     eventCopy.interval = PipelineEvent::Interval::NONE;
-    // type and source are already set
+    eventCopy.type = PipelineEvent::Type::INPUT;
+    eventCopy.source = source;
 
     if(out) {
         out->send(std::make_shared<dai::PipelineEvent>(eventCopy));
