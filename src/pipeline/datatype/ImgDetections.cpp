@@ -6,10 +6,6 @@
 
 namespace dai {
 
-void ImgDetections::addDetection(const ImgDetection& detection) {
-    detections.push_back(detection);
-}
-
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 ProtoSerializable::SchemaPair ImgDetections::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));

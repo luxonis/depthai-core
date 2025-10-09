@@ -69,13 +69,15 @@ with dai.Pipeline() as pipeline:
             cv2.imshow("rgb", frame)
 
         # Suppose we are only interested in the detections with confidence between 50% and 60%
-        borderDetections = dai.ImgDetections()
+        borderDetectionsList = []
         for detection in inDet.detections:
             if detection.confidence > 0.5 and detection.confidence < 0.6:
-                borderDetections.addDetection(detection)
+                borderDetectionsList.append(detection)
         
         # Are there any border detections
-        if len(borderDetections.detections) > 0:
+        if len(borderDetectionsList) > 0:
+            borderDetections = dai.ImgDetections()
+            borderDetections.detections = borderDetectionsList
             fileName = f"ImageDetection_{counter}"
 
             fileGroup.clearFiles();
