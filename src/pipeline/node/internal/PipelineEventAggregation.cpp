@@ -132,11 +132,11 @@ class NodeEventAggregation {
         } else if(event.interval == PipelineEvent::Interval::START) {
             if(ongoingEvent.has_value()) {
                 // TODO: add ability to wait for multiple events (nn hailo threaded processing time - events with custom ids for tracking)
-                logger->warn("Ongoing event (seq {}) not finished before new one (seq {}) started. Event source: {}, node {}",
-                             ongoingEvent->sequenceNum,
-                             event.sequenceNum,
-                             ongoingEvent->source,
-                             event.nodeId);
+                // logger->warn("Ongoing event (seq {}) not finished before new one (seq {}) started. Event source: {}, node {}",
+                //              ongoingEvent->sequenceNum,
+                //              event.sequenceNum,
+                //              ongoingEvent->source,
+                //              event.nodeId);
             }
             // Start event
             ongoingEvent = event;
@@ -211,11 +211,11 @@ class NodeEventAggregation {
 
             return true;
         } else if(ongoingEvent.has_value()) {
-            logger->warn("Ongoing main loop event (seq {}) not finished before new one (seq {}) started. Event source: {}, node {}",
-                         ongoingEvent->sequenceNum,
-                         event.sequenceNum,
-                         ongoingEvent->source,
-                         event.nodeId);
+            // logger->warn("Ongoing main loop event (seq {}) not finished before new one (seq {}) started. Event source: {}, node {}",
+            //              ongoingEvent->sequenceNum,
+            //              event.sequenceNum,
+            //              ongoingEvent->source,
+            //              event.nodeId);
         }
         // Start event
         ongoingEvent = event;
