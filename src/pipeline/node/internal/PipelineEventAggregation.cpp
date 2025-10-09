@@ -459,41 +459,44 @@ void PipelineEventAggregation::run() {
             outState->setTimestamp(std::chrono::steady_clock::now());
             outState->tsDevice = outState->ts;
 
-            for(auto it = outState->nodeStates.begin(); it != outState->nodeStates.end();) {
-                auto nodeConfig = std::find_if(
-                    currentConfig->nodes.begin(), currentConfig->nodes.end(), [&](const NodeEventAggregationConfig& cfg) { return cfg.nodeId == it->first; });
-                if(nodeConfig == currentConfig->nodes.end()) {
-                    it = outState->nodeStates.erase(it);
-                } else {
-                    if(nodeConfig->inputs.has_value()) {
-                        auto inputStates = it->second.inputStates;
-                        it->second.inputStates.clear();
-                        for(const auto& inputName : *nodeConfig->inputs) {
-                            if(inputStates.find(inputName) != inputStates.end()) {
-                                it->second.inputStates[inputName] = inputStates[inputName];
+            if(!currentConfig->nodes.empty()) {
+                for(auto it = outState->nodeStates.begin(); it != outState->nodeStates.end();) {
+                    auto nodeConfig = std::find_if(currentConfig->nodes.begin(), currentConfig->nodes.end(), [&](const NodeEventAggregationConfig& cfg) {
+                        return cfg.nodeId == it->first;
+                    });
+                    if(nodeConfig == currentConfig->nodes.end()) {
+                        it = outState->nodeStates.erase(it);
+                    } else {
+                        if(nodeConfig->inputs.has_value()) {
+                            auto inputStates = it->second.inputStates;
+                            it->second.inputStates.clear();
+                            for(const auto& inputName : *nodeConfig->inputs) {
+                                if(inputStates.find(inputName) != inputStates.end()) {
+                                    it->second.inputStates[inputName] = inputStates[inputName];
+                                }
                             }
                         }
-                    }
-                    if(nodeConfig->outputs.has_value()) {
-                        auto outputStates = it->second.outputStates;
-                        it->second.outputStates.clear();
-                        for(const auto& outputName : *nodeConfig->outputs) {
-                            if(outputStates.find(outputName) != outputStates.end()) {
-                                it->second.outputStates[outputName] = outputStates[outputName];
+                        if(nodeConfig->outputs.has_value()) {
+                            auto outputStates = it->second.outputStates;
+                            it->second.outputStates.clear();
+                            for(const auto& outputName : *nodeConfig->outputs) {
+                                if(outputStates.find(outputName) != outputStates.end()) {
+                                    it->second.outputStates[outputName] = outputStates[outputName];
+                                }
                             }
                         }
-                    }
-                    if(nodeConfig->others.has_value()) {
-                        auto otherTimings = it->second.otherTimings;
-                        it->second.otherTimings.clear();
-                        for(const auto& otherName : *nodeConfig->others) {
-                            if(otherTimings.find(otherName) != otherTimings.end()) {
-                                it->second.otherTimings[otherName] = otherTimings[otherName];
+                        if(nodeConfig->others.has_value()) {
+                            auto otherTimings = it->second.otherTimings;
+                            it->second.otherTimings.clear();
+                            for(const auto& otherName : *nodeConfig->others) {
+                                if(otherTimings.find(otherName) != otherTimings.end()) {
+                                    it->second.otherTimings[otherName] = otherTimings[otherName];
+                                }
                             }
                         }
+                        if(!nodeConfig->events) it->second.events.clear();
+                        ++it;
                     }
-                    if(!nodeConfig->events) it->second.events.clear();
-                    ++it;
                 }
             }
             if(gotConfig || (currentConfig.has_value() && currentConfig->repeat && updated)) out.send(outState);
