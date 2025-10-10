@@ -41,10 +41,11 @@ void PipelineEventDispatcher::setNodeId(int64_t id) {
     nodeId = id;
 }
 void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
-    // TODO add mutex
     if(!sendEvents) return;
     checkNodeId();
     if(blacklist(type, source)) return;
+
+    std::lock_guard<std::mutex> lock(mutex);
 
     auto& event = events[makeKey(type, source)];
     event.event.setTimestamp(std::chrono::steady_clock::now());
@@ -71,10 +72,11 @@ void PipelineEventDispatcher::startCustomEvent(const std::string& source) {
     startEvent(PipelineEvent::Type::CUSTOM, source, std::nullopt);
 }
 void PipelineEventDispatcher::endEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
-    // TODO add mutex
     if(!sendEvents) return;
     checkNodeId();
     if(blacklist(type, source)) return;
+
+    std::lock_guard<std::mutex> lock(mutex);
 
     auto now = std::chrono::steady_clock::now();
 
@@ -108,10 +110,11 @@ void PipelineEventDispatcher::endCustomEvent(const std::string& source) {
     endEvent(PipelineEvent::Type::CUSTOM, source, std::nullopt);
 }
 void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::string& source) {
-    // TODO add mutex
     if(!sendEvents) return;
     checkNodeId();
     if(blacklist(type, source)) return;
+
+    std::lock_guard<std::mutex> lock(mutex);
 
     auto now = std::chrono::steady_clock::now();
 
@@ -136,6 +139,8 @@ void PipelineEventDispatcher::pingTrackedEvent(PipelineEvent::Type type, const s
     checkNodeId();
     if(blacklist(type, source)) return;
 
+    std::lock_guard<std::mutex> lock(mutex);
+
     auto now = std::chrono::steady_clock::now();
 
     auto event = std::make_shared<dai::PipelineEvent>();
@@ -158,10 +163,11 @@ void PipelineEventDispatcher::pingCustomEvent(const std::string& source) {
     pingEvent(PipelineEvent::Type::CUSTOM, source);
 }
 void PipelineEventDispatcher::pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize) {
-    // TODO add mutex
     if(!sendEvents) return;
     checkNodeId();
     if(blacklist(PipelineEvent::Type::INPUT, source)) return;
+
+    std::lock_guard<std::mutex> lock(mutex);
 
     auto now = std::chrono::steady_clock::now();
 

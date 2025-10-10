@@ -25,6 +25,8 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
     void checkNodeId();
 
     uint32_t sequenceNum = 0;
+    
+    std::mutex mutex;
 
    public:
     PipelineEventDispatcher() = delete;
