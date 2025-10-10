@@ -62,6 +62,16 @@ void FileGroup::addImageDetectionsPair(std::string fileName, const std::shared_p
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
 }
 
+void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& nnData) {
+    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
+    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+}
+
+void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& nnData) {
+    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
+    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+}
+
 
 FileData::FileData(std::string data, std::string fileName, std::string mimeType)
     : mimeType(std::move(mimeType)),

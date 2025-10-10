@@ -69,6 +69,12 @@ class FileGroup {
     void addImageDetectionsPair(std::string fileName,
                                 const std::shared_ptr<EncodedFrame>& encodedFrame, 
                                 const std::shared_ptr<ImgDetections>& imgDetections);
+    void addImageNNDataPair(std::string fileName,
+                            const std::shared_ptr<ImgFrame>& imgFrame, 
+                            const std::shared_ptr<NNData>& imgDetections); 
+    void addImageNNDataPair(std::string fileName,
+                            const std::shared_ptr<EncodedFrame>& encodedFrame, 
+                            const std::shared_ptr<NNData>& imgDetections);
 
    private:
     std::vector<std::shared_ptr<FileData>> fileData;
