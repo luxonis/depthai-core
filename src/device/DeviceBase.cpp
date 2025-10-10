@@ -536,8 +536,9 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
+    auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
     bool shouldGetCrashDump = false;
-    if(!dumpOnly) {
+    if(!dumpOnly && timeout > 0) {
         pimpl->logger.debug("Device about to be closed...");
         try {
             if(hasCrashDump()) {
@@ -586,7 +587,6 @@ void DeviceBase::closeImpl() {
     pimpl->rpcClient = nullptr;
 
     if(!dumpOnly) {
-        auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
         // Get crash dump if needed
         if(shouldGetCrashDump && timeout > 0) {
             pimpl->logger.debug("Getting crash dump...");
