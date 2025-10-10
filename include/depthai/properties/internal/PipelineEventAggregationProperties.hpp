@@ -10,8 +10,9 @@ namespace dai {
 struct PipelineEventAggregationProperties : PropertiesSerializable<Properties, PipelineEventAggregationProperties> {
     uint32_t aggregationWindowSize = 100;
     uint32_t eventBatchSize = 50; 
+    uint32_t eventWaitWindow = 16;
 };
 
-DEPTHAI_SERIALIZE_EXT(PipelineEventAggregationProperties, aggregationWindowSize, eventBatchSize);
+DEPTHAI_SERIALIZE_EXT(PipelineEventAggregationProperties, aggregationWindowSize, eventBatchSize, eventWaitWindow);
 
 }  // namespace dai

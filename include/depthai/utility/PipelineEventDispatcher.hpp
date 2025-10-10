@@ -43,6 +43,7 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
     void endOutputEvent(const std::string& source) override;
     void endCustomEvent(const std::string& source) override;
     void pingEvent(PipelineEvent::Type type, const std::string& source) override;
+    void pingTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) override;
     void pingMainLoopEvent() override;
     void pingCustomEvent(const std::string& source) override;
     void pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize = std::nullopt) override;

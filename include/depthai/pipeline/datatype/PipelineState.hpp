@@ -12,8 +12,7 @@ class NodeState {
     struct DurationEvent {
         PipelineEvent startEvent;
         uint64_t durationUs;
-        float fps;
-        DEPTHAI_SERIALIZE(DurationEvent, startEvent, durationUs, fps);
+        DEPTHAI_SERIALIZE(DurationEvent, startEvent, durationUs);
     };
     struct TimingStats {
         uint64_t minMicros = -1;

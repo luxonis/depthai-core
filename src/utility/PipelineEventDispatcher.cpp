@@ -131,6 +131,26 @@ void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::str
         out->send(std::make_shared<dai::PipelineEvent>(event.event));
     }
 }
+void PipelineEventDispatcher::pingTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) {
+    if(!sendEvents) return;
+    checkNodeId();
+    if(blacklist(type, source)) return;
+
+    auto now = std::chrono::steady_clock::now();
+
+    auto event = std::make_shared<dai::PipelineEvent>();
+    event->setTimestamp(now);
+    event->tsDevice = event->ts;
+    event->sequenceNum = sequenceNum;
+    event->nodeId = nodeId;
+    event->interval = PipelineEvent::Interval::NONE;
+    event->type = type;
+    event->source = source;
+
+    if(out) {
+        out->send(event);
+    }
+}
 void PipelineEventDispatcher::pingMainLoopEvent() {
     pingEvent(PipelineEvent::Type::LOOP, "_mainLoop");
 }

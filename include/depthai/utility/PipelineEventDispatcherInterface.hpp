@@ -37,6 +37,8 @@ class PipelineEventDispatcherInterface {
     virtual void endOutputEvent(const std::string& source) = 0;
     virtual void endCustomEvent(const std::string& source) = 0;
     virtual void pingEvent(PipelineEvent::Type type, const std::string& source) = 0;
+    // The sequenceNum should be unique. Duration is calculated from sequenceNum - 1 to sequenceNum
+    virtual void pingTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) = 0;
     virtual void pingMainLoopEvent() = 0;
     virtual void pingCustomEvent(const std::string& source) = 0;
     virtual void pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize = std::nullopt) = 0;
