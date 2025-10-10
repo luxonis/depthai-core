@@ -20,17 +20,14 @@ class SystemInformationS3 : public Buffer {
      * Construct SystemInformation message.
      */
     SystemInformationS3() = default;
-    virtual ~SystemInformationS3() = default;
+    virtual ~SystemInformationS3();
 
     MemoryInfo ddrMemoryUsage;
     CpuUsage cpuAvgUsage;
     std::vector<CpuUsage> cpuUsages;
     ChipTemperatureS3 chipTemperature;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::SystemInformationS3;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DEPTHAI_SERIALIZE(SystemInformationS3, ddrMemoryUsage, cpuAvgUsage, cpuUsages, chipTemperature);
 };

@@ -31,15 +31,12 @@ class TransformData : public Buffer {
     TransformData(const rtabmap::Transform& transformRTABMap);
     rtabmap::Transform getRTABMapTransform() const;
 #endif
-    virtual ~TransformData() = default;
+    virtual ~TransformData();
 
     /// Transform
     Transform transform;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::TransformData;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     Point3d getTranslation() const;
     Point3d getRotationEuler() const;

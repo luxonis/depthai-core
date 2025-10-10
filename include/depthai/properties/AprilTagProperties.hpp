@@ -17,6 +17,8 @@ struct AprilTagProperties : PropertiesSerializable<Properties, AprilTagPropertie
 
     /// How many threads to use for AprilTag detection
     int numThreads = 1;
+
+    ~AprilTagProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(AprilTagProperties, initialConfig, inputConfigSync);

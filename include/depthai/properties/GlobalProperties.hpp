@@ -68,6 +68,8 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
      * Units are bytes.
      */
     uint32_t sippDmaBufferSize = SIPP_DMA_BUFFER_DEFAULT_SIZE;
+
+    ~GlobalProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(GlobalProperties,

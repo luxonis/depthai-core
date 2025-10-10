@@ -21,12 +21,9 @@ class ADatatype {
 #else
     explicit ADatatype() : data{std::make_shared<VectorMemory>(std::vector<uint8_t>())} {};
 #endif
-    virtual ~ADatatype() = default;
 
-    virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
-        (void)metadata;
-        datatype = DatatypeEnum::ADatatype;
-    };
+    virtual ~ADatatype();
+    virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const;
 
     std::shared_ptr<Memory> data;
 };

@@ -45,7 +45,7 @@ jobs:
       - name: Configure project
         run: |
           git config --global --add safe.directory $(pwd)
-          cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON -DCMAKE_BUILD_TYPE=MinSizeRel
+          cmake -S. -Bbuild -DDEPTHAI_BUILD_ZOO_HELPER=ON -DDEPTHAI_ENABLE_CURL=ON -DCMAKE_BUILD_TYPE=MinSizeRel -DDEPTHAI_ENABLE_LIBUSB=OFF -DDEPTHAI_ENABLE_APRIL_TAG=OFF -DDEPTHAI_ENABLE_PROTOBUF=OFF -DDEPTHAI_ENABLE_MP4V2=OFF -DDEPTHAI_OPENCV_SUPPORT=OFF -DDEPTHAI_XTENSOR_SUPPORT=OFF -DDEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=OFF
 
       - name: Build zoo_helper
         run: cmake --build build --target zoo_helper --parallel 4
@@ -101,7 +101,7 @@ jobs:
       - name: Configure project
         run: |
           git config --global --add safe.directory $(pwd)
-          cmake -S . -B build -DDEPTHAI_ENABLE_CURL=ON -DCMAKE_BUILD_TYPE=MinSizeRel
+          cmake -S. -Bbuild -DDEPTHAI_BUILD_ZOO_HELPER=ON -DDEPTHAI_ENABLE_CURL=ON -DCMAKE_BUILD_TYPE=MinSizeRel -DDEPTHAI_ENABLE_LIBUSB=OFF -DDEPTHAI_ENABLE_APRIL_TAG=OFF -DDEPTHAI_ENABLE_PROTOBUF=OFF -DDEPTHAI_ENABLE_MP4V2=OFF -DDEPTHAI_OPENCV_SUPPORT=OFF -DDEPTHAI_XTENSOR_SUPPORT=OFF -DDEPTHAI_DYNAMIC_CALIBRATION_SUPPORT=OFF
 
       - name: Build zoo_helper
         run: cmake --build build --target zoo_helper --parallel 4
