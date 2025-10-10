@@ -1,11 +1,10 @@
 #include <chrono>
 #include <iostream>
-#include <string>
 #include <opencv2/opencv.hpp>
+#include <string>
 
 #include "depthai/depthai.hpp"
 #include "depthai/utility/EventsManager.hpp"
-
 
 // Helper function to normalize frame coordinates
 cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai::Point2f& bottomRight) {
@@ -34,14 +33,13 @@ int main() {
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
     auto qDet = detectionNetwork->out.createOutputQueue();
 
-
     pipeline.start();
 
-    int counter = 0; 
+    int counter = 0;
     while(pipeline.isRunning()) {
         auto inRgb = qRgb->get<dai::ImgFrame>();
         auto inDet = qDet->get<dai::ImgDetections>();
-        if (inRgb == nullptr || inDet == nullptr) {
+        if(inRgb == nullptr || inDet == nullptr) {
             continue;
         }
 
@@ -53,7 +51,8 @@ int main() {
                 auto bbox = frameNorm(frame, dai::Point2f(detection.xmin, detection.ymin), dai::Point2f(detection.xmax, detection.ymax));
 
                 // Draw label
-                cv::putText(frame, labelMap.value()[detection.label], cv::Point(bbox.x + 10, bbox.y + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, cv::Scalar(255,255,255));
+                cv::putText(
+                    frame, labelMap.value()[detection.label], cv::Point(bbox.x + 10, bbox.y + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, cv::Scalar(255, 255, 255));
 
                 // Draw confidence
                 cv::putText(frame,
@@ -61,7 +60,7 @@ int main() {
                             cv::Point(bbox.x + 10, bbox.y + 40),
                             cv::FONT_HERSHEY_TRIPLEX,
                             0.5,
-                            cv::Scalar(255,255,255));
+                            cv::Scalar(255, 255, 255));
 
                 // Draw rectangle
                 cv::rectangle(frame, bbox, cv::Scalar(255, 0, 0), 2);
@@ -73,18 +72,18 @@ int main() {
 
         // Suppose we are only interested in the detections with confidence between 50% and 60%
         auto borderDetections = std::make_shared<dai::ImgDetections>();
-        for (const auto& detection : inDet->detections) {
-            if (detection.confidence > 0.5f && detection.confidence < 0.6f) {
+        for(const auto& detection : inDet->detections) {
+            if(detection.confidence > 0.5f && detection.confidence < 0.6f) {
                 borderDetections->detections.emplace_back(detection);
             }
         }
-        
+
         // Are there any border detections
-        if (borderDetections->detections.size() > 0) {
+        if(borderDetections->detections.size() > 0) {
             std::string fileName = "ImageDetection_";
             std::stringstream ss;
             ss << fileName << counter;
-            
+
             fileGroup->clearFiles();
             fileGroup->addImageDetectionsPair(ss.str(), inRgb, borderDetections);
             eventsManager->sendSnap("ImageDetection", fileGroup, {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}}, "");
@@ -96,7 +95,6 @@ int main() {
             break;
         }
     }
-
 
     return EXIT_SUCCESS;
 }

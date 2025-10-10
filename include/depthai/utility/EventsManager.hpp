@@ -2,19 +2,19 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <future>
 
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
-#include "depthai/pipeline/datatype/ImgDetections.hpp"
 
 namespace dai {
 namespace proto {
@@ -63,18 +63,10 @@ class FileGroup {
     void addFile(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame);
     void addFile(std::string fileName, const std::shared_ptr<NNData>& nnData);
     void addFile(std::string fileName, const std::shared_ptr<ImgDetections>& imgDetections);
-    void addImageDetectionsPair(std::string fileName,
-                                const std::shared_ptr<ImgFrame>& imgFrame, 
-                                const std::shared_ptr<ImgDetections>& imgDetections); 
-    void addImageDetectionsPair(std::string fileName,
-                                const std::shared_ptr<EncodedFrame>& encodedFrame, 
-                                const std::shared_ptr<ImgDetections>& imgDetections);
-    void addImageNNDataPair(std::string fileName,
-                            const std::shared_ptr<ImgFrame>& imgFrame, 
-                            const std::shared_ptr<NNData>& imgDetections); 
-    void addImageNNDataPair(std::string fileName,
-                            const std::shared_ptr<EncodedFrame>& encodedFrame, 
-                            const std::shared_ptr<NNData>& imgDetections);
+    void addImageDetectionsPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<ImgDetections>& imgDetections);
+    void addImageDetectionsPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<ImgDetections>& imgDetections);
+    void addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& imgDetections);
+    void addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& imgDetections);
 
    private:
     std::vector<std::shared_ptr<FileData>> fileData;
@@ -117,7 +109,7 @@ class EventsManager {
     /**
      * Send a snap to the events service, with an ImgFrame and ImgDetections pair as files
      * @param name Name of the snap
-     * @param fileName File name used to create FileData 
+     * @param fileName File name used to create FileData
      * @param imgFrame ImgFrame to send
      * @param imgDetections ImgDetections to sent
      * @param tags List of tags to send
