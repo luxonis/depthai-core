@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/DetectionParser.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <memory>
 
 #include "common/DetectionNetworkType.hpp"
@@ -141,7 +143,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     }
 }
 
-YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& name) {
+YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string& name) {
     // convert string to lower case
     std::string subtypeStr = name;
     std::transform(subtypeStr.begin(), subtypeStr.end(), subtypeStr.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -156,7 +158,7 @@ YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& name) {
     return YoloDecodingFamily::TLBR;  // default
 }
 
-bool decodeSegmentationResolver(const std::vector<std::string>& outputs) {
+bool DetectionParser::decodeSegmentationResolver(const std::vector<std::string>& outputs) {
     for(const auto& output : outputs) {
         if(output.find("_masks") != std::string::npos) {
             return true;
