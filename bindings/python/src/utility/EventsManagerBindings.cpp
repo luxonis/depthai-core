@@ -67,8 +67,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
 
     py::class_<EventsManager>(m, "EventsManager")
         .def(py::init<>())
-        .def(py::init<std::string, bool, float>(), py::arg("url"), py::arg("uploadCachedOnStart") = false, py::arg("publishInterval") = 10.0)
-        .def("setUrl", &EventsManager::setUrl, py::arg("url"), DOC(dai, utility, EventsManager, setUrl))
+        .def(py::init<bool, float>(), py::arg("uploadCachedOnStart") = false, py::arg("publishInterval") = 10.0)
         .def("setToken", &EventsManager::setToken, py::arg("token"), DOC(dai, utility, EventsManager, setToken))
         .def("setLogResponse", &EventsManager::setLogResponse, py::arg("logResponse"), DOC(dai, utility, EventsManager, setLogResponse))
         .def("setVerifySsl", &EventsManager::setVerifySsl, py::arg("verifySsl"), DOC(dai, utility, EventsManager, setVerifySsl))

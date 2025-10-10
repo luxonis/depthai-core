@@ -225,9 +225,8 @@ std::string FileData::calculateSHA256Checksum(const std::string& data) {
 }
 
 
-EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float publishInterval)
-    : url(std::move(url)),
-      publishInterval(publishInterval),
+EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
+    : publishInterval(publishInterval),
       logResponse(false),
       verifySsl(true),
       cacheDir("/internal/private"),
@@ -238,8 +237,8 @@ EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float pu
     auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
     sourceAppId = appId == "" ? containerId : appId;
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
+    url = utility::getEnvAs<std::string>("DEPTHAI_HUB_URL", "https://events.cloud.luxonis.com");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
-    dai::Logging::getInstance().logger.set_level(spdlog::level::info); // TO DO: Remove
     // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
         auto nextTime = std::chrono::steady_clock::now();
@@ -292,7 +291,6 @@ bool EventsManager::fetchConfigurationLimits() {
     logger::info("Fetching configuration limits");
     auto header = cpr::Header();
     header["Authorization"] = "Bearer " + token;
-    header["Content-Type"] = "application/x-protobuf";
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
     // Might change to infinte retrying in the future
     for (int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread; i++) {
@@ -658,7 +656,7 @@ bool EventsManager::sendSnap(const std::string& name,
     // Create a FileGroup and send a snap containing it
     auto fileGroup = std::make_shared<dai::utility::FileGroup>();
     fileGroup->addImageDetectionsPair(fileName, imgFrame, imgDetections);
-    
+
     return sendSnap(name, fileGroup, tags, extras, deviceSerialNo);
 }
 
@@ -801,10 +799,6 @@ bool EventsManager::checkForCachedData() {
 
 void EventsManager::setCacheDir(const std::string& cacheDir) {
     this->cacheDir = cacheDir;
-}
-
-void EventsManager::setUrl(const std::string& url) {
-    this->url = url;
 }
 
 void EventsManager::setToken(const std::string& token) {

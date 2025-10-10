@@ -83,7 +83,7 @@ class FileGroup {
 
 class EventsManager {
    public:
-    explicit EventsManager(std::string url = "https://events.cloud.luxonis.com", bool uploadCachedOnStart = false, float publishInterval = 10.0);
+    explicit EventsManager(bool uploadCachedOnStart = false, float publishInterval = 10.0);
     ~EventsManager();
 
     /**
@@ -132,12 +132,6 @@ class EventsManager {
                   const std::vector<std::string>& tags = {},
                   const std::unordered_map<std::string, std::string>& extras = {},
                   const std::string& deviceSerialNo = "");
-    /**
-     * Set the URL of the events service. By default, the URL is set to https://events.cloud.luxonis.com
-     * @param url URL of the events service
-     * @return void
-     */
-    void setUrl(const std::string& url);
     /**
      * Set the token for the events service. By default, the token is taken from the environment variable DEPTHAI_HUB_API_KEY
      * @param token Token for the events service
