@@ -273,6 +273,7 @@ set(TARGET_CORE_SOURCES
     src/device/CalibrationHandler.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp
+    src/pipeline/PipelineStateApi.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/MessageQueue.cpp
     src/pipeline/Node.cpp
