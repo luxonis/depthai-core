@@ -197,6 +197,7 @@ class SearchDevice:
         else:
             rows = []
             for info in self.infos:
+                if "X_LINK_GATE" == info.state.name: continue # Skip RVC4 devices
                 rows.append([info.getDeviceId(), info.name, deviceStateTxt(info.state)])
             self.window['table'].update(values=rows)
 
@@ -287,74 +288,6 @@ def factoryReset(device: dai.DeviceInfo, type: dai.DeviceBootloader.Type):
         PrintException()
         sg.Popup(f'{ex}')
 
-def connectAndStartStreaming(dev):
-
-    with dai.Device(dev) as d:
-        # Create pipeline
-        pipeline = dai.Pipeline()
-        # OpenCV
-        if USE_OPENCV:
-            camRgb = pipeline.create(dai.node.ColorCamera)
-            camRgb.setIspScale(1,3)
-            videnc = pipeline.create(dai.node.VideoEncoder)
-            videnc.setDefaultProfilePreset(camRgb.getFps(), videnc.Properties.Profile.MJPEG)
-            xout = pipeline.create(dai.node.XLinkOut)
-            xout.setStreamName("mjpeg")
-            camRgb.video.link(videnc.input)
-            videnc.bitstream.link(xout.input)
-
-            while not d.isClosed():
-                mjpeg = d.getOutputQueue('mjpeg').get()
-                frame = cv2.imdecode(mjpeg.getData(), cv2.IMREAD_UNCHANGED)
-                cv2.imshow('Color Camera', frame)
-                if cv2.waitKey(1) == ord('q'):
-                    cv2.destroyWindow('Color Camera')
-                    break
-        else:
-            camRgb = pipeline.create(dai.node.ColorCamera)
-            camRgb.setIspScale(1,3)
-            firstSensor = d.getConnectedCameraFeatures()[0]
-            camRgb.setPreviewSize(firstSensor.width // 3, firstSensor.height // 3)
-            camRgb.setColorOrder(camRgb.Properties.ColorOrder.RGB)
-
-            xout = pipeline.create(dai.node.XLinkOut)
-            xout.input.setQueueSize(2)
-            xout.input.setBlocking(False)
-            xout.setStreamName("color")
-            camRgb.preview.link(xout.input)
-
-            # Start pipeline
-            d.startPipeline(pipeline)
-
-            frame = d.getOutputQueue('color', 2, False).get()
-            width, height = frame.getWidth(), frame.getHeight()
-
-            layout = [[sg.Graph(
-                canvas_size=(width, height),
-                graph_bottom_left=(0, 0),
-                graph_top_right=(width, height),
-                key="-GRAPH-",
-                change_submits=True,  # mouse click events
-                background_color='lightblue',
-                drag_submits=True), ],]
-            window = sg.Window("Color Camera Stream", layout, finalize=True)
-            graph = window["-GRAPH-"]
-
-            while not d.isClosed():
-                frame = d.getOutputQueue('color').get()
-                with io.BytesIO() as output:
-                    rgb = frame.getFrame()
-                    image = Image.fromarray(rgb, "RGB")
-                    image.save(output, format="GIF")
-                    contents = output.getvalue()
-                    graph.draw_image(data=contents, location=(0, height))
-
-                event, values = window.read(timeout=1)
-                if event == sg.WIN_CLOSED:
-                    break
-            window.close()
-
-
 def flashFromFile(file, bl: dai.DeviceBootloader):
     try:
         if str(file)[-3:] == "dap":
@@ -418,6 +351,16 @@ aboutDeviceLayout = [
         sg.Text("Device state:", size=(30, 1), font=('Arial', 10, 'bold'), text_color="black")
     ],
     [sg.Text("-name-", key="devName", size=(30, 1)), sg.VSeparator(), sg.Text("-state-", key="devState", size=(30, 1))],
+    [
+        sg.Text("Bootloader type:", size=(30, 1), font=('Arial', 10, 'bold'), text_color="black"),
+        sg.VSeparator(),
+        sg.Text("IP Assignment:", size=(30, 1), font=('Arial', 10, 'bold'), text_color="black")
+    ],
+    [
+        sg.Text("-bootloader type-", key="bootloaderType", size=(30, 1)),
+        sg.VSeparator(),
+        sg.Text("-assignment-", key="ipassignment", size=(30, 1))
+    ],
     [
         sg.Text("Version of newest bootloader:", size=(30, 1), font=('Arial', 10, 'bold'), text_color="black"),
         sg.VSeparator(),
@@ -520,11 +463,6 @@ appLayout = [
                   button_color='#FFA500'),
         sg.Button("Remove application", size=(15, 2), font=('Arial', 10, 'bold'), disabled=True,
                 button_color='#FFA500'),
-    ],
-    [sg.HSeparator()],
-    [
-        sg.Button("Open device streaming application", size=(15, 2), font=('Arial', 10, 'bold'), disabled=True,
-                  button_color='#FFA500', key="startStreamingApp"),
     ],
 ]
 
@@ -756,12 +694,6 @@ class DeviceManager:
                 self.window.Element('mask').update('')
                 self.window.Element('gateway').update('')
 
-            elif event == "startStreamingApp":
-                # We will reconnect, as we need to set allowFlashingBootloader to True
-                self.closeDevice()
-                connectAndStartStreaming(self.device)
-                self.resetGui()
-                self.getDevices()
 
         self.window.close()
 
@@ -837,7 +769,14 @@ class DeviceManager:
                 self.window.Element('currBoot').update('Not Flashed')
             else:
                 self.window.Element('currBoot').update(self.bl.getVersion())
-
+            if deviceStateTxt(device.state) == "UNBOOTED":
+                self.window.Element('bootloaderType').update('N/A')
+            else:
+                self.window.Element('bootloaderType').update(str(self.bl.getType()).split('.')[1])
+            if self.isPoE():
+                self.window.Element('ipassignment').update("Static" if conf.isStaticIPV4() else "Dynamic")
+            else:
+                self.window.Element('ipassignment').update("N/A")
             self.window.Element('version').update(dai.__version__)
             self.window.Element('commit').update(dai.__commit__)
             self.window.Element('devState').update(deviceStateTxt(self.device.state))
@@ -868,7 +807,6 @@ class DeviceManager:
 
         self.window['Flash application'].update(disabled=False)
         self.window['Remove application'].update(disabled=False)
-        self.window['startStreamingApp'].update(disabled=False)
 
         self.window['recoveryMode'].update(disabled=False)
 
@@ -892,7 +830,6 @@ class DeviceManager:
         self.window['Factory reset'].update(disabled=True)
         self.window['Flash application'].update(disabled=True)
         self.window['Remove application'].update(disabled=True)
-        self.window['startStreamingApp'].update(disabled=True)
 
         self.window['recoveryMode'].update(disabled=True)
 
@@ -927,6 +864,7 @@ class DeviceManager:
             else:
                 for deviceInfo in deviceInfos:
                     deviceTxt = deviceInfo.getDeviceId()
+                    if "X_LINK_GATE" == deviceInfo.state.name: continue # Skip RVC4 devices
                     listedDevices.append(deviceTxt)
                     self.devices[deviceTxt] = deviceInfo
 

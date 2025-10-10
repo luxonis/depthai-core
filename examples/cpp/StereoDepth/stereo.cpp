@@ -10,8 +10,8 @@ int main() {
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
-    auto monoLeftOut = monoLeft->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
-    auto monoRightOut = monoRight->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
+    auto monoLeftOut = monoLeft->requestFullResolutionOutput();
+    auto monoRightOut = monoRight->requestFullResolutionOutput();
 
     monoLeftOut->link(stereo->left);
     monoRightOut->link(stereo->right);

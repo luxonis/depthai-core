@@ -130,6 +130,11 @@ add_subdirectory(AprilTags)
 add_subdirectory(Benchmark)
 add_subdirectory(Camera)
 add_subdirectory(DetectionNetwork)
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_subdirectory(DynamicCalibration)
+endif()
+
 add_subdirectory(Events)
 add_subdirectory(FeatureTracker)
 add_subdirectory(ObjectTracker)

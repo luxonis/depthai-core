@@ -169,6 +169,14 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     )
 endif()
 
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    list(APPEND SOURCE_LIST
+        src/pipeline/node/DynamicCalibrationBindings.cpp
+        src/pipeline/datatype/DynamicCalibrationResultsBindings.cpp
+        src/pipeline/datatype/DynamicCalibrationControlBindings.cpp
+    )
+endif()
+
 # Add files for python module
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     add_library(${TARGET_NAME} ${SOURCE_LIST})
