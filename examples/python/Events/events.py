@@ -82,7 +82,7 @@ with dai.Pipeline() as pipeline:
 
             fileGroup.clearFiles();
             fileGroup.addImageDetectionsPair(fileName, inRgb, borderDetections)
-            eventMan.sendSnap("ImageDetection", ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1", "key_2" : "value_2"}, "", fileGroup)
+            eventMan.sendSnap("ImageDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1", "key_2" : "value_2"}, "")
 
             counter += 1
 

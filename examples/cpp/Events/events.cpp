@@ -87,7 +87,7 @@ int main() {
             
             fileGroup->clearFiles();
             fileGroup->addImageDetectionsPair(ss.str(), inRgb, borderDetections);
-            eventsManager->sendSnap("ImageDetection", {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}}, "", fileGroup);
+            eventsManager->sendSnap("ImageDetection", fileGroup, {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}}, "");
 
             counter++;
         }

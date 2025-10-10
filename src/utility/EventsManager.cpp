@@ -603,10 +603,10 @@ bool EventsManager::sendEvent(const std::string& name,
 }
 
 bool EventsManager::sendSnap(const std::string& name,
+                             const std::shared_ptr<FileGroup> fileGroup,
                              const std::vector<std::string>& tags,
                              const std::unordered_map<std::string, std::string>& extras,
-                             const std::string& deviceSerialNo,
-                             const std::shared_ptr<FileGroup> fileGroup) {
+                             const std::string& deviceSerialNo) {
     // Prepare snapData
     auto snapData = std::make_unique<SnapData>();
     snapData->fileGroup = fileGroup;
@@ -646,6 +646,20 @@ bool EventsManager::sendSnap(const std::string& name,
     std::lock_guard<std::mutex> lock(snapBufferMutex);
     snapBuffer.push_back(std::move(snapData));
     return true;
+}
+
+bool EventsManager::sendSnap(const std::string& name,
+                             const std::string& fileName,
+                             const std::shared_ptr<ImgFrame> imgFrame,
+                             const std::shared_ptr<ImgDetections> imgDetections,
+                             const std::vector<std::string>& tags,
+                             const std::unordered_map<std::string, std::string>& extras,
+                             const std::string& deviceSerialNo) {
+    // Create a FileGroup and send a snap containing it
+    auto fileGroup = std::make_shared<dai::utility::FileGroup>();
+    fileGroup->addImageDetectionsPair(fileName, imgFrame, imgDetections);
+    
+    return sendSnap(name, fileGroup, tags, extras, deviceSerialNo);
 }
 
 bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {

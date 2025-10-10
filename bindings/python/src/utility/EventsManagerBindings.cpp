@@ -87,12 +87,25 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("associateFiles") = std::vector<std::string>(),
              DOC(dai, utility, EventsManager, sendEvent))
         .def("sendSnap",
-             &EventsManager::sendSnap,
+             static_cast<bool (EventsManager::*)(const std::string&, const std::shared_ptr<FileGroup>, const std::vector<std::string>&, 
+                                                 const std::unordered_map<std::string, std::string>&, const std::string&)>(&EventsManager::sendSnap),
              py::arg("name"),
+             py::arg("fileGroup") = std::shared_ptr<FileGroup>(),
              py::arg("tags") = std::vector<std::string>(),
              py::arg("extras") = std::unordered_map<std::string, std::string>(),
              py::arg("deviceSerialNo") = "",
-             py::arg("fileGroup") = std::shared_ptr<FileGroup>(),
+             DOC(dai, utility, EventsManager, sendSnap))
+        .def("sendSnap",
+             static_cast<bool (EventsManager::*)(const std::string&, const std::string&, const std::shared_ptr<ImgFrame>, 
+                                                 const std::shared_ptr<ImgDetections>, const std::vector<std::string>&, 
+                                                 const std::unordered_map<std::string, std::string>&, const std::string&)>(&EventsManager::sendSnap),
+             py::arg("name"),
+             py::arg("fileName"), 
+             py::arg("imgFrame"), 
+             py::arg("imgDetections"), 
+             py::arg("tags") = std::vector<std::string>(),
+             py::arg("extras") = std::unordered_map<std::string, std::string>(),
+             py::arg("deviceSerialNo") = "",
              DOC(dai, utility, EventsManager, sendSnap));
 #endif
 }

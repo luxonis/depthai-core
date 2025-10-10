@@ -103,18 +103,35 @@ class EventsManager {
     /**
      * Send a snap to the events service. Snaps should be used for sending images and other files.
      * @param name Name of the snap
+     * @param fileGroup FileGroup containing FileData objects to send
      * @param tags List of tags to send
      * @param extras Extra data to send
      * @param deviceSerialNo Device serial number
-     * @param fileGroup FileGroup containing FileData objects to send
      * @return bool
      */
     bool sendSnap(const std::string& name,
+                  const std::shared_ptr<FileGroup> fileGroup,
                   const std::vector<std::string>& tags = {},
                   const std::unordered_map<std::string, std::string>& extras = {},
-                  const std::string& deviceSerialNo = "",
-                  const std::shared_ptr<FileGroup> fileGroup = nullptr);
-
+                  const std::string& deviceSerialNo = "");
+    /**
+     * Send a snap to the events service, with an ImgFrame and ImgDetections pair as files
+     * @param name Name of the snap
+     * @param fileName File name used to create FileData 
+     * @param imgFrame ImgFrame to send
+     * @param imgDetections ImgDetections to sent
+     * @param tags List of tags to send
+     * @param extras Extra data to send
+     * @param deviceSerialNo Device serial number
+     * @return bool
+     */
+    bool sendSnap(const std::string& name,
+                  const std::string& fileName,
+                  const std::shared_ptr<ImgFrame> imgFrame,
+                  const std::shared_ptr<ImgDetections> imgDetections,
+                  const std::vector<std::string>& tags = {},
+                  const std::unordered_map<std::string, std::string>& extras = {},
+                  const std::string& deviceSerialNo = "");
     /**
      * Set the URL of the events service. By default, the URL is set to https://events.cloud.luxonis.com
      * @param url URL of the events service
