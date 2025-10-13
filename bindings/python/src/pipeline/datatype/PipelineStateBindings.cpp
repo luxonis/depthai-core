@@ -52,7 +52,7 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
     durationEvent.def(py::init<>())
         .def("__repr__", &NodeState::DurationEvent::str)
         .def_readwrite("startEvent", &NodeState::DurationEvent::startEvent, DOC(dai, NodeState, DurationEvent, startEvent))
-        .def_readwrite("durationUs", &NodeState::DurationEvent::durationUs, DOC(dai, NodeState, TimingStats, durationUs));
+        .def_readwrite("durationUs", &NodeState::DurationEvent::durationUs, DOC(dai, NodeState, DurationEvent, durationUs));
 
     nodeStateTimingStats.def(py::init<>())
         .def("__repr__", &NodeState::TimingStats::str)
@@ -106,7 +106,7 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &PipelineState::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &PipelineState::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &PipelineState::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &PipelineState::setTimestamp, DOC(dai, PipelineState, setTimestamp))
-        .def("setTimestampDevice", &PipelineState::setTimestampDevice, DOC(dai, PipelineState, setTimestampDevice))
-        .def("setSequenceNum", &PipelineState::setSequenceNum, DOC(dai, PipelineState, setSequenceNum));
+        .def("setTimestamp", &PipelineState::setTimestamp, DOC(dai, Buffer, setTimestamp))
+        .def("setTimestampDevice", &PipelineState::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
+        .def("setSequenceNum", &PipelineState::setSequenceNum, DOC(dai, Buffer, setSequenceNum));
 }
