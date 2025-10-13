@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-#include "common/DetectionNetworkType.hpp"y
+#include "common/DetectionNetworkType.hpp"
 #include "common/ModelType.hpp"
 #include "common/YoloDecodingFamily.hpp"
 #include "common/YoloSubtype.hpp"
@@ -87,6 +87,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             numYoloHeads++;
         }
     }
+    std::cout << fmt::format("Found {} YOLO heads in NNArchive\n", numYoloHeads);
 
     DAI_CHECK_V(numYoloHeads == 1, "NNArchive should contain exactly one YOLO head. Found {} YOLO heads.", numYoloHeads);  // no support for multi-head YOLO
     const auto head = (*model.heads)[yoloHeadIndex];
