@@ -62,12 +62,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-14, windows-latest, ubuntu-latest]
         cmake: ['3.10.x', '3.29.x'] # Older version (Ubuntu 18.04) and newest
         exclude:
           - os: windows-latest
             cmake: '3.10.x'
-          - os: macos-latest # Skip the old cmake on latest macos - doesn't handle ARM64 aarch correctly
+          - os: macos-14 # Skip the old cmake on latest macos - doesn't handle ARM64 aarch correctly
             cmake: '3.10.x'
 
     steps:
@@ -94,7 +94,7 @@ jobs:
         cmake-version: ${{ matrix.cmake }}
 
     - name: Install dependencies
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-14'
       run: |
         brew install opencv
 
@@ -133,7 +133,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-14, windows-latest, ubuntu-latest]
         build-type: [Debug, Release]
         shared: [true, false]
         platform: [x64]
@@ -165,7 +165,7 @@ jobs:
         submodules: 'recursive'
 
     - name: Install dependencies
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-14'
       run: |
         brew install opencv
 
