@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
         auto role = device->getM8FsyncRole();
 
-        if (role == dai::M8FsyncRole::MASTER_WITH_OUTPUT) {
+        if (role == dai::M8FsyncRole::MASTER) {
             master_pipelines.push_back(pipeline);
         } else if (role == dai::M8FsyncRole::SLAVE) {
             slave_pipelines.push_back(pipeline);
