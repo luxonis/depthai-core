@@ -225,8 +225,9 @@ EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
       logResponse(false),
       verifySsl(true),
       cacheDir("/internal/private"),
-      cacheIfCannotSend(false),
+      cacheOnExit(false),
       stopUploadThread(false),
+      configurationLimitsFetched(false),
       warningStorageBytes(52428800) {
     auto appId = utility::getEnvAs<std::string>("OAKAGENT_APP_ID", "");
     auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
@@ -236,10 +237,13 @@ EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
-        auto nextTime = std::chrono::steady_clock::now();
+        // Fetch configuration limits when starting the new thread
+        configurationLimitsFetched = fetchConfigurationLimits();
+        auto currentTime = std::chrono::steady_clock::now();
+        auto nextTime = currentTime + std::chrono::hours(1);
         while(!stopUploadThread) {
             // Hourly check for fetching configuration and limits
-            auto currentTime = std::chrono::steady_clock::now();
+            currentTime = std::chrono::steady_clock::now();
             if(currentTime >= nextTime) {
                 fetchConfigurationLimits();
                 nextTime += std::chrono::hours(1);
@@ -272,6 +276,11 @@ EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock, std::chrono::seconds(static_cast<int>(this->publishInterval)), [this]() { return stopUploadThread.load(); });
         }
+
+        // Cache events from eventBuffer
+        if(cacheOnExit) {
+            cacheEvents();
+        }
     });
     if(uploadCachedOnStart) {
         uploadCachedData();
@@ -291,8 +300,8 @@ bool EventsManager::fetchConfigurationLimits() {
     auto header = cpr::Header();
     header["Authorization"] = "Bearer " + token;
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
-    // Might change to infinte retrying in the future
-    for(int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread; i++) {
+    int retryAttempt = 0;
+    while(!stopUploadThread) {
         cpr::Response response = cpr::Get(
             cpr::Url{requestUrl},
             cpr::Header{header},
@@ -313,9 +322,9 @@ bool EventsManager::fetchConfigurationLimits() {
             logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
 
             // Apply exponential backoff
-            auto factor = std::pow(uploadRetryPolicy.factor, i + 1);
+            auto factor = std::pow(uploadRetryPolicy.factor, ++retryAttempt);
             std::chrono::milliseconds duration = std::chrono::milliseconds(uploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
-            logger::info("Retrying to fetch configuration limits, (attempt {}/{}) in {} ms", i + 1, uploadRetryPolicy.maxAttempts, duration.count());
+            logger::info("Retrying to fetch configuration limits, (attempt {} in {} ms)", retryAttempt, duration.count());
 
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock, duration, [this]() { return stopUploadThread.load(); });
@@ -565,6 +574,12 @@ bool EventsManager::sendEvent(const std::string& name,
                               const std::unordered_map<std::string, std::string>& extras,
                               const std::string& deviceSerialNo,
                               const std::vector<std::string>& associateFiles) {
+    // Check if the configuration and limits have already been fetched
+    if(!configurationLimitsFetched) {
+        logger::error("The configuration and limits have not been successfully fetched, event not send");
+        return false;
+    }
+
     // Create an event
     auto event = std::make_unique<proto::event::Event>();
     event->set_created_at(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -599,6 +614,12 @@ bool EventsManager::sendSnap(const std::string& name,
                              const std::vector<std::string>& tags,
                              const std::unordered_map<std::string, std::string>& extras,
                              const std::string& deviceSerialNo) {
+    // Check if the configuration and limits have already been fetched
+    if(!configurationLimitsFetched) {
+        logger::error("The configuration and limits have not been successfully fetched, snap not send");
+        return false;
+    }
+
     // Prepare snapData
     auto snapData = std::make_unique<SnapData>();
     snapData->fileGroup = fileGroup;
@@ -717,76 +738,44 @@ bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
 }
 
 void EventsManager::cacheEvents() {
-    /*
+    // Create a unique directory and save the protobuf message for each event in the eventBuffer
     logger::info("Caching events");
-    // for each event, create a unique directory, save protobuf message and associated files
-    // TO DO: Make this using associate file field of proto::event::Event
-    std::lock_guard<std::mutex> lock(uploadMutex);
-    for(auto& eventM : eventBuffer) {
-        auto& event = eventM->event;
-        auto& data = eventM->data;
-        std::filesystem::path p(cacheDir);
-        p = p / ("event_" + event->name() + "_" + event->nonce());
-        std::string eventDir = p.string();
+    std::lock_guard<std::mutex> lock(eventBufferMutex);
+    for(const auto& event : eventBuffer) {
+        std::filesystem::path path(cacheDir);
+        path = path / ("event_" + event->name() + "_" + std::to_string(event->created_at()));
+        std::string eventDir = path.string();
         logger::info("Caching event to {}", eventDir);
         if(!std::filesystem::exists(cacheDir)) {
             std::filesystem::create_directories(cacheDir);
         }
         std::filesystem::create_directory(eventDir);
-        std::ofstream eventFile(p / "event.pb", std::ios::binary);
+        std::ofstream eventFile(path / "event.pb", std::ios::binary);
         event->SerializeToOstream(&eventFile);
-        for(auto& file : data) {
-            file->toFile(eventDir);
-        }
     }
     eventBuffer.clear();
-    */
 }
 
 void EventsManager::uploadCachedData() {
-    /*
-    // iterate over all directories in cacheDir, read event.pb and associated files, and send them
+    // Iterate over the directories in cacheDir, read event.pb files and add events to eventBuffer
     logger::info("Uploading cached data");
-    if(!checkConnection()) {
-        return;
-    }
-    // check if cacheDir exists
     if(!std::filesystem::exists(cacheDir)) {
         logger::warn("Cache directory does not exist");
         return;
     }
     for(const auto& entry : std::filesystem::directory_iterator(cacheDir)) {
-        if(entry.is_directory()) {
-            const auto& eventDir = entry.path();
-            std::ifstream eventFile(eventDir / "event.pb", std::ios::binary);
-            proto::event::Event event;
-            event.ParseFromIstream(&eventFile);
-            std::vector<std::shared_ptr<EventData>> data;
-            for(const auto& fileEntry : std::filesystem::directory_iterator(eventDir)) {
-                if(fileEntry.is_regular_file() && fileEntry.path() != eventDir / "event.pb") {
-                    auto fileData = std::make_shared<EventData>(fileEntry.path().string());
-                    data.push_back(fileData);
-                }
-            }
-            std::lock_guard<std::mutex> lock(eventBufferMutex);
-            auto eventPtr = std::make_shared<proto::event::Event>(event);
-            auto eventMessage = std::make_shared<EventMessage>();
-            eventMessage->event = eventPtr;
-            eventMessage->data = data;
-            eventMessage->cachePath = eventDir.string();
-            eventBuffer.push_back(eventMessage);
+        if(!entry.is_directory()) {
+            continue;
         }
-    }
-    */
-}
+        const auto& eventDir = entry.path();
+        std::ifstream eventFile(eventDir / "event.pb", std::ios::binary);
+        auto event = std::make_shared<proto::event::Event>();
+        event->ParseFromIstream(&eventFile);
 
-bool EventsManager::checkForCachedData() {
-    if(!std::filesystem::exists(cacheDir)) {
-        logger::warn("Cache directory does not exist");
-        return false;
+        // Add event to eventBuffer
+        std::lock_guard<std::mutex> lock(eventBufferMutex);
+        eventBuffer.push_back(std::move(event));
     }
-    return std::any_of(
-        std::filesystem::directory_iterator(cacheDir), std::filesystem::directory_iterator(), [](const auto& entry) { return entry.is_directory(); });
 }
 
 void EventsManager::setCacheDir(const std::string& cacheDir) {
@@ -805,8 +794,8 @@ void EventsManager::setVerifySsl(bool verifySsl) {
     this->verifySsl = verifySsl;
 }
 
-void EventsManager::setCacheIfCannotSend(bool cacheIfCannotSend) {
-    this->cacheIfCannotSend = cacheIfCannotSend;
+void EventsManager::setCacheOnExit(bool cacheOnExit) {
+    this->cacheOnExit = cacheOnExit;
 }
 
 }  // namespace utility

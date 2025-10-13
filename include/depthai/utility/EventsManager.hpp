@@ -142,27 +142,23 @@ class EventsManager {
      * @return void
      */
     void setVerifySsl(bool verifySsl);
-
-    // TO DO: Should be private?
     /**
      * Upload cached data to the events service
      * @return void
      */
     void uploadCachedData();
-
     /**
      * Set the cache directory for storing cached data. By default, the cache directory is set to /internal/private
      * @param cacheDir Cache directory
      * @return void
      */
     void setCacheDir(const std::string& cacheDir);
-
     /**
-     * Set whether to cache data if it cannot be sent. By default, cacheIfCannotSend is set to false
-     * @param cacheIfCannotSend bool
+     * Set whether to cache data when exiting the application. By default, cacheOnExit is set to false
+     * @param cacheOnExit bool
      * @return void
      */
-    void setCacheIfCannotSend(bool cacheIfCannotSend);
+    void setCacheOnExit(bool cacheOnExit);
 
    private:
     struct SnapData {
@@ -205,13 +201,9 @@ class EventsManager {
      */
     bool validateEvent(const proto::event::Event& inputEvent);
     /**
-     * // TO DO: Add description
+     * Cache events from the eventBuffer to the filesystem
      */
     void cacheEvents();
-    /**
-     * // TO DO: Add description
-     */
-    bool checkForCachedData();
 
     std::string token;
     std::string url;
@@ -221,7 +213,7 @@ class EventsManager {
     bool logResponse;
     bool verifySsl;
     std::string cacheDir;
-    bool cacheIfCannotSend;
+    bool cacheOnExit;
     std::unique_ptr<std::thread> uploadThread;
     std::deque<std::shared_ptr<proto::event::Event>> eventBuffer;
     std::deque<std::shared_ptr<SnapData>> snapBuffer;
@@ -230,6 +222,7 @@ class EventsManager {
     std::mutex snapBufferMutex;
     std::mutex stopThreadConditionMutex;
     std::atomic<bool> stopUploadThread;
+    std::atomic<bool> configurationLimitsFetched;
     std::condition_variable eventBufferCondition;
 
     uint64_t maxFileSizeBytes;

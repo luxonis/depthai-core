@@ -90,10 +90,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setLogResponse", &EventsManager::setLogResponse, py::arg("logResponse"), DOC(dai, utility, EventsManager, setLogResponse))
         .def("setVerifySsl", &EventsManager::setVerifySsl, py::arg("verifySsl"), DOC(dai, utility, EventsManager, setVerifySsl))
         .def("setCacheDir", &EventsManager::setCacheDir, py::arg("cacheDir"), DOC(dai, utility, EventsManager, setCacheDir))
-        .def("setCacheIfCannotSend",
-             &EventsManager::setCacheIfCannotSend,
-             py::arg("cacheIfCannotUpload"),
-             DOC(dai, utility, EventsManager, setCacheIfCannotSend))
+        .def("setCacheOnExit", &EventsManager::setCacheOnExit, py::arg("cacheOnExit"), DOC(dai, utility, EventsManager, setCacheOnExit))
         .def("uploadCachedData", &EventsManager::uploadCachedData, DOC(dai, utility, EventsManager, uploadCachedData))
         .def("sendEvent",
              &EventsManager::sendEvent,
