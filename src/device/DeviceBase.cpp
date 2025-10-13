@@ -1716,7 +1716,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
 
     if (!success) {
-        throw std::runtime_error("Device not ready: " + errorMsg);
+        throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
     }
 
     // Build and start the pipeline
@@ -1724,7 +1724,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     if(success) {
         pimpl->rpcCall("startPipeline");
     } else {
-        throw std::runtime_error(errorMsg);
+        throw std::runtime_error("Device " + getDeviceId() + " error: " + errorMsg);
         return false;
     }
 
