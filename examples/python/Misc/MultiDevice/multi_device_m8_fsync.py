@@ -99,7 +99,7 @@ with contextlib.ExitStack() as stack:
         socket = device.getConnectedCameras()[1]
         pipeline, out_q = createPipeline(pipeline, socket)
         role = device.getM8FsyncRole()
-        if (role == dai.M8FsyncRole.MASTER_WITH_OUTPUT):
+        if (role == dai.M8FsyncRole.MASTER):
             master_pipelines.append(pipeline)
         elif (role == dai.M8FsyncRole.SLAVE):
             slave_pipelines.append(pipeline)
