@@ -2,14 +2,17 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <memory>
+#include <vector>
 
-#include "common/DetectionNetworkType.hpp"
+#include "common/DetectionNetworkType.hpp"y
 #include "common/ModelType.hpp"
 #include "common/YoloDecodingFamily.hpp"
 #include "common/YoloSubtype.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
+#include "nn_archive/v1/Head.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "spdlog/fmt/fmt.h"
 
@@ -74,10 +77,19 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     const auto model = configV1.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
-    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
-    DAI_CHECK_V(
-        (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
-    const auto head = (*model.heads)[0];
+
+    std::vector<nn_archive::v1::Head> modelHeads = *model.heads;
+    int yoloHeadIndex = 0;
+    int numYoloHeads = 0;
+    for(size_t i = 0; i < modelHeads.size(); i++) {
+        if(modelHeads[i].parser == "YOLO" || modelHeads[i].parser == "YOLOExtendedParser") {
+            yoloHeadIndex = static_cast<int>(i);
+            numYoloHeads++;
+        }
+    }
+
+    DAI_CHECK_V(numYoloHeads == 1, "NNArchive should contain exactly one YOLO head. Found {} YOLO heads.", numYoloHeads);  // no support for multi-head YOLO
+    const auto head = (*model.heads)[yoloHeadIndex];
 
     if(head.parser == "YOLO" || head.parser == "YOLOExtendedParser") {
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
