@@ -20,7 +20,7 @@ with dai.Pipeline() as pipeline:
 
     # Create output queues
     qRgb = detectionNetwork.passthrough.createOutputQueue()
-    qDet = detectionNetwork.out.createOutputQueue() 
+    qDet = detectionNetwork.out.createOutputQueue()
 
     pipeline.start()
 
@@ -30,7 +30,7 @@ with dai.Pipeline() as pipeline:
         normVals = np.full(len(bbox), frame.shape[0])
         normVals[::2] = frame.shape[1]
         return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
-    
+
 
     counter = 0
     while pipeline.isRunning():
@@ -73,14 +73,14 @@ with dai.Pipeline() as pipeline:
         for detection in inDet.detections:
             if detection.confidence > 0.5 and detection.confidence < 0.6:
                 borderDetectionsList.append(detection)
-        
+
         # Are there any border detections
         if len(borderDetectionsList) > 0:
             borderDetections = dai.ImgDetections()
             borderDetections.detections = borderDetectionsList
             fileName = f"ImageDetection_{counter}"
 
-            fileGroup.clearFiles();
+            fileGroup.clearFiles()
             fileGroup.addImageDetectionsPair(fileName, inRgb, borderDetections)
             eventMan.sendSnap("ImageDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1", "key_2" : "value_2"}, "")
 

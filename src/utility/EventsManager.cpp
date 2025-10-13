@@ -17,7 +17,6 @@
 namespace dai {
 
 namespace utility {
-using std::move;
 
 template <typename T, typename... Args>
 void addToFileData(std::vector<std::shared_ptr<FileData>>& container, Args&&... args) {
