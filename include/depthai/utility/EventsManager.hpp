@@ -225,7 +225,7 @@ class EventsManager {
     std::unique_ptr<std::thread> uploadThread;
     std::deque<std::shared_ptr<proto::event::Event>> eventBuffer;
     std::deque<std::shared_ptr<SnapData>> snapBuffer;
-    std::vector<std::future<void>> uploadFileBatchFutures;
+    std::deque<std::future<void>> uploadFileBatchFutures;
     std::mutex eventBufferMutex;
     std::mutex snapBufferMutex;
     std::mutex stopThreadConditionMutex;

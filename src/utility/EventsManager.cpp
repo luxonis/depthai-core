@@ -256,9 +256,18 @@ EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
                 snapBatch.insert(snapBatch.end(), std::make_move_iterator(snapBuffer.begin()), std::make_move_iterator(snapBuffer.begin() + size));
                 snapBuffer.erase(snapBuffer.begin(), snapBuffer.begin() + size);
             }
-            // TO DO: Handle the clearing of these futures
+
             uploadFileBatchFutures.emplace_back(
                 std::async(std::launch::async, [&, inputSnapBatch = std::move(snapBatch)]() mutable { uploadFileBatch(std::move(inputSnapBatch)); }));
+            // Clean up finished futures
+            for(auto iterator = uploadFileBatchFutures.begin(); iterator != uploadFileBatchFutures.end();) {
+                if(iterator->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                    iterator->get();
+                    iterator = uploadFileBatchFutures.erase(iterator);
+                } else {
+                    ++iterator;
+                }
+            }
 
             uploadEventBatch();
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
