@@ -51,12 +51,16 @@ class FileGroup {
    public:
     void addFile(std::string fileName, std::string data, std::string mimeType);
     void addFile(std::string fileName, std::filesystem::path filePath);
-    void addFile(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame);
-    void addFile(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame);
+    void addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgFrame>& imgFrame);
+    void addFile(const std::optional<std::string>& fileName, const std::shared_ptr<EncodedFrame>& encodedFrame);
     // void addFile(std::string fileName, const std::shared_ptr<NNData>& nnData);
-    void addFile(std::string fileName, const std::shared_ptr<ImgDetections>& imgDetections);
-    void addImageDetectionsPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<ImgDetections>& imgDetections);
-    void addImageDetectionsPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<ImgDetections>& imgDetections);
+    void addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgDetections>& imgDetections);
+    void addImageDetectionsPair(const std::optional<std::string>& fileName,
+                                const std::shared_ptr<ImgFrame>& imgFrame,
+                                const std::shared_ptr<ImgDetections>& imgDetections);
+    void addImageDetectionsPair(const std::optional<std::string>& fileName,
+                                const std::shared_ptr<EncodedFrame>& encodedFrame,
+                                const std::shared_ptr<ImgDetections>& imgDetections);
     // void addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& imgDetections);
     // void addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& imgDetections);
 
@@ -110,9 +114,9 @@ class EventsManager {
      * @return bool
      */
     bool sendSnap(const std::string& name,
-                  const std::string& fileName,
+                  const std::optional<std::string>& fileName,
                   const std::shared_ptr<ImgFrame> imgFrame,
-                  const std::shared_ptr<ImgDetections> imgDetections,
+                  const std::optional<std::shared_ptr<ImgDetections>>& imgDetections = std::nullopt,
                   const std::vector<std::string>& tags = {},
                   const std::unordered_map<std::string, std::string>& extras = {},
                   const std::string& deviceSerialNo = "");

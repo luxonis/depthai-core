@@ -33,7 +33,6 @@ int main() {
 
     pipeline.start();
 
-    int counter = 0;
     while(pipeline.isRunning()) {
         if(cv::waitKey(1) == 'q') {
             break;
@@ -74,12 +73,7 @@ int main() {
 
         // Trigger sendSnap()
         if(cv::waitKey(1) == 's') {
-            std::string fileName = "ImageDetection_";
-            std::stringstream ss;
-            ss << fileName << counter;
-
-            eventsManager->sendSnap("ImageDetection", ss.str(), inRgb, inDet, {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}});
-            counter++;
+            eventsManager->sendSnap("ImageDetection", std::nullopt, inRgb, inDet, {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}});
         }
     }
 

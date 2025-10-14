@@ -31,32 +31,39 @@ void FileGroup::addFile(std::string fileName, std::filesystem::path filePath) {
     addToFileData<dai::utility::FileData>(fileData, std::move(filePath), std::move(fileName));
 }
 
-void FileGroup::addFile(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame) {
-    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
+void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgFrame>& imgFrame) {
+    std::string dataFileName = fileName.has_value() ? fileName.value() : "Image";
+    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(dataFileName));
 }
 
-void FileGroup::addFile(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame) {
-    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
+void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<EncodedFrame>& encodedFrame) {
+    std::string dataFileName = fileName.has_value() ? fileName.value() : "Image";
+    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(dataFileName));
 }
 
 // void FileGroup::addFile(std::string fileName, const std::shared_ptr<NNData>& nnData) {
 //     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
 // }
 
-void FileGroup::addFile(std::string fileName, const std::shared_ptr<ImgDetections>& imgDetections) {
-    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
+void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgDetections>& imgDetections) {
+    std::string dataFileName = fileName.has_value() ? fileName.value() : "Detections";
+    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
 
-void FileGroup::addImageDetectionsPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<ImgDetections>& imgDetections) {
-    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
-    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
+void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
+                                       const std::shared_ptr<ImgFrame>& imgFrame,
+                                       const std::shared_ptr<ImgDetections>& imgDetections) {
+    std::string dataFileName = fileName.has_value() ? fileName.value() : "ImageDetection";
+    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(dataFileName));
+    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
 
-void FileGroup::addImageDetectionsPair(std::string fileName,
+void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
                                        const std::shared_ptr<EncodedFrame>& encodedFrame,
                                        const std::shared_ptr<ImgDetections>& imgDetections) {
-    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
-    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
+    std::string dataFileName = fileName.has_value() ? fileName.value() : "ImageDetection";
+    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(dataFileName));
+    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
 
 // void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& nnData) {
@@ -658,15 +665,19 @@ bool EventsManager::sendSnap(const std::string& name,
 }
 
 bool EventsManager::sendSnap(const std::string& name,
-                             const std::string& fileName,
+                             const std::optional<std::string>& fileName,
                              const std::shared_ptr<ImgFrame> imgFrame,
-                             const std::shared_ptr<ImgDetections> imgDetections,
+                             const std::optional<std::shared_ptr<ImgDetections>>& imgDetections,
                              const std::vector<std::string>& tags,
                              const std::unordered_map<std::string, std::string>& extras,
                              const std::string& deviceSerialNo) {
     // Create a FileGroup and send a snap containing it
     auto fileGroup = std::make_shared<dai::utility::FileGroup>();
-    fileGroup->addImageDetectionsPair(fileName, imgFrame, imgDetections);
+    if(imgDetections.has_value()) {
+        fileGroup->addImageDetectionsPair(fileName, imgFrame, imgDetections.value());
+    } else {
+        fileGroup->addFile(fileName, imgFrame);
+    }
 
     return sendSnap(name, fileGroup, tags, extras, deviceSerialNo);
 }

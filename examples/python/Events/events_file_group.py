@@ -84,6 +84,6 @@ with dai.Pipeline() as pipeline:
 
             fileGroup = dai.FileGroup()
             fileGroup.addImageDetectionsPair(fileName, inRgb, borderDetections)
-            eventMan.sendSnap("LowConfidenceDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1", "key_2" : "value_2"}, "")
+            eventMan.sendSnap("LowConfidenceDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"})
 
             counter += 1

@@ -30,7 +30,6 @@ with dai.Pipeline() as pipeline:
         return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
 
 
-    counter = 0
     while pipeline.isRunning():
         if cv2.waitKey(1) == ord("q"):
             pipeline.stop()
@@ -72,6 +71,4 @@ with dai.Pipeline() as pipeline:
 
         # Trigger sendSnap()
         if cv2.waitKey(1) == ord("s"):
-            fileName = f"ImageDetection_{counter}"
-            eventMan.sendSnap("ImageDetection", fileName, inRgb, inDet, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1", "key_2" : "value_2"}, "")
-            counter += 1
+            eventMan.sendSnap("ImageDetection", None, inRgb, inDet, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"})
