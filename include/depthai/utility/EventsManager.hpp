@@ -33,7 +33,7 @@ class FileData {
     explicit FileData(std::filesystem::path filePath, std::string fileName);
     explicit FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
     explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
-    //explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
+    // explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
     explicit FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName);
     bool toFile(const std::string& inputPath);
 
@@ -49,17 +49,16 @@ class FileData {
 
 class FileGroup {
    public:
-    void clearFiles();
     void addFile(std::string fileName, std::string data, std::string mimeType);
     void addFile(std::string fileName, std::filesystem::path filePath);
     void addFile(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame);
     void addFile(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame);
-    //void addFile(std::string fileName, const std::shared_ptr<NNData>& nnData);
+    // void addFile(std::string fileName, const std::shared_ptr<NNData>& nnData);
     void addFile(std::string fileName, const std::shared_ptr<ImgDetections>& imgDetections);
     void addImageDetectionsPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<ImgDetections>& imgDetections);
     void addImageDetectionsPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<ImgDetections>& imgDetections);
-    //void addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& imgDetections);
-    //void addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& imgDetections);
+    // void addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& imgDetections);
+    // void addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& imgDetections);
 
    private:
     std::vector<std::shared_ptr<FileData>> fileData;

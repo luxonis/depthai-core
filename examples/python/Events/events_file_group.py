@@ -70,8 +70,20 @@ with dai.Pipeline() as pipeline:
             # Show the frame
             cv2.imshow("rgb", frame)
 
-        # Trigger sendSnap()
-        if cv2.waitKey(1) == ord("s"):
+        # Suppose we are only interested in the detections with confidence between 50% and 60%
+        borderDetectionsList = []
+        for detection in inDet.detections:
+            if detection.confidence > 0.5 and detection.confidence < 0.6:
+                borderDetectionsList.append(detection)
+
+        # Are there any border detections
+        if len(borderDetectionsList) > 0:
+            borderDetections = dai.ImgDetections()
+            borderDetections.detections = borderDetectionsList
             fileName = f"ImageDetection_{counter}"
-            eventMan.sendSnap("ImageDetection", fileName, inRgb, inDet, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1", "key_2" : "value_2"}, "")
+
+            fileGroup = dai.FileGroup()
+            fileGroup.addImageDetectionsPair(fileName, inRgb, borderDetections)
+            eventMan.sendSnap("LowConfidenceDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1", "key_2" : "value_2"}, "")
+
             counter += 1

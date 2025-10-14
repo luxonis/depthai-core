@@ -23,10 +23,6 @@ void addToFileData(std::vector<std::shared_ptr<FileData>>& container, Args&&... 
     container.emplace_back(std::make_shared<T>(std::forward<Args>(args)...));
 }
 
-void FileGroup::clearFiles() {
-    fileData.clear();
-}
-
 void FileGroup::addFile(std::string fileName, std::string data, std::string mimeType) {
     addToFileData<dai::utility::FileData>(fileData, std::move(data), std::move(fileName), std::move(mimeType));
 }
@@ -43,9 +39,9 @@ void FileGroup::addFile(std::string fileName, const std::shared_ptr<EncodedFrame
     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
 }
 
-//void FileGroup::addFile(std::string fileName, const std::shared_ptr<NNData>& nnData) {
-//    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
-//}
+// void FileGroup::addFile(std::string fileName, const std::shared_ptr<NNData>& nnData) {
+//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+// }
 
 void FileGroup::addFile(std::string fileName, const std::shared_ptr<ImgDetections>& imgDetections) {
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
@@ -63,15 +59,15 @@ void FileGroup::addImageDetectionsPair(std::string fileName,
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
 }
 
-//void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& nnData) {
-//    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
-//    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
-//}
+// void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& nnData) {
+//     addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
+//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+// }
 
-//void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& nnData) {
-//    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
-//    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
-//}
+// void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& nnData) {
+//     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
+//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+// }
 
 std::string calculateSHA256Checksum(const std::string& data) {
     unsigned char digest[SHA256_DIGEST_LENGTH];
@@ -159,15 +155,15 @@ FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::strin
     checksum = calculateSHA256Checksum(data);
 }
 
-//FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
-//    : mimeType("application/octet-stream"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {
-//    // Convert NNData to bytes
-//    std::stringstream ss;
-//    ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
-//    data = ss.str();
-//    size = data.size();
-//    checksum = calculateSHA256Checksum(data);
-//}
+// FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
+//     : mimeType("application/octet-stream"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {
+//     // Convert NNData to bytes
+//     std::stringstream ss;
+//     ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
+//     data = ss.str();
+//     size = data.size();
+//     checksum = calculateSHA256Checksum(data);
+// }
 
 FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName)
     : mimeType("application/x-protobuf; proto=SnapAnnotation"),
@@ -730,7 +726,8 @@ bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
 
     // Associate files
     if(inputEvent.associate_files_size() > EVENT_VALIDATION_MAX_ASSOCIATE_FILES) {
-        logger::error("Invalid associate files: number of associate files {} exceeds {}", inputEvent.associate_files_size(), EVENT_VALIDATION_MAX_ASSOCIATE_FILES);
+        logger::error(
+            "Invalid associate files: number of associate files {} exceeds {}", inputEvent.associate_files_size(), EVENT_VALIDATION_MAX_ASSOCIATE_FILES);
         return false;
     }
 
