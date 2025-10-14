@@ -31,7 +31,7 @@ void FileGroup::addFile(std::string fileName, std::string data, std::string mime
     addToFileData<dai::utility::FileData>(fileData, std::move(data), std::move(fileName), std::move(mimeType));
 }
 
-void FileGroup::addFile(std::string fileName, std::string filePath) {
+void FileGroup::addFile(std::string fileName, std::filesystem::path filePath) {
     addToFileData<dai::utility::FileData>(fileData, std::move(filePath), std::move(fileName));
 }
 
@@ -43,9 +43,9 @@ void FileGroup::addFile(std::string fileName, const std::shared_ptr<EncodedFrame
     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
 }
 
-void FileGroup::addFile(std::string fileName, const std::shared_ptr<NNData>& nnData) {
-    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
-}
+//void FileGroup::addFile(std::string fileName, const std::shared_ptr<NNData>& nnData) {
+//    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+//}
 
 void FileGroup::addFile(std::string fileName, const std::shared_ptr<ImgDetections>& imgDetections) {
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
@@ -63,14 +63,25 @@ void FileGroup::addImageDetectionsPair(std::string fileName,
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(fileName));
 }
 
-void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& nnData) {
-    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
-    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
-}
+//void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& nnData) {
+//    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
+//    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+//}
 
-void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& nnData) {
-    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
-    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+//void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& nnData) {
+//    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
+//    addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+//}
+
+std::string calculateSHA256Checksum(const std::string& data) {
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    SHA256(reinterpret_cast<const unsigned char*>(data.data()), data.size(), digest);
+
+    std::ostringstream oss;
+    for(int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(digest[i]);
+    }
+    return oss.str();
 }
 
 FileData::FileData(std::string data, std::string fileName, std::string mimeType)
@@ -81,7 +92,7 @@ FileData::FileData(std::string data, std::string fileName, std::string mimeType)
       checksum(calculateSHA256Checksum(data)),
       classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {}
 
-FileData::FileData(std::string filePath, std::string fileName) : fileName(std::move(fileName)) {
+FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileName(std::move(fileName)) {
     static const std::unordered_map<std::string, std::string> mimeTypeExtensionMap = {{".html", "text/html"},
                                                                                       {".htm", "text/html"},
                                                                                       {".css", "text/css"},
@@ -96,7 +107,7 @@ FileData::FileData(std::string filePath, std::string fileName) : fileName(std::m
     // Read the data
     std::ifstream fileStream(filePath, std::ios::binary | std::ios::ate);
     if(!fileStream) {
-        logger::error("File: {} doesn't exist", filePath);
+        logger::error("File: {} doesn't exist", filePath.string());
         return;
     }
     std::streamsize fileSize = fileStream.tellg();
@@ -106,7 +117,7 @@ FileData::FileData(std::string filePath, std::string fileName) : fileName(std::m
     size = data.size();
     checksum = calculateSHA256Checksum(data);
     // Determine the mime type
-    auto it = mimeTypeExtensionMap.find(std::filesystem::path(filePath).extension().string());
+    auto it = mimeTypeExtensionMap.find(filePath.extension().string());
     if(it != mimeTypeExtensionMap.end()) {
         mimeType = it->second;
     } else {
@@ -148,15 +159,15 @@ FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::strin
     checksum = calculateSHA256Checksum(data);
 }
 
-FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
-    : mimeType("application/octet-stream"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {
-    // Convert NNData to bytes
-    std::stringstream ss;
-    ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
-    data = ss.str();
-    size = data.size();
-    checksum = calculateSHA256Checksum(data);
-}
+//FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
+//    : mimeType("application/octet-stream"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {
+//    // Convert NNData to bytes
+//    std::stringstream ss;
+//    ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
+//    data = ss.str();
+//    size = data.size();
+//    checksum = calculateSHA256Checksum(data);
+//}
 
 FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName)
     : mimeType("application/x-protobuf; proto=SnapAnnotation"),
@@ -207,17 +218,6 @@ bool FileData::toFile(const std::string& inputPath) {
         return false;
     }
     return true;
-}
-
-std::string FileData::calculateSHA256Checksum(const std::string& data) {
-    unsigned char digest[SHA256_DIGEST_LENGTH];
-    SHA256(reinterpret_cast<const unsigned char*>(data.data()), data.size(), digest);
-
-    std::ostringstream oss;
-    for(int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(digest[i]);
-    }
-    return oss.str();
 }
 
 EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
@@ -682,14 +682,14 @@ bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
         logger::error("Invalid event name: empty string");
         return false;
     }
-    if(name.length() > eventValidationNameLength) {
-        logger::error("Invalid event name: length {} exceeds {}", name.length(), eventValidationNameLength);
+    if(name.length() > EVENT_VALIDATION_NAME_LENGTH) {
+        logger::error("Invalid event name: length {} exceeds {}", name.length(), EVENT_VALIDATION_NAME_LENGTH);
         return false;
     }
 
     // Tags
-    if(inputEvent.tags_size() > eventValidationMaxTags) {
-        logger::error("Invalid event tags: number of tags {} exceeds {}", inputEvent.tags_size(), eventValidationMaxTags);
+    if(inputEvent.tags_size() > EVENT_VALIDATION_MAX_TAGS) {
+        logger::error("Invalid event tags: number of tags {} exceeds {}", inputEvent.tags_size(), EVENT_VALIDATION_MAX_TAGS);
         return false;
     }
     for(int i = 0; i < inputEvent.tags_size(); ++i) {
@@ -698,15 +698,15 @@ bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
             logger::error("Invalid event tags: tag[{}] empty string", i);
             return false;
         }
-        if(tag.length() > 56) {
-            logger::error("Invalid event tags: tag[{}] length {} exceeds {}", i, tag.length(), eventValidationTagLength);
+        if(tag.length() > EVENT_VALIDATION_TAG_LENGTH) {
+            logger::error("Invalid event tags: tag[{}] length {} exceeds {}", i, tag.length(), EVENT_VALIDATION_TAG_LENGTH);
             return false;
         }
     }
 
     // Event extras
-    if(inputEvent.extras_size() > eventValidationMaxExtras) {
-        logger::error("Invalid event extras: number of extras {} exceeds {}", inputEvent.extras_size(), eventValidationMaxExtras);
+    if(inputEvent.extras_size() > EVENT_VALIDATION_MAX_EXTRAS) {
+        logger::error("Invalid event extras: number of extras {} exceeds {}", inputEvent.extras_size(), EVENT_VALIDATION_MAX_EXTRAS);
         return false;
     }
     int index = 0;
@@ -717,20 +717,20 @@ bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
             logger::error("Invalid event extras: extra[{}] key empty string", index);
             return false;
         }
-        if(key.length() > eventValidationExtraKeyLength) {
-            logger::error("Invalid event extras: extra[{}] key length {} exceeds {}", index, key.length(), eventValidationExtraKeyLength);
+        if(key.length() > EVENT_VALIDATION_EXTRA_KEY_LENGTH) {
+            logger::error("Invalid event extras: extra[{}] key length {} exceeds {}", index, key.length(), EVENT_VALIDATION_EXTRA_KEY_LENGTH);
             return false;
         }
-        if(value.length() > eventValidationExtraValueLength) {
-            logger::error("Invalid event extras: extra[{}] value length {} exceeds {}", index, value.length(), eventValidationExtraValueLength);
+        if(value.length() > EVENT_VALIDATION_EXTRA_VALUE_LENGTH) {
+            logger::error("Invalid event extras: extra[{}] value length {} exceeds {}", index, value.length(), EVENT_VALIDATION_EXTRA_VALUE_LENGTH);
             return false;
         }
         index++;
     }
 
     // Associate files
-    if(inputEvent.associate_files_size() > eventValidationMaxAssociateFiles) {
-        logger::error("Invalid associate files: number of associate files {} exceeds {}", inputEvent.associate_files_size(), eventValidationMaxAssociateFiles);
+    if(inputEvent.associate_files_size() > EVENT_VALIDATION_MAX_ASSOCIATE_FILES) {
+        logger::error("Invalid associate files: number of associate files {} exceeds {}", inputEvent.associate_files_size(), EVENT_VALIDATION_MAX_ASSOCIATE_FILES);
         return false;
     }
 

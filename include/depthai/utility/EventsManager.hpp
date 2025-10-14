@@ -30,21 +30,14 @@ namespace utility {
 class FileData {
    public:
     FileData(std::string data, std::string fileName, std::string mimeType);
-    explicit FileData(std::string filePath, std::string fileName);
+    explicit FileData(std::filesystem::path filePath, std::string fileName);
     explicit FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
     explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
-    explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
+    //explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
     explicit FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName);
     bool toFile(const std::string& inputPath);
 
    private:
-    /**
-     * Calculate SHA256 checksum for the given data
-     * @param data Data for checksum calculation
-     * @return checksum string
-     */
-    std::string calculateSHA256Checksum(const std::string& data);
-
     std::string mimeType;
     std::string fileName;
     std::string data;
@@ -58,15 +51,15 @@ class FileGroup {
    public:
     void clearFiles();
     void addFile(std::string fileName, std::string data, std::string mimeType);
-    void addFile(std::string fileName, std::string filePath);
+    void addFile(std::string fileName, std::filesystem::path filePath);
     void addFile(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame);
     void addFile(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame);
-    void addFile(std::string fileName, const std::shared_ptr<NNData>& nnData);
+    //void addFile(std::string fileName, const std::shared_ptr<NNData>& nnData);
     void addFile(std::string fileName, const std::shared_ptr<ImgDetections>& imgDetections);
     void addImageDetectionsPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<ImgDetections>& imgDetections);
     void addImageDetectionsPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<ImgDetections>& imgDetections);
-    void addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& imgDetections);
-    void addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& imgDetections);
+    //void addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& imgDetections);
+    //void addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& imgDetections);
 
    private:
     std::vector<std::shared_ptr<FileData>> fileData;
@@ -238,13 +231,13 @@ class EventsManager {
 
     UploadRetryPolicy uploadRetryPolicy;
 
-    static constexpr int eventValidationNameLength = 56;
-    static constexpr int eventValidationMaxTags = 20;
-    static constexpr int eventValidationTagLength = 56;
-    static constexpr int eventValidationMaxExtras = 25;
-    static constexpr int eventValidationExtraKeyLength = 40;
-    static constexpr int eventValidationExtraValueLength = 100;
-    static constexpr int eventValidationMaxAssociateFiles = 20;
+    static constexpr int EVENT_VALIDATION_NAME_LENGTH = 56;
+    static constexpr int EVENT_VALIDATION_MAX_TAGS = 20;
+    static constexpr int EVENT_VALIDATION_TAG_LENGTH = 56;
+    static constexpr int EVENT_VALIDATION_MAX_EXTRAS = 25;
+    static constexpr int EVENT_VALIDATION_EXTRA_KEY_LENGTH = 40;
+    static constexpr int EVENT_VALIDATION_EXTRA_VALUE_LENGTH = 100;
+    static constexpr int EVENT_VALIDATION_MAX_ASSOCIATE_FILES = 20;
 };
 }  // namespace utility
 }  // namespace dai
