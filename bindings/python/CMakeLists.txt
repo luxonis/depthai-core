@@ -39,7 +39,14 @@ option(DEPTHAI_PYTHON_ENABLE_TESTS "Enable tests" OFF)
 option(DEPTHAI_PYTHON_ENABLE_EXAMPLES "Enable examples" OFF)
 option(DEPTHAI_PYTHON_BUILD_DOCSTRINGS "Generate docstrings from header files if module 'pybind11_mkdoc' available" ON)
 option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
-cmake_dependent_option(DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET "Create an additional target with pybind embedded module" OFF DEPTHAI_PYTHON_EMBEDDED_MODULE && TARGET_EMBED_NAME OFF)
+cmake_dependent_option(DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET "Create an additional target with pybind embedded module" OFF DEPTHAI_PYTHON_EMBEDDED_MODULE;TARGET_EMBED_NAME OFF)
+
+find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
+set(PYTHON_EXECUTABLE Python_EXECUTABLE)
+# Backward Compatability for xtensor to find numpy
+if(NOT NUMPY_INCLUDE_DIRS)
+    set(NUMPY_INCLUDE_DIRS ${Python_NumPy_INCLUDE_DIRS})
+endif()
 
 # Add pybind11 dependency
 #add_subdirectory(pybind11-2.5.0)
