@@ -1,0 +1,16 @@
+conda-forge/linux-64                                        Using cache
+conda-forge/noarch                                          Using cache
+Transaction
+
+  Prefix: /home/aljaz/miniforge3/envs/depthai3-10
+
+  All requested packages already installed
+
+
+Looking for: ['libstdcxx-ng', 'libgcc-ng']
+
+
+Pinned packages:
+  - python 3.10.*
+
+

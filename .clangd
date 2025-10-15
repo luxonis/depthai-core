@@ -1,0 +1,8 @@
+CompileFlags:
+  Add:
+    - -I/home/aljaz/Luxonis/depthai-core/include
+    - -I/home/aljaz/Luxonis/depthai-core/
+    - -std=c++17
+
+Diagnostics:
+  UnusedIncludes: None

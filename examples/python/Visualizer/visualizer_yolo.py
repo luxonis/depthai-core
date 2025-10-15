@@ -5,7 +5,7 @@ import numpy as np
 from depthai_nodes.node import YOLOExtendedParser, ParsingNeuralNetwork
 from depthai_nodes.message import ImgDetectionsExtended
 
-model_name = "luxonis/yolov6-nano:r2-coco-512x288"
+# model_name = "luxonis/yolov6-nano:r2-coco-512x288"
 # model_name = "luxonis/yolov6-nano:r2-coco-512x384"
 # model_name = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
 # model_name = "luxonis/yolov8-large-pose-estimation:coco-640x352"
@@ -14,26 +14,26 @@ model_name = "luxonis/yolov6-nano:r2-coco-512x288"
 # model_name = "agmo/yolov11n-512x288:model-variant-1"
 # model_name = "luxonis/yolov10-nano:coco-512x288"
 # model_name = "luxonis/barcode-detection:512x384"
-# model_name = "luxonis/ppe-detection:640x640"
+model_name = "luxonis/ppe-detection:640x640"
 # model_name = "luxonis/yoloe-v8-l:640x640"
 nn_archive = dai.NNArchive(dai.getModelFromZoo(dai.NNModelDescription(model_name, platform="RVC4")))
 
 # remoteConnector = dai.RemoteConnection(webSocketPort=args.webSocketPort, httpPort=args.httpPort)
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    cameraNode = pipeline.create(dai.node.Camera).build()
     
     nn = pipeline.create(dai.node.NeuralNetwork).build(cameraNode, dai.NNModelDescription(model_name))
     
-    # detectionNetwork = pipeline.create(dai.node.DetectionParser).build(nn.out, nn_archive )
+    detectionNetwork = pipeline.create(dai.node.DetectionParser).build(nn.out, nn_archive )
     
     # dai_nodes_nn = pipeline.create(ParsingNeuralNetwork).build(cameraNode, dai.NNModelDescription(model_name), 30)
     
     # remoteConnector.addTopic("detections", detectionNetwork.out, "img")
     # remoteConnector.addTopic("images", nn.passthrough, "img")
     cam_queue = nn.passthrough.createOutputQueue()
-    detectionQueue = nn.out.createOutputQueue()
-    nn_out = nn.out.createOutputQueue()
+    detectionQueue = detectionNetwork.out.createOutputQueue()
+    # nn_out = nn.out.createOutputQueue()
     
     # dai_nodes_nn_out = dai_nodes_nn.getOutput(0).createOutputQueue()
     
@@ -45,6 +45,7 @@ with dai.Pipeline() as pipeline:
         passthrough = cam_queue.get()
         detections = detectionQueue.get()
         # dai_nodes_results = dai_nodes_nn_out.get()
+        print("----")
         
         # assert isinstance(dai_nodes_results, (ImgDetectionsExtended, dai.ImgDetections))
         assert isinstance(detections, dai.ImgDetections)
@@ -53,7 +54,6 @@ with dai.Pipeline() as pipeline:
         image2 = image.copy()
         
         height, width = image.shape[:2]
-        
         
         
         for i, det in enumerate(detections.detections):
@@ -116,7 +116,7 @@ with dai.Pipeline() as pipeline:
         #     blended = cv2.addWeighted(image, 0.7, mat, 0.3, 0)
             
         # cv2.imshow("NEW DAI IMPL", blended)
-        cv2.imshow("DAI NODES IMPL", image2)
+        cv2.imshow("DAI NODES IMPL", image)
         if cv2.waitKey(1) == ord('q'):
             break            
             
