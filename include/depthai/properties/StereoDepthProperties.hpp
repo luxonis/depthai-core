@@ -187,6 +187,8 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * See getOptimalNewCameraMatrix from opencv for more details.
      */
     std::optional<float> alphaScaling;
+
+    ~StereoDepthProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,

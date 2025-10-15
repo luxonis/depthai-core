@@ -69,6 +69,8 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ImageFilt
     return std::static_pointer_cast<ToFBase>(shared_from_this());
 }
 
+ToF::~ToF() = default;
+
 // Get current board socket
 CameraBoardSocket ToFBase::getBoardSocket() const {
     if(!isBuilt) {

@@ -59,7 +59,8 @@ class DynamicCalibrationControl : public Buffer {
         };
     };
 
-    using Command = std::variant<Commands::Calibrate,
+    using Command = std::variant<std::monostate,  // if no command is present
+                                 Commands::Calibrate,
                                  Commands::CalibrationQuality,
                                  Commands::StartCalibration,
                                  Commands::StopCalibration,
@@ -68,11 +69,46 @@ class DynamicCalibrationControl : public Buffer {
                                  Commands::ResetData,
                                  Commands::SetPerformanceMode>;
 
-    Command command;
+    Command command{};
 
-    DynamicCalibrationControl() : command(Commands::Calibrate{}) {}
+    DynamicCalibrationControl() {}
 
     explicit DynamicCalibrationControl(Command cmd) : command(std::move(cmd)) {}
+
+    ~DynamicCalibrationControl() override;
+
+    // ---------- Named constructors that return shared_ptr ----------
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> calibrate(bool force = false) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::Calibrate{force});
+    }
+
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> calibrationQuality(bool force = false) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::CalibrationQuality{force});
+    }
+
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> startCalibration(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::StartCalibration{loadImagePeriod, calibrationPeriod});
+    }
+
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> stopCalibration() {
+        return std::make_shared<DynamicCalibrationControl>(Commands::StopCalibration{});
+    }
+
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> loadImage() {
+        return std::make_shared<DynamicCalibrationControl>(Commands::LoadImage{});
+    }
+
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> applyCalibration(const CalibrationHandler& calibration) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::ApplyCalibration{calibration});
+    }
+
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> resetData() {
+        return std::make_shared<DynamicCalibrationControl>(Commands::ResetData{});
+    }
+
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> setPerformanceMode(PerformanceMode mode = PerformanceMode::DEFAULT) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::SetPerformanceMode{mode});
+    }
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

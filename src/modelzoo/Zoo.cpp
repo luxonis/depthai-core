@@ -483,6 +483,7 @@ class JsonCprCallback : public CprCallback {
             {"download_total", downloadTotal},
             {"download_now", downloadNow},
             {"model_name", modelName},
+            {"log_type", "download"},
         };
         std::cout << json.dump() << std::endl;
     }
@@ -723,7 +724,13 @@ bool downloadModelsFromZoo(const fs::path& path, const fs::path& cacheDirectory,
             logger::info("Downloaded model [{} / {}]: {}", i + 1, models.size(), modelName);
             numSuccess++;
         } catch(const std::exception& e) {
-            logger::error("Failed to download model [{} / {}]: {} in folder {}\n{}", i + 1, models.size(), modelName, path, e.what());
+            const std::string errorMessage =
+                fmt::format("Failed to download model [{} / {}]: {} in folder {}\n{}", i + 1, models.size(), modelName, path, e.what());
+            if(progressFormat == "json") {
+                std::cout << nlohmann::json({{"log_type", "error"}, {"model_name", modelName}, {"detail", errorMessage}}).dump() << std::endl;
+            } else {
+                logger::error(errorMessage);
+            }
             numFail++;
         }
     }

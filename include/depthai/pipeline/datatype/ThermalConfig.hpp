@@ -123,12 +123,9 @@ class ThermalConfig : public Buffer {
      * Construct ThermalConfig message.
      */
     ThermalConfig() = default;
-    virtual ~ThermalConfig() = default;
+    virtual ~ThermalConfig();
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::ThermalConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DEPTHAI_SERIALIZE(ThermalConfig, ambientParams, ffcParams, imageParams);
 };

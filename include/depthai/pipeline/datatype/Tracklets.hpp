@@ -65,7 +65,7 @@ class Tracklets : public Buffer {
      * Construct Tracklets message.
      */
     Tracklets() = default;
-    virtual ~Tracklets() = default;
+    virtual ~Tracklets();
 
     /**
      * Retrieve data for Tracklets.
@@ -74,10 +74,7 @@ class Tracklets : public Buffer {
     std::vector<Tracklet> tracklets;
     ImgTransformation transformation;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::Tracklets;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };

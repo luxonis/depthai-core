@@ -7,9 +7,7 @@
 
 #include "depthai/depthai.hpp"
 
-
 int main() {
-
     try {
         // Create pipeline
         dai::Pipeline pipeline;

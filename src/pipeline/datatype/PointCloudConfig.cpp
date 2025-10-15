@@ -2,6 +2,13 @@
 
 namespace dai {
 
+PointCloudConfig::~PointCloudConfig() = default;
+
+void PointCloudConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::PointCloudConfig;
+}
+
 bool PointCloudConfig::getSparse() const {
     return sparse;
 }

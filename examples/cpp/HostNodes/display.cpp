@@ -30,7 +30,6 @@ class HostDisplay : public dai::node::CustomNode<HostDisplay> {
 };
 
 int main() {
-
     // Create device
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
 

@@ -4,6 +4,7 @@ include(cmake/depthaiOptions.cmake)
 
 if(WIN32)
     add_compile_options(/MP)
+    add_compile_options(/Ob2) # perform more aggresive function inlining to reduce the number of exported symbols, adopted from https://github.com/tensorflow/tensorflow/pull/10962
     set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Postfix for debug libraries" FORCE)
 endif()
 
@@ -65,7 +66,7 @@ endif()
 
 
 # Create depthai project
-project(depthai VERSION "3.0.0" LANGUAGES CXX C)
+project(depthai VERSION "3.1.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -277,6 +278,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/Node.cpp
     src/pipeline/InputQueue.cpp
     src/pipeline/ThreadedNode.cpp
+    src/pipeline/ThreadedHostNode.cpp
     src/pipeline/DeviceNode.cpp
     src/pipeline/DeviceNodeGroup.cpp
     src/pipeline/node/internal/XLinkIn.cpp
@@ -317,6 +319,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
+    src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
@@ -325,6 +328,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/ImageFiltersConfig.cpp
+    src/pipeline/datatype/ImageAlignConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetections.cpp
@@ -349,10 +353,17 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/ThermalConfig.cpp
     src/pipeline/datatype/TransformData.cpp
+    src/properties/Properties.cpp
+    src/capabilities/Capabilities.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
     src/utility/ObjectTrackerImpl.cpp
+    src/utility/Memory.cpp
+    src/utility/VectorMemory.cpp
+    src/utility/SharedMemory.cpp
+    src/utility/ProtoSerializable.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp
@@ -402,6 +413,8 @@ endif()
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/datatype/DynamicCalibrationResults.cpp
+        src/pipeline/datatype/DynamicCalibrationControl.cpp
     )
 endif()
 
@@ -462,12 +475,13 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
     # Add model_zoo helper binary
     find_package(fmt REQUIRED)
     find_package(yaml-cpp REQUIRED)
+    find_package(argparse REQUIRED)
     set(ZOO_HELPER_SOURCES
         src/modelzoo/zoo_helper.cpp
         src/modelzoo/Zoo.cpp
-        src/modelzoo/NNModelDescription.cpp
         src/utility/Environment.cpp
         src/utility/Logging.cpp
+        src/utility/Platform.cpp
     )
     set(ZOO_HELPER_LINK_LIBRARIES
         nlohmann_json::nlohmann_json
@@ -476,31 +490,26 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
         CURL::libcurl
         cpr::cpr
     )
-    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_ENABLE_CURL)
     add_executable(zoo_helper ${ZOO_HELPER_SOURCES})
+    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_ENABLE_CURL)
     target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
     target_link_libraries(zoo_helper PRIVATE ${ZOO_HELPER_LINK_LIBRARIES})
     target_include_directories(zoo_helper
         PRIVATE
-            # Relative path to include directories after installed
-            "$<INSTALL_INTERFACE:include>"
-            "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
-
-            # Build time path to include directories
+            # depthai-related include dirs - include and src (for src/utilities)
             "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
-            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
-            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
-
-            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
             "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
-            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
-            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
+
+            # argparse
+            "$<BUILD_INTERFACE:${argparse_INCLUDE_DIRS}>"
     )
-    target_include_directories(zoo_helper SYSTEM
-        PRIVATE
-            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
-    )
+
+    # Set C++17 standard for zoo_helper
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
 endif()
+
 if(DEPTHAI_ENABLE_KOMPUTE)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE shaders kompute::kompute)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_KOMPUTE)

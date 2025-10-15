@@ -16,7 +16,7 @@ class ThreadedNode : public Node {
    public:
     using Node::Node;
     ThreadedNode();
-    virtual ~ThreadedNode() = default;
+    virtual ~ThreadedNode();
 
     /**
      * @brief Function called at the beginning of the `start` function.

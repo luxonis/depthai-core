@@ -15,6 +15,8 @@
 namespace dai {
 namespace node {
 
+NeuralNetwork::~NeuralNetwork() = default;
+
 std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
     setNNArchive(nnArchive);
     input.link(this->input);
