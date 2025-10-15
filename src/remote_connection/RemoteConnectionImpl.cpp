@@ -109,11 +109,17 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
                 logger::debug(msgStr);
                 break;
             case foxglove::WebSocketLogLevel::Info:
-                // TODO(Morato) - revisit and potentially pass the levels correctly
-                // Right now, the happy path produces errors when the client disconnects
+                logger::info(msgStr);
+                break;
             case foxglove::WebSocketLogLevel::Warn:
+                logger::warn(msgStr);
+                break;
             case foxglove::WebSocketLogLevel::Error:
+                logger::error(msgStr);
+                break;
             case foxglove::WebSocketLogLevel::Critical:
+                logger::critical(msgStr);
+                break;
             default:
                 logger::info(msgStr);
         }
@@ -207,7 +213,12 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
         auto channelId = server->addChannels({{topicName, "protobuf", descriptor.schemaName, foxglove::base64Encode(descriptor.schema), std::nullopt}})[0];
         topics[topicName].id = channelId;
 
+        // The higher the priority, the less likely it is for the message to be dropped
+        // Note: Make sure to update ServerOptions to change the number of bytes allocated for each priority level
         auto getPriority = [](DatatypeEnum dtype) -> uint8_t {
+            if(dtype == DatatypeEnum::ImgDetections) {
+                return 1;
+            }
             if(dtype == DatatypeEnum::ImgAnnotations) {
                 return 1;
             }
