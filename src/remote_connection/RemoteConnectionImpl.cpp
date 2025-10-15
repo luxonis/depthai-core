@@ -120,7 +120,7 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
     };
     foxglove::ServerOptions serverOptions;
     constexpr size_t MAX_SEND_BUFFER_LIMIT_BYTES = 100 * 1024 * 1024;  // 100 MB
-    serverOptions.sendBufferPriorityLimitBytes = {{0, MAX_SEND_BUFFER_LIMIT_BYTES}};
+    serverOptions.sendBufferPriorityLimitBytes = {{0, static_cast<size_t>(0.96 * MAX_SEND_BUFFER_LIMIT_BYTES)}, {1, MAX_SEND_BUFFER_LIMIT_BYTES}};
     serverOptions.capabilities.emplace_back("services");
     serverOptions.supportedEncodings.emplace_back("json");
 
