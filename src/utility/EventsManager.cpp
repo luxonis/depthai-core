@@ -197,18 +197,17 @@ FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::str
     checksum = calculateSHA256Checksum(data);
 }
 
-bool FileData::toFile(const std::string& inputPath) {
+bool FileData::toFile(const std::filesystem::path& inputPath) {
     if(fileName.empty()) {
         logger::error("Filename is empty");
         return false;
     }
-    std::filesystem::path path(inputPath);
     std::string extension = mimeType == "image/jpeg" ? ".jpg" : ".txt";
     // Choose a unique filename
-    std::filesystem::path target = path / (fileName + extension);
+    std::filesystem::path target = inputPath / (fileName + extension);
     for(int i = 1; std::filesystem::exists(target); ++i) {
         logger::warn("File {} exists, trying a new name", target.string());
-        target = path / (fileName + "_" + std::to_string(i) + extension);
+        target = inputPath / (fileName + "_" + std::to_string(i) + extension);
     }
     std::ofstream fileStream(target, std::ios::binary);
     if(!fileStream) {
@@ -228,7 +227,7 @@ EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
       logResponse(false),
       verifySsl(true),
       cacheDir("/internal/private"),
-      cacheOnExit(false),
+      cacheIfCannotSend(false),
       stopUploadThread(false),
       configurationLimitsFetched(false),
       warningStorageBytes(52428800) {
@@ -279,14 +278,12 @@ EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock, std::chrono::seconds(static_cast<int>(this->publishInterval)), [this]() { return stopUploadThread.load(); });
         }
-
-        // Cache events from eventBuffer
-        if(cacheOnExit) {
-            cacheEvents();
-        }
     });
+    // Upload or clear previously cached data on start
     if(uploadCachedOnStart) {
         uploadCachedData();
+    } else {
+        clearCachedData(cacheDir);
     }
 }
 
@@ -410,8 +407,15 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
 
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock, duration, [this]() { return stopUploadThread.load(); });
-            // TO DO: After a few tries, we can determine that the connection is not established.
-            // We can then check if caching is chosen. and do it
+            // After retrying a defined number of times, we can determine the connection is not established, cache if enabled
+            if(retryAttempt >= uploadRetryPolicy.maxAttempts) {
+                if(cacheIfCannotSend) {
+                    cacheSnapData(inputSnapBatch);
+                } else {
+                    logger::warn("Caching is not enabled, dropping snapBatch");
+                }
+                return;
+            }
         } else {
             logger::info("Batch of file groups has been successfully prepared");
             auto prepareBatchResults = std::make_unique<proto::event::BatchFileUploadResult>();
@@ -443,6 +447,13 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
             for(auto& uploadResult : groupUploadResults) {
                 if(!uploadResult.valid() || !uploadResult.get()) {
                     logger::info("Failed to upload all of the groups in the given batch");
+                    // File upload was unsuccesful, cache if enabled
+                    if(cacheIfCannotSend) {
+                        cacheSnapData(inputSnapBatch);
+                    } else {
+                        logger::warn("Caching is not enabled, dropping snapBatch");
+                    }
+                    return;
                 }
             }
             return;
@@ -534,7 +545,7 @@ void EventsManager::uploadEventBatch() {
             return;
         }
         for(size_t i = 0; i < eventBuffer.size() && i < eventsPerRequest; ++i) {
-            eventBatch->add_events()->Swap(eventBuffer.at(i).get());
+            eventBatch->add_events()->CopyFrom(*eventBuffer.at(i).get());
         }
     }
     std::string serializedBatch;
@@ -559,7 +570,16 @@ void EventsManager::uploadEventBatch() {
             }));
     if(response.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event, status code: {}", response.status_code);
-        // TO DO: In case of repeated errors, caching of the events could be added if needed
+        // In case the eventBuffer gets too full (dropped connection), cache the events or drop them
+        if(eventBuffer.size() >= EVENT_BUFFER_MAX_SIZE) {
+            if(cacheIfCannotSend) {
+                cacheEvents();
+            } else {
+                logger::warn("EventBuffer is full and caching is not enabled, dropping events");
+                std::lock_guard<std::mutex> lock(eventBufferMutex);
+                eventBuffer.clear();
+            }
+        }
     } else {
         logger::info("Event sent successfully");
         if(logResponse) {
@@ -764,25 +784,88 @@ void EventsManager::cacheEvents() {
     eventBuffer.clear();
 }
 
+void EventsManager::cacheSnapData(std::deque<std::shared_ptr<SnapData>>& inputSnapBatch) {
+    // Create a unique directory and save the snapData
+    logger::info("Caching snapData");
+    for(const auto& snap : inputSnapBatch) {
+        std::filesystem::path path(cacheDir);
+        path = path / ("snap_" + snap->event->name() + "_" + std::to_string(snap->event->created_at()));
+        std::string snapDir = path.string();
+        logger::info("Caching snap to {}", snapDir);
+        if(!std::filesystem::exists(cacheDir)) {
+            std::filesystem::create_directories(cacheDir);
+        }
+        std::filesystem::create_directory(snapDir);
+        std::ofstream eventFile(path / "snap.pb", std::ios::binary);
+        snap->event->SerializeToOstream(&eventFile);
+        for(auto& file : snap->fileGroup->fileData) {
+            file->toFile(path);
+        }
+    }
+}
+
 void EventsManager::uploadCachedData() {
-    // Iterate over the directories in cacheDir, read event.pb files and add events to eventBuffer
-    logger::info("Uploading cached data");
-    if(!std::filesystem::exists(cacheDir)) {
-        logger::warn("Cache directory does not exist");
+    // Iterate over the directories in cacheDir, add events and snapsData to buffers
+    if(!checkForCachedData()) {
+        logger::warn("Cache directory is empty, no cached data will be uploaded");
         return;
     }
+    logger::info("Uploading cached data");
+
     for(const auto& entry : std::filesystem::directory_iterator(cacheDir)) {
         if(!entry.is_directory()) {
             continue;
         }
-        const auto& eventDir = entry.path();
-        std::ifstream eventFile(eventDir / "event.pb", std::ios::binary);
-        auto event = std::make_shared<proto::event::Event>();
-        event->ParseFromIstream(&eventFile);
 
-        // Add event to eventBuffer
-        std::lock_guard<std::mutex> lock(eventBufferMutex);
-        eventBuffer.push_back(std::move(event));
+        if(entry.path().filename().string().rfind("event", 0) == 0) {
+            std::ifstream eventFile(entry.path() / "event.pb", std::ios::binary);
+            auto event = std::make_shared<proto::event::Event>();
+            event->ParseFromIstream(&eventFile);
+            std::lock_guard<std::mutex> lock(eventBufferMutex);
+            eventBuffer.push_back(std::move(event));
+            // Clear entries added to the eventBuffer
+            clearCachedData(entry.path());
+
+        } else if(entry.path().filename().string().rfind("snap", 0) == 0) {
+            std::ifstream snapFile(entry.path() / "snap.pb", std::ios::binary);
+            auto snapData = std::make_unique<SnapData>();
+            auto event = std::make_shared<proto::event::Event>();
+            auto fileGroup = std::make_shared<dai::utility::FileGroup>();
+            event->ParseFromIstream(&snapFile);
+            for(const auto& fileEntry : std::filesystem::directory_iterator(entry.path())) {
+                if(fileEntry.is_regular_file() && fileEntry.path() != entry.path() / "snap.pb") {
+                    auto fileData = std::make_shared<FileData>(fileEntry.path(), fileEntry.path().filename().string());
+                    fileGroup->fileData.push_back(fileData);
+                }
+            }
+            snapData->event = event;
+            snapData->fileGroup = fileGroup;
+            std::lock_guard<std::mutex> lock(snapBufferMutex);
+            snapBuffer.push_back(std::move(snapData));
+            // Clear entries added to the snapBuffer
+            clearCachedData(entry.path());
+        }
+    }
+}
+
+bool EventsManager::checkForCachedData() {
+    if(!std::filesystem::exists(cacheDir)) {
+        return false;
+    }
+    return std::any_of(
+        std::filesystem::directory_iterator(cacheDir), std::filesystem::directory_iterator(), [](const auto& entry) { return entry.is_directory(); });
+}
+
+void EventsManager::clearCachedData(const std::filesystem::path& directory) {
+    if(!checkForCachedData()) {
+        return;
+    }
+    std::error_code ec;
+    std::filesystem::remove_all(directory, ec);
+    if(ec) {
+        logger::error("Failed to remove cache directory {}: {}", directory.string(), ec.message());
+    } else {
+        logger::info("Cleared cache directory {}", directory.string());
     }
 }
 
@@ -802,8 +885,8 @@ void EventsManager::setVerifySsl(bool verifySsl) {
     this->verifySsl = verifySsl;
 }
 
-void EventsManager::setCacheOnExit(bool cacheOnExit) {
-    this->cacheOnExit = cacheOnExit;
+void EventsManager::setCacheIfCannotSend(bool cacheIfCannotSend) {
+    this->cacheIfCannotSend = cacheIfCannotSend;
 }
 
 }  // namespace utility

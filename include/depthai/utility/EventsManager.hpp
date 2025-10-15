@@ -35,7 +35,7 @@ class FileData {
     explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
     // explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
     explicit FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName);
-    bool toFile(const std::string& inputPath);
+    bool toFile(const std::filesystem::path& inputPath);
 
    private:
     std::string mimeType;
@@ -139,28 +139,22 @@ class EventsManager {
      */
     void setVerifySsl(bool verifySsl);
     /**
-     * Upload cached data to the events service
-     * @return void
-     */
-    void uploadCachedData();
-    /**
      * Set the cache directory for storing cached data. By default, the cache directory is set to /internal/private
      * @param cacheDir Cache directory
      * @return void
      */
     void setCacheDir(const std::string& cacheDir);
     /**
-     * Set whether to cache data when exiting the application. By default, cacheOnExit is set to false
-     * @param cacheOnExit bool
+     * Set whether to cache data if it cannot be sent. By default, cacheIfCannotSend is set to false
+     * @param cacheIfCannotSend bool
      * @return void
      */
-    void setCacheOnExit(bool cacheOnExit);
+    void setCacheIfCannotSend(bool cacheIfCannotSend);
 
    private:
     struct SnapData {
         std::shared_ptr<proto::event::Event> event;
         std::shared_ptr<FileGroup> fileGroup;
-        std::string cachePath;
     };
 
     struct UploadRetryPolicy {
@@ -200,6 +194,23 @@ class EventsManager {
      * Cache events from the eventBuffer to the filesystem
      */
     void cacheEvents();
+    /**
+     * Cache snapData from the inputSnapBatch to the filesystem
+     */
+    void cacheSnapData(std::deque<std::shared_ptr<SnapData>>& inputSnapBatch);
+    /**
+     * Upload cached data to the events service
+     * @return void
+     */
+    void uploadCachedData();
+    /**
+     * Check if there's any cached data in the filesystem
+     */
+    bool checkForCachedData();
+    /**
+     * Clear cached data in the filesystem (if any)
+     */
+    void clearCachedData(const std::filesystem::path& directory);
 
     std::string token;
     std::string url;
@@ -209,7 +220,7 @@ class EventsManager {
     bool logResponse;
     bool verifySsl;
     std::string cacheDir;
-    bool cacheOnExit;
+    bool cacheIfCannotSend;
     std::unique_ptr<std::thread> uploadThread;
     std::deque<std::shared_ptr<proto::event::Event>> eventBuffer;
     std::deque<std::shared_ptr<SnapData>> snapBuffer;
@@ -233,6 +244,8 @@ class EventsManager {
     uint32_t eventsPerRequest;
 
     UploadRetryPolicy uploadRetryPolicy;
+
+    static constexpr int EVENT_BUFFER_MAX_SIZE = 300;
 
     static constexpr int EVENT_VALIDATION_NAME_LENGTH = 56;
     static constexpr int EVENT_VALIDATION_MAX_TAGS = 20;
