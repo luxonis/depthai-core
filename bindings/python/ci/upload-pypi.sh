@@ -11,14 +11,15 @@ for file in wheelhouse/audited/*.whl; do
     python3 -m twine upload --repository-url "$PYPI_SERVER" --username "$PYPI_USER" --password "$PYPI_PASSWORD" "$file"
 done
 
-# Uploads zip source distribution
-for file in wheelhouse/audited/*.zip; do
-    echo "Uploading $file"
-    python3 -m twine upload --repository-url "$PYPI_SERVER" --username "$PYPI_USER" --password "$PYPI_PASSWORD" "$file"
-done
+# TODO (Morato) - add the source distribution upload back
+# # Uploads zip source distribution
+# for file in wheelhouse/audited/*.zip; do
+#     echo "Uploading $file"
+#     python3 -m twine upload --repository-url "$PYPI_SERVER" --username "$PYPI_USER" --password "$PYPI_PASSWORD" "$file"
+# done
 
-# Uploads tar.gz source distribution
-for file in wheelhouse/audited/*.tar.gz; do
-    echo "Uploading $file"
-    python3 -m twine upload --repository-url "$PYPI_SERVER" --username "$PYPI_USER" --password "$PYPI_PASSWORD" "$file"
-done
+# # Uploads tar.gz source distribution
+# for file in wheelhouse/audited/*.tar.gz; do
+#     echo "Uploading $file"
+#     python3 -m twine upload --repository-url "$PYPI_SERVER" --username "$PYPI_USER" --password "$PYPI_PASSWORD" "$file"
+# done

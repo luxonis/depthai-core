@@ -121,3 +121,6 @@ option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, ex
 # Local override paths
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
+
+# Options for internal use
+option(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4 "This build is part of the rvc4 firmware build" OFF)
