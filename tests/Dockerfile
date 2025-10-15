@@ -101,10 +101,9 @@ RUN python3 -m venv venv && \
 
 ENV PATH="/workspace/venv/bin:$PATH"
 
-# Set toolchain path only if flavor != vanilla
 RUN if [ "$FLAVOR" != "vanilla" ]; then \
-        export CMAKE_TOOLCHAIN_PATH=/workspace/cmake/toolchain/${FLAVOR}.cmake && \
-        echo "Using toolchain: $CMAKE_TOOLCHAIN_PATH"; \
+        export CMAKE_TOOLCHAIN_FILE=/workspace/cmake/toolchain/${FLAVOR}.cmake && \
+        echo "Using toolchain: $CMAKE_TOOLCHAIN_FILE"; \
     else \
         echo "Using vanilla flavor (no toolchain)"; \
     fi && \

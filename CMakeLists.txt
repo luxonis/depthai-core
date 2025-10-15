@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
 include(cmake/depthaiOptions.cmake)
+if(CMAKE_TOOLCHAIN_FILE)
+    message(STATUS "Including toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
+    include("${CMAKE_TOOLCHAIN_FILE}")
+else()
+    message(STATUS "No toolchain file specified, skipping include.")
+endif()
 
 if(WIN32)
     add_compile_options(/MP)
@@ -63,7 +69,6 @@ if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
 else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
-
 
 # Create depthai project
 project(depthai VERSION "3.0.0" LANGUAGES CXX C)
@@ -889,6 +894,10 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
+if(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
+endif()
+
 # Helper function
 macro(add_runtime_dependencies depending_target dependency)
     if(TARGET ${dependency})
@@ -1102,8 +1111,6 @@ endif()
 # Sanitizers
 ########################
 if(DEPTHAI_SANITIZE)
-    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets.")
-    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets.")
     find_package(Sanitizers)
     add_sanitizers(${TARGET_CORE_NAME})
     if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
