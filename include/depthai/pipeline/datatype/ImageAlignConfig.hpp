@@ -20,6 +20,8 @@ class ImageAlignConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override { return DatatypeEnum::ImageAlignConfig; }
+
     DEPTHAI_SERIALIZE(ImageAlignConfig, staticDepthPlane);
 };
 

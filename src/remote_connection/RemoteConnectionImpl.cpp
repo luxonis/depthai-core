@@ -119,7 +119,8 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
         }
     };
     foxglove::ServerOptions serverOptions;
-    serverOptions.sendBufferLimitBytes = 100 * 1024 * 1024;  // 100 MB
+    constexpr size_t MAX_SEND_BUFFER_LIMIT_BYTES = 100 * 1024 * 1024;  // 100 MB
+    serverOptions.sendBufferPriorityLimitBytes = {{0, MAX_SEND_BUFFER_LIMIT_BYTES}};
     serverOptions.capabilities.emplace_back("services");
     serverOptions.supportedEncodings.emplace_back("json");
 
@@ -206,6 +207,13 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
         auto channelId = server->addChannels({{topicName, "protobuf", descriptor.schemaName, foxglove::base64Encode(descriptor.schema), std::nullopt}})[0];
         topics[topicName].id = channelId;
 
+        auto getPriority = [](DatatypeEnum dtype) -> uint8_t {
+            if(dtype == DatatypeEnum::ImgAnnotations) {
+                return 1;
+            }
+            return 0;  // anything else is low priority
+        };
+
         while(isRunning) {
             std::shared_ptr<ADatatype> message;
             try {
@@ -232,8 +240,9 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
                 continue;
             }
 
+            uint8_t priority = getPriority(message->getDatatype());
             auto serializedMsg = serializableMessage->serializeProto();
-            server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
+            server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size(), priority);
         }
     });
 }

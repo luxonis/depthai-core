@@ -34,6 +34,8 @@ class ImageFiltersConfig : public Buffer {
     virtual ~ImageFiltersConfig();
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override { return DatatypeEnum::ImageFiltersConfig; }
+
     /**
      * Insert filter parameters describing how a filter at index index should be updated
      * @param index Index of the filter to be inserted
@@ -70,6 +72,8 @@ class ToFDepthConfidenceFilterConfig : public Buffer {
    public:
     virtual ~ToFDepthConfidenceFilterConfig();
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override { return DatatypeEnum::ToFDepthConfidenceFilterConfig; }
 
     /**
      * Threshold for the confidence filter

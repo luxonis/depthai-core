@@ -579,5 +579,7 @@ class ImageManipConfig : public Buffer {
     DEPTHAI_SERIALIZE(ImageManipConfig, base, outputFrameType, reusePreviousImage, skipCurrentImage);
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override { return DatatypeEnum::ImageManipConfig; }
 };
 }  // namespace dai

@@ -112,8 +112,10 @@ class DynamicCalibrationControl : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::DynamicCalibrationControl;
+        datatype = this->getDatatype();
     }
+
+    DatatypeEnum getDatatype() const override { return DatatypeEnum::DynamicCalibrationControl; }
 };
 
 }  // namespace dai

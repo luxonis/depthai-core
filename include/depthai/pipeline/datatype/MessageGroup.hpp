@@ -60,6 +60,7 @@ class MessageGroup : public Buffer {
     std::vector<std::string> getMessageNames() const;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+    DatatypeEnum getDatatype() const override { return DatatypeEnum::MessageGroup; }
     DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 
