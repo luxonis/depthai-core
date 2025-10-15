@@ -27,7 +27,7 @@ with dai.Pipeline() as pipeline:
     
     detectionNetwork = pipeline.create(dai.node.DetectionParser).build(nn.out, nn_archive )
     
-    # dai_nodes_nn = pipeline.create(ParsingNeuralNetwork).build(cameraNode, dai.NNModelDescription(model_name), 30)
+    dai_nodes_nn = pipeline.create(ParsingNeuralNetwork).build(cameraNode, dai.NNModelDescription(model_name), 30)
     
     # remoteConnector.addTopic("detections", detectionNetwork.out, "img")
     # remoteConnector.addTopic("images", nn.passthrough, "img")
