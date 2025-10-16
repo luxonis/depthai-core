@@ -15,6 +15,12 @@
 #include "depthai/utility/Compression.hpp"
 #include "depthai/utility/matrixOps.hpp"
 
+// This is a workaround to Windows API. Windows defines 2 WinAPI functions: LoadImageA and LoadImageW
+// However, for user, a macro LoadImage is provided which selectes which of those 2 function will be
+// used during compilation.
+// When using our LoadImage in dcl namespace, the macro translates it and the compilation fails.
+#undef LoadImage
+
 using namespace std::chrono_literals;
 
 namespace {
