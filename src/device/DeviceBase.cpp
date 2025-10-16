@@ -1173,6 +1173,19 @@ std::string DeviceBase::getConnectedIMU() {
     return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
 }
 
+void DeviceBase::crashDevice() {
+    // Check that the protective ENV variable is set
+    if(utility::getEnv("DEPTHAI_CRASH_DEVICE") != "1") {
+        pimpl->logger.error("Crashing the device is disabled. Set DEPTHAI_CRASH_DEVICE=1 to enable.");
+        return;
+    }
+    try {
+        pimpl->rpcClient->call("crashDevice");
+    } catch(const std::system_error& ex) {
+        pimpl->logger.debug("Crash device threw an exception: {} (expected)", ex.what());
+    }
+}
+
 dai::Version DeviceBase::getIMUFirmwareVersion() {
     std::string versionStr = pimpl->rpcClient->call("getIMUFirmwareVersion").as<std::string>();
     try {
