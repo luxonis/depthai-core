@@ -109,17 +109,11 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
                 logger::debug(msgStr);
                 break;
             case foxglove::WebSocketLogLevel::Info:
-                logger::info(msgStr);
-                break;
+                // TODO(Morato) - revisit and potentially pass the levels correctly
+                // Right now, the happy path produces errors when the client disconnects
             case foxglove::WebSocketLogLevel::Warn:
-                logger::warn(msgStr);
-                break;
             case foxglove::WebSocketLogLevel::Error:
-                logger::error(msgStr);
-                break;
             case foxglove::WebSocketLogLevel::Critical:
-                logger::critical(msgStr);
-                break;
             default:
                 logger::info(msgStr);
         }
