@@ -87,7 +87,6 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             numYoloHeads++;
         }
     }
-    std::cout << fmt::format("Found {} YOLO heads in NNArchive\n", numYoloHeads);
 
     DAI_CHECK_V(numYoloHeads == 1, "NNArchive should contain exactly one YOLO head. Found {} YOLO heads.", numYoloHeads);  // no support for multi-head YOLO
     const auto head = (*model.heads)[yoloHeadIndex];
@@ -161,6 +160,7 @@ YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string
     std::string subtypeStr = name;
     std::transform(subtypeStr.begin(), subtypeStr.end(), subtypeStr.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
+    if(subtypeStr == "yolov6r1") return YoloDecodingFamily::R1AF;
     if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov6" || subtypeStr == "yolov8" || subtypeStr == "yolov10"
        || subtypeStr == "yolov11")
         return YoloDecodingFamily::TLBR;
