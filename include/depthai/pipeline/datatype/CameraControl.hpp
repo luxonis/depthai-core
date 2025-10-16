@@ -796,7 +796,9 @@ class CameraControl : public Buffer {
     ~CameraControl() override;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DatatypeEnum getDatatype() const override { return DatatypeEnum::CameraControl; }
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::CameraControl;
+    }
 
     DEPTHAI_SERIALIZE(CameraControl,
                       cmdMask,

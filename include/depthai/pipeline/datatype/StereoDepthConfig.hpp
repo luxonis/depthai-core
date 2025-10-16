@@ -815,7 +815,9 @@ class StereoDepthConfig : public Buffer {
     dai::ProcessorType filtersBackend = dai::ProcessorType::CPU;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
-    DatatypeEnum getDatatype() const override { return DatatypeEnum::StereoDepthConfig; }
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::StereoDepthConfig;
+    }
     DEPTHAI_SERIALIZE(StereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation, confidenceMetrics, filtersBackend);
 };
 

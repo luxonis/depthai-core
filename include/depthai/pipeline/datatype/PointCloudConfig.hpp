@@ -52,7 +52,9 @@ class PointCloudConfig : public Buffer {
      */
     PointCloudConfig& setTransformationMatrix(const std::array<std::array<float, 3>, 3>& transformationMatrix);
 
-    DatatypeEnum getDatatype() const override { return DatatypeEnum::PointCloudConfig; }
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::PointCloudConfig;
+    }
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 

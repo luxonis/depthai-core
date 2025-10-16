@@ -78,7 +78,9 @@ class ToFConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DatatypeEnum getDatatype() const override { return DatatypeEnum::ToFConfig; }
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::ToFConfig;
+    }
 
     /**
      * Set preset mode for ToFConfig.

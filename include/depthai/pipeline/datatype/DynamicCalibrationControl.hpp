@@ -115,7 +115,9 @@ class DynamicCalibrationControl : public Buffer {
         datatype = this->getDatatype();
     }
 
-    DatatypeEnum getDatatype() const override { return DatatypeEnum::DynamicCalibrationControl; }
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::DynamicCalibrationControl;
+    }
 };
 
 }  // namespace dai

@@ -232,7 +232,9 @@ class PointCloudData : public Buffer, public ProtoSerializable {
 #endif
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DatatypeEnum getDatatype() const override { return DatatypeEnum::PointCloudData; }
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::PointCloudData;
+    }
     DEPTHAI_SERIALIZE(
         PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, sparse, instanceNum, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };

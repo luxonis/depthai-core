@@ -317,7 +317,9 @@ class FeatureTrackerConfig : public Buffer {
    public:
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DatatypeEnum getDatatype() const override { return DatatypeEnum::FeatureTrackerConfig; }
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::FeatureTrackerConfig;
+    }
 
     DEPTHAI_SERIALIZE(FeatureTrackerConfig, cornerDetector, motionEstimator, featureMaintainer);
 };

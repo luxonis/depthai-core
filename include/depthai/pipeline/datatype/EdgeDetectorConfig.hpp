@@ -49,7 +49,9 @@ class EdgeDetectorConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DatatypeEnum getDatatype() const override { return DatatypeEnum::EdgeDetectorConfig; }
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::EdgeDetectorConfig;
+    }
 
     DEPTHAI_SERIALIZE(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config);
 };
