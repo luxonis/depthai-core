@@ -54,8 +54,8 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.14.1', '1.15.0', '1.18.3']"
-      luxonis_os_versions_to_test_rgb: "['1.18.3']"
+      luxonis_os_versions_to_test: "['1.14.1', '1.15.0', '1.18.3', 'usb-testing-build']"
+      luxonis_os_versions_to_test_rgb: "['1.18.3', 'usb-testing-build']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}

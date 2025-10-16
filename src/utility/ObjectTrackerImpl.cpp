@@ -168,7 +168,7 @@ class OCSTracker::State {
     };
     class KalmanBoxTracker {
        public:
-        KalmanBoxTracker(){};
+        KalmanBoxTracker() {};
         KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, int delta_t_ = 3);
         void update(Eigen::Matrix<float, 5, 1>* bbox_, int cls_);
         Eigen::RowVectorXf predict();
