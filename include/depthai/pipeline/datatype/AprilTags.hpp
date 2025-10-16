@@ -71,6 +71,10 @@ class AprilTags : public Buffer {
     ~AprilTags() override;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::AprilTags;
+    }
+
     std::vector<AprilTag> aprilTags;
     DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, aprilTags);
 };

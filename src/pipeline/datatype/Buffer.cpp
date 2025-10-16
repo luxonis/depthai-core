@@ -24,7 +24,7 @@ Buffer::~Buffer() = default;
 
 void Buffer::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
-    datatype = DatatypeEnum::Buffer;
+    datatype = this->getDatatype();
 };
 
 span<uint8_t> Buffer::getData() {

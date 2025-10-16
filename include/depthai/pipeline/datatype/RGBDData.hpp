@@ -27,6 +27,9 @@ class RGBDData : public Buffer {
     std::shared_ptr<ImgFrame> getDepthFrame();
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::RGBDData;
+    }
     DEPTHAI_SERIALIZE(RGBDData, frames, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 

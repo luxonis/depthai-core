@@ -25,6 +25,14 @@ class ADatatype {
     virtual ~ADatatype();
     virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const;
 
+    /**
+     * @brief Get the datatype of this specific message
+     * @return DatatypeEnum
+     */
+    virtual DatatypeEnum getDatatype() const {
+        return DatatypeEnum::ADatatype;
+    }
+
     std::shared_ptr<Memory> data;
 };
 
