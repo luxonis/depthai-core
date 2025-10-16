@@ -14,8 +14,13 @@ from depthai_nodes.message import ImgDetectionsExtended
 # model_name = "agmo/yolov11n-512x288:model-variant-1"
 # model_name = "luxonis/yolov10-nano:coco-512x288"
 # model_name = "luxonis/barcode-detection:512x384"
-model_name = "luxonis/ppe-detection:640x640"
+# model_name = "luxonis/ppe-detection:640x640"
 # model_name = "luxonis/yoloe-v8-l:640x640"
+# model_name ="luxonis/wildlife-megadetector:mdv6-yolov10-c:39fb244"
+# model_name ="luxonis/fire-detection:512x288" # v5
+# model_name ="instituto-de-telecomunicaes/yolo11x:model-variant-1"
+model_name ="oakchina/yolov13n:model-variant-1"
+
 nn_archive = dai.NNArchive(dai.getModelFromZoo(dai.NNModelDescription(model_name, platform="RVC4")))
 
 # remoteConnector = dai.RemoteConnection(webSocketPort=args.webSocketPort, httpPort=args.httpPort)
@@ -35,7 +40,7 @@ with dai.Pipeline() as pipeline:
     detectionQueue = detectionNetwork.out.createOutputQueue()
     # nn_out = nn.out.createOutputQueue()
     
-    # dai_nodes_nn_out = dai_nodes_nn.getOutput(0).createOutputQueue()
+    dai_nodes_nn_out = dai_nodes_nn.out.createOutputQueue()
     
     pipeline.start()
     print("Pipeline started")
@@ -44,10 +49,10 @@ with dai.Pipeline() as pipeline:
     while pipeline.isRunning():
         passthrough = cam_queue.get()
         detections = detectionQueue.get()
-        # dai_nodes_results = dai_nodes_nn_out.get()
+        dai_nodes_results = dai_nodes_nn_out.get()
         print("----")
         
-        # assert isinstance(dai_nodes_results, (ImgDetectionsExtended, dai.ImgDetections))
+        assert isinstance(dai_nodes_results, (ImgDetectionsExtended, dai.ImgDetections))
         assert isinstance(detections, dai.ImgDetections)
         assert isinstance(passthrough, dai.ImgFrame)
         image = passthrough.getCvFrame()
@@ -78,21 +83,21 @@ with dai.Pipeline() as pipeline:
         #         print((kp.coordinates.x, kp.coordinates.y))
         #         cv2.circle(image, (int(kp.coordinates.x * width), int(kp.coordinates.y * height)), 3, (0, 0, 255), -1)
         
-        # if isinstance(dai_nodes_results, ImgDetectionsExtended):
-        #     for i, det in enumerate(dai_nodes_results.detections):
-        #         outer_points = det.rotated_rect
-        #         outer_points = outer_points.denormalize(image.shape[1], image.shape[0])
-        #         outer_points = outer_points.getPoints()
-        #         outer_points = [[int(p.x), int(p.y)] for p in outer_points]
-        #         outer_points = np.array(outer_points, dtype=np.int32)
-        #         cv2.polylines(image2, [outer_points], isClosed=True, color=(0, 255, 0), thickness=2)
-        #         conf = det.confidence
-        #         cv2.putText(image2, f"{int(conf*100)}%", (outer_points[0][0], outer_points[0][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        if isinstance(dai_nodes_results, ImgDetectionsExtended):
+            for i, det in enumerate(dai_nodes_results.detections):
+                outer_points = det.rotated_rect
+                outer_points = outer_points.denormalize(image.shape[1], image.shape[0])
+                outer_points = outer_points.getPoints()
+                outer_points = [[int(p.x), int(p.y)] for p in outer_points]
+                outer_points = np.array(outer_points, dtype=np.int32)
+                cv2.polylines(image2, [outer_points], isClosed=True, color=(0, 255, 0), thickness=2)
+                conf = det.confidence
+                cv2.putText(image2, f"{int(conf*100)}%", (outer_points[0][0], outer_points[0][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 
-        #         keypoints = det.keypoints
-        #         for kp in keypoints:
-        #             print((kp.x, kp.y))
-        #             cv2.circle(image2, (int(kp.x * width), int(kp.y * height)), 3, (0, 0, 255), -1)
+                keypoints = det.keypoints
+                for kp in keypoints:
+                    print((kp.x, kp.y))
+                    cv2.circle(image2, (int(kp.x * width), int(kp.y * height)), 3, (0, 0, 255), -1)
         
         # blended = image
         # segmentation_mask = detections.getCvSegmentationMask()
@@ -115,8 +120,8 @@ with dai.Pipeline() as pipeline:
         #     mat[mask] = image[mask]
         #     blended = cv2.addWeighted(image, 0.7, mat, 0.3, 0)
             
-        # cv2.imshow("NEW DAI IMPL", blended)
-        cv2.imshow("DAI NODES IMPL", image)
+        cv2.imshow("NODES IMPL", image2)
+        cv2.imshow("NEW DAI IMPL", image)
         if cv2.waitKey(1) == ord('q'):
             break            
             

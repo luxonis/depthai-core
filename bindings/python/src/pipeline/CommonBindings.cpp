@@ -399,10 +399,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     detectionNetworkType.value("YOLO", DetectionNetworkType::YOLO).value("MOBILENET", DetectionNetworkType::MOBILENET);
 
-    yoloDecodingFamily.value("TLBR", YoloDecodingFamily::TLBR)
-        .value("R1AF", YoloDecodingFamily::R1AF)
-        .value("v5AB", YoloDecodingFamily::v5AB)
-        .value("v3AB", YoloDecodingFamily::v3AB);
+    yoloDecodingFamily.value("TLBR", YoloDecodingFamily::TLBR).value("v5AB", YoloDecodingFamily::v5AB).value("v3AB", YoloDecodingFamily::v3AB);
 
     serializationType.value("LIBNOP", SerializationType::LIBNOP).value("JSON", SerializationType::JSON).value("JSON_MSGPACK", SerializationType::JSON_MSGPACK);
 
