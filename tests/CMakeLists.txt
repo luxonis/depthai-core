@@ -37,14 +37,6 @@ function(dai_add_test test_name test_src)
         target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
     endif()
 
-    if(MSVC)
-        target_compile_definitions(${test_name} PRIVATE
-        WIN32_LEAN_AND_MEAN
-        NOMINMAX
-        NOUSER
-        )
-    endif()
-
     # Add conforming preprocessor flags for MSVC if requested
     if(MSVC AND DAT_CONFORMING)
         if(MSVC_VERSION LESS 1925)
