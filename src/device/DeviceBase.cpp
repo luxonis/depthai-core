@@ -1,6 +1,7 @@
 #include "depthai/device/DeviceBase.hpp"
 
 // std
+#include <chrono>
 #include <iostream>
 
 // shared
@@ -47,7 +48,8 @@ const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
 const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
-const unsigned int RPC_READ_TIMEOUT = 30000;
+const unsigned int DEFAULT_RPC_READ_TIMEOUT = 10000;
+const unsigned int DEFAULT_RPC_WRITE_TIMEOUT = 0; // 0 means blocking
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
@@ -528,6 +530,30 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
 }
 
+unsigned int getRPCReadTimeout() {
+    std::string timeoutStr = utility::getEnv("DEPTHAI_RPC_READ_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr);
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_RPC_READ_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_RPC_READ_TIMEOUT;
+}
+
+unsigned int getRPCWriteTimeout() {
+    std::string timeoutStr = utility::getEnv("DEPTHAI_RPC_WRITE_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr);
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_RPC_WRITE_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_RPC_WRITE_TIMEOUT;
+}
+
 tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
     std::vector<uint8_t> data;
     utility::serialize<SerializationType::JSON>(dump, data);
@@ -540,8 +566,9 @@ void DeviceBase::closeImpl() {
     auto t1 = steady_clock::now();
     auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
     bool shouldGetCrashDump = false;
+
     if(!dumpOnly && timeout > 0) {
-        pimpl->logger.debug("Device about to be closed...");
+        pimpl->logger.debug("Crash dump collection enabled - first try to extract an existing crash dump");
         try {
             if(hasCrashDump()) {
                 connection->setRebootOnDestruction(true);
@@ -562,8 +589,10 @@ void DeviceBase::closeImpl() {
             pimpl->logger.debug("shutdown call error: {}", ex.what());
             shouldGetCrashDump = true;
         }
+    } else {
+        pimpl->logger.debug("Crash dump collection disabled - skipping existing crash dump extraction");
     }
-
+    pimpl->logger.debug("Device about to be closed...");
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
     // always manage ownership because other threads (e.g. watchdog) are running and need to
@@ -626,6 +655,8 @@ void DeviceBase::closeImpl() {
             }
         } else if(shouldGetCrashDump) {
             pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
+        } else if(timeout == 0) {
+            pimpl->logger.debug("Crash dump collection disabled, skip device reconnection");
         }
 
         pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
@@ -837,11 +868,20 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
         try {
             // Send request to device
-            rpcStream->write(std::move(request));
-
+            auto writeTimeout = getRPCWriteTimeout();
+            if(writeTimeout > 0) {
+                rpcStream->write(std::move(request), std::chrono::milliseconds(writeTimeout));
+            } else {
+                rpcStream->write(std::move(request));
+            }
             // Receive response back
             // Send to nanorpc to parse
-            return rpcStream->read(std::chrono::milliseconds(RPC_READ_TIMEOUT));
+            auto timeout = getRPCReadTimeout();
+            if(timeout > 0) {
+                return rpcStream->read(std::chrono::milliseconds(timeout));
+            } else {
+                return rpcStream->read();
+            }
         } catch(const std::exception& e) {
             // If any exception is thrown, log it and rethrow
             pimpl->logger.debug("RPC error: {}", e.what());
