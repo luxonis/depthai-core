@@ -33,7 +33,7 @@ class O3DNode(dai.node.ThreadedHostNode):
         )
         vis.add_geometry(coordinateFrame)
         first = True
-        while self.isRunning():
+        while self.mainLoop():
             try:
                 inPointCloud = self.inputPCL.tryGet()
             except dai.MessageQueue.QueueException:

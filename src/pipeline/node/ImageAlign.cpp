@@ -353,7 +353,7 @@ void ImageAlign::run() {
     ImgFrame inputAlignToImgFrame;
     uint32_t currentEepromId = getParentPipeline().getEepromId();
 
-    while(isRunning()) {
+    while(mainLoop()) {
         auto inputImg = input.get<ImgFrame>();
 
         if(!initialized) {

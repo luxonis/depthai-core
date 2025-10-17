@@ -50,7 +50,7 @@ void Sync::run() {
     auto syncThresholdNs = properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
-    while(isRunning()) {
+    while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::unordered_map<std::string, std::shared_ptr<dai::Buffer>> inputFrames;
         for(auto name : inputNames) {
@@ -78,10 +78,11 @@ void Sync::run() {
                 }
             }
             if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {
-                logger->warn(
-                    "Sync node has been trying to sync for {} messages, but the messages are still not in sync. "
-                    "The node will send the messages anyway.",
-                    attempts);
+                if(properties.syncAttempts != 0)
+                    logger->warn(
+                        "Sync node has been trying to sync for {} messages, but the messages are still not in sync. "
+                        "The node will send the messages anyway.",
+                        attempts);
                 break;
             }
             // Find a minimum timestamp

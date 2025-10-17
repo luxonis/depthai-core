@@ -14,10 +14,15 @@
 // Additions
 #include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
+#include "utility/PipelineEventDispatcherInterface.hpp"
 
 namespace dai {
 
-MessageQueue::MessageQueue(std::string name, unsigned int maxSize, bool blocking) : queue(maxSize, blocking), name(std::move(name)) {}
+MessageQueue::MessageQueue(std::string name,
+                           unsigned int maxSize,
+                           bool blocking,
+                           std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher)
+    : queue(maxSize, blocking), name(std::move(name)), pipelineEventDispatcher(pipelineEventDispatcher) {}
 
 MessageQueue::MessageQueue(unsigned int maxSize, bool blocking) : queue(maxSize, blocking) {}
 
@@ -112,7 +117,20 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     callCallbacks(msg);
-    auto queueNotClosed = queue.push(msg);
+    auto queueNotClosed = queue.push(msg, [&](LockingQueueState state, size_t size) {
+        if(pipelineEventDispatcher) {
+            switch(state) {
+                case LockingQueueState::BLOCKED:
+                    pipelineEventDispatcher->pingInputEvent(name, -1, size);
+                    break;
+                case LockingQueueState::CANCELLED:
+                    pipelineEventDispatcher->pingInputEvent(name, -2, size);
+                    break;
+                case LockingQueueState::OK:
+                    break;
+            }
+        }
+    });
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
 }
 
@@ -122,7 +140,20 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
-    return queue.tryWaitAndPush(msg, timeout);
+    return queue.tryWaitAndPush(msg, timeout, [&](LockingQueueState state, size_t size) {
+        if(pipelineEventDispatcher) {
+            switch(state) {
+                case LockingQueueState::BLOCKED:
+                    pipelineEventDispatcher->pingInputEvent(name, -1, size);
+                    break;
+                case LockingQueueState::CANCELLED:
+                    pipelineEventDispatcher->pingInputEvent(name, -2, size);
+                    break;
+                case LockingQueueState::OK:
+                    break;
+            }
+        }
+    });
 }
 
 bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {

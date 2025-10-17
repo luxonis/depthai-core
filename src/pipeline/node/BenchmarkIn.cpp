@@ -55,7 +55,7 @@ void BenchmarkIn::run() {
 
     auto start = steady_clock::now();
 
-    while(isRunning()) {
+    while(mainLoop()) {
         auto inMessage = input.get<dai::Buffer>();
 
         // If this is the first message of the batch, reset counters

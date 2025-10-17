@@ -818,7 +818,7 @@ void ImageFilters::run() {
                   filters.size() == 0,
                   getFilterPipelineString());
 
-    while(isRunning()) {
+    while(mainLoop()) {
         // Set config
         while(inputConfig.has()) {
             auto configMsg = inputConfig.get<ImageFiltersConfig>();
@@ -946,7 +946,7 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
 
 void ToFDepthConfidenceFilter::run() {
     auto confidenceThreshold = getProperties().initialConfig.confidenceThreshold;
-    while(isRunning()) {
+    while(mainLoop()) {
         // Update threshold dynamically
         while(inputConfig.has()) {
             auto configMsg = inputConfig.get<ToFDepthConfidenceFilterConfig>();

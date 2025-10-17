@@ -363,7 +363,7 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
 }
 
 void RGBD::run() {
-    while(isRunning()) {
+    while(mainLoop()) {
         if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty() || !rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
             // Get the color and depth frames
             auto group = inSync.get<MessageGroup>();

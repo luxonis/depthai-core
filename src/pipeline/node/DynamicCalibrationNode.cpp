@@ -557,7 +557,7 @@ void DynamicCalibration::run() {
     auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
     initializePipeline(device);
-    while(isRunning()) {
+    while(mainLoop()) {
         slept = false;
         doWork(previousLoadingTime);
         if(!slept) {

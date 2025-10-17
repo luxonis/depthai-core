@@ -17,7 +17,7 @@ void HostNode::buildStage1() {
 }
 
 void HostNode::run() {
-    while(isRunning()) {
+    while(mainLoop()) {
         // Get input
         auto in = input.get<dai::MessageGroup>();
         // Create a lambda that captures the class as a shared pointer and the message
