@@ -506,6 +506,16 @@ bool PipelineImpl::isDeviceOnly() const {
 }
 
 PipelineStateApi PipelineImpl::getPipelineState() {
+    bool hasPipelineMergeNode = false;
+    for(const auto& node : getAllNodes()) {
+        if(strcmp(node->getName(), "PipelineStateMerge") == 0) {
+            hasPipelineMergeNode = true;
+            break;
+        }
+    }
+    if(!hasPipelineMergeNode) {
+        throw std::runtime_error("Pipeline debugging disabled. Cannot get pipeline state.");
+    }
     return PipelineStateApi(pipelineStateOut, pipelineStateRequest, getAllNodes());
 }
 
@@ -709,9 +719,12 @@ void PipelineImpl::build() {
         }
     }
 
-    if(std::find_if(getAllNodes().begin(), getAllNodes().end(), [](const std::shared_ptr<Node>& n) { return strcmp(n->getName(), "PipelineEventAggregation") == 0; })
-       == getAllNodes().end()) {
-        for(auto& node : getAllNodes()) node->pipelineEventDispatcher->sendEvents = false;
+    {
+        auto allNodes = getAllNodes();
+        if(std::find_if(allNodes.begin(), allNodes.end(), [](const std::shared_ptr<Node>& n) { return strcmp(n->getName(), "PipelineEventAggregation") == 0; })
+           == allNodes.end()) {
+            for(auto& node : allNodes) node->pipelineEventDispatcher->sendEvents = false;
+        }
     }
 
     isBuild = true;

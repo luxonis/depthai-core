@@ -311,6 +311,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("isRunning", &Pipeline::isRunning)
         .def("processTasks", &Pipeline::processTasks, py::arg("waitForTasks") = false, py::arg("timeoutSeconds") = -1.0)
         .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))
-        .def("enableHolisticReplay", &Pipeline::enableHolisticReplay, py::arg("recordingPath"), DOC(dai, Pipeline, enableHolisticReplay));
+        .def("enableHolisticReplay", &Pipeline::enableHolisticReplay, py::arg("recordingPath"), DOC(dai, Pipeline, enableHolisticReplay))
+        .def("getPipelineState", &Pipeline::getPipelineState, DOC(dai, Pipeline, getPipelineState));
     ;
 }
