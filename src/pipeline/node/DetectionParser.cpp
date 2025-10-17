@@ -123,11 +123,17 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         DAI_CHECK_V(false, "Unsupported parser: {}", head.parser);
     }
 
-    if(head.metadata.classes) {
-        setClasses(*head.metadata.classes);
-    }
     if(head.metadata.nClasses) {
         setNumClasses(static_cast<int>(*head.metadata.nClasses));
+    }
+
+    if(head.metadata.classes) {
+        if(head.metadata.nClasses) {
+            DAI_CHECK_V(*head.metadata.nClasses == static_cast<long>(head.metadata.classes->size()),
+                        "Number of classes does not match the size of class names array");
+        }
+        setClasses(*head.metadata.classes);
+        setNumClasses(static_cast<int>(head.metadata.classes->size()));
     }
     if(head.metadata.iouThreshold) {
         properties.parser.iouThreshold = static_cast<float>(*head.metadata.iouThreshold);
