@@ -5,11 +5,14 @@
 #include "depthai/pipeline/node/host/Display.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 
+#ifndef VIDEO_PATH
+#define VIDEO_PATH ""
+#endif
+
 int main(int argc, char** argv) {
-    if(argc <= 1) {
-        std::cout << "Video parameter is missing" << std::endl;
-        std::cout << "Usage: ./image_manip_host video_path" << std::endl;
-        return -1;
+    std::string videoFile = VIDEO_PATH;
+    if(argc > 1) {
+        videoFile = argv[1];
     }
 
     dai::Pipeline pipeline(false);
@@ -27,7 +30,7 @@ int main(int argc, char** argv) {
     manip->initialConfig->addFlipVertical();
     manip->initialConfig->setFrameType(dai::ImgFrame::Type::RGB888p);
 
-    replay->setReplayVideoFile(argv[1]);
+    replay->setReplayVideoFile(videoFile);
     replay->setOutFrameType(dai::ImgFrame::Type::NV12);
     replay->setFps(30);
     replay->setSize(1280, 720);
@@ -37,5 +40,13 @@ int main(int argc, char** argv) {
 
     pipeline.start();
 
-    pipeline.wait();
+    // TODO remove before merge
+    while(pipeline.isRunning()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        std::cout << "Pipeline state: " << pipeline.getPipelineState().nodes().detailed().str() << std::endl;
+    }
+
+    pipeline.stop();
+    //
+    // pipeline.wait();
 }

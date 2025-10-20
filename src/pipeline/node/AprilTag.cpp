@@ -206,31 +206,36 @@ void AprilTag::run() {
     // Handle possible errors during configuration
     handleErrors(errno);
 
-    while(isRunning()) {
-        // Retrieve config from user if available
-        if(properties.inputConfigSync) {
-            inConfig = inputConfig.get<AprilTagConfig>();
-        } else {
-            inConfig = inputConfig.tryGet<AprilTagConfig>();
-        }
-
-        // Set config if there is one and handle possible errors
-        if(inConfig != nullptr) {
-            setDetectorConfig(td.get(), tf, tfamily, *inConfig);
-            handleErrors(errno);
-        }
-
-        // Get latest frame
-        inFrame = inputImage.get<ImgFrame>();
-
+    while(mainLoop()) {
         // Preallocate data on stack for AprilTag detection
         int32_t width = 0;
         int32_t height = 0;
         int32_t stride = 0;
         uint8_t* imgbuf = nullptr;
+        ImgFrame::Type frameType = ImgFrame::Type::NONE;
 
-        // Prepare data for AprilTag detection based on input frame type
-        ImgFrame::Type frameType = inFrame->getType();
+        {
+            auto blockEvent = this->inputBlockEvent();
+
+            // Retrieve config from user if available
+            if(properties.inputConfigSync) {
+                inConfig = inputConfig.get<AprilTagConfig>();
+            } else {
+                inConfig = inputConfig.tryGet<AprilTagConfig>();
+            }
+
+            // Set config if there is one and handle possible errors
+            if(inConfig != nullptr) {
+                setDetectorConfig(td.get(), tf, tfamily, *inConfig);
+                handleErrors(errno);
+            }
+
+            // Get latest frame
+            inFrame = inputImage.get<ImgFrame>();
+
+            // Prepare data for AprilTag detection based on input frame type
+            frameType = inFrame->getType();
+        }
 
         if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::NV12) {
             width = static_cast<int32_t>(inFrame->getWidth());
@@ -307,9 +312,13 @@ void AprilTag::run() {
         aprilTags->setTimestamp(inFrame->getTimestamp());
         aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
 
-        // Send detections and pass through input frame
-        out.send(aprilTags);
-        passthroughInputImage.send(inFrame);
+        {
+            auto blockEvent = this->outputBlockEvent();
+
+            // Send detections and pass through input frame
+            out.send(aprilTags);
+            passthroughInputImage.send(inFrame);
+        }
 
         // Logging
         logger->trace("Detected {} april tags", zarray_size(detections.get()));
