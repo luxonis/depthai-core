@@ -292,7 +292,10 @@ void ReplayVideo::run() {
             std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
         }
 
-        if(buffer) out.send(buffer);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            if(buffer) out.send(buffer);
+        }
 
         if(fps.has_value() && fps.value() > 0.1f) {
             std::this_thread::sleep_until(loopStart + std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value())));
@@ -368,7 +371,10 @@ void ReplayMetadataOnly::run() {
             std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
         }
 
-        if(buffer) out.send(buffer);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            if(buffer) out.send(buffer);
+        }
 
         if(fps.has_value() && fps.value() > 0.1f) {
             std::this_thread::sleep_until(loopStart + std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value())));

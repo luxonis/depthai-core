@@ -50,8 +50,8 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
     void pingCustomEvent(const std::string& source) override;
     void pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize = std::nullopt) override;
     BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source) override;
-    BlockPipelineEvent inputBlockEvent(const std::string& source = "defaultInputGroup") override;
-    BlockPipelineEvent outputBlockEvent(const std::string& source = "defaultOutputGroup") override;
+    BlockPipelineEvent inputBlockEvent() override;
+    BlockPipelineEvent outputBlockEvent() override;
     BlockPipelineEvent customBlockEvent(const std::string& source) override;
 };
 

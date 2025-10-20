@@ -68,8 +68,8 @@ class ThreadedNode : public Node {
      */
     virtual dai::LogLevel getLogLevel() const;
 
-    utility::PipelineEventDispatcherInterface::BlockPipelineEvent inputBlockEvent(const std::string& source = "defaultInputGroup");
-    utility::PipelineEventDispatcherInterface::BlockPipelineEvent outputBlockEvent(const std::string& source = "defaultOutputGroup");
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent inputBlockEvent();
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent outputBlockEvent();
     utility::PipelineEventDispatcherInterface::BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source);
 
     class Impl;

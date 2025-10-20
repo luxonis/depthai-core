@@ -819,21 +819,26 @@ void ImageFilters::run() {
                   getFilterPipelineString());
 
     while(mainLoop()) {
-        // Set config
-        while(inputConfig.has()) {
-            auto configMsg = inputConfig.get<ImageFiltersConfig>();
-            bool isUpdate = configMsg->filterIndices.size() > 0;
-            if(isUpdate) {
-                updateExistingFilterPipeline(*configMsg);
-                logger->debug("ImageFilters: Updating existing filter pipeline. New pipeline is {}", getFilterPipelineString());
-            } else {
-                createNewFilterPipeline(*configMsg);
-                logger->debug("ImageFilters: Creating a new filter pipeline. New pipeline is {}", getFilterPipelineString());
-            }
-        }
+        std::shared_ptr<dai::ImgFrame> frame = nullptr;
+        {
+            auto blockEvent = this->inputBlockEvent();
 
-        // Get frame from input queue
-        std::shared_ptr<dai::ImgFrame> frame = input.get<dai::ImgFrame>();
+            // Set config
+            while(inputConfig.has()) {
+                auto configMsg = inputConfig.get<ImageFiltersConfig>();
+                bool isUpdate = configMsg->filterIndices.size() > 0;
+                if(isUpdate) {
+                    updateExistingFilterPipeline(*configMsg);
+                    logger->debug("ImageFilters: Updating existing filter pipeline. New pipeline is {}", getFilterPipelineString());
+                } else {
+                    createNewFilterPipeline(*configMsg);
+                    logger->debug("ImageFilters: Creating a new filter pipeline. New pipeline is {}", getFilterPipelineString());
+                }
+            }
+
+            // Get frame from input queue
+            frame = input.get<dai::ImgFrame>();
+        }
         if(frame == nullptr) {
             logger->error("ImageFilters: Input frame is nullptr");
             break;
@@ -854,8 +859,12 @@ void ImageFilters::run() {
             tlast = t2;
         }
 
-        // Send filtered frame to the output queue
-        output.send(filteredFrame);
+        {
+            auto blockEvent = this->outputBlockEvent();
+
+            // Send filtered frame to the output queue
+            output.send(filteredFrame);
+        }
     }
 }
 
@@ -946,25 +955,35 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
 
 void ToFDepthConfidenceFilter::run() {
     auto confidenceThreshold = getProperties().initialConfig.confidenceThreshold;
-    while(mainLoop()) {
-        // Update threshold dynamically
-        while(inputConfig.has()) {
-            auto configMsg = inputConfig.get<ToFDepthConfidenceFilterConfig>();
-            confidenceThreshold = configMsg->confidenceThreshold;
-        }
+    std::shared_ptr<dai::ImgFrame> depthFrame = nullptr;
+    std::shared_ptr<dai::ImgFrame> amplitudeFrame = nullptr;
 
-        // Get frames from input queue
-        std::shared_ptr<dai::ImgFrame> depthFrame = depth.get<dai::ImgFrame>();
-        std::shared_ptr<dai::ImgFrame> amplitudeFrame = amplitude.get<dai::ImgFrame>();
-        if(depthFrame == nullptr || amplitudeFrame == nullptr) {
-            pimpl->logger->error("DepthConfidenceFilter: Input frame is nullptr");
-            break;
+    while(mainLoop()) {
+        {
+            auto blockEvent = this->inputBlockEvent();
+
+            // Update threshold dynamically
+            while(inputConfig.has()) {
+                auto configMsg = inputConfig.get<ToFDepthConfidenceFilterConfig>();
+                confidenceThreshold = configMsg->confidenceThreshold;
+            }
+
+            // Get frames from input queue
+            depthFrame = depth.get<dai::ImgFrame>();
+            amplitudeFrame = amplitude.get<dai::ImgFrame>();
+            if(depthFrame == nullptr || amplitudeFrame == nullptr) {
+                pimpl->logger->error("DepthConfidenceFilter: Input frame is nullptr");
+                break;
+            }
         }
 
         // In case the confidence threshold is 0, serve as a passthrough
         if(confidenceThreshold == 0.0f) {
-            filteredDepth.send(depthFrame);
-            confidence.send(amplitudeFrame);
+            {
+                auto blockEvent = this->outputBlockEvent();
+                filteredDepth.send(depthFrame);
+                confidence.send(amplitudeFrame);
+            }
             continue;
         }
 
@@ -993,9 +1012,12 @@ void ToFDepthConfidenceFilter::run() {
             tlast = t2;
         }
 
-        // Send results
-        filteredDepth.send(filteredDepthFrame);
-        confidence.send(confidenceFrame);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            // Send results
+            filteredDepth.send(filteredDepthFrame);
+            confidence.send(confidenceFrame);
+        }
     }
 }
 

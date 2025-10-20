@@ -67,7 +67,8 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
     nodeStateTiming.def(py::init<>())
         .def("__repr__", &NodeState::Timing::str)
         .def_readwrite("fps", &NodeState::Timing::fps, DOC(dai, NodeState, Timing, fps))
-        .def_readwrite("durationStats", &NodeState::Timing::durationStats, DOC(dai, NodeState, Timing, durationStats));
+        .def_readwrite("durationStats", &NodeState::Timing::durationStats, DOC(dai, NodeState, Timing, durationStats))
+        .def("isValid", &NodeState::Timing::isValid, DOC(dai, NodeState, Timing, isValid));
 
     nodeStateQueueStats.def(py::init<>())
         .def("__repr__", &NodeState::QueueStats::str)
@@ -81,12 +82,14 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def_readwrite("state", &NodeState::InputQueueState::state, DOC(dai, NodeState, InputQueueState, state))
         .def_readwrite("numQueued", &NodeState::InputQueueState::numQueued, DOC(dai, NodeState, InputQueueState, numQueued))
         .def_readwrite("timing", &NodeState::InputQueueState::timing, DOC(dai, NodeState, InputQueueState, timing))
-        .def_readwrite("queueStats", &NodeState::InputQueueState::queueStats, DOC(dai, NodeState, InputQueueState, queueStats));
+        .def_readwrite("queueStats", &NodeState::InputQueueState::queueStats, DOC(dai, NodeState, InputQueueState, queueStats))
+        .def("isValid", &NodeState::InputQueueState::isValid, DOC(dai, NodeState, InputQueueState, isValid));
 
     nodeStateOutputQueueState.def(py::init<>())
         .def("__repr__", &NodeState::OutputQueueState::str)
         .def_readwrite("state", &NodeState::OutputQueueState::state, DOC(dai, NodeState, OutputQueueState, state))
-        .def_readwrite("timing", &NodeState::OutputQueueState::timing, DOC(dai, NodeState, OutputQueueState, timing));
+        .def_readwrite("timing", &NodeState::OutputQueueState::timing, DOC(dai, NodeState, OutputQueueState, timing))
+        .def("isValid", &NodeState::OutputQueueState::isValid, DOC(dai, NodeState, OutputQueueState, isValid));
 
     nodeState.def(py::init<>())
         .def("__repr__", &NodeState::str)

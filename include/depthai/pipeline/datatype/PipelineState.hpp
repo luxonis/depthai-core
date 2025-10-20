@@ -27,6 +27,11 @@ class NodeState {
     struct Timing {
         float fps;
         TimingStats durationStats;
+
+        bool isValid() const {
+            return durationStats.minMicros <= durationStats.maxMicros;
+        }
+
         DEPTHAI_SERIALIZE(Timing, fps, durationStats);
     };
     struct QueueStats {
@@ -49,6 +54,11 @@ class NodeState {
         Timing timing;
         // Queue usage stats
         QueueStats queueStats;
+
+        bool isValid() const {
+            return timing.isValid();
+        }
+
         DEPTHAI_SERIALIZE(InputQueueState, state, numQueued, timing);
     };
     struct OutputQueueState {
@@ -60,6 +70,11 @@ class NodeState {
         } state = State::IDLE;
         // Timing info about this output
         Timing timing;
+
+        bool isValid() const {
+            return timing.isValid();
+        }
+
         DEPTHAI_SERIALIZE(OutputQueueState, state, timing);
     };
     enum class State : std::int32_t {

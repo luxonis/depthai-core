@@ -38,7 +38,11 @@ Display::Display(std::string name) : name(std::move(name)) {}
 void Display::run() {
     auto fpsCounter = FPSCounter();
     while(mainLoop()) {
-        std::shared_ptr<dai::ImgFrame> imgFrame = input.get<dai::ImgFrame>();
+        std::shared_ptr<dai::ImgFrame> imgFrame = nullptr;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            imgFrame = input.get<dai::ImgFrame>();
+        }
         if(imgFrame != nullptr) {
             fpsCounter.update();
             auto fps = fpsCounter.getFPS();

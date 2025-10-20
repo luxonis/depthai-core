@@ -103,13 +103,11 @@ bool ThreadedNode::mainLoop() {
 utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::blockEvent(PipelineEvent::Type type, const std::string& source) {
     return pipelineEventDispatcher->blockEvent(type, source);
 }
-utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::inputBlockEvent(const std::string& source) {
-    // Just for convenience due to the default source
-    return blockEvent(PipelineEvent::Type::INPUT_BLOCK, source);
+utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::inputBlockEvent() {
+    return pipelineEventDispatcher->inputBlockEvent();
 }
-utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::outputBlockEvent(const std::string& source) {
-    // Just for convenience due to the default source
-    return blockEvent(PipelineEvent::Type::OUTPUT_BLOCK, source);
+utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::outputBlockEvent() {
+    return pipelineEventDispatcher->outputBlockEvent();
 }
 
 }  // namespace dai

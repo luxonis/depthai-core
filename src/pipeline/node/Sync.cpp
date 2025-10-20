@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/Sync.hpp"
+#include <chrono>
 
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -50,73 +51,79 @@ void Sync::run() {
     auto syncThresholdNs = properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
+    time_point<steady_clock> tAfterMessageBeginning;
+
     while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::unordered_map<std::string, std::shared_ptr<dai::Buffer>> inputFrames;
-        for(auto name : inputNames) {
-            logger->trace("Receiving input: {}", name);
-            inputFrames[name] = inputs[name].get<dai::Buffer>();
-            if(inputFrames[name] == nullptr) {
-                logger->error("Received nullptr from input {}, sync node only accepts messages inherited from Buffer on the inputs", name);
-                throw std::runtime_error("Received nullptr from input " + name);
-            }
-        }
-        // Print out the timestamps
-        for(const auto& frame : inputFrames) {
-            logger->debug(
-                "Starting input {} timestamp is {} ms", frame.first, static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
-        }
-        auto tAfterMessageBeginning = steady_clock::now();
-        int attempts = 0;
-        while(true) {
-            logger->trace("There have been {} attempts to sync", attempts);
-            if(attempts > 50) {
-                logger->warn("Sync node has been trying to sync for {} messages, but the messages are still not in sync.", attempts);
-                for(const auto& frame : inputFrames) {
-                    logger->warn(
-                        "Output {} timestamp is {} ms", frame.first, static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
+        {
+            auto eventBlock = this->inputBlockEvent();
+
+            for(auto name : inputNames) {
+                logger->trace("Receiving input: {}", name);
+                inputFrames[name] = inputs[name].get<dai::Buffer>();
+                if(inputFrames[name] == nullptr) {
+                    logger->error("Received nullptr from input {}, sync node only accepts messages inherited from Buffer on the inputs", name);
+                    throw std::runtime_error("Received nullptr from input " + name);
                 }
             }
-            if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {
-                if(properties.syncAttempts != 0)
-                    logger->warn(
-                        "Sync node has been trying to sync for {} messages, but the messages are still not in sync. "
-                        "The node will send the messages anyway.",
-                        attempts);
-                break;
-            }
-            // Find a minimum timestamp
-            auto minTs = inputFrames.begin()->second->getTimestamp();
+            // Print out the timestamps
             for(const auto& frame : inputFrames) {
-                if(frame.second->getTimestamp() < minTs) {
-                    minTs = frame.second->getTimestamp();
+                logger->debug(
+                    "Starting input {} timestamp is {} ms", frame.first, static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
+            }
+            tAfterMessageBeginning = steady_clock::now();
+            int attempts = 0;
+            while(true) {
+                logger->trace("There have been {} attempts to sync", attempts);
+                if(attempts > 50) {
+                    logger->warn("Sync node has been trying to sync for {} messages, but the messages are still not in sync.", attempts);
+                    for(const auto& frame : inputFrames) {
+                        logger->warn(
+                            "Output {} timestamp is {} ms", frame.first, static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
+                    }
                 }
-            }
-
-            // Find a max timestamp
-            auto maxTs = inputFrames.begin()->second->getTimestamp();
-            for(const auto& frame : inputFrames) {
-                if(frame.second->getTimestamp() > maxTs) {
-                    maxTs = frame.second->getTimestamp();
-                }
-            }
-            logger->debug("Diff: {} ms", duration_cast<milliseconds>(maxTs - minTs).count());
-
-            if(duration_cast<nanoseconds>(maxTs - minTs).count() < syncThresholdNs) {
-                break;
-            }
-
-            // Get the message with the minimum timestamp (oldest message)
-            std::string minTsName;
-            for(const auto& frame : inputFrames) {
-                if(frame.second->getTimestamp() == minTs) {
-                    minTsName = frame.first;
+                if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {
+                    if(properties.syncAttempts != 0)
+                        logger->warn(
+                            "Sync node has been trying to sync for {} messages, but the messages are still not in sync. "
+                            "The node will send the messages anyway.",
+                            attempts);
                     break;
                 }
+                // Find a minimum timestamp
+                auto minTs = inputFrames.begin()->second->getTimestamp();
+                for(const auto& frame : inputFrames) {
+                    if(frame.second->getTimestamp() < minTs) {
+                        minTs = frame.second->getTimestamp();
+                    }
+                }
+
+                // Find a max timestamp
+                auto maxTs = inputFrames.begin()->second->getTimestamp();
+                for(const auto& frame : inputFrames) {
+                    if(frame.second->getTimestamp() > maxTs) {
+                        maxTs = frame.second->getTimestamp();
+                    }
+                }
+                logger->debug("Diff: {} ms", duration_cast<milliseconds>(maxTs - minTs).count());
+
+                if(duration_cast<nanoseconds>(maxTs - minTs).count() < syncThresholdNs) {
+                    break;
+                }
+
+                // Get the message with the minimum timestamp (oldest message)
+                std::string minTsName;
+                for(const auto& frame : inputFrames) {
+                    if(frame.second->getTimestamp() == minTs) {
+                        minTsName = frame.first;
+                        break;
+                    }
+                }
+                logger->trace("Receiving input: {}", minTsName);
+                inputFrames[minTsName] = inputs[minTsName].get<dai::Buffer>();
+                attempts++;
             }
-            logger->trace("Receiving input: {}", minTsName);
-            inputFrames[minTsName] = inputs[minTsName].get<dai::Buffer>();
-            attempts++;
         }
         auto tBeforeSend = steady_clock::now();
         auto outputGroup = std::make_shared<dai::MessageGroup>();
@@ -133,7 +140,10 @@ void Sync::run() {
         outputGroup->setTimestamp(newestFrame->getTimestamp());
         outputGroup->setTimestampDevice(newestFrame->getTimestampDevice());
         outputGroup->setSequenceNum(newestFrame->getSequenceNum());
-        out.send(outputGroup);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            out.send(outputGroup);
+        }
         auto tAbsoluteEnd = steady_clock::now();
         logger->debug("Sync total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
                       duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,

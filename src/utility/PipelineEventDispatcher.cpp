@@ -5,6 +5,9 @@
 namespace dai {
 namespace utility {
 
+constexpr const char* OUTPUT_BLOCK_NAME = "getInputs";
+constexpr const char* INPUT_BLOCK_NAME = "sendOutputs";
+
 std::string typeToString(PipelineEvent::Type type) {
     switch(type) {
         case PipelineEvent::Type::CUSTOM:
@@ -189,13 +192,13 @@ void PipelineEventDispatcher::pingInputEvent(const std::string& source, int32_t 
 PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::blockEvent(PipelineEvent::Type type, const std::string& source) {
     return BlockPipelineEvent(*this, type, source);
 }
-PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::inputBlockEvent(const std::string& source) {
+PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::inputBlockEvent() {
     // For convenience due to the default source
-    return blockEvent(PipelineEvent::Type::INPUT_BLOCK, source);
+    return blockEvent(PipelineEvent::Type::INPUT_BLOCK, INPUT_BLOCK_NAME);
 }
-PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::outputBlockEvent(const std::string& source) {
+PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::outputBlockEvent() {
     // For convenience due to the default source
-    return blockEvent(PipelineEvent::Type::OUTPUT_BLOCK, source);
+    return blockEvent(PipelineEvent::Type::OUTPUT_BLOCK, OUTPUT_BLOCK_NAME);
 }
 PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::customBlockEvent(const std::string& source) {
     // For convenience due to the default source

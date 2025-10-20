@@ -512,7 +512,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
 DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime) {
     auto error = ErrorCode::OK;  // Expect everything is ok
-    auto calibrationCommand = inputControl.tryGet<DynamicCalibrationControl>();
+    std::shared_ptr<DynamicCalibrationControl> calibrationCommand = nullptr;
+    {
+        auto blockEvent = this->inputBlockEvent();
+        calibrationCommand = inputControl.tryGet<DynamicCalibrationControl>();
+    }
     if(calibrationCommand) {
         error = evaluateCommand(calibrationCommand);
     }
