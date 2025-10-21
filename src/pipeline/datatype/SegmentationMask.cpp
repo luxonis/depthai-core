@@ -1,15 +1,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
-#include <xtensor/containers/xadapt.hpp>
-#include <xtensor/core/xtensor_forward.hpp>
-#include <xtensor/views/xstrided_view.hpp>
 #define _USE_MATH_DEFINES
 
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 
 #ifdef DEPTHAI_XTENSOR_SUPPORT
+    #include <xtensor/containers/xadapt.hpp>
+    #include <xtensor/core/xtensor_forward.hpp>
+    #include <xtensor/views/xstrided_view.hpp>
     #include <xtensor/core/xmath.hpp>
 #endif
 namespace dai {
