@@ -42,6 +42,7 @@
 #include "XLink/XLinkTime.h"
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
+#include "nanorpc/core/hash.h"
 #include "spdlog/details/os.h"
 #include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
@@ -60,6 +61,9 @@ constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT_MS = 9000;
 const unsigned int RPC_READ_TIMEOUT = 10000;
+const unsigned int WAIT_FOR_DEVICE_READY_RPC_READ_TIMEOUT = 60000;
+
+std::string const WAIT_FOR_DEVICE_READY_RPC_NAME = "waitForDeviceReady";
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
@@ -762,10 +766,18 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         try {
             // Send request to device
             rpcStream->write(std::move(request));
+            
+            auto id = nlohmann::json::from_msgpack(request).at(2).get<nanorpc::core::type::id>();
+
+            unsigned int timeout = RPC_READ_TIMEOUT;
+
+            if (id == nanorpc::core::hash_id(WAIT_FOR_DEVICE_READY_RPC_NAME)) {
+                timeout = WAIT_FOR_DEVICE_READY_RPC_READ_TIMEOUT;
+            }
 
             // Receive response back
             // Send to nanorpc to parse
-            return rpcStream->read(std::chrono::milliseconds(RPC_READ_TIMEOUT));
+            return rpcStream->read(std::chrono::milliseconds(timeout));
         } catch(const std::exception& e) {
             // If any exception is thrown, log it and rethrow
             pimpl->logger.debug("RPC error: {}", e.what());
@@ -1176,6 +1188,14 @@ void DeviceBase::crashDevice() {
     } catch(const std::system_error& ex) {
         pimpl->logger.debug("Crash device threw an exception: {} (expected)", ex.what());
     }
+}
+
+std::tuple<bool, std::string>  DeviceBase::setM8FsyncRole(M8FsyncRole role) {
+    return pimpl->rpcClient->call("setM8FsyncRole", role);
+}
+
+M8FsyncRole DeviceBase::getM8FsyncRole() {
+    return pimpl->rpcClient->call("getM8FsyncRole");
 }
 
 dai::Version DeviceBase::getIMUFirmwareVersion() {
@@ -1619,14 +1639,23 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     logCollection::logPipeline(schema, deviceInfo);
     this->pipelineSchema = schema;  // Save the schema so it can be saved alongside the crashdump
 
-    // Build and start the pipeline
     bool success = false;
     std::string errorMsg;
+
+    // Initialize the device (M8 Fsync slaves need to lock onto the signal first)
+    std::tie(success, errorMsg) = pimpl->rpcClient->call(WAIT_FOR_DEVICE_READY_RPC_NAME).as<std::tuple<bool, std::string>>();
+
+    if (!success) {
+        throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
+    }
+
+    // Build and start the pipeline
     std::tie(success, errorMsg) = pimpl->rpcClient->call("buildPipeline").as<std::tuple<bool, std::string>>();
+
     if(success) {
         pimpl->rpcClient->call("startPipeline");
     } else {
-        throw std::runtime_error(errorMsg);
+        throw std::runtime_error("Device " + getDeviceId() + " error: " + errorMsg);
         return false;
     }
 
