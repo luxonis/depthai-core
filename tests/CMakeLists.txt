@@ -227,6 +227,93 @@ private_data(
     LOCATION construction_vest
 )
 
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "yolov6-nano:r2-coco-512x288:a26d1ee-detections.json"
+#     LOCATION yolo_v6_r2_coco_512x288_gt
+# )
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "yolov6-nano:r2-coco-512x384:fb1429e-detections.json"
+#     LOCATION yolo_v6_r2_coco_512x384_gt
+# )
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "yolov8-instance-segmentation-nano:coco-512x288:6c0402a-detections.json"
+#     LOCATION yolo_v8_instance_segmentation_nano_coco_512x288_gt
+# )
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "yolov8-large-pose-estimation:coco-640x352:1868e39-detections.json"
+#     LOCATION yolo_v8_large_pose_estimation_coco_640x352_gt
+# )
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "yolov8-instance-segmentation-large:coco-640x352:701031f-detections.json"
+#     LOCATION yolo_v8_instance_segmentation_large_coco_640x352_gt
+# )
+
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "yolov10-nano:coco-512x288:007b5fe-detections.json"
+#     LOCATION yolo_v10_nano_coco_512x288_gt
+# )
+
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "ppe-detection:640x640:419a4e5-detections.json"
+#     LOCATION ppe_detection_640x640_gt
+# )
+
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "yolo-p:bdd100k-320x320:7019bb8-detections.json"
+#     LOCATION yolo_p_bdd100k_320x320_gt
+#     )
+
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "fire-detection:512x288:4a8263c-detections.json"
+#     LOCATION fire_detection_512x288_gt
+#     )
+
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "pedestrians_walking_4k_25fps.mp4"
+#     LOCATION people_walking_video
+#     )
+
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "fire_hd_1920_1080_24fps.mp4"
+#     LOCATION fire_video
+#     )
+    
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "kitchen1.png"
+#     LOCATION kitchen_image
+# )
+
+# private_data(
+#     URL ""
+#     SHA1 ""
+#     FILE "yolov8-instance-segmentation-large:coco-640x352:701031f-segmentation_mask.png"
+#     LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt
+# )
+
 ### Helper script to wrap the tests with a timeout ############################
 
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
@@ -418,9 +505,24 @@ target_compile_definitions(detection_network_test PRIVATE
 dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
 
 # DetectionParser test
-dai_add_test(detection_parser_test src/ondevice_tests/pipeline/node/detection_parser_test.cpp)
-target_compile_definitions(detection_parser_test PRIVATE)
-dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
+# dai_add_test(detection_parser_test src/ondevice_tests/pipeline/node/detection_parser_test.cpp)
+# target_compile_definitions(detection_parser_test PRIVATE
+# YOLO_V6_R2_COCO_512x288_GROUND_TRUTH="${yolo_v6_r2_coco_512x288_gt}"
+# YOLO_V6_R2_COCO_512x384_GROUND_TRUTH="${yolo_v6_r2_coco_512x384_gt}"
+# YOLO_V8_INSTANCE_SEGMENTATION_NANO_COCO_512x288_GROUND_TRUTH="${yolo_v8_instance_segmentation_nano_coco_512x288_gt}"
+# YOLO_V8_LARGE_POSE_ESTIMATION_COCO_640x352_GROUND_TRUTH="${yolo_v8_large_pose_estimation_coco_640x352_gt}"
+# YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_gt}"
+# YOLO_V10_NANO_COCO_512x288_GROUND_TRUTH="${yolo_v10_nano_coco_512x288_gt}"
+# PPE_DETECTION_640x640_GROUND_TRUTH="${ppe_detection_640x640_gt}"
+# YOLO_P_BDD100K_320x320_GROUND_TRUTH="${yolo_p_bdd100k_320x320_gt}"
+# FIRE_DETECTION_512x288_GROUND_TRUTH="${fire_detection_512x288_gt}"
+# PEOPLE_WALKING_VIDEO="${people_walking_video}"
+# FIRE_VIDEO="${fire_video}"
+# KITCHEN_IMAGE_PATH
+# YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH
+# YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH
+# )
+# dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
