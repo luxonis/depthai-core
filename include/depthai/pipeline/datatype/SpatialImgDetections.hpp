@@ -59,17 +59,14 @@ class SpatialImgDetections : public Buffer, public ProtoSerializable {
      * Construct SpatialImgDetections message.
      */
     SpatialImgDetections() = default;
-    virtual ~SpatialImgDetections() = default;
+    virtual ~SpatialImgDetections();
 
     /**
      * Detection results.
      */
     std::vector<SpatialImgDetection> detections;
     std::optional<ImgTransformation> transformation;
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::SpatialImgDetections;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

@@ -21,6 +21,8 @@
 namespace dai {
 namespace node {
 
+DetectionParser::~DetectionParser() = default;
+
 void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
     switch(nnArchive.getModelType()) {

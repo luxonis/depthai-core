@@ -10,7 +10,7 @@ namespace impl {
 
 class Tracker {
    public:
-    virtual ~Tracker() = default;
+    virtual ~Tracker();
 
     /**
      * Initialize the tracker with the first frame and detections.

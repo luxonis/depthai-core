@@ -50,7 +50,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
     py::class_<StereoDepthConfig::CensusTransform> censusTransform(stereoDepthConfig, "CensusTransform", DOC(dai, StereoDepthConfig, CensusTransform));
     py::enum_<StereoDepthConfig::CensusTransform::KernelSize> censusTransformKernelSize(
         censusTransform, "KernelSize", DOC(dai, StereoDepthConfig, CensusTransform, KernelSize));
-
+    py::enum_<StereoDepthConfig::PostProcessing::Filter> filterEnum(postProcessing, "Filter", DOC(dai, StereoDepthConfig, PostProcessing, Filter));
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -81,6 +81,13 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .value("INCH", StereoDepthConfig::AlgorithmControl::DepthUnit::INCH, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit, INCH))
         .value("FOOT", StereoDepthConfig::AlgorithmControl::DepthUnit::FOOT, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit, FOOT))
         .value("CUSTOM", StereoDepthConfig::AlgorithmControl::DepthUnit::CUSTOM, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit, CUSTOM));
+
+    filterEnum.value("NONE", StereoDepthConfig::PostProcessing::Filter::NONE, DOC(dai, StereoDepthConfig, PostProcessing, Filter, NONE))
+        .value("DECIMATION", StereoDepthConfig::PostProcessing::Filter::DECIMATION, DOC(dai, StereoDepthConfig, PostProcessing, Filter, DECIMATION))
+        .value("SPECKLE", StereoDepthConfig::PostProcessing::Filter::SPECKLE, DOC(dai, StereoDepthConfig, PostProcessing, Filter, SPECKLE))
+        .value("MEDIAN", StereoDepthConfig::PostProcessing::Filter::MEDIAN, DOC(dai, StereoDepthConfig, PostProcessing, Filter, MEDIAN))
+        .value("SPATIAL", StereoDepthConfig::PostProcessing::Filter::SPATIAL, DOC(dai, StereoDepthConfig, PostProcessing, Filter, SPATIAL))
+        .value("TEMPORAL", StereoDepthConfig::PostProcessing::Filter::TEMPORAL, DOC(dai, StereoDepthConfig, PostProcessing, Filter, TEMPORAL));
 
     algorithmControl.def(py::init<>())
         .def_readwrite("depthAlign", &StereoDepthConfig::AlgorithmControl::depthAlign, DOC(dai, StereoDepthConfig, AlgorithmControl, depthAlign))

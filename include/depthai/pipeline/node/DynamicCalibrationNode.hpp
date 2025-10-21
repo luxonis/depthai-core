@@ -5,8 +5,7 @@
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
 
-#include "depthai/pipeline/datatype/DynamicCalibrationConfig.hpp"
-#include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+#include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"
 
 namespace spdlog {
@@ -22,15 +21,13 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
    public:
     constexpr static const char* NAME = "DynamicCalibration";
 
-    using PerformanceMode = DynamicCalibrationControl::PerformanceMode;
-
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     ~DynamicCalibration() override = default;
 
     // clang-format off
     /**
-     * Input DynamicCalibrationConfig message with ability to modify parameters in runtime.
+     * Input DynamicCalibrationControl message with ability to modify parameters in runtime.
      */
     Input inputControl{
         *this,
@@ -126,6 +123,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
         MISSING_IMAGE = 6,
         CALIBRATION_DOES_NOT_EXIST = 7,
         STOP_LOADING_IMAGES_DURING_CALIBRATION = 8,
+        INVALID_COMMAND = 9,
     };
 
     /**
@@ -133,22 +131,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
 
     void run() override;
-
-    int getWidth() const {
-        return width;
-    }
-
-    int getHeight() const {
-        return height;
-    }
-
-    void setWidth(const int newWidth) {
-        width = newWidth;
-    }
-
-    void setHeight(const int newHeight) {
-        height = newHeight;
-    }
 
     CameraBoardSocket getBorderSockerA() {
         return daiSocketA;
@@ -189,8 +171,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     CameraBoardSocket daiSocketA = CameraBoardSocket::CAM_B;
     CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
-    int width;
-    int height;
+    std::pair<int, int> resolutionA;
+    std::pair<int, int> resolutionB;
     std::shared_ptr<::spdlog::async_logger> logger;
 
     // std::chrono::milliseconds sleepingTime = 250ms;
@@ -203,7 +185,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     // Time between calibration runs, in seconds.
     // Determines how often the calibration procedure is executed.
     float calibrationPeriod = 5.0f;
-    PerformanceMode performanceMode = PerformanceMode::DEFAULT;
+    DynamicCalibrationControl::PerformanceMode performanceMode = DynamicCalibrationControl::PerformanceMode::DEFAULT;
     bool calibrationShouldRun = false;
     bool slept = false;
 

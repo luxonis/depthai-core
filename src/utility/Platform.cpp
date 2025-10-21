@@ -68,6 +68,9 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
 #ifdef __linux__
     auto handle = thread.native_handle();
     pthread_setname_np(handle, name.c_str());
+#else
+    (void)thread;  // unused
+    (void)name;    // unused
 #endif
     return;
 }

@@ -11,7 +11,7 @@ type = modelArhive.getConfig().model.inputs[0].preprocessing.daiType
 
 if type:
     try:
-        frameType = dai.ImgFrame.Type.__getattribute__(type)
+        frameType = getattr(dai.ImgFrame.Type, type)
     except AttributeError:
         type = None
 

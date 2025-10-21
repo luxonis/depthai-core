@@ -19,6 +19,11 @@ on:
         type: string
         default: "develop"
         description: "Version for depthai"
+      device:
+        required: false
+        type: string
+        default: "stereo"
+        description: "Which device to test - stereo or rgb"
 
 jobs:
   id:
@@ -76,12 +81,9 @@ jobs:
       steps:
       - uses: actions/checkout@v3
 
-      - name: Prepare HIL Framework
-        run: source scripts/hil/prepare_hil_framework.sh
-
       - name: Configure, Build and Test
         run: |
-
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
             RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
           else
@@ -93,4 +95,11 @@ jobs:
             HOLD_RESERVATION="--hold-reservation"
           fi
 
-          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $RESERVATION_OPTION --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "source /workspace/venv/bin/activate && cd /workspace/tests && python3 run_tests.py '--rvc4' "
+          if [[ "${{ github.event.inputs.device }}" == 'stereo' ]]; then
+            MODELS="oak4_pro or oak4_d"
+          else
+            MODELS="oak4_s"
+            RGB="rgb"
+          fi
+
+          exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4$RGB"

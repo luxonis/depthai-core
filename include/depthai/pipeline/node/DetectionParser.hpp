@@ -28,6 +28,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     constexpr static const char* NAME = "DetectionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
+    ~DetectionParser() override;
+
     /**
      * @brief Build DetectionParser node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
      * @param nnInput: Output to link

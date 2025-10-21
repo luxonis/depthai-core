@@ -16,6 +16,8 @@ struct UVCProperties : PropertiesSerializable<Properties, UVCProperties> {
 
     /// <gpio_number, value> list for GPIOs to set when streaming is disabled
     std::unordered_map<int, int> gpioStreamOff;
+
+    ~UVCProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(UVCProperties, gpioInit, gpioStreamOn, gpioStreamOff);
