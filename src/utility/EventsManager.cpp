@@ -32,12 +32,12 @@ void FileGroup::addFile(std::string fileName, std::filesystem::path filePath) {
 }
 
 void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgFrame>& imgFrame) {
-    std::string dataFileName = fileName.has_value() ? fileName.value() : "Image";
+    std::string dataFileName = fileName.value_or("Image");
     addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(dataFileName));
 }
 
 void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<EncodedFrame>& encodedFrame) {
-    std::string dataFileName = fileName.has_value() ? fileName.value() : "Image";
+    std::string dataFileName = fileName.value_or("Image");
     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(dataFileName));
 }
 
@@ -46,23 +46,23 @@ void FileGroup::addFile(const std::optional<std::string>& fileName, const std::s
 // }
 
 void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgDetections>& imgDetections) {
-    std::string dataFileName = fileName.has_value() ? fileName.value() : "Detections";
+    std::string dataFileName = fileName.value_or("Detections");
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
 
 void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
                                        const std::shared_ptr<ImgFrame>& imgFrame,
                                        const std::shared_ptr<ImgDetections>& imgDetections) {
-    std::string dataFileName = fileName.has_value() ? fileName.value() : "ImageDetection";
-    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(dataFileName));
+    std::string dataFileName = fileName.value_or("ImageDetection");
+    addToFileData<dai::utility::FileData>(fileData, imgFrame, dataFileName);
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
 
 void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
                                        const std::shared_ptr<EncodedFrame>& encodedFrame,
                                        const std::shared_ptr<ImgDetections>& imgDetections) {
-    std::string dataFileName = fileName.has_value() ? fileName.value() : "ImageDetection";
-    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(dataFileName));
+    std::string dataFileName = fileName.value_or("ImageDetection");
+    addToFileData<dai::utility::FileData>(fileData, encodedFrame, dataFileName);
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
 
@@ -235,7 +235,7 @@ EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
     auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
     sourceAppId = appId == "" ? containerId : appId;
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
-    url = utility::getEnvAs<std::string>("DEPTHAI_HUB_URL", "https://events.cloud.luxonis.com");
+    url = utility::getEnvAs<std::string>("DEPTHAI_HUB_EVENTS_BASE_URL", "https://events.cloud.luxonis.com");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
@@ -650,6 +650,7 @@ bool EventsManager::sendSnap(const std::string& name,
     snapData->event = std::make_unique<proto::event::Event>();
     snapData->event->set_created_at(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
     snapData->event->set_name(name);
+    snapData->event->add_tags("snap");
     for(const auto& tag : tags) {
         snapData->event->add_tags(tag);
     }
@@ -664,7 +665,6 @@ bool EventsManager::sendSnap(const std::string& name,
         logger::error("Failed to send snap, validation failed");
         return false;
     }
-    snapData->event->add_tags("snap");
     if(fileGroup->fileData.size() > maxFilesPerGroup) {
         logger::error("Failed to send snap, the number of files in a file group {} exceeds {}", fileGroup->fileData.size(), maxFilesPerGroup);
         return false;
