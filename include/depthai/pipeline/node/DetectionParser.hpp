@@ -44,7 +44,6 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * Outputs image frame with detected edges
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, false}}}}};
-
     /**
      * Specify number of frames in pool.
      * @param numFramesPool How many frames should the pool have

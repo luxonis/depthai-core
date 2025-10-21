@@ -109,10 +109,6 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             properties.parser.nKeypoints = head.metadata.nKeypoints;
         }
 
-        if(properties.parser.decodingFamily == YoloDecodingFamily::v3AB) {
-            properties.parser.strides = {16, 32};
-        }
-
         if(head.metadata.yoloOutputs) {
             properties.parser.outputNames = *head.metadata.yoloOutputs;
         }
@@ -123,17 +119,15 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         DAI_CHECK_V(false, "Unsupported parser: {}", head.parser);
     }
 
-    if(head.metadata.nClasses) {
-        setNumClasses(static_cast<int>(*head.metadata.nClasses));
-    }
-
     if(head.metadata.classes) {
         if(head.metadata.nClasses) {
             DAI_CHECK_V(*head.metadata.nClasses == static_cast<long>(head.metadata.classes->size()),
                         "Number of classes does not match the size of class names array");
         }
-        setClasses(*head.metadata.classes);
         setNumClasses(static_cast<int>(head.metadata.classes->size()));
+        setClasses(*head.metadata.classes);
+    } else if(head.metadata.nClasses) {
+        setNumClasses(static_cast<int>(*head.metadata.nClasses));
     }
     if(head.metadata.iouThreshold) {
         properties.parser.iouThreshold = static_cast<float>(*head.metadata.iouThreshold);
@@ -254,6 +248,7 @@ float DetectionParser::getConfidenceThreshold() const {
 
 void DetectionParser::setNumClasses(const int numClasses) {
     properties.parser.classes = numClasses;
+    properties.parser.classNames = std::nullopt;
 }
 
 void DetectionParser::setCoordinateSize(const int coordinates) {
