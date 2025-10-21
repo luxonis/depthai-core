@@ -50,11 +50,11 @@ SegmentationMask::SegmentationMask(std::vector<int> mask, size_t width, size_t h
 }
 
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> SegmentationMask::getTimestamp() const {
-    return getTimestamp();
+    return Buffer::getTimestamp();
 }
 
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> SegmentationMask::getTimestampDevice() const {
-    return getTimestampDevice();
+    return Buffer::getTimestampDevice();
 }
 
 size_t SegmentationMask::getWidth() const {
