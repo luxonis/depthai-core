@@ -42,10 +42,6 @@ std::vector<Point2f> Keypoints::getCoordinates2f() const {
     return keypointsList.getCoordinates2f();
 }
 
-std::vector<std::string> Keypoints::getLabels() const {
-    return keypointsList.getLabels();
-}
-
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 ProtoSerializable::SchemaPair Keypoints::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));

@@ -53,7 +53,6 @@ void bind_keypoints(pybind11::module& m, void* pCallstack) {
             "getEdges", [](Keypoints& msg) { return msg.getEdges(); }, DOC(dai, Keypoints, getEdges))
         .def("getCoordinates3f", &Keypoints::getCoordinates3f, DOC(dai, Keypoints, getCoordinates3f))
         .def("getCoordinates2f", &Keypoints::getCoordinates2f, DOC(dai, Keypoints, getCoordinates2f))
-        .def("getLabels", &Keypoints::getLabels, DOC(dai, Keypoints, getLabels))
         .def("getTimestamp", &Keypoints::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &Keypoints::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &Keypoints::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))

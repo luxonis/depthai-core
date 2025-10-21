@@ -16,7 +16,7 @@
 namespace dai {
 
 /**
- * Keypoints message. Carries a normalized keypoint 3D position, confidence score, and label.
+ * Keypoints message. Carries a normalized keypoint 3D position, confidence score and label index.
  */
 class Keypoints : public Buffer, public ProtoSerializable {
    private:
@@ -72,11 +72,6 @@ class Keypoints : public Buffer, public ProtoSerializable {
      * Returns a list of the coordinates of the keypoints as Point2f objects.
      */
     std::vector<Point2f> getCoordinates2f() const;
-
-    /*
-     * Returns a list of keypoint labels.
-     */
-    std::vector<std::string> getLabels() const;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

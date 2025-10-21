@@ -78,9 +78,8 @@ TEST_CASE("ImgDetection bounding box operations", "[ImgDetections][ImgDetection]
 TEST_CASE("ImgDetection keypoints management", "[ImgDetections][Keypoints]") {
     using namespace dai;
 
-    const std::vector<Keypoint> baseKeypoints{Keypoint(Point3f{0.0F, 1.0F, 2.0F}, 0.9F, 1, "nose"),
-                                              Keypoint(Point3f{1.0F, 2.0F, 3.0F}, 0.8F, 2, "eye"),
-                                              Keypoint(Point3f{2.0F, 3.0F, 4.0F}, 0.7F, 3, "ear")};
+    const std::vector<Keypoint> baseKeypoints{
+        Keypoint(Point3f{0.0F, 1.0F, 2.0F}, 0.9F, 1), Keypoint(Point3f{1.0F, 2.0F, 3.0F}, 0.8F, 2), Keypoint(Point3f{2.0F, 3.0F, 4.0F}, 0.7F, 3)};
     const std::vector<Edge> edges{{0, 1}, {1, 2}};
 
     SECTION("setKeypoints from KeypointsList preserves edges") {
@@ -95,8 +94,6 @@ TEST_CASE("ImgDetection keypoints management", "[ImgDetections][Keypoints]") {
             REQUIRE(restored[i].coordinates.y == Catch::Approx(baseKeypoints[i].coordinates.y));
             REQUIRE(restored[i].coordinates.z == Catch::Approx(baseKeypoints[i].coordinates.z));
             REQUIRE(restored[i].confidence == Catch::Approx(baseKeypoints[i].confidence));
-            REQUIRE(restored[i].label == baseKeypoints[i].label);
-            REQUIRE(restored[i].labelName == baseKeypoints[i].labelName);
         }
         REQUIRE(detection.getEdges() == edges);
     }
@@ -165,7 +162,7 @@ TEST_CASE("ImgDetection keypoints management", "[ImgDetections][Keypoints]") {
 TEST_CASE("KeypointsList utilities", "[ImgDetections][KeypointsList]") {
     using namespace dai;
 
-    const std::vector<Keypoint> keypoints{Keypoint(Point3f{0.0F, 0.5F, 1.0F}, 0.95F, 10, "left"), Keypoint(Point3f{1.0F, 1.5F, 2.0F}, 0.85F, 20, "right")};
+    const std::vector<Keypoint> keypoints{Keypoint(Point3f{0.0F, 0.5F, 1.0F}, 0.95F, 10), Keypoint(Point3f{1.0F, 1.5F, 2.0F}, 0.85F, 20)};
 
     SECTION("setKeypoints resets edges and exposes metadata") {
         KeypointsList list;
@@ -183,9 +180,6 @@ TEST_CASE("KeypointsList utilities", "[ImgDetections][KeypointsList]") {
         REQUIRE(coords2.size() == keypoints.size());
         REQUIRE(coords2[0].x == Catch::Approx(0.0F));
         REQUIRE(coords2[0].y == Catch::Approx(0.5F));
-
-        auto labels = list.getLabels();
-        REQUIRE(labels == std::vector<std::string>{"left", "right"});
     }
 
     SECTION("setEdges validates indices and prevents self loops") {

@@ -101,19 +101,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     keypoint.def(py::init<>())
-        .def(py::init<Point3f, float, uint32_t, std::string>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, py::arg("name") = "")
-        .def(py::init<Point2f, float, uint32_t, std::string>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, py::arg("name") = "")
-        .def(py::init<float, float, float, float, uint32_t, std::string>(),
-             py::arg("x"),
-             py::arg("y"),
-             py::arg("z"),
-             py::arg("confidence") = 0.f,
-             py::arg("label") = 0,
-             py::arg("name") = "")
+        .def(py::init<Point3f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0)
+        .def(py::init<Point2f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0)
+        .def(py::init<float, float, float, float, uint32_t>(), py::arg("x"), py::arg("y"), py::arg("z"), py::arg("confidence") = 0.f, py::arg("label") = 0)
         .def_readwrite("coordinates", &Keypoint::coordinates)
         .def_readwrite("confidence", &Keypoint::confidence)
-        .def_readwrite("label", &Keypoint::label)
-        .def_readwrite("labelName", &Keypoint::labelName);
+        .def_readwrite("label", &Keypoint::label);
 
     keypointsList.def(py::init<>())
         .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"))
@@ -126,8 +119,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getKeypoints", &KeypointsList::getKeypoints, DOC(dai, KeypointsList, getKeypoints))
         .def("getEdges", &KeypointsList::getEdges, DOC(dai, KeypointsList, getEdges))
         .def("getCoordinates3f", &KeypointsList::getCoordinates3f, DOC(dai, KeypointsList, getCoordinates3f))
-        .def("getCoordinates2f", &KeypointsList::getCoordinates2f, DOC(dai, KeypointsList, getCoordinates2f))
-        .def("getLabels", &KeypointsList::getLabels, DOC(dai, KeypointsList, getLabels));
+        .def("getCoordinates2f", &KeypointsList::getCoordinates2f, DOC(dai, KeypointsList, getCoordinates2f));
 
     rotatedRect.def(py::init<>())
         .def(py::init<Point2f, Size2f, float>())

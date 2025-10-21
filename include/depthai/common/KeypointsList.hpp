@@ -130,19 +130,6 @@ struct KeypointsList {
         return coordinates;
     }
 
-    /**
-     * Get keypoint labels.
-     * @return Vector of keypoint label names.
-     */
-    std::vector<std::string> getLabels() const {
-        std::vector<std::string> labels;
-        labels.reserve(keypoints.size());
-        for(const auto& kp : keypoints) {
-            labels.push_back(kp.labelName);
-        }
-        return labels;
-    }
-
     void validateEdges() {
         const auto n = keypoints.size();
 
