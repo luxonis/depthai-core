@@ -16,6 +16,12 @@ message SpatialImgDetection {
     img_detections.ImgDetection detection = 1;
     Point3f spatialCoordinates = 2;
     SpatialLocationCalculatorConfigData boundingBoxMapping = 3;
+    float depthAverage = 4;
+    float depthMode = 5;
+    float depthMedian = 6;
+    uint32 depthMin = 7;
+    uint32 depthMax = 8;
+    uint32 depthAveragePixelCount = 9; 
 }
 
 message Point3f {

@@ -300,6 +300,10 @@ add_dependencies(platform_test fslock_dummy)
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
 dai_set_test_labels(nndata_test onhost ci)
 
+#ImgDetections tests
+dai_add_test(imgdetections_test src/onhost_tests/pipeline/datatype/imgdetections_test.cpp)
+dai_set_test_labels(imgdetections_test onhost ci)
+
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
@@ -412,6 +416,11 @@ target_compile_definitions(detection_network_test PRIVATE
     ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
 )
 dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
+
+# DetectionParser test
+dai_add_test(detection_parser_test src/ondevice_tests/pipeline/node/detection_parser_test.cpp)
+target_compile_definitions(detection_parser_test PRIVATE)
+dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)

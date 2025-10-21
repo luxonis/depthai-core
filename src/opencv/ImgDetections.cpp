@@ -28,6 +28,9 @@ ImgDetections& ImgDetections::setSegmentationMask(cv::Mat mask) {
 
 cv::Mat ImgDetections::getSegmentationMask(bool deepCopy) {
     // Convert to cv::Mat. If deepCopy enabled, then copy pixel data, otherwise reference only
+    if(data->getData().data() == nullptr) {
+        return cv::Mat();
+    }
     cv::Size size(getSegmentationMaskWidth(), getSegmentationMaskHeight());
     int type = CV_8UC1;
     if(size.width <= 0 || size.height <= 0) {
