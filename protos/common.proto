@@ -81,7 +81,6 @@ message Keypoint {
     Point3f coordinates = 1;
     float confidence = 2;
     uint32 label = 3;
-    string labelName = 4;
 }
 
 message Edge {
