@@ -53,7 +53,7 @@ int main() {
         cv::imshow("right", rightSynced->getCvFrame());
 
         // --- Load one frame pair into the calibration pipeline
-        dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::LoadImage{}));
+        dynCalibInputControl->send(DCC::loadImage());
 
         // Wait for coverage info
         auto coverageMsg = dynCoverageOutQ->get<dai::CoverageData>();
@@ -63,7 +63,7 @@ int main() {
         }
 
         // Request a calibration quality evaluation (non-forced)
-        dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::CalibrationQuality{false}));
+        dynCalibInputControl->send(DCC::calibrationQuality(false));
 
         // Wait for calibration result
         auto dynCalibrationResult = dynQualityOutQ->get<dai::CalibrationQuality>();
@@ -85,15 +85,17 @@ int main() {
                 std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px" << std::endl;
 
                 // --- Depth error difference (%) at 1/2/5/10 m ---
-                std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                          << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                          << "%" << std::endl;
+                std::cout << "Theoretical Depth Error Difference "
+                          << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
+                          << "2m:" << q.depthErrorDifference[1] << "%, "
+                          << "5m:" << q.depthErrorDifference[2] << "%, "
+                          << "10m:" << q.depthErrorDifference[3] << "%" << std::endl;
 
                 // (Optional) Trigger a calibration step if desired:
-                // dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::Calibrate{/*force=*/true}));
+                // dynCalibInputControl->send(DCC::calibrate(true));
 
                 // Reset temporary data after reading metrics
-                dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::ResetData{}));
+                dynCalibInputControl->send(DCC::resetData());
             }
         } else {
             std::cout << "Dynamic calibration: no result received." << std::endl;

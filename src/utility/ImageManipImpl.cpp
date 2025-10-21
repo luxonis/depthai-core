@@ -958,8 +958,12 @@ void dai::impl::UndistortOpenCvImpl::initMaps(std::array<float, 9> cameraMatrix,
     if(type == dai::ImgFrame::Type::NV12 || type == dai::ImgFrame::Type::YUV420p) {
         cv::Mat cvCameraMatrixHalf = cvCameraMatrix.clone();
         cv::Mat cvNewCameraMatrixHalf = cvNewCameraMatrix.clone();
+        cvCameraMatrixHalf.at<float>(0, 0) /= 2;
+        cvCameraMatrixHalf.at<float>(1, 1) /= 2;
         cvCameraMatrixHalf.at<float>(0, 2) /= 2;
         cvCameraMatrixHalf.at<float>(1, 2) /= 2;
+        cvNewCameraMatrixHalf.at<float>(0, 0) /= 2;
+        cvNewCameraMatrixHalf.at<float>(1, 1) /= 2;
         cvNewCameraMatrixHalf.at<float>(0, 2) /= 2;
         cvNewCameraMatrixHalf.at<float>(1, 2) /= 2;
         cv::initUndistortRectifyMap(cvCameraMatrixHalf,
