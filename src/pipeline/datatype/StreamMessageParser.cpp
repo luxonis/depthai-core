@@ -51,7 +51,6 @@
 #include "depthai/utility/Serialization.hpp"
 #include "pipeline/datatype/Keypoints.hpp"
 #include "pipeline/datatype/ObjectTrackerConfig.hpp"
-#include "pipeline/datatype/SegmentationMask.hpp"
 #include "utility/SharedMemory.hpp"
 #include "utility/VectorMemory.hpp"
 #include "xlink/XLinkStream.hpp"
@@ -263,9 +262,6 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::Keypoints: {
             return parseDatatype<Keypoints>(metadataStart, serializedObjectSize, data, fd);
-        }
-        case DatatypeEnum::SegmentationMask: {
-            return parseDatatype<SegmentationMask>(metadataStart, serializedObjectSize, data, fd);
         }
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:

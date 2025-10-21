@@ -6,7 +6,6 @@
 
 // depthai
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
-#include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "ndarray_converter.h"
 
 // pybind

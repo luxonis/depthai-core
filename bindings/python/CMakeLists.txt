@@ -141,7 +141,6 @@ set(SOURCE_LIST
     src/pipeline/datatype/ImgAnnotationsBindings.cpp
     src/remote_connection/RemoteConnectionBindings.cpp
     src/pipeline/datatype/KeypointsBindings.cpp    
-    src/pipeline/datatype/SegmentationMaskBindings.cpp
     src/capabilities/CapabilityBindings.cpp
     src/capabilities/CapabilityRangeBindings.cpp
     src/capabilities/ImgFrameCapabilityBindings.cpp

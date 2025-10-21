@@ -93,7 +93,6 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
-        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::Keypoints:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
@@ -164,7 +163,6 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
-        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::Keypoints:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
