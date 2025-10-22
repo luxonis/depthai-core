@@ -14,7 +14,7 @@ void signalHandler(int signum) {
 int main(int argc, char** argv) {
     // Default port values
     int webSocketPort = 8765;
-    int httpPort = 8082;
+    int httpPort = 8080;
 
     // Register signal handler
     std::signal(SIGINT, signalHandler);

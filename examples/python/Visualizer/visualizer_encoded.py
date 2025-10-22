@@ -22,7 +22,6 @@ class ImgAnnotationsGenerator(dai.node.ThreadedHostNode):
     def run(self):
         while self.isRunning():
             nnData = self.inputDet.get()
-            assert isinstance(nnData, dai.ImgDetections)
             detections = nnData.detections
             imgAnnt = dai.ImgAnnotations()
             imgAnnt.setTimestamp(nnData.getTimestamp())
