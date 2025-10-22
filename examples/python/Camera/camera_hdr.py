@@ -27,7 +27,7 @@ with dai.Pipeline() as pipeline:
     videoQueue = cam.requestOutput((1280,800)).createOutputQueue()
 
     minRatio = 1
-    maxRatio = 16
+    maxRatio = 8
     ratio = 4.0
     
     minWeight = 0.0
@@ -35,7 +35,7 @@ with dai.Pipeline() as pipeline:
     weight = 0.75
 
     pipeline.start()
-    ctrl = dai.CameraControl()
+
     while pipeline.isRunning():
         def clamp(n, smallest, largest):
             return max(smallest, min(n, largest))
@@ -44,7 +44,7 @@ with dai.Pipeline() as pipeline:
         cv2.imshow("video", videoIn.getCvFrame())
         key = cv2.waitKey(1)
 
-
+        ctrl = dai.CameraControl()
         if key == ord("h"):
             ratio = clamp(ratio * 2, minRatio, maxRatio)
             ctrl.setMisc("hdr-exposure-ratio", ratio)

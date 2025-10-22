@@ -43,7 +43,7 @@ int main() {
 
     // Initialize variables
     float minRatio = 1.0f;
-    float maxRatio = 16.0f;
+    float maxRatio = 8.0f;
     float ratio = 4.0f;
     float minWeight = 0.0f;
     float maxWeight = 1.0f;
@@ -51,15 +51,13 @@ int main() {
 
     // Start pipeline
     pipeline.start();
-    auto ctrl = std::make_shared<dai::CameraControl>();
     while(pipeline.isRunning()) {
         auto videoIn = videoQueue->get<dai::ImgFrame>();
         if(videoIn == nullptr) continue;
 
         cv::imshow("video", videoIn->getCvFrame());
         int key = cv::waitKey(1);
-
-        bool configChanged = false;
+        auto ctrl = std::make_shared<dai::CameraControl>();
 
         // Key handling
         if(key == 'h') {
