@@ -104,11 +104,9 @@ int main() {
                 std::cout << "Rotation difference: " << rotDiff << " deg\n";
                 std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px\n";
                 std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px\n";
-                std::cout << "Theoretical Depth Error Difference "
-                          << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                          << "2m:" << q.depthErrorDifference[1] << "%, "
-                          << "5m:" << q.depthErrorDifference[2] << "%, "
-                          << "10m:" << q.depthErrorDifference[3] << "%\n";
+                std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
+                          << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
+                          << "%\n";
 
                 // Reset and start a new round if desired
                 dynCalibInputControl->send(DCC::startCalibration());
