@@ -1,58 +1,140 @@
 syntax = "proto3";
 
+import "ImgDetections.proto";
 package dai.proto.event;
 
+message BatchPrepareFileUpload {
+    repeated PrepareFileUploadGroup groups = 1;
+}
+
+message PrepareFileUploadGroup {
+    repeated PrepareFileUpload files = 1;
+}
+
+message PrepareFileUpload {
+    string checksum = 1;
+    string mime_type = 2;
+    int64 size = 3;
+    string filename = 4;
+    PrepareFileUploadClass classification = 5;
+}
+
+enum PrepareFileUploadClass {
+    UNKNOWN_FILE = 0;
+    IMAGE_COLOR = 1;
+    IMAGE_STEREO_LEFT = 2;
+    IMAGE_STEREO_RIGHT = 3;
+    DISPARITY = 4;
+    VIDEO = 5;
+    POINTCLOUD = 6;
+    ANNOTATION = 7;
+}
+
+message BatchFileUploadResult {
+    repeated FileUploadGroupResult groups = 1;
+}
+
+message FileUploadGroupResult {
+    optional RejectedFileGroup rejected = 1;
+    repeated FileUploadResult files = 2;
+}
+
+message RejectedFileGroup {
+    RejectedFileGroupReason reason = 1;
+}
+
+enum RejectedFileGroupReason {
+    GROUP_UNEXPECTED_ERROR = 0;
+    FILE_INPUT_VALIDATION = 1;
+    STORAGE_QUOTA_EXCEEDED = 2;
+}
+
+message FileUploadResult {
+    oneof result {
+        AcceptedFile accepted = 1;
+        RejectedFile rejected = 2;
+    }
+}
+
+message AcceptedFile {
+    string upload_url = 1;
+    string id = 2;
+}
+
+message RejectedFile {
+    RejectedFileReason reason = 1;
+    string message = 2;
+}
+
+enum RejectedFileReason {
+    FILE_UNEXPECTED_ERROR = 0;
+    INPUT_VALIDATION = 1;
+}
+
 message BatchUploadEvents {
-  repeated Event events = 1;
+    repeated Event events = 1;
 }
 
 message Event {
-  // prevents dual uploads, can be a local ID for example
-  optional string nonce = 1;
-
-  // timestamp (seconds since 1970) when event originated (useful especially with offline/later upload)
-  int64 created_at = 2;
-
-  // name to identify event
-  string name = 3;
-
-  // arbitrary tags, include tag "snap" for event to be processed snap
-  repeated string tags = 4;
-
-  // arbitrary key/value data
-  map<string, string> extras = 5;
-
-  // how many files to wait to upload, before event is considered complete,
-  // notified about, snap created, ...
-  int32 expect_files_num = 6;
-
-  // serial number of source device
-  optional string source_serial_number = 7;
-
-  // ID of sending Hub application
-  // (to be provided by agent as ENV - `AGENT_APP_ID` - eg `01916edb-3ded-793a-b6ad-cd4395768425`)
-  optional string source_app_id = 8;
-
-  // Identifier of sending Hub application
-  // (to be provided by agent as ENV - `AGENT_APP_IDENTIFIER` - eg `com.luxonis.counter-app`)
-  optional string source_app_identifier = 9;
+    int64 created_at = 1;
+    string name = 2;
+    repeated string tags = 3;
+    map<string, string> extras = 4;
+    optional string source_serial_number = 5;
+    optional string source_app_id = 6;
+    optional string source_app_identifier = 7;
+    repeated AssociateFile associate_files = 8;
 }
+
+message AssociateFile {
+    string id = 1;
+}
+
 message BatchUploadEventsResult {
-  repeated EventResult events = 1;
+    repeated EventResult events = 1;
 }
 
 message EventResult {
-    string nonce = 1;
     oneof result {
-        AcceptedEvent accepted = 2;
-        IngestError error = 3;
+        AcceptedEvent accepted = 1;
+        RejectedEvent rejected = 2;
     }
 }
 
 message AcceptedEvent {
-    repeated string file_upload_urls = 1;
+    string id = 1;
 }
 
-message IngestError {
-    string message = 1;
+message RejectedEvent {
+    RejectedEventReason reason = 1;
+    string message = 2;
+}
+
+enum RejectedEventReason {
+    GENERIC_EVENT_REJECTED = 0;
+    EVENT_VALIDATION = 1;
+}
+
+message FileLimits {
+    uint64 max_file_size_bytes = 1;
+    uint64 remaining_storage_bytes = 2;
+    uint64 bytes_per_hour_rate = 3;
+    uint32 uploads_per_hour_rate = 4;
+    uint32 groups_per_allocation = 5;
+    uint32 files_per_group_in_allocation = 6;
+}
+
+message EventLimits {
+    uint32 events_per_hour_rate = 1;
+    uint32 snaps_per_hour_rate = 2;
+    uint32 events_per_request = 3;
+}
+
+message ApiUsage {
+    FileLimits files = 1;
+    EventLimits events = 2;
+}
+
+message SnapAnnotations {
+    optional img_detections.ImgDetections detections = 1;
 }
