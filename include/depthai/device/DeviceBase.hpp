@@ -593,6 +593,13 @@ class DeviceBase {
     CpuUsage getLeonMssCpuUsage();
 
     /**
+     * Retrieves current Rss memory usage of the device process
+     *
+     * @returns Current Rss memory used
+     */
+    int64_t getProcessMemoryUsage();
+
+    /**
      * Check if EEPROM is available
      * @returns True if EEPROM is present on board, false otherwise
      */
