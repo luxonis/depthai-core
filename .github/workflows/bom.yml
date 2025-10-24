@@ -99,7 +99,7 @@ jobs:
           fi
 
           if [[ -n "${{ github.event.inputs.scope }}" ]]; then
-            SCOPE_OPTION="--scope ${{ github.event.inputs.scope }}"
+            SCOPE_OPTION="${{ github.event.inputs.scope }}"
           fi
 
           if [[ "${{ github.event.inputs.device }}" == 'stereo' ]]; then
