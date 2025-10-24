@@ -297,6 +297,10 @@ EventsManager::~EventsManager() {
 
 bool EventsManager::fetchConfigurationLimits() {
     logger::info("Fetching configuration limits");
+    if(token.empty()) {
+        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
+        return false;
+    }
     auto header = cpr::Header();
     header["Authorization"] = "Bearer " + token;
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
@@ -359,7 +363,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
         return;
     }
     if(token.empty()) {
-        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
+        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
         return;
     }
     // Fill the batch with the groups from inputSnapBatch and their corresponding files
@@ -541,7 +545,7 @@ void EventsManager::uploadEventBatch() {
             return;
         }
         if(token.empty()) {
-            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
+            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
             return;
         }
         for(size_t i = 0; i < eventBuffer.size() && i < eventsPerRequest; ++i) {
