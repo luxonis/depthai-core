@@ -100,11 +100,10 @@ void Rectification::run() {
     auto start = steady_clock::now();
 
     bool initialized = false;
-    cv::Mat map_x_l, map_y_l;
-    cv::Mat map_x_r, map_y_r;
+    cv::Mat cv_rectificationMap1X, cv_rectificationMap1Y;
+    cv::Mat cv_rectificationMap2X, cv_rectificationMap2Y;
     while(isRunning()) {
         auto group = inSync.get<MessageGroup>();
-        logger->error("Got message group");
         if(group == nullptr) continue;
         auto input1Frame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(input1.getName()));
         auto input2Frame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(input2.getName()));
@@ -114,10 +113,6 @@ void Rectification::run() {
 
             auto leftSocket = (dai::CameraBoardSocket)input1Frame->getInstanceNum();
             auto rightSocket = (dai::CameraBoardSocket)input2Frame->getInstanceNum();
-            auto inWarpWidth = input1Frame->getWidth();
-            auto inWarpHeight = input1Frame->getHeight();
-            auto outFrameWidth = inWarpWidth;
-            auto outFrameHeight = inWarpHeight;
 
             auto M1 = input1Frame->transformation.getIntrinsicMatrix();
             auto M2 = input2Frame->transformation.getIntrinsicMatrix();
@@ -137,36 +132,51 @@ void Rectification::run() {
             auto cv_T = vecToCvMat(1, 3, CV_32FC1, T);
 
             cv::Mat cv_R1, cv_R2;
-            cv::Size imageSize = cv::Size(inWarpWidth, inWarpHeight);
+            cv::Size imageSize = cv::Size(input1Frame->getWidth(), input1Frame->getHeight());
             std::tie(cv_R1, cv_R2) = computeRectificationMatrices(cv_M1, cv_d1, cv_M2, cv_d2, imageSize, cv_R, cv_T);
 
-            auto cv_meshSize = cv::Size(outFrameWidth, outFrameHeight);
+            auto cv_targetCamMatrix = cv_M1.clone();
 
-            auto cv_targetCamMatrix = cv_M2.clone();
-
-            cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_l, map_y_l);
-            cv::initUndistortRectifyMap(cv_M2, cv_d2, cv_R2, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_r, map_y_r);
+            cv::initUndistortRectifyMap(cv_M1,
+                                        cv_d1,
+                                        cv_R1,
+                                        cv_targetCamMatrix,
+                                        cv::Size(input1Frame->getWidth(), input1Frame->getHeight()),
+                                        CV_32FC1,
+                                        cv_rectificationMap1X,
+                                        cv_rectificationMap1Y);
+            cv::initUndistortRectifyMap(cv_M2,
+                                        cv_d2,
+                                        cv_R2,
+                                        cv_targetCamMatrix,
+                                        cv::Size(input2Frame->getWidth(), input2Frame->getHeight()),
+                                        CV_32FC1,
+                                        cv_rectificationMap2X,
+                                        cv_rectificationMap2Y);
             initialized = true;
         }
-        logger->error("Got input frames");
 
-        std::shared_ptr<dai::ImgFrame> rectifiedLeftFrame = std::make_shared<dai::ImgFrame>();
-        std::shared_ptr<dai::ImgFrame> rectifiedRightFrame = std::make_shared<dai::ImgFrame>();
-        size_t frameSize = input1Frame->getWidth() * input1Frame->getHeight();
-        rectifiedLeftFrame->setData(std::vector<uint8_t>(frameSize));
-        rectifiedRightFrame->setData(std::vector<uint8_t>(frameSize));
+        std::shared_ptr<dai::ImgFrame> rectifiedFrame1 = std::make_shared<dai::ImgFrame>();
+        size_t frameSize1 = input1Frame->getWidth() * input1Frame->getHeight();
 
-        rectifiedLeftFrame->setMetadata(*input1Frame);
-        rectifiedLeftFrame->setWidth(input1Frame->getWidth());
-        rectifiedLeftFrame->setHeight(input1Frame->getHeight());
-        rectifiedLeftFrame->setType(dai::ImgFrame::Type::RAW8);
-        rectifiedLeftFrame->fb.stride = rectifiedLeftFrame->fb.width * rectifiedLeftFrame->getBytesPerPixel();
+        rectifiedFrame1->setData(std::vector<uint8_t>(frameSize1));
 
-        rectifiedRightFrame->setMetadata(*input2Frame);
-        rectifiedRightFrame->setWidth(input2Frame->getWidth());
-        rectifiedRightFrame->setHeight(input2Frame->getHeight());
-        rectifiedRightFrame->setType(dai::ImgFrame::Type::RAW8);
-        rectifiedRightFrame->fb.stride = rectifiedRightFrame->fb.width * rectifiedRightFrame->getBytesPerPixel();
+        rectifiedFrame1->setMetadata(*input1Frame);
+        rectifiedFrame1->setWidth(input1Frame->getWidth());
+        rectifiedFrame1->setHeight(input1Frame->getHeight());
+        rectifiedFrame1->setType(dai::ImgFrame::Type::RAW8);
+        rectifiedFrame1->fb.stride = rectifiedFrame1->fb.width * rectifiedFrame1->getBytesPerPixel();
+
+        std::shared_ptr<dai::ImgFrame> rectifiedFrame2 = std::make_shared<dai::ImgFrame>();
+
+        size_t frameSize2 = input2Frame->getWidth() * input2Frame->getHeight();
+        rectifiedFrame2->setData(std::vector<uint8_t>(frameSize2));
+
+        rectifiedFrame2->setMetadata(*input2Frame);
+        rectifiedFrame2->setWidth(input2Frame->getWidth());
+        rectifiedFrame2->setHeight(input2Frame->getHeight());
+        rectifiedFrame2->setType(dai::ImgFrame::Type::RAW8);
+        rectifiedFrame2->fb.stride = rectifiedFrame2->fb.width * rectifiedFrame2->getBytesPerPixel();
 
         cv::Mat cv_input1 = input1Frame->getCvFrame();
         cv::Mat cv_input2 = input2Frame->getCvFrame();
@@ -179,12 +189,16 @@ void Rectification::run() {
             cv::cvtColor(cv_input2, cv_input2, cv::COLOR_BGR2GRAY);
         }
 
-        cv::remap(cv_input1, rectifiedLeftFrame->getFrame(), map_x_l, map_y_l, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
-        cv::remap(cv_input2, rectifiedRightFrame->getFrame(), map_x_r, map_y_r, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+        cv::remap(
+            cv_input1, rectifiedFrame1->getFrame(), cv_rectificationMap1X, cv_rectificationMap1Y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+        cv::remap(
+            cv_input2, rectifiedFrame2->getFrame(), cv_rectificationMap2X, cv_rectificationMap2Y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
-        output1.send(rectifiedLeftFrame);
-        output2.send(rectifiedRightFrame);
-        logger->error("Sent output frames");
+        rectifiedFrame1->transformation.setDistortionCoefficients({});
+        rectifiedFrame2->transformation.setDistortionCoefficients({});
+
+        output1.send(rectifiedFrame1);
+        output2.send(rectifiedFrame2);
 
         // Passthrough the message
         passthrough1.send(input1Frame);
