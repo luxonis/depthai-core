@@ -12,6 +12,38 @@
     #include <opencv2/calib3d.hpp>
 #endif
 
+
+
+namespace dai {
+namespace node {
+
+void Rectification::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+bool Rectification::runOnHost() const {
+    return runOnHostVar;
+}
+
+void Rectification::buildInternal() {
+#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    throw std::runtime_error("Rectification node requires OpenCV support!");
+#endif
+    auto platform = getParentPipeline().getDefaultDevice()->getPlatform();
+    if(platform != Platform::RVC4 && runOnHost()) {
+        throw std::runtime_error("Rectification node is only supported on RVC4 platform");
+    }
+
+    sync->out.link(inSync);
+    sync->setRunOnHost(runOnHost());
+}
+
+#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+void Rectification::run() {
+    throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
+}
+#else   // DEPTHAI_HAVE_OPENCV_SUPPORT
+
 namespace {
 
 template <typename T>
@@ -63,45 +95,18 @@ std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(cv::Mat M1, cv::Mat d1,
 
 }  // namespace
 
-namespace dai {
-namespace node {
-
-void Rectification::setRunOnHost(bool runOnHost) {
-    runOnHostVar = runOnHost;
-}
-
-bool Rectification::runOnHost() const {
-    return runOnHostVar;
-}
-
-void Rectification::buildInternal() {
-#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-    throw std::runtime_error("Rectification node requires OpenCV support!");
-#endif
-    auto platform = getParentPipeline().getDefaultDevice()->getPlatform();
-    if(platform != Platform::RVC4 && runOnHost()) {
-        throw std::runtime_error("Rectification node is only supported on RVC4 platform");
-    }
-
-    sync->out.link(inSync);
-    sync->setRunOnHost(runOnHost());
-}
-
-#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-void Rectification::run() {
-    throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
-}
-#else   // DEPTHAI_HAVE_OPENCV_SUPPORT
-
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
 
-    auto start = steady_clock::now();
 
     bool initialized = false;
     cv::Mat cv_rectificationMap1X, cv_rectificationMap1Y;
     cv::Mat cv_rectificationMap2X, cv_rectificationMap2Y;
+
+    cv::Mat cv_targetCameraMatrix1, cv_targetCameraMatrix2;
+    std::array<std::array<float, 3>, 3> targetM1, targetM2;
+
     while(isRunning()) {
         auto group = inSync.get<MessageGroup>();
         if(group == nullptr) continue;
@@ -135,12 +140,16 @@ void Rectification::run() {
             cv::Size imageSize = cv::Size(input1Frame->getWidth(), input1Frame->getHeight());
             std::tie(cv_R1, cv_R2) = computeRectificationMatrices(cv_M1, cv_d1, cv_M2, cv_d2, imageSize, cv_R, cv_T);
 
-            auto cv_targetCamMatrix = cv_M1.clone();
+            targetM1 = M1;
+            targetM2 = targetM1;
+
+            auto cv_targetCameraMatrix1 = arrayToCvMat(3, 3, CV_32FC1, targetM1);
+            auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2); //todo
 
             cv::initUndistortRectifyMap(cv_M1,
                                         cv_d1,
                                         cv_R1,
-                                        cv_targetCamMatrix,
+                                        cv_targetCameraMatrix1,
                                         cv::Size(input1Frame->getWidth(), input1Frame->getHeight()),
                                         CV_32FC1,
                                         cv_rectificationMap1X,
@@ -148,13 +157,15 @@ void Rectification::run() {
             cv::initUndistortRectifyMap(cv_M2,
                                         cv_d2,
                                         cv_R2,
-                                        cv_targetCamMatrix,
+                                        cv_targetCameraMatrix2,
                                         cv::Size(input2Frame->getWidth(), input2Frame->getHeight()),
                                         CV_32FC1,
                                         cv_rectificationMap2X,
                                         cv_rectificationMap2Y);
             initialized = true;
         }
+
+        auto start = steady_clock::now();
 
         std::shared_ptr<dai::ImgFrame> rectifiedFrame1 = std::make_shared<dai::ImgFrame>();
         size_t frameSize1 = input1Frame->getWidth() * input1Frame->getHeight();
@@ -195,8 +206,15 @@ void Rectification::run() {
             cv_input2, rectifiedFrame2->getFrame(), cv_rectificationMap2X, cv_rectificationMap2Y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
         rectifiedFrame1->transformation.setDistortionCoefficients({});
+        rectifiedFrame1->transformation.setIntrinsicMatrix(targetM1);
+        
         rectifiedFrame2->transformation.setDistortionCoefficients({});
+        rectifiedFrame2->transformation.setIntrinsicMatrix(targetM2);
 
+        auto end = steady_clock::now();
+        auto duration = duration_cast<milliseconds>(end - start).count();
+        logger->debug("Rectification took {} ms", duration);
+        
         output1.send(rectifiedFrame1);
         output2.send(rectifiedFrame2);
 
