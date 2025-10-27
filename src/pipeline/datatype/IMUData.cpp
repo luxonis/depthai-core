@@ -1,12 +1,29 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 
+#if DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/IMUData.pb.h"
+    #include "depthai/schemas/common.pb.h"
+    #include "utility/ProtoSerialize.hpp"
+#endif
+
 namespace dai {
 
-std::shared_ptr<RawBuffer> IMUData::serialize() const {
-    return raw;
+IMUData::~IMUData() = default;
+
+void IMUData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::IMUData;
 }
 
-IMUData::IMUData() : Buffer(std::make_shared<RawIMUData>()), rawIMU(*dynamic_cast<RawIMUData*>(raw.get())), packets(rawIMU.packets) {}
-IMUData::IMUData(std::shared_ptr<RawIMUData> ptr) : Buffer(std::move(ptr)), rawIMU(*dynamic_cast<RawIMUData*>(raw.get())), packets(rawIMU.packets) {}
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+
+ProtoSerializable::SchemaPair IMUData::serializeSchema() const {
+    return utility::serializeSchema(utility::getProtoMessage(this));
+}
+
+std::vector<std::uint8_t> IMUData::serializeProto(bool) const {
+    return utility::serializeProto(utility::getProtoMessage(this));
+}
+#endif
 
 }  // namespace dai

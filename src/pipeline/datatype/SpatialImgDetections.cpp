@@ -1,27 +1,25 @@
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/SpatialImgDetections.pb.h"
+    #include "utility/ProtoSerialize.hpp"
+#endif
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> SpatialImgDetections::serialize() const {
-    return raw;
+SpatialImgDetections::~SpatialImgDetections() = default;
+
+void SpatialImgDetections::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::SpatialImgDetections;
 }
 
-SpatialImgDetections::SpatialImgDetections()
-    : Buffer(std::make_shared<RawSpatialImgDetections>()), dets(*dynamic_cast<RawSpatialImgDetections*>(raw.get())), detections(dets.detections) {}
-SpatialImgDetections::SpatialImgDetections(std::shared_ptr<RawSpatialImgDetections> ptr)
-    : Buffer(std::move(ptr)), dets(*dynamic_cast<RawSpatialImgDetections*>(raw.get())), detections(dets.detections) {}
-
-// setters
-SpatialImgDetections& SpatialImgDetections::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
-    // Set timestamp from timepoint
-    return static_cast<SpatialImgDetections&>(Buffer::setTimestamp(tp));
-}
-SpatialImgDetections& SpatialImgDetections::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
-    // Set timestamp from timepoint
-    return static_cast<SpatialImgDetections&>(Buffer::setTimestampDevice(tp));
-}
-SpatialImgDetections& SpatialImgDetections::setSequenceNum(int64_t sequenceNum) {
-    return static_cast<SpatialImgDetections&>(Buffer::setSequenceNum(sequenceNum));
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+std::vector<std::uint8_t> SpatialImgDetections::serializeProto(bool) const {
+    return utility::serializeProto(utility::getProtoMessage(this));
 }
 
+ProtoSerializable::SchemaPair SpatialImgDetections::serializeSchema() const {
+    return utility::serializeSchema(utility::getProtoMessage(this));
+}
+#endif
 }  // namespace dai

@@ -2,6 +2,7 @@
 .project
 .vscode/
 .vs/
+.env
 build*/*
 # Auto-generated
 shared/version.hpp
@@ -22,6 +23,12 @@ depthai-cpp/build/
 #ci
 wheelhouse/
 calib*.json
+#depthai c++ core library
+depthai-core/.vscode/
+depthai-core/build/
+
+# builds
+_builds/
 #git
 *.orig
 *_REMOTE_*
@@ -31,3 +38,15 @@ calib*.json
 
 # clangd cache
 .cache/
+
+*.swp
+/env
+
+.history/
+
+.compile_commands.json
+.depthai_cached_models/
+install*
+!install_requirements.py
+build*
+depthai_calib_backup.json

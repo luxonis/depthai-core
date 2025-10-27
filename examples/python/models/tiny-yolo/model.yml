@@ -1,0 +1,36 @@
+# Copyright (c) 2021 Intel Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+description: >-
+  tiny-yolo
+task_type: object_attributes
+files:
+  - name: yolo-v3-tiny-tf_openvino_2021.4_6shave.blob
+    size: 17750208
+    sha256: f2729a42e277e994ba68f0e914b66fe52ce665175a80a5596b8d50d18b220343
+    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v3-tiny-tf_openvino_2021.4_6shave.blob
+  - name: yolo-v4-tiny-tf_openvino_2021.4_6shave.blob
+    size: 12168064
+    sha256: 0229c068ff220631affd323b84eece865bfe28d5fe8950ab602825a8444b86f4
+    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_6shave.blob
+  - name: yolov4_tiny_coco_416x416_2022.1_vpux.blob
+    size: 12605224
+    sha256: 7be42fb69eeaad16d4b2a16302f2f74eb048569f892eb2cc07c8ea51338ab257
+    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolov4_tiny_coco_416x416_2022.1_vpux.blob
+  - name: yolov6n_416x416_openvino2022.1_vpux.blob
+    size: 5647272
+    sha256: 82fe09ad02799c00e6a2b8814015969ae5d4479c952c4c0b5b4977e630bdc675
+    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolov6n_416x416_openvino2022.1_vpux.blob
+framework: dldt
+license: https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/master/LICENSE

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dai.proto.encoded_frame;
+
+import "common.proto";
+
+message EncodedFrame {
+    common.CameraSettings cam = 1;
+    uint32 instanceNum = 2;          // Which source created this frame (color, mono, ...)
+    uint32 width = 3;                // width in pixels
+    uint32 height = 4;               // height in pixels
+    uint32 quality = 5;              // Encoding quality
+    uint32 bitrate = 6;              // Encoding bitrate
+    Profile profile = 7;             // Encoding profile (JPEG, AVC, HEVC)
+    bool lossless = 8;               // JPEG: true if lossless
+    FrameType type = 9;              // H264: frame type (I, P, B)
+    uint32 frameOffset = 10;         // Frame offset
+    uint32 frameSize = 11;           // Frame size
+    int64 sequenceNum = 12;          // Sequence number
+    common.Timestamp ts = 13;        // Timestamp
+    common.Timestamp tsDevice = 14;  // Timestamp from device
+    common.ImgTransformation transformation = 15;
+    bytes data = 16;  // Encoded frame data
+}
+
+enum Profile {
+    JPEG = 0;
+    AVC = 1;
+    HEVC = 2;
+}
+
+enum FrameType {
+    I = 0;
+    P = 1;
+    B = 2;
+    UNKNOWN = 3;
+}

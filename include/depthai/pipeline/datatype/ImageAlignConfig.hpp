@@ -1,33 +1,26 @@
 #pragma once
+#include <cstdint>
+#include <vector>
 
-#include "depthai-shared/datatype/RawImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 
 namespace dai {
 
-/**
- * ImageAlignConfig message
- */
+/// ImageAlignConfig configuration structure
 class ImageAlignConfig : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
-    RawImageAlignConfig& cfg;
-
    public:
-    ImageAlignConfig();
-    explicit ImageAlignConfig(std::shared_ptr<RawImageAlignConfig> ptr);
-    virtual ~ImageAlignConfig() = default;
-
     /**
-     * Set explicit configuration.
-     * @param config Explicit configuration
+     * Optional static depth plane to align to, in depth units, by default millimeters
      */
-    ImageAlignConfig& set(dai::RawImageAlignConfig config);
+    uint16_t staticDepthPlane = 0;
 
-    /**
-     * Retrieve configuration data for SpatialLocationCalculator.
-     * @returns config for SpatialLocationCalculator
-     */
-    dai::RawImageAlignConfig get() const;
+    ImageAlignConfig() = default;
+    virtual ~ImageAlignConfig();
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DEPTHAI_SERIALIZE(ImageAlignConfig, staticDepthPlane);
 };
 
 }  // namespace dai

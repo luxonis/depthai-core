@@ -41,6 +41,7 @@ function(add_default_flags target)
             add_flag(${target} -Werror=sign-compare)     # warn the user if they compare a signed and unsigned numbers
             add_flag(${target} -Werror=reorder)          # field '$1' will be initialized after field '$2'
             add_flag(${target} -Werror=switch-enum)      # if switch case is missing - error
+            add_flag(${target} -Werror=weak-vtables)     # error if a class has a weak vtable (https://stackoverflow.com/questions/23746941/what-is-the-meaning-of-clangs-wweak-vtables) - weak vtables cause dynamic_casts not working as expected (and many other operations that involve RTTI for that matter)
         endif()
 
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -127,3 +128,18 @@ elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(AppleClang|Clang|GNU)$")
         set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std=gnu++23")
     endif()
 endif()
+
+# Don't include symbols for the linked libraries
+function(exclude_archive_libs_symbols target)
+    if(WIN32)
+        # No direct equivalent for MSVC
+    elseif(APPLE)
+        # No equivalent flag on macOS ld64
+    elseif(UNIX)
+        get_property(TEMP_LINK_FLAGS TARGET ${target} PROPERTY LINK_FLAGS)
+        set(TEMP_LINK_FLAGS "${TEMP_LINK_FLAGS} -Wl,--exclude-libs=ALL")
+        set_property(TARGET ${target} PROPERTY LINK_FLAGS ${TEMP_LINK_FLAGS})
+    else()
+        message(FATAL_ERROR "Unexpected host, stopping build")
+    endif()
+endfunction()

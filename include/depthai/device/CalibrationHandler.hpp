@@ -1,13 +1,21 @@
+// IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
+#include <filesystem>
 #include <string>
 #include <tuple>
 
-#include "depthai-shared/common/CameraBoardSocket.hpp"
-#include "depthai-shared/common/EepromData.hpp"
-#include "depthai-shared/common/Point2f.hpp"
-#include "depthai-shared/common/Size2f.hpp"
-#include "depthai/utility/Path.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/EepromData.hpp"
+#include "depthai/common/Point2f.hpp"
+#include "depthai/common/Size2f.hpp"
 
+#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
+    #pragma push_macro("_res")
+    #undef _res
+    #define _res resfixed_
+    #include "rtabmap/core/StereoCameraModel.h"
+    #pragma pop_macro("_res")
+#endif
 namespace dai {
 /**
  * CalibrationHandler is an interface to read/load/write structured calibration and device data.
@@ -31,7 +39,7 @@ class CalibrationHandler {
      *
      * @param eepromDataPath takes the full path to the json file containing the calibration and device info.
      */
-    explicit CalibrationHandler(dai::Path eepromDataPath);
+    explicit CalibrationHandler(std::filesystem::path eepromDataPath);
 
     /**
      * Construct a new Calibration Handler object using the board
@@ -40,7 +48,7 @@ class CalibrationHandler {
      * @param calibrationDataPath Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
      * @param boardConfigPath Full Path to the board config json file containing device information.
      */
-    CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath);
+    CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath);
 
     /**
      * Construct a new Calibration Handler object from EepromData object.
@@ -166,7 +174,7 @@ class CalibrationHandler {
      * Get the Distortion Coefficients object
      *
      * @param cameraId Uses the cameraId to identify which distortion Coefficients to return.
-     * @return the distortion coefficients of the requested camera in this order: [k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4,tx,ty] for CameraModel::Perspective
+     * @return the distortion coefficients of the requested camera in this order: [k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4,τx,τy] for CameraModel::Perspective
      * or [k1, k2, k3, k4] for CameraModel::Fisheye
      * see https://docs.opencv.org/4.5.4/d9/d0c/group__calib3d.html for Perspective model (Rational Polynomial Model)
      * see https://docs.opencv.org/4.5.4/db/d58/group__calib3d__fisheye.html for Fisheye model
@@ -229,8 +237,23 @@ class CalibrationHandler {
     std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = true) const;
 
     /**
-     * Get the baseline distance between two specified cameras. By default it will get the baseline between CameraBoardSocket.CAM_C
-     * and CameraBoardSocket.CAM_B.
+     * Get the Camera rotation matrix between two cameras from the calibration data.
+     *
+     * @param srcCamera Camera Id of the camera which will be considered as origin.
+     * @param dstCamera  Camera Id of the destination camera to which we are fetching the rotation vector from the SrcCamera
+     * @return a 3x3 rotation matrix
+     * Matrix representation of rotation matrix
+     * \f[ \text{Rotation Matrix} = \left [ \begin{matrix}
+     *                                             r_{00} & r_{01} & r_{02}\\
+     *                                             r_{10} & r_{11} & r_{12}\\
+     *                                             r_{20} & r_{21} & r_{22}\\
+     *                                            \end{matrix} \right ] \f]
+     */
+    std::vector<std::vector<float>> getCameraRotationMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
+
+    /**
+     * Get the baseline distance between two specified cameras. By default it will get the baseline between CameraBoardSocket.RIGHT
+     * and CameraBoardSocket.LEFT.
      *
      * @param cam1 First camera
      * @param cam2 Second camera
@@ -316,7 +339,7 @@ class CalibrationHandler {
      * @param destPath  Full path to the json file in which raw calibration data will be stored
      * @return True on success, false otherwise
      */
-    bool eepromToJsonFile(dai::Path destPath) const;
+    bool eepromToJsonFile(std::filesystem::path destPath) const;
 
     /**
      * Get JSON representation of calibration data
@@ -535,6 +558,37 @@ class CalibrationHandler {
      */
     bool validateCameraArray() const;
 
+// Optional - RTABMap support
+#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
+    /**
+     * @note This API only available if RTABMap support is enabled
+     *
+     * Provide the rtabmap::StereoCameraModel object
+     *
+     * @param model StereoCameraModel object to be filled with the intrinsics and extrinsics of the camera
+     * @param socketID CameraBoardSocket of the camera
+     * @param width Width of the image for which intrinsics is requested
+     * @param height Height of the image for which intrinsics is requested
+     */
+    rtabmap::StereoCameraModel getRTABMapCameraModel(CameraBoardSocket cameraId,
+                                                     int width,
+                                                     int height,
+                                                     const rtabmap::Transform& localTransform = rtabmap::Transform::getIdentity(),
+                                                     float alphaScaling = -1.0,
+                                                     dai::CameraBoardSocket left = CameraBoardSocket::CAM_B,
+                                                     dai::CameraBoardSocket right = CameraBoardSocket::CAM_C);
+
+#else
+    template <typename... T>
+    struct dependent_false {
+        static constexpr bool value = false;
+    };
+    template <typename... T>
+    void getRTABMapCameraModel(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with RTABMap support");
+    }
+#endif
+
    private:
     /** when the user is writing extrinsics do we validate if
      * the connection between all the cameras exists ?
@@ -548,6 +602,17 @@ class CalibrationHandler {
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkSrcLinks(CameraBoardSocket headSocket) const;
+
+    /**
+     * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
+     * and linked to CameraBoardSocket.AUTO)
+     * @param cameraId Camera Id of the camera for which the origin matrix is being calculated
+     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
+     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
+     */
+    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
+
+    DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
 };
 
 }  // namespace dai

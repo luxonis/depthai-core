@@ -1,10 +1,11 @@
 #pragma once
 
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
+#include <memory>
 
 // shared
-#include "depthai-shared/properties/StereoDepthProperties.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
+#include "depthai/properties/StereoDepthProperties.hpp"
 
 namespace dai {
 namespace node {
@@ -12,9 +13,10 @@ namespace node {
 /**
  * @brief StereoDepth node. Compute stereo disparity and depth from left-right image pair.
  */
-class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
+class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
    public:
     constexpr static const char* NAME = "StereoDepth";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * Preset modes for stereo depth.
@@ -22,56 +24,81 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     enum class PresetMode : std::uint32_t {
         /**
          * Prefers accuracy over density. More invalid depth values, but less outliers.
+         * This mode does not turn on any post-processing and is light on resources.
          */
-        HIGH_ACCURACY,
+        FAST_ACCURACY,
         /**
          * Prefers density over accuracy. Less invalid depth values, but more outliers.
+         * This mode does not turn on any post-processing and is light on resources.
          */
-        HIGH_DENSITY
+        FAST_DENSITY,
+
+        DEFAULT,
+        FACE,
+        HIGH_DETAIL,
+        ROBOTICS
     };
+    std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::DEFAULT) {
+        setDefaultProfilePreset(presetMode);
+        left.link(this->left);
+        right.link(this->right);
+        return std::static_pointer_cast<StereoDepth>(shared_from_this());
+    }
+
+    /**
+     * Create StereoDepth node. Note that this API is global and if used autocreated cameras can't be reused.
+     * @param autoCreateCameras If true, will create left and right nodes if they don't exist
+     * @param presetMode Preset mode for stereo depth
+     */
+    std::shared_ptr<StereoDepth> build(bool autoCreateCameras,
+                                       PresetMode presetMode = PresetMode::DEFAULT,
+                                       std::pair<int, int> size = {640, 400},
+                                       std::optional<float> fps = std::nullopt);
 
    protected:
     Properties& getProperties();
+    StereoDepth() = default;
+    StereoDepth(std::unique_ptr<Properties> props);
 
    private:
-    PresetMode presetMode = PresetMode::HIGH_DENSITY;
-    std::shared_ptr<RawStereoDepthConfig> rawConfig;
+    PresetMode presetMode = PresetMode::DEFAULT;
 
    public:
-    StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    using MedianFilter = dai::StereoDepthConfig::MedianFilter;
 
     /**
      * Initial config to use for StereoDepth.
      */
-    StereoDepthConfig initialConfig;
+    std::shared_ptr<StereoDepthConfig> initialConfig = std::make_shared<StereoDepthConfig>();
 
     /**
      * Input StereoDepthConfig message with ability to modify parameters in runtime.
-     * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::StereoDepthConfig, false}}};
+    Input inputConfig{
+        *this, {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::StereoDepthConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    /**
+     * Input align to message.
+     * Default queue is non-blocking with size 1.
+     */
+    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
 
     /**
      * Input for left ImgFrame of left-right pair
-     *
-     * Default queue is non-blocking with size 8
      */
-    Input left{*this, "left", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input left{*this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input for right ImgFrame of left-right pair
-     *
-     * Default queue is non-blocking with size 8
      */
-    Input right{*this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input right{*this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).
      *
      * Non-determined / invalid depth values are set to 0
      */
-    Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
@@ -82,75 +109,69 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * - 0..1520 for 4 fractional bits
      * - 0..3040 for 5 fractional bits
      */
-    Output disparity{*this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output disparity{*this, {"disparity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough ImgFrame message from 'left' Input.
      */
-    Output syncedLeft{*this, "syncedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output syncedLeft{*this, {"syncedLeft", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Passthrough ImgFrame message from 'right' Input.
      */
-    Output syncedRight{*this, "syncedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output syncedRight{*this, {"syncedRight", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
      */
-    Output rectifiedLeft{*this, "rectifiedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output rectifiedLeft{*this, {"rectifiedLeft", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
      */
-    Output rectifiedRight{*this, "rectifiedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output rectifiedRight{*this, {"rectifiedRight", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs StereoDepthConfig message that contains current stereo configuration.
      */
-    Output outConfig{*this, "outConfig", Output::Type::MSender, {{DatatypeEnum::StereoDepthConfig, false}}};
+    Output outConfig{*this, {"outConfig", DEFAULT_GROUP, {{{DatatypeEnum::StereoDepthConfig, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispLrCheckIt1{*this, "debugDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugDispLrCheckIt1{*this, {"debugDispLrCheckIt1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispLrCheckIt2{*this, "debugDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugDispLrCheckIt2{*this, {"debugDispLrCheckIt2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries extended left-right check first iteration (downscaled frame, before combining with second iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugExtDispLrCheckIt1{*this, "debugExtDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugExtDispLrCheckIt1{*this, {"debugExtDispLrCheckIt1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries extended left-right check second iteration (downscaled frame, before combining with first iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugExtDispLrCheckIt2{*this, "debugExtDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugExtDispLrCheckIt2{*this, {"debugExtDispLrCheckIt2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries cost dump of disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispCostDump{*this, "debugDispCostDump", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugDispCostDump{*this, {"debugDispCostDump", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 confidence map.
-     * Lower values means higher confidence of the calculated disparity value.
-     * RGB alignment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
+     * Lower values mean lower confidence of the calculated disparity value.
+     * RGB alignment, left-right check or any postprocessing (e.g., median filter) is not performed on confidence map.
      */
-    Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
-    /**
-     * Specify that a passthrough/dummy calibration should be used,
-     * when input frames are already rectified (e.g. sourced from recordings on the host)
-     */
-    [[deprecated("Use 'Stereo::setRectification(false)' instead")]] void setEmptyCalibration();
+    Output confidenceMap{*this, {"confidenceMap", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.
@@ -166,7 +187,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      *
      * height: 800 / 16 + 1 = 51
      */
-    void loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight);
+    void loadMeshFiles(const std::filesystem::path& pathLeft, const std::filesystem::path& pathRight);
 
     /**
      * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.
@@ -208,11 +229,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     void setOutputKeepAspectRatio(bool keep);
 
     /**
-     * @param median Set kernel size for disparity/depth median filtering, or disable
-     */
-    [[deprecated("Use 'initialConfig.setMedianFilter()' instead")]] void setMedianFilter(dai::MedianFilter median);
-
-    /**
      * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
      * or from the perspective of a rectified output stream
      */
@@ -222,12 +238,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @param camera Set the camera from whose perspective the disparity/depth will be aligned
      */
     void setDepthAlign(CameraBoardSocket camera);
-
-    /**
-     * Confidence threshold for disparity calculation
-     * @param confThr Confidence threshold value 0..255
-     */
-    [[deprecated("Use 'initialConfig.setConfidenceThreshold()' instead")]] void setConfidenceThreshold(int confThr);
 
     /**
      * Rectify input images or not.
@@ -271,33 +281,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     void setRectifyEdgeFillColor(int color);
 
     /**
-     * DEPRECATED function. It was removed, since rectified images are not flipped anymore.
-     * Mirror rectified frames, only when LR-check mode is disabled. Default `true`.
-     * The mirroring is required to have a normal non-mirrored disparity/depth output.
-     *
-     * A side effect of this option is disparity alignment to the perspective of left or right input:
-     * `false`: mapped to left and mirrored, `true`: mapped to right.
-     * With LR-check enabled, this option is ignored, none of the outputs are mirrored,
-     * and disparity is mapped to right.
-     *
-     * @param enable True for normal disparity/depth, otherwise mirrored
-     */
-    [[deprecated("Function call should be removed")]] void setRectifyMirrorFrame(bool enable);
-
-    /**
-     * Enable outputting rectified frames. Optimizes computation on device side when disabled.
-     * DEPRECATED. The outputs are auto-enabled if used
-     */
-    [[deprecated("Function call should be removed")]] void setOutputRectified(bool enable);
-
-    /**
-     * Enable outputting 'depth' stream (converted from disparity).
-     * In certain configurations, this will disable 'disparity' stream.
-     * DEPRECATED. The output is auto-enabled if used
-     */
-    [[deprecated("Function call should be removed")]] void setOutputDepth(bool enable);
-
-    /**
      * Enable runtime stereo mode switch, e.g. from standard to LR-check.
      * Note: when enabled resources allocated for worst case to enable switching to any mode.
      */
@@ -308,12 +291,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @param numFramesPool How many frames should the pool have
      */
     void setNumFramesPool(int numFramesPool);
-
-    /**
-     * Useful for normalization of the disparity map.
-     * @returns Maximum disparity value that the node can return
-     */
-    [[deprecated("Use 'initialConfig.getMaxDisparity()' instead")]] float getMaxDisparity() const;
 
     /**
      * Specify allocated hardware resources for stereo depth.
@@ -328,12 +305,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @param mode Stereo depth preset mode
      */
     void setDefaultProfilePreset(PresetMode mode);
-
-    /**
-     * Whether to use focal length from calibration intrinsics or calculate based on calibration FOV.
-     * Default value is true.
-     */
-    [[deprecated("setFocalLengthFromCalibration is deprecated. Default value is true.")]] void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
 
     /**
      * Use 3x3 homography matrix for stereo rectification instead of sparse mesh generated on device.
@@ -351,6 +322,11 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Equivalent to useHomographyRectification(!enableDistortionCorrection)
      */
     void enableDistortionCorrection(bool enableDistortionCorrection);
+
+    /**
+     * Whether to enable frame syncing inside stereo node or not. Suitable if inputs are known to be synced.
+     */
+    void setFrameSync(bool enableFrameSync);
 
     /**
      * Override baseline from calibration.
@@ -399,12 +375,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Default value: auto, extrinsic calibration data will determine whether it's vertical or horizontal stereo.
      */
     void setVerticalStereo(bool verticalStereo);
-
-    /**
-     * Interpolation type used for stereo rectification.
-     * Default value: DEFAULT_STEREO_RECTIFICATION.
-     */
-    void setRectificationInterpolation(Interpolation rectificationInterpolation);
 };
 
 }  // namespace node

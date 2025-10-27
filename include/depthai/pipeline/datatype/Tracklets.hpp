@@ -1,49 +1,82 @@
 #pragma once
 
 #include <ostream>
-#include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawTracklets.hpp"
+#include "depthai/common/Point3f.hpp"
+#include "depthai/common/Rect.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
 
 namespace dai {
+
+/**
+ * Tracklet structure
+ *
+ * Contains tracklets from object tracker output.
+ */
+struct Tracklet {
+    enum class TrackingStatus : std::int32_t {
+        NEW,     /**< The object is newly added. */
+        TRACKED, /**< The object is being tracked. */
+        LOST,   /**< The object gets lost now. The object can be tracked again automatically(long term tracking) or by specifying detected object manually(short
+                  term and zero term tracking). */
+        REMOVED /**< The object is removed. */
+    };
+    /**
+     * Tracked region of interest.
+     */
+    Rect roi;
+    /**
+     * Tracklet's ID.
+     */
+    std::int32_t id = 0;
+    /**
+     * Tracklet's label ID.
+     */
+    std::int32_t label = 0;
+    /**
+     * Number of frames it is being tracked for.
+     */
+    std::int32_t age = 0;
+    /**
+     * Status of tracklet.
+     */
+    TrackingStatus status = TrackingStatus::LOST;
+
+    /**
+     * Image detection that is tracked.
+     */
+    ImgDetection srcImgDetection;
+    /**
+     * Spatial coordinates of tracklet.
+     */
+    Point3f spatialCoordinates;
+    DEPTHAI_SERIALIZE(Tracklet, roi, id, label, age, status, srcImgDetection, spatialCoordinates);
+};
 
 /**
  * Tracklets message. Carries object tracking information.
  */
 class Tracklets : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
-    RawTracklets& rawdata;
-
    public:
     /**
      * Construct Tracklets message.
      */
-    Tracklets();
-    explicit Tracklets(std::shared_ptr<RawTracklets> ptr);
-    virtual ~Tracklets() = default;
+    Tracklets() = default;
+    virtual ~Tracklets();
 
     /**
      * Retrieve data for Tracklets.
      * @returns Vector of object tracker data, carrying tracking information.
      */
-    std::vector<Tracklet>& tracklets;
+    std::vector<Tracklet> tracklets;
+    ImgTransformation transformation;
 
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    Tracklets& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    Tracklets& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Retrieves image sequence number
-     */
-    Tracklets& setSequenceNum(int64_t sequenceNum);
+    DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 
 }  // namespace dai

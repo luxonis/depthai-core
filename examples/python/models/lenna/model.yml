@@ -1,0 +1,11 @@
+description: >-
+  april-tags frame
+task_type: object_attributes
+files:
+  - name: lenna.png
+    size: 473831
+    sha256: 7e497501a28bcf9a353ccadf6eb9216bf098ac32888fb542fb9bfe71d486761f
+    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png
+
+framework: dldt
+license: https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/master/LICENSE

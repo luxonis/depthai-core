@@ -1,22 +1,44 @@
-cmake_minimum_required(VERSION 3.4) # For Hunter
+cmake_minimum_required(VERSION 3.20)
 
-# MSVC variable isn't available before 'project' call
-# Generalize to Win32 platform for now
-if(NOT WIN32)
-    set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
-endif()
+include(cmake/depthaiOptions.cmake)
 
-# Early options
-option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
-
-# Set to use native tls for windows before including Hunter (used for Curl)
 if(WIN32)
-    set(DEPTHAI_CURL_USE_SCHANNEL ON)
-    set(DEPTHAI_CURL_USE_OPENSSL OFF)
-else()
-    set(DEPTHAI_CURL_USE_SCHANNEL OFF)
-    set(DEPTHAI_CURL_USE_OPENSSL ON)
+    add_compile_options(/MP)
+    add_compile_options(/Ob2) # perform more aggresive function inlining to reduce the number of exported symbols, adopted from https://github.com/tensorflow/tensorflow/pull/10962
+    set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Postfix for debug libraries" FORCE)
 endif()
+
+find_program(CCACHE_PROGRAM ccache)
+
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # Support for CMake 4
+
+if(CCACHE_PROGRAM)
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CCACHE_PROGRAM}")
+endif()
+
+
+# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
+endif()
+
+if(POLICY CMP0028)
+  cmake_policy(SET CMP0028 NEW)
+endif()
+
+if(DEPTHAI_BOOTSTRAP_VCPKG)
+    message(STATUS "Including vcpkg.cmake")
+    include(cmake/vcpkg.cmake)
+    include(cmake/depthaiVcpkgFeatures.cmake)
+else()
+    message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
+endif()
+
+# Minimal supported macOS SDK version for both arm64 and x86_64
+set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
@@ -42,23 +64,22 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
-include("cmake/HunterGate.cmake")
-HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/9d9242b60d5236269f894efd3ddd60a9ca83dd7f.tar.gz"
-    SHA1 "16cc954aa723bccd16ea45fc91a858d0c5246376"
-    LOCAL # Local config for dependencies
-)
-
-# Move binary dir if windows, to shorten the path
-if(WIN32)
-    set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_bin" CACHE STRING "Hunter binary directory")
-endif()
 
 # Create depthai project
-project(depthai VERSION "2.28.0" LANGUAGES CXX C)
+project(depthai VERSION "3.1.0" LANGUAGES CXX C)
+set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
+set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
+
+# Set DEPTHAI_VERSION universally, not conditionally
+if(DEPTHAI_PRE_RELEASE_TYPE STREQUAL "")
+    set(DEPTHAI_VERSION ${PROJECT_VERSION})
+else()
+    set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
+endif()
+
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
-    set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
+    set(DEPTHAI_VERSION ${DEPTHAI_VERSION} PARENT_SCOPE)  # Set in parent scope if there's a parent
 endif()
 
 # Set default build type depending on context
@@ -73,62 +94,12 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-# Set default installation directory
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
-endif()
-
-# Set policies
-# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
-if(POLICY CMP0074)
-  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
-endif()
-
-if(POLICY CMP0028)
-  cmake_policy(SET CMP0028 NEW)
-endif()
-
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Add module path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
-
-# Additional options
-option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
-option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
-option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
-
-# Should install depthai core libraries
-option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
-
-# Debug option
-set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
-set(DEPTHAI_SHARED_LOCAL "" CACHE STRING "Path to local depthai-shared source to use instead of submodule")
-set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
-
-# Enable backward stack printing on crash
-if(ANDROID)
-    # Backward not supported currently on Android
-    set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
-else()
-    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
-    # Additional function information for 'backward' stacktrace
-    if(DEPTHAI_ENABLE_BACKWARD)
-        set(CMAKE_ENABLE_EXPORTS ON)
-    endif()
-endif()
-
-# Check if on 32 bit linux - default without CURL support
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND UNIX)
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT OFF)
-else()
-    set(DEPTHAI_DEFAULT_CURL_SUPPORT ON)
-endif()
-
-option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
-message(STATUS "CURL support: ${DEPTHAI_ENABLE_CURL}")
 
 # Force Colored output when using Ninja
 # Global option - affects all targets
@@ -184,6 +155,7 @@ endif()
 
 ### Get and find dependencies
 
+
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
 include(depthaiDependencies)
@@ -191,11 +163,19 @@ include(depthaiDependencies)
 # Add threads preference
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
-# Add depthai-shared, and definitions that it is PC side
-include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-shared.cmake)
 
+# TODO Remove shared naming
+set(DEPTHAI_SHARED_3RDPARTY_INCLUDE
+    ${CMAKE_CURRENT_LIST_DIR}/include/3rdparty/
+)
 # Add depthai-bootloader-shared
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-bootloader-shared.cmake)
+
+if(DEPTHAI_ENABLE_KOMPUTE)
+    add_subdirectory(shaders)
+
+    list(APPEND targets_to_export shaders)
+endif()
 
 # Add flags helpers
 include(Flags)
@@ -205,27 +185,107 @@ include(Flags)
 set(TARGET_CORE_NAME ${PROJECT_NAME}-core)
 set(TARGET_CORE_ALIAS core)
 
+########################
+# OpenCV Support 1
+########################
+set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
+set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
+set(TARGET_OPENCV_ALIAS opencv)
+if(DEPTHAI_OPENCV_SUPPORT)
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
+    set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
+    foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
+        if(NOT (lib IN_LIST OpenCV_LIBS))
+            set(OPENCV_SUPPORT_AVAILABLE FALSE)
+        endif()
+    endforeach()
+
+    if(OPENCV_SUPPORT_AVAILABLE)
+        # Add public compile definition indicating that OpenCV support is available
+        set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
+
+        message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
+    else()
+        message(STATUS "OpenCV or required libraries (${REQUIRED_OPENCV_LIBRARIES}) not found. OpenCV Support disabled")
+    endif()
+endif()
+
+########################
+# PCL Support 1
+########################
+set(TARGET_PCL_NAME ${PROJECT_NAME}-pcl)
+set(TARGET_PCL_ALIAS pcl)
+if(DEPTHAI_PCL_SUPPORT)
+    if(PCL_FOUND)
+        # Add public compile definition indicating that PCL support is available
+        set(DEPTHAI_HAVE_PCL_SUPPORT ON)
+
+        message(STATUS "PCL found. PCL Support enabled")
+    else()
+        message(STATUS "PCL not found. PCL Support disabled")
+    endif()
+endif()
+
+########################
+# RTABMap Support 1
+########################
+set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libraries to link RTABMap support, e.g. TBB::tbb")
+set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
+set(TARGET_RTABMAP_ALIAS rtabmap)
+if(DEPTHAI_RTABMAP_SUPPORT)
+    if(${RTABMap_FOUND} AND DEPTHAI_HAVE_PCL_SUPPORT)
+        set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
+        message(STATUC "RTABMAP found. RTABMAP Support enabled")
+    else()
+        if(${RTABMap_FOUND})
+            message(WARNING "RTABMAP found but depthai does not have PCL support. RTABMAP Support disabled")
+        else()
+            message(WARNING "RTABMAP not found. RTABMAP Support disabled")
+        endif()
+    endif()
+endif()
+
+########################
+# Basalt Support 1
+########################
+set(THIRDPARTY_BASALT_LIBRARIES "basalt_sdk::basalt_sdk" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
+set(TARGET_BASALT_NAME ${PROJECT_NAME}-basalt)
+set(TARGET_BASALT_ALIAS basalt)
+if(DEPTHAI_BASALT_SUPPORT)
+    if(${basalt_sdk_FOUND})
+        set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
+        message(STATUC "Basalt found. Basalt Support enabled")
+    else()
+        message(WARNING "Basalt not found. Basalt Support disabled")
+    endif()
+endif()
+
 # Create core library
-add_library(${TARGET_CORE_NAME}
-    # depthai-shared sources
-    "${DEPTHAI_SHARED_SOURCES}"
+set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
+    src/common/ModelType.cpp
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
-    src/device/DataQueue.cpp
-    src/device/CallbackHandler.cpp
+    # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/AssetManager.cpp
+    src/pipeline/MessageQueue.cpp
     src/pipeline/Node.cpp
-    src/pipeline/node/XLinkIn.cpp
-    src/pipeline/node/XLinkOut.cpp
+    src/pipeline/InputQueue.cpp
+    src/pipeline/ThreadedNode.cpp
+    src/pipeline/ThreadedHostNode.cpp
+    src/pipeline/DeviceNode.cpp
+    src/pipeline/DeviceNodeGroup.cpp
+    src/pipeline/node/internal/XLinkIn.cpp
+    src/pipeline/node/internal/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/Camera.cpp
+    src/pipeline/node/Thermal.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/MessageDemux.cpp
     src/pipeline/node/MonoCamera.cpp
@@ -237,8 +297,9 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
+    src/pipeline/node/BenchmarkIn.cpp
+    src/pipeline/node/BenchmarkOut.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
-    src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/AprilTag.cpp
@@ -247,19 +308,33 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/ImageAlign.cpp
+    src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/node/test/MyProducer.cpp
+    src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
+    src/pipeline/node/internal/XLinkInHost.cpp
+    src/pipeline/node/internal/XLinkOutHost.cpp
+    src/pipeline/node/host/HostNode.cpp
+    src/pipeline/node/host/RGBD.cpp
+    src/pipeline/datatype/DatatypeEnum.cpp
+    src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
-    src/pipeline/node/Cast.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
+    src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/EncodedFrame.cpp
+    src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
+    src/pipeline/datatype/ImageFiltersConfig.cpp
+    src/pipeline/datatype/ImageAlignConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
+    src/pipeline/datatype/SystemInformationS3.cpp
     src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
@@ -271,27 +346,123 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
-    src/pipeline/datatype/ImageAlignConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
+    src/pipeline/datatype/BenchmarkReport.cpp
     src/pipeline/datatype/PointCloudConfig.cpp
+    src/pipeline/datatype/ObjectTrackerConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
+    src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/ThermalConfig.cpp
+    src/pipeline/datatype/TransformData.cpp
+    src/properties/Properties.cpp
+    src/capabilities/Capabilities.cpp
     src/utility/H26xParsers.cpp
+    src/utility/ImageManipImpl.cpp
+    src/utility/ObjectTrackerImpl.cpp
+    src/utility/Memory.cpp
+    src/utility/VectorMemory.cpp
+    src/utility/SharedMemory.cpp
+    src/utility/ProtoSerializable.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
-    src/utility/Path.cpp
     src/utility/Platform.cpp
+    src/utility/RecordReplay.cpp
+    src/utility/McapImpl.cpp
     src/utility/Environment.cpp
+    src/utility/Compression.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
+    src/utility/Checksum.cpp
+    src/utility/matrixOps.cpp
     src/utility/EepromDataParser.cpp
     src/utility/LogCollection.cpp
+    src/utility/MemoryWrappers.cpp
+    src/utility/Serialization.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
     src/openvino/BlobReader.cpp
     src/bspatch/bspatch.c
+    src/device/DeviceGate.cpp
+    src/utility/ArchiveUtil.cpp
+    src/nn_archive/NNArchive.cpp
+    src/nn_archive/NNArchiveVersionedConfig.cpp
+    src/modelzoo/Zoo.cpp
 )
+
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    list(APPEND TARGET_CORE_SOURCES
+        src/utility/EventsManager.cpp
+    )
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    list(APPEND TARGET_CORE_SOURCES
+        src/remote_connection/RemoteConnection.cpp
+        src/remote_connection/RemoteConnectionImpl.cpp
+    )
+endif()
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    list(APPEND TARGET_CORE_SOURCES
+        src/utility/ProtoSerialize.cpp
+    )
+endif()
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    list(APPEND TARGET_CORE_SOURCES
+        src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/datatype/DynamicCalibrationResults.cpp
+        src/pipeline/datatype/DynamicCalibrationControl.cpp
+    )
+endif()
+
+set(TARGET_OPENCV_SOURCES
+    src/opencv/ImgFrame.cpp
+    src/pipeline/node/host/Display.cpp
+    src/pipeline/node/host/HostCamera.cpp
+    src/pipeline/node/host/Record.cpp
+    src/pipeline/node/host/Replay.cpp
+    src/pipeline/node/ImageFilters.cpp
+    src/opencv/RecordReplay.cpp
+    src/opencv/HolisticRecordReplay.cpp
+)
+
+set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
+
+set(TARGET_BASALT_SOURCES src/basalt/BasaltVIO.cpp)
+
+set(TARGET_RTABMAP_SOURCES
+    src/rtabmap/CalibrationHandler.cpp
+    src/rtabmap/TransformData.cpp
+    src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+)
+
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    list(APPEND TARGET_CORE_SOURCES
+        ${TARGET_OPENCV_SOURCES}
+    )
+endif()
+if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    list(APPEND TARGET_CORE_SOURCES
+        ${TARGET_PCL_SOURCES}
+    )
+endif()
+
+if(DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    list(APPEND TARGET_CORE_SOURCES
+        ${TARGET_BASALT_SOURCES}
+    )
+endif()
+
+if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    list(APPEND TARGET_CORE_SOURCES
+        ${TARGET_RTABMAP_SOURCES}
+    )
+endif()
+
+add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
 target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
@@ -300,8 +471,56 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
+if(DEPTHAI_BUILD_ZOO_HELPER)
+    # Add model_zoo helper binary
+    find_package(fmt REQUIRED)
+    find_package(yaml-cpp REQUIRED)
+    find_package(argparse REQUIRED)
+    set(ZOO_HELPER_SOURCES
+        src/modelzoo/zoo_helper.cpp
+        src/modelzoo/Zoo.cpp
+        src/utility/Environment.cpp
+        src/utility/Logging.cpp
+        src/utility/Platform.cpp
+    )
+    set(ZOO_HELPER_LINK_LIBRARIES
+        nlohmann_json::nlohmann_json
+        fmt::fmt
+        yaml-cpp::yaml-cpp
+        CURL::libcurl
+        cpr::cpr
+    )
+    add_executable(zoo_helper ${ZOO_HELPER_SOURCES})
+    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_ENABLE_CURL)
+    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
+    target_link_libraries(zoo_helper PRIVATE ${ZOO_HELPER_LINK_LIBRARIES})
+    target_include_directories(zoo_helper
+        PRIVATE
+            # depthai-related include dirs - include and src (for src/utilities)
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
+
+            # argparse
+            "$<BUILD_INTERFACE:${argparse_INCLUDE_DIRS}>"
+    )
+
+    # Set C++17 standard for zoo_helper
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
+endif()
+
+if(DEPTHAI_ENABLE_KOMPUTE)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE shaders kompute::kompute)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_KOMPUTE)
+endif()
+
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
+
+if(DEPTHAI_VCPKG_INTERNAL_ONLY)
+    exclude_archive_libs_symbols(${TARGET_CORE_NAME})
+endif()
 
 # And clang-tidy and format
 if(DEPTHAI_CLANG_TIDY)
@@ -309,38 +528,72 @@ if(DEPTHAI_CLANG_TIDY)
     target_clangtidy_setup(${TARGET_CORE_NAME})
 endif()
 
-# Set compiler features (c++14), and disables extensions (g++14)
-set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
+# Set compiler features (c++17), and disables extensions (g++17)
+set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 17)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_EXTENSIONS OFF)
-# Add interface transitive property (C++14)
+# Add interface transitive property (C++17)
 if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_generic_lambdas)
 else()
-    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_14)
+    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_17)
 endif()
 
-# First specify options
-option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
-option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
-option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
+# Link merged target libraries and add compile definitions
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    # Link to OpenCV (publically)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
+    # Specify that we are building target opencv
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
 
-option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
-option(DEPTHAI_USB2_PATCH_ONLY_MODE "Use patch file and full depthai.cmd binary for usb2 mode" ON)
-option(DEPTHAI_CMD_PATH "Use local path for depthai.cmd instead of downloading" OFF)
-if(DEPTHAI_USB2_PATCH_ONLY_MODE)
-    option(DEPTHAI_USB2_PATCH_PATH "Use local path for depthai-usb2-patch.patch instead of downloading" OFF)
-else()
-    option(DEPTHAI_USB2_CMD_PATH "Use local path for depthai-usb2.cmd instead of downloading" OFF)
+endif()
+if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    # Link to PCL (publically)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${PCL_LIBRARIES})
+
+    # Specify that we are building target pcl
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_PCL)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
+    target_link_directories(${TARGET_CORE_NAME} PUBLIC 
+        $<BUILD_INTERFACE:${PCL_LIBRARY_DIRS}>
+        $<INSTALL_INTERFACE:include>
+    )
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC ${PCL_DEFINITIONS})
 endif()
 
-if(DEPTHAI_USB2_PATCH_ONLY_MODE)
-    message(STATUS "Compiling ${TARGET_CORE_NAME} resources in PATCH_ONLY mode")
-else()
-    message(STATUS "Compiling ${TARGET_CORE_NAME} depthai and depthai-usb2 resources")
+if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET) 
+    # Link to rtabmap
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC rtabmap::core ${THIRDPARTY_RTABMAP_LIBRARIES})
+
+    # add compile defs
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    add_flag(${TARGET_CORE_NAME} -Wno-switch-enum)
+endif()
+
+if(DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    # Link to Basalt
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES})
+
+    # add compile defs
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
+endif()
+
+if(DEPTHAI_MERGED_TARGET)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_MERGED_TARGET)
+endif()
+
+if(NOT BUILD_SHARED_LIBS)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
+endif()
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    # Link the dynamic calibration target
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 # Set constant
@@ -349,18 +602,26 @@ set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
 # Include configuration
 include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/version configuration
 include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/version configuration
+include(Depthai/DepthaiDeviceKbConfig)      # depthai-device-kb fwp commit/version configuration
+include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
+include(Depthai/DepthaiVisualizerConfig)    # depthai-visualizer commit/version configuration
 
 # Include downloaders
 include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
-
+include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
+include(DepthaiVisualizerDownloader)        # depthai-visualizer downloader
 
 # depthai-shared enforce commit hash match if CI
 if($ENV{CI})
-    set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+    # TODO(themarpe) - Disable before final merge
+    # set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+    set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE OFF)
     set(DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE ON)
 endif()
 
+# No user specified paths, download from server
+message(STATUS "Downloading Depthai device side binaries from server...")
 
 # Then get the Depthai device side binaries (local or download)
 if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
@@ -379,31 +640,83 @@ if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
 else()
     # No user specified paths, download from server
     message(STATUS "Downloading Depthai device side binaries from server...")
+endif()
+
+if(DEPTHAI_ENABLE_DEVICE_FW)
+    # Add device FW
 
     DepthaiDownload(
         "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
-        PATCH_ONLY ${DEPTHAI_USB2_PATCH_ONLY_MODE}
+        PATCH_ONLY ON
         "${DEPTHAI_RESOURCES_OUTPUT_DIR}"            # Output folder
         DEPTHAI_RESOURCE_LIST                       # List of output resources
         "${DEPTHAI_DEVICE_SIDE_MATURITY}"           # Maturity
         "${DEPTHAI_DEVICE_SIDE_COMMIT}"             # commit hash
         "${DEPTHAI_DEVICE_SIDE_VERSION}"            # Optional version
     )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_RESOURCE_LIST})
 endif()
-list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_RESOURCE_LIST})
 
-# Add bootloader
-DepthaiBootloaderDownload(
-    "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH}" "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE}"
-    "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
-    DEPTHAI_BOOTLOADER_RESOURCE_LIST                # List of output resources
-    "${DEPTHAI_BOOTLOADER_MATURITY}"                # Maturity
-    "${DEPTHAI_BOOTLOADER_VERSION}"                 # if maturity == snapshot -> hash else version
-)
-list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_BOOTLOADER_RESOURCE_LIST})
+if(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+    # Add bootloader FW
+    DepthaiBootloaderDownload(
+        "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH}" "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE}"
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+        DEPTHAI_BOOTLOADER_RESOURCE_LIST                # List of output resources
+        "${DEPTHAI_BOOTLOADER_MATURITY}"                # Maturity
+        "${DEPTHAI_BOOTLOADER_VERSION}"                 # if maturity == snapshot -> hash else version
+    )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_BOOTLOADER_RESOURCE_LIST})
+endif()
+
+if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
+    # Add device-kb FW
+    DepthaiDeviceDownloader(
+        "depthai-device-kb"
+        "luxonis-keembay-snapshot-local"
+        "luxonis-keembay-release-local"
+        "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+        DEPTHAI_DEVICE_KB_RESOURCE_LIST                 # List of output resources
+        "${DEPTHAI_DEVICE_KB_MATURITY}"                # Maturity
+        "${DEPTHAI_DEVICE_RVC3_VERSION}"
+    )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_KB_RESOURCE_LIST})
+endif()
+
+if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+    if(DEPTHAI_SANITIZE AND SANITIZE_THREAD)
+        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-tsan")
+    elseif(DEPTHAI_SANITIZE)
+        string(APPEND DEPTHAI_DEVICE_RVC4_VERSION "-asan-ubsan")
+    endif()
+
+    # Add device-RVC4 FW
+    DepthaiDeviceDownloader(
+        "depthai-device-rvc4"
+        "luxonis-rvc4-snapshot-local"
+        "luxonis-rvc4-release-local"
+        "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+        DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+        "${DEPTHAI_DEVICE_RVC4_MATURITY}"                # Maturity
+        "${DEPTHAI_DEVICE_RVC4_VERSION}"
+    )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_RVC4_RESOURCE_LIST})
+endif()
+
+
+if(DEPTHAI_EMBED_FRONTEND)
+    DepthaiVisualizerDownloader(
+        "${DEPTHAI_VISUALIZER_COMMIT}"                # Visualizer hash
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"
+        DEPTHAI_VISUALIZER_RESOURCE_LIST                 # List of output resources
+    )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_VISUALIZER_RESOURCE_LIST}) # TODO - Handle the case non debug case
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_VISUALIZER_VERSION="${DEPTHAI_VISUALIZER_COMMIT}")
+endif()
 
 message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
-
 if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
     # Add RC and resource compile the binares
     include(CMakeRC)
@@ -425,7 +738,7 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
 else()
     # TODO
     # Don't add RC and don't resource compile the binaries
-
+    # Install to share/ instead for instance
 endif()
 
 # Add include directories
@@ -456,7 +769,7 @@ target_include_directories(${TARGET_CORE_NAME} SYSTEM
 # Add clang format after specifying include directories
 if(DEPTHAI_CLANG_FORMAT)
     # HEADER DIRECTORIES
-    set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/include" "${DEPTHAI_SHARED_PUBLIC_INCLUDE}" "${DEPTHAI_SHARED_INCLUDE}")
+    set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/include" "${CMAKE_CURRENT_LIST_DIR}/src" "${DEPTHAI_SHARED_PUBLIC_INCLUDE}" "${DEPTHAI_SHARED_INCLUDE}")
     include(ClangFormat)
     target_clangformat_setup(${TARGET_CORE_NAME} "${header_dirs}")
 endif()
@@ -469,15 +782,48 @@ target_link_libraries(${TARGET_CORE_NAME}
     INTERFACE
         XLinkPublic
     PRIVATE
+        fmt::fmt
+        yaml-cpp::yaml-cpp
+        spdlog::spdlog
         XLink
         Threads::Threads
-        BZip2::bz2
-        FP16::fp16
-        archive_static
-        spdlog::spdlog
-        ZLIB::zlib
-        ghcFilesystem::ghc_filesystem
+        BZip2::BZip2
+        LibArchive::LibArchive
+        ZLIB::ZLIB
+        httplib::httplib
+        semver::semver
+        magic_enum::magic_enum
+        liblzma::liblzma
+        lz4::lz4
+        Eigen3::Eigen
 )
+
+if(DEPTHAI_ENABLE_MP4V2)
+    message(STATUS "DepthAI recording enabled, finding the mp4v2 library!")
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE mp4v2::mp4v2)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_MP4V2)
+endif()
+
+if(DEPTHAI_ENABLE_PROTOBUF)
+    # Load protobuf support into library messages_proto
+    message(STATUS "Protobuf support enabled")
+    add_subdirectory(protos)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE protobuf::libprotobuf messages)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_ENABLE_PROTOBUF)
+endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE
+        foxglove-websocket::foxglove-websocket
+    )
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_REMOTE_CONNECTION)
+endif()
+
+if(DEPTHAI_HAS_APRIL_TAG)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE
+        apriltag::apriltag
+    )
+endif()
 
 if(DEPTHAI_ENABLE_CURL)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE
@@ -495,11 +841,41 @@ target_compile_definitions(${TARGET_CORE_NAME}
         DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_VERSION}"
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
+        # Add depthai-device-kb version
+        DEPTHAI_DEVICE_RVC3_VERSION="${DEPTHAI_DEVICE_RVC3_VERSION}"
+        # Add depthai-device-rvc4 version
+        DEPTHAI_DEVICE_RVC4_VERSION="${DEPTHAI_DEVICE_RVC4_VERSION}"
 )
 # Add compile flag if libusb is available
 if(DEPTHAI_ENABLE_LIBUSB)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_LIBUSB)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAVE_LIBUSB_SUPPORT)
     set(DEPTHAI_HAVE_LIBUSB_SUPPORT ON)
+endif()
+
+if(DEPTHAI_XTENSOR_SUPPORT)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_XTENSOR_SUPPORT)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC xtensor)
+endif()
+
+# Specify available FW
+if(DEPTHAI_ENABLE_DEVICE_FW)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_FW)
+endif()
+if(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+endif()
+if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_RVC3_FW)
+endif()
+if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+endif()
+if(DEPTHAI_EMBED_FRONTEND)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_EMBED_FRONTEND)
+endif()
+if(DEPTHAI_HAS_APRIL_TAG)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_HAS_APRIL_TAG)
 endif()
 
 # Add Backward dependency if enabled (On by default)
@@ -515,19 +891,22 @@ endif()
 
 # Helper function
 macro(add_runtime_dependencies depending_target dependency)
+    if(TARGET ${dependency})
+        get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
+        set(dlls "")
+        message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency}. Imported configurations: ${imported_configs}")
+        foreach(cfg ${imported_configs})
+            message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
+            get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
+            message(STATUS "Retrieved dll for ${cfg}: '${dll}'")
+            list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
+        endforeach()
+        message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
+    endif()
+    # Create a list of required dll files
+    set(required_dll_files ${dlls})
+    # Copy the required dlls
     if(WIN32)
-        if(TARGET ${dependency})
-            get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
-            set(dlls "")
-            foreach(cfg ${imported_configs})
-                get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-                set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
-            endforeach()
-        endif()
-        file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
-        # Create a list of required dll files
-        set(required_dll_files ${dlls} ${depthai_dll_libraries})
-        # Copy the required dlls
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
             "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
             COMMAND_EXPAND_LISTS
@@ -538,88 +917,65 @@ macro(add_runtime_dependencies depending_target dependency)
 endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+# Add dynamic calibration dll in build time
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
+endif()
 
 ########################
-# OpenCV Support
+# OpenCV Support 2
 ########################
-set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
-set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
-set(TARGET_OPENCV_ALIAS opencv)
-if(DEPTHAI_OPENCV_SUPPORT)
-    # Check if required libraries are available
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc")
-    set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
-    foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
-        if(NOT (lib IN_LIST OpenCV_LIBS))
-            set(OPENCV_SUPPORT_AVAILABLE FALSE)
-        endif()
-    endforeach()
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
+    # Add depthai-core-opencv library and depthai::core::opencv alias
+    add_library(${TARGET_OPENCV_NAME}
+        ${TARGET_OPENCV_SOURCES}
+    )
+    add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
+    # Specifies name of generated IMPORTED target (set to alias)
+    set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})
 
-    if(OPENCV_SUPPORT_AVAILABLE)
+    # Add default flags
+    add_default_flags(${TARGET_OPENCV_NAME})
 
-        # Add depthai-core-opencv library and depthai::core::opencv alias
-        add_library(${TARGET_OPENCV_NAME} src/opencv/ImgFrame.cpp)
-        add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
-        # Specifies name of generated IMPORTED target (set to alias)
-        set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})
+    # Link to OpenCV (publically)
+    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
-        # Add default flags
-        add_default_flags(${TARGET_OPENCV_NAME})
-        add_flag(${TARGET_OPENCV_NAME} -Wno-switch-enum)
+    # Specify that we are building target opencv
+    target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
+    target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
+    # Add public dependency to depthai::core library
+    target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
 
-        # Link to OpenCV (publically)
-        target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
-
-        # Add public compile definition indicating that OpenCV support is available
-        set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
-
-        # Specify that we are building target opencv
-        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
-
-        # Add public dependency to depthai::core library
-        target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
-
-        # Add to clangformat target
-        if(COMMAND target_clangformat_setup)
-            target_clangformat_setup(${TARGET_OPENCV_NAME} "")
-        endif()
-
-        # Add to list of targets to export and install
-        list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
-
-        message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
-
-    else()
-        message(STATUS "OpenCV or required libraries (${REQUIRED_OPENCV_LIBRARIES}) not found. OpenCV Support disabled")
+    # Add to clangformat target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${TARGET_OPENCV_NAME} "")
     endif()
+
+    # Add to list of targets to export and install
+    list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
 endif()
 
 
 ########################
-# PCL Support
+# PCL Support 2
 ########################
-set(TARGET_PCL_NAME ${PROJECT_NAME}-pcl)
-set(TARGET_PCL_ALIAS pcl)
-if(DEPTHAI_PCL_SUPPORT)
-    if(PCL_FOUND)
+if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         # Add depthai-core-pcl library and depthai::core::pcl alias
-        add_library(${TARGET_PCL_NAME} src/pcl/PointCloudData.cpp)
+        add_library(${TARGET_PCL_NAME} ${TARGET_PCL_SOURCES})
         add_library("${PROJECT_NAME}::${TARGET_PCL_ALIAS}" ALIAS ${TARGET_PCL_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_PCL_NAME} PROPERTIES EXPORT_NAME ${TARGET_PCL_ALIAS})
 
         # Add default flags
         add_default_flags(${TARGET_PCL_NAME})
-        add_flag(${TARGET_PCL_NAME} -Wno-switch-enum)
 
         # Link to PCL (publically)
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARIES})
-
-        # Add public compile definition indicating that PCL support is available
-        set(DEPTHAI_HAVE_PCL_SUPPORT ON)
+        target_link_libraries(${TARGET_PCL_NAME} PUBLIC pcl_io_ply)
 
         # Specify that we are building target pcl
         target_compile_definitions(${TARGET_PCL_NAME} PUBLIC DEPTHAI_TARGET_PCL)
+        target_compile_definitions(${TARGET_PCL_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
 
         target_include_directories(${TARGET_PCL_NAME} PUBLIC ${PCL_INCLUDE_DIRS})
         target_link_directories(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARY_DIRS})
@@ -636,12 +992,90 @@ if(DEPTHAI_PCL_SUPPORT)
 
         # Add to list of targets to export and install
         list(APPEND targets_to_export ${TARGET_PCL_NAME})
+endif()
 
-        message(STATUS "PCL found. PCL Support enabled")
-
-    else()
-        message(STATUS "PCL not found. PCL Support disabled")
+########################
+# RTABMap Support 2
+########################
+if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
+    if(NOT APPLE)
+        SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
     endif()
+    # Add depthai-rtabmap library and depthai::rtabmap alias
+    add_library(${TARGET_RTABMAP_NAME}
+    src/rtabmap/CalibrationHandler.cpp
+    src/rtabmap/TransformData.cpp
+    src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+    )
+    add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
+    # Specifies name of generated IMPORTED target (set to alias)
+    set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
+
+    # Add default flags
+    add_default_flags(${TARGET_RTABMAP_NAME})
+    add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
+    # Link to RTABMap (publically)
+    target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} PRIVATE spdlog::spdlog)
+
+    target_include_directories(${TARGET_RTABMAP_NAME} PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>")
+    # Add public compile definition indicating that RTABMap support is available
+    set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
+
+    # Specify that we are building target rtabmap
+    target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
+    target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    # Add public dependency to depthai::core library
+    target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+    # Add to clangformat target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${TARGET_RTABMAP_NAME} "")
+    endif()
+
+    # Add to list of targets to export and install
+    list(APPEND targets_to_export ${TARGET_RTABMAP_NAME})
+
+    message(STATUS "RTABMap and required libraries (${REQUIRED_RTABMAP_LIBRARIES}) found. RTABMap Support enabled")
+endif()
+
+
+########################
+# Basalt Support 2
+########################
+if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
+
+    # Add depthai-basalt library and depthai::basalt alias
+    add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
+    add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
+
+    # Specifies name of generated IMPORTED target (set to alias)
+    set_target_properties(${TARGET_BASALT_NAME} PROPERTIES EXPORT_NAME ${TARGET_BASALT_ALIAS})
+
+    # Add default flags
+    add_default_flags(${TARGET_BASALT_NAME})
+    add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
+
+    # Link to Basalt (publically)
+    target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} PRIVATE spdlog::spdlog)
+    # Add public compile definition indicating that Basalt support is available
+    set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
+
+    # Specify that we are building target basalt
+    target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
+    target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
+
+    # Add public dependency to depthai::core library
+    target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+    # Add to clangformat target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${TARGET_BASALT_NAME} "")
+    endif()
+
+    # Add to list of targets to export and install
+    list(APPEND targets_to_export ${TARGET_BASALT_NAME})
+
+    message(STATUS "Basalt and required libraries (${REQUIRED_BASALT_LIBRARIES}) found. Basalt Support enabled")
 endif()
 
 ########################
@@ -649,31 +1083,39 @@ endif()
 ########################
 set(TARGET_ALL_ALIAS all)
 set(TARGET_ALL_NAME ${PROJECT_NAME}-all)
-if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_HAVE_RTABMAP_SUPPORT)
     add_library(${TARGET_ALL_NAME} INTERFACE)
     add_library("${PROJECT_NAME}::${TARGET_ALL_ALIAS}" ALIAS ${TARGET_ALL_NAME})
     # Specifies name of generated IMPORTED target (set to alias)
     set_target_properties(${TARGET_ALL_NAME} PROPERTIES EXPORT_NAME ${TARGET_ALL_ALIAS})
-    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME})
+    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${TARGET_BASALT_NAME} ${TARGET_RTABMAP_NAME})
 
     # Add to list of targets to export and install
     list(APPEND targets_to_export ${TARGET_ALL_NAME})
 
-    message(STATUS "OpenCV and PCL found. Combined target enabled")
+    message(STATUS "OpenCV, PCL, Basalt and RTABMap found. Combined target enabled")
 endif()
+
+
 
 ########################
 # Sanitizers
 ########################
 if(DEPTHAI_SANITIZE)
-    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
-    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
+    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets.")
+    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets.")
     find_package(Sanitizers)
     add_sanitizers(${TARGET_CORE_NAME})
-    if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_OPENCV_NAME})
     endif()
-    if(DEPTHAI_HAVE_PCL_SUPPORT)
+    if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
+        add_sanitizers(${TARGET_RTABMAP_NAME})
+    endif()
+    if(DEPTHAI_HAVE_BASALT_SUPPORT)
+        add_sanitizers(${TARGET_BASALT_NAME})
+    endif()
+    if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_PCL_NAME})
     endif()
     if(DEPTHAI_XLINK_LOCAL)
@@ -683,6 +1125,44 @@ if(DEPTHAI_SANITIZE)
         endif()
     endif()
 endif()
+function(private_data)
+            set(one URL SHA1 CREDENTIALS LOCATION FILE)
+            set(multiple HTTPHEADER)
+
+            cmake_parse_arguments(x "" "${one}" "${multiple}" "${ARGN}")
+
+            if(x_HTTPHEADER)
+                message(FATAL_ERROR "HTTPHEADER argument of private_data not supported if HUNTER_ENABLED is OFF")
+            endif()
+            if(x_CREDENTIALS)
+                message(FATAL_ERROR "CREDENTIALS argument of private_data not supported if HUNTER_ENABLED is OFF")
+            endif()
+
+            if(NOT x_URL)
+                message(FATAL_ERROR "URL not provided to private_data")
+            endif()
+            if(NOT x_SHA1)
+                message(FATAL_ERROR "SHA1 not provided to private_data")
+            endif()
+            if(NOT x_FILE)
+                message(FATAL_ERROR "FILE not provided to private_data")
+            endif()
+            if(NOT x_LOCATION)
+                message(FATAL_ERROR "LOCATION not provided to private_data")
+            endif()
+
+            set(x_DOWNLOAD_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/_private_data/${x_FILE}")
+
+            file(DOWNLOAD
+                ${x_URL}
+                ${x_DOWNLOAD_LOCATION}
+                EXPECTED_HASH SHA1=${x_SHA1}
+                TLS_VERIFY ON
+            )
+
+            # Set the output variable
+            set(${x_LOCATION} "${x_DOWNLOAD_LOCATION}" PARENT_SCOPE)
+endfunction()
 
 ########################
 # Testing infrastructure
@@ -704,6 +1184,14 @@ if (DEPTHAI_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
+if (EMSCRIPTEN)
+    add_subdirectory(bindings/js)
+endif()
+
+if (DEPTHAI_BUILD_PYTHON)
+  add_subdirectory(bindings/python)
+endif()
+
 ########################
 # Documentation
 ########################
@@ -720,7 +1208,6 @@ message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}
 
 # Configure build information (version, opencv, pcl support)
 configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
-configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/config.hpp")
 
 ########################
 # Export and install
@@ -730,7 +1217,13 @@ include(CMakePackageConfigHelpers)
 
 # Add additional targets to export group
 if(NOT BUILD_SHARED_LIBS)
-    list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
+    list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base XLink)
+    if(DEPTHAI_ENABLE_PROTOBUF)
+        list(APPEND targets_to_export messages)
+    endif()
+    if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+        list(APPEND targets_to_export foxglove_websocket)
+    endif()
 endif()
 
 # Export targets (capability to import current build directory)
@@ -743,7 +1236,6 @@ configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependen
 write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
 
 # Configure config file (one for exporting build directory, one for installation)
-file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
 
 # Config for installation
@@ -753,9 +1245,9 @@ configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Conf
 # Modify RPath to point to the cmake/depthai/dependencies/lib
 # note: macOS is APPLE and also UNIX!
 if(APPLE)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/")
 elseif(UNIX)
-  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
 endif()
 
 # Export to CMake registry if specified
@@ -775,22 +1267,21 @@ if(DEPTHAI_INSTALL)
     )
 
     # Install depthai public headers
-    install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-    # Install depthai-shared public headers
-    install(DIRECTORY "${DEPTHAI_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-    # Install depthai-shared 3rdparty headers
-    install(DIRECTORY "${DEPTHAI_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}")
+    install(DIRECTORY include/depthai DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-    # Install Hunter dependencies
-    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
     # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
     endif()
     # Install any required dll files
     if(DEFINED required_dll_files)
-        install(FILES ${required_dll_files} DESTINATION "${CMAKE_INSTALL_BINDIR}")
+        set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_LIBDIR}")
+        if(WIN32)
+            set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_BINDIR}")
+        endif()
+        message(STATUS "Required dlls for core are: ${required_dll_files} and they will be installed to ${DLL_INSTALLATION_DIR}")
+        install(FILES ${required_dll_files} DESTINATION "${DLL_INSTALLATION_DIR}")
     endif()
 
     # Install export group (information about targets)
@@ -803,35 +1294,7 @@ if(DEPTHAI_INSTALL)
     install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/_install/${PROJECT_NAME}Config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Dependencies.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
-endif()
-
-##############################
-# Integration settings export
-##############################
-set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_COMPILE_DEFINITIONS>")
-set(tmp_includes "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
-file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-core-integration.txt" CONTENT
-    "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
-    $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
-)
-
-if(DEPTHAI_HAVE_OPENCV_SUPPORT)
-    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_COMPILE_DEFINITIONS>")
-    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
-    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-opencv-integration.txt" CONTENT
-        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
-        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
-    )
-endif()
-if(DEPTHAI_HAVE_PCL_SUPPORT)
-    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_PCL_NAME},INTERFACE_COMPILE_DEFINITIONS>")
-    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_PCL_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
-    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-pcl-integration.txt" CONTENT
-        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
-        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
-    )
 endif()

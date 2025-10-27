@@ -1,11 +1,9 @@
 #pragma once
 
-#include "depthai-shared/common/EepromData.hpp"
+#include "depthai/common/EepromData.hpp"
 
-namespace dai
-{
-namespace utility
-{
+namespace dai {
+namespace utility {
 
 /// @brief Splits given string by delimiter
 /// @param s string to split
@@ -25,5 +23,5 @@ std::string parseProductName(EepromData eeprom, EepromData eepromFactory = {});
 /// @return string contaning device name or empty
 std::string parseDeviceName(EepromData eeprom, EepromData eepromFactory = {});
 
-} // namespace utility
-} // namespace dai
+}  // namespace utility
+}  // namespace dai

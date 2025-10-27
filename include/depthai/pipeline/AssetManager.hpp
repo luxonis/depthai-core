@@ -1,11 +1,11 @@
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <vector>
 
-#include "depthai-shared/pipeline/Assets.hpp"
-#include "depthai/utility/Path.hpp"
+#include "depthai/pipeline/Assets.hpp"
 
 namespace dai {
 
@@ -32,13 +32,30 @@ class AssetsMutable : public Assets {
  */
 class AssetManager /*: public Assets*/ {
     std::map<std::string, std::shared_ptr<Asset>> assetMap;
+    std::string rootPath;
+
+    std::string getRelativeKey(std::string key) const;
 
    public:
+    AssetManager();
+    AssetManager(std::string rootPath);
     /**
      * Adds all assets in an array to the AssetManager
      * @param assets Vector of assets to add
      */
     void addExisting(std::vector<std::shared_ptr<Asset>> assets);
+
+    /**
+     * Get root path of the asset manager
+     * @returns Root path
+     */
+    std::string getRootPath();
+
+    /**
+     * Set root path of the asset manager
+     * @param rootPath Root path
+     */
+    void setRootPath(const std::string& rootPath);
 
     /**
      * Adds or overwrites an asset object to AssetManager.
@@ -64,7 +81,7 @@ class AssetManager /*: public Assets*/ {
      * @param path Path to file which to load as asset
      * @param alignment [Optional] alignment of asset data in asset storage. Default is 64B
      */
-    std::shared_ptr<dai::Asset> set(const std::string& key, const dai::Path& path, int alignment = 64);
+    std::shared_ptr<dai::Asset> set(const std::string& key, const std::filesystem::path& path, int alignment = 64);
 
     /**
      * Loads file into asset manager under specified key.

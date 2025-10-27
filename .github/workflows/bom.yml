@@ -1,5 +1,105 @@
-name: BOM
+name: BOM Testing
 
-# Only allow manual trigger
 on:
   workflow_dispatch:
+    inputs:
+      distinct_id:
+        description: 'run identifier'
+        required: false
+      reservation_name:
+          description: 'Reservation name - usually usually unique identifier of root CI run'
+          required: false
+          type: string
+      hold_reservation:
+        description: 'If this is set to true testbed will stay reserved after process is done - reccomended for CI use'
+        required: false
+        type: boolean
+      depthai:
+        required: false
+        type: string
+        default: "develop"
+        description: "Version for depthai"
+      device:
+        required: false
+        type: string
+        default: "stereo"
+        description: "Which device to test - stereo or rgb"
+
+jobs:
+  id:
+    name: Workflow ID Provider
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
+        run: echo ${{ github.event.inputs.distinct_id }}
+
+
+  build_docker_container:
+    runs-on: ['self-hosted', 'hil-test-v3']
+    outputs:
+        tag: ${{ steps.build_and_push.outputs.tag }}
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Checkout source code from tag
+      uses: actions/checkout@v3
+      with:
+            ref: ${{ github.event.inputs.depthai }}
+            path: depthai-core
+
+    - name: Build and push
+      id: build_and_push
+      run: |
+        cp -n scripts/hil/build_and_push.sh depthai-core/scripts/hil/build_and_push.sh
+        rm depthai-core/tests/Dockerfile
+        cp tests/Dockerfile depthai-core/tests/Dockerfile
+        cp -n tests/run_tests_entrypoint.sh depthai-core/tests/run_tests_entrypoint.sh
+        cd depthai-core
+
+        COMMIT_SHA=$(git rev-parse HEAD)
+
+        TAG="vanilla_$COMMIT_SHA"
+
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "Using branch: $BRANCH_NAME"
+        scripts/hil/build_and_push.sh "vanilla" "${{ github.event.inputs.depthai }}" "${{ secrets.CONTAINER_REGISTRY }}" "$COMMIT_SHA" "$PARALLEL_JOBS" "false" "$TAG"
+
+  # Testing
+  rvc4_test_bom:
+      env:
+        VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      if: github.event_name == 'workflow_dispatch'
+      needs: ["build_docker_container"]
+      strategy:
+        matrix:
+          arch: ['x64']
+          flavor: ['vanilla']
+        fail-fast: false
+      runs-on: ['self-hosted', 'testbed-runner']
+
+      steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure, Build and Test
+        run: |
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+          if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
+            RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
+          else
+            export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-depthai-bom"
+            RESERVATION_OPTION="--reservation-name $RESERVATION_NAME"
+          fi
+
+          if [[ "${{ github.event.inputs.hold_reservation }}" == 'true' ]]; then
+            HOLD_RESERVATION="--hold-reservation"
+          fi
+
+          if [[ "${{ github.event.inputs.device }}" == 'stereo' ]]; then
+            MODELS="oak4_pro or oak4_d"
+          else
+            MODELS="oak4_s"
+            RGB="rgb"
+          fi
+
+          exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4$RGB"

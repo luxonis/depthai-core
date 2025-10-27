@@ -1,43 +1,60 @@
 #pragma once
 
-#include <chrono>
-#include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawImgDetections.hpp"
+#include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
+
 namespace dai {
+
+struct ImgDetection {
+    uint32_t label = 0;
+    std::string labelName;
+    float confidence = 0.f;
+    float xmin = 0.f;
+    float ymin = 0.f;
+    float xmax = 0.f;
+    float ymax = 0.f;
+};
+
+DEPTHAI_SERIALIZE_EXT(ImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax);
 
 /**
  * ImgDetections message. Carries normalized detection results
  */
-class ImgDetections : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
-    RawImgDetections& dets;
-
+class ImgDetections : public Buffer, public ProtoSerializable {
    public:
-    /// Construct ImgDetections message
-    ImgDetections();
-    explicit ImgDetections(std::shared_ptr<RawImgDetections> ptr);
-    virtual ~ImgDetections() = default;
+    /**
+     * Construct ImgDetections message.
+     */
+    ImgDetections() = default;
+    virtual ~ImgDetections();
 
     /// Detections
-    std::vector<ImgDetection>& detections;
+    std::vector<ImgDetection> detections;
+    std::optional<ImgTransformation> transformation;
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * Serialize message to proto buffer
+     *
+     * @returns serialized message
+     */
+    std::vector<std::uint8_t> serializeProto(bool = false) const override;
 
     /**
-     * Sets image timestamp related to dai::Clock::now()
+     * Serialize schema to proto buffer
+     *
+     * @returns serialized schema
      */
-    ImgDetections& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+    ProtoSerializable::SchemaPair serializeSchema() const override;
+#endif
 
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    ImgDetections& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Retrieves image sequence number
-     */
-    ImgDetections& setSequenceNum(int64_t sequenceNum);
+    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
 };
 
 }  // namespace dai

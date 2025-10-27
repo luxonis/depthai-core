@@ -1,45 +1,44 @@
 #pragma once
 
+#include <depthai/pipeline/DeviceNode.hpp>
+
 #include "depthai/openvino/OpenVINO.hpp"
-#include "depthai/pipeline/Node.hpp"
 
 // standard
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/ScriptProperties.hpp>
+#include <depthai/properties/ScriptProperties.hpp>
 
 namespace dai {
 namespace node {
 
-class Script : public NodeCRTP<Node, Script, ScriptProperties> {
+class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
    public:
     constexpr static const char* NAME = "Script";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    private:
-    dai::Path scriptPath;
+    std::filesystem::path scriptPath;
 
    public:
-    Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
     /**
-     *  Inputs to Script node. Can be accessed using subscript operator (Eg: inputs['in1'])
-     *  By default inputs are set to blocking with queue size 8
+     * Inputs to Script node. Can be accessed using subscript operator (Eg: inputs['in1'])
+     * By default inputs are set to blocking with queue size 8
      */
-    InputMap inputs;
+    InputMap inputs{*this, "io", {DEFAULT_NAME, DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, false}};
 
     /**
      * Outputs from Script node. Can be accessed subscript operator (Eg: outputs['out1'])
      */
-    OutputMap outputs;
+    OutputMap outputs{*this, "io", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
      * Specify local filesystem path to load the script
      * @param path Filesystem path to load the script
      * @param name Optionally set a name of this script, otherwise the name defaults to the path
      */
-    void setScriptPath(const dai::Path& path, const std::string& name = "");
+    void setScriptPath(const std::filesystem::path& path, const std::string& name = "");
 
     /**
      * Sets script data to be interpreted
@@ -58,9 +57,9 @@ class Script : public NodeCRTP<Node, Script, ScriptProperties> {
     /**
      * @brief Get filesystem path from where script was loaded.
      *
-     * @return dai::Path from where script was loaded, otherwise returns empty path
+     * @return std::filesystem::path from where script was loaded, otherwise returns empty path
      */
-    dai::Path getScriptPath() const;
+    std::filesystem::path getScriptPath() const;
 
     /**
      * @brief Get the script name in utf-8.
@@ -84,6 +83,8 @@ class Script : public NodeCRTP<Node, Script, ScriptProperties> {
      * @returns Processor type - Leon CSS or Leon MSS
      */
     ProcessorType getProcessor() const;
+
+    void buildInternal() override;
 };
 
 }  // namespace node

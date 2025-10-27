@@ -1,18 +1,17 @@
 
 #pragma once
 
-#include <mutex>
-#include <vector>
-#include <unordered_map>
-#include <string>
 #include <cstdint>
+#include <mutex>
+#include <string>
 #include <thread>
+#include <unordered_map>
+#include <vector>
 
 // project
 #include <depthai/device/Device.hpp>
 #include <depthai/device/DeviceBootloader.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
-#include <depthai/utility/Path.hpp>
 
 namespace dai {
 
@@ -25,7 +24,7 @@ class XLinkGlobalProfilingLogger {
     std::atomic<float> rate{1.0f};
     std::thread thr;
 
-public:
+   public:
     static XLinkGlobalProfilingLogger& getInstance();
     XLinkGlobalProfilingLogger(XLinkGlobalProfilingLogger const&) = delete;
     void operator=(XLinkGlobalProfilingLogger const&) = delete;
@@ -35,4 +34,4 @@ public:
     float getRate();
 };
 
-} // namespace dai
+}  // namespace dai

@@ -1,6 +1,18 @@
-[submodule "shared/depthai-shared"]
-	path = shared/depthai-shared
-	url = ../depthai-shared.git
 [submodule "shared/depthai-bootloader-shared"]
 	path = shared/depthai-bootloader-shared
 	url = ../depthai-bootloader-shared.git
+[submodule "3rdparty/xtensor"]
+	path = 3rdparty/xtensor
+	url = https://github.com/xtensor-stack/xtensor
+[submodule "3rdparty/xtl"]
+	path = 3rdparty/xtl
+	url = https://github.com/xtensor-stack/xtl
+[submodule "bindings/python/external/xtensor-python"]
+	path = bindings/python/external/xtensor-python
+	url = https://github.com/luxonis/xtensor-python.git
+[submodule "3rdparty/pybind11_opencv_numpy"]
+	path = bindings/python/external/pybind11_opencv_numpy
+	url = https://github.com/luxonis/pybind11_opencv_numpy.git
+[submodule "3rdparty/ws-protocol"]
+	path = 3rdparty/foxglove/ws-protocol
+	url = https://github.com/luxonis/ws-protocol.git

@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - develop
+    types: [opened, synchronize, reopened, labeled]
 
 # Only allow latest run on same branch to be tested
 concurrency:
@@ -20,51 +21,74 @@ concurrency:
 
 jobs:
 
-  # Testing
-  test:
-    strategy:
-      matrix:
-        os: ['windows', 'macos', 'linux']
-        arch: ['x64']
-        flavor: ['vanilla', 'asan-ubsan', 'tsan']
-        exclude:
-          - os: 'windows'
-            arch: 'x64'
-            flavor: 'tsan'
-      fail-fast: false
-    runs-on: ['self-hosted', 'hil-test', '${{ matrix.os }}', '${{ matrix.arch }}']
-
+  # The precheck job determines whether a workflow should be run in full
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
     steps:
-    - name: Cache .hunter folder
-      uses: actions/cache@v4
-      with:
-        path: $HOME/.hun2_${{ matrix.flavor }}
-        key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
-    - uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
-
-    - name: Specify toolchain path
-      if: matrix.flavor == 'vanilla'
-      run: echo "CMAKE_TOOLCHAIN_PATH=" >> $GITHUB_ENV
-    - name: Specify toolchain path
-      if: matrix.flavor != 'vanilla'
-      run: echo "CMAKE_TOOLCHAIN_PATH=$PWD/cmake/toolchain/${{ matrix.flavor }}.cmake" >> $GITHUB_ENV
-
-    - name: Configure, Build and Test
-      if: matrix.os != 'linux'
+    - name: Evaluate trigger condition
+      id: check
       run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
-        cmake --build build --parallel 4 --config Release
-        cd build
-        ctest -C Release --output-on-failure -L usb --no-tests=error --repeat until-pass:3
+        EVENT_NAME="${{ github.event_name }}"
 
-    - name: Configure, Build and Test
-      if: matrix.os == 'linux'
-      run: |
-        export DISPLAY=:99
-        xdpyinfo -display $DISPLAY >/dev/null 2>&1 || (Xvfb $DISPLAY &)
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
-        cmake --build build --parallel 4 --config Release
-        cd build
-        ctest -C Release --output-on-failure -L usb --no-tests=error --repeat until-pass:3
+        RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
+        if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
+          LABELS="[]"
+        else
+          LABELS="$RAW_LABELS"
+        fi
+
+        SHOULD_RUN="true"
+        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
+          fi
+        fi
+
+        echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+
+  run_vanilla_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/test_child.yml
+    with:
+      flavor: "vanilla"
+      luxonis_os_versions_to_test: "['1.14.1', '1.15.0', '1.18.3']"
+      luxonis_os_versions_to_test_rgb: "['1.18.3']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+
+  run_tsan_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/test_child.yml
+    with:
+      flavor: "tsan"
+      luxonis_os_versions_to_test: "['1.18.3']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+
+  run_asan-ubsan_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/test_child.yml
+    with:
+      flavor: "asan-ubsan"
+      luxonis_os_versions_to_test: "['1.18.3']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+
+  run_windows_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/test_child_windows.yml
+    with:
+      luxonis_os_versions_to_test: "['1.18.3']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+

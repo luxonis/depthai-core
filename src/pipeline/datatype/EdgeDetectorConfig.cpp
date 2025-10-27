@@ -2,30 +2,19 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> EdgeDetectorConfig::serialize() const {
-    return raw;
-}
+EdgeDetectorConfig::~EdgeDetectorConfig() = default;
 
-EdgeDetectorConfig::EdgeDetectorConfig() : Buffer(std::make_shared<RawEdgeDetectorConfig>()), cfg(*dynamic_cast<RawEdgeDetectorConfig*>(raw.get())) {}
-EdgeDetectorConfig::EdgeDetectorConfig(std::shared_ptr<RawEdgeDetectorConfig> ptr)
-    : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawEdgeDetectorConfig*>(raw.get())) {}
+void EdgeDetectorConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::EdgeDetectorConfig;
+}
 
 void EdgeDetectorConfig::setSobelFilterKernels(const std::vector<std::vector<int>>& horizontalKernel, const std::vector<std::vector<int>>& verticalKernel) {
-    cfg.config.sobelFilterHorizontalKernel = horizontalKernel;
-    cfg.config.sobelFilterVerticalKernel = verticalKernel;
+    config.sobelFilterHorizontalKernel = horizontalKernel;
+    config.sobelFilterVerticalKernel = verticalKernel;
 }
 
-EdgeDetectorConfigData EdgeDetectorConfig::getConfigData() const {
-    return cfg.config;
+EdgeDetectorConfig::EdgeDetectorConfigData EdgeDetectorConfig::getConfigData() const {
+    return config;
 }
-
-dai::RawEdgeDetectorConfig EdgeDetectorConfig::get() const {
-    return cfg;
-}
-
-EdgeDetectorConfig& EdgeDetectorConfig::set(dai::RawEdgeDetectorConfig config) {
-    cfg = config;
-    return *this;
-}
-
 }  // namespace dai
