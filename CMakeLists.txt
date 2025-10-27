@@ -321,6 +321,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp

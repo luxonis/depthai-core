@@ -13,6 +13,7 @@
 
 // depthai - nodes
 #include "depthai/pipeline/node/AprilTag.hpp"
+#include "depthai/pipeline/node/Rectification.hpp"
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
 #include "depthai/pipeline/node/BenchmarkOut.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
