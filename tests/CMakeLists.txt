@@ -228,61 +228,61 @@ private_data(
 )
 
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov6-nano:r2-coco-512x288:a26d1ee-detections.json"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov6-nano_r2-coco-512x288_a26d1ee-detections.json"
     SHA1 "954ae635625e14cb5e73fd20f3c01eec31d0f97c"
-    FILE "yolov6-nano:r2-coco-512x288:a26d1ee-detections.json"
+    FILE "yolov6-nano_r2-coco-512x288_a26d1ee-detections.json"
     LOCATION yolo_v6_r2_coco_512x288_gt
 )
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov6-nano:r2-coco-512x384:fb1429e-detections.json"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov6-nano_r2-coco-512x384_fb1429e-detections.json"
     SHA1 "af6cea1f293622fcc2c9cb8d78fadb510a2270c9"
-    FILE "yolov6-nano:r2-coco-512x384:fb1429e-detections.json"
+    FILE "yolov6-nano_r2-coco-512x384_fb1429e-detections.json"
     LOCATION yolo_v6_r2_coco_512x384_gt
 )
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-nano:coco-512x288:6c0402a-detections.json"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-nano_coco-512x288_6c0402a-detections.json"
     SHA1 "bb29fb9a6bc041f7e90769df4cde3a6ca890e521"
-    FILE "yolov8-instance-segmentation-nano:coco-512x288:6c0402a-detections.json"
+    FILE "yolov8-instance-segmentation-nano_coco-512x288_6c0402a-detections.json"
     LOCATION yolo_v8_instance_segmentation_nano_coco_512x288_gt
 )
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-large-pose-estimation:coco-640x352:1868e39-detections.json"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-large-pose-estimation_coco-640x352_1868e39-detections.json"
     SHA1 "397fd5e1b80f47050cb827af92b5b13fb4f35bc6"
-    FILE "yolov8-large-pose-estimation:coco-640x352:1868e39-detections.json"
+    FILE "yolov8-large-pose-estimation_coco-640x352_1868e39-detections.json"
     LOCATION yolo_v8_large_pose_estimation_coco_640x352_gt
 )
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large:coco-640x352:701031f-detections.json"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-detections.json"
     SHA1 "21ee42c2f560d7f977f1895387f6e6834c7dd2b5"
-    FILE "yolov8-instance-segmentation-large:coco-640x352:701031f-detections.json"
+    FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-detections.json"
     LOCATION yolo_v8_instance_segmentation_large_coco_640x352_gt
 )
 
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov10-nano:coco-512x288:007b5fe-detections.json"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov10-nano_coco-512x288_007b5fe-detections.json"
     SHA1 "3530b6c02a2cb8f18220de2dcb78c1e4d5fd4733"
-    FILE "yolov10-nano:coco-512x288:007b5fe-detections.json"
+    FILE "yolov10-nano_coco-512x288_007b5fe-detections.json"
     LOCATION yolo_v10_nano_coco_512x288_gt
 )
 
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/ppe-detection:640x640:419a4e5-detections.json"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/ppe-detection_640x640_419a4e5-detections.json"
     SHA1 "aff07108511958fcfa281bc8ce25dd0647d63ab5"
-    FILE "ppe-detection:640x640:419a4e5-detections.json"
+    FILE "ppe-detection_640x640_419a4e5-detections.json"
     LOCATION ppe_detection_640x640_gt
 )
 
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolo-p:bdd100k-320x320:7019bb8-detections.json"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolo-p_bdd100k-320x320_7019bb8-detections.json"
     SHA1 "ec6b99aeb87a22ab98cb0b042a83ed7d4ae7756b"
-    FILE "yolo-p:bdd100k-320x320:7019bb8-detections.json"
+    FILE "yolo-p_bdd100k-320x320_7019bb8-detections.json"
     LOCATION yolo_p_bdd100k_320x320_gt
     )
 
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/fire-detection:512x288:4a8263c-detections.json"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/fire-detection_512x288_4a8263c-detections.json"
     SHA1 "a0fbdd1b8a92a041f7b8e79ce60fd7aa8fa2c36a"
-    FILE "fire-detection:512x288:4a8263c-detections.json"
+    FILE "fire-detection_512x288_4a8263c-detections.json"
     LOCATION fire_detection_512x288_gt
     )
 
@@ -308,9 +308,9 @@ private_data(
 )
 
 private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large:coco-640x352:701031f-segmentation_mask.png"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask.png"
     SHA1 "f837f89294ba8ab4ae2d30b75d1e2b141a930f8c"
-    FILE "yolov8-instance-segmentation-large:coco-640x352:701031f-segmentation_mask.png"
+    FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask.png"
     LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt
 )
 
