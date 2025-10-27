@@ -29,10 +29,6 @@ void Rectification::buildInternal() {
 #if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     throw std::runtime_error("Rectification node requires OpenCV support!");
 #endif
-    auto platform = getParentPipeline().getDefaultDevice()->getPlatform();
-    if(platform != Platform::RVC4 && runOnHost()) {
-        throw std::runtime_error("Rectification node is only supported on RVC4 platform");
-    }
 
     sync->out.link(inSync);
     sync->setRunOnHost(runOnHost());
@@ -98,7 +94,10 @@ std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(cv::Mat M1, cv::Mat d1,
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
-
+    auto platform = getParentPipeline().getDefaultDevice()->getPlatform();
+    if(platform != Platform::RVC4 && runOnHost()) {
+        throw std::runtime_error("Rectification node is only supported on RVC4 platform");
+    }
 
     bool initialized = false;
     cv::Mat cv_rectificationMap1X, cv_rectificationMap1Y;
