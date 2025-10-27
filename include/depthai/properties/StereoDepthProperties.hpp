@@ -2,6 +2,7 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/EepromData.hpp"
+#include "depthai/common/Interpolation.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/properties/Properties.hpp"
@@ -146,12 +147,6 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     bool enableFrameSync = true;
 
-    /**
-     * Whether to use vertical stereo mode or not.
-     * Default value: auto, extrinsic calibration data will determine whether it's vertical or horizontal stereo.
-     */
-    std::optional<bool> verticalStereo;
-
     /*
      * Override baseline from calibration.
      * Used only in disparity to depth conversion.
@@ -194,6 +189,18 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     std::optional<float> alphaScaling;
 
+    /**
+     * Whether to use vertical stereo mode or not.
+     * Default value: auto, extrinsic calibration data will determine whether it's vertical or horizontal stereo.
+     */
+    std::optional<bool> verticalStereo;
+
+    /**
+     * Interpolation type used for stereo rectification.
+     * Default value: DEFAULT_STEREO_RECTIFICATION.
+     */
+    Interpolation rectificationInterpolation = Interpolation::DEFAULT_STEREO_RECTIFICATION;
+
     ~StereoDepthProperties() override;
 };
 
@@ -215,11 +222,12 @@ DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       focalLengthFromCalibration,
                       useHomographyRectification,
                       enableFrameSync,
-                      verticalStereo,
                       baseline,
                       focalLength,
                       disparityToDepthUseSpecTranslation,
                       rectificationUseSpecTranslation,
                       depthAlignmentUseSpecTranslation,
-                      alphaScaling);
+                      alphaScaling,
+                      verticalStereo,
+                      rectificationInterpolation);
 }  // namespace dai

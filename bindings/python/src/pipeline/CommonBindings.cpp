@@ -412,7 +412,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("NEAREST_NEIGHBOR", Interpolation::NEAREST_NEIGHBOR)
         .value("BYPASS", Interpolation::BYPASS)
         .value("DEFAULT", Interpolation::DEFAULT)
-        .value("DEFAULT_DISPARITY_DEPTH", Interpolation::DEFAULT_DISPARITY_DEPTH);
+        .value("DEFAULT_DISPARITY_DEPTH", Interpolation::DEFAULT_DISPARITY_DEPTH)
+        .value("DEFAULT_STEREO_RECTIFICATION", Interpolation::DEFAULT_STEREO_RECTIFICATION);
 
     // backward compatibility
     // m.attr("node").attr("Warp").attr("Properties").attr("Interpolation") = interpolation;
