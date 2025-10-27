@@ -6,10 +6,12 @@
 
 // depthai
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "ndarray_converter.h"
 
 // pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
+#include <pybind11/pytypes.h>
 
 // #include "spdlog/spdlog.h"
 
@@ -35,13 +37,50 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
 
     // Metadata / raw
     imgDetection.def(py::init<>())
+        .def(py::init<const RotatedRect&, float, std::uint32_t>(), py::arg("boundingBox"), py::arg("confidence"), py::arg("label"))
+        .def(py::init<const RotatedRect&, std::string, float, std::uint32_t>(),
+             py::arg("boundingBox"),
+             py::arg("labelName"),
+             py::arg("confidence"),
+             py::arg("label"))
+        .def(py::init<const RotatedRect&, const KeypointsList&, float, std::uint32_t>(),
+             py::arg("boundingBox"),
+             py::arg("keypoints"),
+             py::arg("confidence"),
+             py::arg("label"))
+        .def(py::init<const RotatedRect&, const KeypointsList&, std::string, float, std::uint32_t>(),
+             py::arg("boundingBox"),
+             py::arg("keypoints"),
+             py::arg("labelName"),
+             py::arg("confidence"),
+             py::arg("label"))
+        .def("__repr__", &ImgDetection::str)
         .def_readwrite("label", &ImgDetection::label)
         .def_readwrite("labelName", &ImgDetection::labelName)
         .def_readwrite("confidence", &ImgDetection::confidence)
         .def_readwrite("xmin", &ImgDetection::xmin)
         .def_readwrite("ymin", &ImgDetection::ymin)
         .def_readwrite("xmax", &ImgDetection::xmax)
-        .def_readwrite("ymax", &ImgDetection::ymax);
+        .def_readwrite("ymax", &ImgDetection::ymax)
+        .def("setBoundingBox", &ImgDetection::setBoundingBox, py::arg("boundingBox"))
+        .def("getBoundingBox", &ImgDetection::getBoundingBox)
+        .def("setOuterBoundingBox", &ImgDetection::setOuterBoundingBox, py::arg("xmin"), py::arg("ymin"), py::arg("xmax"), py::arg("ymax"))
+        .def("setKeypoints", py::overload_cast<const KeypointsList>(&ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<const std::vector<Keypoint>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Keypoint>, const std::vector<Edge>>(&ImgDetection::setKeypoints),
+             py::arg("keypoints"),
+             py::arg("edges"))
+        .def("setKeypoints", py::overload_cast<const std::vector<Point3f>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<const std::vector<Point2f>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
+        .def("getKeypoints", &ImgDetection::getKeypoints, DOC(dai, ImgDetection, getKeypoints))
+        .def("setEdges", &ImgDetection::setEdges, py::arg("edges"))
+        .def("getEdges", &ImgDetection::getEdges, DOC(dai, ImgDetection, getEdges))
+        .def("centerX", &dai::ImgDetection::getCenterX)
+        .def("centerY", &dai::ImgDetection::getCenterY)
+        .def("width", &dai::ImgDetection::getWidth)
+        .def("height", &dai::ImgDetection::getHeight)
+        .def("angle", &dai::ImgDetection::getAngle);
 
     // rawImgDetections
     //     .def(py::init<>())
@@ -82,8 +121,43 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getSequenceNum", &ImgDetections::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](ImgDetections& msg) { return msg.transformation; })
         .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
-        // .def("setTimestamp", &ImgDetections::setTimestamp, DOC(dai, Buffer, setTimestamp))
-        // .def("setTimestampDevice", &ImgDetections::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
-        // .def("setSequenceNum", &ImgDetections::setSequenceNum, DOC(dai, ImgDetections, setSequenceNum))
-        ;
+        .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetections, getSegmentationMaskWidth))
+        .def("getSegmentationMaskHeight", &ImgDetections::getSegmentationMaskHeight, DOC(dai, ImgDetections, getSegmentationMaskHeight))
+        .def("setMask", &ImgDetections::setMask, py::arg("mask"), py::arg("width"), py::arg("height"), DOC(dai, ImgDetections, setMask))
+        .def("getMaskData", &ImgDetections::getMaskData, DOC(dai, ImgDetections, getMaskData))
+        .def("getSegmentationMaskAsImgFrame", &ImgDetections::getSegmentationMaskAsImgFrame, DOC(dai, ImgDetections, getSegmentationMaskAsImgFrame))
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        .def(
+            "getSegmentationMask", [](ImgDetections& self) { return self.getSegmentationMask(false); }, DOC(dai, ImgDetections, getSegmentationMask))
+        .def("setSegmentationMask", &ImgDetections::setSegmentationMask, DOC(dai, ImgDetections, setSegmentationMask))
+        .def(
+            "getCvSegmentationMask",
+            [](ImgDetections& self) { return self.getCvSegmentationMask(&g_numpyAllocator); },
+            DOC(dai, ImgDetections, getCvSegmentationMask))
+        .def(
+            "getCvSegmentationMaskByIndex",
+            [](ImgDetections& self, uint8_t index) { return self.getCvSegmentationMaskByIndex(index, &g_numpyAllocator); },
+            py::arg("index"),
+            DOC(dai, ImgDetections, getCvSegmentationMaskByIndex))
+#endif
+#ifdef DEPTHAI_XTENSOR_SUPPORT
+        .def(
+            "getTensorSegmentationMask",
+            [](ImgDetections& self) -> py::object { return py::cast(self.getTensorSegmentationMask()); },
+            DOC(dai, ImgDetections, getTensorSegmentationMask))
+
+        .def(
+            "setTensorSegmentationMask",
+            [](ImgDetections& self, const py::object mask) {
+                auto tensor = py::array(mask);
+                self.setTensorSegmentationMask(tensor.cast<xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>>());
+            },
+            py::arg("mask"),
+            DOC(dai, ImgDetections, setTensorSegmentationMask))
+        .def(
+            "getTensorSegmentationMaskByIndex",
+            [](ImgDetections& self, uint8_t index) -> py::object { return py::cast(self.getTensorSegmentationMaskByIndex(index)); },
+            py::arg("index"),
+            DOC(dai, ImgDetections, getTensorSegmentationMaskByIndex));
+#endif
 }
