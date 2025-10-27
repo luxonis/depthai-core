@@ -433,3 +433,7 @@ dai_add_example(spatial_tiny_yolo_tof_v3 SpatialDetection/spatial_tiny_yolo_tof.
 dai_add_example(spatial_tiny_yolo_tof_v4 SpatialDetection/spatial_tiny_yolo_tof.cpp OFF OFF)
 target_compile_definitions(spatial_tiny_yolo_tof_v3 PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 target_compile_definitions(spatial_tiny_yolo_tof_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
+
+# Misc
+## Crash dump
+dai_add_example(crash_dump Misc/CrashDump/crash_dump.cpp OFF OFF)
