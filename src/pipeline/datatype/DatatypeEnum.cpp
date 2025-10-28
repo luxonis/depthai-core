@@ -121,7 +121,6 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::ImageFiltersConfig, {}},
     {DatatypeEnum::ToFDepthConfidenceFilterConfig, {}},
     {DatatypeEnum::MapData, {}},
-#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     {DatatypeEnum::ObjectTrackerConfig, {}},
     {DatatypeEnum::DynamicCalibrationControl, {}},
     {DatatypeEnum::DynamicCalibrationResult, {}},
