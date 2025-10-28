@@ -19,6 +19,8 @@
     <depend>gfortran</depend>
     <depend>nlohmann-json-dev</depend>
     <depend>curl</depend>
+    <depend>spdlog</depend>
+    <depend>fmt</depend>
     <depend>zip</depend>
     <depend>tar</depend>
     <depend>unzip</depend>
