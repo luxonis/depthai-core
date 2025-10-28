@@ -29,7 +29,7 @@ void Rectification::buildInternal() {
 #if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     throw std::runtime_error("Rectification node requires OpenCV support!");
 #endif
-
+    
     sync->out.link(inSync);
     sync->setRunOnHost(runOnHost());
 }

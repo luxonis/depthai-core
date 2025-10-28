@@ -21,6 +21,7 @@
 #include "node/NeuralNetwork.hpp"
 #include "node/ObjectTracker.hpp"
 #include "node/PointCloud.hpp"
+#include "node/NeuralDepth.hpp"
 #include "node/SPIIn.hpp"
 #include "node/SPIOut.hpp"
 #include "node/Script.hpp"
