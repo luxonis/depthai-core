@@ -209,7 +209,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         if(!queue.tryPop(val)) {
             return nullptr;
         }
-        if(pipelineEventDispatcher) pipelineEventDispatcher->endInputEvent(name, getSize());
+        if(pipelineEventDispatcher && std::dynamic_pointer_cast<T>(val)) pipelineEventDispatcher->endInputEvent(name, getSize());
         return std::dynamic_pointer_cast<T>(val);
     }
 
