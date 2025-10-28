@@ -25,6 +25,7 @@
 #include "node/Script.hpp"
 #include "node/SpatialDetectionNetwork.hpp"
 #include "node/SpatialLocationCalculator.hpp"
+#include "node/NeuralDepth.hpp"
 #include "node/StereoDepth.hpp"
 #include "node/Sync.hpp"
 #include "node/SystemLogger.hpp"

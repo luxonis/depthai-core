@@ -17,6 +17,7 @@
 #include "depthai/properties/MessageDemuxProperties.hpp"
 #include "depthai/properties/MonoCameraProperties.hpp"
 #include "depthai/properties/NeuralNetworkProperties.hpp"
+#include "depthai/properties/NeuralDepthProperties.hpp"
 #include "depthai/properties/ObjectTrackerProperties.hpp"
 #include "depthai/properties/PointCloudProperties.hpp"
 #include "depthai/properties/SPIInProperties.hpp"
@@ -76,6 +77,7 @@ ScriptProperties::~ScriptProperties() = default;
 SpatialDetectionNetworkProperties::~SpatialDetectionNetworkProperties() = default;
 SpatialLocationCalculatorProperties::~SpatialLocationCalculatorProperties() = default;
 StereoDepthProperties::~StereoDepthProperties() = default;
+NeuralDepthProperties::~NeuralDepthProperties() = default;
 SyncProperties::~SyncProperties() = default;
 SystemLoggerProperties::~SystemLoggerProperties() = default;
 ThermalProperties::~ThermalProperties() = default;

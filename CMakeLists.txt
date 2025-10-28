@@ -290,6 +290,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/MessageDemux.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
+    src/pipeline/node/NeuralDepth.cpp
     src/pipeline/node/Sync.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/ImageManip.cpp
@@ -343,6 +344,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/Tracklets.cpp
     src/pipeline/datatype/IMUData.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
+    src/pipeline/datatype/NeuralDepthConfig.cpp
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
