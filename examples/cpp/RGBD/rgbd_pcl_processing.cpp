@@ -5,14 +5,13 @@
 
 #include "depthai/depthai.hpp"
 
-
 class CustomPCLProcessingNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, CustomPCLProcessingNode> {
    public:
     constexpr static const char* NAME = "CustomPCLProcessingNode";
     constexpr static const float thresholdDistance = 3000.0f;
 
    public:
-    Input  inputPCL{*this, {"inPCL", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{dai::DatatypeEnum::PointCloudData, true}}}}};
+    Input inputPCL{*this, {"inPCL", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{dai::DatatypeEnum::PointCloudData, true}}}}};
     Output outputPCL{*this, {"outPCL", DEFAULT_GROUP, {{{dai::DatatypeEnum::PointCloudData, true}}}}};
 
     void run() override {
@@ -24,11 +23,10 @@ class CustomPCLProcessingNode : public dai::NodeCRTP<dai::node::ThreadedHostNode
                 std::vector<dai::Point3fRGBA> updatedPoints;
                 const float thresholdSquared = thresholdDistance * thresholdDistance;
                 updatedPoints.reserve(pclData.size());
-                for (const auto& point : pclData) {
-                    const float distance = point.x*point.x + point.y*point.y + point.z*point.z;
-                    if (distance <= thresholdSquared) {
-                        updatedPoints.emplace_back(point.x, point.y, point.z,
-                                                   point.r, point.g, point.b, point.a);
+                for(const auto& point : pclData) {
+                    const float distance = point.x * point.x + point.y * point.y + point.z * point.z;
+                    if(distance <= thresholdSquared) {
+                        updatedPoints.emplace_back(point.x, point.y, point.z, point.r, point.g, point.b, point.a);
                     }
                 }
                 updatedPoints.shrink_to_fit();
