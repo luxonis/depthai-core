@@ -57,10 +57,7 @@ class SpatialVisualizer(dai.node.HostNode):
         x2 = int(detection.xmax * frameWidth)
         y1 = int(detection.ymin * frameHeight)
         y2 = int(detection.ymax * frameHeight)
-        try:
-            label = self.labelMap[detection.label]  # Ensure labelMap is accessible
-        except IndexError:
-            label = detection.label
+        label = detection.labelName
         color = (255, 255, 255)
         cv2.putText(frame, str(label), (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
         cv2.putText(frame, "{:.2f}".format(detection.confidence * 100), (x1 + 10, y1 + 35), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color)
@@ -94,8 +91,7 @@ with dai.Pipeline() as p:
     # Linking
     monoLeft.requestOutput((640, 400)).link(stereo.left)
     monoRight.requestOutput((640, 400)).link(stereo.right)
-    visualizer.labelMap = spatialDetectionNetwork.getClasses()
 
-    visualizer.build(stereo.depth, spatialDetectionNetwork.out, spatialDetectionNetwork.passthrough)
+    visualizer.build(spatialDetectionNetwork.passthroughDepth, spatialDetectionNetwork.out, spatialDetectionNetwork.passthrough)
 
     p.run()

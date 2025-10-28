@@ -74,6 +74,47 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
         .def(py::init<const ApplyCalibration&>())
         .def(py::init<const ResetData&>())
         .def(py::init<const SetPerformanceMode&>());
+    // Pythonic names + docstrings; defaults match C++.
+    // clang-format off
+    cls.def_static(
+           "calibrate",
+           &DCC::calibrate,
+           py::arg("force") = false,
+           "Create a DynamicCalibrationControl with a Calibrate command.");
+    cls.def_static(
+           "calibrationQuality",
+           &DCC::calibrationQuality,
+           py::arg("force") = false,
+           "Create a DynamicCalibrationControl with a CalibrationQuality command.");
+    cls.def_static(
+           "startCalibration",
+           &DCC::startCalibration,
+           py::arg("loadImagePeriod") = 0.5f,
+           py::arg("calibrationPeriod") = 5.0f,
+           "Create a DynamicCalibrationControl with a StartCalibration command.");
+    cls.def_static(
+           "stopCalibration",
+           &DCC::stopCalibration,
+           "Create a DynamicCalibrationControl with a StopCalibration command.");
+    cls.def_static(
+           "loadImage",
+           &DCC::loadImage,
+           "Create a DynamicCalibrationControl with a LoadImage command.");
+    cls.def_static(
+           "applyCalibration",
+           &DCC::applyCalibration,
+           py::arg("calibration"),
+           "Create a DynamicCalibrationControl with an ApplyCalibration command.");
+    cls.def_static(
+           "resetData",
+           &DCC::resetData,
+           "Create a DynamicCalibrationControl with a ResetData command.");
+    cls.def_static(
+           "setPerformanceMode",
+           &DCC::setPerformanceMode,
+           py::arg("mode") = dai::DynamicCalibrationControl::PerformanceMode::DEFAULT,
+           "Create a DynamicCalibrationControl with a SetPerformanceMode command.");
+    // clang-format on
     // Call remaining stack
     auto* callstack = static_cast<Callstack*>(pCallstack);
     auto cb = callstack->top();

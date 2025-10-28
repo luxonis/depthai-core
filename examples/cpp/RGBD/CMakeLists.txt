@@ -18,3 +18,7 @@ endif()
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_example(visualizer_rgbd_autocreate visualizer_rgbd_autocreate.cpp ON OFF)
 endif()
+
+if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
+    dai_add_example(rgbd_pcl_processing rgbd_pcl_processing.cpp ON OFF)
+endif()

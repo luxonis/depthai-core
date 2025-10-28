@@ -131,5 +131,11 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
         .value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
-        .value("RGBDData", DatatypeEnum::RGBDData);
+        .value("RGBDData", DatatypeEnum::RGBDData)
+        .value("ImageFiltersConfig", DatatypeEnum::ImageFiltersConfig)
+        .value("ToFDepthConfidenceFilterConfig", DatatypeEnum::ToFDepthConfidenceFilterConfig)
+        .value("DynamicCalibrationControl", DatatypeEnum::DynamicCalibrationControl)
+        .value("DynamicCalibrationResult", DatatypeEnum::DynamicCalibrationResult)
+        .value("CalibrationQuality", DatatypeEnum::CalibrationQuality)
+        .value("CoverageData", DatatypeEnum::CoverageData);
 }

@@ -14,8 +14,8 @@ struct DclUtils {
                                            const std::shared_ptr<const dcl::CameraCalibrationHandle> dclCalibrationB,
                                            const CameraBoardSocket socketSrc,
                                            const CameraBoardSocket socketDest,
-                                           const int width,
-                                           const int height);
+                                           const std::pair<int, int> resolutionA,
+                                           const std::pair<int, int> resolutionB);
 
     static std::shared_ptr<dcl::CameraCalibrationHandle> createDclCalibration(const std::vector<std::vector<float>> cameraMatrix,
                                                                               const std::vector<float> distortionCoefficients,
@@ -26,10 +26,12 @@ struct DclUtils {
         const CalibrationHandler& currentCalibration,
         const CameraBoardSocket boardSocketA,
         const CameraBoardSocket boardSocketB,
-        const int width,
-        const int height);
+        const std::pair<int, int> resolutionA,
+        const std::pair<int, int> resolutionB);
 
     static dcl::ImageData cvMatToImageData(const cv::Mat& mat);
+
+    static dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode);
 };
 
 }  // namespace node
