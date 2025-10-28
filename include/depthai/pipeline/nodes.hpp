@@ -12,6 +12,7 @@
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "node/DynamicCalibrationNode.hpp"
 #endif
+#include "node/NeuralDepth.hpp"
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"
 #include "node/IMU.hpp"
