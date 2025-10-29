@@ -56,12 +56,12 @@ with dai.Pipeline() as pipeline:
             print(f"Setting HDR exposure ratio to {ratio}{' (off)' if ratio == 1 else ''}")
             cameraControlQueue.send(ctrl)
         if key == ord("w"):
-            weight = clamp(weight + 0.1, minWeight, maxWeight)
+            weight = clamp(weight + 1/32, minWeight, maxWeight)
             ctrl.setMisc("hdr-local-tone-weight", weight)
             print(f"Setting HDR local tone weight to {weight}")
             cameraControlQueue.send(ctrl)
         if key == ord("e"):
-            weight = clamp(weight - 0.1, minWeight, maxWeight)
+            weight = clamp(weight - 1/32, minWeight, maxWeight)
             ctrl.setMisc("hdr-local-tone-weight", weight)
             print(f"Setting HDR local tone weight to {weight}")
             cameraControlQueue.send(ctrl)
