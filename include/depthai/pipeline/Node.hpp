@@ -243,7 +243,7 @@ class Node : public std::enable_shared_from_this<Node> {
         std::shared_ptr<dai::MessageQueue> createOutputQueue(unsigned int maxSize = OUTPUT_QUEUE_DEFAULT_MAX_SIZE,
                                                              bool blocking = OUTPUT_QUEUE_DEFAULT_BLOCKING);
 
-       private:
+    // TMP    private:
         void link(const std::shared_ptr<dai::MessageQueue>& queue) {
             connectedInputs.push_back(queue.get());
             queueConnections.push_back({this, queue});
