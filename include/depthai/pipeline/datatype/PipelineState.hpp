@@ -16,16 +16,16 @@ class NodeState {
     };
     struct TimingStats {
         uint64_t minMicros = -1;
-        uint64_t maxMicros;
-        uint64_t averageMicrosRecent;
-        uint64_t stdDevMicrosRecent;
+        uint64_t maxMicros = 0;
+        uint64_t averageMicrosRecent = 0;
+        uint64_t stdDevMicrosRecent = 0;
         uint64_t minMicrosRecent = -1;
-        uint64_t maxMicrosRecent;
-        uint64_t medianMicrosRecent;
+        uint64_t maxMicrosRecent = 0;
+        uint64_t medianMicrosRecent = 0;
         DEPTHAI_SERIALIZE(TimingStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent);
     };
     struct Timing {
-        float fps;
+        float fps = 0.0f;
         TimingStats durationStats;
 
         bool isValid() const {
@@ -35,10 +35,10 @@ class NodeState {
         DEPTHAI_SERIALIZE(Timing, fps, durationStats);
     };
     struct QueueStats {
-        uint32_t maxQueued;
-        uint32_t minQueuedRecent;
-        uint32_t maxQueuedRecent;
-        uint32_t medianQueuedRecent;
+        uint32_t maxQueued = 0;
+        uint32_t minQueuedRecent = 0;
+        uint32_t maxQueuedRecent = 0;
+        uint32_t medianQueuedRecent = 0;
         DEPTHAI_SERIALIZE(QueueStats, maxQueued, minQueuedRecent, maxQueuedRecent, medianQueuedRecent);
     };
     struct InputQueueState {
@@ -49,7 +49,7 @@ class NodeState {
             BLOCKED = 2 // An output attempted to send to this input, but the input queue was full
         } state = State::IDLE;
         // Number of messages currently queued in the input queue
-        uint32_t numQueued;
+        uint32_t numQueued = 0;
         // Timing info about this input
         Timing timing;
         // Queue usage stats
