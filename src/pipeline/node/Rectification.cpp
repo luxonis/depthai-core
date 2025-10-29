@@ -17,21 +17,18 @@
 namespace dai {
 namespace node {
 
+Rectification& Rectification::setOutputSize(uint32_t width, uint32_t height) {
+    properties.outputWidth = width;
+    properties.outputHeight = height;
+    return *this;
+}
+    
 void Rectification::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
 bool Rectification::runOnHost() const {
     return runOnHostVar;
-}
-
-void Rectification::buildInternal() {
-#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-    throw std::runtime_error("Rectification node requires OpenCV support!");
-#endif
-    
-    sync->out.link(inSync);
-    sync->setRunOnHost(runOnHost());
 }
 
 #if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
@@ -89,6 +86,12 @@ std::pair<cv::Mat, cv::Mat> computeRectificationMatrices(cv::Mat M1, cv::Mat d1,
     return std::make_pair(cv_R1, cv_R2);
 }
 
+std::string matToString(const cv::Mat& mat) {
+    std::ostringstream oss;
+    oss << mat;
+    return oss.str();
+}
+
 }  // namespace
 
 void Rectification::run() {
@@ -107,10 +110,15 @@ void Rectification::run() {
     std::array<std::array<float, 3>, 3> targetM1, targetM2;
 
     while(isRunning()) {
-        auto group = inSync.get<MessageGroup>();
-        if(group == nullptr) continue;
-        auto input1Frame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(input1.getName()));
-        auto input2Frame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(input2.getName()));
+        auto input1Frame = input1.get<dai::ImgFrame>();
+        auto input2Frame = input2.get<dai::ImgFrame>();
+
+        uint32_t output1FrameWidth = input1Frame->getWidth();
+        uint32_t output1FrameHeight = input1Frame->getHeight();
+        uint32_t output2FrameWidth = input2Frame->getWidth();
+        uint32_t output2FrameHeight = input2Frame->getHeight();
+        auto output1ImgTransformation = input1Frame->transformation;
+        auto output2ImgTransformation = input2Frame->transformation;
 
         if(!initialized) {
             auto calib = getParentPipeline().getDefaultDevice()->getCalibration();
@@ -140,8 +148,26 @@ void Rectification::run() {
             std::tie(cv_R1, cv_R2) = computeRectificationMatrices(cv_M1, cv_d1, cv_M2, cv_d2, imageSize, cv_R, cv_T);
 
             targetM1 = M1;
-            targetM2 = targetM1;
+            targetM2 = M2;
 
+            if(properties.outputWidth.has_value() && properties.outputHeight.has_value()) {
+                output1FrameWidth = properties.outputWidth.value();
+                output1FrameHeight = properties.outputHeight.value();
+                output2FrameWidth = properties.outputWidth.value();
+                output2FrameHeight = properties.outputHeight.value();
+                auto scale1X = static_cast<float>(output1FrameWidth) / static_cast<float>(input1Frame->getWidth());
+                auto scale1Y = static_cast<float>(output1FrameHeight) / static_cast<float>(input1Frame->getHeight());
+                auto scale2X = static_cast<float>(output2FrameWidth) / static_cast<float>(input2Frame->getWidth());
+                auto scale2Y = static_cast<float>(output2FrameHeight) / static_cast<float>(input2Frame->getHeight());
+                output1ImgTransformation.addScale(scale1X, scale1Y);
+                output2ImgTransformation.addScale(scale2X, scale2Y);
+
+                targetM1 = output1ImgTransformation.getIntrinsicMatrix();
+                targetM2 = output2ImgTransformation.getIntrinsicMatrix();
+            }
+
+            targetM2 = targetM1; //TODO alignment target
+               
             auto cv_targetCameraMatrix1 = arrayToCvMat(3, 3, CV_32FC1, targetM1);
             auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2); //todo
 
@@ -149,7 +175,7 @@ void Rectification::run() {
                                         cv_d1,
                                         cv_R1,
                                         cv_targetCameraMatrix1,
-                                        cv::Size(input1Frame->getWidth(), input1Frame->getHeight()),
+                                        cv::Size(output1FrameWidth, output1FrameHeight),
                                         CV_32FC1,
                                         cv_rectificationMap1X,
                                         cv_rectificationMap1Y);
@@ -157,34 +183,43 @@ void Rectification::run() {
                                         cv_d2,
                                         cv_R2,
                                         cv_targetCameraMatrix2,
-                                        cv::Size(input2Frame->getWidth(), input2Frame->getHeight()),
+                                        cv::Size(output2FrameWidth, output2FrameHeight),
                                         CV_32FC1,
                                         cv_rectificationMap2X,
                                         cv_rectificationMap2Y);
+
+            logger->debug("R = {}", matToString(cv_R));
+            logger->debug("T = {}", matToString(cv_T));
+            logger->debug("M1 = {}", matToString(cv_M1));
+            logger->debug("M2 = {}", matToString(cv_M2));
+            logger->debug("R1 = {}", matToString(cv_R1));
+            logger->debug("R2 = {}", matToString(cv_R2));
+            logger->debug("TARGET_MATRIX1 = {}", matToString(cv_targetCameraMatrix1));
+            logger->debug("TARGET_MATRIX2 = {}", matToString(cv_targetCameraMatrix2));
+
             initialized = true;
         }
 
         auto start = steady_clock::now();
 
         std::shared_ptr<dai::ImgFrame> rectifiedFrame1 = std::make_shared<dai::ImgFrame>();
-        size_t frameSize1 = input1Frame->getWidth() * input1Frame->getHeight();
-
+        size_t frameSize1 = output1FrameWidth * output1FrameHeight;
         rectifiedFrame1->setData(std::vector<uint8_t>(frameSize1));
 
         rectifiedFrame1->setMetadata(*input1Frame);
-        rectifiedFrame1->setWidth(input1Frame->getWidth());
-        rectifiedFrame1->setHeight(input1Frame->getHeight());
+        rectifiedFrame1->setWidth(output1FrameWidth);
+        rectifiedFrame1->setHeight(output1FrameHeight);
         rectifiedFrame1->setType(dai::ImgFrame::Type::RAW8);
         rectifiedFrame1->fb.stride = rectifiedFrame1->fb.width * rectifiedFrame1->getBytesPerPixel();
 
         std::shared_ptr<dai::ImgFrame> rectifiedFrame2 = std::make_shared<dai::ImgFrame>();
 
-        size_t frameSize2 = input2Frame->getWidth() * input2Frame->getHeight();
+        size_t frameSize2 = output2FrameWidth * output2FrameHeight;
         rectifiedFrame2->setData(std::vector<uint8_t>(frameSize2));
 
         rectifiedFrame2->setMetadata(*input2Frame);
-        rectifiedFrame2->setWidth(input2Frame->getWidth());
-        rectifiedFrame2->setHeight(input2Frame->getHeight());
+        rectifiedFrame2->setWidth(output2FrameWidth);
+        rectifiedFrame2->setHeight(output2FrameHeight);
         rectifiedFrame2->setType(dai::ImgFrame::Type::RAW8);
         rectifiedFrame2->fb.stride = rectifiedFrame2->fb.width * rectifiedFrame2->getBytesPerPixel();
 

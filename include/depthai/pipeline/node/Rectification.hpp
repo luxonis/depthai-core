@@ -16,23 +16,11 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     constexpr static const char* NAME = "Rectification";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    Subnode<node::Sync> sync{*this, "sync"};
-    InputMap& inputs = sync->inputs;
-    std::string input1Name = "input1";
-    std::string input2Name = "input2";
     /**
-     * Input left image
+     * Input images to be rectified
      */
-    Input& input1 = inputs[input1Name];
-
-    /**
-     * Input right image
-     */
-    Input& input2 = inputs[input2Name];
-
-    void buildInternal() override;
-
-    Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 4, {{DatatypeEnum::MessageGroup, true}}}};
+    Input input1{*this, {"input1", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, true}}}};
+    Input input2{*this, {"input2", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * Passthrough for input messages (so the node can be placed between other nodes)
@@ -51,6 +39,11 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
      * By default, the node will run on device.
      */
     void setRunOnHost(bool runOnHost);
+
+    /**
+     * Set output size
+     */
+    Rectification& setOutputSize(uint32_t width, uint32_t height);
 
     /**
      * Check if the node is set to run on host

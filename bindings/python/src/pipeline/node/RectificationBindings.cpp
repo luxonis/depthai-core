@@ -30,18 +30,20 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    RectificationProperties.def_readwrite("enableSync", &RectificationProperties::enableSync, DOC(dai, RectificationProperties, enableSync));
+    RectificationProperties.def_readwrite("outputWidth", &RectificationProperties::outputWidth, DOC(dai, RectificationProperties, outputWidth))
+        .def_readwrite("outputHeight", &RectificationProperties::outputHeight, DOC(dai, RectificationProperties, outputHeight))
+    ;
 
     // Nodes
     rectification.def_readonly("passthrough1", &Rectification::passthrough1, DOC(dai, node, Rectification, passthrough1))
         .def_readonly("passthrough2", &Rectification::passthrough2, DOC(dai, node, Rectification, passthrough2))
         .def_readonly("output1", &Rectification::output1, DOC(dai, node, Rectification, output1))
         .def_readonly("output2", &Rectification::output2, DOC(dai, node, Rectification, output2))
-        .def_property_readonly(
-            "input1", [](Rectification& node) { return &node.input1; }, py::return_value_policy::reference_internal)
-        .def_property_readonly(
-            "input2", [](Rectification& node) { return &node.input2; }, py::return_value_policy::reference_internal)
-        .def("setRunOnHost", &Rectification::setRunOnHost, py::arg("num"), DOC(dai, node, Rectification, setRunOnHost));
+        .def_readonly("input1", &Rectification::input1, DOC(dai, node, Rectification, input1))
+        .def_readonly("input2", &Rectification::input2, DOC(dai, node, Rectification, input2))
+        .def("setRunOnHost", &Rectification::setRunOnHost, py::arg("num"), DOC(dai, node, Rectification, setRunOnHost))
+        .def("setOutputSize", &Rectification::setOutputSize, py::arg("width"), py::arg("height"), DOC(dai, node, Rectification, setOutputSize))
+    ;
 
     // Keep the Properties class attached to the node type
     daiNodeModule.attr("Rectification").attr("Properties") = RectificationProperties;
