@@ -1241,6 +1241,10 @@ CpuUsage DeviceBase::getLeonMssCpuUsage() {
     return pimpl->rpcClient->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
+int64_t DeviceBase::getProcessMemoryUsage() {
+    return pimpl->rpcClient->call("getProcessMemoryUsage").as<int64_t>();
+}
+
 UsbSpeed DeviceBase::getUsbSpeed() {
     return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
 }

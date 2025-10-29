@@ -608,6 +608,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, getLeonMssCpuUsage))
         .def(
+            "getProcessMemoryUsage",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getProcessMemoryUsage();
+            },
+            DOC(dai, DeviceBase, getProcessMemoryUsage))
+        .def(
             "addLogCallback",
             [](DeviceBase& d, std::function<void(LogMessage)> callback) {
                 py::gil_scoped_release release;
