@@ -35,6 +35,8 @@ with dai.Pipeline() as pipeline:
     weight = 0.75
 
     base = "long"
+    expTime = 20000
+    sensIso = 400
 
     pipeline.start()
 
@@ -71,6 +73,16 @@ with dai.Pipeline() as pipeline:
             base = ("middle" if base == "long" else "long")
             ctrl.setMisc("hdr-exposure-base", base)
             print(f"Setting HDR exposure base to: {base}")
+            cameraControlQueue.send(ctrl)
+        elif key in [ord('i'), ord('o'), ord('k'), ord('l')]:
+            if key == ord('i'): expTime -= 1000
+            if key == ord('o'): expTime += 1000
+            if key == ord('k'): sensIso -= 100
+            if key == ord('l'): sensIso += 100
+            expTime = clamp(expTime, 1000, 100000)
+            sensIso = clamp(sensIso, 100, 1600)
+            print("Setting manual exposure, time: ", expTime, "iso: ", sensIso)
+            ctrl.setManualExposure(expTime, sensIso)
             cameraControlQueue.send(ctrl)
         if key == ord("q"):
             break
