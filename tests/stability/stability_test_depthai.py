@@ -3,6 +3,9 @@ import depthai as dai
 import time
 from typing import List, Dict
 import datetime
+import sys
+
+MEMORY_LEAK_DETECTION_THRESHOLD = 1.05
 
 def stability_test(fps):
     # Creates the pipeline and a default device implicitly
@@ -66,6 +69,11 @@ def stability_test(fps):
         print("Starting the stability test...")
         tStart = time.time()
         p.start()
+
+        # Delay so the device process finishes starting up 
+        time.sleep(10)
+        initialProcessMemoryUsage = p.getDefaultDevice().getProcessMemoryUsage()
+        print(f"Initial depthai-device process memory usage is: {initialProcessMemoryUsage} kB")
         while True:
             for name, queue in benchmarkReportQueues.items():
                 report = queue.get(timeout=datetime.timedelta(minutes=1)) # 1 minute timeout
@@ -77,6 +85,12 @@ def stability_test(fps):
                 else:
                     raise RuntimeError(f"Timeout reached for {name} benchmark report")
                 queue.tryGetAll() # Clear the queue
+
+            # Detect memory leaks
+            processMemoryUsage = p.getDefaultDevice().getProcessMemoryUsage()
+            if processMemoryUsage > MEMORY_LEAK_DETECTION_THRESHOLD * initialProcessMemoryUsage:
+                raise RuntimeError("Memory used by depthai-device process increased above the given threshold - potential memory leak detected")
+            print(f"Memory used by depthai-device process: {processMemoryUsage} kB. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
             print(f"Running for {datetime.timedelta(seconds=time.time() - tStart)}", flush=True)
 
 if __name__ == "__main__":
