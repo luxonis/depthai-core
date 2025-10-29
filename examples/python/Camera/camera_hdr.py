@@ -34,6 +34,8 @@ with dai.Pipeline() as pipeline:
     maxWeight = 1.0
     weight = 0.75
 
+    base = "long"
+
     pipeline.start()
 
     while pipeline.isRunning():
@@ -64,6 +66,11 @@ with dai.Pipeline() as pipeline:
             weight = clamp(weight - 1/32, minWeight, maxWeight)
             ctrl.setMisc("hdr-local-tone-weight", weight)
             print(f"Setting HDR local tone weight to {weight}")
+            cameraControlQueue.send(ctrl)
+        if key == ord("b"):
+            base = ("middle" if base == "long" else "long")
+            ctrl.setMisc("hdr-exposure-base", base)
+            print(f"Setting HDR exposure base to: {base}")
             cameraControlQueue.send(ctrl)
         if key == ord("q"):
             break
