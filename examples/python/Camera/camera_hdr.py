@@ -28,7 +28,7 @@ with dai.Pipeline() as pipeline:
 
     minRatio = 1
     maxRatio = 8
-    ratio = 4.0
+    ratio = 4
     
     minWeight = 0.0
     maxWeight = 1.0
@@ -51,9 +51,9 @@ with dai.Pipeline() as pipeline:
             print(f"Setting HDR exposure ratio to {ratio}")
             cameraControlQueue.send(ctrl)
         if key == ord("j"):
-            ratio = clamp(ratio / 2, minRatio, maxRatio)
+            ratio = clamp(ratio // 2, minRatio, maxRatio)
             ctrl.setMisc("hdr-exposure-ratio", ratio)
-            print(f"Setting HDR exposure ratio to {ratio}")
+            print(f"Setting HDR exposure ratio to {ratio}{' (off)' if ratio == 1 else ''}")
             cameraControlQueue.send(ctrl)
         if key == ord("w"):
             weight = clamp(weight + 0.1, minWeight, maxWeight)
