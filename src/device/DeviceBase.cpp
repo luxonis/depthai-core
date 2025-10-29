@@ -288,6 +288,9 @@ class DeviceBase::Impl {
     LogLevel getLogLevel();
     void setPattern(const std::string& pattern);
 
+    /*
+     * RPC call with custom timeout. Set timeout to 0 to enable endless wait.
+     */
     template <typename... Args>
     auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args)
         -> decltype(rpcClient->call(std::string(name), std::forward<Args>(args)...)) {
@@ -295,6 +298,9 @@ class DeviceBase::Impl {
         return rpcClient->call(name, std::forward<Args>(args)...);
     }
 
+    /*
+     * Default RPC call with timeout set to RPC_READ_TIMEOUT.
+     */
     template <typename... Args>
     auto rpcCall(std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name), std::forward<Args>(args)...)) {
         // ScopedRpcTimeout guard(std::nullopt);
