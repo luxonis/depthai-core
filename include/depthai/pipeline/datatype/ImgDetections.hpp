@@ -247,7 +247,7 @@ class ImgDetections : public Buffer, public ProtoSerializable {
      * Retrieves data by semantic class
      *
      */
-    cv::Mat getCvSegmentationMaskByClass(uint8_t semantic_class, cv::MatAllocator* allocator);
+    cv::Mat getCvSegmentationMaskByClass(uint8_t semantic_class, cv::MatAllocator* allocator = nullptr);
 
 #endif
 

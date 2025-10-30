@@ -315,7 +315,7 @@ TEST_CASE("DetectionParser replay test") {
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-TEST_CASE("DetectionParser segmentationDecode") {
+TEST_CASE("DetectionParser segmentation mask test") {
     const std::string modelName = "yolov8-instance-segmentation-large:coco-640x352:701031f";
 
     const std::filesystem::path kitchenImagePath{KITCHEN_IMAGE_PATH};

@@ -115,7 +115,7 @@ int main() {
                 if(filteredLabel == -1) {
                     segmentationMask = inDet->getSegmentationMask();
                 } else {
-                    segmentationMask = inDet->getCvSegmentationMaskByClass(filteredLabel, nullptr);
+                    segmentationMask = inDet->getCvSegmentationMaskByClass(filteredLabel);
                     detections.erase(
                         std::remove_if(
                             detections.begin(), detections.end(), [filteredLabel](const dai::ImgDetection& det) { return det.label != filteredLabel; }),

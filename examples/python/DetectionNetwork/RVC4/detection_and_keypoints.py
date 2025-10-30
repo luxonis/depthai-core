@@ -67,6 +67,7 @@ with dai.Pipeline() as pipeline:
     while pipeline.isRunning():
         inRgb: dai.ImgFrame = qRgb.get()
         inDet: dai.ImgDetections = qDet.get()
+        inRgb.getHeight()
         
         
         if inRgb is not None:

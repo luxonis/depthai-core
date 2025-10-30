@@ -354,6 +354,36 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
             REQUIRE(minVal == 0.0);
             REQUIRE(maxVal == 255.0);
         }
+
+        detections.detections.clear();
+        detections.detections.resize(3);
+        detections.detections[0].label = 5;
+        detections.detections[1].label = 7;
+        detections.detections[2].label = 5;
+
+        cv::Mat byClass = detections.getCvSegmentationMaskByClass(5);
+        REQUIRE(byClass.rows == mask.rows);
+        REQUIRE(byClass.cols == mask.cols);
+        REQUIRE(byClass.type() == CV_8UC1);
+
+        int expectedZeroPixels = 0;
+        for(uint8_t value : values) {
+            if(value == 0 || value == 2) {
+                ++expectedZeroPixels;
+            }
+        }
+        cv::Mat zeroMask;
+        cv::compare(byClass, 0, zeroMask, cv::CmpTypes::CMP_EQ);
+        REQUIRE(cv::countNonZero(zeroMask) == expectedZeroPixels);
+
+        cv::Mat unexpected;
+        cv::inRange(byClass, 1, 254, unexpected);
+        REQUIRE(cv::countNonZero(unexpected) == 0);
+
+        cv::Mat missingClass = detections.getCvSegmentationMaskByClass(99);
+        cv::Mat allBackground;
+        cv::compare(missingClass, 255, allBackground, cv::CmpTypes::CMP_EQ);
+        REQUIRE(cv::countNonZero(allBackground) == missingClass.rows * missingClass.cols);
     }
 #endif
 }
