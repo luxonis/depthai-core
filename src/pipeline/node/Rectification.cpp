@@ -12,8 +12,6 @@
     #include <opencv2/calib3d.hpp>
 #endif
 
-
-
 namespace dai {
 namespace node {
 
@@ -97,9 +95,11 @@ std::string matToString(const cv::Mat& mat) {
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
-    auto platform = getParentPipeline().getDefaultDevice()->getPlatform();
-    if(platform != Platform::RVC4 && runOnHost()) {
-        throw std::runtime_error("Rectification node is only supported on RVC4 platform");
+    if(runOnHost()) {
+        auto device = getParentPipeline().getDefaultDevice();
+        if(device && device->getPlatform() != Platform::RVC4) {
+            throw std::runtime_error("Rectification node is only supported on RVC4 platform");
+        }
     }
 
     bool initialized = false;
