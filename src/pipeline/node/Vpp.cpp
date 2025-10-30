@@ -15,5 +15,10 @@ Vpp::Properties& Vpp::getProperties() {
     return properties;
 }
 
+void Vpp::buildInternal() {
+    sync->out.link(syncInput);
+    sync->setRunOnHost(true);
+}
+
 }  // namespace node
 }  // namespace dai

@@ -4,8 +4,10 @@
 #include <memory>
 
 // shared
-#include "depthai/pipeline/datatype/VppConfig.hpp"
-#include "depthai/properties/VppProperties.hpp"
+#include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/datatype/VppConfig.hpp>
+#include <depthai/pipeline/node/Sync.hpp>
+#include <depthai/properties/VppProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -35,21 +37,34 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
      */
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::VppConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
+    Input syncInput{*this, {"inSync", DEFAULT_GROUP, false, 1, {{DatatypeEnum::MessageGroup, true}}}};
+    // clang-format on
+
+    void buildInternal() override;
+
+    Subnode<node::Sync> sync{*this, "sync"};
+
+    InputMap& inputs = sync->inputs;
+
+    std::string leftInputName = "left";
+
+    std::string rightInputName = "right";
+
+    std::string disparityName = "disparity";
     /**
-     * Input for left ImgFrame
+     * Input left image
      */
-    Input left{*this, {"left", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input& left = inputs[leftInputName];
 
     /**
-     * Input for right ImgFrame
+     * Input right image
      */
-    Input right{*this, {"right", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input& right = inputs[rightInputName];
 
     /**
-     * Input for disparity ImgFrame (RAW16 or float32)
+     *  Disparity
      */
-    Input disparity{*this, {"disparity", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ImgFrame, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
-
+    Input& disparity = inputs[disparityName];
     /**
      * Output ImgFrame message that carries the processed left image with virtual projection pattern applied.
      */
