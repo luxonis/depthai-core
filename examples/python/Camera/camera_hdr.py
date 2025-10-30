@@ -6,6 +6,8 @@ import depthai as dai
 # HDR Camera example
 # Use 'h' and 'j' keys to increase/decrease HDR exposure ratio
 # Use 'w' and 'e' keys to increase/decrease local tone weight
+# Use 'b' to toggle HDR exposure base between 'long' and 'middle'
+# Use 'q' to quit
 
 # This example only works on IMX586/582 sensors.
 
@@ -29,7 +31,7 @@ with dai.Pipeline() as pipeline:
     minRatio = 1
     maxRatio = 8
     ratio = 4
-    
+
     minWeight = 0.0
     maxWeight = 1.0
     weight = 0.75

@@ -45,9 +45,12 @@ int main() {
     float minRatio = 1.0f;
     float maxRatio = 8.0f;
     float ratio = 4.0f;
+
     float minWeight = 0.0f;
     float maxWeight = 1.0f;
     float weight = 0.75f;
+
+    std::string base = "long";
 
     // Start pipeline
     pipeline.start();
@@ -71,14 +74,19 @@ int main() {
             std::cout << "Setting HDR exposure ratio to " << ratio << std::endl;
             cameraControlQueue->send(ctrl);
         } else if(key == 'w') {
-            weight = clamp(weight + 0.1f, minWeight, maxWeight);
+            weight = clamp(weight + 1/32.0f, minWeight, maxWeight);
             ctrl->setMisc("hdr-local-tone-weight", weight);
             std::cout << "Setting HDR local tone weight to " << weight << std::endl;
             cameraControlQueue->send(ctrl);
         } else if(key == 'e') {
-            weight = clamp(weight - 0.1f, minWeight, maxWeight);
+            weight = clamp(weight - 1/32.0f, minWeight, maxWeight);
             ctrl->setMisc("hdr-local-tone-weight", weight);
             std::cout << "Setting HDR local tone weight to " << weight << std::endl;
+            cameraControlQueue->send(ctrl);
+        } else if(key == 'b') {
+            base = (base == "long") ? "middle" : "long";
+            ctrl->setMisc("hdr-exposure-base", base);
+            std::cout << "Setting HDR exposure base to '" << base << "'" << std::endl;
             cameraControlQueue->send(ctrl);
         } else if(key == 'q') {
             break;
