@@ -1,11 +1,13 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <opencv2/core.hpp>
 #include <opencv2/core/base.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/imgproc.hpp>
 #include <stdexcept>
+#include <vector>
 
 namespace dai {
 #pragma GCC diagnostic push
@@ -73,6 +75,20 @@ cv::Mat ImgDetections::getCvSegmentationMaskByIndex(uint8_t index, cv::MatAlloca
     cv::Mat mask = getCvSegmentationMask(allocator);
     cv::Mat classMask;
     cv::compare(mask, index, classMask, cv::CmpTypes::CMP_EQ);
+
+    return classMask;
+}
+
+cv::Mat ImgDetections::getCvSegmentationMaskByClass(uint8_t class_index, cv::MatAllocator* allocator) {
+    cv::Mat mask = getCvSegmentationMask(allocator);
+    cv::Mat classMask = cv::Mat::zeros(mask.size(), CV_8UC1) + 255;
+
+    for(uint8_t idx = 0; idx < detections.size(); idx++) {
+        if(detections[idx].label == class_index) {
+            cv::Mat indexMask = getCvSegmentationMaskByIndex(idx, allocator);
+            classMask.setTo(0, indexMask);
+        }
+    }
 
     return classMask;
 }

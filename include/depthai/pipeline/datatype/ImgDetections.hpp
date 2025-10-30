@@ -238,10 +238,16 @@ class ImgDetections : public Buffer, public ProtoSerializable {
     cv::Mat getCvSegmentationMask(cv::MatAllocator* allocator = nullptr);
 
     /**
-     * Retrieves data of the specified index as cv::Mat.
+     * Retrieves data by instance index
      *
      */
     cv::Mat getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
+
+    /**
+     * Retrieves data by semantic class
+     *
+     */
+    cv::Mat getCvSegmentationMaskByClass(uint8_t semantic_class, cv::MatAllocator* allocator);
 
 #endif
 

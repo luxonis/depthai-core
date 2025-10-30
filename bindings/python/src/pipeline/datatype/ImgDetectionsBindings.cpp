@@ -139,25 +139,10 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
             [](ImgDetections& self, uint8_t index) { return self.getCvSegmentationMaskByIndex(index, &g_numpyAllocator); },
             py::arg("index"),
             DOC(dai, ImgDetections, getCvSegmentationMaskByIndex))
-#endif
-#ifdef DEPTHAI_XTENSOR_SUPPORT
         .def(
-            "getTensorSegmentationMask",
-            [](ImgDetections& self) -> py::object { return py::cast(self.getTensorSegmentationMask()); },
-            DOC(dai, ImgDetections, getTensorSegmentationMask))
-
-        .def(
-            "setTensorSegmentationMask",
-            [](ImgDetections& self, const py::object mask) {
-                auto tensor = py::array(mask);
-                self.setTensorSegmentationMask(tensor.cast<xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>>());
-            },
-            py::arg("mask"),
-            DOC(dai, ImgDetections, setTensorSegmentationMask))
-        .def(
-            "getTensorSegmentationMaskByIndex",
-            [](ImgDetections& self, uint8_t index) -> py::object { return py::cast(self.getTensorSegmentationMaskByIndex(index)); },
-            py::arg("index"),
-            DOC(dai, ImgDetections, getTensorSegmentationMaskByIndex));
+            "getCvSegmentationMaskByClass",
+            [](ImgDetections& self, uint8_t class_index) { return self.getCvSegmentationMaskByClass(class_index, &g_numpyAllocator); },
+            py::arg("semantic_class"),
+            DOC(dai, ImgDetections, getCvSegmentationMaskByClass));
 #endif
 }
