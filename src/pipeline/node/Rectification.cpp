@@ -121,7 +121,7 @@ void Rectification::run() {
         auto output2ImgTransformation = input2Frame->transformation;
 
         if(!initialized) {
-            auto calib = getParentPipeline().getDefaultDevice()->getCalibration();
+            auto calib = getParentPipeline().getCalibrationData();
 
             auto leftSocket = (dai::CameraBoardSocket)input1Frame->getInstanceNum();
             auto rightSocket = (dai::CameraBoardSocket)input2Frame->getInstanceNum();
