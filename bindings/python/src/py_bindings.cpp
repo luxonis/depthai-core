@@ -37,6 +37,7 @@
 #include "pipeline/node/NodeBindings.hpp"
 #include "remote_connection/RemoteConnectionBindings.hpp"
 #include "utility/EventsManagerBindings.hpp"
+#include "utility/PipelineEventDispatcherBindings.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <ndarray_converter.h>
 #endif
@@ -87,6 +88,7 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&CalibrationHandlerBindings::bind);
     callstack.push_front(&ZooBindings::bind);
     callstack.push_front(&EventsManagerBindings::bind);
+    callstack.push_front(&PipelineEventDispatcherBindings::bind);
     callstack.push_front(&RemoteConnectionBindings::bind);
     callstack.push_front(&FilterParamsBindings::bind);
     // end of the callstack
