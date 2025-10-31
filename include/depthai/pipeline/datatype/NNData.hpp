@@ -597,6 +597,10 @@ class NNData : public Buffer {
 #endif
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::NNData;
+    }
+
     DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, tensors, batchSize, transformation);
 };
 
