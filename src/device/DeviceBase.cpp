@@ -52,9 +52,11 @@
 #include "utility/spdlog-fmt.hpp"
 
 namespace {
-thread_local std::optional<std::chrono::milliseconds> tlRpcTimeout;
 
 struct ScopedRpcTimeout {
+   public:
+    static thread_local std::optional<std::chrono::milliseconds> tlRpcTimeout;
+
     explicit ScopedRpcTimeout(std::optional<std::chrono::milliseconds> timeout) : prev(tlRpcTimeout) {
         tlRpcTimeout = timeout;
     }
@@ -68,8 +70,10 @@ struct ScopedRpcTimeout {
     std::optional<std::chrono::milliseconds> prev;
 };
 
+thread_local std::optional<std::chrono::milliseconds> ScopedRpcTimeout::tlRpcTimeout;
+
 std::optional<std::chrono::milliseconds> currentRpcTimeout() {
-    return tlRpcTimeout;
+    return ScopedRpcTimeout::tlRpcTimeout;
 }
 }  // namespace
 namespace dai {
