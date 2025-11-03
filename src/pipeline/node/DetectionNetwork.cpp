@@ -208,26 +208,6 @@ void DetectionNetwork::setBackendProperties(std::map<std::string, std::string> p
     neuralNetwork->setBackendProperties(props);
 }
 
-void DetectionNetwork::setNumClasses(const int numClasses) {
-    detectionParser->setNumClasses(numClasses);
-}
-
-void DetectionNetwork::setCoordinateSize(const int coordinates) {
-    detectionParser->setCoordinateSize(coordinates);
-}
-
-void DetectionNetwork::setAnchors(std::vector<float> anchors) {
-    detectionParser->setAnchors(anchors);
-}
-
-void DetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
-    detectionParser->setAnchorMasks(anchorMasks);
-}
-
-void DetectionNetwork::setIouThreshold(float thresh) {
-    detectionParser->setIouThreshold(thresh);
-}
-
 int DetectionNetwork::getNumInferenceThreads() {
     return neuralNetwork->getNumInferenceThreads();
 }
@@ -238,26 +218,6 @@ void DetectionNetwork::setConfidenceThreshold(float thresh) {
 
 float DetectionNetwork::getConfidenceThreshold() const {
     return detectionParser->getConfidenceThreshold();
-}
-
-int DetectionNetwork::getNumClasses() const {
-    return detectionParser->getNumClasses();
-}
-
-int DetectionNetwork::getCoordinateSize() const {
-    return detectionParser->getCoordinateSize();
-}
-
-std::vector<float> DetectionNetwork::getAnchors() const {
-    return detectionParser->getAnchors();
-}
-
-std::map<std::string, std::vector<int>> DetectionNetwork::getAnchorMasks() const {
-    return detectionParser->getAnchorMasks();
-}
-
-float DetectionNetwork::getIouThreshold() const {
-    return detectionParser->getIouThreshold();
 }
 
 std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> DetectionNetwork::getRequiredInputs() {

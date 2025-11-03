@@ -87,12 +87,6 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              DETECTION_NETWORK_PYARGS)
         // Copied from NN node
         .def("setBlobPath", &DetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, DetectionNetwork, setBlobPath))
-        .def("setNumClasses", &DetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, DetectionNetwork, setNumClasses))
-        .def("setCoordinateSize", &DetectionNetwork::setCoordinateSize, py::arg("coordinates"), DOC(dai, node, DetectionNetwork, setCoordinateSize))
-        .def("setAnchors", &DetectionNetwork::setAnchors, py::arg("anchors"), DOC(dai, node, DetectionNetwork, setAnchors))
-        .def("setAnchorMasks", &DetectionNetwork::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, DetectionNetwork, setAnchorMasks))
-        .def("setCoordinateSize", &DetectionNetwork::setCoordinateSize, py::arg("coordinates"), DOC(dai, node, DetectionNetwork, setCoordinateSize))
-        .def("setIouThreshold", &DetectionNetwork::setIouThreshold, py::arg("threshold"), DOC(dai, node, DetectionNetwork, setIoUThreshold))
         .def("setNumPoolFrames", &DetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, DetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",
              &DetectionNetwork::setNumInferenceThreads,
@@ -159,13 +153,13 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             [](DetectionNetwork& n) { return &(*n.detectionParser); },
             py::return_value_policy::reference_internal,
             DOC(dai, node, DetectionNetwork, detectionParser))
+        .def_property_readonly(
+            "neuralNetwork",
+            [](DetectionNetwork& n) { return &(*n.neuralNetwork); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, DetectionNetwork, neuralNetwork))
         .def("setConfidenceThreshold", &DetectionNetwork::setConfidenceThreshold, py::arg("thresh"), DOC(dai, node, DetectionNetwork, setConfidenceThreshold))
         .def("getClasses", &DetectionNetwork::getClasses, DOC(dai, node, DetectionNetwork, getClasses))
-        .def("getNumClasses", &DetectionNetwork::getNumClasses, DOC(dai, node, DetectionNetwork, getNumClasses))
-        .def("getCoordinateSize", &DetectionNetwork::getCoordinateSize, DOC(dai, node, DetectionNetwork, getCoordinateSize))
-        .def("getAnchors", &DetectionNetwork::getAnchors, DOC(dai, node, DetectionNetwork, getAnchors))
-        .def("getAnchorMasks", &DetectionNetwork::getAnchorMasks, DOC(dai, node, DetectionNetwork, getAnchorMasks))
-        .def("getIouThreshold", &DetectionNetwork::getIouThreshold, DOC(dai, node, DetectionNetwork, getIoUThreshold))
         .def("getConfidenceThreshold", &DetectionNetwork::getConfidenceThreshold, DOC(dai, node, DetectionNetwork, getConfidenceThreshold));
     // ALIAS
     // daiNodeModule.attr("DetectionNetwork").attr("Properties") = detectionNetworkProperties;

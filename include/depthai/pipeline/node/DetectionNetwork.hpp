@@ -147,31 +147,6 @@ class DetectionNetwork : public DeviceNodeGroup {
      */
     void setNumShavesPerInferenceThread(int numShavesPerThread);
 
-    /*
-     * Sets the number of classes for the detection network.
-     */
-    void setNumClasses(const int numClasses);
-
-    /*
-     * Sets the anchors for the detection network.
-     */
-    void setAnchors(std::vector<float> anchors);
-
-    /*
-     * Sets the anchor masks for the detection network.
-     */
-    void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
-
-    /*
-     * Sets the coodrdinate size for the detection network. Default is for YOLO models (4).
-     */
-    void setCoordinateSize(const int coordinates);
-
-    /*
-     * Set the IOU threshold.
-     */
-    void setIouThreshold(float thresh);
-
     /**
      * Specifies backend to use
      * @param backend String specifying backend to use
@@ -189,32 +164,6 @@ class DetectionNetwork : public DeviceNodeGroup {
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
     int getNumInferenceThreads();
-
-    /*
-     * Get number of classes
-     */
-
-    int getNumClasses() const;
-
-    /*
-     * Get coordinate size
-     */
-    int getCoordinateSize() const;
-
-    /*
-     * Get anchors
-     */
-    std::vector<float> getAnchors() const;
-
-    /*
-     * Get anchor masks
-     */
-    std::map<std::string, std::vector<int>> getAnchorMasks() const;
-
-    /*
-     * Get IOU threshold
-     */
-    float getIouThreshold() const;
 
     /**
      * Specifies confidence threshold at which to filter the rest of the detections.
