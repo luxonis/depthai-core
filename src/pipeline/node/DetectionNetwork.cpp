@@ -228,14 +228,6 @@ void DetectionNetwork::setIouThreshold(float thresh) {
     detectionParser->setIouThreshold(thresh);
 }
 
-void DetectionNetwork::setBackend(std::string backend) {
-    neuralNetwork->setBackend(backend);
-}
-
-void DetectionNetwork::setBackendProperties(std::map<std::string, std::string> props) {
-    neuralNetwork->setBackendProperties(props);
-}
-
 int DetectionNetwork::getNumInferenceThreads() {
     return neuralNetwork->getNumInferenceThreads();
 }

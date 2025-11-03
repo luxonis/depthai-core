@@ -154,6 +154,11 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             [](const DetectionNetwork& n) { return &n.neuralNetwork->passthrough; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralNetwork, passthrough))
+        .def_property_readonly(
+            "detectionParser",
+            [](DetectionNetwork& n) { return &(*n.detectionParser); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, DetectionNetwork, detectionParser))
         .def("setConfidenceThreshold", &DetectionNetwork::setConfidenceThreshold, py::arg("thresh"), DOC(dai, node, DetectionNetwork, setConfidenceThreshold))
         .def("getClasses", &DetectionNetwork::getClasses, DOC(dai, node, DetectionNetwork, getClasses))
         .def("getNumClasses", &DetectionNetwork::getNumClasses, DOC(dai, node, DetectionNetwork, getNumClasses))
