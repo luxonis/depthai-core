@@ -352,6 +352,10 @@ dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)
 dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
 dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
 
+# Pipeline debugging tests
+dai_add_test(pipeline_debugging_host_test src/onhost_tests/pipeline_debugging_host_test.cpp)
+dai_set_test_labels(pipeline_debugging_host_test onhost ci)
+
 # Device USB Speed and serialization macros test
 dai_add_test(device_usbspeed_test src/ondevice_tests/device_usbspeed_test.cpp)
 dai_set_test_labels(device_usbspeed_test ondevice rvc2 usb ci)

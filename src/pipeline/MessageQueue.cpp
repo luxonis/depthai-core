@@ -127,6 +127,7 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
                     pipelineEventDispatcher->pingInputEvent(name, -2, size);
                     break;
                 case LockingQueueState::OK:
+                    pipelineEventDispatcher->pingInputEvent(name, 0, size);
                     break;
             }
         }

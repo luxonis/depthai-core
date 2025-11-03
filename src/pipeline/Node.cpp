@@ -241,11 +241,11 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
     //         }
     //     }
     // }
-    if(pipelineEventDispatcher) pipelineEventDispatcher->startOutputEvent(getGroup() + "." + getName());
+    if(pipelineEventDispatcher) pipelineEventDispatcher->startOutputEvent(getName());
     for(auto& messageQueue : connectedInputs) {
         messageQueue->send(msg);
     }
-    if(pipelineEventDispatcher) pipelineEventDispatcher->endOutputEvent(getGroup() + "." + getName());
+    if(pipelineEventDispatcher) pipelineEventDispatcher->endOutputEvent(getName());
 }
 
 bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
@@ -265,11 +265,11 @@ bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     //         }
     //     }
     // }
-    if(pipelineEventDispatcher) pipelineEventDispatcher->startOutputEvent(getGroup() + "." + getName());
+    if(pipelineEventDispatcher) pipelineEventDispatcher->startOutputEvent(getName());
     for(auto& messageQueue : connectedInputs) {
         success &= messageQueue->trySend(msg);
     }
-    if(pipelineEventDispatcher && success) pipelineEventDispatcher->endOutputEvent(getGroup() + "." + getName());
+    if(pipelineEventDispatcher && success) pipelineEventDispatcher->endOutputEvent(getName());
 
     return success;
 }

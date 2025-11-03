@@ -5,8 +5,8 @@
 namespace dai {
 namespace utility {
 
-constexpr const char* OUTPUT_BLOCK_NAME = "getInputs";
-constexpr const char* INPUT_BLOCK_NAME = "sendOutputs";
+constexpr const char* OUTPUT_BLOCK_NAME = "sendOutputs";
+constexpr const char* INPUT_BLOCK_NAME = "getInputs";
 
 std::string typeToString(PipelineEvent::Type type) {
     switch(type) {

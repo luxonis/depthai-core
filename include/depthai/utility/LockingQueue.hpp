@@ -176,6 +176,8 @@ class LockingQueue {
             }
 
             queue.push(data);
+
+            callback(LockingQueueState::OK, queue.size());
         }
         signalPush.notify_all();
         return true;
@@ -206,6 +208,8 @@ class LockingQueue {
             }
 
             queue.push(std::move(data));
+
+            callback(LockingQueueState::OK, queue.size());
         }
         signalPush.notify_all();
         return true;
@@ -242,6 +246,8 @@ class LockingQueue {
             }
 
             queue.push(data);
+
+            callback(LockingQueueState::OK, queue.size());
         }
         signalPush.notify_all();
         return true;
@@ -278,6 +284,8 @@ class LockingQueue {
             }
 
             queue.push(std::move(data));
+
+            callback(LockingQueueState::OK, queue.size());
         }
         signalPush.notify_all();
         return true;
