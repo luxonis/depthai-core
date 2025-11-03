@@ -14,6 +14,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     py::class_<NeuralNetworkProperties, std::shared_ptr<NeuralNetworkProperties>> neuralNetworkProperties(
         m, "NeuralNetworkProperties", DOC(dai, NeuralNetworkProperties));
     auto neuralNetwork = ADD_NODE(NeuralNetwork);
+    py::enum_<NeuralNetworkProperties::DeviceModelZoo> deviceModelZooEnum(neuralNetwork, "DeviceModelZoo", DOC(dai, NeuralNetworkProperties, DeviceModelZoo));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -28,6 +29,12 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    // Enums
+    // DeviceModelZoo
+    deviceModelZooEnum.value("NEURAL_DEPTH_LARGE", NeuralNetworkProperties::DeviceModelZoo::NEURAL_DEPTH_LARGE)
+        .value("NEURAL_DEPTH_MEDIUM", NeuralNetworkProperties::DeviceModelZoo::NEURAL_DEPTH_MEDIUM)
+        .value("NEURAL_DEPTH_SMALL", NeuralNetworkProperties::DeviceModelZoo::NEURAL_DEPTH_SMALL)
+        .value("NEURAL_DEPTH_NANO", NeuralNetworkProperties::DeviceModelZoo::NEURAL_DEPTH_NANO);
     // Properties
     neuralNetworkProperties.def_readwrite("blobSize", &NeuralNetworkProperties::blobSize)
         .def_readwrite("blobUri", &NeuralNetworkProperties::blobUri)
@@ -109,6 +116,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
         .def("setBackend", &NeuralNetwork::setBackend, py::arg("setBackend"), DOC(dai, node, NeuralNetwork, setBackend))
         .def("setBackendProperties", &NeuralNetwork::setBackendProperties, py::arg("setBackendProperties"), DOC(dai, node, NeuralNetwork, setBackendProperties))
         .def("getNNArchive", &NeuralNetwork::getNNArchive, DOC(dai, node, NeuralNetwork, getNNArchive))
+        .def("setModelFromDeviceZoo", &NeuralNetwork::setModelFromDeviceZoo, py::arg("model"), DOC(dai, node, NeuralNetwork, setModelFromDeviceZoo))
 
         .def_readonly("inputs", &NeuralNetwork::inputs, DOC(dai, node, NeuralNetwork, inputs))
         .def_readonly("passthroughs", &NeuralNetwork::passthroughs, DOC(dai, node, NeuralNetwork, passthroughs))

@@ -23,6 +23,7 @@ namespace node {
  */
 class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
    public:
+    using DeviceModelZoo = NeuralNetworkProperties::DeviceModelZoo;
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
@@ -172,7 +173,8 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
     int getNumInferenceThreads();
-    // TODO add getters for other API
+
+    void setModelFromDeviceZoo(DeviceModelZoo model);
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);

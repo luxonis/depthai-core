@@ -14,6 +14,7 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
      */
     enum class ModelSource { BLOB, CUSTOM_MODEL };
     ModelSource modelSource = ModelSource::BLOB;  // Default to blob source
+
     /**
      * Blob binary size in bytes
      */
@@ -54,9 +55,16 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
      */
     std::map<std::string, std::string> backendProperties;
 
+    /**
+     * On device models, relevant for RVC4 platform
+     */
+    enum class DeviceModelZoo { NEURAL_DEPTH_LARGE, NEURAL_DEPTH_MEDIUM, NEURAL_DEPTH_SMALL, NEURAL_DEPTH_NANO };
+
+    std::optional<DeviceModelZoo> deviceModel = std::nullopt;
+
     ~NeuralNetworkProperties() override;
 };
 DEPTHAI_SERIALIZE_EXT(
-    NeuralNetworkProperties, modelSource, blobSize, blobUri, modelUri, numFrames, numThreads, numNCEPerThread, numShavesPerThread, backend, backendProperties);
+    NeuralNetworkProperties, modelSource, blobSize, blobUri, modelUri, numFrames, numThreads, numNCEPerThread, numShavesPerThread, backend, backendProperties, deviceModel);
 
 }  // namespace dai

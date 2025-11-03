@@ -262,5 +262,9 @@ int NeuralNetwork::getNumInferenceThreads() {
     return properties.numThreads;
 }
 
+void NeuralNetwork::setModelFromDeviceZoo(DeviceModelZoo model) {
+    properties.deviceModel = model;
+}
+
 }  // namespace node
 }  // namespace dai
