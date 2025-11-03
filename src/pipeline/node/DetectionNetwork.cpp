@@ -3,7 +3,6 @@
 // libraries
 #include <nlohmann/json.hpp>
 #include <openvino/BlobReader.hpp>
-#include <vector>
 
 #include "archive.h"
 #include "archive_entry.h"
