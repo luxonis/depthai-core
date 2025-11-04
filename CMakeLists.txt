@@ -311,6 +311,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/utilities/DetectionParser/DetectionParserUtils.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp

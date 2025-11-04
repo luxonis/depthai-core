@@ -13,6 +13,8 @@
 #include "nn_archive/NNArchive.hpp"
 #include "nn_archive/v1/Head.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "pipeline/datatype/NNData.hpp"
+#include "pipeline/utilities/DetectionParser/DetectionParserUtils.hpp"
 #include "spdlog/fmt/fmt.h"
 
 // internal headers
@@ -347,6 +349,188 @@ bool DetectionParser::getDecodeSegmentation() const {
 
 std::vector<int> DetectionParser::getStrides() const {
     return properties.parser.strides;
+}
+
+void DetectionParser::setRunOnHost(bool runOnHost) {
+    if(runOnHost) {
+        pimpl->logger->warn("Detection parser set to run on host.");
+    }
+    runOnHostVar = runOnHost;
+}
+
+/**
+ * Check if the node is set to run on host
+ */
+bool DetectionParser::runOnHost() const {
+    return runOnHostVar;
+}
+
+void DetectionParser::run() {
+    auto& logger = pimpl->logger;
+    logger->info("Detection parser running on host.");
+
+    using namespace std::chrono;
+    while(isRunning()) {
+        auto tAbsoluteBeginning = steady_clock::now();
+        std::shared_ptr<dai::NNData> inputData;
+        inputData = input.get<dai::NNData>();
+        if(!inputData) {
+            logger->error("Error while receiving NN frame.");
+            continue;
+        }
+        auto tAfterMessageBeginning = steady_clock::now();
+
+        if(!imgSizesSet) {
+            const bool containsTransformation = inputData->transformation.has_value();
+            if(containsTransformation) {
+                std::tie(imgWidth, imgHeight) = inputData->transformation->getSize();
+            } else {
+                logger->warn("No image size provided for detection parser. Skipping processing and sending empty detections.");
+                continue;
+            }
+
+            imgSizesSet = true;
+        }
+
+        auto outDetections = std::make_shared<dai::ImgDetections>();
+
+        switch(properties.parser.nnFamily) {
+            case DetectionNetworkType::YOLO: {
+                decodeYolo(inputData, outDetections);
+                break;
+            }
+            case DetectionNetworkType::MOBILENET: {
+                auto dets = decodeMobilenet(inputData, properties.parser.confidenceThreshold);  // TODO (aljaz) update to shared pointer
+                outDetections->detections = dets;
+                break;
+            }
+            default: {
+                logger->error("Unknown NN family. 'YOLO' and 'MOBILENET' are supported.");
+                break;
+            }
+        }
+
+        auto tBeforeSend = steady_clock::now();
+
+        // Copy over seq and ts
+        outDetections->setSequenceNum(inputData->getSequenceNum());
+        outDetections->setTimestamp(inputData->getTimestamp());
+        outDetections->setTimestampDevice(inputData->getTimestampDevice());
+        outDetections->transformation = inputData->transformation;
+        // Send detections
+        out.send(outDetections);
+
+        auto tAbsoluteEnd = steady_clock::now();
+        logger->debug("Detection parser total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
+                      duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
+                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
+                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
+                      duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+    }
+}
+
+void DetectionParser::buildStage1() {
+    auto& logger = pimpl->logger;
+
+    // Grab dimensions from input tensor info
+    if(properties.networkInputs.size() > 0) {
+        if(properties.networkInputs.size() > 1) {
+            logger->warn("Detection parser supports only single input networks, assuming first input");
+        }
+        for(const auto& kv : properties.networkInputs) {
+            const dai::TensorInfo& tensorInfo = kv.second;
+            inTensorInfo.push_back(tensorInfo);
+        }
+    }
+    if(inTensorInfo.size() > 0) {
+        int numDimensions = inTensorInfo[0].numDimensions;
+        if(numDimensions < 2) {
+            logger->error("Number of input dimensions is less than 2");
+        } else {
+            imgSizesSet = true;
+            imgWidth = inTensorInfo[0].dims[numDimensions - 1];
+            imgHeight = inTensorInfo[0].dims[numDimensions - 2];
+        }
+    } else {
+        logger->info("Unable to read input tensor height and width from static inputs. The node will try to get input sizes at runtime.");
+    }
+}
+
+std::vector<dai::ImgDetection> DetectionParser::decodeMobilenet(std::shared_ptr<dai::NNData> nnData, float confidenceThr) {
+    auto& logger = pimpl->logger;
+
+    if(!nnData) {
+        return {};
+    }
+    int maxDetections = 100;
+    std::vector<dai::ImgDetection> detections;
+    std::string tensorName;
+    for(const auto& tensor : nnData->getAllLayers()) {
+        if(tensor.offset == 0) {
+            tensorName = tensor.name;
+        }
+    }
+
+    auto tensorData = nnData->getTensor<float>(tensorName);
+    maxDetections = tensorData.size() / 7;
+    if(static_cast<int>(tensorData.size()) < maxDetections * 7) {
+        logger->error("Error while parsing Mobilenet. Vector not long enough, expected size: {}, real size {}", maxDetections * 7, tensorData.size());
+        return {};
+    }
+
+    struct raw_Detection {  // need to update it to include more
+        float header;
+        float label;
+        float confidence;
+        float xmin;
+        float ymin;
+        float xmax;
+        float ymax;
+    };
+
+    float* rawPtr = tensorData.data();
+    for(int i = 0; i < maxDetections; i++) {
+        raw_Detection temp;
+        // TODO This is likely unnecessary optimisation
+        memcpy(&temp, &rawPtr[i * 7], sizeof(raw_Detection));
+
+        // if header == -1, stop sooner
+        if(temp.header == -1.0f) break;
+
+        float currentConfidence = temp.confidence;
+        if(currentConfidence >= confidenceThr) {
+            dai::ImgDetection d;
+            d.label = temp.label;
+
+            d.confidence = currentConfidence;
+
+            d.xmin = temp.xmin;
+            d.ymin = temp.ymin;
+            d.xmax = temp.xmax;
+            d.ymax = temp.ymax;
+
+            detections.push_back(d);
+        }
+    }
+    return detections;
+}
+
+void DetectionParser::decodeYolo(std::shared_ptr<dai::NNData> nnData, std::shared_ptr<dai::ImgDetections> outDetections) {
+    auto& logger = pimpl->logger;
+    switch(properties.parser.decodingFamily) {
+        case YoloDecodingFamily::R1AF:  // anchor free: yolo v6r1
+            utilities::DetectionParserUtils::decodeR1AF(nnData, outDetections, properties, logger);
+            break;
+        case YoloDecodingFamily::v3AB:  // anchor based yolo v3 v3-Tiny
+            utilities::DetectionParserUtils::decodeV3AB(nnData, outDetections, properties, logger);
+            break;
+        case YoloDecodingFamily::v5AB:  // anchor based yolo v5, v7, P
+            utilities::DetectionParserUtils::decodeV5AB(nnData, outDetections, properties, logger);
+            break;
+        case YoloDecodingFamily::TLBR:  // top left bottom right anchor free: yolo v6r2, v8 v10 v11
+            utilities::DetectionParserUtils::decodeTLBR(nnData, outDetections, properties, logger);
+            break;
+    }
 }
 
 }  // namespace node

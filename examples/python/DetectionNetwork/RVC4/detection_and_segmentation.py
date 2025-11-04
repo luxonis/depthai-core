@@ -9,7 +9,8 @@ import time
 # Create pipeline
 with dai.Pipeline() as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build()
-    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("luxonis/yolov8-instance-segmentation-large:coco-640x480"))
+    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("luxonis/yolov8-instance-segmentation-nano:coco-512x288"))
+    # detectionNetwork.detectionParser.runOnHost(True)
     labelMap = detectionNetwork.getClasses()
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()
