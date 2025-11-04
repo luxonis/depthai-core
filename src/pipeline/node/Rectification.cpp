@@ -33,7 +33,7 @@ bool Rectification::runOnHost() const {
 void Rectification::run() {
     throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
 }
-#else   // DEPTHAI_HAVE_OPENCV_SUPPORT
+#else  // DEPTHAI_HAVE_OPENCV_SUPPORT
 
 namespace {
 
@@ -120,11 +120,23 @@ void Rectification::run() {
     while(isRunning()) {
         auto input1Frame = input1.get<dai::ImgFrame>();
         auto input2Frame = input2.get<dai::ImgFrame>();
+        uint32_t output1FrameWidth;
+        uint32_t output1FrameHeight;
+        uint32_t output2FrameWidth;
+        uint32_t output2FrameHeight;
 
-        uint32_t output1FrameWidth = input1Frame->getWidth();
-        uint32_t output1FrameHeight = input1Frame->getHeight();
-        uint32_t output2FrameWidth = input2Frame->getWidth();
-        uint32_t output2FrameHeight = input2Frame->getHeight();
+        if(properties.outputWidth.has_value() && properties.outputHeight.has_value()) {
+            output1FrameWidth = properties.outputWidth.value();
+            output1FrameHeight = properties.outputHeight.value();
+            output2FrameWidth = properties.outputWidth.value();
+            output2FrameHeight = properties.outputHeight.value();
+        } else {
+            output1FrameWidth = input1Frame->getWidth();
+            output1FrameHeight = input1Frame->getHeight();
+            output2FrameWidth = input2Frame->getWidth();
+            output2FrameHeight = input2Frame->getHeight();
+        }
+
         auto output1ImgTransformation = input1Frame->transformation;
         auto output2ImgTransformation = input2Frame->transformation;
 
@@ -159,10 +171,6 @@ void Rectification::run() {
             targetM2 = M2;
 
             if(properties.outputWidth.has_value() && properties.outputHeight.has_value()) {
-                output1FrameWidth = properties.outputWidth.value();
-                output1FrameHeight = properties.outputHeight.value();
-                output2FrameWidth = properties.outputWidth.value();
-                output2FrameHeight = properties.outputHeight.value();
                 auto scale1X = static_cast<float>(output1FrameWidth) / static_cast<float>(input1Frame->getWidth());
                 auto scale1Y = static_cast<float>(output1FrameHeight) / static_cast<float>(input1Frame->getHeight());
                 auto scale2X = static_cast<float>(output2FrameWidth) / static_cast<float>(input2Frame->getWidth());
@@ -247,11 +255,11 @@ void Rectification::run() {
         cv::remap(
             cv_input2, rectifiedFrame2->getFrame(), cv_rectificationMap2X, cv_rectificationMap2Y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
+        rectifiedFrame1->transformation = output1ImgTransformation;
         rectifiedFrame1->transformation.setDistortionCoefficients({});
-        rectifiedFrame1->transformation.setIntrinsicMatrix(targetM1);
 
+        rectifiedFrame2->transformation = output1ImgTransformation; // Set both to same for alignment
         rectifiedFrame2->transformation.setDistortionCoefficients({});
-        rectifiedFrame2->transformation.setIntrinsicMatrix(targetM2);
 
         auto end = steady_clock::now();
         auto duration = duration_cast<milliseconds>(end - start).count();
