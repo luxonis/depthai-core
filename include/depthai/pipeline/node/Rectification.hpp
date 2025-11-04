@@ -31,8 +31,8 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     /**
      * Send outputs
      */
-    Output output1{*this, {"output1", DEFAULT_GROUP, {{{DatatypeEnum::BenchmarkReport, false}}}}};
-    Output output2{*this, {"output2", DEFAULT_GROUP, {{{DatatypeEnum::BenchmarkReport, false}}}}};
+    Output output1{*this, {"output1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output output2{*this, {"output2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Specify whether to run on host or device
@@ -51,6 +51,8 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     bool runOnHost() const override;
 
     void run() override;
+
+    virtual CalibrationHandler getCalibrationData() const;
 
    private:
     bool runOnHostVar = false;

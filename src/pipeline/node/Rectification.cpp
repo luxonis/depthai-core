@@ -20,7 +20,7 @@ Rectification& Rectification::setOutputSize(uint32_t width, uint32_t height) {
     properties.outputHeight = height;
     return *this;
 }
-    
+
 void Rectification::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
@@ -92,6 +92,14 @@ std::string matToString(const cv::Mat& mat) {
 
 }  // namespace
 
+CalibrationHandler Rectification::getCalibrationData() const {
+    if(device) {
+        return device->readCalibration();
+    } else {
+        return getParentPipeline().getCalibrationData();
+    }
+}
+
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
@@ -121,7 +129,7 @@ void Rectification::run() {
         auto output2ImgTransformation = input2Frame->transformation;
 
         if(!initialized) {
-            auto calib = getParentPipeline().getCalibrationData();
+            auto calib = getCalibrationData();
 
             auto leftSocket = (dai::CameraBoardSocket)input1Frame->getInstanceNum();
             auto rightSocket = (dai::CameraBoardSocket)input2Frame->getInstanceNum();
@@ -166,10 +174,10 @@ void Rectification::run() {
                 targetM2 = output2ImgTransformation.getIntrinsicMatrix();
             }
 
-            targetM2 = targetM1; //TODO alignment target
-               
+            targetM2 = targetM1;  // TODO alignment target
+
             auto cv_targetCameraMatrix1 = arrayToCvMat(3, 3, CV_32FC1, targetM1);
-            auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2); //todo
+            auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2);  // todo
 
             cv::initUndistortRectifyMap(cv_M1,
                                         cv_d1,
@@ -241,14 +249,14 @@ void Rectification::run() {
 
         rectifiedFrame1->transformation.setDistortionCoefficients({});
         rectifiedFrame1->transformation.setIntrinsicMatrix(targetM1);
-        
+
         rectifiedFrame2->transformation.setDistortionCoefficients({});
         rectifiedFrame2->transformation.setIntrinsicMatrix(targetM2);
 
         auto end = steady_clock::now();
         auto duration = duration_cast<milliseconds>(end - start).count();
         logger->debug("Rectification took {} ms", duration);
-        
+
         output1.send(rectifiedFrame1);
         output2.send(rectifiedFrame2);
 
