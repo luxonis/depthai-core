@@ -7,6 +7,14 @@ namespace utility {
 
 template <typename T>
 class CircularBuffer {
+    std::vector<T> buffer;
+    size_t maxSize;
+    size_t index = 0;
+
+    size_t start() const {
+        return (buffer.size() < maxSize) ? 0 : index;
+    }
+
    public:
     CircularBuffer(size_t size) : maxSize(size) {
         buffer.reserve(size);
@@ -153,15 +161,6 @@ class CircularBuffer {
     }
     reverse_iterator rend() {
         return reverse_iterator(this, buffer.size());
-    }
-
-   private:
-    std::vector<T> buffer;
-    size_t maxSize;
-    size_t index = 0;
-
-    size_t start() const {
-        return (buffer.size() < maxSize) ? 0 : index;
     }
 };
 

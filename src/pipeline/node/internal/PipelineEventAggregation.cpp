@@ -28,7 +28,14 @@ class NodeEventAggregation {
 
    public:
     NodeEventAggregation(uint32_t windowSize, uint32_t statsUpdateIntervalMs, uint32_t eventWaitWindow, std::shared_ptr<spdlog::async_logger> logger)
-        : logger(logger), windowSize(windowSize), statsUpdateIntervalMs(statsUpdateIntervalMs), eventWaitWindow(eventWaitWindow), eventsBuffer(windowSize) {}
+        : logger(logger), windowSize(windowSize), statsUpdateIntervalMs(statsUpdateIntervalMs), eventWaitWindow(eventWaitWindow), eventsBuffer(windowSize) {
+        inputsGetTimingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
+        outputsSendTimingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
+        mainLoopTimingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
+        inputsGetFpsBuffer = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
+        outputsSendFpsBuffer = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
+    }
+
     NodeState state;
     utility::CircularBuffer<NodeState::DurationEvent> eventsBuffer;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> inputTimingsBuffers;
@@ -227,6 +234,8 @@ class NodeEventAggregation {
     }
 
     inline void updateTimingStats(NodeState::TimingStats& stats, const utility::CircularBuffer<uint64_t>& buffer) {
+        if(buffer.size() == 0) return;
+
         stats.minMicros = std::min(stats.minMicros, buffer.last());
         stats.maxMicros = std::max(stats.maxMicros, buffer.last());
         stats.averageMicrosRecent = 0;
@@ -323,24 +332,26 @@ class NodeEventAggregation {
             lastUpdated = std::chrono::steady_clock::now();
             for(int i = (int)PipelineEvent::Type::CUSTOM; i <= (int)PipelineEvent::Type::OUTPUT_BLOCK; ++i) {
                 // By instance
-                switch(event.type) {
+                switch((PipelineEvent::Type)i) {
                     case PipelineEvent::Type::CUSTOM:
-                        updateTimingStats(state.otherTimings[event.source].durationStats, *otherTimingsBuffers[event.source]);
-                        updateFpsStats(state.otherTimings[event.source], *otherFpsBuffers[event.source]);
+                        for(auto& [source, _] : otherTimingsBuffers) {
+                            updateTimingStats(state.otherTimings[source].durationStats, *otherTimingsBuffers[source]);
+                            updateFpsStats(state.otherTimings[source], *otherFpsBuffers[source]);
+                        }
                         break;
                     case PipelineEvent::Type::LOOP:
                         updateTimingStats(state.mainLoopTiming.durationStats, *mainLoopTimingsBuffer);
                         state.mainLoopTiming.fps = 1e6f / (float)state.mainLoopTiming.durationStats.averageMicrosRecent;
                         break;
                     case PipelineEvent::Type::INPUT:
-                        updateTimingStats(state.inputStates[event.source].timing.durationStats, *inputTimingsBuffers[event.source]);
-                        updateFpsStats(state.inputStates[event.source].timing, *inputFpsBuffers[event.source]);
-                        {
-                            auto& qStats = state.inputStates[event.source].queueStats;
-                            auto& qBuffer = *inputQueueSizesBuffers[event.source];
-                            qStats.maxQueued = std::max(qStats.maxQueued, *event.queueSize);
+                        for(auto& [source, _] : inputTimingsBuffers) {
+                            updateTimingStats(state.inputStates[source].timing.durationStats, *inputTimingsBuffers[source]);
+                            updateFpsStats(state.inputStates[source].timing, *inputFpsBuffers[source]);
+                            auto& qStats = state.inputStates[source].queueStats;
+                            auto& qBuffer = *inputQueueSizesBuffers[source];
                             auto qBufferData = qBuffer.getBuffer();
                             std::sort(qBufferData.begin(), qBufferData.end());
+                            qStats.maxQueued = std::max(qStats.maxQueued, qBufferData.back());
                             qStats.minQueuedRecent = qBufferData.front();
                             qStats.maxQueuedRecent = qBufferData.back();
                             qStats.medianQueuedRecent = qBufferData[qBufferData.size() / 2];
@@ -350,8 +361,10 @@ class NodeEventAggregation {
                         }
                         break;
                     case PipelineEvent::Type::OUTPUT:
-                        updateTimingStats(state.outputStates[event.source].timing.durationStats, *outputTimingsBuffers[event.source]);
-                        updateFpsStats(state.outputStates[event.source].timing, *outputFpsBuffers[event.source]);
+                        for(auto& [source, _] : outputTimingsBuffers) {
+                            updateTimingStats(state.outputStates[source].timing.durationStats, *outputTimingsBuffers[source]);
+                            updateFpsStats(state.outputStates[source].timing, *outputFpsBuffers[source]);
+                        }
                         break;
                     case PipelineEvent::Type::INPUT_BLOCK:
                         updateTimingStats(state.inputsGetTiming.durationStats, *inputsGetTimingsBuffer);
@@ -399,8 +412,10 @@ class PipelineEventHandler {
             std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
             bool gotEvents = false;
             for(auto& [k, v] : *inputs) {
-                events[k.second] = v.tryGet<PipelineEvent>();
-                gotEvents = gotEvents || (events[k.second] != nullptr);
+                try {
+                    events[k.second] = v.tryGet<PipelineEvent>();
+                    gotEvents = gotEvents || (events[k.second] != nullptr);
+                } catch(const dai::MessageQueue::QueueException&) {}
             }
             for(auto& [k, event] : events) {
                 if(event != nullptr) {
@@ -409,7 +424,7 @@ class PipelineEventHandler {
                     nodeStates.at(event->nodeId).add(*event);
                 }
             }
-            if(!gotEvents) {
+            if(!gotEvents && running) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }
@@ -431,6 +446,10 @@ class PipelineEventHandler {
             if(nodeState.updated.exchange(false)) updated = true;
         }
         return updated;
+    }
+
+    ~PipelineEventHandler() {
+        stop();
     }
 };
 

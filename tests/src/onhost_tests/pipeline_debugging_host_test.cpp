@@ -1,4 +1,5 @@
 #include <fmt/base.h>
+
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 
@@ -349,7 +350,7 @@ TEST_CASE("Node states test") {
         REQUIRE(nodeState.inputStates["input"].state == dai::NodeState::InputQueueState::State::IDLE);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         nodeState = ph.pipeline.getPipelineState().nodes(ph.getNodeId("gen2")).detailed();
-        REQUIRE(nodeState.outputStates[".output"].state == dai::NodeState::OutputQueueState::State::IDLE);
+        REQUIRE(nodeState.outputStates["output"].state == dai::NodeState::OutputQueueState::State::IDLE);
     }
 
     // Let nodes run
@@ -357,45 +358,40 @@ TEST_CASE("Node states test") {
         ph.pingNoAck(nodeName, -1);
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    try {
-        ph.stop();
-    } catch(...) {
-        // Ignore
-    }
+    ph.stop();
 }
 
-// TEST_CASE("Node timings test") {
-//     PipelineHandler ph;
-//     ph.start();
-//
-//     // Let nodes run
-//     for(const auto& nodeName : ph.getNodeNames()) {
-//         ph.ping(nodeName, -1);
-//     }
-//
-//     std::this_thread::sleep_for(std::chrono::seconds(3));
-//
-        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
-//     auto state = ph.pipeline.getPipelineState().nodes().detailed();
-//
-//     for(const auto& nodeName : ph.getNodeNames()) {
-//         auto nodeState = state.nodeStates.at(ph.getNodeId(nodeName));
-//         REQUIRE(nodeState.mainLoopTiming.isValid());
-//         REQUIRE(nodeState.inputsGetTiming.isValid());
-//         REQUIRE(nodeState.outputsSendTiming.isValid());
-//         for(const auto& [inputName, inputState] : nodeState.inputStates) {
-//             if(inputName.rfind("_ping") != std::string::npos) continue;
-//             REQUIRE(inputState.timing.isValid());
-//         }
-//         for(const auto& [outputName, outputState] : nodeState.outputStates) {
-//             if(outputName.rfind("_ack") != std::string::npos) continue;
-//             REQUIRE(outputState.timing.isValid());
-//         }
-//         for(const auto& [otherName, otherTiming] : nodeState.otherTimings) {
-//             REQUIRE(otherTiming.isValid());
-//         }
-//     }
-//     ph.stop();
-// }
+TEST_CASE("Node timings test") {
+    PipelineHandler ph;
+    ph.start();
+
+    // Let nodes run
+    for(const auto& nodeName : ph.getNodeNames()) {
+        ph.ping(nodeName, -1);
+    }
+
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+
+    auto state = ph.pipeline.getPipelineState().nodes().detailed();
+
+    for(const auto& nodeName : ph.getNodeNames()) {
+        auto nodeState = state.nodeStates.at(ph.getNodeId(nodeName));
+        REQUIRE(nodeState.mainLoopTiming.isValid());
+        if(nodeName.find("gen") == std::string::npos) REQUIRE(nodeState.inputsGetTiming.isValid());
+        if(nodeName.find("cons") == std::string::npos) REQUIRE(nodeState.outputsSendTiming.isValid());
+        for(const auto& [inputName, inputState] : nodeState.inputStates) {
+            if(inputName.rfind("_ping") != std::string::npos) continue;
+            REQUIRE(inputState.timing.isValid());
+        }
+        for(const auto& [outputName, outputState] : nodeState.outputStates) {
+            if(outputName.rfind("_ack") != std::string::npos) continue;
+            REQUIRE(outputState.timing.isValid());
+        }
+        for(const auto& [otherName, otherTiming] : nodeState.otherTimings) {
+            REQUIRE(otherTiming.isValid());
+        }
+    }
+    ph.stop();
+}
