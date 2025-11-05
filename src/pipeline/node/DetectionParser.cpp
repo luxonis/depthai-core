@@ -101,7 +101,6 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
         // check if there are keypoints or segmentations to decode
         if(head.outputs && !head.outputs->empty()) {
-            // assert outputs is a non-empty vector
             properties.parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
         }
 
