@@ -737,6 +737,13 @@ class DeviceBase {
     UsbSpeed getUsbSpeed();
 
     /**
+     * Checks if Neural Depth is supported on the device
+     *
+     * @returns True if supported, false otherwise
+     */
+    bool isNeuralDepthSupported();
+
+    /**
      * Configures Timesync service on device. It keeps host and device clocks in sync
      * First time timesync is started it waits until the initial sync is completed
      * Afterwards the function changes the following parameters
