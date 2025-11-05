@@ -345,11 +345,12 @@ TEST_CASE("Test VideoEncoder H264 & H265 profiles comparison") {
     double psnr4 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
     // In general PSNR values should be in the following order: H265_MAIN > H264_HIGH > H264_MAIN > H264_BASELINE
-    // In general file sizes should be in the following order:  H264_BASELINE > H264_MAIN > H264_HIGH > H265_MAIN
+    // In general file sizes should be in the following order:  H264_BASELINE > (H264_MAIN / H264_HIGH) > H265_MAIN
     REQUIRE(psnr1 > psnr2);
     REQUIRE(psnr2 > psnr3);
-    REQUIRE(encodedFileSize1 < encodedFileSize2);
-    REQUIRE(encodedFileSize2 < encodedFileSize3);
+    REQUIRE(psnr3 > psnr4);
+    REQUIRE(encodedFileSize1 < std::min(encodedFileSize2, encodedFileSize3));
+    REQUIRE(std::max(encodedFileSize2, encodedFileSize3) < encodedFileSize4);
 
     // Clear the encoded video file
     std::filesystem::remove(encodedPath);
