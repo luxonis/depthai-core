@@ -276,7 +276,7 @@ class NodeEventAggregation {
    public:
     void add(PipelineEvent& event) {
         using namespace std::chrono;
-        if(event.type == PipelineEvent::Type::INPUT && event.interval == PipelineEvent::Interval::END) {
+        if(event.type == PipelineEvent::Type::INPUT && (event.interval == PipelineEvent::Interval::END || event.interval == PipelineEvent::Interval::NONE)) {
             if(event.queueSize.has_value()) {
                 inputQueueSizesBuffers.try_emplace(event.source, std::make_unique<utility::CircularBuffer<uint32_t>>(windowSize));
                 inputQueueSizesBuffers[event.source]->add(*event.queueSize);
@@ -415,7 +415,8 @@ class PipelineEventHandler {
                 try {
                     events[k.second] = v.tryGet<PipelineEvent>();
                     gotEvents = gotEvents || (events[k.second] != nullptr);
-                } catch(const dai::MessageQueue::QueueException&) {}
+                } catch(const dai::MessageQueue::QueueException&) {
+                }
             }
             for(auto& [k, event] : events) {
                 if(event != nullptr) {

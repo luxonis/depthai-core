@@ -1,6 +1,7 @@
 #include <fmt/base.h>
 
 #include <catch2/catch_all.hpp>
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "depthai/depthai.hpp"
@@ -195,6 +196,8 @@ class PipelineHandler {
     Pipeline pipeline;
 
     PipelineHandler() : pipeline(false) {
+        pipeline.enablePipelineDebugging();
+
         auto gen1 = pipeline.create<GeneratorNode>();
         nodeIds["gen1"] = gen1->id;
         auto gen2 = pipeline.create<GeneratorNode>();
@@ -360,6 +363,12 @@ TEST_CASE("Node states test") {
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
+    {
+        auto inputState = ph.pipeline.getPipelineState().nodes(ph.getNodeId("bridge2")).inputs("input");
+        REQUIRE(inputState.isValid());
+        REQUIRE(inputState.queueStats.maxQueued == 4);
+    }
+
     ph.stop();
 }
 
@@ -378,16 +387,38 @@ TEST_CASE("Node timings test") {
 
     for(const auto& nodeName : ph.getNodeNames()) {
         auto nodeState = state.nodeStates.at(ph.getNodeId(nodeName));
+
         REQUIRE(nodeState.mainLoopTiming.isValid());
+        REQUIRE(nodeState.mainLoopTiming.durationStats.averageMicrosRecent == Catch::Approx(100000).margin(50000));
+        REQUIRE(nodeState.mainLoopTiming.durationStats.medianMicrosRecent == Catch::Approx(100000).margin(50000));
+        REQUIRE(nodeState.mainLoopTiming.durationStats.minMicrosRecent == Catch::Approx(100000).margin(10000));
+        REQUIRE(nodeState.mainLoopTiming.durationStats.minMicros == Catch::Approx(100000).margin(10000));
+        REQUIRE(nodeState.mainLoopTiming.durationStats.maxMicrosRecent == Catch::Approx(150000).margin(50000));
+        REQUIRE(nodeState.mainLoopTiming.durationStats.maxMicros == Catch::Approx(150000).margin(50000));
+
         if(nodeName.find("gen") == std::string::npos) REQUIRE(nodeState.inputsGetTiming.isValid());
         if(nodeName.find("cons") == std::string::npos) REQUIRE(nodeState.outputsSendTiming.isValid());
         for(const auto& [inputName, inputState] : nodeState.inputStates) {
             if(inputName.rfind("_ping") != std::string::npos) continue;
             REQUIRE(inputState.timing.isValid());
+            REQUIRE(inputState.timing.fps == Catch::Approx(10.f).margin(5.f));
+            REQUIRE(inputState.timing.durationStats.minMicros <= 0.1e6);
+            REQUIRE(inputState.timing.durationStats.maxMicros <= 0.2e6);
+            REQUIRE(inputState.timing.durationStats.averageMicrosRecent <= 0.2e6);
+            REQUIRE(inputState.timing.durationStats.minMicrosRecent <= 0.12e6);
+            REQUIRE(inputState.timing.durationStats.maxMicrosRecent <= 0.2e6);
+            REQUIRE(inputState.timing.durationStats.medianMicrosRecent <= 0.2e6);
         }
         for(const auto& [outputName, outputState] : nodeState.outputStates) {
             if(outputName.rfind("_ack") != std::string::npos) continue;
             REQUIRE(outputState.timing.isValid());
+            REQUIRE(outputState.timing.fps == Catch::Approx(10.f).margin(5.f));
+            REQUIRE(outputState.timing.durationStats.minMicros <= 0.01e6);
+            REQUIRE(outputState.timing.durationStats.maxMicros <= 0.01e6);
+            REQUIRE(outputState.timing.durationStats.averageMicrosRecent <= 0.01e6);
+            REQUIRE(outputState.timing.durationStats.minMicrosRecent <= 0.01e6);
+            REQUIRE(outputState.timing.durationStats.maxMicrosRecent <= 0.01e6);
+            REQUIRE(outputState.timing.durationStats.medianMicrosRecent <= 0.01e6);
         }
         for(const auto& [otherName, otherTiming] : nodeState.otherTimings) {
             REQUIRE(otherTiming.isValid());

@@ -1,4 +1,3 @@
-
 #include "PipelineBindings.hpp"
 
 #include <pybind11/attr.h>
@@ -312,6 +311,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("processTasks", &Pipeline::processTasks, py::arg("waitForTasks") = false, py::arg("timeoutSeconds") = -1.0)
         .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))
         .def("enableHolisticReplay", &Pipeline::enableHolisticReplay, py::arg("recordingPath"), DOC(dai, Pipeline, enableHolisticReplay))
+        .def("enablePipelineDebugging", &Pipeline::enablePipelineDebugging, py::arg("enable") = true, DOC(dai, Pipeline, enablePipelineDebugging))
         .def("getPipelineState", &Pipeline::getPipelineState, DOC(dai, Pipeline, getPipelineState));
     ;
 }

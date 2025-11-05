@@ -669,7 +669,7 @@ void PipelineImpl::build() {
         }
 
         // Create pipeline event aggregator node and link
-        bool enablePipelineDebugging = utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
+        enablePipelineDebugging = enablePipelineDebugging || utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
         if(enablePipelineDebugging) {
             // Check if any nodes are on host or device
             bool hasHostNodes = false;
@@ -1142,6 +1142,13 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->recordConfig.outputDir = pathToRecording;
     impl()->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
     impl()->enableHolisticRecordReplay = true;
+}
+
+void Pipeline::enablePipelineDebugging(bool enable) {
+    if(this->isBuilt()) {
+        throw std::runtime_error("Cannot change pipeline debugging state after pipeline is built");
+    }
+    impl()->enablePipelineDebugging = enable;
 }
 
 PipelineStateApi Pipeline::getPipelineState() {

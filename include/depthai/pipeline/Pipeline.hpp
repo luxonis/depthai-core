@@ -126,6 +126,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool pipelineOnHost = true;
 
     // Pipeline events
+    bool enablePipelineDebugging = false;
     std::shared_ptr<MessageQueue> pipelineStateOut;
     std::shared_ptr<InputQueue> pipelineStateRequest;
 
@@ -529,6 +530,9 @@ class Pipeline {
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
+
+    /// Pipeline debugging
+    void enablePipelineDebugging(bool enable = true);
 
     // Pipeline state getters
     PipelineStateApi getPipelineState();
