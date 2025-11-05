@@ -2,6 +2,36 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.1.0 (2025-11-05)
+------------------
+## Features
+* Automatically select the number of pools in Camera node
+    *  Improves the performance at high resolutions for OAK1-Max
+* Implement the maximum exposure cap in AE on RVC4
+    *  Requires Luxonis OS v1.19.1
+* Add setters to `PointCloudData` message
+    * C++ example [here](https://github.com/luxonis/depthai-core/blob/main/examples/cpp/RGBD/rgbd_pcl_processing.cpp)
+    * Python example [here](https://github.com/luxonis/depthai-core/blob/main/examples/python/RGBD/rgbd_pcl_processing.py)
+
+## Bug fixes
+* Address MacOS weak vtables issues causing deadlocks in the new `DynamicCalibration` node
+* Turn on the watchdog early during discovery of RVC2 USB devices to avoid soft bricking the device along with handling the case where the device gets into that state to recover it on the next boot
+* Fix the usage of RVC2 devices inside Linux containers because of missing udev support
+* Fix undistortion on RVC4 for the chroma plane when `NV12` type is requested
+* Use the correct `ImgTransformations` in SpatialDetectionNetwork on RVC4 in case depth was not aligned to RGB
+* Stability fixes for rare case with IMU halting the destruction on RVC2
+* Fix a timestamp overflow bug on the BNO08x IMU on RVC2
+
+## Misc
+* Update `zoo_helper` binary with better error handling
+* Reduce the number of symbols on Windows by performing more aggressive inlining
+* `DynamicCalibration` input control now has a shorter API to send commands to the node
+* Add intrinsics metadata to thermal frames
+* Update the examples using `StereoDepth` node with removing the explicit `NV12` type request for better performance
+* Improve IMX678 support on RVC2 with better black level correction, improving brightness and color accuracy 
+* [Python bindings] Add explicit `numpy` requirement to the Python wheels
+* [Python bindings] Add missing bindings to set the filter order on the `StereoDepth` node
+
 3.0.0 (2025-07-31)
 ------------------
 # DepthAI v3.0.0 release candidate is out :tada:
