@@ -12,7 +12,7 @@ static constexpr unsigned int NUM_FRAMES = 350;
 double calculateEncodedVideoPSNR(const std::filesystem::path& originalVideo, const std::filesystem::path& encodedVideo) {
     cv::VideoCapture originalCapture(originalVideo.string());
     cv::VideoCapture encodedCapture(encodedVideo.string());
-    REQUIRE(originalCapture.isOpened() && encodedCapture.isOpened());
+    REQUIRE((originalCapture.isOpened() && encodedCapture.isOpened()));
     int frameCount = 0;
     double psnrSum = 0.0;
     cv::Mat originalFrame, encodedFrame;
