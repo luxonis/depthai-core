@@ -83,7 +83,7 @@ class NodeEventAggregation {
         auto& ongoingEvents = [&]() -> std::unique_ptr<utility::CircularBuffer<std::optional<PipelineEvent>>>& {
             switch(event.type) {
                 case PipelineEvent::Type::LOOP:
-                    throw std::runtime_error("LOOP event should not be an interval");
+                    return ongoingMainLoopEvents;
                 case PipelineEvent::Type::INPUT:
                     return ongoingInputEvents[event.source];
                 case PipelineEvent::Type::OUTPUT:
@@ -100,7 +100,7 @@ class NodeEventAggregation {
         auto& timingsBuffer = [&]() -> std::unique_ptr<utility::CircularBuffer<uint64_t>>& {
             switch(event.type) {
                 case PipelineEvent::Type::LOOP:
-                    throw std::runtime_error("LOOP event should not be an interval");
+                    return mainLoopTimingsBuffer;
                 case PipelineEvent::Type::INPUT:
                     return inputTimingsBuffers[event.source];
                 case PipelineEvent::Type::OUTPUT:
@@ -117,7 +117,7 @@ class NodeEventAggregation {
         auto& fpsBuffer = [&]() -> std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>& {
             switch(event.type) {
                 case PipelineEvent::Type::LOOP:
-                    throw std::runtime_error("LOOP event should not be an interval");
+                    return emptyTimeBuffer;
                 case PipelineEvent::Type::INPUT:
                     return inputFpsBuffers[event.source];
                 case PipelineEvent::Type::OUTPUT:
@@ -146,7 +146,7 @@ class NodeEventAggregation {
             eventsBuffer.add(durationEvent);
 
             timingsBuffer->add(durationEvent.durationUs);
-            fpsBuffer->add({durationEvent.startEvent.getTimestamp(), durationEvent.startEvent.getSequenceNum()});
+            if(event.type != PipelineEvent::Type::LOOP) fpsBuffer->add({durationEvent.startEvent.getTimestamp(), durationEvent.startEvent.getSequenceNum()});
 
             *ongoingEvent = std::nullopt;
 
@@ -276,21 +276,17 @@ class NodeEventAggregation {
    public:
     void add(PipelineEvent& event) {
         using namespace std::chrono;
-        if(event.type == PipelineEvent::Type::INPUT && (event.interval == PipelineEvent::Interval::END || event.interval == PipelineEvent::Interval::NONE)) {
-            if(event.queueSize.has_value()) {
-                inputQueueSizesBuffers.try_emplace(event.source, std::make_unique<utility::CircularBuffer<uint32_t>>(windowSize));
-                inputQueueSizesBuffers[event.source]->add(*event.queueSize);
-            } else {
-                throw std::runtime_error(fmt::format("INPUT END event must have queue size set source: {}, node {}", event.source, event.nodeId));
-            }
-        }
         // Update states
         switch(event.type) {
             case PipelineEvent::Type::CUSTOM:
             case PipelineEvent::Type::LOOP:
                 break;
             case PipelineEvent::Type::INPUT:
-                if(event.queueSize.has_value()) state.inputStates[event.source].numQueued = *event.queueSize;
+                if((event.interval == PipelineEvent::Interval::END || event.interval == PipelineEvent::Interval::NONE) && event.queueSize.has_value()) {
+                    state.inputStates[event.source].numQueued = *event.queueSize;
+                    inputQueueSizesBuffers.try_emplace(event.source, std::make_unique<utility::CircularBuffer<uint32_t>>(windowSize));
+                    inputQueueSizesBuffers[event.source]->add(*event.queueSize);
+                }
                 switch(event.interval) {
                     case PipelineEvent::Interval::START:
                         state.inputStates[event.source].state = NodeState::InputQueueState::State::WAITING;
@@ -347,16 +343,18 @@ class NodeEventAggregation {
                         for(auto& [source, _] : inputTimingsBuffers) {
                             updateTimingStats(state.inputStates[source].timing.durationStats, *inputTimingsBuffers[source]);
                             updateFpsStats(state.inputStates[source].timing, *inputFpsBuffers[source]);
-                            auto& qStats = state.inputStates[source].queueStats;
-                            auto& qBuffer = *inputQueueSizesBuffers[source];
-                            auto qBufferData = qBuffer.getBuffer();
-                            std::sort(qBufferData.begin(), qBufferData.end());
-                            qStats.maxQueued = std::max(qStats.maxQueued, qBufferData.back());
-                            qStats.minQueuedRecent = qBufferData.front();
-                            qStats.maxQueuedRecent = qBufferData.back();
-                            qStats.medianQueuedRecent = qBufferData[qBufferData.size() / 2];
-                            if(qBufferData.size() % 2 == 0) {
-                                qStats.medianQueuedRecent = (qStats.medianQueuedRecent + qBufferData[qBufferData.size() / 2 - 1]) / 2;
+                            if(inputQueueSizesBuffers.find(source) != inputQueueSizesBuffers.end()) {
+                                auto& qStats = state.inputStates[source].queueStats;
+                                auto& qBuffer = *inputQueueSizesBuffers[source];
+                                auto qBufferData = qBuffer.getBuffer();
+                                std::sort(qBufferData.begin(), qBufferData.end());
+                                qStats.maxQueued = std::max(qStats.maxQueued, qBufferData.back());
+                                qStats.minQueuedRecent = qBufferData.front();
+                                qStats.maxQueuedRecent = qBufferData.back();
+                                qStats.medianQueuedRecent = qBufferData[qBufferData.size() / 2];
+                                if(qBufferData.size() % 2 == 0) {
+                                    qStats.medianQueuedRecent = (qStats.medianQueuedRecent + qBufferData[qBufferData.size() / 2 - 1]) / 2;
+                                }
                             }
                         }
                         break;

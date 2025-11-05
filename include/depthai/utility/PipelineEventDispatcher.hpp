@@ -25,7 +25,7 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
     void checkNodeId();
 
     uint32_t sequenceNum = 0;
-    
+
     std::mutex mutex;
 
    public:
@@ -38,14 +38,13 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
     void startInputEvent(const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) override;
     void startOutputEvent(const std::string& source) override;
     void startCustomEvent(const std::string& source) override;
-    void endEvent(PipelineEvent::Type type,
-                  const std::string& source,
-                  std::optional<uint32_t> queueSize = std::nullopt) override;
+    void endEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) override;
     void endInputEvent(const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) override;
     void endOutputEvent(const std::string& source) override;
     void endCustomEvent(const std::string& source) override;
+    void startTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) override;
+    void endTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) override;
     void pingEvent(PipelineEvent::Type type, const std::string& source) override;
-    void pingTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) override;
     void pingMainLoopEvent() override;
     void pingCustomEvent(const std::string& source) override;
     void pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize = std::nullopt) override;

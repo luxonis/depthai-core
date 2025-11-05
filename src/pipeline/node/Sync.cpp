@@ -57,7 +57,7 @@ void Sync::run() {
         auto tAbsoluteBeginning = steady_clock::now();
         std::unordered_map<std::string, std::shared_ptr<dai::Buffer>> inputFrames;
         {
-            auto eventBlock = this->inputBlockEvent();
+            auto blockEvent = this->inputBlockEvent();
 
             for(auto name : inputNames) {
                 logger->trace("Receiving input: {}", name);

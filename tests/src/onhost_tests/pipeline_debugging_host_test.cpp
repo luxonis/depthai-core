@@ -69,7 +69,10 @@ class ConsumerNode : public node::CustomThreadedNode<ConsumerNode> {
 
     void run() override {
         step(0);
-        while(mainLoop()) {
+        volatile int sequence = 0;
+        while(isRunning()) {
+            this->pipelineEventDispatcher->endTrackedEvent(PipelineEvent::Type::LOOP, "_mainLoop", sequence);
+            this->pipelineEventDispatcher->startTrackedEvent(PipelineEvent::Type::LOOP, "_mainLoop", ++sequence);
             std::shared_ptr<dai::Buffer> msg = nullptr;
             step(1);
             {
