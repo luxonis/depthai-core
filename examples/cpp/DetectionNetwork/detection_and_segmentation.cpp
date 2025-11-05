@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <iostream>
+#include <memory>
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
@@ -16,8 +17,16 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
 }
 
 int main() {
+    std::string modelName = "luxonis/yolov8-instance-segmentation-large:coco-640x352";
+    bool setRunOnHost = false;
+    auto device = std::make_shared<dai::Device>();
+
+    if(device->getPlatformAsString() == "RVC2") {
+        modelName = "luxonis/yolov8-instance-segmentation-nano:coco-512x288";
+        setRunOnHost = true;
+    }
     // Create pipeline
-    dai::Pipeline pipeline;
+    dai::Pipeline pipeline{device};
 
     // Create and configure camera node
     auto cameraNode = pipeline.create<dai::node::Camera>();
@@ -27,8 +36,10 @@ int main() {
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
 
     dai::NNModelDescription modelDescription;
-    modelDescription.model = "luxonis/yolov8-instance-segmentation-large:coco-640x480";
+
+    modelDescription.model = modelName;
     detectionNetwork->build(cameraNode, modelDescription);
+    detectionNetwork->detectionParser->setRunOnHost(setRunOnHost);
     auto labelMap = detectionNetwork->getClasses();
 
     // Create output queues
@@ -121,16 +132,18 @@ int main() {
                             detections.begin(), detections.end(), [filteredLabel](const dai::ImgDetection& det) { return det.label != filteredLabel; }),
                         detections.end());
                 }
+                if(!segmentationMask.empty()) {
+                    cv::Mat lut(1, 256, CV_8U);
+                    for(int i = 0; i < 256; ++i) lut.at<uchar>(i) = (i >= 255) ? 255 : cv::saturate_cast<uchar>(i * 25);
 
-                cv::Mat lut(1, 256, CV_8U);
-                for(int i = 0; i < 256; ++i) lut.at<uchar>(i) = (i == 255) ? 255 : cv::saturate_cast<uchar>(i * 25);
-                cv::Mat scaledMask;
-                cv::LUT(segmentationMask, lut, scaledMask);
+                    cv::Mat scaledMask;
+                    cv::LUT(segmentationMask, lut, scaledMask);
 
-                cv::Mat coloredMask;
-                cv::applyColorMap(scaledMask, coloredMask, cv::COLORMAP_JET);
-                frame.copyTo(coloredMask, (scaledMask == 255));
-                cv::addWeighted(frame, 0.7, coloredMask, 0.3, 0, frame);
+                    cv::Mat coloredMask;
+                    cv::applyColorMap(scaledMask, coloredMask, cv::COLORMAP_JET);
+                    frame.copyTo(coloredMask, (scaledMask == 255));
+                    cv::addWeighted(frame, 0.7, coloredMask, 0.3, 0, frame);
+                }
 
                 // Display detections
                 for(const auto& detection : detections) {
@@ -157,8 +170,6 @@ int main() {
                 cv::imshow("rgb", frame);
 
                 auto currentTime = std::chrono::steady_clock::now();
-                float fps = counter / std::chrono::duration<float>(currentTime - startTime).count();
-                std::cout << "FPS: " << fps << std::endl;
             }
         }
     }

@@ -6,11 +6,19 @@ import depthai as dai
 import numpy as np
 import time
 
+model_name = "luxonis/yolov8-instance-segmentation-large:coco-640x480"
+setRunOnHost = False
+device = dai.Device()
+if device.getPlatformAsString() == "RVC2":
+    model_name = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
+    setRunOnHost = True
+
 # Create pipeline
-with dai.Pipeline() as pipeline:
+with dai.Pipeline(device) as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build()
-    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("luxonis/yolov8-instance-segmentation-nano:coco-512x288"))
-    # detectionNetwork.detectionParser.runOnHost(True)
+    
+    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription(model_name))
+    detectionNetwork.detectionParser.setRunOnHost(setRunOnHost)
     labelMap = detectionNetwork.getClasses()
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()

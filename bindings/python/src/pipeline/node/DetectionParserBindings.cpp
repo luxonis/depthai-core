@@ -65,11 +65,13 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, DetectionParser, setAnchors, 2))
         .def("setAnchorMasks", &DetectionParser::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, DetectionParser, setAnchorMasks))
         .def("setIouThreshold", &DetectionParser::setIouThreshold, py::arg("thresh"), DOC(dai, node, DetectionParser, setIouThreshold))
+        .def("setRunOnHost", &DetectionParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DetectionParser, setRunOnHost))
         .def("getNumClasses", &DetectionParser::getNumClasses, DOC(dai, node, DetectionParser, getNumClasses))
         .def("getCoordinateSize", &DetectionParser::getCoordinateSize, DOC(dai, node, DetectionParser, getCoordinateSize))
         .def("getAnchors", &DetectionParser::getAnchors, DOC(dai, node, DetectionParser, getAnchors))
         .def("getAnchorMasks", &DetectionParser::getAnchorMasks, DOC(dai, node, DetectionParser, getAnchorMasks))
         .def("getIouThreshold", &DetectionParser::getIouThreshold, DOC(dai, node, DetectionParser, getIouThreshold))
+        .def("runOnHost", &DetectionParser::runOnHost, DOC(dai, node, DetectionParser, runOnHost))
         .def("build", &DetectionParser::build, DOC(dai, node, DetectionParser, build));
     daiNodeModule.attr("DetectionParser").attr("Properties") = detectionParserProperties;
 }

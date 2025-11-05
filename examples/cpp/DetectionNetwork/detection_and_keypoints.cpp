@@ -86,7 +86,6 @@ int main() {
 
             auto currentTime = std::chrono::steady_clock::now();
             float fps = counter / std::chrono::duration<float>(currentTime - startTime).count();
-            std::cout << "FPS: " << fps << std::endl;
         }
 
         if(cv::waitKey(1) == 'q') {

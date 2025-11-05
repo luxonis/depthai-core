@@ -524,7 +524,7 @@ FIRE_VIDEO="${fire_video}"
 KITCHEN_IMAGE_PATH="${kitchen_image}"
 YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt}"
 )
-dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
+dai_set_test_labels(detection_parser_test ondevice rvc4 ci onhost)
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
