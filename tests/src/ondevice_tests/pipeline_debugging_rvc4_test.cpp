@@ -8,7 +8,7 @@
 
 #define VIDEO_DURATION_SECONDS 5
 
-TEST_CASE("Object Tracker") {
+TEST_CASE("Object Tracker Pipeline Debugging") {
     // Create pipeline
     dai::Pipeline pipeline;
     pipeline.enablePipelineDebugging();

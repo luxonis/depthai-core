@@ -360,6 +360,9 @@ dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
 dai_add_test(pipeline_debugging_rvc4_test src/ondevice_tests/pipeline_debugging_rvc4_test.cpp)
 dai_set_test_labels(pipeline_debugging_rvc4_test rvc4 ci)
 target_compile_definitions(pipeline_debugging_rvc4_test PRIVATE VIDEO_PATH="${construction_vest}")
+dai_add_test(pipeline_debugging_rvc2_test src/ondevice_tests/pipeline_debugging_rvc2_test.cpp)
+dai_set_test_labels(pipeline_debugging_rvc2_test rvc2 ci)
+target_compile_definitions(pipeline_debugging_rvc2_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # Device USB Speed and serialization macros test
 dai_add_test(device_usbspeed_test src/ondevice_tests/device_usbspeed_test.cpp)

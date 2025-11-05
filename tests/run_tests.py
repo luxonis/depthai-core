@@ -108,12 +108,12 @@ if __name__ == "__main__":
     all_configs = [
         {
             "name": "Host",
-            "env": {},
+            "env": {"DEPTHAI_PIPELINE_DEBUGGING": "1"},
             "labels": ["onhost"],
         },
         {
             "name": "RVC4",
-            "env": {"DEPTHAI_PLATFORM": "rvc4"},
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PIPELINE_DEBUGGING": "1"},
             "labels": ["rvc4"],
         },
         {
