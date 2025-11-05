@@ -17,7 +17,9 @@ NeuralDepth::NeuralDepth(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthProperties>(std::move(props)),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
-std::shared_ptr<NeuralDepth> NeuralDepth::build(DeviceModelZoo model) {
+std::shared_ptr<NeuralDepth> NeuralDepth::build(Output& leftInput, Output& rightInput, DeviceModelZoo model) {
+    leftInput.link(left);
+    rightInput.link(right);
     // Set model
     neuralNetwork->setModelFromDeviceZoo(model);
     // Set rectification output size based on model
@@ -26,6 +28,16 @@ std::shared_ptr<NeuralDepth> NeuralDepth::build(DeviceModelZoo model) {
 }
 
 void NeuralDepth::buildInternal() {
+    if(device) {
+        auto platform = device->getPlatform();
+        if(platform != Platform::RVC4) {
+            throw std::runtime_error("NeuralDepth node is not supported on RVC4 devices.");
+        }
+
+        if(device->isNeuralDepthSupported() == false) {
+            throw std::runtime_error("NeuralDepth node is not supported on the connected device - please update LuxonisOS to 1.20.4 or higher.");
+        }
+    }
     auto defaultModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
     neuralNetwork->setModelFromDeviceZoo(defaultModel);
     rectification->setOutputSize(modelToInputSize[defaultModel].first, modelToInputSize[defaultModel].second);

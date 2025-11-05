@@ -7,19 +7,12 @@ import numpy as np
 FPS = 10
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    device = pipeline.getDefaultDevice()
-    if device.getPlatform()!= dai.Platform.RVC4:
-        raise RuntimeError("Neural Depth is only supported on RVC4 platform devices.")
-    if not device.isNeuralDepthSupported():
-        raise RuntimeError("Neural Depth is not supported on this device, please update the Luxonis OS to at least 1.20.4 or later.")
     cameraLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=FPS)
     cameraRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=FPS)
     leftOutput = cameraLeft.requestFullResolutionOutput()
     rightOutput = cameraRight.requestFullResolutionOutput()
 
-    neuralDepth = pipeline.create(dai.node.NeuralDepth).build(dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
-    leftOutput.link(neuralDepth.left)
-    rightOutput.link(neuralDepth.right)
+    neuralDepth = pipeline.create(dai.node.NeuralDepth).build(leftOutput, rightOutput, dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
 
     confidenceQueue = neuralDepth.confidence.createOutputQueue()
     edgeQueue = neuralDepth.edge.createOutputQueue()

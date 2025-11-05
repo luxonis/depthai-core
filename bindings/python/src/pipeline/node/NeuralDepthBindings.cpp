@@ -43,7 +43,7 @@ void bind_neural_depth(pybind11::module& m, void* pCallstack) {
         .def_readonly("depth", &NeuralDepth::depth, DOC(dai, node, NeuralDepth, depth), DOC(dai, node, NeuralDepth, depth))
         .def_readonly("edge", &NeuralDepth::edge, DOC(dai, node, NeuralDepth, edge), DOC(dai, node, NeuralDepth, edge))
         .def_readonly("confidence", &NeuralDepth::confidence, DOC(dai, node, NeuralDepth, confidence), DOC(dai, node, NeuralDepth, confidence))
-        .def("build", &NeuralDepth::build, py::arg("model") = DeviceModelZoo::NEURAL_DEPTH_SMALL, DOC(dai, node, NeuralDepth, build))
+        .def("build", &NeuralDepth::build, py::arg("leftInput"), py::arg("rightInput"), py::arg("model") = DeviceModelZoo::NEURAL_DEPTH_SMALL, DOC(dai, node, NeuralDepth, build))
         .def_property_readonly(
             "sync", [](NeuralDepth& n) { return &(*n.sync); }, py::return_value_policy::reference_internal, DOC(dai, node, NeuralDepth, sync))
         .def_property_readonly(
