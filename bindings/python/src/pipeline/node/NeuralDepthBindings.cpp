@@ -10,14 +10,6 @@ void bind_neural_depth(pybind11::module& m, void* pCallstack) {
 
     // Node and Properties declare upfront
     py::class_<NeuralDepthProperties> properties(m, "NeuralDepthProperties", DOC(dai, NeuralDepthProperties));
-    py::enum_<NeuralDepthProperties::ModelType> neuralDepthPropertiesModelType(
-        properties, "ModelType", DOC(dai, NeuralDepthProperties, ModelType));
-    neuralDepthPropertiesModelType
-        .value("LARGE", NeuralDepthProperties::ModelType::LARGE)
-        .value("MEDIUM", NeuralDepthProperties::ModelType::MEDIUM)
-        .value("SMALL", NeuralDepthProperties::ModelType::SMALL)
-        .value("NANO", NeuralDepthProperties::ModelType::NANO)
-        ;
 
     auto node = ADD_NODE(NeuralDepth);
 
@@ -34,20 +26,41 @@ void bind_neural_depth(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    // Properties
-    properties.def_readwrite("modelType", &NeuralDepthProperties::modelType, DOC(dai, NeuralDepthProperties, modelType))
-        ;
-
     // Node
-    node.def_readonly("left", &NeuralDepth::left, DOC(dai, node, NeuralDepth, left), DOC(dai, node, NeuralDepth, left))
-        .def_readonly("right", &NeuralDepth::right, DOC(dai, node, NeuralDepth, right), DOC(dai, node, NeuralDepth, right))
+    node.def_property_readonly(
+            "left",
+            [](const NeuralDepth& n) { return &n.sync->inputs["left"]; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralDepth, left))
+        .def_property_readonly(
+            "right",
+            [](const NeuralDepth& n) { return &n.sync->inputs["right"]; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralDepth, right))
+        .def_readonly("inputConfig", &NeuralDepth::inputConfig, DOC(dai, node, NeuralDepth, inputConfig))
+        .def_readonly("initialConfig", &NeuralDepth::initialConfig, DOC(dai, node, NeuralDepth, initialConfig))
         .def_readonly("disparity", &NeuralDepth::disparity, DOC(dai, node, NeuralDepth, disparity), DOC(dai, node, NeuralDepth, disparity))
         .def_readonly("depth", &NeuralDepth::depth, DOC(dai, node, NeuralDepth, depth), DOC(dai, node, NeuralDepth, depth))
         .def_readonly("edge", &NeuralDepth::edge, DOC(dai, node, NeuralDepth, edge), DOC(dai, node, NeuralDepth, edge))
         .def_readonly("confidence", &NeuralDepth::confidence, DOC(dai, node, NeuralDepth, confidence), DOC(dai, node, NeuralDepth, confidence))
-        .def("setModelType", &NeuralDepth::setModelType, DOC(dai, node, NeuralDepth, setModelType), DOC(dai, node, NeuralDepth, setModelType))
-        .def("getModelType", &NeuralDepth::getModelType, DOC(dai, node, NeuralDepth, getModelType), DOC(dai, node, NeuralDepth, getModelType))
-        ;
+        .def("build", &NeuralDepth::build, py::arg("model") = DeviceModelZoo::NEURAL_DEPTH_SMALL, DOC(dai, node, NeuralDepth, build))
+        .def_property_readonly(
+            "sync", [](NeuralDepth& n) { return &(*n.sync); }, py::return_value_policy::reference_internal, DOC(dai, node, NeuralDepth, sync))
+        .def_property_readonly(
+            "neuralNetwork",
+            [](NeuralDepth& n) { return &(*n.neuralNetwork); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralDepth, neuralNetwork))
+        .def_property_readonly(
+            "messageDemux",
+            [](NeuralDepth& n) { return &(*n.messageDemux); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralDepth, messageDemux))
+        .def_property_readonly(
+            "rectification",
+            [](NeuralDepth& n) { return &(*n.rectification); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralDepth, rectification));
     // ALIAS
     daiNodeModule.attr("NeuralDepth").attr("Properties") = properties;
 }

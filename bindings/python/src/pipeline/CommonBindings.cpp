@@ -16,6 +16,7 @@
 #include "depthai/common/CpuUsage.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "depthai/common/DetectionParserOptions.hpp"
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/Interpolation.hpp"
@@ -78,6 +79,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
     py::class_<ProfilingData> profilingData(m, "ProfilingData", DOC(dai, ProfilingData));
     py::enum_<Interpolation> interpolation(m, "Interpolation", DOC(dai, Interpolation));
+    py::enum_<DeviceModelZoo> deviceModelZoo(m, "DeviceModelZoo", DOC(dai, DeviceModelZoo));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -419,4 +421,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     profilingData.def_readwrite("numBytesWritten", &ProfilingData::numBytesWritten, DOC(dai, ProfilingData, numBytesWritten))
         .def_readwrite("numBytesRead", &ProfilingData::numBytesRead, DOC(dai, ProfilingData, numBytesRead));
+
+    deviceModelZoo.value("NEURAL_DEPTH_LARGE", DeviceModelZoo::NEURAL_DEPTH_LARGE)
+        .value("NEURAL_DEPTH_MEDIUM", DeviceModelZoo::NEURAL_DEPTH_MEDIUM)
+        .value("NEURAL_DEPTH_SMALL", DeviceModelZoo::NEURAL_DEPTH_SMALL)
+        .value("NEURAL_DEPTH_NANO", DeviceModelZoo::NEURAL_DEPTH_NANO);
 }

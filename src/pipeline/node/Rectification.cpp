@@ -33,7 +33,7 @@ bool Rectification::runOnHost() const {
 void Rectification::run() {
     throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
 }
-#else  // DEPTHAI_HAVE_OPENCV_SUPPORT
+#else   // DEPTHAI_HAVE_OPENCV_SUPPORT
 
 namespace {
 
@@ -258,7 +258,7 @@ void Rectification::run() {
         rectifiedFrame1->transformation = output1ImgTransformation;
         rectifiedFrame1->transformation.setDistortionCoefficients({});
 
-        rectifiedFrame2->transformation = output1ImgTransformation; // Set both to same for alignment
+        rectifiedFrame2->transformation = output1ImgTransformation;  // Set both to same for alignment
         rectifiedFrame2->transformation.setDistortionCoefficients({});
 
         auto end = steady_clock::now();

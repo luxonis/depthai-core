@@ -23,7 +23,6 @@ namespace node {
  */
 class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
    public:
-    using DeviceModelZoo = NeuralNetworkProperties::DeviceModelZoo;
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 

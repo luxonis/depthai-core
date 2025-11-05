@@ -10,7 +10,6 @@ namespace dai {
  *
  */
 struct RectificationProperties : PropertiesSerializable<Properties, RectificationProperties> {
-
     std::optional<uint32_t> outputWidth, outputHeight;
 
     ~RectificationProperties() override;
