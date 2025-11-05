@@ -341,6 +341,9 @@ dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
 target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 dai_set_test_labels(neural_network_test ondevice rvc2_all ci)
 
+dai_add_test(spatial_location_calculator_test src/ondevice_tests/pipeline/node/spatial_location_calculator_test.cpp)
+dai_set_test_labels(spatial_location_calculator_test ondevice rvc2_all rvc4 ci)
+
 # Color camera test
 dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
 dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)

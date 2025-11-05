@@ -83,8 +83,8 @@ int main() {
         auto now = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - lastSent);
         if(elapsed.count() >= 3) {
-            dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::LoadImage{}));
-            dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::CalibrationQuality{}));
+            dynCalibInputControl->send(DCC::loadImage());
+            dynCalibInputControl->send(DCC::calibrationQuality());
             lastSent = now;
         }
 
@@ -117,10 +117,10 @@ int main() {
             std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
                       << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
                       << "%" << std::endl;
-            dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::ResetData{}));
+            dynCalibInputControl->send(DCC::resetData());
             if(std::abs(q.sampsonErrorNew - q.sampsonErrorCurrent) > 0.05f) {
                 std::cout << "Start recalibration process" << std::endl;
-                dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::StartCalibration{}));
+                dynCalibInputControl->send(DCC::startCalibration());
             }
         }
 
@@ -131,7 +131,7 @@ int main() {
 
             if(dynCalibrationResult->calibrationData) {
                 std::cout << "Successfully calibrated." << std::endl;
-                dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::ApplyCalibration{dynCalibrationResult->calibrationData->newCalibration}));
+                dynCalibInputControl->send(DCC::applyCalibration(dynCalibrationResult->calibrationData->newCalibration));
 
                 const auto& q = dynCalibrationResult->calibrationData->calibrationDifference;
 
@@ -145,7 +145,7 @@ int main() {
                 std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
                           << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
                           << "%\n";
-                dynCalibInputControl->send(std::make_shared<DCC>(DCC::Commands::ResetData{}));
+                dynCalibInputControl->send(DCC::resetData());
             }
         }
         int key = cv::waitKey(1);

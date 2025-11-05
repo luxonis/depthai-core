@@ -70,7 +70,7 @@ endif()
 
 
 # Create depthai project
-project(depthai VERSION "3.0.0" LANGUAGES CXX C)
+project(depthai VERSION "3.1.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -889,6 +889,10 @@ endif()
 # Add patch only mode definition
 if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
+endif()
+
+if(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
 endif()
 
 # Helper function

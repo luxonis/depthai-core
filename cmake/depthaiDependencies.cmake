@@ -56,6 +56,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
+    find_package(fmt ${_QUIET} CONFIG REQUIRED)
 
     find_package(OpenSSL REQUIRED)
     # Log collection dependencies
@@ -189,7 +190,7 @@ else()
     FetchContent_Declare(
         XLink
         GIT_REPOSITORY https://github.com/luxonis/XLink.git
-        GIT_TAG        13790284ce12969c169940f88aad755bd91146db
+        GIT_TAG        7958fece3f7b303b1a2038ea7e78f53405f89843
     )
 
     FetchContent_MakeAvailable(
