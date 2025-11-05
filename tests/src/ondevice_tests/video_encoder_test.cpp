@@ -24,6 +24,7 @@ double calculateEncodedVideoPSNR(const std::filesystem::path& originalVideo, con
 }
 
 void recordEncodedVideo(const std::filesystem::path& path, const std::filesystem::path& encodedPath, const dai::VideoEncoderProperties& properties) {
+    std::ofstream fileHandle;
     dai::Pipeline pipeline;
 
     auto replayVideoNode = pipeline.create<dai::node::ReplayVideo>();
@@ -45,20 +46,45 @@ void recordEncodedVideo(const std::filesystem::path& path, const std::filesystem
     recordVideoNode->setFps(properties.frameRate);
 
     replayVideoNode->out.link(videoEncoderNode->input);
-    videoEncoderNode->out.link(recordVideoNode->input);
 
-    auto replayQueue = replayVideoNode->out.createOutputQueue();
+    std::shared_ptr<dai::MessageQueue> outputQueue;
+    if(properties.profile == dai::VideoEncoderProperties::Profile::H265_MAIN) {
+        outputQueue = videoEncoderNode->out.createOutputQueue();
+        fileHandle = std::ofstream(encodedPath, std::ios::binary);
+        if(!fileHandle.is_open()) {
+            throw std::runtime_error("Could not open video.encoded for writing");
+        }
+    } else {
+        videoEncoderNode->out.link(recordVideoNode->input);
+        outputQueue = replayVideoNode->out.createOutputQueue();
+    }
 
     pipeline.start();
     while(pipeline.isRunning()) {
         try {
-            auto replayData = replayQueue->get<dai::ImgFrame>();
-            if(replayData->sequenceNum == NUM_FRAMES) {
+            int64_t sequenceNum = 0;
+            if(properties.profile == dai::VideoEncoderProperties::Profile::H265_MAIN) {
+                auto encodedData = outputQueue->get<dai::EncodedFrame>();
+                sequenceNum = encodedData->sequenceNum;
+                unsigned char* frameData = encodedData->getData().data();
+                size_t frameSize = encodedData->getData().size();
+                fileHandle.write(reinterpret_cast<const char*>(frameData), frameSize);
+            } else {
+                auto replayData = outputQueue->get<dai::ImgFrame>();
+                sequenceNum = replayData->sequenceNum;
+            }
+
+            if(sequenceNum == NUM_FRAMES) {
                 break;
             }
         } catch(...) {
             break;
         }
+    }
+
+    // Close if used
+    if(fileHandle.is_open()) {
+        fileHandle.close();
     }
 }
 
@@ -184,7 +210,7 @@ TEST_CASE("Test VideoEncoder node H264_BASELINE") {
     // Clear the encoded video file
     std::filesystem::remove(encodedPath);
 }
-/*
+
 TEST_CASE("Test VideoEncoder node H265_MAIN") {
     std::filesystem::path path(VIDEO_PATH);
     REQUIRE(std::filesystem::exists(path));
@@ -225,7 +251,7 @@ TEST_CASE("Test VideoEncoder node H265_MAIN") {
     // Clear the encoded video file
     std::filesystem::remove(encodedPath);
 }
-
+/*
 TEST_CASE("Test VideoEncoder node MJPEG") {
     std::filesystem::path path(VIDEO_PATH);
     REQUIRE(std::filesystem::exists(path));
@@ -283,36 +309,43 @@ TEST_CASE("Test VideoEncoder node MJPEG") {
     std::filesystem::remove(encodedPath);
 }
 */
-TEST_CASE("Test VideoEncoder H264 profile comparison") {
+TEST_CASE("Test VideoEncoder H264 & H265 profiles comparison") {
     std::filesystem::path path(VIDEO_PATH);
     REQUIRE(std::filesystem::exists(path));
 
     dai::VideoEncoderProperties properties;
     std::filesystem::path encodedPath = path.parent_path() / (path.stem().string() + "encoded" + path.extension().string());
 
-    // Compare psnr and file sizes between different H264 profiles
+    // Compare psnr and file sizes between different H264 & H265 profiles
     properties.frameRate = 25;
-    properties.bitrate = 2500000;
-    properties.profile = dai::VideoEncoderProperties::Profile::H264_HIGH;
+    properties.bitrate = 1000000;
+
+    properties.profile = dai::VideoEncoderProperties::Profile::H265_MAIN;
     recordEncodedVideo(path, encodedPath, properties);
     REQUIRE(std::filesystem::exists(encodedPath));
     auto encodedFileSize1 = std::filesystem::file_size(encodedPath);
     double psnr1 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
-    properties.profile = dai::VideoEncoderProperties::Profile::H264_MAIN;
+    properties.profile = dai::VideoEncoderProperties::Profile::H264_HIGH;
     recordEncodedVideo(path, encodedPath, properties);
     REQUIRE(std::filesystem::exists(encodedPath));
     auto encodedFileSize2 = std::filesystem::file_size(encodedPath);
     double psnr2 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
-    properties.profile = dai::VideoEncoderProperties::Profile::H264_BASELINE;
+    properties.profile = dai::VideoEncoderProperties::Profile::H264_MAIN;
     recordEncodedVideo(path, encodedPath, properties);
     REQUIRE(std::filesystem::exists(encodedPath));
     auto encodedFileSize3 = std::filesystem::file_size(encodedPath);
     double psnr3 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
-    // PSNR should be in the following order:  H264_HIGH > H264_MAIN > H264_BASELINE
-    // File size should be in the following order:  H264_BASELINE > H264_MAIN > H264_HIGH
+    properties.profile = dai::VideoEncoderProperties::Profile::H264_BASELINE;
+    recordEncodedVideo(path, encodedPath, properties);
+    REQUIRE(std::filesystem::exists(encodedPath));
+    auto encodedFileSize4 = std::filesystem::file_size(encodedPath);
+    double psnr4 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
+
+    // In general PSNR values should be in the following order: H265_MAIN > H264_HIGH > H264_MAIN > H264_BASELINE
+    // In general file sizes should be in the following order:  H264_BASELINE > H264_MAIN > H264_HIGH > H265_MAIN
     REQUIRE(psnr1 > psnr2);
     REQUIRE(psnr2 > psnr3);
     REQUIRE(encodedFileSize1 < encodedFileSize2);
