@@ -1,7 +1,5 @@
 #include "depthai/pipeline/datatype/NeuralDepthConfig.hpp"
 
-#include <opencv2/core/hal/interface.h>
-
 namespace dai {
 
 NeuralDepthConfig::~NeuralDepthConfig() = default;
