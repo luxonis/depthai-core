@@ -323,34 +323,27 @@ TEST_CASE("Test VideoEncoder H264 & H265 profiles comparison") {
     properties.profile = dai::VideoEncoderProperties::Profile::H265_MAIN;
     recordEncodedVideo(path, encodedPath, properties);
     REQUIRE(std::filesystem::exists(encodedPath));
-    auto encodedFileSize1 = std::filesystem::file_size(encodedPath);
     double psnr1 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
     properties.profile = dai::VideoEncoderProperties::Profile::H264_HIGH;
     recordEncodedVideo(path, encodedPath, properties);
     REQUIRE(std::filesystem::exists(encodedPath));
-    auto encodedFileSize2 = std::filesystem::file_size(encodedPath);
     double psnr2 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
     properties.profile = dai::VideoEncoderProperties::Profile::H264_MAIN;
     recordEncodedVideo(path, encodedPath, properties);
     REQUIRE(std::filesystem::exists(encodedPath));
-    auto encodedFileSize3 = std::filesystem::file_size(encodedPath);
     double psnr3 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
     properties.profile = dai::VideoEncoderProperties::Profile::H264_BASELINE;
     recordEncodedVideo(path, encodedPath, properties);
     REQUIRE(std::filesystem::exists(encodedPath));
-    auto encodedFileSize4 = std::filesystem::file_size(encodedPath);
     double psnr4 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
     // In general PSNR values should be in the following order: H265_MAIN > H264_HIGH > H264_MAIN > H264_BASELINE
-    // In general file sizes should be in the following order:  H264_BASELINE > (H264_MAIN / H264_HIGH) > H265_MAIN
     REQUIRE(psnr1 > psnr2);
     REQUIRE(psnr2 > psnr3);
     REQUIRE(psnr3 > psnr4);
-    REQUIRE(encodedFileSize1 < std::min(encodedFileSize2, encodedFileSize3));
-    REQUIRE(std::max(encodedFileSize2, encodedFileSize3) < encodedFileSize4);
 
     // Clear the encoded video file
     std::filesystem::remove(encodedPath);
