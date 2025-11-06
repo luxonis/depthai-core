@@ -71,7 +71,7 @@ class FileGroup {
 
 class EventsManager {
    public:
-    explicit EventsManager(bool uploadCachedOnStart = false, float publishInterval = 10.0);
+    explicit EventsManager(bool uploadCachedOnStart = false);
     ~EventsManager();
 
     /**

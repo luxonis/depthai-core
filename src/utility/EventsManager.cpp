@@ -222,8 +222,8 @@ bool FileData::toFile(const std::filesystem::path& inputPath) {
     return true;
 }
 
-EventsManager::EventsManager(bool uploadCachedOnStart, float publishInterval)
-    : publishInterval(publishInterval),
+EventsManager::EventsManager(bool uploadCachedOnStart)
+    : publishInterval(30.0f),
       logResponse(false),
       verifySsl(true),
       cacheDir("/internal/private"),
