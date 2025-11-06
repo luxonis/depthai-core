@@ -45,6 +45,7 @@ class ResultThread(threading.Thread):
 # Function to run ctest with specific environment variables and labels
 def run_ctest(env_vars, labels, blocking=True, name=""):
     env = os.environ.copy()
+    env_vars["DEPTHAI_PIPELINE_DEBUGGING"] = "1"
     env.update(env_vars)
 
     cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release"]
@@ -108,12 +109,12 @@ if __name__ == "__main__":
     all_configs = [
         {
             "name": "Host",
-            "env": {"DEPTHAI_PIPELINE_DEBUGGING": "1"},
+            "env": {},
             "labels": ["onhost"],
         },
         {
             "name": "RVC4",
-            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PIPELINE_DEBUGGING": "1"},
+            "env": {"DEPTHAI_PLATFORM": "rvc4"},
             "labels": ["rvc4"],
         },
         {
