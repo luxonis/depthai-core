@@ -20,11 +20,7 @@ class PipelineEvent : public Buffer {
         INPUT_BLOCK = 4,
         OUTPUT_BLOCK = 5,
     };
-    enum class Interval : std::int32_t {
-        NONE = 0,
-        START = 1,
-        END = 2
-    };
+    enum class Interval : std::int32_t { NONE = 0, START = 1, END = 2 };
 
     PipelineEvent() = default;
     virtual ~PipelineEvent() = default;

@@ -1,4 +1,5 @@
 #include "PipelineEventDispatcherBindings.hpp"
+
 #include "depthai/utility/PipelineEventDispatcher.hpp"
 
 void PipelineEventDispatcherBindings::bind(pybind11::module& m, void* pCallstack) {
@@ -18,8 +19,7 @@ void PipelineEventDispatcherBindings::bind(pybind11::module& m, void* pCallstack
     using namespace dai::utility;
     auto pipelineEventDispatcher = py::class_<PipelineEventDispatcher>(m, "PipelineEventDispatcher");
 
-    pipelineEventDispatcher
-        .def(py::init<Node::Output*>(), py::arg("output"))
+    pipelineEventDispatcher.def(py::init<Node::Output*>(), py::arg("output"))
         .def("setNodeId", &PipelineEventDispatcher::setNodeId, py::arg("id"), DOC(dai, utility, PipelineEventDispatcher, setNodeId))
         .def("startCustomEvent", &PipelineEventDispatcher::startCustomEvent, py::arg("source"), DOC(dai, utility, PipelineEventDispatcher, startCustomEvent))
         .def("endCustomEvent", &PipelineEventDispatcher::endCustomEvent, py::arg("source"), DOC(dai, utility, PipelineEventDispatcher, endCustomEvent))

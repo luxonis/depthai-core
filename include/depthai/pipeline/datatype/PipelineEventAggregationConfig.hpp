@@ -9,7 +9,7 @@
 namespace dai {
 
 class NodeEventAggregationConfig {
-    public:
+   public:
     int64_t nodeId = -1;
     std::optional<std::vector<std::string>> inputs;
     std::optional<std::vector<std::string>> outputs;
@@ -23,7 +23,7 @@ class NodeEventAggregationConfig {
 class PipelineEventAggregationConfig : public Buffer {
    public:
     std::vector<NodeEventAggregationConfig> nodes;
-    bool repeat = false; // Keep sending the aggregated state without waiting for new config
+    bool repeat = false;  // Keep sending the aggregated state without waiting for new config
 
     PipelineEventAggregationConfig() = default;
     virtual ~PipelineEventAggregationConfig();

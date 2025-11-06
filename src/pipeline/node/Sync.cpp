@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/Sync.hpp"
+
 #include <chrono>
 
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -69,8 +70,9 @@ void Sync::run() {
             }
             // Print out the timestamps
             for(const auto& frame : inputFrames) {
-                logger->debug(
-                    "Starting input {} timestamp is {} ms", frame.first, static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
+                logger->debug("Starting input {} timestamp is {} ms",
+                              frame.first,
+                              static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
             }
             tAfterMessageBeginning = steady_clock::now();
             int attempts = 0;
@@ -79,8 +81,9 @@ void Sync::run() {
                 if(attempts > 50) {
                     logger->warn("Sync node has been trying to sync for {} messages, but the messages are still not in sync.", attempts);
                     for(const auto& frame : inputFrames) {
-                        logger->warn(
-                            "Output {} timestamp is {} ms", frame.first, static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
+                        logger->warn("Output {} timestamp is {} ms",
+                                     frame.first,
+                                     static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
                     }
                 }
                 if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {

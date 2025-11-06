@@ -213,7 +213,7 @@ void ObjectTracker::run() {
             passthroughTrackerFrame.send(inputTrackerImg);
             if(gotDetections) {
                 passthroughDetections.send(inputImgDetections ? std::dynamic_pointer_cast<Buffer>(inputImgDetections)
-                                           : std::dynamic_pointer_cast<Buffer>(inputSpatialImgDetections));
+                                                              : std::dynamic_pointer_cast<Buffer>(inputSpatialImgDetections));
                 if(inputDetectionImg) {
                     passthroughDetectionFrame.send(inputDetectionImg);
                 }

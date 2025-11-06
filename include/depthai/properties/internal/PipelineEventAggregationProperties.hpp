@@ -9,7 +9,7 @@ namespace dai {
  */
 struct PipelineEventAggregationProperties : PropertiesSerializable<Properties, PipelineEventAggregationProperties> {
     uint32_t aggregationWindowSize = 100;
-    uint32_t statsUpdateIntervalMs = 1000; 
+    uint32_t statsUpdateIntervalMs = 1000;
     uint32_t eventWaitWindow = 16;
 };
 

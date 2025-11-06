@@ -216,7 +216,8 @@ class LockingQueue {
     }
 
     template <typename Rep, typename Period>
-    bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
+    bool tryWaitAndPush(
+        T const& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {
@@ -254,7 +255,8 @@ class LockingQueue {
     }
 
     template <typename Rep, typename Period>
-    bool tryWaitAndPush(T&& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
+    bool tryWaitAndPush(
+        T&& data, std::chrono::duration<Rep, Period> timeout, std::function<void(LockingQueueState, size_t)> callback = [](LockingQueueState, size_t) {}) {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(maxSize == 0) {

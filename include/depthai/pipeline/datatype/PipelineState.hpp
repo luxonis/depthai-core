@@ -45,8 +45,8 @@ class NodeState {
         // Current state of the input queue.
         enum class State : std::int32_t {
             IDLE = 0,
-            WAITING = 1, // Waiting to receive a message
-            BLOCKED = 2 // An output attempted to send to this input, but the input queue was full
+            WAITING = 1,  // Waiting to receive a message
+            BLOCKED = 2   // An output attempted to send to this input, but the input queue was full
         } state = State::IDLE;
         // Number of messages currently queued in the input queue
         uint32_t numQueued = 0;
@@ -64,10 +64,7 @@ class NodeState {
     struct OutputQueueState {
         // Current state of the output queue. Send should ideally be instant. This is not the case when the input queue is full.
         // In that case, the state will be SENDING until there is space in the input queue (unless trySend is used).
-        enum class State : std::int32_t {
-            IDLE = 0,
-            SENDING = 1
-        } state = State::IDLE;
+        enum class State : std::int32_t { IDLE = 0, SENDING = 1 } state = State::IDLE;
         // Timing info about this output
         Timing timing;
 
@@ -77,12 +74,7 @@ class NodeState {
 
         DEPTHAI_SERIALIZE(OutputQueueState, state, timing);
     };
-    enum class State : std::int32_t {
-        IDLE = 0,
-        GETTING_INPUTS = 1,
-        PROCESSING = 2,
-        SENDING_OUTPUTS = 3
-    };
+    enum class State : std::int32_t { IDLE = 0, GETTING_INPUTS = 1, PROCESSING = 2, SENDING_OUTPUTS = 3 };
 
     // Current state of the node - idle only when not running
     State state = State::IDLE;

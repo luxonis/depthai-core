@@ -6,7 +6,7 @@
 #include "depthai/pipeline/node/host/Replay.hpp"
 
 #ifndef VIDEO_PATH
-#define VIDEO_PATH ""
+    #define VIDEO_PATH ""
 #endif
 
 int main(int argc, char** argv) {
