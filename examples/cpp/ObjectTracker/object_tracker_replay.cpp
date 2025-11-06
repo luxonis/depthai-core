@@ -37,32 +37,15 @@ int main() {
     // Start pipeline
     pipeline.start();
 
-    // TODO remove before merge
-    nlohmann::json j;
-    j["pipeline"] = pipeline.getPipelineSchema();
-    std::cout << "Pipeline schema: " << j.dump(2) << std::endl;
-    //
-
     // FPS calculation variables
     auto startTime = std::chrono::steady_clock::now();
     int counter = 0;
     float fps = 0;
     cv::Scalar color(255, 255, 255);
 
-    // TODO remove before merge
-    int index = 0;
-    //
-
     while(pipeline.isRunning()) {
         auto imgFrame = preview->get<dai::ImgFrame>();
         auto track = tracklets->get<dai::Tracklets>();
-
-        // TODO remove before merge
-        if(index++ % 30 == 0) {
-            std::cout << "----------------------------------------" << std::endl;
-            std::cout << "Pipeline state: " << pipeline.getPipelineState().nodes().detailed().str() << std::endl;
-        }
-        //
 
         counter++;
         auto currentTime = std::chrono::steady_clock::now();
