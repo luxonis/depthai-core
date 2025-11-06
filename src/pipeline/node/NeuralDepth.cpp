@@ -33,7 +33,7 @@ void NeuralDepth::buildInternal() {
     if(device) {
         auto platform = device->getPlatform();
         if(platform != Platform::RVC4) {
-            throw std::runtime_error("NeuralDepth node is not supported on RVC4 devices.");
+            throw std::runtime_error("NeuralDepth node is not supported on RVC2 devices.");
         }
 
         if(device->isNeuralDepthSupported() == false) {
