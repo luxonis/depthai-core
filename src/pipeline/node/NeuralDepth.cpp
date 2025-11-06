@@ -18,8 +18,10 @@ NeuralDepth::NeuralDepth(std::unique_ptr<Properties> props)
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 std::shared_ptr<NeuralDepth> NeuralDepth::build(Output& leftInput, Output& rightInput, DeviceModelZoo model) {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     leftInput.link(left);
     rightInput.link(right);
+#endif
     // Set model
     neuralNetwork->setModelFromDeviceZoo(model);
     // Set rectification output size based on model
