@@ -37,15 +37,27 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
+     * Input messages on which spatial location will be calculated.
+     * Possible datatypes are ImgDetections or Keypoints.
+     */
+    Input input{*this, {"input", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::ImgDetections, false}, {DatatypeEnum::Keypoints, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    /**
      * Input message with depth data used to retrieve spatial information about detected object.
      * Default queue is non-blocking with size 4.
      */
     Input inputDepth{*this, {"inputDepth", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
-     * Outputs SpatialLocationCalculatorData message that carries spatial location results.
+     * Outputs SpatialLocationCalculatorData message that carries spatial locations for each additional ROI that is specified in the config.
+     * @warning Will be deprecated in future releases. Use spatialOutput instead.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
+
+    /**
+     * Outputs SpatialImgDetections or SpatialKeypoints message that carries spatial locations along with original input data.
+     */
+    Output spatialOutput{*this, {"spatialOutput", DEFAULT_GROUP, {{{DatatypeEnum::SpatialImgDetections, false}, {DatatypeEnum::SpatialKeypoints, false}}}}};
 
     /**
      * Passthrough message on which the calculation was performed.

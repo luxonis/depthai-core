@@ -21,4 +21,62 @@ std::vector<SpatialLocationCalculatorConfigData> SpatialLocationCalculatorConfig
     return config;
 }
 
+void SpatialLocationCalculatorConfig::setDepthThresholds(uint32_t lowerThreshold, uint32_t upperThreshold) {
+    if(lowerThreshold >= upperThreshold) {
+        throw std::invalid_argument("Lower threshold must be less than upper threshold");
+    }
+    globalLowerThreshold = lowerThreshold;
+    globalUpperThreshold = upperThreshold;
+}
+
+void SpatialLocationCalculatorConfig::setCalculationAlgorithm(SpatialLocationCalculatorAlgorithm calculationAlgorithm) {
+    globalCalculationAlgorithm = calculationAlgorithm;
+}
+
+void SpatialLocationCalculatorConfig::setStepSize(int32_t stepSize) {
+    if(stepSize < -1 || stepSize >= 4000 || stepSize == 0) {
+        throw std::invalid_argument("Step size must be -1 (AUTO) or between 1 and 3999");
+    }
+    globalStepSize = stepSize;
+}
+
+void SpatialLocationCalculatorConfig::setKeypointRadius(int32_t radius) {
+    if(radius <= 0) {
+        throw std::invalid_argument("Keypoint radius must be positive");
+    }
+    globalKeypointRadius = radius;
+}
+
+void SpatialLocationCalculatorConfig::useImgDetectionKeypoints(bool useKeypoints) {
+    this->useKeypoints = useKeypoints;
+}
+
+void SpatialLocationCalculatorConfig::useImgDetectionSegmentation(bool useSegmentation) {
+    this->useSegmentation = useSegmentation;
+}
+
+std::pair<int32_t, int32_t> SpatialLocationCalculatorConfig::getDepthThresholds() const {
+    return {globalLowerThreshold, globalUpperThreshold};
+}
+
+SpatialLocationCalculatorAlgorithm SpatialLocationCalculatorConfig::getCalculationAlgorithm() const {
+    return globalCalculationAlgorithm;
+}
+
+int32_t SpatialLocationCalculatorConfig::getStepSize() const {
+    return globalStepSize;
+}
+
+int32_t SpatialLocationCalculatorConfig::getKeypointRadius() const {
+    return globalKeypointRadius;
+}
+
+bool SpatialLocationCalculatorConfig::isUsingImgDetectionKeypoints() const {
+    return useKeypoints;
+}
+
+bool SpatialLocationCalculatorConfig::isUsingImgDetectionSegmentation() const {
+    return useSegmentation;
+}
+
 }  // namespace dai
