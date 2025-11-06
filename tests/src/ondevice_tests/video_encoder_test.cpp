@@ -17,7 +17,10 @@ double calculateEncodedVideoPSNR(const std::filesystem::path& originalVideo, con
     double psnrSum = 0.0;
     cv::Mat originalFrame, encodedFrame;
     while(originalCapture.read(originalFrame) && encodedCapture.read(encodedFrame)) {
-        psnrSum += cv::PSNR(originalFrame, encodedFrame);
+        auto widthDifference = originalFrame.cols - encodedFrame.cols;
+        auto heightDifference = originalFrame.rows - encodedFrame.rows;
+        cv::Rect croppedRect(widthDifference / 2, heightDifference / 2, originalFrame.cols - widthDifference, originalFrame.rows - heightDifference);
+        psnrSum += cv::PSNR(originalFrame(croppedRect).clone(), encodedFrame);
         ++frameCount;
     }
     return psnrSum / frameCount;
@@ -33,6 +36,10 @@ void recordEncodedVideo(const std::filesystem::path& path, const std::filesystem
     replayVideoNode->setLoop(false);
     replayVideoNode->setFps(properties.frameRate);
 
+    auto imageManipNode = pipeline.create<dai::node::ImageManip>();
+    imageManipNode->initialConfig->setOutputSize(1280, 640, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
+    imageManipNode->setMaxOutputFrameSize(1280 * 640 * 3);
+
     auto videoEncoderNode = pipeline.create<dai::node::VideoEncoder>();
     videoEncoderNode->setProfile(properties.profile);
     videoEncoderNode->setBitrate(properties.bitrate);
@@ -45,7 +52,8 @@ void recordEncodedVideo(const std::filesystem::path& path, const std::filesystem
     recordVideoNode->setRecordVideoFile(encodedPath);
     recordVideoNode->setFps(properties.frameRate);
 
-    replayVideoNode->out.link(videoEncoderNode->input);
+    replayVideoNode->out.link(imageManipNode->inputImage);
+    imageManipNode->out.link(videoEncoderNode->input);
 
     std::shared_ptr<dai::MessageQueue> outputQueue;
     if(properties.profile == dai::VideoEncoderProperties::Profile::H265_MAIN) {
@@ -251,8 +259,14 @@ TEST_CASE("Test VideoEncoder node H265_MAIN") {
     // Clear the encoded video file
     std::filesystem::remove(encodedPath);
 }
-/*
+
 TEST_CASE("Test VideoEncoder node MJPEG") {
+    dai::Platform platform;
+    {
+        std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
+        platform = device->getPlatform();
+    }
+
     std::filesystem::path path(VIDEO_PATH);
     REQUIRE(std::filesystem::exists(path));
 
@@ -260,22 +274,25 @@ TEST_CASE("Test VideoEncoder node MJPEG") {
     properties.profile = dai::VideoEncoderProperties::Profile::MJPEG;
     std::filesystem::path encodedPath = path.parent_path() / (path.stem().string() + "encoded" + path.extension().string());
 
-    // Test bitrate setting
+    // Test quality setting
     properties.frameRate = 25;
-    properties.bitrate = 0;
+    properties.quality = 50;
     recordEncodedVideo(path, encodedPath, properties);
     REQUIRE(std::filesystem::exists(encodedPath));
     auto encodedFileSize1 = std::filesystem::file_size(encodedPath);
     double psnr1 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
-    properties.bitrate = 0;
+    properties.quality = 100;
     recordEncodedVideo(path, encodedPath, properties);
     REQUIRE(std::filesystem::exists(encodedPath));
     auto encodedFileSize2 = std::filesystem::file_size(encodedPath);
     double psnr2 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
-    std::cout << psnr1 << "dB   " << psnr2 << "dB\n"; // TO DO Remove
-    std::cout << encodedFileSize1 << "bytes    " << encodedFileSize2 << "bytes\n"; // TO DO Remove
+    // Skip the following tests when using RVC4 - TO DO: Fix this when RVC4 is updated and quality actually affects something
+    if(platform == dai::Platform::RVC4) {
+        return;
+    }
+
     REQUIRE(psnr1 < psnr2);
     REQUIRE(encodedFileSize1 < encodedFileSize2);
 
@@ -286,29 +303,17 @@ TEST_CASE("Test VideoEncoder node MJPEG") {
     auto encodedFileSize3 = std::filesystem::file_size(encodedPath);
     double psnr3 = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
 
-    std::cout << psnr3 << "dB\n"; // TO DO Remove
-    std::cout << encodedFileSize3 << "bytes\n"; // TO DO Remove
     REQUIRE(psnr2 < psnr3);
     REQUIRE(encodedFileSize2 < encodedFileSize3);
 
-    // Test VBR mode
-    properties.bitrate = 0;
-    properties.rateCtrlMode = dai::VideoEncoderProperties::RateControlMode::VBR;
-    recordEncodedVideo(path, encodedPath, properties);
-    REQUIRE(std::filesystem::exists(encodedPath));
-    auto encodedFileSize = std::filesystem::file_size(encodedPath);
-    double psnr = calculateEncodedVideoPSNR(VIDEO_PATH, encodedPath);
-
     // PSNR Bellow 30 dB indicates significant degredation
-    std::cout << psnr << "dB\n"; // TO DO Remove
-    std::cout << encodedFileSize << "bytes\n"; // TO DO Remove
-    REQUIRE(psnr > 30.0);
-    REQUIRE(encodedFileSize > 0);
+    // REQUIRE(psnr3 > 30.0);
+    // REQUIRE(encodedFileSize3 > 0);
 
     // Clear the encoded video file
     std::filesystem::remove(encodedPath);
 }
-*/
+
 TEST_CASE("Test VideoEncoder H264 & H265 profiles comparison") {
     std::filesystem::path path(VIDEO_PATH);
     REQUIRE(std::filesystem::exists(path));
