@@ -56,8 +56,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Functions
     Node::Id getNextUniqueId();
-    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
-    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
+    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const fs::path& path);
     void setXLinkChunkSize(int sizeBytes);
@@ -303,12 +303,12 @@ class Pipeline {
     /**
      * @returns Pipeline schema
      */
-    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
 
     /**
      * @returns Device pipeline schema (without host only nodes and connections)
      */
-    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
 
     // void loadAssets(AssetManager& assetManager);
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {

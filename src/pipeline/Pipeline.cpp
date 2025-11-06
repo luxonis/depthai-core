@@ -70,12 +70,12 @@ Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<Pipe
 
 Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) : pimpl(std::move(pimpl)) {}
 
-PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
-    return pimpl->getPipelineSchema(type);
+PipelineSchema Pipeline::getPipelineSchema(SerializationType type, bool includePipelineDebugging) const {
+    return pimpl->getPipelineSchema(type, includePipelineDebugging);
 }
 
-PipelineSchema Pipeline::getDevicePipelineSchema(SerializationType type) const {
-    return pimpl->getDevicePipelineSchema(type);
+PipelineSchema Pipeline::getDevicePipelineSchema(SerializationType type, bool includePipelineDebugging) const {
+    return pimpl->getDevicePipelineSchema(type, includePipelineDebugging);
 }
 
 GlobalProperties PipelineImpl::getGlobalProperties() const {
@@ -189,7 +189,7 @@ std::vector<Node::Connection> PipelineImpl::getConnections() const {
     return conns;
 }
 
-PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
+PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool includePipelineDebugging) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
     schema.bridges = xlinkBridges;
@@ -198,6 +198,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     for(const auto& node : getAllNodes()) {
         // const auto& node = kv.second;
         if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) {
+            continue;
+        }
+        if(!includePipelineDebugging && (std::string(node->getName()) == "PipelineEventAggregation" || std::string(node->getName()) == "PipelineStateMerge")) {
             continue;
         }
         // Create 'node' info
@@ -333,8 +336,8 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     return schema;
 }
 
-PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type) const {
-    auto schema = getPipelineSchema(type);
+PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, bool includePipelineDebugging) const {
+    auto schema = getPipelineSchema(type, includePipelineDebugging);
     // Remove bridge info
     schema.bridges.clear();
     // Remove host nodes
