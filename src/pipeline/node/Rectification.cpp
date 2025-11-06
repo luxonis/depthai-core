@@ -2,6 +2,7 @@
 
 #include <chrono>
 
+#include "common/ImgTransformations.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -116,7 +117,8 @@ void Rectification::run() {
 
     cv::Mat cv_targetCameraMatrix1, cv_targetCameraMatrix2;
     std::array<std::array<float, 3>, 3> targetM1, targetM2;
-
+    dai::ImgTransformation output1ImgTransformation;
+    dai::ImgTransformation output2ImgTransformation;
     while(isRunning()) {
         auto input1Frame = input1.get<dai::ImgFrame>();
         auto input2Frame = input2.get<dai::ImgFrame>();
@@ -137,10 +139,10 @@ void Rectification::run() {
             output2FrameHeight = input2Frame->getHeight();
         }
 
-        auto output1ImgTransformation = input1Frame->transformation;
-        auto output2ImgTransformation = input2Frame->transformation;
 
         if(!initialized) {
+            output1ImgTransformation = input1Frame->transformation;
+            output2ImgTransformation = input2Frame->transformation;
             auto calib = getCalibrationData();
 
             auto leftSocket = (dai::CameraBoardSocket)input1Frame->getInstanceNum();
