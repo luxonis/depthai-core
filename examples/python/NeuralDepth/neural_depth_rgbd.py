@@ -8,27 +8,30 @@ parser.add_argument("--webSocketPort", type=int, default=8765)
 parser.add_argument("--httpPort", type=int, default=8080)
 args = parser.parse_args()
 
+FPS = 10
 with dai.Pipeline() as p:
     remoteConnector = dai.RemoteConnection(
         webSocketPort=args.webSocketPort, httpPort=args.httpPort
     )
     left = p.create(dai.node.Camera)
     right = p.create(dai.node.Camera)
+    color = p.create(dai.node.Camera)
     stereo = p.create(dai.node.NeuralDepth)
     rgbd = p.create(dai.node.RGBD).build()
     align = None
 
-    left.build(dai.CameraBoardSocket.CAM_B)
-    right.build(dai.CameraBoardSocket.CAM_C)
-    out = None
-
+    color.build(sensorFps=FPS)
+    left.build(dai.CameraBoardSocket.CAM_B, sensorFps=FPS)
+    right.build(dai.CameraBoardSocket.CAM_C, sensorFps=FPS)
 
     # Linking
-    left.requestFullResolutionOutput().link(stereo.left)
-    right.requestFullResolutionOutput().link(stereo.right)
-    out = stereo.rectification.output1
+    stereo.build(left.requestFullResolutionOutput(), right.requestFullResolutionOutput(), dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
+    out = color.requestOutput((1280, 800), dai.ImgFrame.Type.RGB888i, enableUndistortion=True)
+    align = p.create(dai.node.ImageAlign)
+    stereo.depth.link(align.input)
+    out.link(align.inputAlignTo)
+    align.outputAligned.link(rgbd.inDepth)
     out.link(rgbd.inColor)
-    stereo.depth.link(rgbd.inDepth)
     remoteConnector.addTopic("pcl", rgbd.pcl, "common")
 
     p.start()
