@@ -159,7 +159,6 @@ int main() {
 
 	uvc_stream_set_event_handler(stream, &events);
 	uvc_stream_set_video_source(stream, src);
-	uvc_stream_init_uvc(stream, fc);
 
     // Create device
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
@@ -188,7 +187,8 @@ int main() {
     std::cout << "Press Ctrl+C to stop" << std::endl;
     depthai_control_pipeline_cb(0); // Pause the pipeline until UVC stream is started by the host
 
-    auto timeStart = std::chrono::steady_clock::now();
+    /* Register the UVC events and init it */
+    uvc_stream_init_uvc(stream, fc);
 
 	/* Main capture loop */
 	events_loop(&events);
