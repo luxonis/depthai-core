@@ -29,9 +29,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
           ,
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough {
-        neuralNetwork->passthrough
-    }
+          passthrough{neuralNetwork->passthrough}
 #endif
     {
         if(device) {
@@ -47,9 +45,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
           ,
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough {
-        neuralNetwork->passthrough
-    }
+          passthrough{neuralNetwork->passthrough}
 #endif
     {
         auto device = getDevice();
@@ -66,9 +62,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
           ,
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough {
-        neuralNetwork->passthrough
-    }
+          passthrough{neuralNetwork->passthrough}
 #endif
     {
         auto device = getDevice();
@@ -86,9 +80,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
 
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough {
-        neuralNetwork->passthrough
-    }
+          passthrough{neuralNetwork->passthrough}
 #endif
     {
         if(device) {
