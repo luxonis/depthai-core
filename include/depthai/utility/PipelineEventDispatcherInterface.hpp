@@ -27,12 +27,13 @@ class PipelineEventDispatcherInterface {
             dispatcher.startTrackedEvent(type, source, sequence);
         }
         ~BlockPipelineEvent() {
+            if(canceled || std::uncaught_exceptions() > 0) return;
             PipelineEvent event;
             event.type = type;
             event.source = source;
             event.sequenceNum = sequence;
             event.queueSize = queueSize;
-            if(!canceled) dispatcher.endTrackedEvent(type, source, sequence);
+            dispatcher.endTrackedEvent(type, source, sequence);
         }
         void cancel() {
             canceled = true;

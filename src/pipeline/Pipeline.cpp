@@ -670,12 +670,14 @@ void PipelineImpl::build() {
                 throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
             }
         }
+    }
 
-        // Run first build stage for all nodes
-        for(const auto& node : getAllNodes()) {
-            node->buildStage1();
-        }
+    // Run first build stage for all nodes
+    for(const auto& node : getAllNodes()) {
+        node->buildStage1();
+    }
 
+    if(pipelineOnHost) {
         // Create pipeline event aggregator node and link
         enablePipelineDebugging = enablePipelineDebugging || utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
         if(enablePipelineDebugging) {

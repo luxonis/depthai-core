@@ -17,7 +17,6 @@ class NodeEventAggregation {
    private:
     struct FpsMeasurement {
         std::chrono::steady_clock::time_point time;
-        int64_t sequenceNum;
     };
 
     std::shared_ptr<spdlog::async_logger> logger;
@@ -146,7 +145,7 @@ class NodeEventAggregation {
             eventsBuffer.add(durationEvent);
 
             timingsBuffer->add(durationEvent.durationUs);
-            if(event.type != PipelineEvent::Type::LOOP) fpsBuffer->add({durationEvent.startEvent.getTimestamp(), durationEvent.startEvent.getSequenceNum()});
+            if(event.type != PipelineEvent::Type::LOOP) fpsBuffer->add({durationEvent.startEvent.getTimestamp()});
 
             *ongoingEvent = std::nullopt;
 
@@ -220,7 +219,7 @@ class NodeEventAggregation {
             eventsBuffer.add(durationEvent);
 
             timingsBuffer->add(durationEvent.durationUs);
-            if(fpsBuffer) fpsBuffer->add({durationEvent.startEvent.getTimestamp(), durationEvent.startEvent.getSequenceNum()});
+            if(fpsBuffer) fpsBuffer->add({durationEvent.startEvent.getTimestamp()});
 
             // Start event
             ongoingEvents->add(event);
@@ -267,9 +266,9 @@ class NodeEventAggregation {
     inline void updateFpsStats(NodeState::Timing& timing, const utility::CircularBuffer<FpsMeasurement>& buffer) {
         if(buffer.size() < 2) return;
         auto timeDiff = std::chrono::duration_cast<std::chrono::microseconds>(buffer.last().time - buffer.first().time).count();
-        auto frameDiff = buffer.last().sequenceNum - buffer.first().sequenceNum;
-        if(timeDiff > 0 && buffer.last().sequenceNum > buffer.first().sequenceNum) {
-            timing.fps = frameDiff * (1e6f / (float)timeDiff);
+        auto numFrames = buffer.size() - 1;
+        if(timeDiff > 0) {
+            timing.fps = numFrames * (1e6f / (float)timeDiff);
         }
     }
 
