@@ -5,6 +5,7 @@
 #include <opencv2/core/base.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/imgproc.hpp>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -27,10 +28,10 @@ ImgDetections& ImgDetections::setSegmentationMask(cv::Mat mask) {
     return *this;
 }
 
-cv::Mat ImgDetections::getSegmentationMask(bool deepCopy) {
+std::optional<cv::Mat> ImgDetections::getSegmentationMask(bool deepCopy) {
     // Convert to cv::Mat. If deepCopy enabled, then copy pixel data, otherwise reference only
     if(data->getData().data() == nullptr) {
-        return cv::Mat();
+        return std::nullopt;
     }
     cv::Size size(getSegmentationMaskWidth(), getSegmentationMaskHeight());
     int type = CV_8UC1;
@@ -60,32 +61,44 @@ cv::Mat ImgDetections::getSegmentationMask(bool deepCopy) {
     return mat;
 }
 
-cv::Mat ImgDetections::getCvSegmentationMask(cv::MatAllocator* allocator) {
-    cv::Mat mask = getSegmentationMask();
+std::optional<cv::Mat> ImgDetections::getCvSegmentationMask(cv::MatAllocator* allocator) {
+    std::optional<cv::Mat> mask = getSegmentationMask();
+    if(!mask.has_value()) {
+        return std::nullopt;
+    }
     cv::Mat output;
     if(allocator != nullptr) {
         output.allocator = allocator;
     }
-    mask.copyTo(output);
+    (*mask).copyTo(output);
     return output;
 }
 
-cv::Mat ImgDetections::getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator) {
-    cv::Mat mask = getCvSegmentationMask(allocator);
+std::optional<cv::Mat> ImgDetections::getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator) {
+    std::optional<cv::Mat> mask = getCvSegmentationMask(allocator);
+    if(!mask.has_value()) {
+        return std::nullopt;
+    }
     cv::Mat classMask;
-    cv::compare(mask, index, classMask, cv::CmpTypes::CMP_EQ);
+    cv::compare(*mask, index, classMask, cv::CmpTypes::CMP_EQ);
 
     return classMask;
 }
 
-cv::Mat ImgDetections::getCvSegmentationMaskByClass(uint8_t class_index, cv::MatAllocator* allocator) {
-    cv::Mat mask = getCvSegmentationMask(allocator);
-    cv::Mat classMask = cv::Mat::zeros(mask.size(), CV_8UC1) + 255;
+std::optional<cv::Mat> ImgDetections::getCvSegmentationMaskByClass(uint8_t semanticClass, cv::MatAllocator* allocator) {
+    std::optional<cv::Mat> mask = getCvSegmentationMask(allocator);
+    if(!mask.has_value()) {
+        return std::nullopt;
+    }
+    cv::Mat classMask = cv::Mat::zeros((*mask).size(), CV_8UC1) + 255;
 
     for(uint8_t idx = 0; idx < detections.size(); idx++) {
-        if(detections[idx].label == class_index) {
-            cv::Mat indexMask = getCvSegmentationMaskByIndex(idx, allocator);
-            classMask.setTo(0, indexMask);
+        if(detections[idx].label == semanticClass) {
+            std::optional<cv::Mat> indexMask = getCvSegmentationMaskByIndex(idx, allocator);
+            if(!indexMask.has_value()) {
+                return std::nullopt;
+            }
+            classMask.setTo(0, *indexMask);
         }
     }
 

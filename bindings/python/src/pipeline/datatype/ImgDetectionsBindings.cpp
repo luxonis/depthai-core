@@ -141,7 +141,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
             DOC(dai, ImgDetections, getCvSegmentationMaskByIndex))
         .def(
             "getCvSegmentationMaskByClass",
-            [](ImgDetections& self, uint8_t class_index) { return self.getCvSegmentationMaskByClass(class_index, &g_numpyAllocator); },
+            [](ImgDetections& self, uint8_t semanticClass) { return self.getCvSegmentationMaskByClass(semanticClass, &g_numpyAllocator); },
             py::arg("semantic_class"),
             DOC(dai, ImgDetections, getCvSegmentationMaskByClass));
 #endif

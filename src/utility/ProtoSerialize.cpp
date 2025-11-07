@@ -5,6 +5,7 @@
 #include <google/protobuf/util/time_util.h>
 
 #include <cstdint>
+#include <optional>
 #include <queue>
 
 #include "depthai/schemas/Keypoints.pb.h"
@@ -446,8 +447,10 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
     }
 
     if(!metadataOnly) {
-        auto segMaskData = message->getMaskData();
-        imgDetections->set_data(segMaskData.data(), segMaskData.size());
+        std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
+        if(segMaskData) {
+            imgDetections->set_data((*segMaskData).data(), (*segMaskData).size());
+        }
     }
     return imgDetections;
 }

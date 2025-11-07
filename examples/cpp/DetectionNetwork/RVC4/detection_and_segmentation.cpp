@@ -109,8 +109,7 @@ int main() {
 
                 int segWidth = inDet->getSegmentationMaskWidth();
                 int segHeight = inDet->getSegmentationMaskHeight();
-
-                cv::Mat segmentationMask = cv::Mat::zeros(segHeight, segWidth, CV_8UC1);
+                std::optional<cv::Mat> segmentationMask;
 
                 if(filteredLabel == -1) {
                     segmentationMask = inDet->getSegmentationMask();
@@ -122,15 +121,17 @@ int main() {
                         detections.end());
                 }
 
-                cv::Mat lut(1, 256, CV_8U);
-                for(int i = 0; i < 256; ++i) lut.at<uchar>(i) = (i == 255) ? 255 : cv::saturate_cast<uchar>(i * 25);
-                cv::Mat scaledMask;
-                cv::LUT(segmentationMask, lut, scaledMask);
+                if(segmentationMask) {
+                    cv::Mat lut(1, 256, CV_8U);
+                    for(int i = 0; i < 256; ++i) lut.at<uchar>(i) = (i == 255) ? 255 : cv::saturate_cast<uchar>(i * 25);
+                    cv::Mat scaledMask;
+                    cv::LUT(*segmentationMask, lut, scaledMask);
 
-                cv::Mat coloredMask;
-                cv::applyColorMap(scaledMask, coloredMask, cv::COLORMAP_JET);
-                frame.copyTo(coloredMask, (scaledMask == 255));
-                cv::addWeighted(frame, 0.7, coloredMask, 0.3, 0, frame);
+                    cv::Mat coloredMask;
+                    cv::applyColorMap(scaledMask, coloredMask, cv::COLORMAP_JET);
+                    frame.copyTo(coloredMask, (scaledMask == 255));
+                    cv::addWeighted(frame, 0.7, coloredMask, 0.3, 0, frame);
+                }
 
                 // Display detections
                 for(const auto& detection : detections) {
