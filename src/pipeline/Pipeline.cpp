@@ -671,6 +671,11 @@ void PipelineImpl::build() {
             }
         }
 
+        // Run first build stage for all nodes
+        for(const auto& node : getAllNodes()) {
+            node->buildStage1();
+        }
+
         // Create pipeline event aggregator node and link
         enablePipelineDebugging = enablePipelineDebugging || utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
         if(enablePipelineDebugging) {
@@ -733,10 +738,6 @@ void PipelineImpl::build() {
     isBuild = true;
 
     // Go through the build stages sequentially
-    for(const auto& node : getAllNodes()) {
-        node->buildStage1();
-    }
-
     for(const auto& node : getAllNodes()) {
         node->buildStage2();
     }

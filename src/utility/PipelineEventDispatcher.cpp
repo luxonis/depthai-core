@@ -45,8 +45,8 @@ void PipelineEventDispatcher::setNodeId(int64_t id) {
 }
 void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
     if(!sendEvents) return;
-    checkNodeId();
     if(blacklist(type, source)) return;
+    checkNodeId();
 
     std::lock_guard<std::mutex> lock(mutex);
 
@@ -76,8 +76,8 @@ void PipelineEventDispatcher::startCustomEvent(const std::string& source) {
 }
 void PipelineEventDispatcher::endEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize) {
     if(!sendEvents) return;
-    checkNodeId();
     if(blacklist(type, source)) return;
+    checkNodeId();
 
     std::lock_guard<std::mutex> lock(mutex);
 
@@ -114,8 +114,8 @@ void PipelineEventDispatcher::endCustomEvent(const std::string& source) {
 }
 void PipelineEventDispatcher::startTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) {
     if(!sendEvents) return;
-    checkNodeId();
     if(blacklist(type, source)) return;
+    checkNodeId();
 
     std::lock_guard<std::mutex> lock(mutex);
 
@@ -135,8 +135,8 @@ void PipelineEventDispatcher::startTrackedEvent(PipelineEvent::Type type, const 
 }
 void PipelineEventDispatcher::endTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) {
     if(!sendEvents) return;
-    checkNodeId();
     if(blacklist(type, source)) return;
+    checkNodeId();
 
     std::lock_guard<std::mutex> lock(mutex);
 
@@ -156,8 +156,8 @@ void PipelineEventDispatcher::endTrackedEvent(PipelineEvent::Type type, const st
 }
 void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::string& source) {
     if(!sendEvents) return;
-    checkNodeId();
     if(blacklist(type, source)) return;
+    checkNodeId();
 
     std::lock_guard<std::mutex> lock(mutex);
 
@@ -187,8 +187,8 @@ void PipelineEventDispatcher::pingCustomEvent(const std::string& source) {
 }
 void PipelineEventDispatcher::pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize) {
     if(!sendEvents) return;
-    checkNodeId();
     if(blacklist(PipelineEvent::Type::INPUT, source)) return;
+    checkNodeId();
 
     std::lock_guard<std::mutex> lock(mutex);
 
