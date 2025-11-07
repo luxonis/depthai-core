@@ -4,9 +4,6 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // standard
-#include <fstream>
-
-// shared
 #include <depthai/nn_archive/NNArchive.hpp>
 #include <depthai/nn_archive/NNArchiveVersionedConfig.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
@@ -108,7 +105,12 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setInputImageSize(std::tuple<int, int> size);
 
     /**
-     * Sets NN Family to parse
+     * Sets NN Family to parse. Possible values are:
+     *
+     * DetectionNetworkType::YOLO - 0
+     * DetectionNetworkType::MOBILENET - 1
+     *
+     * @warning If NN Family is set manually, user must ensure that it matches the actual model being used.
      */
     void setNNFamily(DetectionNetworkType type);
 
@@ -129,52 +131,134 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      */
     float getConfidenceThreshold() const;
 
-    /// Set num classes
+    /**
+     * Set number of classes. This will clear any previously set class names.
+     * @param numClasses Number of classes
+     */
     void setNumClasses(int numClasses);
+
+    /**
+     * Set class names. This will clear any previously set number of classes.
+     * @param classes Vector of class names
+     */
     void setClasses(const std::vector<std::string>& classes);
-    /// Set coordianate size
+
+    /*
+     * Sets the number of coordinates per bounding box.
+     * @param coordinates Number of coordinates. Default is 4
+     */
     void setCoordinateSize(int coordinates);
-    /// Set anchors
+
+    /**
+     * Set anchors for anchor-based yolo models
+     * @param anchors Flattened vector of anchors
+     * @warning This method is deprecated, use setAnchorsV2 instead.
+     */
     void setAnchors(std::vector<float> anchors);
-    /// Set anchor masks
+
+    /**
+     * Set anchor masks for anchor-based yolo models
+     * @param anchorMasks Map of anchor masks
+     */
     void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
-    /// Set anchors with masks
+
+    /**
+     * Set anchors for anchor-based yolo models (v2)
+     * @param anchors 3D vector of anchors [layer][anchor][dim]
+     */
     void setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors);
-    /// Set Iou threshold
+
+    /**
+     * Set IOU threshold for non-maxima suppression
+     * @param thresh IOU threshold
+     */
     void setIouThreshold(float thresh);
 
+    /**
+     * Set subtype for the parser.
+     * @param subtype Subtype string, currently supported subtypes are:
+     * yolov6r1, yolov6r2 yolov8n, yolov6, yolov8, yolov10, yolov11, yolov3, yolov3-tiny, yolov5, yolov7, yolo-p, yolov5-u
+     */
     void setSubtype(const std::string& subtype);
 
+    /**
+     * Enable/disable keypoints decoding. If enabled, number of keypoints must also be set.
+     */
     void setDecodeKeypoints(bool decode);
 
+    /**
+     * Enable/disable segmentation mask decoding.
+     */
     void setDecodeSegmentation(bool decode);
 
+    /**
+     * Set number of keypoints to decode. Automatically enables keypoints decoding.
+     */
     void setNKeypoints(int nKeypoints);
 
+    /**
+     * Set strides for yolo models
+     */
     void setStrides(const std::vector<int>& strides);
 
-    /// Get num classes
+    /**
+     * Get number of classes to decode.
+     */
     int getNumClasses() const;
+
+    /**
+     * Get class names to decode.
+     */
     std::optional<std::vector<std::string>> getClasses() const;
-    /// Get coordianate size
+
+    /**
+     * Get number of coordinates per bounding box.
+     */
     int getCoordinateSize() const;
-    /// Get anchors
+
+    /**
+     * Get anchors for anchor-based yolo models
+     */
     std::vector<float> getAnchors() const;
-    /// Get anchor masks
+
+    /**
+     * Get anchor masks for anchor-based yolo models
+     */
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
-    /// Get Iou threshold
+
+    /**
+     * Get IOU threshold for non-maxima suppression
+     */
     float getIouThreshold() const;
 
+    /**
+     * Get subtype for the parser.
+     */
     std::string getSubtype() const;
 
+    /**
+     * Get whether keypoints decoding is enabled.
+     */
     bool getDecodeKeypoints() const;
 
+    /**
+     * Get whether segmentation mask decoding is enabled.
+     */
     bool getDecodeSegmentation() const;
 
+    /**
+     * Get number of keypoints to decode.
+     */
     int getNKeypoints() const;
 
+    /**
+     * Get strides for yolo models
+     */
     std::vector<int> getStrides() const;
 
+    /**
+     * Get NNArchive set for this node
+     */
     const NNArchiveVersionedConfig& getNNArchiveVersionedConfig() const;
 
    private:

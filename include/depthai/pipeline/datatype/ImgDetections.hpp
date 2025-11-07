@@ -32,7 +32,6 @@
 namespace dai {
 
 struct ImgDetection {
-   public:
     uint32_t label = 0;
     std::string labelName;
     float confidence = 0.f;
@@ -233,19 +232,21 @@ class ImgDetections : public Buffer, public ProtoSerializable {
 
     /**
      * Retrieves data as cv::Mat with specified width and height
-     *
+     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
      */
     cv::Mat getCvSegmentationMask(cv::MatAllocator* allocator = nullptr);
 
     /**
      * Retrieves data by instance index
-     *
+     * @param index Instance index
+     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
      */
     cv::Mat getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
 
     /**
      * Retrieves data by semantic class
-     *
+     * @param semantic_class Semantic class index
+     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
      */
     cv::Mat getCvSegmentationMaskByClass(uint8_t semantic_class, cv::MatAllocator* allocator = nullptr);
 

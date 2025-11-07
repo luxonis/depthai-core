@@ -72,7 +72,7 @@ message RotatedRect {
     float angle = 3;
 }
 
-message KeypointList {
+message KeypointsList {
     repeated Keypoint keypoints = 1;
     repeated Edge edges = 2;
 }

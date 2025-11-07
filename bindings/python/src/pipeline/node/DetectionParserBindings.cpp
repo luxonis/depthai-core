@@ -65,11 +65,23 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, DetectionParser, setAnchors, 2))
         .def("setAnchorMasks", &DetectionParser::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, DetectionParser, setAnchorMasks))
         .def("setIouThreshold", &DetectionParser::setIouThreshold, py::arg("thresh"), DOC(dai, node, DetectionParser, setIouThreshold))
+        .def("setSubtype", &DetectionParser::setSubtype, py::arg("subtype"), DOC(dai, node, DetectionParser, setSubtype))
+        .def("setDecodeKeypoints", &DetectionParser::setDecodeKeypoints, py::arg("decode"), DOC(dai, node, DetectionParser, setDecodeKeypoints))
+        .def("setDecodeSegmentation", &DetectionParser::setDecodeSegmentation, py::arg("decode"), DOC(dai, node, DetectionParser, setDecodeSegmentation))
+        .def("setNKeypoints", &DetectionParser::setNKeypoints, py::arg("nKeypoints"), DOC(dai, node, DetectionParser, setNKeypoints))
+        .def("setClasses", &DetectionParser::setClasses, py::arg("classes"), DOC(dai, node, DetectionParser, setClasses))
+        .def("setStrides", &DetectionParser::setStrides, py::arg("strides"), DOC(dai, node, DetectionParser, setStrides))
         .def("getNumClasses", &DetectionParser::getNumClasses, DOC(dai, node, DetectionParser, getNumClasses))
+        .def("getClasses", &DetectionParser::getClasses, DOC(dai, node, DetectionParser, getClasses))
         .def("getCoordinateSize", &DetectionParser::getCoordinateSize, DOC(dai, node, DetectionParser, getCoordinateSize))
         .def("getAnchors", &DetectionParser::getAnchors, DOC(dai, node, DetectionParser, getAnchors))
         .def("getAnchorMasks", &DetectionParser::getAnchorMasks, DOC(dai, node, DetectionParser, getAnchorMasks))
         .def("getIouThreshold", &DetectionParser::getIouThreshold, DOC(dai, node, DetectionParser, getIouThreshold))
+        .def("getSubtype", &DetectionParser::getSubtype, DOC(dai, node, DetectionParser, getSubtype))
+        .def("getNkeypoints", &DetectionParser::getNKeypoints, DOC(dai, node, DetectionParser, getNKeypoints))
+        .def("getDecodeKeypoints", &DetectionParser::getDecodeKeypoints, DOC(dai, node, DetectionParser, getDecodeKeypoints))
+        .def("getDecodeSegmentation", &DetectionParser::getDecodeSegmentation, DOC(dai, node, DetectionParser, getDecodeSegmentation))
+        .def("getStrides", &DetectionParser::getStrides, DOC(dai, node, DetectionParser, getStrides))
         .def("build", &DetectionParser::build, DOC(dai, node, DetectionParser, build));
     daiNodeModule.attr("DetectionParser").attr("Properties") = detectionParserProperties;
 }

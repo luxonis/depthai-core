@@ -23,35 +23,45 @@ class Keypoints : public Buffer, public ProtoSerializable {
     KeypointsList keypointsList;
 
    public:
-    /**
-     * Constructs Keypoints message.
-     */
     Keypoints() = default;
     virtual ~Keypoints() = default;
-
-    // Keypoints
     std::optional<ImgTransformation> transformation;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::Keypoints;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    /*
-     * Sets the keypoints list.
+    /**
+     * Sets the keypoints.
      * @param keypoints list of Keypoint objects to set.
      * @note This will clear any existing keypoints and edges.
      */
-
     void setKeypoints(const std::vector<Keypoint>& keypoints);
 
+    /**
+     * Sets the keypoints from a vector of 3D points.
+     * @param keypoints vector of Point3f objects to set as keypoints.
+     * @note This will clear any existing keypoints and edges.
+     */
     void setKeypoints(const std::vector<Point3f>& keypoints);
 
+    /**
+     * Sets the keypoints from a vector of 2D points.
+     * @param keypoints vector of Point2f objects to set as keypoints.
+     * @note This will clear any existing keypoints and edges.
+     */
     void setKeypoints(const std::vector<Point2f>& keypoints);
 
-    void setKeypoints(const std::vector<Keypoint>& keypoints, const std::vector<std::array<uint32_t, 2>>& edges);
+    /**
+     * Sets the keypoints list along with edges.
+     * @param keypoints list of Keypoint objects to set.
+     * @param edges list of edges, each edge is a pair of indices into the key
+     */
+    void setKeypoints(const std::vector<Keypoint>& keypoints, const std::vector<Edge>& edges);
 
-    void setEdges(const std::vector<std::array<uint32_t, 2>>& edges);
+    /**
+     * Sets the edges between the saved keypoints.
+     * @param edges list of valid edges.
+     */
+    void setEdges(const std::vector<Edge>& edges);
 
     /*
      * Returns a list of Keypoint objects.
@@ -61,7 +71,7 @@ class Keypoints : public Buffer, public ProtoSerializable {
     /*
      * Returns a list of edges, each edge is a pair of indices.
      */
-    std::vector<std::array<uint32_t, 2>> getEdges() const;
+    std::vector<Edge> getEdges() const;
 
     /*
      * Returns a list of the coordinates of the keypoints as Point3f objects.

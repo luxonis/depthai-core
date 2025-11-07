@@ -16,12 +16,8 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
-// #include "spdlog/spdlog.h"
-
 void bind_keypoints(pybind11::module& m, void* pCallstack) {
     using namespace dai;
-
-    // py::class_<Keypoints, Py<Keypoints>, Buffer, std::shared_ptr<Keypoints>> keypoints(m, "Keypoints", DOC(dai, Keypoints));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -49,8 +45,7 @@ void bind_keypoints(pybind11::module& m, void* pCallstack) {
              py::arg("edges"))
         .def("setEdges", &dai::Keypoints::setEdges, py::arg("edges"))
         .def("getKeypoints", &Keypoints::getKeypoints, DOC(dai, Keypoints, getKeypoints))
-        .def(
-            "getEdges", [](Keypoints& msg) { return msg.getEdges(); }, DOC(dai, Keypoints, getEdges))
+        .def("getEdges", &dai::Keypoints::getEdges, DOC(dai, Keypoints, getEdges))
         .def("getCoordinates3f", &Keypoints::getCoordinates3f, DOC(dai, Keypoints, getCoordinates3f))
         .def("getCoordinates2f", &Keypoints::getCoordinates2f, DOC(dai, Keypoints, getCoordinates2f))
         .def("getTimestamp", &Keypoints::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))

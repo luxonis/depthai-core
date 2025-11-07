@@ -76,11 +76,11 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getKeypoints", &ImgDetection::getKeypoints, DOC(dai, ImgDetection, getKeypoints))
         .def("setEdges", &ImgDetection::setEdges, py::arg("edges"))
         .def("getEdges", &ImgDetection::getEdges, DOC(dai, ImgDetection, getEdges))
-        .def("centerX", &dai::ImgDetection::getCenterX)
-        .def("centerY", &dai::ImgDetection::getCenterY)
-        .def("width", &dai::ImgDetection::getWidth)
-        .def("height", &dai::ImgDetection::getHeight)
-        .def("angle", &dai::ImgDetection::getAngle);
+        .def("getCenterX", &dai::ImgDetection::getCenterX)
+        .def("getCenterY", &dai::ImgDetection::getCenterY)
+        .def("getWidth", &dai::ImgDetection::getWidth)
+        .def("getHeight", &dai::ImgDetection::getHeight)
+        .def("getAngle", &dai::ImgDetection::getAngle);
 
     // rawImgDetections
     //     .def(py::init<>())
