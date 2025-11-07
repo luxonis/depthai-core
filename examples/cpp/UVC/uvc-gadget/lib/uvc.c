@@ -379,9 +379,10 @@ static void uvc_events_process(void *d)
 	if (ret < 0) {
 		printf("VIDIOC_DQEVENT failed: %s (%d)\n", strerror(errno),
 			errno);
-		/* Serious error, exit by force, but this leaks memory. Need to fix this.
+		/* Serious error, gracefully exit.
 		*  Usually happens when UDC controller is unbound (eg. on `adb root` command).
 		*/
+		uvc_stream_enable(dev->stream, 0);
 		exit(EXIT_FAILURE);
 	}
 
