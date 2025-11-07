@@ -112,47 +112,51 @@ void PipelineEventDispatcher::endOutputEvent(const std::string& source) {
 void PipelineEventDispatcher::endCustomEvent(const std::string& source) {
     endEvent(PipelineEvent::Type::CUSTOM, source, std::nullopt);
 }
-void PipelineEventDispatcher::startTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) {
+void PipelineEventDispatcher::startTrackedEvent(PipelineEvent event) {
     if(!sendEvents) return;
-    if(blacklist(type, source)) return;
+    if(blacklist(event.type, event.source)) return;
     checkNodeId();
 
     std::lock_guard<std::mutex> lock(mutex);
 
-    auto& event = events[makeKey(type, source)];
-    event.event.setTimestamp(std::chrono::steady_clock::now());
-    event.event.tsDevice = event.event.ts;
-    event.event.sequenceNum = sequenceNum;
-    event.event.nodeId = nodeId;
-    event.event.interval = PipelineEvent::Interval::START;
-    event.event.type = type;
-    event.event.source = source;
-    event.ongoing = false;
+    event.setTimestamp(std::chrono::steady_clock::now());
+    event.tsDevice = event.ts;
+    event.nodeId = nodeId;
+    event.interval = PipelineEvent::Interval::START;
 
     if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(event.event));
+        out->send(std::make_shared<dai::PipelineEvent>(event));
+    }
+}
+void PipelineEventDispatcher::startTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) {
+    PipelineEvent event;
+    event.type = type;
+    event.source = source;
+    event.sequenceNum = sequenceNum;
+    startTrackedEvent(event);
+}
+void PipelineEventDispatcher::endTrackedEvent(PipelineEvent event) {
+    if(!sendEvents) return;
+    if(blacklist(event.type, event.source)) return;
+    checkNodeId();
+
+    std::lock_guard<std::mutex> lock(mutex);
+
+    event.setTimestamp(std::chrono::steady_clock::now());
+    event.tsDevice = event.ts;
+    event.nodeId = nodeId;
+    event.interval = PipelineEvent::Interval::END;
+
+    if(out) {
+        out->send(std::make_shared<dai::PipelineEvent>(event));
     }
 }
 void PipelineEventDispatcher::endTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) {
-    if(!sendEvents) return;
-    if(blacklist(type, source)) return;
-    checkNodeId();
-
-    std::lock_guard<std::mutex> lock(mutex);
-
-    auto& event = events[makeKey(type, source)];
-    event.event.setTimestamp(std::chrono::steady_clock::now());
-    event.event.tsDevice = event.event.ts;
-    event.event.sequenceNum = sequenceNum;
-    event.event.nodeId = nodeId;
-    event.event.interval = PipelineEvent::Interval::END;
-    event.event.type = type;
-    event.event.source = source;
-    event.ongoing = false;
-
-    if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(event.event));
-    }
+    PipelineEvent event;
+    event.type = type;
+    event.source = source;
+    event.sequenceNum = sequenceNum;
+    endTrackedEvent(event);
 }
 void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::string& source) {
     if(!sendEvents) return;

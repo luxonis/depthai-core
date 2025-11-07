@@ -241,11 +241,17 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
     //         }
     //     }
     // }
-    if(pipelineEventDispatcher) pipelineEventDispatcher->startOutputEvent(getName());
-    for(auto& messageQueue : connectedInputs) {
-        messageQueue->send(msg);
+    auto sendToInputs = [this, &msg]() {
+        for(auto& messageQueue : connectedInputs) {
+            messageQueue->send(msg);
+        }
+    };
+    if(pipelineEventDispatcher) {
+        auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::OUTPUT, getName());
+        sendToInputs();
+    } else {
+        sendToInputs();
     }
-    if(pipelineEventDispatcher) pipelineEventDispatcher->endOutputEvent(getName());
 }
 
 bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
@@ -265,11 +271,20 @@ bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     //         }
     //     }
     // }
-    if(pipelineEventDispatcher) pipelineEventDispatcher->startOutputEvent(getName());
-    for(auto& messageQueue : connectedInputs) {
-        success &= messageQueue->trySend(msg);
+    auto sendToInputs = [this, &msg, &success]() {
+        for(auto& messageQueue : connectedInputs) {
+            success &= messageQueue->trySend(msg);
+        }
+    };
+    if(pipelineEventDispatcher) {
+        auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::OUTPUT, getName());
+        sendToInputs();
+        if(!success) {
+            blockEvent.cancel();
+        }
+    } else {
+        sendToInputs();
     }
-    if(pipelineEventDispatcher && success) pipelineEventDispatcher->endOutputEvent(getName());
 
     return success;
 }
