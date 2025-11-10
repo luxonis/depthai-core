@@ -8,12 +8,10 @@
 #include <optional>
 #include <queue>
 
-#include "depthai/schemas/Keypoints.pb.h"
 #include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/schemas/common.pb.h"
 #include "pipeline/datatype/DatatypeEnum.hpp"
 #include "pipeline/datatype/ImgDetections.hpp"
-#include "pipeline/datatype/Keypoints.hpp"
 
 namespace dai {
 namespace utility {
@@ -172,7 +170,6 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
-        case DatatypeEnum::Keypoints:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
@@ -423,10 +420,10 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
             proto::common::KeypointsList* protoKeypoints = imgDetection->mutable_keypoints();
             for(const auto& keypoint : keypointsVec) {
                 auto* protoKeypoint = protoKeypoints->add_keypoints();
-                proto::common::Point3f* coords = protoKeypoint->mutable_coordinates();
-                coords->set_x(keypoint.coordinates.x);
-                coords->set_y(keypoint.coordinates.y);
-                coords->set_z(keypoint.coordinates.z);
+                proto::common::Point3f* coords = protoKeypoint->mutable_imagecoordinates();
+                coords->set_x(keypoint.imageCoordinates.x);
+                coords->set_y(keypoint.imageCoordinates.y);
+                coords->set_z(keypoint.imageCoordinates.z);
                 protoKeypoint->set_confidence(keypoint.confidence);
                 protoKeypoint->set_label(keypoint.label);
             }
@@ -453,37 +450,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
         }
     }
     return imgDetections;
-}
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const Keypoints* message, bool) {
-    auto keypointsMsg = std::make_unique<proto::keypoints::Keypoints>();
-
-    keypointsMsg->set_sequencenum(message->sequenceNum);
-    proto::common::Timestamp* ts = keypointsMsg->mutable_ts();
-    ts->set_sec(message->ts.sec);
-    ts->set_nsec(message->ts.nsec);
-    proto::common::Timestamp* tsDevice = keypointsMsg->mutable_tsdevice();
-    tsDevice->set_sec(message->tsDevice.sec);
-    tsDevice->set_nsec(message->tsDevice.nsec);
-
-    auto keypointsList = keypointsMsg->mutable_keypointslist();
-
-    for(const auto& keypoint : message->getKeypoints()) {
-        auto* protoKeypoint = keypointsList->add_keypoints();
-        proto::common::Point3f* coords = protoKeypoint->mutable_coordinates();
-        coords->set_x(keypoint.coordinates.x);
-        coords->set_y(keypoint.coordinates.y);
-        coords->set_z(keypoint.coordinates.z);
-        protoKeypoint->set_confidence(keypoint.confidence);
-        protoKeypoint->set_label(keypoint.label);
-    }
-    for(const auto& edge : message->getEdges()) {
-        auto* protoEdge = keypointsList->add_edges();
-        protoEdge->set_src(edge[0]);
-        protoEdge->set_dst(edge[1]);
-    }
-
-    return keypointsMsg;
 }
 
 template <>

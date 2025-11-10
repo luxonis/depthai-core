@@ -5,6 +5,7 @@
 #include "pipeline/CommonBindings.hpp"
 
 // depthai
+#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "ndarray_converter.h"
 
@@ -115,10 +116,11 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
             "detections",
             [](ImgDetections& det) { return &det.detections; },
             [](ImgDetections& det, std::vector<ImgDetection> val) { det.detections = val; },
-            DOC(dai, ImgDetections, detections))
-        .def("getTimestamp", &ImgDetections::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", &ImgDetections::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
-        .def("getSequenceNum", &ImgDetections::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
+            DOC(dai, ImgDetections, detections),
+            py::return_value_policy::reference_internal)
+        .def("getTimestamp", &Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
+        .def("getTimestampDevice", &Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getSequenceNum", &Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](ImgDetections& msg) { return msg.transformation; })
         .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
         .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetections, getSegmentationMaskWidth))

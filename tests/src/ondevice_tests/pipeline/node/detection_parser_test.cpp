@@ -146,7 +146,7 @@ void validateDetections(const std::shared_ptr<dai::ImgDetections>& detections, c
                 bool keypointsMatch = true;
                 for(std::size_t kpIdx = 0; kpIdx < gt.keypoints.size(); ++kpIdx) {
                     const auto& gtKp = gt.keypoints.at(kpIdx);
-                    const auto& detKp = detKeypoints.at(kpIdx).coordinates;
+                    const auto& detKp = detKeypoints.at(kpIdx).imageCoordinates;
 
                     if(std::fabs(detKp.x - gtKp.x) > tolerance || std::fabs(detKp.y - gtKp.y) > tolerance) {
                         keypointsMatch = false;

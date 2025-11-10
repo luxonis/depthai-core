@@ -332,6 +332,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImageAlignConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
+    src/pipeline/datatype/ImgDetectionsT.cpp
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
@@ -343,7 +344,6 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/AprilTagConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
     src/pipeline/datatype/IMUData.cpp
-    src/pipeline/datatype/Keypoints.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
@@ -422,7 +422,6 @@ endif()
 
 set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp
-    src/opencv/ImgDetections.cpp
     src/pipeline/node/host/Display.cpp
     src/pipeline/node/host/HostCamera.cpp
     src/pipeline/node/host/Record.cpp

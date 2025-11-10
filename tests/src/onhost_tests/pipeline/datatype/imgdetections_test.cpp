@@ -91,9 +91,9 @@ TEST_CASE("ImgDetection keypoints management", "[ImgDetections][Keypoints]") {
         auto restored = detection.getKeypoints();
         REQUIRE(restored.size() == baseKeypoints.size());
         for(std::size_t i = 0; i < restored.size(); ++i) {
-            REQUIRE(restored[i].coordinates.x == Catch::Approx(baseKeypoints[i].coordinates.x));
-            REQUIRE(restored[i].coordinates.y == Catch::Approx(baseKeypoints[i].coordinates.y));
-            REQUIRE(restored[i].coordinates.z == Catch::Approx(baseKeypoints[i].coordinates.z));
+            REQUIRE(restored[i].imageCoordinates.x == Catch::Approx(baseKeypoints[i].imageCoordinates.x));
+            REQUIRE(restored[i].imageCoordinates.y == Catch::Approx(baseKeypoints[i].imageCoordinates.y));
+            REQUIRE(restored[i].imageCoordinates.z == Catch::Approx(baseKeypoints[i].imageCoordinates.z));
             REQUIRE(restored[i].confidence == Catch::Approx(baseKeypoints[i].confidence));
         }
         REQUIRE(detection.getEdges() == edges);
@@ -139,9 +139,9 @@ TEST_CASE("ImgDetection keypoints management", "[ImgDetections][Keypoints]") {
         auto restored = detection.getKeypoints();
         REQUIRE(restored.size() == coords.size());
         for(std::size_t i = 0; i < restored.size(); ++i) {
-            REQUIRE(restored[i].coordinates.x == Catch::Approx(coords[i].x));
-            REQUIRE(restored[i].coordinates.y == Catch::Approx(coords[i].y));
-            REQUIRE(restored[i].coordinates.z == Catch::Approx(coords[i].z));
+            REQUIRE(restored[i].imageCoordinates.x == Catch::Approx(coords[i].x));
+            REQUIRE(restored[i].imageCoordinates.y == Catch::Approx(coords[i].y));
+            REQUIRE(restored[i].imageCoordinates.z == Catch::Approx(coords[i].z));
         }
         REQUIRE(detection.getEdges().empty());
     }
@@ -153,9 +153,9 @@ TEST_CASE("ImgDetection keypoints management", "[ImgDetections][Keypoints]") {
 
         auto restored = detection.getKeypoints();
         REQUIRE(restored.size() == coords.size());
-        REQUIRE(restored[0].coordinates.x == Catch::Approx(coords[0].x));
-        REQUIRE(restored[0].coordinates.y == Catch::Approx(coords[0].y));
-        REQUIRE(restored[0].coordinates.z == Catch::Approx(0.0F));
+        REQUIRE(restored[0].imageCoordinates.x == Catch::Approx(coords[0].x));
+        REQUIRE(restored[0].imageCoordinates.y == Catch::Approx(coords[0].y));
+        REQUIRE(restored[0].imageCoordinates.z == Catch::Approx(0.0F));
         REQUIRE(detection.getEdges().empty());
     }
 }
@@ -173,11 +173,11 @@ TEST_CASE("KeypointsList utilities", "[ImgDetections][KeypointsList]") {
         REQUIRE(restored.size() == keypoints.size());
         REQUIRE(list.getEdges().empty());
 
-        auto coords3 = list.getCoordinates3f();
+        auto coords3 = list.getPoints3f();
         REQUIRE(coords3.size() == keypoints.size());
         REQUIRE(coords3[0].z == Catch::Approx(1.0F));
 
-        auto coords2 = list.getCoordinates2f();
+        auto coords2 = list.getPoints2f();
         REQUIRE(coords2.size() == keypoints.size());
         REQUIRE(coords2[0].x == Catch::Approx(0.0F));
         REQUIRE(coords2[0].y == Catch::Approx(0.5F));
@@ -212,7 +212,7 @@ TEST_CASE("KeypointsList utilities", "[ImgDetections][KeypointsList]") {
         std::vector<Point2f> coords2{{0.25F, 0.75F}};
         list.setKeypoints(coords2);
         REQUIRE(list.getKeypoints().size() == 1);
-        REQUIRE(list.getKeypoints()[0].coordinates.z == Catch::Approx(0.0F));
+        REQUIRE(list.getKeypoints()[0].imageCoordinates.z == Catch::Approx(0.0F));
         REQUIRE(list.getEdges().empty());
     }
 }

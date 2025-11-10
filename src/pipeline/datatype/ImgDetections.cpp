@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "depthai/common/KeypointsList.hpp"
+#include "depthai/common/Keypoint.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/common/RotatedRect.hpp"
@@ -141,103 +141,6 @@ float ImgDetection::getAngle() const noexcept {
 }
 
 // ImgDetections functions
-
-size_t ImgDetections::getSegmentationMaskWidth() const {
-    return segmentationMaskWidth;
-}
-
-size_t ImgDetections::getSegmentationMaskHeight() const {
-    return segmentationMaskHeight;
-}
-
-void ImgDetections::setMask(const std::vector<std::uint8_t>& mask, size_t width, size_t height) {
-    if(mask.size() != width * height) {
-        throw std::runtime_error("SegmentationMask: data size does not match width*height");
-    }
-    setData(mask);
-    this->segmentationMaskWidth = width;
-    this->segmentationMaskHeight = height;
-}
-
-std::optional<std::vector<std::uint8_t>> ImgDetections::getMaskData() const {
-    const auto& d = data->getData();
-    std::vector<std::uint8_t> vecMask(d.begin(), d.end());
-    if(vecMask.empty()) {
-        return std::nullopt;
-    }
-    return vecMask;
-}
-
-std::optional<dai::ImgFrame> ImgDetections::getSegmentationMaskAsImgFrame() const {
-    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
-    if(!maskData) {
-        return std::nullopt;
-    }
-    dai::ImgFrame img;
-    img.setWidth(segmentationMaskWidth);
-    img.setHeight(segmentationMaskHeight);
-    img.setType(dai::ImgFrame::Type::GRAY8);
-    img.setSequenceNum(sequenceNum);
-    img.setTimestamp(getTimestamp());
-    img.setTimestampDevice(getTimestampDevice());
-    img.setData(*maskData);
-
-    return img;
-}
-
-// Optional - xtensor support
-#ifdef DEPTHAI_XTENSOR_SUPPORT
-using XArray2D = xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>;
-
-std::optional<XArray2D> ImgDetections::getTensorSegmentationMask() const {
-    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
-    if(!maskData) {
-        return std::nullopt;
-    }
-
-    size_t dataSize = (*maskData).size();
-    if(dataSize != segmentationMaskWidth * segmentationMaskHeight) {
-        throw std::runtime_error("SegmentationMask: data size does not match width*height");
-    }
-
-    std::array<std::size_t, 2> shape{segmentationMaskHeight, segmentationMaskWidth};
-    auto result = XArray2D::from_shape(shape);
-    std::copy(maskData->cbegin(), maskData->cend(), result.begin());
-    return result;
-}
-
-ImgDetections& ImgDetections::setTensorSegmentationMask(XArray2D mask) {
-    data->setSize(mask.size());
-    std::vector<uint8_t> dataVec(mask.begin(), mask.end());
-    setData(dataVec);
-    this->segmentationMaskWidth = mask.shape()[1];
-    this->segmentationMaskHeight = mask.shape()[0];
-    return *this;
-}
-
-std::optional<XArray2D> ImgDetections::getTensorSegmentationMaskByIndex(std::uint8_t index) const {
-    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
-    if(!maskData) {
-        return std::nullopt;
-    }
-
-    if((*maskData).size() != segmentationMaskWidth * segmentationMaskHeight) {
-        throw std::runtime_error("SegmentationMask: data size does not match width*height");
-    }
-    std::array<std::size_t, 2> shape{segmentationMaskHeight, segmentationMaskWidth};
-    auto result = XArray2D::from_shape(shape);
-    auto dstIt = result.begin();
-    auto srcIt = maskData->cbegin();
-    for(; dstIt != result.end(); ++dstIt, ++srcIt) {
-        *dstIt = static_cast<std::uint8_t>(*srcIt == index);
-    }
-
-    return result;
-}
-
-#endif
-
-ImgDetections::~ImgDetections() = default;
 
 void ImgDetections::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
