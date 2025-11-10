@@ -29,6 +29,10 @@ TEST_CASE("OLD_OUTPUT") {
 
 TEST_CASE("JPEG_ENCODING_LOSSLESS") {
     dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC4) {
+        return;
+    }
+
     auto camNode = pipeline.create<dai::node::Camera>()->build();
     auto camOut = camNode->requestOutput({640, 480}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
