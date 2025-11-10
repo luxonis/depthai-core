@@ -3,6 +3,7 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <chrono>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -161,5 +162,110 @@ TEST_CASE("Test how default FPS is generated for a specific output") {
         auto benchmarkReport = benchmarkQueue->get<dai::BenchmarkReport>();
         // Allow +-10% difference
         REQUIRE(benchmarkReport->fps == Catch::Approx(FPS_TO_SET).margin(FPS_TO_SET * 0.1));
+    }
+}
+
+TEST_CASE("Camera pool sizes") {
+    for(const int overrideQueueSize : {-1, 2, 17, 3, 50, 4, 5}) {
+        std::cout << "Testing num frames = " << overrideQueueSize << "\n" << std::flush;
+        dai::Pipeline pipeline;
+        auto isRvc4 = pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC4;
+        std::map<dai::CameraBoardSocket, std::vector<std::tuple<int, int, float>>> streams{
+            {dai::CameraBoardSocket::CAM_A, {{640, 480, 30.0f}, {1920, 1440, 30.0f}}},
+            {dai::CameraBoardSocket::CAM_B, {{640, 400, 30.0f}, {1280, 800, 30.0f}}},
+            {dai::CameraBoardSocket::CAM_C, {{640, 400, 30.0f}, {1280, 800, 30.0f}}},
+        };
+        std::vector<std::shared_ptr<dai::MessageQueue>> outQueues;
+        std::vector<int> outQueuesCounter;
+        std::vector<std::shared_ptr<dai::node::Camera>> cameras;
+        auto script = pipeline.create<dai::node::Script>();
+        // Default size of the pool for RVC2 is 3 and RVC4 is 7
+        int queueSize = overrideQueueSize == -1 ? (isRvc4 ? 7 : 3) : overrideQueueSize;
+        for(const auto& [socket, resolutions] : streams) {
+            auto camera = pipeline.create<dai::node::Camera>()->build(socket);
+            camera->properties.maxSizePoolOutputs = 1 * 1024 * 1024 * 1024;  // 1G size limit to only test num frames limitation
+            if(overrideQueueSize != -1) {
+                camera->properties.numFramesPoolOutputs = overrideQueueSize;
+            }
+            for(const auto& resolution : resolutions) {
+                std::string theKey = std::to_string(outQueues.size());
+                std::string inputName = "in" + theKey;
+                std::string outputName = "out" + theKey;
+                std::cout << "Creating queue for : " << inputName << " <--> " << outputName << "\n" << std::flush;
+                camera->requestOutput({std::get<0>(resolution), std::get<1>(resolution)}, std::nullopt, dai::ImgResizeMode::CROP, std::get<2>(resolution))
+                    ->link(script->inputs[inputName]);
+                script->inputs[inputName].setBlocking(false);
+                script->inputs[inputName].setMaxSize(1000);
+                outQueues.push_back(script->outputs[outputName].createOutputQueue());
+                outQueuesCounter.push_back(0);
+            }
+            cameras.push_back(camera);
+        }
+        int timeToBlock = 20;
+        std::string scriptContent = R"(
+            import time
+            import depthai
+
+            print("jak-dbg: inside script node")
+            all_frames=[]
+            max_id = )" + std::to_string(outQueues.size() - 1)
+                                    + R"(
+            start_time = time.time()
+            print("jak-dbg: starting first loop")
+            while time.time() - start_time < )"
+                                    + std::to_string(timeToBlock) + R"(:
+                for idx in range(max_id + 1):
+                    the_key = str(idx)
+                    #print("jak-dbg: try getting in" + the_key)
+                    frame = node.inputs["in" + the_key].tryGet()
+                    #frame = node.inputs["in" + the_key].get()
+                    if frame is not None:
+                        print("jak-dbg: got frame in first loop: " + the_key)
+                        all_frames.append(frame)
+                        out = depthai.ADatatype()
+                        node.outputs["out" + the_key].send(out)
+            print("jak-dbg: first loop finished")
+            all_frames = []
+            print("jak-dbg: starting second loop")
+            while True:
+                for idx in range(max_id + 1):
+                    the_key = str(idx)
+                    frame = node.inputs["in" + the_key].tryGet()
+                    if frame is not None:
+                        print("jak-dbg: got frame in second loop: " + the_key)
+                        out = depthai.ADatatype()
+                        node.outputs["out" + the_key].send(out)
+            print("jak-dbg: second loop finished")
+        )";
+        script->setScript(scriptContent);
+        pipeline.start();
+        auto startTime = std::chrono::steady_clock::now();
+        // Keep frames in script node and check Camera node stops sending frames after buffer limit is hit
+        while(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() < timeToBlock - 5) {
+            for(int idx = 0; idx < outQueues.size(); ++idx) {
+                // std::cout << "Try getting frame" << idx << "\n" << std::flush;
+                auto frame = outQueues[idx]->tryGet();
+                if(frame) {
+                    std::cout << "Got frame" << idx << "\n" << std::flush;
+                    ++outQueuesCounter[idx];
+                }
+            }
+        }
+        std::cout << "Got the first part frames\n" << std::flush;
+        for(const auto& count : outQueuesCounter) {
+            REQUIRE(count == queueSize);
+        }
+        // Check stream still works after script node unblocks the Camera node
+        while(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() < timeToBlock + 30) {
+            for(int idx = 0; idx < outQueues.size(); ++idx) {
+                auto frame = outQueues[idx]->tryGet();
+                if(frame) {
+                    ++outQueuesCounter[idx];
+                }
+            }
+        }
+        for(const auto& count : outQueuesCounter) {
+            REQUIRE(count > queueSize + 200);
+        }
     }
 }
