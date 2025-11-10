@@ -54,8 +54,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool metadataOnly);
 template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const Keypoints* message, bool);
-template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly);

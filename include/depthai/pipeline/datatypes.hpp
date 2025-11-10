@@ -16,7 +16,6 @@
 #include "datatype/ImgDetections.hpp"
 #include "datatype/ImgDetectionsT.hpp"
 #include "datatype/ImgFrame.hpp"
-#include "datatype/Keypoints.hpp"
 #include "datatype/MessageGroup.hpp"
 #include "datatype/NNData.hpp"
 #include "datatype/PointCloudConfig.hpp"
