@@ -6,6 +6,11 @@
 
 namespace dai {
 
+void Keypoints::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::Keypoints;
+}
+
 void Keypoints::setKeypoints(const std::vector<Keypoint>& keypoints) {
     keypointsList.setKeypoints(keypoints);
 }

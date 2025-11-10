@@ -120,8 +120,7 @@ int main() {
 
                 int segWidth = inDet->getSegmentationMaskWidth();
                 int segHeight = inDet->getSegmentationMaskHeight();
-
-                cv::Mat segmentationMask = cv::Mat::zeros(segHeight, segWidth, CV_8UC1);
+                std::optional<cv::Mat> segmentationMask;
 
                 if(filteredLabel == -1) {
                     segmentationMask = inDet->getSegmentationMask();
@@ -132,12 +131,12 @@ int main() {
                             detections.begin(), detections.end(), [filteredLabel](const dai::ImgDetection& det) { return det.label != filteredLabel; }),
                         detections.end());
                 }
-                if(!segmentationMask.empty()) {
+                if(segmentationMask) {
                     cv::Mat lut(1, 256, CV_8U);
                     for(int i = 0; i < 256; ++i) lut.at<uchar>(i) = (i >= 255) ? 255 : cv::saturate_cast<uchar>(i * 25);
 
                     cv::Mat scaledMask;
-                    cv::LUT(segmentationMask, lut, scaledMask);
+                    cv::LUT(*segmentationMask, lut, scaledMask);
 
                     cv::Mat coloredMask;
                     cv::applyColorMap(scaledMask, coloredMask, cv::COLORMAP_JET);

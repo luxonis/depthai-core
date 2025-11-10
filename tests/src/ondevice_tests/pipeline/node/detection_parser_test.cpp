@@ -363,7 +363,9 @@ TEST_CASE("DetectionParser segmentation mask test") {
     auto detections = outputQueue->get<dai::ImgDetections>();
     REQUIRE(detections != nullptr);
 
-    const cv::Mat segmentationMask = detections->getCvSegmentationMask();
+    std::optional<cv::Mat> optSegmentationMask = detections->getCvSegmentationMask();
+    REQUIRE(optSegmentationMask.has_value());
+    cv::Mat segmentationMask = *optSegmentationMask;
     REQUIRE_FALSE(segmentationMask.empty());
     REQUIRE(detections->getSegmentationMaskWidth() == kitchenGtSegmentation.cols);
     REQUIRE(detections->getSegmentationMaskHeight() == kitchenGtSegmentation.rows);

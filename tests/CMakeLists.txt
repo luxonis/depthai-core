@@ -277,28 +277,28 @@ private_data(
     SHA1 "ec6b99aeb87a22ab98cb0b042a83ed7d4ae7756b"
     FILE "yolo-p_bdd100k-320x320_7019bb8-detections.json"
     LOCATION yolo_p_bdd100k_320x320_gt
-    )
+)
 
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/fire-detection_512x288_4a8263c-detections.json"
     SHA1 "a0fbdd1b8a92a041f7b8e79ce60fd7aa8fa2c36a"
     FILE "fire-detection_512x288_4a8263c-detections.json"
     LOCATION fire_detection_512x288_gt
-    )
+)
 
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/videos/pedestrians_walking_4k_25fps.mp4"
     SHA1 "9e4708d5579aa6b8e82f49d6999302eec6a5076b"
     FILE "pedestrians_walking_4k_25fps.mp4"
     LOCATION people_walking_video
-    )
+)
 
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/videos/fire_hd_1920_1080_24fps.mp4"
     SHA1 "98bfa29dd30c10b58118e3e0a2d32e3f8c18b12c"
     FILE "fire_hd_1920_1080_24fps.mp4"
     LOCATION fire_video
-    )
+)
     
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/images/kitchen1.png"

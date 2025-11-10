@@ -32,7 +32,6 @@
 namespace dai {
 
 struct ImgDetection {
-   public:
     uint32_t label = 0;
     std::string labelName;
     float confidence = 0.f;
@@ -180,11 +179,11 @@ class ImgDetections : public Buffer, public ProtoSerializable {
     void setMask(const std::vector<std::uint8_t>& mask, size_t width, size_t height);
 
     /*
-     * Returns a copy of the segmentation mask data as a vector of bytes.
+     * Returns a copy of the segmentation mask data as a vector of bytes. If mask data is not set, returns std::nullopt.
      */
-    std::vector<std::uint8_t> getMaskData() const;
+    std::optional<std::vector<std::uint8_t>> getMaskData() const;
 
-    dai::ImgFrame getSegmentationMaskAsImgFrame() const;
+    std::optional<dai::ImgFrame> getSegmentationMaskAsImgFrame() const;
 
     // Optional - xtensor support
 #ifdef DEPTHAI_XTENSOR_SUPPORT
@@ -194,9 +193,9 @@ class ImgDetections : public Buffer, public ProtoSerializable {
     using XArray2D = xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>;
 
     /**
-     * Returns a copy of the segmentation mask data as a 2D array.
+     * Returns a copy of the segmentation mask data as a 2D array. If mask data is not set, returns std::nullopt.
      */
-    XArray2D getTensorSegmentationMask() const;
+    std::optional<XArray2D> getTensorSegmentationMask() const;
 
     /**
      * Sets the segmentation mask from a 2D xtensor array.
@@ -204,10 +203,9 @@ class ImgDetections : public Buffer, public ProtoSerializable {
     ImgDetections& setTensorSegmentationMask(XArray2D mask);
 
     /*
-     * Returns a binary mask (uint8_t per pixel, 0 or 1) for the specified index.
-     * Output is a 2D array of row spans, like get2DMask().
+     * Returns a binary mask where pixels belonging to the instance index are set to 1, others to 0. If mask data is not set, returns std::nullopt.
      */
-    XArray2D getTensorSegmentationMaskByIndex(uint8_t index) const;
+    std::optional<XArray2D> getTensorSegmentationMaskByIndex(uint8_t index) const;
 
 #endif
 
@@ -225,29 +223,31 @@ class ImgDetections : public Buffer, public ProtoSerializable {
     ImgDetections& setSegmentationMask(cv::Mat mask);
 
     /**
-     * Retrieves data as cv::Mat with specified width, height and type
+     * Retrieves data as cv::Mat with specified width, height and type. If mask data is not set, returns std::nullopt.
      *
      * @param copy If false only a reference to data is made, otherwise a copy
      */
-    cv::Mat getSegmentationMask(bool copy = false);
+    std::optional<cv::Mat> getSegmentationMask(bool copy = false);
 
     /**
-     * Retrieves data as cv::Mat with specified width and height
-     *
+     * Retrieves data as cv::Mat with specified width and height. If mask data is not set, returns std::nullopt.
+     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
      */
-    cv::Mat getCvSegmentationMask(cv::MatAllocator* allocator = nullptr);
+    std::optional<cv::Mat> getCvSegmentationMask(cv::MatAllocator* allocator = nullptr);
 
     /**
-     * Retrieves data by instance index
-     *
+     * Returns a binary mask where pixels belonging to the instance index are set to 1, others to 0. If mask data is not set, returns std::nullopt.
+     * @param index Instance index
+     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
      */
-    cv::Mat getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
+    std::optional<cv::Mat> getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
 
     /**
-     * Retrieves data by semantic class
-     *
+     * Retrieves data by the semantic class. If no mask data is not set, returns std::nullopt.
+     * @param semanticClass Semantic class index
+     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
      */
-    cv::Mat getCvSegmentationMaskByClass(uint8_t semantic_class, cv::MatAllocator* allocator = nullptr);
+    std::optional<cv::Mat> getCvSegmentationMaskByClass(uint8_t semanticClass, cv::MatAllocator* allocator = nullptr);
 
 #endif
 

@@ -15,7 +15,6 @@
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/NNData.hpp"
 #include "pipeline/utilities/DetectionParser/DetectionParserUtils.hpp"
-#include "spdlog/fmt/fmt.h"
 
 // internal headers
 #include "utility/ErrorMacros.hpp"
@@ -103,7 +102,6 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
         // check if there are keypoints or segmentations to decode
         if(head.outputs && !head.outputs->empty()) {
-            // assert outputs is a non-empty vector
             properties.parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
         }
 
@@ -170,6 +168,7 @@ YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string
     if(subtypeStr == "yolov3" || subtypeStr == "yolov3-tiny") return YoloDecodingFamily::v3AB;
     if(subtypeStr == "yolov5" || subtypeStr == "yolov7" || subtypeStr == "yolo-p" || subtypeStr == "yolov5-u") return YoloDecodingFamily::v5AB;
 
+    pimpl->logger->error("Unknown YOLO subtype '{}', defaulting to TLBR decoding family.", name);
     return YoloDecodingFamily::TLBR;  // default
 }
 
@@ -274,12 +273,15 @@ void DetectionParser::setIouThreshold(float thresh) {
     properties.parser.iouThreshold = thresh;
 }
 
-void DetectionParser::setSubtype(const std::string& subtype) {  // TODO add bindings
+void DetectionParser::setSubtype(const std::string& subtype) {
     properties.parser.subtype = subtype;
     properties.parser.decodingFamily = yoloDecodingFamilyResolver(subtype);
 }
 
 void DetectionParser::setDecodeKeypoints(bool decode) {
+    if(decode && !properties.parser.nKeypoints.has_value()) {
+        throw std::runtime_error("Number of keypoints not set. Please also specify number of keypoints");
+    }
     properties.parser.decodeKeypoints = decode;
 }
 
@@ -288,6 +290,7 @@ void DetectionParser::setDecodeSegmentation(bool decode) {
 }
 
 void DetectionParser::setNKeypoints(int nKeypoints) {
+    properties.parser.decodeKeypoints = true;
     properties.parser.nKeypoints = nKeypoints;
 }
 
@@ -301,6 +304,7 @@ std::optional<std::vector<std::string>> DetectionParser::getClasses() const {
 }
 
 void DetectionParser::setClasses(const std::vector<std::string>& classes) {
+    properties.parser.classes = static_cast<int>(classes.size());
     properties.parser.classNames = classes;
 }
 

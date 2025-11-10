@@ -4,10 +4,16 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/util/time_util.h>
 
+#include <cstdint>
+#include <optional>
 #include <queue>
 
+#include "depthai/schemas/Keypoints.pb.h"
 #include "depthai/schemas/PointCloudData.pb.h"
+#include "depthai/schemas/common.pb.h"
 #include "pipeline/datatype/DatatypeEnum.hpp"
+#include "pipeline/datatype/ImgDetections.hpp"
+#include "pipeline/datatype/Keypoints.hpp"
 
 namespace dai {
 namespace utility {
@@ -377,7 +383,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
     return imuData;
 }
 template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool) {
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool metadataOnly) {
     auto imgDetections = std::make_unique<proto::img_detections::ImgDetections>();
 
     imgDetections->set_sequencenum(message->sequenceNum);
@@ -397,14 +403,89 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
         imgDetection->set_ymin(detection.ymin);
         imgDetection->set_xmax(detection.xmax);
         imgDetection->set_ymax(detection.ymax);
+
+        if(detection.boundingBox.has_value() || !(detection.xmin == 0.f && detection.xmax == 0.f && detection.ymin == 0.f && detection.ymax == 0.f)) {
+            const auto bbox = detection.boundingBox.has_value() ? detection.boundingBox.value() : detection.getBoundingBox();
+            proto::common::RotatedRect* bboxProto = imgDetection->mutable_boundingbox();
+            proto::common::Point2f* center = bboxProto->mutable_center();
+            center->set_x(bbox.center.x);
+            center->set_y(bbox.center.y);
+            proto::common::Size2f* size = bboxProto->mutable_size();
+            size->set_width(bbox.size.width);
+            size->set_height(bbox.size.height);
+            bboxProto->set_angle(bbox.angle);
+        }
+
+        if(detection.keypoints.has_value()) {
+            const auto& keypointsList = detection.keypoints.value();
+            const auto keypointsVec = keypointsList.getKeypoints();
+            const auto edgesVec = keypointsList.getEdges();
+            proto::common::KeypointsList* protoKeypoints = imgDetection->mutable_keypoints();
+            for(const auto& keypoint : keypointsVec) {
+                auto* protoKeypoint = protoKeypoints->add_keypoints();
+                proto::common::Point3f* coords = protoKeypoint->mutable_coordinates();
+                coords->set_x(keypoint.coordinates.x);
+                coords->set_y(keypoint.coordinates.y);
+                coords->set_z(keypoint.coordinates.z);
+                protoKeypoint->set_confidence(keypoint.confidence);
+                protoKeypoint->set_label(keypoint.label);
+            }
+            for(const auto& edge : edgesVec) {
+                auto* protoEdge = protoKeypoints->add_edges();
+                protoEdge->set_src(edge[0]);
+                protoEdge->set_dst(edge[1]);
+            }
+        }
     }
+
+    imgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
+    imgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
 
     proto::common::ImgTransformation* imgTransformation = imgDetections->mutable_transformation();
     if(message->transformation.has_value()) {
         utility::serializeImgTransformation(imgTransformation, message->transformation.value());
     }
+
+    if(!metadataOnly) {
+        std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
+        if(segMaskData) {
+            imgDetections->set_data((*segMaskData).data(), (*segMaskData).size());
+        }
+    }
     return imgDetections;
 }
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const Keypoints* message, bool) {
+    auto keypointsMsg = std::make_unique<proto::keypoints::Keypoints>();
+
+    keypointsMsg->set_sequencenum(message->sequenceNum);
+    proto::common::Timestamp* ts = keypointsMsg->mutable_ts();
+    ts->set_sec(message->ts.sec);
+    ts->set_nsec(message->ts.nsec);
+    proto::common::Timestamp* tsDevice = keypointsMsg->mutable_tsdevice();
+    tsDevice->set_sec(message->tsDevice.sec);
+    tsDevice->set_nsec(message->tsDevice.nsec);
+
+    auto keypointsList = keypointsMsg->mutable_keypointslist();
+
+    for(const auto& keypoint : message->getKeypoints()) {
+        auto* protoKeypoint = keypointsList->add_keypoints();
+        proto::common::Point3f* coords = protoKeypoint->mutable_coordinates();
+        coords->set_x(keypoint.coordinates.x);
+        coords->set_y(keypoint.coordinates.y);
+        coords->set_z(keypoint.coordinates.z);
+        protoKeypoint->set_confidence(keypoint.confidence);
+        protoKeypoint->set_label(keypoint.label);
+    }
+    for(const auto& edge : message->getEdges()) {
+        auto* protoEdge = keypointsList->add_edges();
+        protoEdge->set_src(edge[0]);
+        protoEdge->set_dst(edge[1]);
+    }
+
+    return keypointsMsg;
+}
+
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly) {
     // Create a unique pointer to the protobuf EncodedFrame message

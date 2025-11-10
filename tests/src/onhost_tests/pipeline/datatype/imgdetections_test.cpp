@@ -5,6 +5,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <numeric>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -230,7 +231,7 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         const ImgDetections detections;
         REQUIRE(detections.getSegmentationMaskWidth() == 0);
         REQUIRE(detections.getSegmentationMaskHeight() == 0);
-        REQUIRE(detections.getMaskData().empty());
+        REQUIRE(!detections.getMaskData());
     }
 
     SECTION("setMask stores dimensions and data") {
@@ -251,7 +252,9 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         detections.setTimestamp(timestamp);
         detections.setTimestampDevice(deviceTimestamp);
 
-        auto frame = detections.getSegmentationMaskAsImgFrame();
+        std::optional<dai::ImgFrame> optFrame = detections.getSegmentationMaskAsImgFrame();
+        REQUIRE(optFrame);
+        dai::ImgFrame frame = *optFrame;
         REQUIRE(frame.getWidth() == width);
         REQUIRE(frame.getHeight() == height);
         REQUIRE(frame.getType() == ImgFrame::Type::GRAY8);
@@ -286,24 +289,34 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         REQUIRE(detections.getSegmentationMaskWidth() == static_cast<std::size_t>(mask.cols));
         REQUIRE(detections.getSegmentationMaskHeight() == static_cast<std::size_t>(mask.rows));
 
-        cv::Mat shallow = detections.getSegmentationMask(false);
+        std::optional<cv::Mat> optShallow = detections.getSegmentationMask(false);
+        REQUIRE(optShallow.has_value());
+        cv::Mat shallow = *optShallow;
         cv::Mat diff;
         cv::absdiff(shallow, mask, diff);
         REQUIRE(cv::countNonZero(diff) == 0);
 
         shallow.at<uint8_t>(0, 0) = static_cast<uint8_t>(mask.at<uint8_t>(0, 0) + 10);
-        auto shallowData = detections.getMaskData();
+
+        auto optShallowData = detections.getMaskData();
+        REQUIRE(optShallowData);
+        auto shallowData = *optShallowData;
+
         REQUIRE_FALSE(shallowData.empty());
         REQUIRE(shallowData.front() == shallow.at<uint8_t>(0, 0));
 
         cv::Mat constantMask(rows, cols, CV_8UC1, cv::Scalar(7));
         detections.setSegmentationMask(constantMask);
 
-        cv::Mat deep = detections.getSegmentationMask(true);
+        std::optional<cv::Mat> optDeep = detections.getSegmentationMask(true);
+        REQUIRE(optDeep);
+        cv::Mat deep = *optDeep;
         REQUIRE(cv::countNonZero(deep != constantMask) == 0);
 
         deep.at<uint8_t>(0, 0) = 42;
-        auto deepData = detections.getMaskData();
+        auto optDeepData = detections.getMaskData();
+        REQUIRE(optDeepData);
+        auto deepData = *optDeepData;
         REQUIRE_FALSE(deepData.empty());
         REQUIRE(deepData.front() == constantMask.at<uint8_t>(0, 0));
     }
@@ -322,18 +335,23 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         }
 
         detections.setSegmentationMask(mask);
-        cv::Mat copy = detections.getCvSegmentationMask();
+        std::optional<cv::Mat> optCopy = detections.getCvSegmentationMask();
+        REQUIRE(optCopy.has_value());
+        cv::Mat copy = *optCopy;
         cv::Mat diff;
         cv::absdiff(copy, mask, diff);
         REQUIRE(cv::countNonZero(diff) == 0);
 
         copy.at<uint8_t>(0, 0) = 99;
-        auto storedData = detections.getMaskData();
-        REQUIRE_FALSE(storedData.empty());
+        auto optStoredData = detections.getMaskData();
+        REQUIRE(optStoredData);
+        auto storedData = *optStoredData;
         REQUIRE(storedData.front() == mask.at<uint8_t>(0, 0));
 
         constexpr uint8_t targetIndex = 1;
-        cv::Mat byIndex = detections.getCvSegmentationMaskByIndex(targetIndex);
+        std::optional<cv::Mat> optByIndex = detections.getCvSegmentationMaskByIndex(targetIndex);
+        REQUIRE(optByIndex.has_value());
+        cv::Mat byIndex = *optByIndex;
         REQUIRE(byIndex.rows == mask.rows);
         REQUIRE(byIndex.cols == mask.cols);
         REQUIRE(byIndex.type() == CV_8UC1);
@@ -361,7 +379,9 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         detections.detections[1].label = 7;
         detections.detections[2].label = 5;
 
-        cv::Mat byClass = detections.getCvSegmentationMaskByClass(5);
+        std::optional<cv::Mat> optByClass = detections.getCvSegmentationMaskByClass(5);
+        REQUIRE(optByClass.has_value());
+        cv::Mat byClass = *optByClass;
         REQUIRE(byClass.rows == mask.rows);
         REQUIRE(byClass.cols == mask.cols);
         REQUIRE(byClass.type() == CV_8UC1);
@@ -380,7 +400,9 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         cv::inRange(byClass, 1, 254, unexpected);
         REQUIRE(cv::countNonZero(unexpected) == 0);
 
-        cv::Mat missingClass = detections.getCvSegmentationMaskByClass(99);
+        std::optional<cv::Mat> optMissingClass = detections.getCvSegmentationMaskByClass(99);
+        REQUIRE(optMissingClass.has_value());
+        cv::Mat missingClass = *optMissingClass;
         cv::Mat allBackground;
         cv::compare(missingClass, 255, allBackground, cv::CmpTypes::CMP_EQ);
         REQUIRE(cv::countNonZero(allBackground) == missingClass.rows * missingClass.cols);

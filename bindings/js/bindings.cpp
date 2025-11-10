@@ -87,7 +87,7 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .field("serializedObjectSize", &MessageHeader::serializedObjectSize);
     value_object<dai::ImgDetection>("ImgDetection")
         .ctor()
-        .ctor(const dai::RoatatedRect&, float, std::uint32_t)
+        .ctor(const dai::RotatedRect&, float, std::uint32_t)
         .ctor(const dai::RotatedRect&, std::string, float, std::uint32_t)
         .ctor(const dai::RotatedRect&, const dai::KeypointsList&, float, std::uint32_t)
         .ctor(const dai::RotatedRect&, const dai::KeypointsList&, std::string, float, std::uint32_t)

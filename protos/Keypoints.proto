@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "common.proto";
+package dai.proto.keypoints;
+
+message Keypoints {
+    int64 sequenceNum = 1;
+    common.Timestamp ts = 2;
+    common.Timestamp tsDevice = 3;
+    common.KeypointsList keypointsList = 4;
+}
