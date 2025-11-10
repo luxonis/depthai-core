@@ -473,7 +473,8 @@ jobs:
       - name: Building source distribution
         run: |
           cd bindings/python
-          /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
+          /opt/python/cp310-cp310/bin/python3.10 -m pip install --upgrade setuptools
+          /opt/python/cp310-cp310/bin/python3.10 setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
         run: |
