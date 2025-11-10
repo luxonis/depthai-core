@@ -159,13 +159,20 @@ void ImgDetections::setMask(const std::vector<std::uint8_t>& mask, size_t width,
     this->segmentationMaskHeight = height;
 }
 
-std::vector<std::uint8_t> ImgDetections::getMaskData() const {
-    span d = data->getData();
+std::optional<std::vector<std::uint8_t>> ImgDetections::getMaskData() const {
+    const auto& d = data->getData();
     std::vector<std::uint8_t> vecMask(d.begin(), d.end());
+    if(vecMask.empty()) {
+        return std::nullopt;
+    }
     return vecMask;
 }
 
-dai::ImgFrame ImgDetections::getSegmentationMaskAsImgFrame() const {
+std::optional<dai::ImgFrame> ImgDetections::getSegmentationMaskAsImgFrame() const {
+    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
+    if(!maskData) {
+        return std::nullopt;
+    }
     dai::ImgFrame img;
     img.setWidth(segmentationMaskWidth);
     img.setHeight(segmentationMaskHeight);
@@ -173,7 +180,7 @@ dai::ImgFrame ImgDetections::getSegmentationMaskAsImgFrame() const {
     img.setSequenceNum(sequenceNum);
     img.setTimestamp(getTimestamp());
     img.setTimestampDevice(getTimestampDevice());
-    img.setData(getMaskData());
+    img.setData(*maskData);
 
     return img;
 }
@@ -182,14 +189,21 @@ dai::ImgFrame ImgDetections::getSegmentationMaskAsImgFrame() const {
 #ifdef DEPTHAI_XTENSOR_SUPPORT
 using XArray2D = xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>;
 
-XArray2D ImgDetections::getTensorSegmentationMask() const {
-    size_t dataSize = data->getSize();
+std::optional<XArray2D> ImgDetections::getTensorSegmentationMask() const {
+    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
+    if(!maskData) {
+        return std::nullopt;
+    }
+
+    size_t dataSize = (*maskData).size();
     if(dataSize != segmentationMaskWidth * segmentationMaskHeight) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
 
     std::array<std::size_t, 2> shape{segmentationMaskHeight, segmentationMaskWidth};
-    return xt::adapt(data->getData().data(), data->getSize(), xt::no_ownership(), shape);
+    auto result = XArray2D::from_shape(shape);
+    std::copy(maskData->cbegin(), maskData->cend(), result.begin());
+    return result;
 }
 
 ImgDetections& ImgDetections::setTensorSegmentationMask(XArray2D mask) {
@@ -201,15 +215,24 @@ ImgDetections& ImgDetections::setTensorSegmentationMask(XArray2D mask) {
     return *this;
 }
 
-XArray2D ImgDetections::getTensorSegmentationMaskByIndex(std::uint8_t index) const {
-    const auto& buf = data->getData();
-    if(buf.size() != segmentationMaskWidth * segmentationMaskHeight) {
+std::optional<XArray2D> ImgDetections::getTensorSegmentationMaskByIndex(std::uint8_t index) const {
+    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
+    if(!maskData) {
+        return std::nullopt;
+    }
+
+    if((*maskData).size() != segmentationMaskWidth * segmentationMaskHeight) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
     std::array<std::size_t, 2> shape{segmentationMaskHeight, segmentationMaskWidth};
-    auto in = xt::adapt(buf.data(), buf.size(), xt::no_ownership(), shape);
+    auto result = XArray2D::from_shape(shape);
+    auto dstIt = result.begin();
+    auto srcIt = maskData->cbegin();
+    for(; dstIt != result.end(); ++dstIt, ++srcIt) {
+        *dstIt = static_cast<std::uint8_t>(*srcIt == index);
+    }
 
-    return xt::eval(xt::cast<std::uint8_t>(xt::equal(in, static_cast<unsigned char>(index))));
+    return result;
 }
 
 #endif

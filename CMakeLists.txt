@@ -892,6 +892,10 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
+if(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
+endif()
+
 # Helper function
 macro(add_runtime_dependencies depending_target dependency)
     if(TARGET ${dependency})

@@ -5,7 +5,6 @@
 
 // project
 #include <stdexcept>
-#include <string>
 
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
@@ -25,9 +24,9 @@ struct Keypoint {
         }
     }
 
-    Keypoint(Point2f coordinates, float conf = 0.f, uint32_t label = 0) : Keypoint(Point3f{coordinates.x, coordinates.y, 0.f}, conf, label) {}
+    explicit Keypoint(Point2f coordinates, float conf = 0.f, uint32_t label = 0) : Keypoint(Point3f{coordinates.x, coordinates.y, 0.f}, conf, label) {}
 
-    Keypoint(float x, float y, float z, float confidence = 0.f, uint32_t label = 0) : Keypoint(Point3f{x, y, z}, confidence, label) {}
+    explicit Keypoint(float x, float y, float z, float confidence = 0.f, uint32_t label = 0) : Keypoint(Point3f{x, y, z}, confidence, label) {}
 
     DEPTHAI_SERIALIZE(dai::Keypoint, coordinates, confidence, label);
 };

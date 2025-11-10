@@ -4,7 +4,6 @@
 #include <array>
 #include <cstdint>
 #include <stdexcept>
-#include <string>
 
 // project
 #include "depthai/common/Keypoint.hpp"
@@ -70,9 +69,7 @@ struct KeypointsList {
      * @param keypoints list of Keypoint objects and edges to set.
      * @note This will clear any existing keypoints and edges.
      */
-    void setKeypoints(const std::vector<Keypoint> keypoints, const std::vector<Edge> edges) {
-        this->edges.clear();
-        this->keypoints.clear();
+    void setKeypoints(std::vector<Keypoint> keypoints, std::vector<Edge> edges) {
         this->keypoints = std::move(keypoints);
         this->edges = std::move(edges);
         validateEdges();
@@ -83,8 +80,8 @@ struct KeypointsList {
      * @param edges Vector of edge indices.
      */
 
-    void setEdges(const std::vector<Edge> edges) {
-        this->edges = edges;
+    void setEdges(std::vector<Edge> edges) {
+        this->edges = std::move(edges);
         validateEdges();
     }
 
@@ -109,7 +106,7 @@ struct KeypointsList {
      * @return Vector of Point3f coordinates.
      */
     std::vector<Point3f> getCoordinates3f() const {
-        std::vector<Point3f> coordinates;
+        std::vector<Point3f> coordinates(keypoints.size());
 
         for(const auto& kp : keypoints) {
             coordinates.emplace_back(kp.coordinates);
@@ -122,7 +119,7 @@ struct KeypointsList {
      * @return Vector of Point2f coordinates.
      */
     std::vector<Point2f> getCoordinates2f() const {
-        std::vector<Point2f> coordinates;
+        std::vector<Point2f> coordinates(keypoints.size());
 
         for(const auto& kp : keypoints) {
             coordinates.emplace_back(Point2f(kp.coordinates.x, kp.coordinates.y));

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
 import cv2
 import depthai as dai
 import numpy as np
@@ -38,7 +37,7 @@ with dai.Pipeline(device) as pipeline:
         normVals[::2] = frame.shape[1]
         return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
 
-    def displayFrame( frame):
+    def displayFrame(frame):
         color = (255, 0, 0)
         for detection in detections:
             bbox = frameNorm(
@@ -118,7 +117,7 @@ with dai.Pipeline(device) as pipeline:
                 width = inDet.getSegmentationMaskWidth()
                 height = inDet.getSegmentationMaskHeight()
                 
-                segmentation_mask = cv2.Mat(np.zeros((width, width), dtype=np.uint8))
+                segmentation_mask = cv2.Mat(np.zeros((height, width), dtype=np.uint8))
                 if filtered_label == -1:
                     segmentation_mask = inDet.getCvSegmentationMask()
                 else:

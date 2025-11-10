@@ -24,13 +24,6 @@ struct SpatialImgDetection : public ImgDetection {
     Point3f spatialCoordinates;
     SpatialLocationCalculatorConfigData boundingBoxMapping;
 
-    float depthAverage = 0.f;
-    float depthMode = 0.f;
-    float depthMedian = 0.f;
-    std::uint16_t depthMin = 0;
-    std::uint16_t depthMax = 0;
-    std::uint32_t depthAveragePixelCount = 0;
-
     DEPTHAI_SERIALIZE(SpatialImgDetection,
                       ImgDetection::xmax,
                       ImgDetection::xmin,
@@ -42,13 +35,7 @@ struct SpatialImgDetection : public ImgDetection {
                       ImgDetection::boundingBox,
                       ImgDetection::keypoints,
                       spatialCoordinates,
-                      boundingBoxMapping,
-                      depthAverage,
-                      depthMode,
-                      depthMedian,
-                      depthMin,
-                      depthMax,
-                      depthAveragePixelCount);
+                      boundingBoxMapping);
 };
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data

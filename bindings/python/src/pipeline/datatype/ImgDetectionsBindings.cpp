@@ -76,11 +76,11 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getKeypoints", &ImgDetection::getKeypoints, DOC(dai, ImgDetection, getKeypoints))
         .def("setEdges", &ImgDetection::setEdges, py::arg("edges"))
         .def("getEdges", &ImgDetection::getEdges, DOC(dai, ImgDetection, getEdges))
-        .def("centerX", &dai::ImgDetection::getCenterX)
-        .def("centerY", &dai::ImgDetection::getCenterY)
-        .def("width", &dai::ImgDetection::getWidth)
-        .def("height", &dai::ImgDetection::getHeight)
-        .def("angle", &dai::ImgDetection::getAngle);
+        .def("getCenterX", &dai::ImgDetection::getCenterX)
+        .def("getCenterY", &dai::ImgDetection::getCenterY)
+        .def("getWidth", &dai::ImgDetection::getWidth)
+        .def("getHeight", &dai::ImgDetection::getHeight)
+        .def("getAngle", &dai::ImgDetection::getAngle);
 
     // rawImgDetections
     //     .def(py::init<>())
@@ -141,7 +141,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
             DOC(dai, ImgDetections, getCvSegmentationMaskByIndex))
         .def(
             "getCvSegmentationMaskByClass",
-            [](ImgDetections& self, uint8_t class_index) { return self.getCvSegmentationMaskByClass(class_index, &g_numpyAllocator); },
+            [](ImgDetections& self, uint8_t semanticClass) { return self.getCvSegmentationMaskByClass(semanticClass, &g_numpyAllocator); },
             py::arg("semantic_class"),
             DOC(dai, ImgDetections, getCvSegmentationMaskByClass));
 #endif
