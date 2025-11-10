@@ -3,7 +3,7 @@
 namespace dai {
 namespace node {
 
-// No implementation needed
+MessageDemux::~MessageDemux() = default;
 
 }  // namespace node
 }  // namespace dai
