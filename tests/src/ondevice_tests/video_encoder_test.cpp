@@ -302,10 +302,6 @@ TEST_CASE("Test VideoEncoder node MJPEG") {
     REQUIRE(psnr2 < psnr3);
     REQUIRE(encodedFileSize2 < encodedFileSize3);
 
-    // PSNR Bellow 30 dB indicates significant degredation
-    // REQUIRE(psnr3 > 30.0);
-    // REQUIRE(encodedFileSize3 > 0);
-
     // Clear the encoded video file
     std::filesystem::remove(encodedPath);
 }
