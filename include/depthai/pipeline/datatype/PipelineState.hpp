@@ -112,6 +112,8 @@ class PipelineState : public Buffer {
         datatype = DatatypeEnum::PipelineState;
     };
 
+    nlohmann::json toJson() const;
+
     DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeStates, configSequenceNum);
 };
 
