@@ -268,7 +268,7 @@ bool RemoteConnectionImpl::removeTopic(const std::string& topicName) {
     return true;
 }
 
-void RemoteConnectionImpl::registerPipeline(const Pipeline& pipeline) {
+void RemoteConnectionImpl::registerPipeline(Pipeline& pipeline) {
     exposePipelineService(pipeline);
 }
 
@@ -391,34 +391,98 @@ void RemoteConnectionImpl::exposeKeyPressedService() {
     };
 }
 
-void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
+void RemoteConnectionImpl::exposePipelineService(Pipeline& pipeline) {
     // Make sure pipeline is built so that we can serialize it.
     // If not built, an error is thrown is case there are host -> device or device -> host connections.
     DAI_CHECK(pipeline.isBuilt(), "Pipeline is not built. Call Pipeline::build first!");
 
     std::vector<foxglove::ServiceWithoutId> services;
-    auto pipelineService = foxglove::ServiceWithoutId();
-    pipelineService.name = "pipelineSchema";
-    auto request = foxglove::ServiceRequestDefinition();
-    request.schemaName = "pipelineSchema";
-    request.schema = "";
-    request.encoding = "json";
-    pipelineService.request = request;
-    pipelineService.response = request;
-    pipelineService.type = "json";
-    services.push_back(pipelineService);
+    {
+        auto pipelineService = foxglove::ServiceWithoutId();
+        pipelineService.name = "pipelineSchema";
+        auto request = foxglove::ServiceRequestDefinition();
+        request.schemaName = "pipelineSchema";
+        request.schema = "";
+        request.encoding = "json";
+        pipelineService.request = request;
+        pipelineService.response = request;
+        pipelineService.type = "json";
+        services.push_back(pipelineService);
+    }
+    {
+        auto pipelineService = foxglove::ServiceWithoutId();
+        pipelineService.name = "fullPipelineSchema";
+        auto request = foxglove::ServiceRequestDefinition();
+        request.schemaName = "fullPipelineSchema";
+        request.schema = "";
+        request.encoding = "json";
+        pipelineService.request = request;
+        pipelineService.response = request;
+        pipelineService.type = "json";
+        services.push_back(pipelineService);
+    }
+    {
+        auto pipelineService = foxglove::ServiceWithoutId();
+        pipelineService.name = "pipelineState";
+        auto request = foxglove::ServiceRequestDefinition();
+        request.schemaName = "pipelineState";
+        request.schema = "";
+        request.encoding = "json";
+        pipelineService.request = request;
+        pipelineService.response = request;
+        pipelineService.type = "json";
+        services.push_back(pipelineService);
+    }
     auto ids = server->addServices(services);
-    assert(ids.size() == 1);
-    auto id = ids[0];
+    assert(ids.size() == 3);
+    {
+        // Pipeline Schema
 
-    auto serializedPipeline = pipeline.serializeToJson(false);
-    auto serializedPipelineStr = serializedPipeline.dump();
-    serviceMap[id] = [serializedPipelineStr](foxglove::ServiceResponse request) {
-        (void)request;
-        auto response = foxglove::ServiceResponse();
-        response.data = std::vector<uint8_t>(serializedPipelineStr.begin(), serializedPipelineStr.end());
-        return response;
-    };
+        auto id = ids[0];
+
+        auto serializedPipeline = pipeline.serializeToJson(false);
+        auto serializedPipelineStr = serializedPipeline.dump();
+        serviceMap[id] = [serializedPipelineStr](foxglove::ServiceResponse request) {
+            (void)request;
+            auto response = foxglove::ServiceResponse();
+            response.data = std::vector<uint8_t>(serializedPipelineStr.begin(), serializedPipelineStr.end());
+            return response;
+        };
+    }
+    {
+        // Full Pipeline Schema
+
+        auto id = ids[1];
+
+        nlohmann::json j;
+        j["pipeline"] = pipeline.getPipelineSchema(SerializationType::JSON, false);
+        auto serializedPipelineStr = j.dump();
+        serviceMap[id] = [serializedPipelineStr](foxglove::ServiceResponse request) {
+            (void)request;
+            auto response = foxglove::ServiceResponse();
+            response.data = std::vector<uint8_t>(serializedPipelineStr.begin(), serializedPipelineStr.end());
+            return response;
+        };
+    }
+    {
+        // Pipeline State
+
+        auto id = ids[2];
+
+        serviceMap[id] = [&pipeline](foxglove::ServiceResponse request) {
+            (void)request;
+            std::string stateStr;
+            try {
+                auto state = pipeline.getPipelineState().nodes().detailed();
+                stateStr = ((nlohmann::json)state).dump();
+            } catch(const std::runtime_error& e) {
+                stateStr = R"({"error": "Pipeline debugging disabled. Cannot get pipeline state."})";
+            }
+            auto response = foxglove::ServiceResponse();
+            response.data = std::vector<uint8_t>(stateStr.begin(), stateStr.end());
+            return response;
+        };
+    }
 }
 
 void RemoteConnectionImpl::registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback) {
