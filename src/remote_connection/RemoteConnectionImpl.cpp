@@ -473,8 +473,10 @@ void RemoteConnectionImpl::exposePipelineService(Pipeline& pipeline) {
             (void)request;
             std::string stateStr;
             try {
+                nlohmann::json j;
                 auto state = pipeline.getPipelineState().nodes().detailed();
-                stateStr = ((nlohmann::json)state).dump();
+                j["nodeStates"] = ((nlohmann::json)state)["nodeStates"];
+                stateStr = j.dump();
             } catch(const std::runtime_error& e) {
                 stateStr = R"({"error": "Pipeline debugging disabled. Cannot get pipeline state."})";
             }
