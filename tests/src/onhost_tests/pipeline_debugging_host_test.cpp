@@ -3,6 +3,7 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
@@ -198,45 +199,62 @@ class PipelineHandler {
    public:
     Pipeline pipeline;
 
-    PipelineHandler() : pipeline(false) {
+    PipelineHandler(int idx=0) : pipeline(false) {
         pipeline.enablePipelineDebugging();
 
-        auto gen1 = pipeline.create<GeneratorNode>();
-        nodeIds["gen1"] = gen1->id;
-        auto gen2 = pipeline.create<GeneratorNode>();
-        nodeIds["gen2"] = gen2->id;
-        auto bridge1 = pipeline.create<BridgeNode>();
-        nodeIds["bridge1"] = bridge1->id;
-        auto bridge2 = pipeline.create<BridgeNode>();
-        nodeIds["bridge2"] = bridge2->id;
-        auto map = pipeline.create<MapNode>();
-        nodeIds["map"] = map->id;
-        auto cons1 = pipeline.create<ConsumerNode>();
-        nodeIds["cons1"] = cons1->id;
-        auto cons2 = pipeline.create<ConsumerNode>();
-        nodeIds["cons2"] = cons2->id;
+        switch(idx) {
+            case 0: {
+                auto gen1 = pipeline.create<GeneratorNode>();
+                nodeIds["gen1"] = gen1->id;
+                auto gen2 = pipeline.create<GeneratorNode>();
+                nodeIds["gen2"] = gen2->id;
+                auto bridge1 = pipeline.create<BridgeNode>();
+                nodeIds["bridge1"] = bridge1->id;
+                auto bridge2 = pipeline.create<BridgeNode>();
+                nodeIds["bridge2"] = bridge2->id;
+                auto map = pipeline.create<MapNode>();
+                nodeIds["map"] = map->id;
+                auto cons1 = pipeline.create<ConsumerNode>();
+                nodeIds["cons1"] = cons1->id;
+                auto cons2 = pipeline.create<ConsumerNode>();
+                nodeIds["cons2"] = cons2->id;
 
-        gen1->output.link(bridge1->input);
-        gen2->output.link(bridge2->input);
-        bridge1->output.link(map->inputs["bridge1"]);
-        bridge2->output.link(map->inputs["bridge2"]);
-        map->outputs["bridge1"].link(cons1->input);
-        map->outputs["bridge2"].link(cons2->input);
+                gen1->output.link(bridge1->input);
+                gen2->output.link(bridge2->input);
+                bridge1->output.link(map->inputs["bridge1"]);
+                bridge2->output.link(map->inputs["bridge2"]);
+                map->outputs["bridge1"].link(cons1->input);
+                map->outputs["bridge2"].link(cons2->input);
 
-        pingQueues["gen1"] = gen1->ping.createInputQueue();
-        pingQueues["gen2"] = gen2->ping.createInputQueue();
-        pingQueues["bridge1"] = bridge1->ping.createInputQueue();
-        pingQueues["bridge2"] = bridge2->ping.createInputQueue();
-        pingQueues["map"] = map->ping.createInputQueue();
-        pingQueues["cons1"] = cons1->ping.createInputQueue();
-        pingQueues["cons2"] = cons2->ping.createInputQueue();
-        ackQueues["gen1"] = gen1->ack.createOutputQueue();
-        ackQueues["gen2"] = gen2->ack.createOutputQueue();
-        ackQueues["bridge1"] = bridge1->ack.createOutputQueue();
-        ackQueues["bridge2"] = bridge2->ack.createOutputQueue();
-        ackQueues["map"] = map->ack.createOutputQueue();
-        ackQueues["cons1"] = cons1->ack.createOutputQueue();
-        ackQueues["cons2"] = cons2->ack.createOutputQueue();
+                pingQueues["gen1"] = gen1->ping.createInputQueue();
+                pingQueues["gen2"] = gen2->ping.createInputQueue();
+                pingQueues["bridge1"] = bridge1->ping.createInputQueue();
+                pingQueues["bridge2"] = bridge2->ping.createInputQueue();
+                pingQueues["map"] = map->ping.createInputQueue();
+                pingQueues["cons1"] = cons1->ping.createInputQueue();
+                pingQueues["cons2"] = cons2->ping.createInputQueue();
+                ackQueues["gen1"] = gen1->ack.createOutputQueue();
+                ackQueues["gen2"] = gen2->ack.createOutputQueue();
+                ackQueues["bridge1"] = bridge1->ack.createOutputQueue();
+                ackQueues["bridge2"] = bridge2->ack.createOutputQueue();
+                ackQueues["map"] = map->ack.createOutputQueue();
+                ackQueues["cons1"] = cons1->ack.createOutputQueue();
+                ackQueues["cons2"] = cons2->ack.createOutputQueue();
+            } break;
+            case 1: {
+                auto gen = pipeline.create<GeneratorNode>();
+                nodeIds["gen"] = gen->id;
+                auto cons = pipeline.create<ConsumerNode>();
+                nodeIds["cons"] = cons->id;
+
+                gen->output.link(cons->input);
+
+                pingQueues["gen"] = gen->ping.createInputQueue();
+                pingQueues["cons"] = cons->ping.createInputQueue();
+                ackQueues["gen"] = gen->ack.createOutputQueue();
+                ackQueues["cons"] = cons->ack.createOutputQueue();
+            } break;
+        }
     }
 
     void start() {
@@ -428,4 +446,31 @@ TEST_CASE("Node timings test") {
         }
     }
     ph.stop();
+}
+
+TEST_CASE("Input duration test") {
+    PipelineHandler ph(1);
+    ph.start();
+
+    ph.ping("gen", 0);
+    ph.ping("cons", 0);
+
+    for(int i = 0; i < 10; ++i) {
+        ph.ping("cons", 0); // input get
+        std::this_thread::sleep_for(std::chrono::milliseconds(900));
+        ph.ping("gen", 0);  // output send
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    std::this_thread::sleep_for(std::chrono::seconds(1)); // Wait for state update
+
+    auto inputState = ph.pipeline.getPipelineState().nodes(ph.getNodeId("cons")).inputs("input");
+    REQUIRE(inputState.isValid());
+    REQUIRE(inputState.timing.durationStats.averageMicrosRecent == Catch::Approx(1e6).margin(0.2e6));
+    REQUIRE(inputState.timing.durationStats.medianMicrosRecent == Catch::Approx(1e6).margin(0.2e6));
+    REQUIRE(inputState.timing.durationStats.maxMicrosRecent == Catch::Approx(1e6).margin(0.4e6));
+    REQUIRE(inputState.timing.durationStats.minMicrosRecent == Catch::Approx(1e6).margin(0.4e6));
+    REQUIRE(inputState.timing.durationStats.stdDevMicrosRecent == Catch::Approx(0).margin(0.5e6));
+    REQUIRE(inputState.timing.durationStats.maxMicros == Catch::Approx(1e6).margin(0.4e6));
+    REQUIRE(inputState.timing.durationStats.minMicros == Catch::Approx(1e6).margin(0.4e6));
 }
