@@ -6,12 +6,12 @@
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Keypoint.hpp"
-#include "depthai/common/KeypointsList.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
+#include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
@@ -144,112 +144,14 @@ struct ImgDetection {
 /**
  * ImgDetections message. Carries normalized detection results
  */
-class ImgDetections : public Buffer, public ProtoSerializable {
-   private:
-    size_t segmentationMaskWidth = 0;
-    size_t segmentationMaskHeight = 0;
-
+class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable {
    public:
-    /**
-     * Construct ImgDetections message.
-     */
-    ImgDetections() = default;
-    virtual ~ImgDetections();
-
-    /// Detections
-    std::vector<ImgDetection> detections;
-    std::optional<ImgTransformation> transformation;
+    using Base = ImgDetectionsT<dai::ImgDetection>;
+    using Base::Base;
+    using Base::detections;
+    using Base::transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
-
-    /*
-     * Returns the width of the segmentation mask.
-     */
-    std::size_t getSegmentationMaskWidth() const;
-
-    /*
-     * Returns the height of the segmentation mask.
-     */
-    std::size_t getSegmentationMaskHeight() const;
-
-    /*
-     * Sets the segmentation mask from a vector of bytes, along with width and height.
-     * The size of the vector must be equal to width * height.
-     */
-    void setMask(const std::vector<std::uint8_t>& mask, size_t width, size_t height);
-
-    /*
-     * Returns a copy of the segmentation mask data as a vector of bytes. If mask data is not set, returns std::nullopt.
-     */
-    std::optional<std::vector<std::uint8_t>> getMaskData() const;
-
-    std::optional<dai::ImgFrame> getSegmentationMaskAsImgFrame() const;
-
-    // Optional - xtensor support
-#ifdef DEPTHAI_XTENSOR_SUPPORT
-    /**
-     * @note This API only available if xtensor support is enabled
-     */
-    using XArray2D = xt::xtensor<std::uint8_t, 2, xt::layout_type::row_major>;
-
-    /**
-     * Returns a copy of the segmentation mask data as a 2D array. If mask data is not set, returns std::nullopt.
-     */
-    std::optional<XArray2D> getTensorSegmentationMask() const;
-
-    /**
-     * Sets the segmentation mask from a 2D xtensor array.
-     */
-    ImgDetections& setTensorSegmentationMask(XArray2D mask);
-
-    /*
-     * Returns a binary mask where pixels belonging to the instance index are set to 1, others to 0. If mask data is not set, returns std::nullopt.
-     */
-    std::optional<XArray2D> getTensorSegmentationMaskByIndex(uint8_t index) const;
-
-#endif
-
-// Optional - OpenCV support
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    /**
-     * @note This API only available if OpenCV support is enabled
-     */
-
-    /**
-     * Copies cv::Mat data to Segmentation Mask buffer
-     *
-     * @param frame Input cv::Mat frame from which to copy the data
-     */
-    ImgDetections& setSegmentationMask(cv::Mat mask);
-
-    /**
-     * Retrieves data as cv::Mat with specified width, height and type. If mask data is not set, returns std::nullopt.
-     *
-     * @param copy If false only a reference to data is made, otherwise a copy
-     */
-    std::optional<cv::Mat> getSegmentationMask(bool copy = false);
-
-    /**
-     * Retrieves data as cv::Mat with specified width and height. If mask data is not set, returns std::nullopt.
-     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
-     */
-    std::optional<cv::Mat> getCvSegmentationMask(cv::MatAllocator* allocator = nullptr);
-
-    /**
-     * Returns a binary mask where pixels belonging to the instance index are set to 1, others to 0. If mask data is not set, returns std::nullopt.
-     * @param index Instance index
-     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
-     */
-    std::optional<cv::Mat> getCvSegmentationMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
-
-    /**
-     * Retrieves data by the semantic class. If no mask data is not set, returns std::nullopt.
-     * @param semanticClass Semantic class index
-     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
-     */
-    std::optional<cv::Mat> getCvSegmentationMaskByClass(uint8_t semanticClass, cv::MatAllocator* allocator = nullptr);
-
-#endif
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

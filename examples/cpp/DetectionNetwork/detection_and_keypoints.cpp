@@ -76,7 +76,7 @@ int main() {
                 cv::rectangle(frame, bbox, color, 2);
 
                 for(auto kp : detection.getKeypoints()) {
-                    auto keypointPos = cv::Point(static_cast<int>(kp.coordinates.x * frameWidth), static_cast<int>(kp.coordinates.y * frameHeight));
+                    auto keypointPos = cv::Point(static_cast<int>(kp.imageCoordinates.x * frameWidth), static_cast<int>(kp.imageCoordinates.y * frameHeight));
                     cv::circle(frame, keypointPos, 3, cv::Scalar(0, 255, 0), -1);
                 }
             }

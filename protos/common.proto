@@ -78,7 +78,7 @@ message KeypointsList {
 }
 
 message Keypoint {
-    Point3f coordinates = 1;
+    Point3f imageCoordinates = 1;
     float confidence = 2;
     uint32 label = 3;
 }

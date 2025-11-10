@@ -22,7 +22,6 @@
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/Interpolation.hpp"
 #include "depthai/common/Keypoint.hpp"
-#include "depthai/common/KeypointsList.hpp"
 #include "depthai/common/MemoryInfo.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3d.hpp"
@@ -104,22 +103,30 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(py::init<Point3f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0)
         .def(py::init<Point2f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0)
         .def(py::init<float, float, float, float, uint32_t>(), py::arg("x"), py::arg("y"), py::arg("z"), py::arg("confidence") = 0.f, py::arg("label") = 0)
-        .def_readwrite("coordinates", &Keypoint::coordinates)
+        .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates)
         .def_readwrite("confidence", &Keypoint::confidence)
         .def_readwrite("label", &Keypoint::label);
 
     keypointsList.def(py::init<>())
         .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"))
         .def(py::init<std::vector<Keypoint>>(), py::arg("keypoints"))
-        .def("setKeypoints", py::overload_cast<const std::vector<Keypoint>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
-        .def("setKeypoints", py::overload_cast<std::vector<Point3f>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
-        .def("setKeypoints", py::overload_cast<std::vector<Point2f>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
-        .def("setKeypoints", py::overload_cast<std::vector<Keypoint>, std::vector<Edge>>(&KeypointsList::setKeypoints), py::arg("keypoints"), py::arg("edges"))
-        .def("setEdges", py::overload_cast<const std::vector<Edge>>(&KeypointsList::setEdges), py::arg("edges"))
+        .def(
+            "setKeypoints", [](KeypointsList& self, const std::vector<Keypoint>& kps) { self.Base::setKeypoints(kps); }, py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<const std::vector<Point3f>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
+        .def("setKeypoints", py::overload_cast<const std::vector<Point2f>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
+        .def(
+            "setKeypoints",
+            [](KeypointsList& self, std::vector<Keypoint> keypoints, std::vector<Edge> edges) {
+                self.Base::setKeypoints(std::move(keypoints), std::move(edges));
+            },
+            py::arg("keypoints"),
+            py::arg("edges"))
+        .def(
+            "setEdges", [](KeypointsList& self, const std::vector<Edge>& edges) { self.Base::setEdges(edges); }, py::arg("edges"))
         .def("getKeypoints", &KeypointsList::getKeypoints, DOC(dai, KeypointsList, getKeypoints))
         .def("getEdges", &KeypointsList::getEdges, DOC(dai, KeypointsList, getEdges))
-        .def("getCoordinates3f", &KeypointsList::getCoordinates3f, DOC(dai, KeypointsList, getCoordinates3f))
-        .def("getCoordinates2f", &KeypointsList::getCoordinates2f, DOC(dai, KeypointsList, getCoordinates2f));
+        .def("getPoints3f", &KeypointsList::getPoints3f, DOC(dai, KeypointsList, getPoints3f))
+        .def("getPoints2f", &KeypointsList::getPoints2f, DOC(dai, KeypointsList, getPoints2f));
 
     rotatedRect.def(py::init<>())
         .def(py::init<Point2f, Size2f, float>())
