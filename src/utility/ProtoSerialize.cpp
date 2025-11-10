@@ -423,10 +423,10 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
             proto::common::KeypointsList* protoKeypoints = imgDetection->mutable_keypoints();
             for(const auto& keypoint : keypointsVec) {
                 auto* protoKeypoint = protoKeypoints->add_keypoints();
-                proto::common::Point3f* coords = protoKeypoint->mutable_coordinates();
-                coords->set_x(keypoint.coordinates.x);
-                coords->set_y(keypoint.coordinates.y);
-                coords->set_z(keypoint.coordinates.z);
+                proto::common::Point3f* coords = protoKeypoint->mutable_imagecoordinates();
+                coords->set_x(keypoint.imageCoordinates.x);
+                coords->set_y(keypoint.imageCoordinates.y);
+                coords->set_z(keypoint.imageCoordinates.z);
                 protoKeypoint->set_confidence(keypoint.confidence);
                 protoKeypoint->set_label(keypoint.label);
             }
@@ -470,10 +470,10 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const Keypoints* mess
 
     for(const auto& keypoint : message->getKeypoints()) {
         auto* protoKeypoint = keypointsList->add_keypoints();
-        proto::common::Point3f* coords = protoKeypoint->mutable_coordinates();
-        coords->set_x(keypoint.coordinates.x);
-        coords->set_y(keypoint.coordinates.y);
-        coords->set_z(keypoint.coordinates.z);
+        proto::common::Point3f* coords = protoKeypoint->mutable_imagecoordinates();
+        coords->set_x(keypoint.imageCoordinates.x);
+        coords->set_y(keypoint.imageCoordinates.y);
+        coords->set_z(keypoint.imageCoordinates.z);
         protoKeypoint->set_confidence(keypoint.confidence);
         protoKeypoint->set_label(keypoint.label);
     }

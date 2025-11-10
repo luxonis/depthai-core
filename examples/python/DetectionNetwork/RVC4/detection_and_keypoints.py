@@ -56,7 +56,7 @@ with dai.Pipeline() as pipeline:
             for keypoint in detection.getKeypoints():
                 keypoint_pos = frameNorm(
                     frame,
-                    (keypoint.coordinates.x, keypoint.coordinates.y),
+                    (keypoint.imageCoordinates.x, keypoint.imageCoordinates.y),
                 )
                 cv2.circle(frame, (keypoint_pos[0], keypoint_pos[1]), 3, (0, 255, 0), -1)
         # Show the frame
