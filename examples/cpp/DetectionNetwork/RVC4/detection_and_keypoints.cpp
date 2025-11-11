@@ -79,6 +79,14 @@ int main() {
                     auto keypointPos = cv::Point(static_cast<int>(kp.imageCoordinates.x * frameWidth), static_cast<int>(kp.imageCoordinates.y * frameHeight));
                     cv::circle(frame, keypointPos, 3, cv::Scalar(0, 255, 0), -1);
                 }
+                auto keypoints = detection.keypoints->getPoints2f();
+                for(auto edge : detection.getEdges()) {
+                    auto kp1 = keypoints.at(edge[0]);
+                    auto kp2 = keypoints.at(edge[1]);
+                    auto pt1 = cv::Point(static_cast<int>(kp1.x * frameWidth), static_cast<int>(kp1.y * frameHeight));
+                    auto pt2 = cv::Point(static_cast<int>(kp2.x * frameWidth), static_cast<int>(kp2.y * frameHeight));
+                    cv::line(frame, pt1, pt2, cv::Scalar(0, 255, 0), 2);
+                }
             }
 
             // Show the frame
