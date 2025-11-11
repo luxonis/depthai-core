@@ -110,7 +110,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
     //     ;
 
     // Message
-    imgDetections.def(py::init<>(), DOC(dai, ImgDetections, ImgDetections))
+    imgDetections.def(py::init<>(), DOC(dai, ImgDetectionsT, ImgDetectionsT))
         .def("__repr__", &ImgDetections::str)
         .def_property(
             "detections",
