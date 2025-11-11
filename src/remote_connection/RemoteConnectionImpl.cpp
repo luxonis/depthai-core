@@ -118,11 +118,21 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
                 logger::info(msgStr);
         }
     };
+
+    // Server options
     foxglove::ServerOptions serverOptions;
     serverOptions.sendBufferPriorityLimitMessages = {{0, 3}, {1, 5}}; // 3 messages for low priority, 5 messages for high priority
     serverOptions.messageDropPolicy = foxglove::MessageDropPolicy::MAX_MESSAGE_COUNT;
     serverOptions.capabilities.emplace_back("services");
     serverOptions.supportedEncodings.emplace_back("json");
+
+    // Priority assignment function - based on their datatype (see server options above)
+    getMessagePriority = [this](DatatypeEnum dtype) -> uint8_t {
+        if(dtype == DatatypeEnum::ImgDetections || dtype == DatatypeEnum::ImgAnnotations) {
+            return 1;
+        }
+        return 0;  // anything else is low priority
+    };
 
     server = foxglove::ServerFactory::createServer<websocketpp::connection_hdl>("DepthAI RemoteConnection", logHandler, serverOptions);
     if(!server) {
@@ -207,18 +217,6 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
         auto channelId = server->addChannels({{topicName, "protobuf", descriptor.schemaName, foxglove::base64Encode(descriptor.schema), std::nullopt}})[0];
         topics[topicName].id = channelId;
 
-        // The higher the priority, the less likely it is for the message to be dropped
-        // Note: Make sure to update ServerOptions to change the number of bytes allocated for each priority level
-        auto getPriority = [](DatatypeEnum dtype) -> uint8_t {
-            if(dtype == DatatypeEnum::ImgDetections) {
-                return 1;
-            }
-            if(dtype == DatatypeEnum::ImgAnnotations) {
-                return 1;
-            }
-            return 0;  // anything else is low priority
-        };
-
         while(isRunning) {
             std::shared_ptr<ADatatype> message;
             try {
@@ -245,7 +243,7 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
                 continue;
             }
 
-            uint8_t priority = getPriority(message->getDatatype());
+            uint8_t priority = getMessagePriority(message->getDatatype());
             auto serializedMsg = serializableMessage->serializeProto();
             server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size(), priority);
         }
