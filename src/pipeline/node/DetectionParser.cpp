@@ -323,6 +323,10 @@ void DetectionParser::setStrides(const std::vector<int>& strides) {
     properties.parser.strides = strides;
 }
 
+void DetectionParser::setKeypointEdges(const std::vector<dai::Edge>& edges) {
+    properties.parser.keypointEdges = edges;
+}
+
 /// Get coordianate size
 int DetectionParser::getCoordinateSize() const {
     return properties.parser.coordinates;

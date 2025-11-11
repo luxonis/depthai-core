@@ -71,6 +71,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
         .def("setNKeypoints", &DetectionParser::setNKeypoints, py::arg("nKeypoints"), DOC(dai, node, DetectionParser, setNKeypoints))
         .def("setClasses", &DetectionParser::setClasses, py::arg("classes"), DOC(dai, node, DetectionParser, setClasses))
         .def("setStrides", &DetectionParser::setStrides, py::arg("strides"), DOC(dai, node, DetectionParser, setStrides))
+        .def("setKeypointEdges", &DetectionParser::setKeypointEdges, py::arg("edges"), DOC(dai, node, DetectionParser, setKeypointEdges))
         .def("getNumClasses", &DetectionParser::getNumClasses, DOC(dai, node, DetectionParser, getNumClasses))
         .def("getClasses", &DetectionParser::getClasses, DOC(dai, node, DetectionParser, getClasses))
         .def("getCoordinateSize", &DetectionParser::getCoordinateSize, DOC(dai, node, DetectionParser, getCoordinateSize))

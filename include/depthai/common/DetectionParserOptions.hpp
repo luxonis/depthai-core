@@ -60,6 +60,7 @@ DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
                       anchorMasks,
                       outputNames,
                       anchorsV2,
-                      iouThreshold);
+                      iouThreshold,
+                      keypointEdges);
 
 }  // namespace dai
