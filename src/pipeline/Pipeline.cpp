@@ -209,7 +209,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         info.name = node->getName();
         info.alias = node->getAlias();
         info.parentId = node->parentId;
-        info.device = node->runOnHost() ? "host" : "device";
+        info.deviceNode = !node->runOnHost();
+        if(!node->runOnHost()) info.deviceId = defaultDeviceId;
+
         const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
         if(!node->runOnHost() && !deviceNode) {
             throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
@@ -342,7 +344,7 @@ PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, boo
     schema.bridges.clear();
     // Remove host nodes
     for(auto it = schema.nodes.begin(); it != schema.nodes.end();) {
-        if(it->second.device != "device") {
+        if(!it->second.deviceNode) {
             it = schema.nodes.erase(it);
         } else {
             ++it;
