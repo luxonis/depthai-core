@@ -53,12 +53,26 @@ with dai.Pipeline() as pipeline:
             )
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
             
-            for keypoint in detection.getKeypoints():
+            keypoints = detection.getKeypoints()
+            for keypoint in keypoints:
                 keypoint_pos = frameNorm(
                     frame,
                     (keypoint.imageCoordinates.x, keypoint.imageCoordinates.y),
                 )
                 cv2.circle(frame, (keypoint_pos[0], keypoint_pos[1]), 3, (0, 255, 0), -1)
+            
+            for edge in detection.getEdges():
+                kp1 = keypoints[edge[0]]
+                kp2 = keypoints[edge[1]]
+                kp1_pos = frameNorm(
+                    frame,
+                    (kp1.imageCoordinates.x, kp1.imageCoordinates.y),
+                )
+                kp2_pos = frameNorm(
+                    frame,
+                    (kp2.imageCoordinates.x, kp2.imageCoordinates.y),
+                )
+                cv2.line(frame, (kp1_pos[0], kp1_pos[1]), (kp2_pos[0], kp2_pos[1]), (0, 255, 0), 2)
         # Show the frame
         cv2.imshow(name, frame)
         

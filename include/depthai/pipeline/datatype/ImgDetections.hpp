@@ -149,6 +149,8 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     using Base = ImgDetectionsT<dai::ImgDetection>;
     using Base::Base;
     using Base::detections;
+    using Base::segmentationMaskHeight;
+    using Base::segmentationMaskWidth;
     using Base::transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
@@ -168,8 +170,14 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
      */
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
-    DEPTHAI_SERIALIZE(
-        ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation, segmentationMaskWidth, segmentationMaskHeight);
+    DEPTHAI_SERIALIZE(ImgDetections,
+                      Base::Buffer::sequenceNum,
+                      Base::Buffer::ts,
+                      Base::Buffer::tsDevice,
+                      detections,
+                      transformation,
+                      segmentationMaskWidth,
+                      segmentationMaskHeight);
 };
 
 }  // namespace dai

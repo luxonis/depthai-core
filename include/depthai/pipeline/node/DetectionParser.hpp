@@ -204,6 +204,13 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setStrides(const std::vector<int>& strides);
 
     /**
+     * Set edges connections between keypoints.
+     * @param edges Vector edges connections represented as pairs of keypoint indices.
+     * @note This is only applicable if keypoints decoding is enabled.
+     */
+    void setKeypointEdges(const std::vector<dai::Edge>& edges);
+
+    /**
      * Get number of classes to decode.
      */
     int getNumClasses() const;
