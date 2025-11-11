@@ -123,7 +123,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
     std::string defaultDeviceId;
-    bool pipelineOnHost = true;
+    // Is the pipeline building on host? Some steps should be skipped when building on device
+    bool buildingOnHost = true;
 
     // Pipeline events
     bool enablePipelineDebugging = false;
@@ -238,6 +239,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void wait();
     void stop();
     void run();
+
+    void setupPipelineDebugging();
 
     // Reset connections
     void resetConnections();
@@ -498,7 +501,7 @@ class Pipeline {
         impl()->build();
     }
     void buildDevice() {
-        impl()->pipelineOnHost = false;
+        impl()->buildingOnHost = false;
         impl()->build();
     }
     void start() {

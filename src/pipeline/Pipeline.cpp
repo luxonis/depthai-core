@@ -584,7 +584,7 @@ void PipelineImpl::build() {
     // TODO(themarpe) - add mutex and set running up ahead
     if(isBuild) return;
 
-    if(pipelineOnHost) {
+    if(buildingOnHost) {
         if(defaultDevice) {
             auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
             auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
@@ -679,57 +679,7 @@ void PipelineImpl::build() {
         node->buildStage1();
     }
 
-    if(pipelineOnHost) {
-        // Create pipeline event aggregator node and link
-        enablePipelineDebugging = enablePipelineDebugging || utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
-        if(enablePipelineDebugging) {
-            // Check if any nodes are on host or device
-            bool hasHostNodes = false;
-            bool hasDeviceNodes = false;
-            for(const auto& node : getAllNodes()) {
-                if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
-
-                if(node->runOnHost()) {
-                    hasHostNodes = true;
-                } else {
-                    hasDeviceNodes = true;
-                }
-            }
-            std::shared_ptr<node::internal::PipelineEventAggregation> hostEventAgg = nullptr;
-            std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
-            if(hasHostNodes) {
-                hostEventAgg = parent.create<node::internal::PipelineEventAggregation>();
-                hostEventAgg->setRunOnHost(true);
-            }
-            if(hasDeviceNodes) {
-                deviceEventAgg = parent.create<node::internal::PipelineEventAggregation>();
-                deviceEventAgg->setRunOnHost(false);
-            }
-            for(auto& node : getAllNodes()) {
-                if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
-
-                auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(node);
-                if(threadedNode) {
-                    if(node->runOnHost() && hostEventAgg && node->id != hostEventAgg->id) {
-                        threadedNode->pipelineEventOutput.link(hostEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
-                    } else if(!node->runOnHost() && deviceEventAgg && node->id != deviceEventAgg->id) {
-                        threadedNode->pipelineEventOutput.link(deviceEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
-                    }
-                }
-            }
-            auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, hasHostNodes);
-            if(deviceEventAgg) {
-                deviceEventAgg->out.link(stateMerge->inputDevice);
-                stateMerge->outRequest.link(deviceEventAgg->request);
-            }
-            if(hostEventAgg) {
-                hostEventAgg->out.link(stateMerge->inputHost);
-                stateMerge->outRequest.link(hostEventAgg->request);
-            }
-            pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
-            pipelineStateRequest = stateMerge->request.createInputQueue();
-        }
-    }
+    if(buildingOnHost) setupPipelineDebugging();
 
     {
         auto allNodes = getAllNodes();
@@ -1119,6 +1069,58 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
 
     // If no handler executed, then return nullptr
     throw std::invalid_argument(fmt::format("No handler specified for following ({}) URI", uri));
+}
+
+void PipelineImpl::setupPipelineDebugging() {
+    // Create pipeline event aggregator node and link
+    enablePipelineDebugging = enablePipelineDebugging || utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
+    if(enablePipelineDebugging) {
+        // Check if any nodes are on host or device
+        bool hasHostNodes = false;
+        bool hasDeviceNodes = false;
+        for(const auto& node : getAllNodes()) {
+            if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
+
+            if(node->runOnHost()) {
+                hasHostNodes = true;
+            } else {
+                hasDeviceNodes = true;
+            }
+        }
+        std::shared_ptr<node::internal::PipelineEventAggregation> hostEventAgg = nullptr;
+        std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
+        if(hasHostNodes) {
+            hostEventAgg = parent.create<node::internal::PipelineEventAggregation>();
+            hostEventAgg->setRunOnHost(true);
+        }
+        if(hasDeviceNodes) {
+            deviceEventAgg = parent.create<node::internal::PipelineEventAggregation>();
+            deviceEventAgg->setRunOnHost(false);
+        }
+        for(auto& node : getAllNodes()) {
+            if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
+
+            auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(node);
+            if(threadedNode) {
+                if(node->runOnHost() && hostEventAgg && node->id != hostEventAgg->id) {
+                    threadedNode->pipelineEventOutput.link(hostEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
+                } else if(!node->runOnHost() && deviceEventAgg && node->id != deviceEventAgg->id) {
+                    threadedNode->pipelineEventOutput.link(deviceEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
+                }
+            }
+        }
+        auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, hasHostNodes);
+        if(deviceEventAgg) {
+            deviceEventAgg->out.link(stateMerge->inputDevice);
+            stateMerge->outRequest.link(deviceEventAgg->request);
+        }
+        if(hostEventAgg) {
+            hostEventAgg->out.link(stateMerge->inputHost);
+            stateMerge->outRequest.link(hostEventAgg->request);
+        }
+        pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
+        pipelineStateRequest = stateMerge->request.createInputQueue();
+    }
 }
 
 // Record and Replay
