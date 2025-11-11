@@ -191,6 +191,33 @@ class BridgeNode : public node::CustomThreadedNode<BridgeNode> {
     }
 };
 
+class TryNode : public node::CustomThreadedNode<TryNode> {
+    bool doStep = true;
+    int runTo = 0;
+
+   public:
+    Input input{*this, {"input", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+
+    void run() override {
+        while(mainLoop()) {
+            std::shared_ptr<dai::Buffer> msg = nullptr;
+            {
+                auto blockEvent = this->inputBlockEvent();
+                msg = input.tryGet<dai::Buffer>();
+            }
+            if(msg == nullptr) {
+                msg = std::make_shared<dai::Buffer>();
+            }
+            {
+                auto blockEvent = this->outputBlockEvent();
+                output.trySend(msg);
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+};
+
 class PipelineHandler {
     std::unordered_map<std::string, std::shared_ptr<InputQueue>> pingQueues;
     std::unordered_map<std::string, std::shared_ptr<MessageQueue>> ackQueues;
@@ -199,7 +226,7 @@ class PipelineHandler {
    public:
     Pipeline pipeline;
 
-    PipelineHandler(int idx=0) : pipeline(false) {
+    PipelineHandler(int idx = 0) : pipeline(false) {
         pipeline.enablePipelineDebugging();
 
         switch(idx) {
@@ -456,13 +483,13 @@ TEST_CASE("Input duration test") {
     ph.ping("cons", 0);
 
     for(int i = 0; i < 10; ++i) {
-        ph.ping("cons", 0); // input get
+        ph.ping("cons", 0);  // input get
         std::this_thread::sleep_for(std::chrono::milliseconds(900));
         ph.ping("gen", 0);  // output send
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(1)); // Wait for state update
+    std::this_thread::sleep_for(std::chrono::seconds(1));  // Wait for state update
 
     auto inputState = ph.pipeline.getPipelineState().nodes(ph.getNodeId("cons")).inputs("input");
     REQUIRE(inputState.isValid());
@@ -473,4 +500,24 @@ TEST_CASE("Input duration test") {
     REQUIRE(inputState.timing.durationStats.stdDevMicrosRecent == Catch::Approx(0).margin(0.5e6));
     REQUIRE(inputState.timing.durationStats.maxMicros == Catch::Approx(1e6).margin(0.4e6));
     REQUIRE(inputState.timing.durationStats.minMicros == Catch::Approx(1e6).margin(0.4e6));
+}
+
+TEST_CASE("Try I/O test") {
+    dai::Pipeline p(false);
+    p.enablePipelineDebugging();
+
+    auto tryNode = p.create<TryNode>();
+    auto gen = p.create<GeneratorNode>();
+    auto cons = p.create<ConsumerNode>();
+    gen->output.link(tryNode->input);
+    tryNode->output.link(cons->input);
+
+    p.start();
+
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+
+    auto state = p.getPipelineState().nodes().detailed();
+    REQUIRE(!state.nodeStates.at(tryNode->id).inputStates["input"].isValid());
+    REQUIRE(state.nodeStates.at(tryNode->id).inputStates["input"].timing.fps == 0.f);
+    REQUIRE(state.nodeStates.at(tryNode->id).outputStates["output"].isValid());
 }

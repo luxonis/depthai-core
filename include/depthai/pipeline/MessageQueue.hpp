@@ -214,7 +214,11 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         if(pipelineEventDispatcher) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
             blockEvent.setQueueSize(getSize());
-            return getInput();
+            auto result = getInput();
+            if(!result) {
+                blockEvent.cancel();
+            }
+            return result;
         } else {
             return getInput();
         }
