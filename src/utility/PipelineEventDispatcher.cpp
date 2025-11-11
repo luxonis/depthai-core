@@ -112,14 +112,17 @@ void PipelineEventDispatcher::endOutputEvent(const std::string& source) {
 void PipelineEventDispatcher::endCustomEvent(const std::string& source) {
     endEvent(PipelineEvent::Type::CUSTOM, source, std::nullopt);
 }
-void PipelineEventDispatcher::startTrackedEvent(PipelineEvent event) {
+void PipelineEventDispatcher::startTrackedEvent(PipelineEvent event, std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts) {
     if(!sendEvents) return;
     if(blacklist(event.type, event.source)) return;
     checkNodeId();
 
     std::lock_guard<std::mutex> lock(mutex);
 
-    event.setTimestamp(std::chrono::steady_clock::now());
+    if(!ts.has_value())
+        event.setTimestamp(std::chrono::steady_clock::now());
+    else
+        event.setTimestamp(ts.value());
     event.tsDevice = event.ts;
     event.nodeId = nodeId;
     event.interval = PipelineEvent::Interval::START;
@@ -128,21 +131,27 @@ void PipelineEventDispatcher::startTrackedEvent(PipelineEvent event) {
         out->send(std::make_shared<dai::PipelineEvent>(event));
     }
 }
-void PipelineEventDispatcher::startTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) {
+void PipelineEventDispatcher::startTrackedEvent(PipelineEvent::Type type,
+                                                const std::string& source,
+                                                int64_t sequenceNum,
+                                                std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts) {
     PipelineEvent event;
     event.type = type;
     event.source = source;
     event.sequenceNum = sequenceNum;
-    startTrackedEvent(event);
+    startTrackedEvent(event, ts);
 }
-void PipelineEventDispatcher::endTrackedEvent(PipelineEvent event) {
+void PipelineEventDispatcher::endTrackedEvent(PipelineEvent event, std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts) {
     if(!sendEvents) return;
     if(blacklist(event.type, event.source)) return;
     checkNodeId();
 
     std::lock_guard<std::mutex> lock(mutex);
 
-    event.setTimestamp(std::chrono::steady_clock::now());
+    if(!ts.has_value())
+        event.setTimestamp(std::chrono::steady_clock::now());
+    else
+        event.setTimestamp(ts.value());
     event.tsDevice = event.ts;
     event.nodeId = nodeId;
     event.interval = PipelineEvent::Interval::END;
@@ -151,12 +160,15 @@ void PipelineEventDispatcher::endTrackedEvent(PipelineEvent event) {
         out->send(std::make_shared<dai::PipelineEvent>(event));
     }
 }
-void PipelineEventDispatcher::endTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) {
+void PipelineEventDispatcher::endTrackedEvent(PipelineEvent::Type type,
+                                              const std::string& source,
+                                              int64_t sequenceNum,
+                                              std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts) {
     PipelineEvent event;
     event.type = type;
     event.source = source;
     event.sequenceNum = sequenceNum;
-    endTrackedEvent(event);
+    endTrackedEvent(event, ts);
 }
 void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::string& source) {
     if(!sendEvents) return;
@@ -213,8 +225,10 @@ void PipelineEventDispatcher::pingInputEvent(const std::string& source, int32_t 
         out->send(std::make_shared<dai::PipelineEvent>(eventCopy));
     }
 }
-PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::blockEvent(PipelineEvent::Type type, const std::string& source) {
-    return BlockPipelineEvent(*this, type, source);
+PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::blockEvent(PipelineEvent::Type type,
+                                                                                const std::string& source,
+                                                                                std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts) {
+    return BlockPipelineEvent(*this, type, source, ts);
 }
 PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::inputBlockEvent() {
     // For convenience due to the default source

@@ -33,6 +33,7 @@ class NodeEventAggregation {
         mainLoopTimingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
         inputsGetFpsBuffer = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
         outputsSendFpsBuffer = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
+        mainLoopFpsBuffer = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
     }
 
     NodeState state;
@@ -50,6 +51,7 @@ class NodeEventAggregation {
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>> outputFpsBuffers;
     std::unique_ptr<utility::CircularBuffer<FpsMeasurement>> inputsGetFpsBuffer;
     std::unique_ptr<utility::CircularBuffer<FpsMeasurement>> outputsSendFpsBuffer;
+    std::unique_ptr<utility::CircularBuffer<FpsMeasurement>> mainLoopFpsBuffer;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>> otherFpsBuffers;
 
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<std::optional<PipelineEvent>>>> ongoingInputEvents;
@@ -116,7 +118,7 @@ class NodeEventAggregation {
         auto& fpsBuffer = [&]() -> std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>& {
             switch(event.type) {
                 case PipelineEvent::Type::LOOP:
-                    return emptyTimeBuffer;
+                    return mainLoopFpsBuffer;
                 case PipelineEvent::Type::INPUT:
                     return inputFpsBuffers[event.source];
                 case PipelineEvent::Type::OUTPUT:
@@ -145,7 +147,7 @@ class NodeEventAggregation {
             eventsBuffer.add(durationEvent);
 
             timingsBuffer->add(durationEvent.durationUs);
-            if(event.type != PipelineEvent::Type::LOOP) fpsBuffer->add({durationEvent.startEvent.getTimestamp()});
+            fpsBuffer->add({durationEvent.startEvent.getTimestamp()});
 
             *ongoingEvent = std::nullopt;
 
@@ -193,7 +195,7 @@ class NodeEventAggregation {
         auto& fpsBuffer = [&]() -> std::unique_ptr<utility::CircularBuffer<FpsMeasurement>>& {
             switch(event.type) {
                 case PipelineEvent::Type::LOOP:
-                    break;
+                    return mainLoopFpsBuffer;
                 case PipelineEvent::Type::CUSTOM:
                     return otherFpsBuffers[event.source];
                 case PipelineEvent::Type::INPUT:
@@ -336,7 +338,7 @@ class NodeEventAggregation {
                         break;
                     case PipelineEvent::Type::LOOP:
                         updateTimingStats(state.mainLoopTiming.durationStats, *mainLoopTimingsBuffer);
-                        state.mainLoopTiming.fps = 1e6f / (float)state.mainLoopTiming.durationStats.averageMicrosRecent;
+                        updateFpsStats(state.mainLoopTiming, *mainLoopFpsBuffer);
                         break;
                     case PipelineEvent::Type::INPUT:
                         for(auto& [source, _] : inputTimingsBuffers) {

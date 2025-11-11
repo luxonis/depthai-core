@@ -65,7 +65,10 @@ with dai.Pipeline() as pipeline:
                             print("-----")
                         print(f"## inputStates: {'empty' if not nodeState.inputStates else ''}")
                         for inputName, inputState in nodeState.inputStates.items():
-                            print(f"### {inputName}:\n-----{inputState}\n-----")
+                            if inputState.isValid():
+                                print(f"### {inputName}:\n-----{inputState}\n-----")
+                            else:
+                                print(f"### {inputName}: invalid")
                         print(f"## outputStates: {'empty' if not nodeState.outputStates else ''}")
                         for outputName, outputState in nodeState.outputStates.items():
                             print(f"### {outputName}:\n-----{outputState}\n-----")

@@ -79,7 +79,10 @@ int main() {
 
                     std::cout << "## inputStates: " << (nodeState.inputStates.empty() ? "empty" : "") << "\n";
                     for(const auto& [inputName, inputState] : nodeState.inputStates) {
-                        std::cout << "### " << inputName << ":\n-----" << inputState.str() << "\n-----\n";
+                        if(inputState.isValid())
+                            std::cout << "### " << inputName << ":\n-----" << inputState.str() << "\n-----\n";
+                        else
+                            std::cout << "### " << inputName << ": invalid\n";
                     }
 
                     std::cout << "## outputStates: " << (nodeState.outputStates.empty() ? "empty" : "") << "\n";

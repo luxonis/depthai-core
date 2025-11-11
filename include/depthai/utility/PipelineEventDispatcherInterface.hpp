@@ -20,11 +20,19 @@ class PipelineEventDispatcherInterface {
 
         bool canceled = false;
         std::optional<uint32_t> queueSize = std::nullopt;
+        std::optional<std::chrono::time_point<std::chrono::steady_clock>> endTs = std::nullopt;
 
        public:
-        BlockPipelineEvent(PipelineEventDispatcherInterface& dispatcher, PipelineEvent::Type type, const std::string& source)
+        BlockPipelineEvent(PipelineEventDispatcherInterface& dispatcher,
+                           PipelineEvent::Type type,
+                           const std::string& source,
+                           std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt)
             : dispatcher(dispatcher), type(type), source(source), sequence(dispatcher.sequence++) {
-            dispatcher.startTrackedEvent(type, source, sequence);
+            PipelineEvent event;
+            event.type = type;
+            event.source = source;
+            event.sequenceNum = sequence;
+            dispatcher.startTrackedEvent(event, ts);
         }
         ~BlockPipelineEvent() {
             if(canceled || std::uncaught_exceptions() > 0) return;
@@ -33,13 +41,16 @@ class PipelineEventDispatcherInterface {
             event.source = source;
             event.sequenceNum = sequence;
             event.queueSize = queueSize;
-            dispatcher.endTrackedEvent(type, source, sequence);
+            dispatcher.endTrackedEvent(event, endTs);
         }
         void cancel() {
             canceled = true;
         }
         void setQueueSize(uint32_t qs) {
             queueSize = qs;
+        }
+        void setEndTimestamp(std::chrono::time_point<std::chrono::steady_clock> ts) {
+            endTs = ts;
         }
     };
 
@@ -55,15 +66,23 @@ class PipelineEventDispatcherInterface {
     virtual void endInputEvent(const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) = 0;
     virtual void endOutputEvent(const std::string& source) = 0;
     virtual void endCustomEvent(const std::string& source) = 0;
-    virtual void startTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) = 0;
-    virtual void startTrackedEvent(PipelineEvent event) = 0;
-    virtual void endTrackedEvent(PipelineEvent::Type type, const std::string& source, int64_t sequenceNum) = 0;
-    virtual void endTrackedEvent(PipelineEvent event) = 0;
+    virtual void startTrackedEvent(PipelineEvent event, std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) = 0;
+    virtual void startTrackedEvent(PipelineEvent::Type type,
+                                   const std::string& source,
+                                   int64_t sequenceNum,
+                                   std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) = 0;
+    virtual void endTrackedEvent(PipelineEvent event, std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) = 0;
+    virtual void endTrackedEvent(PipelineEvent::Type type,
+                                 const std::string& source,
+                                 int64_t sequenceNum,
+                                 std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) = 0;
     virtual void pingEvent(PipelineEvent::Type type, const std::string& source) = 0;
     virtual void pingMainLoopEvent() = 0;
     virtual void pingCustomEvent(const std::string& source) = 0;
     virtual void pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize = std::nullopt) = 0;
-    virtual BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source) = 0;
+    virtual BlockPipelineEvent blockEvent(PipelineEvent::Type type,
+                                          const std::string& source,
+                                          std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) = 0;
     virtual BlockPipelineEvent inputBlockEvent() = 0;
     virtual BlockPipelineEvent outputBlockEvent() = 0;
     virtual BlockPipelineEvent customBlockEvent(const std::string& source) = 0;
