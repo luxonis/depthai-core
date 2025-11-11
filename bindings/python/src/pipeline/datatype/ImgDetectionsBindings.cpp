@@ -7,8 +7,8 @@
 // depthai
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 #include "ndarray_converter.h"
-
 // pybind
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
@@ -123,28 +123,28 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getSequenceNum", &Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](ImgDetections& msg) { return msg.transformation; })
         .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
-        .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetections, getSegmentationMaskWidth))
-        .def("getSegmentationMaskHeight", &ImgDetections::getSegmentationMaskHeight, DOC(dai, ImgDetections, getSegmentationMaskHeight))
-        .def("setMask", &ImgDetections::setMask, py::arg("mask"), py::arg("width"), py::arg("height"), DOC(dai, ImgDetections, setMask))
-        .def("getMaskData", &ImgDetections::getMaskData, DOC(dai, ImgDetections, getMaskData))
-        .def("getSegmentationMaskAsImgFrame", &ImgDetections::getSegmentationMaskAsImgFrame, DOC(dai, ImgDetections, getSegmentationMaskAsImgFrame))
+        .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetectionsT, getSegmentationMaskWidth))
+        .def("getSegmentationMaskHeight", &ImgDetections::getSegmentationMaskHeight, DOC(dai, ImgDetectionsT, getSegmentationMaskHeight))
+        .def("setMask", &ImgDetections::setMask, py::arg("mask"), py::arg("width"), py::arg("height"), DOC(dai, ImgDetectionsT, setMask))
+        .def("getMaskData", &ImgDetections::getMaskData, DOC(dai, ImgDetectionsT, getMaskData))
+        .def("getSegmentationMaskAsImgFrame", &ImgDetections::getSegmentationMaskAsImgFrame, DOC(dai, ImgDetectionsT, getSegmentationMaskAsImgFrame))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
-            "getSegmentationMask", [](ImgDetections& self) { return self.getSegmentationMask(false); }, DOC(dai, ImgDetections, getSegmentationMask))
-        .def("setSegmentationMask", &ImgDetections::setSegmentationMask, DOC(dai, ImgDetections, setSegmentationMask))
+            "getSegmentationMask", [](ImgDetections& self) { return self.getSegmentationMask(false); }, DOC(dai, ImgDetectionsT, getSegmentationMask))
+        .def("setSegmentationMask", &ImgDetections::setSegmentationMask, py::arg("mask"), DOC(dai, ImgDetectionsT, setSegmentationMask))
         .def(
             "getCvSegmentationMask",
             [](ImgDetections& self) { return self.getCvSegmentationMask(&g_numpyAllocator); },
-            DOC(dai, ImgDetections, getCvSegmentationMask))
+            DOC(dai, ImgDetectionsT, getCvSegmentationMask))
         .def(
             "getCvSegmentationMaskByIndex",
             [](ImgDetections& self, uint8_t index) { return self.getCvSegmentationMaskByIndex(index, &g_numpyAllocator); },
             py::arg("index"),
-            DOC(dai, ImgDetections, getCvSegmentationMaskByIndex))
+            DOC(dai, ImgDetectionsT, getCvSegmentationMaskByIndex))
         .def(
             "getCvSegmentationMaskByClass",
             [](ImgDetections& self, uint8_t semanticClass) { return self.getCvSegmentationMaskByClass(semanticClass, &g_numpyAllocator); },
             py::arg("semantic_class"),
-            DOC(dai, ImgDetections, getCvSegmentationMaskByClass));
+            DOC(dai, ImgDetectionsT, getCvSegmentationMaskByClass));
 #endif
 }
