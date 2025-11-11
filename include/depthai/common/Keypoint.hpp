@@ -39,6 +39,8 @@ struct KeypointsList : KeypointsListT<Keypoint> {
     using Base::edges;
     using Base::getEdges;
     using Base::getKeypoints;
+    using Base::getPoints2f;
+    using Base::getPoints3f;
     using Base::keypoints;
     using Base::setEdges;
     using Base::setKeypoints;
