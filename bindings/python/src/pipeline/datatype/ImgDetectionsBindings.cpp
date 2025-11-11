@@ -116,7 +116,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
             "detections",
             [](ImgDetections& det) { return &det.detections; },
             [](ImgDetections& det, std::vector<ImgDetection> val) { det.detections = val; },
-            DOC(dai, ImgDetections, detections),
+            DOC(dai, ImgDetectionsT, detections),
             py::return_value_policy::reference_internal)
         .def("getTimestamp", &Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
