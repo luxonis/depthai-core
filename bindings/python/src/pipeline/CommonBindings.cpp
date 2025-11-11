@@ -421,7 +421,15 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("coordinates", &DetectionParserOptions::coordinates)
         .def_readwrite("anchors", &DetectionParserOptions::anchors)
         .def_readwrite("anchorMasks", &DetectionParserOptions::anchorMasks)
-        .def_readwrite("iouThreshold", &DetectionParserOptions::iouThreshold);
+        .def_readwrite("iouThreshold", &DetectionParserOptions::iouThreshold)
+        .def_readwrite("inputWidth", &DetectionParserOptions::inputWidth)
+        .def_readwrite("inputHeight", &DetectionParserOptions::inputHeight)
+        .def_readwrite("decodingFamily", &DetectionParserOptions::decodingFamily)
+        .def_readwrite("keypointEdges", &DetectionParserOptions::keypointEdges)
+        .def_readwrite("anchorsV2", &DetectionParserOptions::anchorsV2)
+        .def_readwrite("decodeKeypoints", &DetectionParserOptions::decodeKeypoints)
+        .def_readwrite("numKeypoints", &DetectionParserOptions::nKeypoints)
+        .def_readwrite("outputNames", &DetectionParserOptions::outputNames);
 
     cameraExposureOffset.value("START", CameraExposureOffset::START).value("MIDDLE", CameraExposureOffset::MIDDLE).value("END", CameraExposureOffset::END);
 
