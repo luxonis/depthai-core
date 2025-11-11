@@ -111,22 +111,32 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"))
         .def(py::init<std::vector<Keypoint>>(), py::arg("keypoints"))
         .def(
-            "setKeypoints", [](KeypointsList& self, const std::vector<Keypoint>& kps) { self.Base::setKeypoints(kps); }, py::arg("keypoints"))
-        .def("setKeypoints", py::overload_cast<const std::vector<Point3f>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
-        .def("setKeypoints", py::overload_cast<const std::vector<Point2f>>(&KeypointsList::setKeypoints), py::arg("keypoints"))
+            "setKeypoints",
+            [](KeypointsList& self, const std::vector<Keypoint>& kps) { self.Base::setKeypoints(kps); },
+            py::arg("keypoints"),
+            DOC(dai, KeypointsListT, setKeypoints))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Point3f>>(&KeypointsList::setKeypoints),
+             py::arg("keypoints"),
+             DOC(dai, KeypointsListT, setKeypoints))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Point2f>>(&KeypointsList::setKeypoints),
+             py::arg("keypoints"),
+             DOC(dai, KeypointsListT, setKeypoints))
         .def(
             "setKeypoints",
             [](KeypointsList& self, std::vector<Keypoint> keypoints, std::vector<Edge> edges) {
                 self.Base::setKeypoints(std::move(keypoints), std::move(edges));
             },
             py::arg("keypoints"),
-            py::arg("edges"))
+            py::arg("edges"),
+            DOC(dai, KeypointsListT, setKeypoints))
         .def(
             "setEdges", [](KeypointsList& self, const std::vector<Edge>& edges) { self.Base::setEdges(edges); }, py::arg("edges"))
-        .def("getKeypoints", &KeypointsList::getKeypoints, DOC(dai, KeypointsList, getKeypoints))
-        .def("getEdges", &KeypointsList::getEdges, DOC(dai, KeypointsList, getEdges))
-        .def("getPoints3f", &KeypointsList::getPoints3f, DOC(dai, KeypointsList, getPoints3f))
-        .def("getPoints2f", &KeypointsList::getPoints2f, DOC(dai, KeypointsList, getPoints2f));
+        .def("getKeypoints", &KeypointsList::getKeypoints, DOC(dai, KeypointsListT, getKeypoints))
+        .def("getEdges", &KeypointsList::getEdges, DOC(dai, KeypointsListT, getEdges))
+        .def("getPoints3f", &KeypointsList::getPoints3f, DOC(dai, KeypointsListT, getPoints3f))
+        .def("getPoints2f", &KeypointsList::getPoints2f, DOC(dai, KeypointsListT, getPoints2f));
 
     rotatedRect.def(py::init<>())
         .def(py::init<Point2f, Size2f, float>())
