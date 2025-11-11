@@ -119,8 +119,6 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
         }
     };
     foxglove::ServerOptions serverOptions;
-    constexpr size_t MAX_SEND_BUFFER_LIMIT_BYTES = 100 * 1024 * 1024;  // 100 MB
-    serverOptions.sendBufferPriorityLimitBytes = {{0, static_cast<size_t>(0.96 * MAX_SEND_BUFFER_LIMIT_BYTES)}, {1, MAX_SEND_BUFFER_LIMIT_BYTES}};
     serverOptions.sendBufferPriorityLimitMessages = {{0, 3}, {1, 5}}; // 3 messages for low priority, 5 messages for high priority
     serverOptions.messageDropPolicy = foxglove::MessageDropPolicy::MAX_MESSAGE_COUNT;
     serverOptions.capabilities.emplace_back("services");
