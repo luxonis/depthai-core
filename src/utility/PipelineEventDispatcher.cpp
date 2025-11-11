@@ -8,6 +8,8 @@ namespace utility {
 constexpr const char* OUTPUT_BLOCK_NAME = "sendOutputs";
 constexpr const char* INPUT_BLOCK_NAME = "getInputs";
 
+PipelineEventDispatcherInterface::~PipelineEventDispatcherInterface() = default;
+
 std::string typeToString(PipelineEvent::Type type) {
     switch(type) {
         case PipelineEvent::Type::CUSTOM:
