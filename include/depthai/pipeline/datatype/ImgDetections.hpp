@@ -154,6 +154,9 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     using Base::transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::ImgDetections;
+    }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
