@@ -7,7 +7,7 @@ import time
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    cameraNode = pipeline.create(dai.node.Camera).build()
+    cameraNode = pipeline.create(dai.node.Camera).build(sensorFps=12)
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("luxonis/yolov8-nano-pose-estimation:coco-512x288"))
     labelMap = detectionNetwork.getClasses()
 
