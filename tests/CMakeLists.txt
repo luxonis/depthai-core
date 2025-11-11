@@ -111,121 +111,123 @@ function(dai_test_compile_definitions)
     endif()
 endfunction()
 
-# Mobilenet network
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_8shave.blob"
-    SHA1 "3329bb8f3a9c881ef9756d232055f9d6f38aa07b"
-    FILE "mobilenet-ssd_openvino_2021.2_8shave.blob"
-    LOCATION mobilenet_blob
-)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    # Mobilenet network
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_8shave.blob"
+        SHA1 "3329bb8f3a9c881ef9756d232055f9d6f38aa07b"
+        FILE "mobilenet-ssd_openvino_2021.2_8shave.blob"
+        LOCATION mobilenet_blob
+    )
 
-# OpenVINO 2020.3 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.3_4shave.blob"
-    SHA1 "f0134c9b843fe414f6d98b17a70f069d1ab0f3d8"
-    FILE "text-image-super-resolution-0001_2020.3_4shave.blob"
-    LOCATION openvino_2020_3_blob
-)
-# OpenVINO 2020.4 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.4_4shave.blob"
-    SHA1 "25dcf0b146da8c85c9c4cba00ad5fdd4ed02a1b6"
-    FILE "text-image-super-resolution-0001_2020.4_4shave.blob"
-    LOCATION openvino_2020_4_blob
-)
+    # OpenVINO 2020.3 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.3_4shave.blob"
+        SHA1 "f0134c9b843fe414f6d98b17a70f069d1ab0f3d8"
+        FILE "text-image-super-resolution-0001_2020.3_4shave.blob"
+        LOCATION openvino_2020_3_blob
+    )
+    # OpenVINO 2020.4 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2020.4_4shave.blob"
+        SHA1 "25dcf0b146da8c85c9c4cba00ad5fdd4ed02a1b6"
+        FILE "text-image-super-resolution-0001_2020.4_4shave.blob"
+        LOCATION openvino_2020_4_blob
+    )
 
-# OpenVINO 2021.1 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.1_4shave.blob"
-    SHA1 "39c4f47f2a75627b7561e97dd7cdfcd0b1925a1e"
-    FILE "text-image-super-resolution-0001_2021.1_4shave.blob"
-    LOCATION openvino_2021_1_blob
-)
-# OpenVINO 2021.2 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.2_4shave.blob"
-    SHA1 "a204467f86aa4ad63d31782ada271bea6f57f789"
-    FILE "text-image-super-resolution-0001_2021.2_4shave.blob"
-    LOCATION openvino_2021_2_blob
-)
-# OpenVINO 2021.3 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.3_4shave.blob"
-    SHA1 "af19470feb59317e74d045bc31d93ca129c46674"
-    FILE "text-image-super-resolution-0001_2021.3_4shave.blob"
-    LOCATION openvino_2021_3_blob
-)
-# OpenVINO 2021.4.2 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4.2_4shave.blob"
-    SHA1 "164b6b2ae48d38bc4f07cc8296b8bcb7644a1578"
-    FILE "text-image-super-resolution-0001_2021.4.2_4shave.blob"
-    LOCATION openvino_2021_4_2_blob
-)
-# OpenVINO 2022.1.0 blob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2022.1.0_4shave.blob"
-    SHA1 "98e94b865b9c48a92eaebd1ddc883712dfe7cfcb"
-    FILE "text-image-super-resolution-0001_2022.1.0_4shave.blob"
-    LOCATION openvino_2022_1_blob
-)
-# YoloV4 resource
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
-    SHA1 "7da2f96f7300e3828940557e6a86ac6f243eef7e"
-    FILE "yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
-    LOCATION tiny_yolo_v4_2021-4_4shave_blob
-)
+    # OpenVINO 2021.1 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.1_4shave.blob"
+        SHA1 "39c4f47f2a75627b7561e97dd7cdfcd0b1925a1e"
+        FILE "text-image-super-resolution-0001_2021.1_4shave.blob"
+        LOCATION openvino_2021_1_blob
+    )
+    # OpenVINO 2021.2 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.2_4shave.blob"
+        SHA1 "a204467f86aa4ad63d31782ada271bea6f57f789"
+        FILE "text-image-super-resolution-0001_2021.2_4shave.blob"
+        LOCATION openvino_2021_2_blob
+    )
+    # OpenVINO 2021.3 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.3_4shave.blob"
+        SHA1 "af19470feb59317e74d045bc31d93ca129c46674"
+        FILE "text-image-super-resolution-0001_2021.3_4shave.blob"
+        LOCATION openvino_2021_3_blob
+    )
+    # OpenVINO 2021.4.2 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4.2_4shave.blob"
+        SHA1 "164b6b2ae48d38bc4f07cc8296b8bcb7644a1578"
+        FILE "text-image-super-resolution-0001_2021.4.2_4shave.blob"
+        LOCATION openvino_2021_4_2_blob
+    )
+    # OpenVINO 2022.1.0 blob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2022.1.0_4shave.blob"
+        SHA1 "98e94b865b9c48a92eaebd1ddc883712dfe7cfcb"
+        FILE "text-image-super-resolution-0001_2022.1.0_4shave.blob"
+        LOCATION openvino_2022_1_blob
+    )
+    # YoloV4 resource
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
+        SHA1 "7da2f96f7300e3828940557e6a86ac6f243eef7e"
+        FILE "yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
+        LOCATION tiny_yolo_v4_2021-4_4shave_blob
+    )
 
-# Superblob
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
-    SHA1 "6f14e3a5388946d6de849ff4f6432702601b1003"
-    FILE "person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
-    LOCATION superblob_path
-)
+    # Superblob
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
+        SHA1 "6f14e3a5388946d6de849ff4f6432702601b1003"
+        FILE "person-reidentification-retail-0277_openvino_2022.1_8shave.superblob"
+        LOCATION superblob_path
+    )
 
-# NNarchives of different types
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_blob_nnarchive.tar.xz"
-    SHA1 "6b9697e5aaf1560efbdea7f8d7487bae51def619"
-    FILE "yolo_blob_nnarchive.tar.xz"
-    LOCATION yolo_blob_nnarchive_path
-)
+    # NNarchives of different types
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_blob_nnarchive.tar.xz"
+        SHA1 "6b9697e5aaf1560efbdea7f8d7487bae51def619"
+        FILE "yolo_blob_nnarchive.tar.xz"
+        LOCATION yolo_blob_nnarchive_path
+    )
 
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_superblob_nnarchive.tar.xz"
-    SHA1 "2356fd7e5a203446211a891a74f0b23e0912eaf6"
-    FILE "yolo_superblob_nnarchive.tar.xz"
-    LOCATION yolo_superblob_nnarchive_path
-)
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_superblob_nnarchive.tar.xz"
+        SHA1 "2356fd7e5a203446211a891a74f0b23e0912eaf6"
+        FILE "yolo_superblob_nnarchive.tar.xz"
+        LOCATION yolo_superblob_nnarchive_path
+    )
 
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_onnx_nnarchive.tar.xz"
-    SHA1 "7abb6a8c05c5f66897cd2c5c6b4f0170620dff8b"
-    FILE "yolo_onnx_nnarchive.tar.xz"
-    LOCATION yolo_onnx_nnarchive_path
-)
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo_onnx_nnarchive.tar.xz"
+        SHA1 "7abb6a8c05c5f66897cd2c5c6b4f0170620dff8b"
+        FILE "yolo_onnx_nnarchive.tar.xz"
+        LOCATION yolo_onnx_nnarchive_path
+    )
 
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
-    SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
-    FILE "lenna.png"
-    LOCATION lenna_png
-)
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/images/lenna.png"
+        SHA1 "3ee0d360dc12003c0d43e3579295b52b64906e85"
+        FILE "lenna.png"
+        LOCATION lenna_png
+    )
 
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/recording.tar"
-    SHA1 "b1e31a26c83dc1e315132c9226097da4b1a5cbb7"
-    FILE "recording.tar"
-    LOCATION recording_path
-)
-private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/construction_vest.mp4"
-    SHA1 "271d8d0b702e683ce02957db7c100843de5ceaec"
-    FILE "construction_vest.mp4"
-    LOCATION construction_vest
-)
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/recording.tar"
+        SHA1 "b1e31a26c83dc1e315132c9226097da4b1a5cbb7"
+        FILE "recording.tar"
+        LOCATION recording_path
+    )
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/construction_vest.mp4"
+        SHA1 "271d8d0b702e683ce02957db7c100843de5ceaec"
+        FILE "construction_vest.mp4"
+        LOCATION construction_vest
+    )
+endif()
 
 ### Helper script to wrap the tests with a timeout ############################
 
@@ -235,23 +237,27 @@ target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog
 
 ### On-host tests #############################################################
 
-# Superblob test
-dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp)
-target_compile_definitions(openvino_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
-dai_set_test_labels(openvino_test onhost ci)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    # Superblob test
+    dai_add_test(openvino_test src/onhost_tests/openvino/openvino_test.cpp)
+    target_compile_definitions(openvino_test PRIVATE SUPERBLOB_PATH="${superblob_path}")
+    dai_set_test_labels(openvino_test onhost ci)
+endif()
 
 # CalibrationHandler test
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
 
 # NNArchive test
-dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
-target_compile_definitions(nn_archive_test PRIVATE
-    BLOB_ARCHIVE_PATH="${yolo_blob_nnarchive_path}"
-    SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
-    ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
-)
-dai_set_test_labels(nn_archive_test onhost ci)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
+    target_compile_definitions(nn_archive_test PRIVATE
+        BLOB_ARCHIVE_PATH="${yolo_blob_nnarchive_path}"
+        SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
+        ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
+    )
+    dai_set_test_labels(nn_archive_test onhost ci)
+endif()
 
 # Eeprom naming parsing tests
 dai_add_test(naming_test src/onhost_tests/naming_test.cpp)
@@ -320,26 +326,30 @@ dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
 dai_set_test_labels(logging_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # OpenVINO blob test
-dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
-target_compile_definitions(openvino_blob_test PRIVATE
-    OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
-    OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
-    OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
-    OPENVINO_2021_2_BLOB_PATH="${openvino_2021_2_blob}"
-    OPENVINO_2021_3_BLOB_PATH="${openvino_2021_3_blob}"
-    OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
-    OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
-)
-dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(openvino_blob_test src/ondevice_tests/openvino_blob_test.cpp)
+    target_compile_definitions(openvino_blob_test PRIVATE
+        OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
+        OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
+        OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
+        OPENVINO_2021_2_BLOB_PATH="${openvino_2021_2_blob}"
+        OPENVINO_2021_3_BLOB_PATH="${openvino_2021_3_blob}"
+        OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
+        OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
+    )
+    dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
+endif()
 
 # Dynamic calibration tests
 dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
 
-# Neural network test
-dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
-target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_set_test_labels(neural_network_test ondevice rvc2_all ci)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    # Neural network test
+    dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
+    target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+    dai_set_test_labels(neural_network_test ondevice rvc2_all ci)
+endif()
 
 dai_add_test(spatial_location_calculator_test src/ondevice_tests/pipeline/node/spatial_location_calculator_test.cpp)
 dai_set_test_labels(spatial_location_calculator_test ondevice rvc2_all rvc4 ci)
@@ -362,18 +372,20 @@ dai_set_test_labels(device_usbspeed_test_17 ondevice rvc2 usb ci)
 dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp CXX_STANDARD 20)
 dai_set_test_labels(device_usbspeed_test_20 ondevice rvc2 usb ci)
 
-# Filesystem test
-dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp)
-target_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_set_test_labels(filesystem_test rvc2_all ci)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    # Filesystem test
+    dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp)
+    target_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+    dai_set_test_labels(filesystem_test rvc2_all ci)
 
-dai_add_test(filesystem_test_17 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 17)
-target_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_set_test_labels(filesystem_test_17 rvc2_all ci)
+    dai_add_test(filesystem_test_17 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 17)
+    target_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
+    dai_set_test_labels(filesystem_test_17 rvc2_all ci)
 
-dai_add_test(filesystem_test_20 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 20)
-target_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
-dai_set_test_labels(filesystem_test_20 rvc2_all ci)
+    dai_add_test(filesystem_test_20 src/ondevice_tests/filesystem_test.cpp CXX_STANDARD 20)
+    target_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
+    dai_set_test_labels(filesystem_test_20 rvc2_all ci)
+endif()
 
 # Encoded frame test
 dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
@@ -408,22 +420,26 @@ dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
 dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # Detection network test
-dai_add_test(detection_network_test src/ondevice_tests/pipeline/node/detection_network_test.cpp)
-target_compile_definitions(detection_network_test PRIVATE
-    BLOB_ARCHIVE_PATH="${yolo_blob_nnarchive_path}"
-    SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
-    ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
-)
-dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(detection_network_test src/ondevice_tests/pipeline/node/detection_network_test.cpp)
+    target_compile_definitions(detection_network_test PRIVATE
+        BLOB_ARCHIVE_PATH="${yolo_blob_nnarchive_path}"
+        SUPERBLOB_ARCHIVE_PATH="${yolo_superblob_nnarchive_path}"
+        ONNX_ARCHIVE_PATH="${yolo_onnx_nnarchive_path}"
+    )
+    dai_set_test_labels(detection_network_test ondevice rvc2_all ci)
+endif()
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
 dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 
 # NeuralNetwork node test
-dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
-target_compile_definitions(neural_network_node_test PRIVATE LENNA_PATH="${lenna_png}")
-dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
+    target_compile_definitions(neural_network_node_test PRIVATE LENNA_PATH="${lenna_png}")
+    dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
+endif()
 
 # ImgTransformations tests
 dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
@@ -461,13 +477,15 @@ dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cp
 dai_set_test_labels(stereo_depth_node_test ondevice rvc2_all rvc4 ci)
 
 # ImageManip test
-dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
-target_compile_definitions(image_manip_node_test PRIVATE LENNA_PATH="${lenna_png}")
-dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(image_manip_node_test src/ondevice_tests/pipeline/node/image_manip_test.cpp)
+    target_compile_definitions(image_manip_node_test PRIVATE LENNA_PATH="${lenna_png}")
+    dai_set_test_labels(image_manip_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
-dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)
-target_compile_definitions(image_manip_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
-dai_set_test_labels(image_manip_optimization_test ondevice rvc4 rvc4rgb ci)
+    dai_add_test(image_manip_optimization_test src/ondevice_tests/pipeline/node/image_manip_optimization_test.cpp)
+    target_compile_definitions(image_manip_optimization_test PRIVATE LENNA_PATH="${lenna_png}")
+    dai_set_test_labels(image_manip_optimization_test ondevice rvc4 rvc4rgb ci)
+endif()
 
 # Benchmark tests
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
@@ -482,17 +500,21 @@ dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
 dai_set_test_labels(imu_test ondevice rvc4 rvc4rgb ci) # Many RVC2 devices do not have an IMU which supports the whole test suite
 
 # ObjectTracker tests
-dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
-dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 ci)
-target_compile_definitions(object_tracker_test PRIVATE VIDEO_PATH="${construction_vest}")
+if(DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(object_tracker_test src/ondevice_tests/pipeline/node/object_tracker_test.cpp)
+    dai_set_test_labels(object_tracker_test ondevice rvc2 rvc4 ci)
+    target_compile_definitions(object_tracker_test PRIVATE VIDEO_PATH="${construction_vest}")
+endif()
 
 # Record & Replay tests
-dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)
-dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4) # TODO(Morato) add to CI once the test is stable
-target_compile_definitions(record_replay_test PRIVATE RECORDING_PATH="${recording_path}")
-dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
-dai_set_test_labels(replay_test onhost ci)
-target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
+if(DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(record_replay_test src/ondevice_tests/pipeline/node/record_replay_test.cpp)
+    dai_set_test_labels(record_replay_test ondevice rvc2_all rvc4) # TODO(Morato) add to CI once the test is stable
+    target_compile_definitions(record_replay_test PRIVATE RECORDING_PATH="${recording_path}")
+    dai_add_test(replay_test src/onhost_tests/replay_test.cpp)
+    dai_set_test_labels(replay_test onhost ci)
+    target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}")
+endif()
 
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)

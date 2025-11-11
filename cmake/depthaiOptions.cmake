@@ -18,6 +18,7 @@ option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
 option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
 option(DEPTHAI_ENABLE_KOMPUTE "Enable Kompute support" OFF)
 option(DEPTHAI_ENABLE_MP4V2 "Enable video recording using the MP4V2 library" ON)
+option(DEPTHAI_FETCH_ARTIFACTS "Enable fetching artifacts from remote repository" ON)
 
 # ---------- Optional Features (public) -------------
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
