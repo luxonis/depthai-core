@@ -166,15 +166,28 @@ TEST_CASE("Test how default FPS is generated for a specific output") {
 }
 
 TEST_CASE("Camera pool sizes") {
-    for(const int overrideQueueSize : {-1, 2, 17, 3, 50, 4, 5}) {
+    auto firstDevice = dai::Device::getFirstAvailableDevice();
+    auto isRvc4 = std::get<1>(firstDevice).platform == X_LINK_RVC4;
+    for(const int overrideQueueSize : (isRvc4 ? std::vector<int>{-1, 2, 17, 3, 50, 4, 5} : std::vector<int>{-1, 2, 17, 3, 4, 5})) {
         std::cout << "Testing num frames = " << overrideQueueSize << "\n" << std::flush;
         dai::Pipeline pipeline;
-        auto isRvc4 = pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC4;
-        std::map<dai::CameraBoardSocket, std::vector<std::tuple<int, int, float>>> streams{
+        std::map<dai::CameraBoardSocket, std::vector<std::tuple<int, int, float>>> streamsRvc4{
+            // Has to be (for now):
+            // - without FpsRegulator (different fps per same sensor)(different fps on different sensors also doesn't work right now)
+            // - without ManipResizer so size should be supported by ISP directly
             {dai::CameraBoardSocket::CAM_A, {{640, 480, 30.0f}, {1920, 1440, 30.0f}}},
             {dai::CameraBoardSocket::CAM_B, {{640, 400, 30.0f}, {1280, 800, 30.0f}}},
             {dai::CameraBoardSocket::CAM_C, {{640, 400, 30.0f}, {1280, 800, 30.0f}}},
         };
+        // RVC2 is more RAM bound so use smaller sizes for the test
+        std::map<dai::CameraBoardSocket, std::vector<std::tuple<int, int, float>>> streamsRvc2{
+            // Has to be (for now):
+            // - not a size supported directly by ISP as then isp is passed trough and the isp pool size value is used not the outputs pool size
+            {dai::CameraBoardSocket::CAM_A, {{300, 300, 30.0f}}},
+            {dai::CameraBoardSocket::CAM_B, {{300, 300, 30.0f}, {200, 200, 30.0f}}},
+            {dai::CameraBoardSocket::CAM_C, {{200, 200, 30.0f}}},
+        };
+        auto streams = isRvc4 ? streamsRvc4 : streamsRvc2;
         std::vector<std::shared_ptr<dai::MessageQueue>> outQueues;
         std::vector<int> outQueuesCounter;
         std::vector<std::shared_ptr<dai::node::Camera>> cameras;
@@ -191,7 +204,6 @@ TEST_CASE("Camera pool sizes") {
                 std::string theKey = std::to_string(outQueues.size());
                 std::string inputName = "in" + theKey;
                 std::string outputName = "out" + theKey;
-                std::cout << "Creating queue for : " << inputName << " <--> " << outputName << "\n" << std::flush;
                 camera->requestOutput({std::get<0>(resolution), std::get<1>(resolution)}, std::nullopt, dai::ImgResizeMode::CROP, std::get<2>(resolution))
                     ->link(script->inputs[inputName]);
                 script->inputs[inputName].setBlocking(false);
@@ -202,40 +214,33 @@ TEST_CASE("Camera pool sizes") {
             cameras.push_back(camera);
         }
         int timeToBlock = 20;
-        std::string scriptContent = R"(
+        std::string scriptContent = isRvc4 ? R"(
+            from depthai import BenchmarkReport)"
+                                           : "";
+        scriptContent += R"(
             import time
-            import depthai
 
-            print("jak-dbg: inside script node")
             all_frames=[]
             max_id = )" + std::to_string(outQueues.size() - 1)
-                                    + R"(
+                         + R"(
             start_time = time.time()
-            print("jak-dbg: starting first loop")
             while time.time() - start_time < )"
-                                    + std::to_string(timeToBlock) + R"(:
+                         + std::to_string(timeToBlock) + R"(:
                 for idx in range(max_id + 1):
                     the_key = str(idx)
-                    #print("jak-dbg: try getting in" + the_key)
                     frame = node.inputs["in" + the_key].tryGet()
-                    #frame = node.inputs["in" + the_key].get()
                     if frame is not None:
-                        print("jak-dbg: got frame in first loop: " + the_key)
                         all_frames.append(frame)
-                        out = depthai.ADatatype()
+                        out = BenchmarkReport()
                         node.outputs["out" + the_key].send(out)
-            print("jak-dbg: first loop finished")
             all_frames = []
-            print("jak-dbg: starting second loop")
             while True:
                 for idx in range(max_id + 1):
                     the_key = str(idx)
                     frame = node.inputs["in" + the_key].tryGet()
                     if frame is not None:
-                        print("jak-dbg: got frame in second loop: " + the_key)
-                        out = depthai.ADatatype()
+                        out = BenchmarkReport()
                         node.outputs["out" + the_key].send(out)
-            print("jak-dbg: second loop finished")
         )";
         script->setScript(scriptContent);
         pipeline.start();
@@ -243,10 +248,8 @@ TEST_CASE("Camera pool sizes") {
         // Keep frames in script node and check Camera node stops sending frames after buffer limit is hit
         while(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() < timeToBlock - 5) {
             for(int idx = 0; idx < outQueues.size(); ++idx) {
-                // std::cout << "Try getting frame" << idx << "\n" << std::flush;
                 auto frame = outQueues[idx]->tryGet();
                 if(frame) {
-                    std::cout << "Got frame" << idx << "\n" << std::flush;
                     ++outQueuesCounter[idx];
                 }
             }
