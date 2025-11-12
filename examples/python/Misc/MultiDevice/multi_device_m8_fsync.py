@@ -100,6 +100,8 @@ with contextlib.ExitStack() as stack:
         pipeline, out_q = createPipeline(pipeline, socket)
         role = device.getM8FsyncRole()
         if (role == dai.M8FsyncRole.MASTER):
+            device.setM8StrobeEnable(True)
+            device.setM8StrobeLimits(0.05, 0.95)
             master_pipelines.append(pipeline)
         elif (role == dai.M8FsyncRole.SLAVE):
             slave_pipelines.append(pipeline)
