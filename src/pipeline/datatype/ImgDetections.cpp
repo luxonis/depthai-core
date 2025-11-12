@@ -19,18 +19,19 @@ namespace dai {
 
 // ImgDetection functions
 
+
 ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, float conf = 0.f, uint32_t label = 0) {
     setBoundingBox(boundingBox);
     this->confidence = conf;
     this->label = label;
 }
 ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, std::string labelName, float conf = 0.f, uint32_t label = 0)
-    : ImgDetection(boundingBox, conf, label) {
+: ImgDetection(boundingBox, conf, label) {
     this->labelName = std::move(labelName);
 }
 
 ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, const dai::KeypointsList& keypoints, float conf = 0.f, uint32_t label = 0)
-    : ImgDetection(boundingBox, conf, label) {
+: ImgDetection(boundingBox, conf, label) {
     this->keypoints = keypoints;
 }
 
@@ -43,7 +44,7 @@ ImgDetection::ImgDetection(
 
 void ImgDetection::setBoundingBox(const RotatedRect boundingBox) {
     this->boundingBox = boundingBox;
-
+    
     std::array<float, 4> outerPoints = this->boundingBox->getOuterRect();
     xmin = outerPoints[0];
     ymin = outerPoints[1];
@@ -57,7 +58,7 @@ RotatedRect ImgDetection::getBoundingBox() const {
     } else if(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
         throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
     }
-
+    
     // construct from legacy values
     RotatedRect rect = RotatedRect{dai::Rect{Point2f{xmin, ymin}, Point2f{xmax, ymax}}};
     return rect;
@@ -68,10 +69,10 @@ void ImgDetection::setOuterBoundingBox(const float xmin, const float ymin, const
     this->ymin = ymin;
     this->xmax = xmax;
     this->ymax = ymax;
-
+    
     Point2f topLeft{xmin, ymin};
     Point2f bottomRight{xmax, ymax};
-
+    
     this->boundingBox = RotatedRect{Rect{topLeft, bottomRight}};
 }
 
@@ -141,6 +142,7 @@ float ImgDetection::getAngle() const noexcept {
 }
 
 // ImgDetections functions
+ImgDetections::~ImgDetections() = default;
 
 void ImgDetections::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
