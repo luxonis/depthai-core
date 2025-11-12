@@ -2,7 +2,6 @@
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
-#include "fmt/base.h"
 
 int main() {
     dai::Pipeline pipeline;
@@ -50,7 +49,7 @@ int main() {
 
         cv::imshow("disparity", colorizedDisparity);
 
-        fmt::println("Latest event from MonoLeft camera node: {}", latestNodeEvent ? latestNodeEvent->str() : "No event");
+        std::cout << "Latest event from MonoLeft camera node: " << (latestNodeEvent ? latestNodeEvent->str() : "No event");
 
         int key = cv::waitKey(1);
         if(key == 'q') {
