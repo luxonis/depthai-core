@@ -127,7 +127,7 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
     serverOptions.supportedEncodings.emplace_back("json");
 
     // Priority assignment function - based on their datatype (see server options above)
-    getMessagePriority = [this](DatatypeEnum dtype) -> uint8_t {
+    getMessagePriority = [](DatatypeEnum dtype) -> uint8_t {
         if(dtype == DatatypeEnum::ImgDetections || dtype == DatatypeEnum::ImgAnnotations) {
             return 1;
         }
