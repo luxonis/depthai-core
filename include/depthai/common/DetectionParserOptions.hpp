@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "depthai/common/DetectionNetworkType.hpp"
+#include "depthai/common/KeypointsListT.hpp"
 #include "depthai/common/YoloDecodingFamily.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -38,6 +39,7 @@ struct DetectionParserOptions {
     /// see YoloDetectionNetwork::setAnchors() for format
     std::vector<std::vector<std::vector<float>>> anchorsV2;
     float iouThreshold;
+    std::vector<dai::Edge> keypointEdges;
 };
 
 DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
@@ -58,6 +60,7 @@ DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
                       anchorMasks,
                       outputNames,
                       anchorsV2,
-                      iouThreshold);
+                      iouThreshold,
+                      keypointEdges);
 
 }  // namespace dai

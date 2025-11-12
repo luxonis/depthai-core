@@ -113,11 +113,24 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         if(head.metadata.yoloOutputs) {
             properties.parser.outputNames = *head.metadata.yoloOutputs;
         }
-
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
     } else {
         DAI_CHECK_V(false, "Unsupported parser: {}", head.parser);
+    }
+
+    if(head.metadata.extraParams.contains("skeleton_edges")) {
+        pimpl->logger->debug("Found skeleton_edges in extraParams");
+        auto skeletonEdgesJson = head.metadata.extraParams["skeleton_edges"];
+        if(skeletonEdgesJson.is_array()) {
+            std::vector<dai::Edge> skeletonEdges;
+            for(const auto& edge : skeletonEdgesJson) {
+                if(edge.is_array() && edge.size() == 2) {
+                    skeletonEdges.emplace_back(dai::Edge{edge[0].get<uint32_t>(), edge[1].get<uint32_t>()});
+                }
+            }
+            properties.parser.keypointEdges = skeletonEdges;
+        }
     }
 
     if(head.metadata.classes) {
@@ -310,6 +323,10 @@ void DetectionParser::setClasses(const std::vector<std::string>& classes) {
 
 void DetectionParser::setStrides(const std::vector<int>& strides) {
     properties.parser.strides = strides;
+}
+
+void DetectionParser::setKeypointEdges(const std::vector<dai::Edge>& edges) {
+    properties.parser.keypointEdges = edges;
 }
 
 /// Get coordianate size

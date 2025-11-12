@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "depthai/common/KeypointsList.hpp"
+#include "depthai/common/KeypointsListT.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -888,7 +888,7 @@ void keypointDecode(std::shared_ptr<dai::NNData> nnData,
             keypoints.push_back(dai::Keypoint{dai::Point2f(x, y), conf});
         }
 
-        outDetections->detections[i].keypoints = KeypointsList(keypoints);
+        outDetections->detections[i].keypoints = KeypointsList(keypoints, properties.parser.keypointEdges);
     }
 }
 

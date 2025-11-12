@@ -468,7 +468,7 @@ dai_set_test_labels(filesystem_test_20 rvc2_all ci)
 
 # Encoded frame test
 dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4rgb ci)
+dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # MessageGroup tests
 dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
@@ -611,6 +611,7 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
 # VideoEncoder test
 dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
 dai_set_test_labels(video_encoder_test ondevice rvc2_all rvc4 rvc4rgb ci)
+target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_tests.cpp)

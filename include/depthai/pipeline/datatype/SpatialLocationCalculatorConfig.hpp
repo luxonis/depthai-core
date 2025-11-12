@@ -219,6 +219,10 @@ class SpatialLocationCalculatorConfig : public Buffer {
                       globalKeypointRadius,
                       useKeypoints,
                       useSegmentation);
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::SpatialLocationCalculatorConfig;
+    }
+    DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config);
 };
 
 }  // namespace dai
