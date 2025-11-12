@@ -343,6 +343,9 @@ dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_tes
 dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
 target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
 
+dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
+dai_set_test_labels(dynamic_calibration_onhost_test onhost)
+
 # Neural network test
 dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
 target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
