@@ -121,13 +121,13 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
 
     // Server options
     foxglove::ServerOptions serverOptions;
-    serverOptions.sendBufferPriorityLimitMessages = {{0, 3}, {1, 5}}; // 3 messages for low priority, 5 messages for high priority
+    serverOptions.sendBufferPriorityLimitMessages = {{0, 3}, {1, 5}};  // 3 messages for low priority, 5 messages for high priority
     serverOptions.messageDropPolicy = foxglove::MessageDropPolicy::MAX_MESSAGE_COUNT;
     serverOptions.capabilities.emplace_back("services");
     serverOptions.supportedEncodings.emplace_back("json");
 
     // Priority assignment function - based on their datatype (see server options above)
-    getMessagePriority = [this](DatatypeEnum dtype) -> uint8_t {
+    getMessagePriority = [](DatatypeEnum dtype) -> uint8_t {
         if(dtype == DatatypeEnum::ImgDetections || dtype == DatatypeEnum::ImgAnnotations) {
             return 1;
         }
