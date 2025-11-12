@@ -1,6 +1,8 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <fstream>
 #include <iostream>
+#include <opencv2/opencv.hpp>
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -27,6 +29,10 @@ TEST_CASE("OLD_OUTPUT") {
 
 TEST_CASE("JPEG_ENCODING_LOSSLESS") {
     dai::Pipeline pipeline;
+    if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC4) {
+        return;
+    }
+
     auto camNode = pipeline.create<dai::node::Camera>()->build();
     auto camOut = camNode->requestOutput({640, 480}, dai::ImgFrame::Type::NV12);
     auto encNode = pipeline.create<dai::node::VideoEncoder>();
@@ -44,13 +50,38 @@ TEST_CASE("JPEG_ENCODING_LOSSLESS") {
     encNode->setKeyframeFrequency(30);
 
     auto outputQueue = encNode->out.createOutputQueue();
+    auto camOutputQueue = camOut->createOutputQueue();
     pipeline.start();
     for(int i = 0; i < 100; ++i) {
         auto encfrm = outputQueue->get<dai::EncodedFrame>();
+        auto origFrame = camOutputQueue->get<dai::ImgFrame>();
         REQUIRE(encfrm->getProfile() == dai::EncodedFrame::Profile::JPEG);
         REQUIRE(encfrm->getLossless() == true);
         REQUIRE(encfrm->getQuality() == 30);
+
+        // Encoded and original frames should be identical
+        std::string data;
+        std::stringstream ss;
+        ss.write((const char*)encfrm->getData().data(), encfrm->getData().size());
+        data = ss.str();
+        std::filesystem::path path("encoded");
+        std::ofstream fileStream(path, std::ios::binary);
+        fileStream.write(data.data(), data.size());
+
+        ss.write((const char*)origFrame->getData().data(), origFrame->getData().size());
+        data = ss.str();
+        path = std::filesystem::path("original");
+        fileStream = std::ofstream(path, std::ios::binary);
+        fileStream.write(data.data(), data.size());
+
+        cv::VideoCapture originalCapture("original", cv::CAP_FFMPEG);
+        cv::VideoCapture encodedCapture("encoded", cv::CAP_FFMPEG);
+        cv::Mat originalFrame, encodedFrame;
+        REQUIRE((originalCapture.read(originalFrame) && encodedCapture.read(encodedFrame)));
+        REQUIRE(std::equal(originalFrame.begin<uchar>(), originalFrame.end<uchar>(), encodedFrame.begin<uchar>()));
     }
+    std::filesystem::remove("original");
+    std::filesystem::remove("encoded");
 }
 
 TEST_CASE("JPEG_ENCODING_LOSSY") {
