@@ -19,6 +19,8 @@ struct VppProperties : PropertiesSerializable<Properties, VppProperties> {
      * Number of frames in pool for output frames
      */
     int numFramesPool = 4;
+
+    virtual ~VppProperties();
 };
 
 DEPTHAI_SERIALIZE_EXT(VppProperties, initialConfig, numFramesPool);

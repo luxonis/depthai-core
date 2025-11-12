@@ -17,7 +17,7 @@ namespace node {
  */
 class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
    protected:
-    Properties& getProperties();
+    Properties& getProperties() override;
 
    public:
     constexpr static const char* NAME = "Vpp";
@@ -28,7 +28,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
 
     Vpp(std::unique_ptr<Properties> props);
 
-    ~Vpp() = default;
+    virtual ~Vpp();
 
     void buildInternal() override;
 

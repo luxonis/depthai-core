@@ -42,7 +42,7 @@ class VppConfig : public Buffer {
     InjectionParameters injectionParameters;
 
     VppConfig() = default;
-    virtual ~VppConfig() = default;
+    virtual ~VppConfig();
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

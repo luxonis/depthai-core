@@ -6,6 +6,8 @@
 namespace dai {
 namespace node {
 
+Vpp::~Vpp() = default;
+
 Vpp::Vpp(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, Vpp, VppProperties>(std::move(props)),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
