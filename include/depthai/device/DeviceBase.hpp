@@ -818,6 +818,20 @@ class DeviceBase {
      */
     M8FsyncRole getM8FsyncRole();
 
+    /**
+     * Sets the M8 Fsync strobe limits
+     * @param min Minimum strobe value in percent
+     * @param max Maximum strobe value in percent
+     * @returns Tuple of bool and string. Bool specifies if role was set without failures. String is the error message describing the failure reason.
+     */
+    std::tuple<bool, std::string> setM8StrobeLimits(float min, float max);
+
+    /**
+     * Set whether the M8 Fsync strobe should be enabled
+     * @param enable Enables or disables strobe
+     */
+    void setM8StrobeEnable(bool enable);
+
    protected:
     std::shared_ptr<XLinkConnection> connection;
 
