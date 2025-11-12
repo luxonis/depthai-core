@@ -449,5 +449,6 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning))
         .def("mainLoop", &ThreadedNode::mainLoop, DOC(dai, ThreadedNode, mainLoop))
         .def("setLogLevel", &ThreadedNode::setLogLevel, DOC(dai, ThreadedNode, setLogLevel))
-        .def("getLogLevel", &ThreadedNode::getLogLevel, DOC(dai, ThreadedNode, getLogLevel));
+        .def("getLogLevel", &ThreadedNode::getLogLevel, DOC(dai, ThreadedNode, getLogLevel))
+        .def_readonly("pipelineEventOutput", &ThreadedNode::pipelineEventOutput, DOC(dai, ThreadedNode, pipelineEventOutput));
 }

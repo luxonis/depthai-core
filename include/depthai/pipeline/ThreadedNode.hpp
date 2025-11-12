@@ -16,12 +16,13 @@ class ThreadedNode : public Node {
     AtomicBool running{false};
 
    protected:
-    Output pipelineEventOutput{*this, {"pipelineEventOutput", DEFAULT_GROUP, {{{DatatypeEnum::PipelineEvent, false}}}}};
-
     void initPipelineEventDispatcher(int64_t nodeId);
 
    public:
+    Output pipelineEventOutput{*this, {"pipelineEventOutput", DEFAULT_GROUP, {{{DatatypeEnum::PipelineEvent, false}}}}};
+
     using Node::Node;
+
     ThreadedNode();
     virtual ~ThreadedNode();
 

@@ -26,7 +26,7 @@ int main() {
 
     double maxDisparity = 1.0;
     pipeline.start();
-    while(true) {
+    while(pipeline.isRunning()) {
         auto disparity = disparityQueue->get<dai::ImgFrame>();
         cv::Mat npDisparity = disparity->getFrame();
 
