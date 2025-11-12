@@ -65,8 +65,7 @@ int main() {
         if(inDet != nullptr) {
             counter++;
 
-            // get all labels as sorted list
-
+            // Get all labels as sorted list
             auto labels = std::set<int>();
             for(const auto& detection : inDet->detections) {
                 labels.insert(detection.label);

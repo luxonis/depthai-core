@@ -52,7 +52,7 @@ with dai.Pipeline() as pipeline:
                 255,
             )
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
-            
+
             keypoints = detection.getKeypoints()
             for keypoint in keypoints:
                 keypoint_pos = frameNorm(
@@ -60,7 +60,7 @@ with dai.Pipeline() as pipeline:
                     (keypoint.imageCoordinates.x, keypoint.imageCoordinates.y),
                 )
                 cv2.circle(frame, (keypoint_pos[0], keypoint_pos[1]), 3, (0, 255, 0), -1)
-            
+
             for edge in detection.getEdges():
                 kp1 = keypoints[edge[0]]
                 kp2 = keypoints[edge[1]]
@@ -75,14 +75,12 @@ with dai.Pipeline() as pipeline:
                 cv2.line(frame, (kp1_pos[0], kp1_pos[1]), (kp2_pos[0], kp2_pos[1]), (0, 255, 0), 2)
         # Show the frame
         cv2.imshow(name, frame)
-        
-        
+
+
     while pipeline.isRunning():
         inRgb: dai.ImgFrame = qRgb.get()
         inDet: dai.ImgDetections = qDet.get()
-        inRgb.getHeight()
-        
-        
+
         if inRgb is not None:
             frame = inRgb.getCvFrame()
             cv2.putText(
@@ -97,7 +95,7 @@ with dai.Pipeline() as pipeline:
         if inDet is not None:
             detections = inDet.detections
             counter += 1
-            
+
         if frame is not None:
             displayFrame("rgb", frame)
         if cv2.waitKey(1) == ord("q"):

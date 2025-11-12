@@ -220,6 +220,7 @@ private_data(
     FILE "recording.tar"
     LOCATION recording_path
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/construction_vest.mp4"
     SHA1 "271d8d0b702e683ce02957db7c100843de5ceaec"
@@ -233,24 +234,28 @@ private_data(
     FILE "yolov6-nano_r2-coco-512x288_a26d1ee-detections.json"
     LOCATION yolo_v6_r2_coco_512x288_gt
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov6-nano_r2-coco-512x384_fb1429e-detections.json"
     SHA1 "af6cea1f293622fcc2c9cb8d78fadb510a2270c9"
     FILE "yolov6-nano_r2-coco-512x384_fb1429e-detections.json"
     LOCATION yolo_v6_r2_coco_512x384_gt
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-nano_coco-512x288_6c0402a-detections.json"
     SHA1 "bb29fb9a6bc041f7e90769df4cde3a6ca890e521"
     FILE "yolov8-instance-segmentation-nano_coco-512x288_6c0402a-detections.json"
     LOCATION yolo_v8_instance_segmentation_nano_coco_512x288_gt
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-large-pose-estimation_coco-640x352_1868e39-detections.json"
     SHA1 "397fd5e1b80f47050cb827af92b5b13fb4f35bc6"
     FILE "yolov8-large-pose-estimation_coco-640x352_1868e39-detections.json"
     LOCATION yolo_v8_large_pose_estimation_coco_640x352_gt
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-detections.json"
     SHA1 "21ee42c2f560d7f977f1895387f6e6834c7dd2b5"
@@ -299,7 +304,7 @@ private_data(
     FILE "fire_hd_1920_1080_24fps.mp4"
     LOCATION fire_video
 )
-    
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/images/kitchen1.png"
     SHA1 "e566d4d0dce0b30a3e4cdc3b693e1c6385867822"

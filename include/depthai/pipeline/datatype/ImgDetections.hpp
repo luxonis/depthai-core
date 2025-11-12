@@ -10,9 +10,7 @@
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
-#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 #ifdef DEPTHAI_XTENSOR_SUPPORT
@@ -21,7 +19,6 @@
     #include <xtensor/core/xlayout.hpp>
     #include <xtensor/core/xmath.hpp>
     #include <xtensor/core/xtensor_forward.hpp>
-
 #endif
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
