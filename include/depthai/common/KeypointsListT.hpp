@@ -22,7 +22,7 @@ struct KeypointsListT {
         validateEdges();
     }
     explicit KeypointsListT(std::vector<KeypointT> keypoints) : keypoints(std::move(keypoints)) {}
-    virtual ~KeypointsListT() = default;
+    ~KeypointsListT() = default;
 
     /*
      * Iterator support
