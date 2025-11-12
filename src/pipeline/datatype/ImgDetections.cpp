@@ -10,7 +10,7 @@ ImgDetections::~ImgDetections() = default;
 
 void ImgDetections::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
-    datatype = DatatypeEnum::ImgDetections;
+    datatype = this->getDatatype();
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
