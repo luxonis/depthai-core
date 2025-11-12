@@ -300,7 +300,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
-        os: [macos-13, macos-14]
+        os: [macos-15-intel, macos-14]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
@@ -371,7 +371,7 @@ jobs:
     needs: build-macos
     strategy:
       matrix:
-        os: [macos-13, macos-14]
+        os: [macos-15-intel, macos-14]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
