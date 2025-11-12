@@ -40,6 +40,7 @@ class VppConfig : public Buffer {
     PatchColoringType patchColoringType = PatchColoringType::RANDOM;
     bool uniformPatch = true;
     InjectionParameters injectionParameters;
+    int maxNumThreads = 8;
 
     VppConfig() = default;
     virtual ~VppConfig();
@@ -49,7 +50,7 @@ class VppConfig : public Buffer {
         datatype = DatatypeEnum::VppConfig;
     };
 
-    DEPTHAI_SERIALIZE(VppConfig, blending, distanceGamma, maxPatchSize, patchColoringType, uniformPatch, injectionParameters);
+    DEPTHAI_SERIALIZE(VppConfig, blending, distanceGamma, maxPatchSize, patchColoringType, uniformPatch, injectionParameters, maxNumThreads);
 };
 
 }  // namespace dai
