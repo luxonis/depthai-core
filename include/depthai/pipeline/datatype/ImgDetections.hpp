@@ -146,7 +146,7 @@ struct ImgDetection {
  */
 class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable {
    public:
-   virtual ~ImgDetections() override;
+    virtual ~ImgDetections() override;
     using Base = ImgDetectionsT<dai::ImgDetection>;
     using Base::Base;
     using Base::detections;
