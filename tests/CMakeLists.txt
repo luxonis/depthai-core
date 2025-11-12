@@ -455,7 +455,7 @@ target_compile_definitions(openvino_blob_test PRIVATE
 )
 dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
 
-# Dynamic calibration tests
+# Dynamic calibration test
 dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
 target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
