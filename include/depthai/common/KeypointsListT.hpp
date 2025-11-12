@@ -52,7 +52,7 @@ struct KeypointsListT {
         return keypoints.cend();
     }
     bool empty() const noexcept {
-        return keypoints.empty();
+    return keypoints.empty();
     }
     size_t size() const noexcept {
         return keypoints.size();
@@ -87,6 +87,20 @@ struct KeypointsListT {
         this->keypoints = std::move(keypoints);
         this->edges = std::move(edges);
         validateEdges();
+    }
+
+    /**
+     * Sets the keypoints list.
+     * @param keypoints list of Point3f objects to set.
+     * @note This will clear any existing keypoints and edges.
+     */
+    void setKeypoints(const std::vector<Point3f> kps3) {
+        edges.clear();
+        keypoints.clear();
+        keypoints.reserve(kps3.size());
+        for(const auto& kp : kps3) {
+            keypoints.emplace_back(KeypointT(kp));
+        }
     }
 
     /**

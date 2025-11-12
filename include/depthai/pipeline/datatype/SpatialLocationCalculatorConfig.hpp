@@ -109,7 +109,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
     /**
      * Specify an additional regions of interest (ROI) to calculate their spatial coordinates. Results of ROI coordinates are available on
      SpatialLocationCalculatorData output.
-     * @param ROIs Vector of configuration parameters for ROIs (region of interests)
+     * @param ROIs Vector of configuration parameters for ROIs (region of interests)P
      * @warning Will be deprecated in future releases.
      */
     void setROIs(std::vector<SpatialLocationCalculatorConfigData> ROIs);
@@ -207,6 +207,10 @@ class SpatialLocationCalculatorConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::SpatialLocationCalculatorConfig;
+    }
+
     DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig,
                       Buffer::sequenceNum,
                       Buffer::ts,
@@ -219,10 +223,6 @@ class SpatialLocationCalculatorConfig : public Buffer {
                       globalKeypointRadius,
                       useKeypoints,
                       useSegmentation);
-    DatatypeEnum getDatatype() const override {
-        return DatatypeEnum::SpatialLocationCalculatorConfig;
-    }
-    DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config);
 };
 
 }  // namespace dai

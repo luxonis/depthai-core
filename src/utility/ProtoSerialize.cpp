@@ -253,7 +253,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations*
     return imageAnnotations;
 }
 template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool) {
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool metadataOnly) {
     // create and populate SpatialImgDetections protobuf message
     auto spatialImgDetections = std::make_unique<proto::spatial_img_detections::SpatialImgDetections>();
     spatialImgDetections->set_sequencenum(message->sequenceNum);
@@ -270,14 +270,26 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
         proto::spatial_img_detections::SpatialImgDetection* spatialImgDetection = spatialImgDetections->add_detections();
 
         // populate SpatialImgDetection.ImgDetection from struct inheritance
-        proto::img_detections::ImgDetection* imgDetection = spatialImgDetection->mutable_detection();
-        imgDetection->set_label(detection.label);
-        imgDetection->set_labelname(detection.labelName);
-        imgDetection->set_confidence(detection.confidence);
-        imgDetection->set_xmin(detection.xmin);
-        imgDetection->set_ymin(detection.ymin);
-        imgDetection->set_xmax(detection.xmax);
-        imgDetection->set_ymax(detection.ymax);
+
+        spatialImgDetection->set_label(detection.label);
+        spatialImgDetection->set_labelname(detection.labelName);
+        spatialImgDetection->set_confidence(detection.confidence);
+        spatialImgDetection->set_xmin(detection.xmin);
+        spatialImgDetection->set_ymin(detection.ymin);
+        spatialImgDetection->set_xmax(detection.xmax);
+        spatialImgDetection->set_ymax(detection.ymax);
+
+        if(detection.boundingBox.has_value() || !(detection.xmin == 0.f && detection.xmax == 0.f && detection.ymin == 0.f && detection.ymax == 0.f)) {
+            const auto bbox = detection.boundingBox.has_value() ? detection.boundingBox.value() : detection.getBoundingBox();
+            proto::common::RotatedRect* bboxProto = spatialImgDetection->mutable_boundingbox();
+            proto::common::Point2f* center = bboxProto->mutable_center();
+            center->set_x(bbox.center.x);
+            center->set_y(bbox.center.y);
+            proto::common::Size2f* size = bboxProto->mutable_size();
+            size->set_width(bbox.size.width);
+            size->set_height(bbox.size.height);
+            bboxProto->set_angle(bbox.angle);
+        }
 
         // populate SpatialImgDetection.Point3f
         proto::spatial_img_detections::Point3f* spatialCoordinates = spatialImgDetection->mutable_spatialcoordinates();
@@ -306,12 +318,48 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
 
         // populate SpatialImgDetection.SpatialLocationCalculatorConfigData.stepSize
         boundingBoxMapping->set_stepsize(detection.boundingBoxMapping.stepSize);
+
+        if(detection.keypoints.has_value()) {
+            const auto& keypointsList = detection.keypoints.value();
+            const auto keypointsVec = keypointsList.getKeypoints();
+            const auto edgesVec = keypointsList.getEdges();
+            proto::common::SpatialKeypointsList* protoKeypoints = spatialImgDetection->mutable_keypoints();
+            for(const auto& keypoint : keypointsVec) {
+                auto* protoKeypoint = protoKeypoints->add_keypoints();
+                proto::common::Point3f* coords = protoKeypoint->mutable_imagecoordinates();
+                coords->set_x(keypoint.imageCoordinates.x);
+                coords->set_y(keypoint.imageCoordinates.y);
+                coords->set_z(keypoint.imageCoordinates.z);
+                protoKeypoint->set_confidence(keypoint.confidence);
+                protoKeypoint->set_label(keypoint.label);
+
+                proto::common::Point3f* spatialCoords = protoKeypoint->mutable_spatialcoordinates();
+                spatialCoords->set_x(keypoint.spatialCoordinates.x);
+                spatialCoords->set_y(keypoint.spatialCoordinates.y);
+                spatialCoords->set_z(keypoint.spatialCoordinates.z);
+            }
+            for(const auto& edge : edgesVec) {
+                auto* protoEdge = protoKeypoints->add_edges();
+                protoEdge->set_src(edge[0]);
+                protoEdge->set_dst(edge[1]);
+            }
+        }
     }
+
     proto::common::ImgTransformation* imgTransformation = spatialImgDetections->mutable_transformation();
     if(message->transformation.has_value()) {
         utility::serializeImgTransformation(imgTransformation, message->transformation.value());
     }
 
+    spatialImgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
+    spatialImgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
+
+    if(!metadataOnly) {
+        std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
+        if(segMaskData) {
+            spatialImgDetections->set_data((*segMaskData).data(), (*segMaskData).size());
+        }
+    }
     return spatialImgDetections;
 }
 template <>

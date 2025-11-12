@@ -48,7 +48,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const T*, bool = fals
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations* message, bool);
 template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool);
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* message, bool);
 template <>

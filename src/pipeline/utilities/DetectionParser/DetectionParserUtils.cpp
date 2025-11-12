@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "depthai/common/KeypointsListT.hpp"
+#include "depthai/common/Keypoint.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"

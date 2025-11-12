@@ -40,7 +40,7 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
      * Input messages on which spatial location will be calculated.
      * Possible datatypes are ImgDetections or Keypoints.
      */
-    Input input{*this, {"input", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::ImgDetections, false}, {DatatypeEnum::Keypoints, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input input{*this, {"input", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::ImgDetections, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object.
@@ -57,7 +57,7 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
     /**
      * Outputs SpatialImgDetections or SpatialKeypoints message that carries spatial locations along with original input data.
      */
-    Output spatialOutput{*this, {"spatialOutput", DEFAULT_GROUP, {{{DatatypeEnum::SpatialImgDetections, false}, {DatatypeEnum::SpatialKeypoints, false}}}}};
+    Output spatialOutput{*this, {"spatialOutput", DEFAULT_GROUP, {{DatatypeEnum::SpatialImgDetections, false}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
