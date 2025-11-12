@@ -322,7 +322,7 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
 
     pipeline.start();
 
-    command_input->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
 
     auto first = calibrationOutput->get<dai::DynamicCalibrationResult>();
     REQUIRE(first != nullptr);
