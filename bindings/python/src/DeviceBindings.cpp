@@ -863,6 +863,25 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBase, getM8FsyncRole)
         )
         .def(
+            "setM8StrobeLimits",
+            [](DeviceBase& d, float min, float max) {
+                py::gil_scoped_release release;
+                return d.setM8StrobeLimits(min, max);
+            },
+            py::arg("min"),
+            py::arg("max"),
+            DOC(dai, DeviceBase, setM8StrobeLimits)
+        )
+        .def(
+            "setM8StrobeEnable",
+            [](DeviceBase& d, bool enable) {
+                py::gil_scoped_release release;
+                d.setM8StrobeEnable(enable);
+            },
+            py::arg("enable"),
+            DOC(dai, DeviceBase, setM8StrobeEnable)
+        )
+        .def(
             "getDeviceName",
             [](DeviceBase& d) {
                 std::string name;

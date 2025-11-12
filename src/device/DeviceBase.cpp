@@ -1254,6 +1254,14 @@ M8FsyncRole DeviceBase::getM8FsyncRole() {
     return pimpl->rpcClient->call("getM8FsyncRole");
 }
 
+std::tuple<bool, std::string>  DeviceBase::setM8StrobeLimits(float min, float max) {
+    return pimpl->rpcClient->call("setM8StrobeLimits", min, max);
+}
+
+void DeviceBase::setM8StrobeEnable(bool enable) {
+    pimpl->rpcCall("setM8StrobeEnable", enable);
+}
+
 dai::Version DeviceBase::getIMUFirmwareVersion() {
     isClosed();
     std::string versionStr = pimpl->rpcCall("getIMUFirmwareVersion").as<std::string>();
