@@ -22,7 +22,7 @@ int main() {
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
 
     dai::NNModelDescription modelDescription;
-    modelDescription.model = "luxonis/yolov8-large-pose-estimation:coco-640x352:1868e39";
+    modelDescription.model = "luxonis/yolov8-nano-pose-estimation:coco-512x288";
     detectionNetwork->build(cameraNode, modelDescription);
     auto labelMap = detectionNetwork->getClasses();
 
@@ -94,7 +94,6 @@ int main() {
 
             auto currentTime = std::chrono::steady_clock::now();
             float fps = counter / std::chrono::duration<float>(currentTime - startTime).count();
-            std::cout << "FPS: " << fps << std::endl;
         }
 
         if(cv::waitKey(1) == 'q') {
