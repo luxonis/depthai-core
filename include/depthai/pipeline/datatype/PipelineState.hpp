@@ -102,7 +102,7 @@ class NodeState {
 class PipelineState : public Buffer {
    public:
     PipelineState() = default;
-    virtual ~PipelineState() = default;
+    virtual ~PipelineState();
 
     std::unordered_map<int64_t, NodeState> nodeStates;
     uint32_t configSequenceNum = 0;

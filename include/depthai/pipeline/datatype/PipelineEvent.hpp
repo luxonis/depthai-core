@@ -23,7 +23,7 @@ class PipelineEvent : public Buffer {
     enum class Interval : std::int32_t { NONE = 0, START = 1, END = 2 };
 
     PipelineEvent() = default;
-    virtual ~PipelineEvent() = default;
+    virtual ~PipelineEvent();
 
     int64_t nodeId = -1;
     int32_t status = 0;
