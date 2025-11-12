@@ -11,6 +11,8 @@ struct PipelineEventAggregationProperties : PropertiesSerializable<Properties, P
     uint32_t aggregationWindowSize = 100;
     uint32_t statsUpdateIntervalMs = 1000;
     uint32_t eventWaitWindow = 16;
+
+    ~PipelineEventAggregationProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(PipelineEventAggregationProperties, aggregationWindowSize, statsUpdateIntervalMs, eventWaitWindow);

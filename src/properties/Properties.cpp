@@ -34,6 +34,7 @@
 #include "depthai/properties/WarpProperties.hpp"
 #include "depthai/properties/internal/XLinkInProperties.hpp"
 #include "depthai/properties/internal/XLinkOutProperties.hpp"
+#include "properties/internal/PipelineEventAggregationProperties.hpp"
 
 // RVC2_FW does not need these properties
 #ifndef RVC2_FW
@@ -69,6 +70,7 @@ MessageDemuxProperties::~MessageDemuxProperties() = default;
 MonoCameraProperties::~MonoCameraProperties() = default;
 NeuralNetworkProperties::~NeuralNetworkProperties() = default;
 ObjectTrackerProperties::~ObjectTrackerProperties() = default;
+PipelineEventAggregationProperties::~PipelineEventAggregationProperties() = default;
 PointCloudProperties::~PointCloudProperties() = default;
 SPIInProperties::~SPIInProperties() = default;
 SPIOutProperties::~SPIOutProperties() = default;
