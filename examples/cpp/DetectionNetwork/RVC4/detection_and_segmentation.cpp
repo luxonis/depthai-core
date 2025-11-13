@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <iostream>
+#include <map>
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
@@ -29,7 +30,6 @@ int main() {
     dai::NNModelDescription modelDescription;
     modelDescription.model = "luxonis/yolov8-instance-segmentation-large:coco-640x480";
     detectionNetwork->build(cameraNode, modelDescription);
-    auto labelMap = detectionNetwork->getClasses();
 
     // Create output queues
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
@@ -65,24 +65,30 @@ int main() {
         if(inDet != nullptr) {
             counter++;
 
-            // Get all labels as sorted list
             auto labels = std::set<int>();
+            std::map<int, std::string> labelNameByIndex;
             for(const auto& detection : inDet->detections) {
                 labels.insert(detection.label);
+                labelNameByIndex.emplace(detection.label, detection.labelName);
+            }
+
+            std::vector<std::string> labelNames;
+            labelNames.reserve(labelNameByIndex.size());
+            for(const auto& label : labels) {
+                const auto it = labelNameByIndex.find(label);
+                if(it != labelNameByIndex.end()) {
+                    labelNames.push_back(it->second);
+                }
             }
             std::list<int> labelsList(labels.begin(), labels.end());
             labelsList.sort();
             std::vector<int> labelsVector(labelsList.begin(), labelsList.end());
 
-            std::vector<std::string> labelMaps;
-            for(const auto& label : labelsList) {
-                labelMaps.push_back(labelMap->at(label));
-            };
             cv::putText(sidePanel, "Press index to filter by class:", cv::Point(10, 20), cv::FONT_HERSHEY_TRIPLEX, 0.7, cv::Scalar(0, 0, 0), 1);
 
-            for(size_t i = 0; i < labelMaps.size(); i++) {
+            for(size_t i = 0; i < labelNames.size(); i++) {
                 cv::putText(sidePanel,
-                            std::to_string(i) + " - " + labelMaps[i],
+                            std::to_string(i + 1) + " - " + labelNames[i],
                             cv::Point(10, 40 + static_cast<int>(i) * 20),
                             cv::FONT_HERSHEY_TRIPLEX,
                             0.7,
@@ -98,7 +104,7 @@ int main() {
             } else if(key >= '1' && key <= '9') {
                 int index = key - '1';
                 if(index < static_cast<int>(labelsList.size())) {
-                    std::printf("Filtering by label: %s\n", labelMaps[index].c_str());
+                    std::printf("Filtering by label: %s\n", labelNames[index].c_str());
                     filteredLabel = labelsVector[index];
                 }
             }
@@ -111,7 +117,7 @@ int main() {
                 std::optional<cv::Mat> segmentationMask;
 
                 if(filteredLabel == -1) {
-                    segmentationMask = inDet->getSegmentationMask();
+                    segmentationMask = inDet->getCvSegmentationMask();
                 } else {
                     segmentationMask = inDet->getCvSegmentationMaskByClass(filteredLabel);
                     detections.erase(
@@ -137,7 +143,7 @@ int main() {
                     auto bbox = frameNorm(frame, dai::Point2f(detection.xmin, detection.ymin), dai::Point2f(detection.xmax, detection.ymax));
 
                     // Draw label
-                    cv::putText(frame, labelMap.value()[detection.label], cv::Point(bbox.x + 10, bbox.y + 20), cv::FONT_HERSHEY_TRIPLEX, 0.7, textColor);
+                    cv::putText(frame, detection.labelName, cv::Point(bbox.x + 10, bbox.y + 20), cv::FONT_HERSHEY_TRIPLEX, 0.7, textColor);
 
                     // Draw confidence
                     cv::putText(frame,
@@ -155,10 +161,6 @@ int main() {
                 // cv::imshow("side panel", sidePanel);
                 // Show the frame
                 cv::imshow("rgb", frame);
-
-                auto currentTime = std::chrono::steady_clock::now();
-                float fps = counter / std::chrono::duration<float>(currentTime - startTime).count();
-                std::cout << "FPS: " << fps << std::endl;
             }
         }
     }

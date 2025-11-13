@@ -20,8 +20,6 @@ struct DetectionParserOptions {
     DetectionNetworkType nnFamily;
     std::string subtype;
     float confidenceThreshold;
-    int inputWidth;
-    int inputHeight;
 
     /// YOLO specific network properties
     YoloDecodingFamily decodingFamily = YoloDecodingFamily::TLBR;  // top left bottom right anchor free
@@ -35,7 +33,7 @@ struct DetectionParserOptions {
     std::vector<int> strides = {8, 16, 32};
     std::vector<float> anchors;
     std::map<std::string, std::vector<int>> anchorMasks;
-    std::vector<std::string> outputNames;
+    std::vector<std::string> outputNamesToUse;
     /// see YoloDetectionNetwork::setAnchors() for format
     std::vector<std::vector<std::vector<float>>> anchorsV2;
     float iouThreshold;
@@ -46,8 +44,6 @@ DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
                       nnFamily,
                       subtype,
                       confidenceThreshold,
-                      inputWidth,
-                      inputHeight,
                       decodingFamily,
                       decodeKeypoints,
                       decodeSegmentation,
@@ -58,7 +54,7 @@ DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
                       strides,
                       anchors,
                       anchorMasks,
-                      outputNames,
+                      outputNamesToUse,
                       anchorsV2,
                       iouThreshold,
                       keypointEdges);

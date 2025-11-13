@@ -37,7 +37,7 @@ with dai.Pipeline() as pipeline:
             )
             cv2.putText(
                 frame,
-                labelMap[detection.label],
+                detection.labelName,
                 (bbox[0] + 10, bbox[1] + 20),
                 cv2.FONT_HERSHEY_TRIPLEX,
                 0.5,

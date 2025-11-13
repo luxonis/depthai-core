@@ -10,7 +10,7 @@ with dai.Pipeline() as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build()
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("luxonis/yolov8-instance-segmentation-large:coco-640x480"))
     labelMap = detectionNetwork.getClasses()
-
+    assert labelMap is not None
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()
 
@@ -37,7 +37,7 @@ with dai.Pipeline() as pipeline:
             )
             cv2.putText(
                 frame,
-                labelMap[detection.label],
+                detection.labelName,
                 (bbox[0] + 10, bbox[1] + 20),
                 cv2.FONT_HERSHEY_TRIPLEX,
                 0.7,

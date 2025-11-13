@@ -68,7 +68,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
         .def("setSubtype", &DetectionParser::setSubtype, py::arg("subtype"), DOC(dai, node, DetectionParser, setSubtype))
         .def("setDecodeKeypoints", &DetectionParser::setDecodeKeypoints, py::arg("decode"), DOC(dai, node, DetectionParser, setDecodeKeypoints))
         .def("setDecodeSegmentation", &DetectionParser::setDecodeSegmentation, py::arg("decode"), DOC(dai, node, DetectionParser, setDecodeSegmentation))
-        .def("setNKeypoints", &DetectionParser::setNKeypoints, py::arg("nKeypoints"), DOC(dai, node, DetectionParser, setNKeypoints))
+        .def("setNumKeypoints", &DetectionParser::setNumKeypoints, py::arg("numKeypoints"), DOC(dai, node, DetectionParser, setNumKeypoints))
         .def("setClasses", &DetectionParser::setClasses, py::arg("classes"), DOC(dai, node, DetectionParser, setClasses))
         .def("setStrides", &DetectionParser::setStrides, py::arg("strides"), DOC(dai, node, DetectionParser, setStrides))
         .def("setKeypointEdges", &DetectionParser::setKeypointEdges, py::arg("edges"), DOC(dai, node, DetectionParser, setKeypointEdges))

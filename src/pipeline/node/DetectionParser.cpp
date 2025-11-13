@@ -109,7 +109,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         }
 
         if(head.metadata.yoloOutputs) {
-            properties.parser.outputNames = *head.metadata.yoloOutputs;
+            properties.parser.outputNamesToUse = *head.metadata.yoloOutputs;
         }
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
@@ -261,7 +261,6 @@ float DetectionParser::getConfidenceThreshold() const {
 
 void DetectionParser::setNumClasses(const int numClasses) {
     properties.parser.classes = numClasses;
-    properties.parser.classNames = std::nullopt;
 }
 
 void DetectionParser::setCoordinateSize(const int coordinates) {
@@ -300,9 +299,9 @@ void DetectionParser::setDecodeSegmentation(bool decode) {
     properties.parser.decodeSegmentation = decode;
 }
 
-void DetectionParser::setNKeypoints(int nKeypoints) {
+void DetectionParser::setNumKeypoints(int numKeypoints) {
     properties.parser.decodeKeypoints = true;
-    properties.parser.nKeypoints = nKeypoints;
+    properties.parser.nKeypoints = numKeypoints;
 }
 
 /// Get num classes

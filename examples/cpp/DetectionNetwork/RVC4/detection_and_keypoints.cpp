@@ -24,7 +24,6 @@ int main() {
     dai::NNModelDescription modelDescription;
     modelDescription.model = "luxonis/yolov8-large-pose-estimation:coco-640x352:1868e39";
     detectionNetwork->build(cameraNode, modelDescription);
-    auto labelMap = detectionNetwork->getClasses();
 
     // Create output queues
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
@@ -62,7 +61,7 @@ int main() {
                 auto bbox = frameNorm(frame, dai::Point2f(detection.xmin, detection.ymin), dai::Point2f(detection.xmax, detection.ymax));
 
                 // Draw label
-                cv::putText(frame, labelMap.value()[detection.label], cv::Point(bbox.x + 10, bbox.y + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, textColor);
+                cv::putText(frame, detection.labelName, cv::Point(bbox.x + 10, bbox.y + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, textColor);
 
                 // Draw confidence
                 cv::putText(frame,
