@@ -244,7 +244,7 @@ std::unordered_map<std::string, NodeState::Timing> NodeStateApi::otherTimings(co
     }
     return result;
 }
-NodeState::Timing NodeStateApi::otherStats(const std::string& statName) {
+NodeState::Timing NodeStateApi::otherTimings(const std::string& statName) {
     PipelineEventAggregationConfig cfg;
     cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());

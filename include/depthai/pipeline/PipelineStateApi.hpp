@@ -65,8 +65,8 @@ class NodeStateApi {
     std::vector<NodeState::DurationEvent> events();
     std::unordered_map<std::string, NodeState::InputQueueState> inputs(const std::vector<std::string>& inputNames);
     NodeState::InputQueueState inputs(const std::string& inputName);
-    std::unordered_map<std::string, NodeState::Timing> otherTimings(const std::vector<std::string>& statNames);
-    NodeState::Timing otherStats(const std::string& statName);
+    std::unordered_map<std::string, NodeState::Timing> otherTimings(const std::vector<std::string>& timingNames);
+    NodeState::Timing otherTimings(const std::string& timingName);
 };
 class PipelineStateApi {
     std::shared_ptr<MessageQueue> pipelineStateOut;

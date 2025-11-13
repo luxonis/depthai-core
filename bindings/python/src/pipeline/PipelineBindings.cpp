@@ -150,12 +150,12 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, NodeStateApi, otherTimings))
         .def("otherTimings",
              static_cast<std::unordered_map<std::string, NodeState::Timing> (NodeStateApi::*)(const std::vector<std::string>&)>(&NodeStateApi::otherTimings),
-             py::arg("statNames"),
+             py::arg("timingNames"),
              DOC(dai, NodeStateApi, otherTimings, 2))
-        .def("otherStats",
-             static_cast<NodeState::Timing (NodeStateApi::*)(const std::string&)>(&NodeStateApi::otherStats),
-             py::arg("statName"),
-             DOC(dai, NodeStateApi, otherStats));
+        .def("otherTimings",
+             static_cast<NodeState::Timing (NodeStateApi::*)(const std::string&)>(&NodeStateApi::otherTimings),
+             py::arg("timingName"),
+             DOC(dai, NodeStateApi, otherTimings));
 
     // bind pipeline
     pipeline
