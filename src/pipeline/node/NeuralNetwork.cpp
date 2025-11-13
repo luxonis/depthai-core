@@ -188,8 +188,10 @@ void NeuralNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numSha
 
 void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
     DAI_CHECK_V(nnArchive.getModelType() == model::ModelType::DLC || nnArchive.getModelType() == model::ModelType::OTHER, "NNArchive type is not DLC or OTHER");
-    auto otherModelFormat = nnArchive.getOtherModelFormat().value();
-    setOtherModelFormat(otherModelFormat);
+    if(nnArchive.getOtherModelFormat().has_value()) {
+        auto otherModelFormat = nnArchive.getOtherModelFormat().value();
+        setOtherModelFormat(otherModelFormat);
+    }
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
