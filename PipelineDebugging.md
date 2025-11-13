@@ -29,18 +29,6 @@ Specifying a single node ID to the `nodes()` method allows further filtering of 
 - `inputs() -> map(str, InputQueueState)`: returns states of all or specific inputs of the node. If only one input name is provided, the return type is `InputQueueState`.
 - `otherTimings() -> map(str, Timing)`: returns other timing statistics of the node. If only one timing name is provided, the return type is `Timing`.
 
-## Operation Overview
-
-### Schema
-
-![Pipeline Debugging Graph](./images/pipeline_debugging_graph.png)
-
-### Description
-
-Each node in the pipeline has a `pipelineEventOutput` output that emits `PipelineEvent` events related to the node's operation. These events are created and sent using the `PipelineEventDispatcher` object in each node. The event output is linked to one of the `PipelineEventAggregation` nodes, depending on where the node is running (by default events do not get sent from device to host, it is however possible to subscribe to the events of a node by simply creating an output queue).
-
-The `PipelineEventAggregation` node collects events from the nodes running on the same device and merges them into a `PipelineState` object by calculating duration statistics, events per second, and various states. The state is then sent to the `StateMerge` node which runs on host and merges device and host states into a single `PipelineState` object.
-
 ## Pipeline Events
 
 ### Class
@@ -196,6 +184,17 @@ The `OutputQueueState` struct contains the timing information and the current st
 - `IDLE`: the output is not currently sending data.
 - `SENDING`: the output is currently sending data. If the output is blocked due to a full queue on the input the state will be `SENDING`, otherwise the send should be instantaneous and the state will return to `IDLE`.
 
+## Operation Overview
+
+### Schema
+
+![Pipeline Debugging Graph](./images/pipeline_debugging_graph.png)
+
+### Description
+
+Each node in the pipeline has a `pipelineEventOutput` output that emits `PipelineEvent` events related to the node's operation. These events are created and sent using the `PipelineEventDispatcher` object in each node. The event output is linked to one of the `PipelineEventAggregation` nodes, depending on where the node is running (by default events do not get sent from device to host, it is however possible to subscribe to the events of a node by simply creating an output queue).
+
+The `PipelineEventAggregation` node collects events from the nodes running on the same device and merges them into a `PipelineState` object by calculating duration statistics, events per second, and various states. The state is then sent to the `StateMerge` node which runs on host and merges device and host states into a single `PipelineState` object.
 
 ## Pipeline Event Aggregation
 
