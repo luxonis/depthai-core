@@ -40,6 +40,11 @@ class NNArchive {
     NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions options = {});
 
     /**
+     * @brief Destruct the NNArchive object and handle clearing of the extractFolder inside NNArchiveOptions
+     */
+    ~NNArchive();
+
+    /**
      * @brief Return a SuperVINO::Blob from the archive if getModelType() returns BLOB, nothing otherwise
      *
      * @return std::optional<OpenVINO::Blob>: Model blob

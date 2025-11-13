@@ -20,7 +20,7 @@ NNArchiveOptions::NNArchiveOptions() {
     extractFolder(platform::getTempPath());
 }
 
-NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions options) : archiveOptions(options) {
+NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions options) : archiveOptions(std::move(options)) {
     // Make sure archive exits
     if(!std::filesystem::exists(archivePath)) DAI_CHECK_V(false, "Archive file does not exist: {}", archivePath);
 
@@ -56,6 +56,10 @@ NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions 
             DAI_CHECK(false, "Unknown archive type");
             break;
     }
+}
+
+NNArchive::~NNArchive() {
+    std::filesystem::remove_all(archiveOptions.extractFolder());
 }
 
 std::optional<OpenVINO::Blob> NNArchive::getBlob() const {
