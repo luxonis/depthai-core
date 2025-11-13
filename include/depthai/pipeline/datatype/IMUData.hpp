@@ -223,6 +223,10 @@ class IMUData : public Buffer, public ProtoSerializable {
     std::vector<IMUPacket> packets;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::IMUData;
+    }
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
      * Serialize message to proto buffer
