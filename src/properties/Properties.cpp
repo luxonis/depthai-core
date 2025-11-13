@@ -32,9 +32,9 @@
 #include "depthai/properties/UVCProperties.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/properties/WarpProperties.hpp"
+#include "depthai/properties/internal/PipelineEventAggregationProperties.hpp"
 #include "depthai/properties/internal/XLinkInProperties.hpp"
 #include "depthai/properties/internal/XLinkOutProperties.hpp"
-#include "properties/internal/PipelineEventAggregationProperties.hpp"
 
 // RVC2_FW does not need these properties
 #ifndef RVC2_FW
