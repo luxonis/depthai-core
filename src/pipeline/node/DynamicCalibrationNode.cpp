@@ -417,7 +417,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     calibrationHandler = daiDevice->getCalibration();
     auto eepromData = calibrationHandler.getEepromData();
     auto platform = daiDevice->getPlatform();
-    if(platform == dai::Platform::RVC2 && (!eepromData.stereoEnableDistortionCorrection) && !oldCalibrationWarningIssued) {
+    if(platform == dai::Platform::RVC2 && !eepromData.stereoEnableDistortionCorrection && !oldCalibrationWarningIssued) {
         logger->warn("The calibration on the device is too old to perform DynamicCalibration, full re-calibration is recommended!");
         oldCalibrationWarningIssued = true;
     }
