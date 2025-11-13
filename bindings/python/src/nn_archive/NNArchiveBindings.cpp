@@ -65,15 +65,13 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bind NNArchive
-    nnArchive.def(py::init([](const std::filesystem::path& archivePath, NNArchiveEntry::Compression compression, const std::string& extractFolder) {
+    nnArchive.def(py::init([](const std::filesystem::path& archivePath, NNArchiveEntry::Compression compression) {
                       NNArchiveOptions options;
                       options.compression(compression);
-                      options.extractFolder(extractFolder);
                       return NNArchive(archivePath, options);
                   }),
                   py::arg("archivePath"),
                   py::arg("compression") = NNArchiveEntry::Compression::AUTO,
-                  py::arg("extractFolder") = "/tmp/",
                   DOC(dai, NNArchive, NNArchive));
     nnArchive.def(py::init<const std::filesystem::path&, NNArchiveOptions>(),
                   py::arg("archivePath"),
@@ -81,7 +79,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
                   DOC(dai, NNArchive, NNArchive));
     nnArchive.def("getBlob", &NNArchive::getBlob, DOC(dai, NNArchive, getBlob));
     nnArchive.def("getSuperBlob", &NNArchive::getSuperBlob, DOC(dai, NNArchive, getBlob));
-    nnArchive.def("getModelPath", &NNArchive::getModelPath, DOC(dai, NNArchive, getModelPath));
+    nnArchive.def("getOtherModelFormat", &NNArchive::getOtherModelFormat, DOC(dai, NNArchive, getOtherModelFormat));
     nnArchive.def("getConfig", &NNArchive::getConfig<NNArchiveConfig>, DOC(dai, NNArchive, getConfig));
     nnArchive.def("getConfigV1", &NNArchive::getConfig<v1::Config>, DOC(dai, NNArchive, getConfig));
     nnArchive.def("getModelType", &NNArchive::getModelType, DOC(dai, NNArchive, getModelType));
@@ -96,10 +94,6 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
         "compression",
         [](const NNArchiveOptions& opt) { return opt.compression(); },
         [](NNArchiveOptions& opt, NNArchiveEntry::Compression compression) { opt.compression(compression); });
-    nnArchiveOptions.def_property(
-        "extractFolder",
-        [](const NNArchiveOptions& opt) { return opt.extractFolder(); },
-        [](NNArchiveOptions& opt, const std::string& extractFolder) { opt.extractFolder(extractFolder); });
 
     // Bind NNArchiveVersionedConfig
     nnArchiveVersionedConfig.def(py::init<const std::filesystem::path&, NNArchiveEntry::Compression>(),
