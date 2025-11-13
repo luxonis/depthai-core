@@ -121,6 +121,24 @@ def socket_type_pair(arg):
     is_thermal = True if type in ['th', 'thermal'] else False
     return [socket, is_color, is_tof, is_thermal]
 
+def camera_tuning_item(arg: str):
+    """
+    Accept either:
+      - PATH
+      - SOCKET,PATH
+    Returns (socket_or_all, Path).
+    """
+    # Case 1: plain path = global tuning for all cameras
+    if ',' not in arg:
+        return ("__all__", Path(arg))
+
+    # Case 2: socket,path
+    socket, path_str = arg.split(',', 1)
+
+    if socket not in ALL_SOCKETS:
+        raise argparse.ArgumentTypeError(f"Unknown camera socket: {socket}")
+
+    return (socket, Path(path_str))
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('-cams', '--cameras', type=socket_type_pair, nargs='+',
@@ -141,8 +159,8 @@ parser.add_argument('-ds', '--isp-downscale', default=1, type=int,
                     help="Downscale the ISP output by this factor")
 parser.add_argument('-rs', '--resizable-windows', action='store_true',
                     help="Make OpenCV windows resizable. Note: may introduce some artifacts")
-parser.add_argument('-tun', '--camera-tuning', type=Path,
-                    help="Path to custom camera tuning database")
+parser.add_argument('-tun', '--camera-tuning', type=camera_tuning_item, nargs='+', default=[],
+                    help="Camera tuning database. Either a single PATH, which will apply to all cameras, or one or more SOCKET,PATH pairs. Example: -tun /path/to/tuning.db  or  -tun rgb,/path/to/rgb.db right,/path/to/right.db")
 parser.add_argument('-raw', '--enable-raw', default=False, action="store_true",
                     help='Enable the RAW camera streams')
 parser.add_argument('-tofraw', '--tof-raw', action='store_true',
@@ -357,7 +375,20 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 streams.append(streamName)
 
     if args.camera_tuning:
-        pipeline.setCameraTuningBlobPath(str(args.camera_tuning))
+        if len(args.camera_tuning) == 1 and args.camera_tuning[0][0] == "__all__":
+            # Single tuning for all cameras
+            tuning_path = args.camera_tuning[0][1]
+            print(f'Applying camera tuning from {tuning_path} to all cameras')
+            pipeline.setCameraTuningBlobPath(str(tuning_path))
+        else:
+            # Per-socket tuning
+            for socket, tuning_path in args.camera_tuning:
+                if socket == "__all__":
+                    print(f'Cannot apply all tuning to all and specific sockets at the same time.')
+                    exit(1)
+                cam_socket = cam_socket_opts[socket]
+                print(f'Applying camera tuning from {tuning_path} to camera socket {socket}')
+                pipeline.setCameraTuningBlobPath(cam_socket, str(tuning_path))
 
     stereo = None
 

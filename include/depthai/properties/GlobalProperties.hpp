@@ -46,6 +46,15 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
     std::string cameraTuningBlobUri;
 
     /**
+     * Socket specific camera tuning blob size in bytes
+     */
+    std::unordered_map<CameraBoardSocket, std::uint32_t> cameraSocketTuningBlobSize;
+    /**
+     * Socket specific camera tuning blob uri
+     */
+    std::unordered_map<CameraBoardSocket, std::string> cameraSocketTuningBlobUri;
+
+    /**
      * Chunk size for splitting device-sent XLink packets, in bytes. A larger value could
      * increase performance, with 0 disabling chunking. A negative value won't modify the
      * device defaults - configured per protocol, currently 64*1024 for both USB and Ethernet.

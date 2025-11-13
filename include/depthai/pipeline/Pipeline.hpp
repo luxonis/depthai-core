@@ -22,6 +22,7 @@
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 
 namespace dai {
 
@@ -55,6 +56,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const fs::path& path);
+    void setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path);
     void setXLinkChunkSize(int sizeBytes);
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(GlobalProperties globalProperties);
@@ -418,6 +420,11 @@ class Pipeline {
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
     void setCameraTuningBlobPath(const fs::path& path) {
         impl()->setCameraTuningBlobPath(path);
+    }
+    
+    /// Set a camera IQ (Image Quality) tuning blob, used for specific board socket
+    void setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path) {
+        impl()->setCameraTuningBlobPath(socket, path);
     }
 
     /**

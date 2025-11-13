@@ -349,6 +349,16 @@ void PipelineImpl::setCameraTuningBlobPath(const fs::path& path) {
     globalProperties.cameraTuningBlobSize = static_cast<uint32_t>(asset->data.size());
 }
 
+void PipelineImpl::setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path) {
+    std::string assetKey = "camTuning";
+    assetKey += "_" + std::to_string(static_cast<int>(socket));
+
+    auto asset = assetManager.set(assetKey, path);
+
+    globalProperties.cameraSocketTuningBlobUri[socket] = asset->getRelativeUri();
+    globalProperties.cameraSocketTuningBlobSize[socket] = static_cast<uint32_t>(asset->data.size());
+}
+
 void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     globalProperties.xlinkChunkSize = sizeBytes;
 }
