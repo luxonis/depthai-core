@@ -326,7 +326,7 @@ private_data(
 )
 
 private_data(
-    URL "luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
     SHA1 "cf947acf1c210efba34c363fe6d8fd8d02293601"
     FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
     LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2
