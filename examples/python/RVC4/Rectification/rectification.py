@@ -21,7 +21,6 @@ rectifiedRightQueue = rectification.output2.createOutputQueue()
 
 with pipeline:
     pipeline.start()
-    maxDisparity = 1
     while pipeline.isRunning():
         rectifiedLeft = rectifiedLeftQueue.get()
         rectifiedRight = rectifiedRightQueue.get()

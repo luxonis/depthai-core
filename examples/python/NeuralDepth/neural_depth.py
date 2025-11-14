@@ -28,8 +28,8 @@ with dai.Pipeline() as pipeline:
     print("For adjusting thresholds, use keys:")
     print(" - 'w': Increase confidence threshold")
     print(" - 's': Decrease confidence threshold")
-    print(" - 'a': Increase edge threshold")
-    print(" - 'd': Decrease edge threshold")
+    print(" - 'd': Increase edge threshold")
+    print(" - 'a': Decrease edge threshold")
     while pipeline.isRunning():
         confidenceData = confidenceQueue.get()
         assert isinstance(confidenceData, dai.ImgFrame)
@@ -55,22 +55,22 @@ with dai.Pipeline() as pipeline:
         if key == ord('q'):
             pipeline.stop()
             break
-        if key == ord('e'):
+        if key == ord('w'):
             currentThreshold = currentConfig.getConfidenceThreshold()
             currentConfig.setConfidenceThreshold((currentThreshold + 5) % 255)
             print("Setting confidence threshold to:", currentConfig.getConfidenceThreshold())
             inputConfigQueue.send(currentConfig)
-        if key == ord('w'):
+        if key == ord('s'):
             currentThreshold = currentConfig.getConfidenceThreshold()
             currentConfig.setConfidenceThreshold((currentThreshold - 5) % 255)
             print("Setting confidence threshold to:", currentConfig.getConfidenceThreshold())
             inputConfigQueue.send(currentConfig)
-        if key == ord('f'):
+        if key == ord('d'):
             currentThreshold = currentConfig.getEdgeThreshold()
             currentConfig.setEdgeThreshold((currentThreshold + 1) % 255)
             print("Setting edge threshold to:", currentConfig.getEdgeThreshold())
             inputConfigQueue.send(currentConfig)
-        if key == ord('d'):
+        if key == ord('a'):
             currentThreshold = currentConfig.getEdgeThreshold()
             currentConfig.setEdgeThreshold((currentThreshold - 1) % 255)
             print("Setting edge threshold to:", currentConfig.getEdgeThreshold())
