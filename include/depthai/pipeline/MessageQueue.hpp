@@ -7,6 +7,7 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/LockingQueue.hpp"
+#include "depthai/utility/PipelineEventDispatcherInterface.hpp"
 
 // shared
 namespace dai {
@@ -37,11 +38,15 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
 
    private:
     void callCallbacks(std::shared_ptr<ADatatype> msg);
+    std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
    public:
     // DataOutputQueue constructor
     explicit MessageQueue(unsigned int maxSize = 16, bool blocking = true);
-    explicit MessageQueue(std::string name, unsigned int maxSize = 16, bool blocking = true);
+    explicit MessageQueue(std::string name,
+                          unsigned int maxSize = 16,
+                          bool blocking = true,
+                          std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher = nullptr);
 
     MessageQueue(const MessageQueue& c)
         : enable_shared_from_this(c), queue(c.queue), name(c.name), callbacks(c.callbacks), uniqueCallbackId(c.uniqueCallbackId){};
@@ -200,8 +205,23 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
             throw QueueException(CLOSED_QUEUE_MESSAGE);
         }
         std::shared_ptr<ADatatype> val = nullptr;
-        if(!queue.tryPop(val)) return nullptr;
-        return std::dynamic_pointer_cast<T>(val);
+        auto getInput = [this, &val]() -> std::shared_ptr<T> {
+            if(!queue.tryPop(val)) {
+                return nullptr;
+            }
+            return std::dynamic_pointer_cast<T>(val);
+        };
+        if(pipelineEventDispatcher) {
+            auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
+            blockEvent.setQueueSize(getSize());
+            auto result = getInput();
+            if(!result) {
+                blockEvent.cancel();
+            }
+            return result;
+        } else {
+            return getInput();
+        }
     }
 
     /**
@@ -221,8 +241,17 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     template <class T>
     std::shared_ptr<T> get() {
         std::shared_ptr<ADatatype> val = nullptr;
-        if(!queue.waitAndPop(val)) {
-            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        auto getInput = [this, &val]() {
+            if(!queue.waitAndPop(val)) {
+                throw QueueException(CLOSED_QUEUE_MESSAGE);
+            }
+        };
+        if(pipelineEventDispatcher) {
+            auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
+            blockEvent.setQueueSize(getSize());
+            getInput();
+        } else {
+            getInput();
         }
         return std::dynamic_pointer_cast<T>(val);
     }

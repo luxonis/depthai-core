@@ -4,6 +4,7 @@
 
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/node/internal/PipelineEventAggregation.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -11,6 +12,7 @@
 #include "depthai/utility/Initialization.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/node/DetectionNetwork.hpp"
+#include "pipeline/node/internal/PipelineStateMerge.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -68,8 +70,12 @@ Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<Pipe
 
 Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) : pimpl(std::move(pimpl)) {}
 
-PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
-    return pimpl->getPipelineSchema(type);
+PipelineSchema Pipeline::getPipelineSchema(SerializationType type, bool includePipelineDebugging) const {
+    return pimpl->getPipelineSchema(type, includePipelineDebugging);
+}
+
+PipelineSchema Pipeline::getDevicePipelineSchema(SerializationType type, bool includePipelineDebugging) const {
+    return pimpl->getDevicePipelineSchema(type, includePipelineDebugging);
 }
 
 GlobalProperties PipelineImpl::getGlobalProperties() const {
@@ -115,7 +121,7 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getSourceNodes() {
 
 void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
     // Set schema
-    schema = getPipelineSchema(type);
+    schema = getDevicePipelineSchema(type);
 
     // Serialize all asset managers into asset storage
     assetStorage.clear();
@@ -183,9 +189,10 @@ std::vector<Node::Connection> PipelineImpl::getConnections() const {
     return conns;
 }
 
-PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
+PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool includePipelineDebugging) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
+    schema.bridges = xlinkBridges;
     int latestIoId = 0;
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
@@ -193,94 +200,96 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) {
             continue;
         }
-        // Check if its a host node or device node
-        if(node->runOnHost()) {
-            // host node, no need to serialize to a schema
-            // TBD any additional changes
-        } else {
-            // Create 'node' info
-            NodeObjInfo info;
-            info.id = node->id;
-            info.name = node->getName();
-            info.alias = node->getAlias();
-            info.parentId = node->parentId;
-            const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
-            if(!deviceNode) {
-                throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
-            }
+        if(!includePipelineDebugging && (std::string(node->getName()) == "PipelineEventAggregation" || std::string(node->getName()) == "PipelineStateMerge")) {
+            continue;
+        }
+        // Create 'node' info
+        NodeObjInfo info;
+        info.id = node->id;
+        info.name = node->getName();
+        info.alias = node->getAlias();
+        info.parentId = node->parentId;
+        info.deviceNode = !node->runOnHost();
+        if(!node->runOnHost()) info.deviceId = defaultDeviceId;
+
+        const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
+        if(!node->runOnHost() && !deviceNode) {
+            throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
+        }
+        if(deviceNode) {
             deviceNode->getProperties().serialize(info.properties, type);
             info.logLevel = deviceNode->getLogLevel();
-            // Create Io information
-            auto inputs = node->getInputs();
-            auto outputs = node->getOutputs();
-
-            info.ioInfo.reserve(inputs.size() + outputs.size());
-
-            // Add inputs
-            for(const auto& input : inputs) {
-                NodeIoInfo io;
-                io.id = latestIoId;
-                latestIoId++;
-                io.blocking = input.getBlocking();
-                io.queueSize = input.getMaxSize();
-                io.name = input.getName();
-                io.group = input.getGroup();
-                auto ioKey = std::make_tuple(io.group, io.name);
-
-                io.waitForMessage = input.getWaitForMessage();
-                switch(input.getType()) {
-                    case Node::Input::Type::MReceiver:
-                        io.type = NodeIoInfo::Type::MReceiver;
-                        break;
-                    case Node::Input::Type::SReceiver:
-                        io.type = NodeIoInfo::Type::SReceiver;
-                        break;
-                }
-
-                if(info.ioInfo.count(ioKey) > 0) {
-                    if(io.group == "") {
-                        throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
-                    } else {
-                        throw std::invalid_argument(
-                            fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
-                    }
-                }
-                info.ioInfo[ioKey] = io;
-            }
-
-            // Add outputs
-            for(const auto& output : outputs) {
-                NodeIoInfo io;
-                io.id = latestIoId;
-                latestIoId++;
-                io.blocking = false;
-                io.name = output.getName();
-                io.group = output.getGroup();
-                auto ioKey = std::make_tuple(io.group, io.name);
-
-                switch(output.getType()) {
-                    case Node::Output::Type::MSender:
-                        io.type = NodeIoInfo::Type::MSender;
-                        break;
-                    case Node::Output::Type::SSender:
-                        io.type = NodeIoInfo::Type::SSender;
-                        break;
-                }
-
-                if(info.ioInfo.count(ioKey) > 0) {
-                    if(io.group == "") {
-                        throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
-                    } else {
-                        throw std::invalid_argument(
-                            fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
-                    }
-                }
-                info.ioInfo[ioKey] = io;
-            }
-
-            // At the end, add the constructed node information to the schema
-            schema.nodes[info.id] = info;
         }
+        // Create Io information
+        auto inputs = node->getInputs();
+        auto outputs = node->getOutputs();
+
+        info.ioInfo.reserve(inputs.size() + outputs.size());
+
+        // Add inputs
+        for(const auto& input : inputs) {
+            NodeIoInfo io;
+            io.id = latestIoId;
+            latestIoId++;
+            io.blocking = input.getBlocking();
+            io.queueSize = input.getMaxSize();
+            io.name = input.getName();
+            io.group = input.getGroup();
+            auto ioKey = std::make_tuple(io.group, io.name);
+
+            io.waitForMessage = input.getWaitForMessage();
+            switch(input.getType()) {
+                case Node::Input::Type::MReceiver:
+                    io.type = NodeIoInfo::Type::MReceiver;
+                    break;
+                case Node::Input::Type::SReceiver:
+                    io.type = NodeIoInfo::Type::SReceiver;
+                    break;
+            }
+
+            if(info.ioInfo.count(ioKey) > 0) {
+                if(io.group == "") {
+                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                } else {
+                    throw std::invalid_argument(
+                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                }
+            }
+            info.ioInfo[ioKey] = io;
+        }
+
+        // Add outputs
+        for(const auto& output : outputs) {
+            NodeIoInfo io;
+            io.id = latestIoId;
+            latestIoId++;
+            io.blocking = false;
+            io.name = output.getName();
+            io.group = output.getGroup();
+            auto ioKey = std::make_tuple(io.group, io.name);
+
+            switch(output.getType()) {
+                case Node::Output::Type::MSender:
+                    io.type = NodeIoInfo::Type::MSender;
+                    break;
+                case Node::Output::Type::SSender:
+                    io.type = NodeIoInfo::Type::SSender;
+                    break;
+            }
+
+            if(info.ioInfo.count(ioKey) > 0) {
+                if(io.group == "") {
+                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                } else {
+                    throw std::invalid_argument(
+                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                }
+            }
+            info.ioInfo[ioKey] = io;
+        }
+
+        // At the end, add the constructed node information to the schema
+        schema.nodes[info.id] = info;
     }
 
     // Create 'connections' info
@@ -312,11 +321,6 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         bool outputHost = outNode->runOnHost();
         bool inputHost = inNode->runOnHost();
 
-        if(outputHost && inputHost) {
-            // skip - connection between host nodes doesn't have to be represented to the device
-            continue;
-        }
-
         if(outputHost && !inputHost) {
             throw std::invalid_argument(
                 fmt::format("Connection from host node '{}' to device node '{}' is not allowed during serialization.", outNode->getName(), inNode->getName()));
@@ -331,6 +335,35 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         schema.connections.push_back(c);
     }
 
+    return schema;
+}
+
+PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, bool includePipelineDebugging) const {
+    auto schema = getPipelineSchema(type, includePipelineDebugging);
+    // Remove bridge info
+    schema.bridges.clear();
+    // Remove host nodes
+    for(auto it = schema.nodes.begin(); it != schema.nodes.end();) {
+        if(!it->second.deviceNode) {
+            it = schema.nodes.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    // Remove connections between host nodes (host - device connections should not exist)
+    schema.connections.erase(std::remove_if(schema.connections.begin(),
+                                            schema.connections.end(),
+                                            [&schema](const NodeConnectionSchema& c) {
+                                                auto node1 = schema.nodes.find(c.node1Id);
+                                                auto node2 = schema.nodes.find(c.node2Id);
+                                                if(node1 == schema.nodes.end() && node2 == schema.nodes.end()) {
+                                                    return true;
+                                                } else if(node1 == schema.nodes.end() || node2 == schema.nodes.end()) {
+                                                    throw std::invalid_argument("Connection from host node to device node should not exist here");
+                                                }
+                                                return false;
+                                            }),
+                             schema.connections.end());
     return schema;
 }
 
@@ -477,6 +510,20 @@ bool PipelineImpl::isDeviceOnly() const {
     return deviceOnly;
 }
 
+PipelineStateApi PipelineImpl::getPipelineState() {
+    bool hasPipelineMergeNode = false;
+    for(const auto& node : getAllNodes()) {
+        if(strcmp(node->getName(), "PipelineStateMerge") == 0) {
+            hasPipelineMergeNode = true;
+            break;
+        }
+    }
+    if(!hasPipelineMergeNode) {
+        throw std::runtime_error("Pipeline debugging disabled. Cannot get pipeline state.");
+    }
+    return PipelineStateApi(pipelineStateOut, pipelineStateRequest, getAllNodes());
+}
+
 void PipelineImpl::add(std::shared_ptr<Node> node) {
     if(node == nullptr) {
         throw std::invalid_argument(fmt::format("Given node pointer is null"));
@@ -536,101 +583,115 @@ bool PipelineImpl::isBuilt() const {
 void PipelineImpl::build() {
     // TODO(themarpe) - add mutex and set running up ahead
     if(isBuild) return;
-    isBuild = true;
 
-    if(defaultDevice) {
-        auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
-        auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
+    if(buildingOnHost) {
+        if(defaultDevice) {
+            auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
+            auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
 
-        if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
-           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_RVC4) {
-            try {
+            if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+               || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
+               || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_RVC4) {
+                try {
 #ifdef DEPTHAI_MERGED_TARGET
-                if(enableHolisticRecordReplay) {
-                    switch(recordConfig.state) {
-                        case RecordConfig::RecordReplayState::RECORD:
-                            recordPath = recordConfig.outputDir;
-                            replayPath = "";
-                            break;
-                        case RecordConfig::RecordReplayState::REPLAY:
-                            recordPath = "";
-                            replayPath = recordConfig.outputDir;
-                            break;
-                        case RecordConfig::RecordReplayState::NONE:
-                            enableHolisticRecordReplay = false;
-                            break;
-                    }
-                }
-
-                defaultDeviceId = defaultDevice->getDeviceId();
-
-                if(!recordPath.empty() && !replayPath.empty()) {
-                    Logging::getInstance().logger.warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
-                } else if(!recordPath.empty()) {
-                    if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
-                        if(platform::checkWritePermissions(recordPath)) {
-                            if(utility::setupHolisticRecord(parent,
-                                                            defaultDeviceId,
-                                                            recordConfig,
-                                                            recordReplayFilenames,
-                                                            defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-                                                                || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
-                                recordConfig.state = RecordConfig::RecordReplayState::RECORD;
-                                Logging::getInstance().logger.info("Record enabled.");
-                            } else {
-                                Logging::getInstance().logger.warn("Could not set up holistic record. Record and replay disabled.");
-                            }
-                        } else {
-                            Logging::getInstance().logger.warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
+                    if(enableHolisticRecordReplay) {
+                        switch(recordConfig.state) {
+                            case RecordConfig::RecordReplayState::RECORD:
+                                recordPath = recordConfig.outputDir;
+                                replayPath = "";
+                                break;
+                            case RecordConfig::RecordReplayState::REPLAY:
+                                recordPath = "";
+                                replayPath = recordConfig.outputDir;
+                                break;
+                            case RecordConfig::RecordReplayState::NONE:
+                                enableHolisticRecordReplay = false;
+                                break;
                         }
-                    } else {
-                        Logging::getInstance().logger.warn("Could not successfully parse DEPTHAI_RECORD. Record disabled.");
                     }
-                } else if(!replayPath.empty()) {
-                    if(platform::checkPathExists(replayPath)) {
-                        if(platform::checkWritePermissions(replayPath)) {
-                            if(utility::setupHolisticReplay(parent,
-                                                            replayPath,
-                                                            defaultDeviceId,
-                                                            recordConfig,
-                                                            recordReplayFilenames,
-                                                            defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-                                                                || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
-                                recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
-                                if(platform::checkPathExists(replayPath, true)) {
-                                    removeRecordReplayFiles = false;
+
+                    defaultDeviceId = defaultDevice->getDeviceId();
+
+                    if(!recordPath.empty() && !replayPath.empty()) {
+                        Logging::getInstance().logger.warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
+                    } else if(!recordPath.empty()) {
+                        if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
+                            if(platform::checkWritePermissions(recordPath)) {
+                                if(utility::setupHolisticRecord(parent,
+                                                                defaultDeviceId,
+                                                                recordConfig,
+                                                                recordReplayFilenames,
+                                                                defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                    || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
+                                    recordConfig.state = RecordConfig::RecordReplayState::RECORD;
+                                    Logging::getInstance().logger.info("Record enabled.");
+                                } else {
+                                    Logging::getInstance().logger.warn("Could not set up holistic record. Record and replay disabled.");
                                 }
-                                Logging::getInstance().logger.info("Replay enabled.");
                             } else {
-                                Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
+                                Logging::getInstance().logger.warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
                             }
                         } else {
-                            Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+                            Logging::getInstance().logger.warn("Could not successfully parse DEPTHAI_RECORD. Record disabled.");
                         }
-                    } else {
-                        Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
+                    } else if(!replayPath.empty()) {
+                        if(platform::checkPathExists(replayPath)) {
+                            if(platform::checkWritePermissions(replayPath)) {
+                                if(utility::setupHolisticReplay(parent,
+                                                                replayPath,
+                                                                defaultDeviceId,
+                                                                recordConfig,
+                                                                recordReplayFilenames,
+                                                                defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                    || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
+                                    recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
+                                    if(platform::checkPathExists(replayPath, true)) {
+                                        removeRecordReplayFiles = false;
+                                    }
+                                    Logging::getInstance().logger.info("Replay enabled.");
+                                } else {
+                                    Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
+                                }
+                            } else {
+                                Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+                            }
+                        } else {
+                            Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
+                        }
                     }
-                }
 #else
-                recordConfig.state = RecordConfig::RecordReplayState::NONE;
-                if(!recordPath.empty() || !replayPath.empty()) {
-                    Logging::getInstance().logger.warn("Merged target is required to use holistic record/replay.");
-                }
+                    recordConfig.state = RecordConfig::RecordReplayState::NONE;
+                    if(!recordPath.empty() || !replayPath.empty()) {
+                        Logging::getInstance().logger.warn("Merged target is required to use holistic record/replay.");
+                    }
 #endif
-            } catch(std::runtime_error& e) {
-                Logging::getInstance().logger.warn("Could not set up record / replay: {}", e.what());
+                } catch(std::runtime_error& e) {
+                    Logging::getInstance().logger.warn("Could not set up record / replay: {}", e.what());
+                }
+            } else if(enableHolisticRecordReplay || !recordPath.empty() || !replayPath.empty()) {
+                throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
             }
-        } else if(enableHolisticRecordReplay || !recordPath.empty() || !replayPath.empty()) {
-            throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
         }
     }
 
-    // Go through the build stages sequentially
+    // Run first build stage for all nodes
     for(const auto& node : getAllNodes()) {
         node->buildStage1();
     }
 
+    if(buildingOnHost) setupPipelineDebugging();
+
+    {
+        auto allNodes = getAllNodes();
+        if(std::find_if(allNodes.begin(), allNodes.end(), [](const std::shared_ptr<Node>& n) { return strcmp(n->getName(), "PipelineEventAggregation") == 0; })
+           == allNodes.end()) {
+            for(auto& node : allNodes) node->pipelineEventDispatcher->sendEvents = false;
+        }
+    }
+
+    isBuild = true;
+
+    // Go through the build stages sequentially
     for(const auto& node : getAllNodes()) {
         node->buildStage2();
     }
@@ -703,6 +764,9 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkInHost->setStreamName(streamName);
                 xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
                 connection.out->link(xLinkBridge.xLinkOut->input);
+
+                // Note the created bridge for serialization (for visualization)
+                xlinkBridges.push_back({outNode->id, inNode->id});
             }
             auto xLinkBridge = bridgesOut[connection.out];
             connection.out->unlink(*connection.in);  // Unlink the connection
@@ -1007,6 +1071,58 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
     throw std::invalid_argument(fmt::format("No handler specified for following ({}) URI", uri));
 }
 
+void PipelineImpl::setupPipelineDebugging() {
+    // Create pipeline event aggregator node and link
+    enablePipelineDebugging = enablePipelineDebugging || utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
+    if(enablePipelineDebugging) {
+        // Check if any nodes are on host or device
+        bool hasHostNodes = false;
+        bool hasDeviceNodes = false;
+        for(const auto& node : getAllNodes()) {
+            if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
+
+            if(node->runOnHost()) {
+                hasHostNodes = true;
+            } else {
+                hasDeviceNodes = true;
+            }
+        }
+        std::shared_ptr<node::internal::PipelineEventAggregation> hostEventAgg = nullptr;
+        std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
+        if(hasHostNodes) {
+            hostEventAgg = parent.create<node::internal::PipelineEventAggregation>();
+            hostEventAgg->setRunOnHost(true);
+        }
+        if(hasDeviceNodes) {
+            deviceEventAgg = parent.create<node::internal::PipelineEventAggregation>();
+            deviceEventAgg->setRunOnHost(false);
+        }
+        for(auto& node : getAllNodes()) {
+            if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
+
+            auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(node);
+            if(threadedNode) {
+                if(node->runOnHost() && hostEventAgg && node->id != hostEventAgg->id) {
+                    threadedNode->pipelineEventOutput.link(hostEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
+                } else if(!node->runOnHost() && deviceEventAgg && node->id != deviceEventAgg->id) {
+                    threadedNode->pipelineEventOutput.link(deviceEventAgg->inputs[fmt::format("{} - {}", node->getName(), node->id)]);
+                }
+            }
+        }
+        auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, hasHostNodes);
+        if(deviceEventAgg) {
+            deviceEventAgg->out.link(stateMerge->inputDevice);
+            stateMerge->outRequest.link(deviceEventAgg->request);
+        }
+        if(hostEventAgg) {
+            hostEventAgg->out.link(stateMerge->inputHost);
+            stateMerge->outRequest.link(hostEventAgg->request);
+        }
+        pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
+        pipelineStateRequest = stateMerge->request.createInputQueue();
+    }
+}
+
 // Record and Replay
 void Pipeline::enableHolisticRecord(const RecordConfig& config) {
     if(this->isRunning()) {
@@ -1037,4 +1153,16 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
     impl()->enableHolisticRecordReplay = true;
 }
+
+void Pipeline::enablePipelineDebugging(bool enable) {
+    if(this->isBuilt()) {
+        throw std::runtime_error("Cannot change pipeline debugging state after pipeline is built");
+    }
+    impl()->enablePipelineDebugging = enable;
+}
+
+PipelineStateApi Pipeline::getPipelineState() {
+    return impl()->getPipelineState();
+}
+
 }  // namespace dai

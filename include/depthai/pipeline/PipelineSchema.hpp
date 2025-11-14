@@ -14,8 +14,9 @@ struct PipelineSchema {
     std::vector<NodeConnectionSchema> connections;
     GlobalProperties globalProperties;
     std::unordered_map<int64_t, NodeObjInfo> nodes;
+    std::vector<std::pair<int64_t, int64_t>> bridges;
 };
 
-DEPTHAI_SERIALIZE_EXT(PipelineSchema, connections, globalProperties, nodes);
+DEPTHAI_SERIALIZE_EXT(PipelineSchema, connections, globalProperties, nodes, bridges);
 
 }  // namespace dai

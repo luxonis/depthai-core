@@ -52,8 +52,12 @@ void RecordVideo::run() {
     unsigned int i = 0;
     auto start = std::chrono::steady_clock::now();
     auto end = std::chrono::steady_clock::now();
-    while(isRunning()) {
-        auto msg = input.get<dai::Buffer>();
+    while(mainLoop()) {
+        std::shared_ptr<dai::Buffer> msg = nullptr;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            msg = input.get<dai::Buffer>();
+        }
         if(msg == nullptr) continue;
         if(streamType == DatatypeEnum::ADatatype) {
             if(std::dynamic_pointer_cast<ImgFrame>(msg) != nullptr) {
@@ -156,8 +160,12 @@ void RecordMetadataOnly::run() {
     utility::ByteRecorder byteRecorder;
 
     DatatypeEnum streamType = DatatypeEnum::ADatatype;
-    while(isRunning()) {
-        auto msg = input.get<dai::Buffer>();
+    while(mainLoop()) {
+        std::shared_ptr<dai::Buffer> msg = nullptr;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            msg = input.get<dai::Buffer>();
+        }
         if(msg == nullptr) continue;
         if(streamType == DatatypeEnum::ADatatype) {
             if(std::dynamic_pointer_cast<ImgFrame>(msg) != nullptr) {

@@ -28,7 +28,7 @@ class RemoteConnectionImpl {
     std::shared_ptr<MessageQueue> addTopic(
         const std::string& topicName, const std::string& group, unsigned int maxSize, bool blocking, bool useVisualizationIfAvailable);
     bool removeTopic(const std::string& topicName);
-    void registerPipeline(const Pipeline& pipeline);
+    void registerPipeline(Pipeline& pipeline);
     void registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback);
     int waitKey(int delayMs);
 
@@ -56,7 +56,7 @@ class RemoteConnectionImpl {
                           bool useVisualizationIfAvailable);
     void exposeTopicGroupsService();
     void exposeKeyPressedService();
-    void exposePipelineService(const Pipeline& pipeline);
+    void exposePipelineService(Pipeline& pipeline);
     void keyPressedCallback(int key);
 
     std::mutex keyMutex;

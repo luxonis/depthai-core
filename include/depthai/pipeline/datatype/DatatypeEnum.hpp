@@ -43,6 +43,9 @@ enum class DatatypeEnum : std::int32_t {
     DynamicCalibrationResult,
     CalibrationQuality,
     CoverageData,
+    PipelineEvent,
+    PipelineState,
+    PipelineEventAggregationConfig,
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

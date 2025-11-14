@@ -15,7 +15,7 @@ class CustomPCLProcessingNode : public dai::NodeCRTP<dai::node::ThreadedHostNode
     Output outputPCL{*this, {"outPCL", DEFAULT_GROUP, {{{dai::DatatypeEnum::PointCloudData, true}}}}};
 
     void run() override {
-        while(isRunning()) {
+        while(mainLoop()) {
             auto pclIn = inputPCL.get<dai::PointCloudData>();
             auto pclOut = std::make_shared<dai::PointCloudData>();
             if(pclIn != nullptr) {

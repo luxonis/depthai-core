@@ -45,6 +45,7 @@ class ResultThread(threading.Thread):
 # Function to run ctest with specific environment variables and labels
 def run_ctest(env_vars, labels, blocking=True, name=""):
     env = os.environ.copy()
+    env_vars["DEPTHAI_PIPELINE_DEBUGGING"] = "1"
     env.update(env_vars)
 
     cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release"]

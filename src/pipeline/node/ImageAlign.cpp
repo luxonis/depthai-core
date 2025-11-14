@@ -353,37 +353,42 @@ void ImageAlign::run() {
     ImgFrame inputAlignToImgFrame;
     uint32_t currentEepromId = getParentPipeline().getEepromId();
 
-    while(isRunning()) {
-        auto inputImg = input.get<ImgFrame>();
-
-        if(!initialized) {
-            initialized = true;
-
-            auto inputAlignToImg = inputAlignTo.get<ImgFrame>();
-
-            inputAlignToImgFrame = *inputAlignToImg;
-
-            inputAlignToTransform = inputAlignToImg->transformation;
-
-            alignSourceIntrinsics = inputAlignToImg->transformation.getIntrinsicMatrix();
-
-            alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
-            if(alignWidth == 0 || alignHeight == 0) {
-                alignWidth = inputAlignToImg->getWidth();
-                alignHeight = inputAlignToImg->getHeight();
-            }
-        }
-        bool hasConfig = false;
-
+    while(mainLoop()) {
+        std::shared_ptr<ImgFrame> inputImg = nullptr;
         std::shared_ptr<ImageAlignConfig> inConfig = nullptr;
-        if(inputConfig.getWaitForMessage()) {
-            logger->trace("Receiving ImageAlign config message!");
-            inConfig = inputConfig.get<ImageAlignConfig>();
-            hasConfig = true;
-        } else {
-            inConfig = inputConfig.tryGet<ImageAlignConfig>();
-            if(inConfig != nullptr) {
+        bool hasConfig = false;
+        {
+            auto blockEvent = this->inputBlockEvent();
+
+            inputImg = input.get<ImgFrame>();
+
+            if(!initialized) {
+                initialized = true;
+
+                auto inputAlignToImg = inputAlignTo.get<ImgFrame>();
+
+                inputAlignToImgFrame = *inputAlignToImg;
+
+                inputAlignToTransform = inputAlignToImg->transformation;
+
+                alignSourceIntrinsics = inputAlignToImg->transformation.getIntrinsicMatrix();
+
+                alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
+                if(alignWidth == 0 || alignHeight == 0) {
+                    alignWidth = inputAlignToImg->getWidth();
+                    alignHeight = inputAlignToImg->getHeight();
+                }
+            }
+
+            if(inputConfig.getWaitForMessage()) {
+                logger->trace("Receiving ImageAlign config message!");
+                inConfig = inputConfig.get<ImageAlignConfig>();
                 hasConfig = true;
+            } else {
+                inConfig = inputConfig.tryGet<ImageAlignConfig>();
+                if(inConfig != nullptr) {
+                    hasConfig = true;
+                }
             }
         }
 
@@ -577,8 +582,11 @@ void ImageAlign::run() {
         logger->trace("ImageAlign took {} ms", runtime);
 
         alignedImg->transformation.setDistortionCoefficients({});
-        outputAligned.send(alignedImg);
-        passthroughInput.send(inputImg);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            outputAligned.send(alignedImg);
+            passthroughInput.send(inputImg);
+        }
     }
 }
 
