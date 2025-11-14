@@ -44,6 +44,11 @@ std::pair<int, int> NeuralDepth::getInputSize(DeviceModelZoo model) {
     }
 }
 
+NeuralDepth& NeuralDepth::setRectification(bool enable) {
+    rectification->enableRectification(enable);
+    return *this;
+}
+
 void NeuralDepth::buildInternal() {
     if(device) {
         auto platform = device->getPlatform();

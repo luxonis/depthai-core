@@ -48,6 +48,7 @@ void bind_neural_depth(pybind11::module& m, void* pCallstack) {
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralDepth, rectifiedRight))
         .def_static("getInputSize", &NeuralDepth::getInputSize, py::arg("model"), DOC(dai, node, NeuralDepth, getInputSize))
+        .def("setRectification", &NeuralDepth::setRectification, py::arg("enable"), DOC(dai, node, NeuralDepth, setRectification))
         .def_readonly("inputConfig", &NeuralDepth::inputConfig, DOC(dai, node, NeuralDepth, inputConfig))
         .def_readonly("initialConfig", &NeuralDepth::initialConfig, DOC(dai, node, NeuralDepth, initialConfig))
         .def_readonly("disparity", &NeuralDepth::disparity, DOC(dai, node, NeuralDepth, disparity), DOC(dai, node, NeuralDepth, disparity))

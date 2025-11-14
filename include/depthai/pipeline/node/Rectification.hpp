@@ -53,6 +53,13 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     }
 
     /**
+     * Enable or disable rectification (useful for minimal changes during debugging)
+     */
+    Rectification& enableRectification(bool enable) {
+        properties.enableRectification = enable;
+        return *this;
+    }
+    /**
      * Check if the node is set to run on host
      */
     bool runOnHost() const override;

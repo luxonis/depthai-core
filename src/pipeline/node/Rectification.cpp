@@ -34,7 +34,7 @@ bool Rectification::runOnHost() const {
 void Rectification::run() {
     throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
 }
-#else   // DEPTHAI_HAVE_OPENCV_SUPPORT
+#else  // DEPTHAI_HAVE_OPENCV_SUPPORT
 
 namespace {
 
@@ -186,7 +186,14 @@ void Rectification::run() {
             targetM2 = targetM1;  // TODO alignment target
 
             auto cv_targetCameraMatrix1 = arrayToCvMat(3, 3, CV_32FC1, targetM1);
-            auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2);  // todo
+            auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2);
+
+            if(properties.enableRectification == false) {
+                cv_R1 = cv::Mat::eye(3, 3, CV_32FC1);
+                cv_R2 = cv::Mat::eye(3, 3, CV_32FC1);
+                cv_d1 = cv::Mat::zeros(1, d1.size(), CV_32FC1);
+                cv_d2 = cv::Mat::zeros(1, d2.size(), CV_32FC1);
+            }
 
             cv::initUndistortRectifyMap(cv_M1,
                                         cv_d1,

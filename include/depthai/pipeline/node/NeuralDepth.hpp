@@ -30,6 +30,12 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
      * Get input size for specific model
      */
     static std::pair<int, int> getInputSize(DeviceModelZoo model);
+
+    /**
+     * Enable or disable rectification (useful for prerectified inputs)
+     */
+    NeuralDepth& setRectification(bool enable);
+
     /**
      * Initial config to use for NeuralDepth.
      */

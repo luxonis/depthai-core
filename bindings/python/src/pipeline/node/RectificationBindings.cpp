@@ -41,6 +41,7 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
         .def_readonly("input1", &Rectification::input1, DOC(dai, node, Rectification, input1))
         .def_readonly("input2", &Rectification::input2, DOC(dai, node, Rectification, input2))
         .def("setRunOnHost", &Rectification::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Rectification, setRunOnHost))
+        .def("enableRectification", &Rectification::enableRectification, py::arg("enable"), DOC(dai, node, Rectification, enableRectification))
         .def("setOutputSize",
              (Rectification & (Rectification::*)(uint32_t, uint32_t)) & Rectification::setOutputSize,
              py::arg("width"),
