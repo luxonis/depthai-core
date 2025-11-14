@@ -454,7 +454,7 @@ void RemoteConnectionImpl::exposeLibraryVersionService() {
     assert(ids.size() == 1);
     auto id = ids[0];
 
-    serviceMap[id] = [this](foxglove::ServiceResponse request) {
+    serviceMap[id] = [](foxglove::ServiceResponse request) {
         nlohmann::json jsonRequest = nlohmann::json::parse(request.data);
         std::string responseMsg = std::string(build::VERSION);
         foxglove::ServiceResponse ret;
