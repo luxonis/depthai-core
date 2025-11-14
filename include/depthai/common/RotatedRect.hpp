@@ -114,6 +114,24 @@ struct RotatedRect {
         float maxy = std::max({points[0].y, points[1].y, points[2].y, points[3].y});
         return {minx, miny, maxx, maxy};
     }
+
+    /**
+     * Returns the outer non-rotated rectangle in the COCO (xmin, ymin, width, height) format.
+     * @return (top-left point, size)
+     */
+    std::tuple<dai::Point2f, dai::Size2f> getOuterXYWH() const {
+        auto [minx, miny, maxx, maxy] = getOuterRect();
+        return {dai::Point2f{minx, miny, isNormalized()}, dai::Size2f{maxx - minx, maxy - miny, isNormalized()}};
+    }
+
+    /**
+     * Returns the outer non-rotated rectangle in the YOLO (xcenter, ycenter, width, height) format.
+     * @return (center point, size)
+     */
+    std::tuple<dai::Point2f, dai::Size2f> getOuterCXCYWH() const {
+        auto [minx, miny, maxx, maxy] = getOuterRect();
+        return {dai::Point2f{(minx + maxx) / 2.0f, (miny + maxy) / 2.0f, isNormalized()}, dai::Size2f{maxx - minx, maxy - miny, isNormalized()}};
+    }
 };
 
 DEPTHAI_SERIALIZE_EXT(RotatedRect, center, size, angle);
