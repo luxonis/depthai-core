@@ -22,13 +22,25 @@ size_t ImgDetectionsT<DetectionT>::getSegmentationMaskHeight() const {
 }
 
 template <class DetectionT>
-void ImgDetectionsT<DetectionT>::setMask(const std::vector<std::uint8_t>& mask, size_t width, size_t height) {
+void ImgDetectionsT<DetectionT>::setSegmentationMask(const std::vector<std::uint8_t>& mask, size_t width, size_t height) {
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
     setData(mask);
     this->segmentationMaskWidth = width;
     this->segmentationMaskHeight = height;
+}
+
+template <class DetectionT>
+void ImgDetectionsT<DetectionT>::setSegmentationMask(dai::ImgFrame& frame) {
+    if(frame.getType() != dai::ImgFrame::Type::GRAY8) {
+        throw std::runtime_error("SegmentationMask: ImgFrame type must be GRAY8");
+    }
+    auto dataSpan = frame.getData();
+    std::vector<std::uint8_t> vecMask(dataSpan.begin(), dataSpan.end());
+    setData(vecMask);
+    this->segmentationMaskWidth = frame.getWidth();
+    this->segmentationMaskHeight = frame.getHeight();
 }
 
 template <class DetectionT>
@@ -42,7 +54,7 @@ std::optional<std::vector<std::uint8_t>> ImgDetectionsT<DetectionT>::getMaskData
 }
 
 template <class DetectionT>
-std::optional<dai::ImgFrame> ImgDetectionsT<DetectionT>::getSegmentationMaskAsImgFrame() const {
+std::optional<dai::ImgFrame> ImgDetectionsT<DetectionT>::getSegmentationMask() const {
     std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
     if(!maskData) {
         return std::nullopt;
@@ -59,66 +71,10 @@ std::optional<dai::ImgFrame> ImgDetectionsT<DetectionT>::getSegmentationMaskAsIm
     return img;
 }
 
-// Optional - xtensor support
-#ifdef DEPTHAI_XTENSOR_SUPPORT
-
-template <class DetectionT>
-std::optional<typename ImgDetectionsT<DetectionT>::XArray2D> ImgDetectionsT<DetectionT>::getTensorSegmentationMask() const {
-    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
-    if(!maskData) {
-        return std::nullopt;
-    }
-
-    size_t dataSize = (*maskData).size();
-    if(dataSize != segmentationMaskWidth * segmentationMaskHeight) {
-        throw std::runtime_error("SegmentationMask: data size does not match width*height");
-    }
-
-    using XArray2D = typename ImgDetectionsT<DetectionT>::XArray2D;
-    std::array<std::size_t, 2> shape{segmentationMaskHeight, segmentationMaskWidth};
-    auto result = XArray2D::from_shape(shape);
-    std::copy(maskData->cbegin(), maskData->cend(), result.begin());
-    return result;
-}
-
-template <class DetectionT>
-ImgDetectionsT<DetectionT>& ImgDetectionsT<DetectionT>::setTensorSegmentationMask(typename ImgDetectionsT<DetectionT>::XArray2D mask) {
-    data->setSize(mask.size());
-    std::vector<uint8_t> dataVec(mask.begin(), mask.end());
-    setData(dataVec);
-    this->segmentationMaskWidth = mask.shape()[1];
-    this->segmentationMaskHeight = mask.shape()[0];
-    return *this;
-}
-
-template <class DetectionT>
-std::optional<typename ImgDetectionsT<DetectionT>::XArray2D> ImgDetectionsT<DetectionT>::getTensorSegmentationMaskByIndex(std::uint8_t index) const {
-    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
-    if(!maskData) {
-        return std::nullopt;
-    }
-
-    if((*maskData).size() != segmentationMaskWidth * segmentationMaskHeight) {
-        throw std::runtime_error("SegmentationMask: data size does not match width*height");
-    }
-    using XArray2D = typename ImgDetectionsT<DetectionT>::XArray2D;
-    std::array<std::size_t, 2> shape{segmentationMaskHeight, segmentationMaskWidth};
-    auto result = XArray2D::from_shape(shape);
-    auto dstIt = result.begin();
-    auto srcIt = maskData->cbegin();
-    for(; dstIt != result.end(); ++dstIt, ++srcIt) {
-        *dstIt = static_cast<std::uint8_t>(*srcIt == index);
-    }
-
-    return result;
-}
-
-#endif
-
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 
 template <class DetectionT>
-ImgDetectionsT<DetectionT>& ImgDetectionsT<DetectionT>::setSegmentationMask(cv::Mat mask) {
+void ImgDetectionsT<DetectionT>::setCvSegmentationMask(cv::Mat mask) {
     std::vector<std::uint8_t> dataVec;
     if(!mask.isContinuous()) {
         for(int i = 0; i < mask.rows; i++) {
@@ -130,11 +86,10 @@ ImgDetectionsT<DetectionT>& ImgDetectionsT<DetectionT>::setSegmentationMask(cv::
     setData(dataVec);
     this->segmentationMaskWidth = mask.cols;
     this->segmentationMaskHeight = mask.rows;
-    return *this;
 }
 
 template <class DetectionT>
-std::optional<cv::Mat> ImgDetectionsT<DetectionT>::getSegmentationMask(bool deepCopy) {
+std::optional<cv::Mat> ImgDetectionsT<DetectionT>::getCvSegmentationMask(cv::MatAllocator* allocator) {
     if(data->getData().data() == nullptr) {
         return std::nullopt;
     }
@@ -152,29 +107,15 @@ std::optional<cv::Mat> ImgDetectionsT<DetectionT>::getSegmentationMask(bool deep
                                  + std::to_string(actualSize) + ".");
     }
 
-    cv::Mat mat;
-    if(deepCopy) {
-        mat.create(size, type);
-        std::memcpy(mat.data, data->getData().data(), std::min((long)(data->getSize()), (long)(mat.dataend - mat.datastart)));
-    } else {
-        mat = cv::Mat(size, type, data->getData().data());
-    }
-    CV_Assert(mat.type() == CV_8UC1);
+    cv::Mat mask;
+    mask = cv::Mat(size, type, data->getData().data());
+    CV_Assert(mask.type() == CV_8UC1);
 
-    return mat;
-}
-
-template <class DetectionT>
-std::optional<cv::Mat> ImgDetectionsT<DetectionT>::getCvSegmentationMask(cv::MatAllocator* allocator) {
-    std::optional<cv::Mat> mask = getSegmentationMask();
-    if(!mask.has_value()) {
-        return std::nullopt;
-    }
     cv::Mat output;
     if(allocator != nullptr) {
         output.allocator = allocator;
     }
-    (*mask).copyTo(output);
+    (mask).copyTo(output);
     return output;
 }
 

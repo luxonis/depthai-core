@@ -240,7 +240,7 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         const std::size_t height = 3;
         const auto mask = makeSequentialMask(width, height);
 
-        detections.setMask(mask, width, height);
+        detections.setSegmentationMask(mask, width, height);
         REQUIRE(detections.getSegmentationMaskWidth() == width);
         REQUIRE(detections.getSegmentationMaskHeight() == height);
         REQUIRE(detections.getMaskData() == mask);
@@ -252,7 +252,7 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         detections.setTimestamp(timestamp);
         detections.setTimestampDevice(deviceTimestamp);
 
-        std::optional<dai::ImgFrame> optFrame = detections.getSegmentationMaskAsImgFrame();
+        std::optional<dai::ImgFrame> optFrame = detections.getSegmentationMask();
         REQUIRE(optFrame);
         dai::ImgFrame frame = *optFrame;
         REQUIRE(frame.getWidth() == width);
@@ -270,11 +270,11 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
     SECTION("setMask rejects mismatched dimensions") {
         ImgDetections detections;
         std::vector<uint8_t> mask = {0, 1, 2};
-        REQUIRE_THROWS_AS(detections.setMask(mask, 4, 4), std::runtime_error);
+        REQUIRE_THROWS_AS(detections.setSegmentationMask(mask, 4, 4), std::runtime_error);
     }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    SECTION("OpenCV segmentation mask view semantics") {
+    SECTION("OpenCV segmentation mask copy semantics") {
         ImgDetections detections;
         constexpr int rows = 3;
         constexpr int cols = 4;
@@ -285,11 +285,11 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
             }
         }
 
-        detections.setSegmentationMask(mask);
+        detections.setCvSegmentationMask(mask);
         REQUIRE(detections.getSegmentationMaskWidth() == static_cast<std::size_t>(mask.cols));
         REQUIRE(detections.getSegmentationMaskHeight() == static_cast<std::size_t>(mask.rows));
 
-        std::optional<cv::Mat> optShallow = detections.getSegmentationMask(false);
+        std::optional<cv::Mat> optShallow = detections.getCvSegmentationMask();
         REQUIRE(optShallow.has_value());
         cv::Mat shallow = *optShallow;
         cv::Mat diff;
@@ -303,12 +303,13 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         auto shallowData = *optShallowData;
 
         REQUIRE_FALSE(shallowData.empty());
-        REQUIRE(shallowData.front() == shallow.at<uint8_t>(0, 0));
+        REQUIRE(shallowData.front() == mask.at<uint8_t>(0, 0));
+        REQUIRE(shallowData.front() != shallow.at<uint8_t>(0, 0));
 
         cv::Mat constantMask(rows, cols, CV_8UC1, cv::Scalar(7));
-        detections.setSegmentationMask(constantMask);
+        detections.setCvSegmentationMask(constantMask);
 
-        std::optional<cv::Mat> optDeep = detections.getSegmentationMask(true);
+        std::optional<cv::Mat> optDeep = detections.getCvSegmentationMask();
         REQUIRE(optDeep);
         cv::Mat deep = *optDeep;
         REQUIRE(cv::countNonZero(deep != constantMask) == 0);
@@ -334,7 +335,7 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
             }
         }
 
-        detections.setSegmentationMask(mask);
+        detections.setCvSegmentationMask(mask);
         std::optional<cv::Mat> optCopy = detections.getCvSegmentationMask();
         REQUIRE(optCopy.has_value());
         cv::Mat copy = *optCopy;

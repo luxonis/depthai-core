@@ -220,11 +220,18 @@ private_data(
     FILE "recording.tar"
     LOCATION recording_path
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/construction_vest.mp4"
     SHA1 "271d8d0b702e683ce02957db7c100843de5ceaec"
     FILE "construction_vest.mp4"
     LOCATION construction_vest
+)
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory//luxonis-depthai-data-local/misc/dynamic_calibration_test_data.tar"
+    SHA1 "520d97199757f6fa0497c4037dcca5a43c7be3de"
+    FILE "dynamic_calibration_test_data.tar"
+    LOCATION dynamic_calibration_test_data
 )
 
 private_data(
@@ -233,24 +240,28 @@ private_data(
     FILE "yolov6-nano_r2-coco-512x288_a26d1ee-detections.json"
     LOCATION yolo_v6_r2_coco_512x288_gt
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov6-nano_r2-coco-512x384_fb1429e-detections.json"
     SHA1 "af6cea1f293622fcc2c9cb8d78fadb510a2270c9"
     FILE "yolov6-nano_r2-coco-512x384_fb1429e-detections.json"
     LOCATION yolo_v6_r2_coco_512x384_gt
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-nano_coco-512x288_6c0402a-detections.json"
     SHA1 "bb29fb9a6bc041f7e90769df4cde3a6ca890e521"
     FILE "yolov8-instance-segmentation-nano_coco-512x288_6c0402a-detections.json"
     LOCATION yolo_v8_instance_segmentation_nano_coco_512x288_gt
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-large-pose-estimation_coco-640x352_1868e39-detections.json"
     SHA1 "397fd5e1b80f47050cb827af92b5b13fb4f35bc6"
     FILE "yolov8-large-pose-estimation_coco-640x352_1868e39-detections.json"
     LOCATION yolo_v8_large_pose_estimation_coco_640x352_gt
 )
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-detections.json"
     SHA1 "21ee42c2f560d7f977f1895387f6e6834c7dd2b5"
@@ -299,7 +310,7 @@ private_data(
     FILE "fire_hd_1920_1080_24fps.mp4"
     LOCATION fire_video
 )
-    
+
 private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/images/kitchen1.png"
     SHA1 "e566d4d0dce0b30a3e4cdc3b693e1c6385867822"
@@ -312,6 +323,13 @@ private_data(
     SHA1 "f837f89294ba8ab4ae2d30b75d1e2b141a930f8c"
     FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask.png"
     LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt
+)
+
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
+    SHA1 "cf947acf1c210efba34c363fe6d8fd8d02293601"
+    FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
+    LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2
 )
 
 ### Helper script to wrap the tests with a timeout ############################
@@ -426,6 +444,10 @@ dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
 # Dynamic calibration tests
 dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
+target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
+
+dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
+dai_set_test_labels(dynamic_calibration_onhost_test onhost)
 
 # Neural network test
 dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
@@ -522,7 +544,7 @@ FIRE_DETECTION_512x288_GROUND_TRUTH="${fire_detection_512x288_gt}"
 PEOPLE_WALKING_VIDEO="${people_walking_video}"
 FIRE_VIDEO="${fire_video}"
 KITCHEN_IMAGE_PATH="${kitchen_image}"
-YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt}"
+YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2}"
 )
 dai_set_test_labels(detection_parser_test ondevice rvc4 ci onhost)
 
@@ -610,7 +632,7 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
 
 # VideoEncoder test
 dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
-dai_set_test_labels(video_encoder_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4rgb ci)
 target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # XLinkIn test

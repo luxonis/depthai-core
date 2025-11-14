@@ -13,7 +13,7 @@
 namespace dai {
 
 struct Keypoint {
-    Point3f imageCoordinates{};
+    Point3f imageCoordinates;
     float confidence = 0.f;
     uint32_t label = 0;
 

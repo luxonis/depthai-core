@@ -196,7 +196,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Set number of keypoints to decode. Automatically enables keypoints decoding.
      */
-    void setNKeypoints(int nKeypoints);
+    void setNumKeypoints(int numKeypoints);
 
     /**
      * Set strides for yolo models

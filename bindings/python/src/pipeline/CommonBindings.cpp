@@ -100,16 +100,22 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     keypoint.def(py::init<>())
-        .def(py::init<Point3f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0)
-        .def(py::init<Point2f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0)
-        .def(py::init<float, float, float, float, uint32_t>(), py::arg("x"), py::arg("y"), py::arg("z"), py::arg("confidence") = 0.f, py::arg("label") = 0)
-        .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates)
-        .def_readwrite("confidence", &Keypoint::confidence)
-        .def_readwrite("label", &Keypoint::label);
+        .def(py::init<Point3f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
+        .def(py::init<Point2f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
+        .def(py::init<float, float, float, float, uint32_t>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("confidence") = 0.f,
+             py::arg("label") = 0,
+             DOC(dai, Keypoint, Keypoint))
+        .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates, DOC(dai, Keypoint, imageCoordinates))
+        .def_readwrite("confidence", &Keypoint::confidence, DOC(dai, Keypoint, confidence))
+        .def_readwrite("label", &Keypoint::label, DOC(dai, Keypoint, label));
 
     keypointsList.def(py::init<>())
-        .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"))
-        .def(py::init<std::vector<Keypoint>>(), py::arg("keypoints"))
+        .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))
+        .def(py::init<std::vector<Keypoint>>(), py::arg("keypoints"), DOC(dai, KeypointsListT, KeypointsListT))
         .def(
             "setKeypoints",
             [](KeypointsList& self, const std::vector<Keypoint>& kps) { self.Base::setKeypoints(kps); },
@@ -422,14 +428,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("anchors", &DetectionParserOptions::anchors)
         .def_readwrite("anchorMasks", &DetectionParserOptions::anchorMasks)
         .def_readwrite("iouThreshold", &DetectionParserOptions::iouThreshold)
-        .def_readwrite("inputWidth", &DetectionParserOptions::inputWidth)
-        .def_readwrite("inputHeight", &DetectionParserOptions::inputHeight)
         .def_readwrite("decodingFamily", &DetectionParserOptions::decodingFamily)
         .def_readwrite("keypointEdges", &DetectionParserOptions::keypointEdges)
         .def_readwrite("anchorsV2", &DetectionParserOptions::anchorsV2)
         .def_readwrite("decodeKeypoints", &DetectionParserOptions::decodeKeypoints)
         .def_readwrite("numKeypoints", &DetectionParserOptions::nKeypoints)
-        .def_readwrite("outputNames", &DetectionParserOptions::outputNames);
+        .def_readwrite("outputNames", &DetectionParserOptions::outputNamesToUse);
 
     cameraExposureOffset.value("START", CameraExposureOffset::START).value("MIDDLE", CameraExposureOffset::MIDDLE).value("END", CameraExposureOffset::END);
 
