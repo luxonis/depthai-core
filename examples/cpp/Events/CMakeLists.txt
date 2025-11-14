@@ -6,4 +6,5 @@ cmake_minimum_required(VERSION 3.10)
 
 if(DEPTHAI_ENABLE_EVENTS_MANAGER)
     dai_add_example(events events.cpp OFF OFF)
+    dai_add_example(events_file_group events_file_group.cpp OFF OFF)
 endif()
