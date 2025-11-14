@@ -1,8 +1,5 @@
 #pragma once
 
-#include <vector>
-
-#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/NeuralDepthConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 

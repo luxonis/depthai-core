@@ -1,9 +1,6 @@
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 
-#include <mutex>
-
 #include "pipeline/node/NeuralNetwork.hpp"
-#include "spdlog/fmt/fmt.h"
 
 namespace dai {
 namespace node {

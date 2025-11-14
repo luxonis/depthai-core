@@ -4,10 +4,7 @@
 
 #include "common/ImgTransformations.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
-#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
-#include "utility/PimplImpl.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     #include <opencv2/calib3d.hpp>
@@ -34,7 +31,7 @@ bool Rectification::runOnHost() const {
 void Rectification::run() {
     throw std::runtime_error("Rectification node requires OpenCV support to run. Please enable OpenCV support in your build configuration.");
 }
-#else  // DEPTHAI_HAVE_OPENCV_SUPPORT
+#else   // DEPTHAI_HAVE_OPENCV_SUPPORT
 
 namespace {
 

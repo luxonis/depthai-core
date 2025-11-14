@@ -1,14 +1,10 @@
 #pragma once
 
 #include "depthai/common/optional.hpp"
-#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
 
-/**
- *
- */
 struct RectificationProperties : PropertiesSerializable<Properties, RectificationProperties> {
     std::optional<uint32_t> outputWidth, outputHeight;
     bool enableRectification = true;

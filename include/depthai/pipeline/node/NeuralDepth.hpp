@@ -12,7 +12,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief NeuralDepth node. Computes point cloud from depth frames.
+ * @brief NeuralDepth node. Compute depth from left-right image pair using neural network.
  */
 class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthProperties> {
    public:

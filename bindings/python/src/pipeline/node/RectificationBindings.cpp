@@ -2,8 +2,6 @@
 #include <pybind11/eval.h>
 
 #include "Common.hpp"
-#include "NodeBindings.hpp"
-#include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/node/Rectification.hpp"
 
 void bind_rectification(pybind11::module& m, void* pCallstack) {

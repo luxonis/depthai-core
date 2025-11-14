@@ -4,7 +4,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 
-void bind_neural_depth(pybind11::module& m, void* pCallstack) {
+void bind_neuraldepth(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 

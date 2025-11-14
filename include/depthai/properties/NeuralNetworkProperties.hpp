@@ -14,7 +14,6 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
      */
     enum class ModelSource { BLOB, CUSTOM_MODEL };
     ModelSource modelSource = ModelSource::BLOB;  // Default to blob source
-
     /**
      * Blob binary size in bytes
      */

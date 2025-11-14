@@ -173,6 +173,11 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      */
     int getNumInferenceThreads();
 
+    /**
+     * Set model from Device Model Zoo
+     * @param model DeviceModelZoo model enum
+     * @note Only applicable for RVC4 devices with OS 1.20.5 or higher
+     */
     void setModelFromDeviceZoo(DeviceModelZoo model);
 
    private:
