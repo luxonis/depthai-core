@@ -226,6 +226,12 @@ private_data(
     FILE "construction_vest.mp4"
     LOCATION construction_vest
 )
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory//luxonis-depthai-data-local/misc/dynamic_calibration_test_data.tar"
+    SHA1 "520d97199757f6fa0497c4037dcca5a43c7be3de"
+    FILE "dynamic_calibration_test_data.tar"
+    LOCATION dynamic_calibration_test_data
+)
 
 ### Helper script to wrap the tests with a timeout ############################
 
@@ -335,11 +341,18 @@ dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
 # Dynamic calibration tests
 dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
+target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
+
+dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
+dai_set_test_labels(dynamic_calibration_onhost_test onhost)
 
 # Neural network test
 dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
 target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 dai_set_test_labels(neural_network_test ondevice rvc2_all ci)
+
+dai_add_test(spatial_location_calculator_test src/ondevice_tests/pipeline/node/spatial_location_calculator_test.cpp)
+dai_set_test_labels(spatial_location_calculator_test ondevice rvc2_all rvc4 ci)
 
 # Color camera test
 dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
@@ -374,7 +387,7 @@ dai_set_test_labels(filesystem_test_20 rvc2_all ci)
 
 # Encoded frame test
 dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4rgb ci)
+dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # MessageGroup tests
 dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
@@ -497,7 +510,8 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
 
 # VideoEncoder test
 dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
-dai_set_test_labels(video_encoder_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4rgb ci)
+target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_tests.cpp)
