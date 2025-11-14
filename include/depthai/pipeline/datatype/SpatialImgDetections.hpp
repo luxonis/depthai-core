@@ -23,10 +23,20 @@ namespace dai {
 struct SpatialImgDetection : public ImgDetection {
     Point3f spatialCoordinates;
     SpatialLocationCalculatorConfigData boundingBoxMapping;
+
+    DEPTHAI_SERIALIZE(SpatialImgDetection,
+                      ImgDetection::xmax,
+                      ImgDetection::xmin,
+                      ImgDetection::ymax,
+                      ImgDetection::ymin,
+                      ImgDetection::label,
+                      ImgDetection::labelName,
+                      ImgDetection::confidence,
+                      ImgDetection::boundingBox,
+                      ImgDetection::keypoints,
+                      spatialCoordinates,
+                      boundingBoxMapping);
 };
-
-DEPTHAI_SERIALIZE_EXT(SpatialImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, spatialCoordinates, boundingBoxMapping);
-
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */

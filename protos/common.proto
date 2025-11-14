@@ -54,3 +54,36 @@ message Point2f {
     float x = 1;
     float y = 2;
 }
+
+message Point3f {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
+message Size2f {
+    float width = 1;
+    float height = 2;
+}
+
+message RotatedRect {
+    Point2f center = 1;
+    Size2f size = 2;
+    float angle = 3;
+}
+
+message KeypointsList {
+    repeated Keypoint keypoints = 1;
+    repeated Edge edges = 2;
+}
+
+message Keypoint {
+    Point3f imageCoordinates = 1;
+    float confidence = 2;
+    uint32 label = 3;
+}
+
+message Edge {
+    uint32 src = 1;
+    uint32 dst = 2;
+}
