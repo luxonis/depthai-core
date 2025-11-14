@@ -46,6 +46,13 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     Rectification& setOutputSize(uint32_t width, uint32_t height);
 
     /**
+     * Set output size
+     */
+    Rectification& setOutputSize(std::pair<uint32_t, uint32_t> size) {
+        return setOutputSize(size.first, size.second);
+    }
+
+    /**
      * Check if the node is set to run on host
      */
     bool runOnHost() const override;

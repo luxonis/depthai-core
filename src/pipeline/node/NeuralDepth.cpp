@@ -25,8 +25,23 @@ std::shared_ptr<NeuralDepth> NeuralDepth::build(Output& leftInput, Output& right
     // Set model
     neuralNetwork->setModelFromDeviceZoo(model);
     // Set rectification output size based on model
-    rectification->setOutputSize(modelToInputSize[model].first, modelToInputSize[model].second);
+    rectification->setOutputSize(getInputSize(model));
     return std::static_pointer_cast<NeuralDepth>(shared_from_this());
+}
+
+std::pair<int, int> NeuralDepth::getInputSize(DeviceModelZoo model) {
+    switch(model) {
+        case DeviceModelZoo::NEURAL_DEPTH_LARGE:
+            return {768, 480};
+        case DeviceModelZoo::NEURAL_DEPTH_MEDIUM:
+            return {576, 360};
+        case DeviceModelZoo::NEURAL_DEPTH_SMALL:
+            return {480, 300};
+        case DeviceModelZoo::NEURAL_DEPTH_NANO:
+            return {384, 240};
+        default:
+            throw std::runtime_error("Unknown DeviceModelZoo model");
+    }
 }
 
 void NeuralDepth::buildInternal() {
@@ -42,7 +57,7 @@ void NeuralDepth::buildInternal() {
     }
     auto defaultModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
     neuralNetwork->setModelFromDeviceZoo(defaultModel);
-    rectification->setOutputSize(modelToInputSize[defaultModel].first, modelToInputSize[defaultModel].second);
+    rectification->setOutputSize(getInputSize(defaultModel));
     // Link sync outputs to message demux inputs
     sync->out.link(messageDemux->input);
 

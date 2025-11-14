@@ -139,7 +139,6 @@ void Rectification::run() {
             output2FrameHeight = input2Frame->getHeight();
         }
 
-
         if(!initialized) {
             output1ImgTransformation = input1Frame->transformation;
             output2ImgTransformation = input2Frame->transformation;

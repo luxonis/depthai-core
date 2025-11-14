@@ -1,11 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-
-// standard
-#include <fstream>
-
-// shared
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/datatype/NeuralDepthConfig.hpp>
 #include <depthai/pipeline/node/MessageDemux.hpp>
@@ -32,6 +27,10 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
 
    public:
     /**
+     * Get input size for specific model
+     */
+    static std::pair<int, int> getInputSize(DeviceModelZoo model);
+    /**
      * Initial config to use for NeuralDepth.
      */
     std::shared_ptr<NeuralDepthConfig> initialConfig = std::make_shared<NeuralDepthConfig>();
@@ -50,6 +49,16 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
      * Input for right ImgFrame of left-right pair
      */
     Input& right{sync->inputs["right"]};
+
+    /**
+     * Output for rectified left ImgFrame
+     */
+    Output& rectifiedLeft{rectification->output1};
+
+    /**
+     * Output for rectified right ImgFrame
+     */
+    Output& rectifiedRight{rectification->output2};
 #endif
 
     /**
@@ -93,14 +102,6 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
     Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     void buildInternal() override;
-
-   private:
-    std::unordered_map<DeviceModelZoo, std::pair<int, int>> modelToInputSize = {
-        {DeviceModelZoo::NEURAL_DEPTH_LARGE, {768, 480}},
-        {DeviceModelZoo::NEURAL_DEPTH_MEDIUM, {576, 360}},
-        {DeviceModelZoo::NEURAL_DEPTH_SMALL, {480, 300}},
-        {DeviceModelZoo::NEURAL_DEPTH_NANO, {384, 240}},
-    };
 };
 
 }  // namespace node

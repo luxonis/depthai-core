@@ -37,13 +37,29 @@ void bind_neural_depth(pybind11::module& m, void* pCallstack) {
             [](const NeuralDepth& n) { return &n.sync->inputs["right"]; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralDepth, right))
+        .def_property_readonly(
+            "rectifiedLeft",
+            [](const NeuralDepth& n) { return &n.rectification->output1; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralDepth, rectifiedLeft))
+        .def_property_readonly(
+            "rectifiedRight",
+            [](const NeuralDepth& n) { return &n.rectification->output2; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralDepth, rectifiedRight))
+        .def_static("getInputSize", &NeuralDepth::getInputSize, py::arg("model"), DOC(dai, node, NeuralDepth, getInputSize))
         .def_readonly("inputConfig", &NeuralDepth::inputConfig, DOC(dai, node, NeuralDepth, inputConfig))
         .def_readonly("initialConfig", &NeuralDepth::initialConfig, DOC(dai, node, NeuralDepth, initialConfig))
         .def_readonly("disparity", &NeuralDepth::disparity, DOC(dai, node, NeuralDepth, disparity), DOC(dai, node, NeuralDepth, disparity))
         .def_readonly("depth", &NeuralDepth::depth, DOC(dai, node, NeuralDepth, depth), DOC(dai, node, NeuralDepth, depth))
         .def_readonly("edge", &NeuralDepth::edge, DOC(dai, node, NeuralDepth, edge), DOC(dai, node, NeuralDepth, edge))
         .def_readonly("confidence", &NeuralDepth::confidence, DOC(dai, node, NeuralDepth, confidence), DOC(dai, node, NeuralDepth, confidence))
-        .def("build", &NeuralDepth::build, py::arg("leftInput"), py::arg("rightInput"), py::arg("model") = DeviceModelZoo::NEURAL_DEPTH_SMALL, DOC(dai, node, NeuralDepth, build))
+        .def("build",
+             &NeuralDepth::build,
+             py::arg("leftInput"),
+             py::arg("rightInput"),
+             py::arg("model") = DeviceModelZoo::NEURAL_DEPTH_SMALL,
+             DOC(dai, node, NeuralDepth, build))
         .def_property_readonly(
             "sync", [](NeuralDepth& n) { return &(*n.sync); }, py::return_value_policy::reference_internal, DOC(dai, node, NeuralDepth, sync))
         .def_property_readonly(

@@ -41,7 +41,15 @@ void bind_rectification(pybind11::module& m, void* pCallstack) {
         .def_readonly("input1", &Rectification::input1, DOC(dai, node, Rectification, input1))
         .def_readonly("input2", &Rectification::input2, DOC(dai, node, Rectification, input2))
         .def("setRunOnHost", &Rectification::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Rectification, setRunOnHost))
-        .def("setOutputSize", &Rectification::setOutputSize, py::arg("width"), py::arg("height"), DOC(dai, node, Rectification, setOutputSize));
+        .def("setOutputSize",
+             (Rectification & (Rectification::*)(uint32_t, uint32_t)) & Rectification::setOutputSize,
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, node, Rectification, setOutputSize))
+        .def("setOutputSize",
+             (Rectification & (Rectification::*)(std::pair<uint32_t, uint32_t>)) & Rectification::setOutputSize,
+             py::arg("size"),
+             DOC(dai, node, Rectification, setOutputSize, 2));
 
     // Keep the Properties class attached to the node type
     daiNodeModule.attr("Rectification").attr("Properties") = RectificationProperties;
