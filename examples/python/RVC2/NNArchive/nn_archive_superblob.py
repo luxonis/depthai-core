@@ -19,11 +19,9 @@ assert archive.getModelType() == dai.ModelType.SUPERBLOB
 # Therefore, getSuperBlob() is available
 assert archive.getSuperBlob() is not None
 
-# The archive is unpacked and thus a path to the superblob model is also available
-assert archive.getModelPath() is not None
-
-# There is no blob available
+# There is no blob or other model format available
 assert archive.getBlob() is None
+assert archive.getOtherModelFormat() is None
 
 # You can access any config version
 v1config: dai.nn_archive.v1.Config = archive.getConfig()
