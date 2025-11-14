@@ -258,6 +258,10 @@ To use this target clang format must be installed, preferably clang-format-18
 ```
 sudo apt install clang-format-18
 ```
+or using pip
+```
+python -m pip install clang-format~=18.0
+```
 
 And to apply formatting
 ```
