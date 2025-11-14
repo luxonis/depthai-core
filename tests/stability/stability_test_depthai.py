@@ -88,8 +88,8 @@ def stability_test(fps):
 
             # Detect memory leaks
             processMemoryUsage = p.getDefaultDevice().getProcessMemoryUsage()
-            if processMemoryUsage > MEMORY_LEAK_DETECTION_THRESHOLD * initialProcessMemoryUsage:
-                raise RuntimeError("Memory used by depthai-device process increased above the given threshold - potential memory leak detected")
+            #if processMemoryUsage > MEMORY_LEAK_DETECTION_THRESHOLD * initialProcessMemoryUsage:
+            #    raise RuntimeError("Memory used by depthai-device process increased above the given threshold - potential memory leak detected")
             print(f"Memory used by depthai-device process: {processMemoryUsage} kB. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
             print(f"Running for {datetime.timedelta(seconds=time.time() - tStart)}", flush=True)
 

@@ -14,6 +14,7 @@
 #include "datatype/IMUData.hpp"
 #include "datatype/ImageManipConfig.hpp"
 #include "datatype/ImgDetections.hpp"
+#include "datatype/ImgDetectionsT.hpp"
 #include "datatype/ImgFrame.hpp"
 #include "datatype/MessageGroup.hpp"
 #include "datatype/NNData.hpp"
