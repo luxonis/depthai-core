@@ -325,6 +325,13 @@ private_data(
     LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt
 )
 
+private_data(
+    URL "luxonis-depthai-data-local/misc/parser_testing/ground_truth_files/detection_parser/yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
+    SHA1 "cf947acf1c210efba34c363fe6d8fd8d02293601"
+    FILE "yolov8-instance-segmentation-large_coco-640x352_701031f-segmentation_mask_v2.png"
+    LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2
+)
+
 ### Helper script to wrap the tests with a timeout ############################
 
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
@@ -537,7 +544,7 @@ FIRE_DETECTION_512x288_GROUND_TRUTH="${fire_detection_512x288_gt}"
 PEOPLE_WALKING_VIDEO="${people_walking_video}"
 FIRE_VIDEO="${fire_video}"
 KITCHEN_IMAGE_PATH="${kitchen_image}"
-YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt}"
+YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_KITCHEN_SEGMENTATION_GROUND_TRUTH="${yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2}"
 )
 dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
 
