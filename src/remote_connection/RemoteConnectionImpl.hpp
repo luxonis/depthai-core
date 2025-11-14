@@ -57,6 +57,7 @@ class RemoteConnectionImpl {
     void exposeTopicGroupsService();
     void exposeKeyPressedService();
     void exposePipelineService(const Pipeline& pipeline);
+    void exposeLibraryVersionService();
     void keyPressedCallback(int key);
 
     std::mutex keyMutex;
