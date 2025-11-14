@@ -28,7 +28,7 @@ struct EepromData {
     Extrinsics housingExtrinsics;
     std::vector<uint8_t> miscellaneousData;
     bool stereoUseSpecTranslation{true};
-    bool stereoEnableDistortionCorrection{true};
+    bool stereoEnableDistortionCorrection{false};
     CameraBoardSocket verticalCameraSocket = dai::CameraBoardSocket::AUTO;
 };
 
