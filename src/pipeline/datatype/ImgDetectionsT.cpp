@@ -32,6 +32,18 @@ void ImgDetectionsT<DetectionT>::setSegmentationMask(const std::vector<std::uint
 }
 
 template <class DetectionT>
+void ImgDetectionsT<DetectionT>::setSegmentationMask(dai::ImgFrame& frame) {
+    if(frame.getType() != dai::ImgFrame::Type::GRAY8) {
+        throw std::runtime_error("SegmentationMask: ImgFrame type must be GRAY8");
+    }
+    auto dataSpan = frame.getData();
+    std::vector<std::uint8_t> vecMask(dataSpan.begin(), dataSpan.end());
+    setData(vecMask);
+    this->segmentationMaskWidth = frame.getWidth();
+    this->segmentationMaskHeight = frame.getHeight();
+}
+
+template <class DetectionT>
 std::optional<std::vector<std::uint8_t>> ImgDetectionsT<DetectionT>::getMaskData() const {
     const auto& d = data->getData();
     std::vector<std::uint8_t> vecMask(d.begin(), d.end());

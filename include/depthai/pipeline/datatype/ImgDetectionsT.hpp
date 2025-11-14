@@ -45,16 +45,25 @@ class ImgDetectionsT : public Buffer {
     std::size_t getSegmentationMaskHeight() const;
 
     /*
-     * Sets the segmentation mask from a vector of bytes, along with width and height.
+     * Sets the segmentation mask from a vector of bytes.
      * The size of the vector must be equal to width * height.
      */
     void setSegmentationMask(const std::vector<std::uint8_t>& mask, size_t width, size_t height);
+
+    /*
+     * Sets the segmentation mask from an ImgFrame.
+     * @param frame Frame must be of type GRAY8
+     */
+    void setSegmentationMask(dai::ImgFrame& frame);
 
     /*
      * Returns a copy of the segmentation mask data as a vector of bytes. If mask data is not set, returns std::nullopt.
      */
     std::optional<std::vector<std::uint8_t>> getMaskData() const;
 
+    /*
+     * Returns the segmentation mask as an ImgFrame. If mask data is not set, returns std::nullopt.
+     */
     std::optional<dai::ImgFrame> getSegmentationMask() const;
 
 // Optional - OpenCV support
@@ -71,7 +80,7 @@ class ImgDetectionsT : public Buffer {
     void setCvSegmentationMask(cv::Mat mask);
 
     /**
-     * Retrieves data as cv::Mat with specified width and height. If mask data is not set, returns std::nullopt.
+     * Retrieves mask data as a cv::Mat copy with specified width and height. If mask data is not set, returns std::nullopt.
      * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
      */
     std::optional<cv::Mat> getCvSegmentationMask(cv::MatAllocator* allocator = nullptr);

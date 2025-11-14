@@ -118,6 +118,18 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
             [](ImgDetections& det, std::vector<ImgDetection> val) { det.detections = val; },
             DOC(dai, ImgDetectionsT, detections),
             py::return_value_policy::reference_internal)
+        .def_property(
+            "segmentationMaskWidth",
+            [](ImgDetections& det) { return &det.segmentationMaskWidth; },
+            [](ImgDetections& det, size_t val) { det.segmentationMaskWidth = val; },
+            DOC(dai, ImgDetectionsT, segmentationMaskWidth),
+            py::return_value_policy::reference_internal)
+        .def_property(
+            "segmentationMaskHeight",
+            [](ImgDetections& det) { return &det.segmentationMaskHeight; },
+            [](ImgDetections& det, size_t val) { det.segmentationMaskHeight = val; },
+            DOC(dai, ImgDetectionsT, segmentationMaskHeight),
+            py::return_value_policy::reference_internal)
         .def("getTimestamp", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
@@ -125,12 +137,15 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
         .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetectionsT, getSegmentationMaskWidth))
         .def("getSegmentationMaskHeight", &ImgDetections::getSegmentationMaskHeight, DOC(dai, ImgDetectionsT, getSegmentationMaskHeight))
-        .def(
-            "setMask", &ImgDetections::setSegmentationMask, py::arg("mask"), py::arg("width"), py::arg("height"), DOC(dai, ImgDetectionsT, setSegmentationMask))
+        .def("setSegmentationMask",
+             py::overload_cast<dai::ImgFrame&>(&ImgDetections::setSegmentationMask),
+             py::arg("frame"),
+             DOC(dai, ImgDetectionsT, setSegmentationMask),
+             py::return_value_policy::reference_internal)
         .def("getMaskData", &ImgDetections::getMaskData, DOC(dai, ImgDetectionsT, getMaskData))
-        .def("getSegmentationMaskAsImgFrame", &ImgDetections::getSegmentationMask, DOC(dai, ImgDetectionsT, getSegmentationMask))
+        .def("getSegmentationMask", &ImgDetections::getSegmentationMask, DOC(dai, ImgDetectionsT, getSegmentationMask))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        .def("setSegmentationMask", &ImgDetections::setCvSegmentationMask, py::arg("mask"), DOC(dai, ImgDetectionsT, setCvSegmentationMask))
+        .def("setCvSegmentationMask", &ImgDetections::setCvSegmentationMask, py::arg("mask"), DOC(dai, ImgDetectionsT, setCvSegmentationMask))
         .def(
             "getCvSegmentationMask",
             [](ImgDetections& self) { return self.getCvSegmentationMask(&g_numpyAllocator); },

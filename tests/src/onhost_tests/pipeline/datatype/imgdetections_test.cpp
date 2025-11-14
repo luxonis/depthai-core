@@ -274,7 +274,7 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
     }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    SECTION("OpenCV segmentation mask view semantics") {
+    SECTION("OpenCV segmentation mask copy semantics") {
         ImgDetections detections;
         constexpr int rows = 3;
         constexpr int cols = 4;
@@ -303,7 +303,8 @@ TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segment
         auto shallowData = *optShallowData;
 
         REQUIRE_FALSE(shallowData.empty());
-        REQUIRE(shallowData.front() == shallow.at<uint8_t>(0, 0));
+        REQUIRE(shallowData.front() == mask.at<uint8_t>(0, 0));
+        REQUIRE(shallowData.front() != shallow.at<uint8_t>(0, 0));
 
         cv::Mat constantMask(rows, cols, CV_8UC1, cv::Scalar(7));
         detections.setCvSegmentationMask(constantMask);

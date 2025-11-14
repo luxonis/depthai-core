@@ -139,7 +139,9 @@ struct ImgDetection {
 };
 
 /**
- * ImgDetections message. Carries normalized detection results
+ * ImgDetections message. Carries normalized detections and optional segmentation mask.
+ * The segmentation mask is stored as a single-channel INT8 2-d array, where the value represents the instance index in the list of detections.
+ * The value 255 is treated as a background pixel (no instance).
  */
 class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable {
    public:
