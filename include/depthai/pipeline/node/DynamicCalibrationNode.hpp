@@ -198,6 +198,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * - Reseting of data
      */
     bool runOnHostVar = true;
+
+    // When old calibration is encountered, issue a warning once
+    bool oldCalibrationWarningIssued = false;
 };
 
 }  // namespace node
