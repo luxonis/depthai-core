@@ -1430,8 +1430,16 @@ float DeviceBase::getSystemInformationLoggingRate() {
     return pimpl->rpcCall("getSystemInformationLoggingRate").as<float>();
 }
 
+bool DeviceBase::isEepromAvailable() {
+    return isEepromAvailable(CameraBoardSocket::AUTO);
+}
+
 bool DeviceBase::isEepromAvailable(CameraBoardSocket camSocket) {
     return pimpl->rpcCall("isEepromAvailable", camSocket).as<bool>();
+}
+
+bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
+    return tryFlashCalibration(calibrationDataHandler, CameraBoardSocket::AUTO);
 }
 
 bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
@@ -1442,6 +1450,10 @@ bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler, 
         return false;
     }
     return true;
+}
+
+void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
+    return flashCalibration(calibrationDataHandler, CameraBoardSocket::AUTO);
 }
 
 void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
@@ -1484,6 +1496,10 @@ CalibrationHandler DeviceBase::getCalibration() {
     return CalibrationHandler(eepromData);
 }
 
+CalibrationHandler DeviceBase::readCalibration() {
+    return readCalibration(CameraBoardSocket::AUTO);
+}
+
 CalibrationHandler DeviceBase::readCalibration(CameraBoardSocket camSocket) {
     dai::EepromData eepromData{};
     try {
@@ -1493,6 +1509,11 @@ CalibrationHandler DeviceBase::readCalibration(CameraBoardSocket camSocket) {
     }
     return CalibrationHandler(eepromData);
 }
+
+CalibrationHandler DeviceBase::readCalibration2() {
+    return readCalibration2(CameraBoardSocket::AUTO);
+}
+
 CalibrationHandler DeviceBase::readCalibration2(CameraBoardSocket camSocket) {
     bool success;
     std::string errorMsg;
@@ -1504,8 +1525,16 @@ CalibrationHandler DeviceBase::readCalibration2(CameraBoardSocket camSocket) {
     return CalibrationHandler(eepromData);
 }
 
+CalibrationHandler DeviceBase::readCalibrationOrDefault() {
+    return readCalibrationOrDefault(CameraBoardSocket::AUTO);
+}
+
 CalibrationHandler DeviceBase::readCalibrationOrDefault(CameraBoardSocket camSocket) {
     return readCalibration(camSocket);
+}
+
+void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
+    return flashFactoryCalibration(calibrationDataHandler, CameraBoardSocket::AUTO);
 }
 
 void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
@@ -1531,6 +1560,10 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
     }
 }
 
+CalibrationHandler DeviceBase::readFactoryCalibration() {
+    return readFactoryCalibration(CameraBoardSocket::AUTO);
+}
+
 CalibrationHandler DeviceBase::readFactoryCalibration(CameraBoardSocket camSocket) {
     bool success;
     std::string errorMsg;
@@ -1541,6 +1574,10 @@ CalibrationHandler DeviceBase::readFactoryCalibration(CameraBoardSocket camSocke
     }
     return CalibrationHandler(eepromData);
 }
+CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
+    return readFactoryCalibrationOrDefault(CameraBoardSocket::AUTO);
+}
+
 CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault(CameraBoardSocket camSocket) {
     dai::EepromData eepromData{};
     try {
@@ -1551,6 +1588,10 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault(CameraBoardSocket
     return CalibrationHandler(eepromData);
 }
 
+void DeviceBase::factoryResetCalibration() {
+    return factoryResetCalibration(CameraBoardSocket::AUTO);
+}
+
 void DeviceBase::factoryResetCalibration(CameraBoardSocket camSocket) {
     bool success;
     std::string errorMsg;
@@ -1558,6 +1599,10 @@ void DeviceBase::factoryResetCalibration(CameraBoardSocket camSocket) {
     if(!success) {
         throw EepromError(errorMsg);
     }
+}
+
+std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
+    return readCalibrationRaw(CameraBoardSocket::AUTO);
 }
 
 std::vector<std::uint8_t> DeviceBase::readCalibrationRaw(CameraBoardSocket camSocket) {
@@ -1571,6 +1616,10 @@ std::vector<std::uint8_t> DeviceBase::readCalibrationRaw(CameraBoardSocket camSo
     return eepromDataRaw;
 }
 
+std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
+    return readFactoryCalibrationRaw(CameraBoardSocket::AUTO);
+}
+
 std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw(CameraBoardSocket camSocket) {
     bool success;
     std::string errorMsg;
@@ -1580,6 +1629,10 @@ std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw(CameraBoardSocke
         throw EepromError(errorMsg);
     }
     return eepromDataRaw;
+}
+
+void DeviceBase::flashEepromClear() {
+    return flashEepromClear(CameraBoardSocket::AUTO);
 }
 
 void DeviceBase::flashEepromClear(CameraBoardSocket camSocket) {
@@ -1598,6 +1651,10 @@ void DeviceBase::flashEepromClear(CameraBoardSocket camSocket) {
     if(!success) {
         throw EepromError(errorMsg);
     }
+}
+
+void DeviceBase::flashFactoryEepromClear() {
+    return flashFactoryEepromClear(CameraBoardSocket::AUTO);
 }
 
 void DeviceBase::flashFactoryEepromClear(CameraBoardSocket camSocket) {
