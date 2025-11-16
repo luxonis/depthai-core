@@ -15,64 +15,6 @@ int main() {
     // ---------- Pipeline definition ----------
     dai::Pipeline pipeline(device);
 
-    std::cout << "Is EEPROM available: " << device->isEepromAvailable() << std::endl;
-
-    try {
-        nlohmann::json j = device->readCalibration2().eepromToJson();
-        std::cout << "User calibration: " << j.dump(4) << std::endl << std::endl;
-    } catch(const std::exception& ex) {
-        std::cout << "No user calibration: " << ex.what() << std::endl;
-    }
-
-    try {
-        nlohmann::json j = device->readFactoryCalibration().eepromToJson();
-        std::cout << "Factory calibration: " << j.dump(4) << std::endl << std::endl;
-    } catch(const std::exception& ex) {
-        std::cout << "No factory calibration: " << ex.what() << std::endl;
-    }
-
-    {
-        nlohmann::json j = device->readCalibrationRaw();
-        std::cout << "User calibration raw: " << j.dump() << std::endl << std::endl;
-    }
-    {
-        nlohmann::json j = device->readFactoryCalibrationRaw();
-        std::cout << "Factory calibration raw: " << j.dump() << std::endl << std::endl;
-    }
-    
-    std::cout << "===================================" << std::endl << std::endl;
-    
-
-    std::cout << "A Is EEPROM available: " << device->isEepromAvailable(dai::CameraBoardSocket::CAM_A) << std::endl;
-
-    try {
-        nlohmann::json j = device->readCalibration2().eepromToJson();
-        std::cout << "A User calibration: " << j.dump(4) << std::endl << std::endl;
-    } catch(const std::exception& ex) {
-        std::cout << "A No user calibration: " << ex.what() << std::endl;
-    }
-
-    try {
-        nlohmann::json j = device->readFactoryCalibration(dai::CameraBoardSocket::CAM_A).eepromToJson();
-        std::cout << "A Factory calibration: " << j.dump(4) << std::endl << std::endl;
-    } catch(const std::exception& ex) {
-        std::cout << "A No factory calibration: " << ex.what() << std::endl;
-    }
-
-    {
-        nlohmann::json j = device->readCalibrationRaw(dai::CameraBoardSocket::CAM_A);
-        std::cout << "A User calibration raw: " << j.dump() << std::endl << std::endl;
-    }
-    {
-        nlohmann::json j = device->readFactoryCalibrationRaw(dai::CameraBoardSocket::CAM_A);
-        std::cout << "A Factory calibration raw: " << j.dump() << std::endl << std::endl;
-    }
-    
-    std::cout << "A ===================================" << std::endl << std::endl;
-    
-    
-    
-
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
