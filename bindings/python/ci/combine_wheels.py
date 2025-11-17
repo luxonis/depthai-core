@@ -140,7 +140,7 @@ def combine_wheels_linux(args, wheel_infos):
             # Strip debug symbols from the main dynamic library
             if args.strip_debug:
                 logger.info(f"Stripping debug symbols from {wheel_dylib_path}")
-                subprocess.run(['strip', '--strip-debug', wheel_dylib_full_path], check=True)
+                subprocess.run(['objcopy', '--strip-debug', wheel_dylib_full_path], check=True)
 
             for file in wheel_files_to_copy:
                 write_to_zip(output_zip, wheel_extract_dir, file)
@@ -153,7 +153,7 @@ def combine_wheels_linux(args, wheel_infos):
                 os.rename(lib_path, new_lib_path)
                 if args.strip_debug:
                     logger.info(f"Stripping debug symbols from {new_lib_name}")
-                    subprocess.run(['strip', '--strip-debug', new_lib_path], check=True)
+                    subprocess.run(['objcopy', '--strip-debug', new_lib_path], check=True)
                 
             write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
 
