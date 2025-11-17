@@ -506,6 +506,9 @@ jobs:
           pattern: audited-wheels-linux-x86_64-*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
+      - name: Install llvm-strip
+        run: |
+          yum install -y llvm # for llvm-strip, strip leads to "ELF load command address/offset not page-aligned" errors 
       - name: Combine wheels
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
@@ -637,6 +640,9 @@ jobs:
           pattern: audited-wheels-linux-arm64-*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
+      - name: Install llvm-strip
+        run: |
+          yum install -y llvm # for llvm-strip, strip leads to "ELF load command address/offset not page-aligned" errors
       - name: Combine wheels
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
