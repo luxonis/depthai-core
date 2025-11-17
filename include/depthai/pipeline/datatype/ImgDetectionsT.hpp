@@ -76,6 +76,7 @@ class ImgDetectionsT : public Buffer {
      * Copies cv::Mat data to Segmentation Mask buffer
      *
      * @param frame Input cv::Mat frame from which to copy the data
+     * @note Throws if mask is not a single channel INT8 type.
      */
     void setCvSegmentationMask(cv::Mat mask);
 

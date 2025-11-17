@@ -1,5 +1,7 @@
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 
+#include <opencv2/core/hal/interface.h>
+
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -75,6 +77,9 @@ std::optional<dai::ImgFrame> ImgDetectionsT<DetectionT>::getSegmentationMask() c
 
 template <class DetectionT>
 void ImgDetectionsT<DetectionT>::setCvSegmentationMask(cv::Mat mask) {
+    if(mask.type() != CV_8U) {
+        throw("SetCvSegmentationMask: Mask must be of INT8 type.");
+    }
     std::vector<std::uint8_t> dataVec;
     if(!mask.isContinuous()) {
         for(int i = 0; i < mask.rows; i++) {

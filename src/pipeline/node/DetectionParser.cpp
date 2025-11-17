@@ -387,7 +387,7 @@ bool DetectionParser::runOnHost() const {
 }
 
 void DetectionParser::run() {
-    auto& logger = pimpl->logger;
+    auto& logger = ThreadedNode::pimpl->logger;
     logger->info("Detection parser running on host.");
 
     using namespace std::chrono;
@@ -452,7 +452,7 @@ void DetectionParser::run() {
 }
 
 void DetectionParser::buildStage1() {
-    auto& logger = pimpl->logger;
+    auto& logger = ThreadedNode::pimpl->logger;
 
     // Grab dimensions from input tensor info
     if(properties.networkInputs.size() > 0) {
@@ -479,7 +479,7 @@ void DetectionParser::buildStage1() {
 }
 
 void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& outDetections, float confidenceThr) {
-    auto& logger = pimpl->logger;
+    auto& logger = ThreadedNode::pimpl->logger;
 
     int maxDetections = 100;
     std::vector<dai::ImgDetection> detections;
@@ -545,7 +545,7 @@ void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& o
 }
 
 void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections) {
-    auto& logger = pimpl->logger;
+    std::shared_ptr<spdlog::async_logger>& logger = ThreadedNode::pimpl->logger;
     switch(properties.parser.decodingFamily) {
         case YoloDecodingFamily::R1AF:  // anchor free: yolo v6r1
             utilities::DetectionParserUtils::decodeR1AF(nnData, outDetections, properties, logger);

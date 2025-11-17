@@ -3,6 +3,7 @@
 #include <spdlog/async_logger.h>
 
 #include <Eigen/Dense>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -35,7 +36,7 @@ namespace DetectionParserUtils {
 void decodeR1AF(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
-                std::shared_ptr<spdlog::async_logger> logger) {
+                std::shared_ptr<spdlog::async_logger>& logger) {
     auto layerNames = utilities::DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
 
     const std::vector<int> strides = properties.parser.strides;
@@ -168,7 +169,7 @@ Decode anchor based yolo v3 and v3-Tiny
 void decodeV3AB(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
-                std::shared_ptr<spdlog::async_logger> logger) {
+                std::shared_ptr<spdlog::async_logger>& logger) {
     auto layerNames = getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
     auto sigmoid = [](float x) -> float { return 1.f / (1.f + std::exp(-x)); };
 
@@ -319,7 +320,7 @@ Decode anchor based networks, e.g., yolo v5, v7, P
 void decodeV5AB(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
-                std::shared_ptr<spdlog::async_logger> logger) {
+                std::shared_ptr<spdlog::async_logger>& logger) {
     auto layerNames = getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
 
     const std::vector<int> strides = properties.parser.strides;
@@ -464,7 +465,7 @@ Decode TLBR (top left bottom right) style networks, e.g., yolo v6r2, v8, v10, v1
 void decodeTLBR(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
-                std::shared_ptr<spdlog::async_logger> logger) {
+                std::shared_ptr<spdlog::async_logger>& logger) {
     auto layerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
 
     const std::vector<int> strides = properties.parser.strides;
@@ -576,7 +577,7 @@ void decodeTLBR(const dai::NNData& nnData,
     }
 }
 
-bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties properties, std::shared_ptr<spdlog::async_logger> logger) {
+bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties properties, std::shared_ptr<spdlog::async_logger>& logger) {
     // Fix the channel order for Yolo - this is hacky and would be best to be fixed in the actual models and make it consistent
     auto getYoloChannelSize = [&](int classes, int coordinates, int anchors) -> int {
         if(anchors == 0) {
@@ -719,10 +720,11 @@ void segmentationDecode(const dai::NNData& nnData,
                         std::vector<DetectionCandidate>& detectionCandidates,
                         dai::ImgDetections& outDetections,
                         DetectionParserProperties properties,
-                        std::shared_ptr<spdlog::async_logger> logger) {
+                        std::shared_ptr<spdlog::async_logger>& logger) {
     std::pair<int, int> inputSize = nnData.transformation->getSize();
     int inputWidth = inputSize.first;
     int inputHeight = inputSize.second;
+    auto tStart = std::chrono::steady_clock::now();
 
     cv::Mat indexMask(inputHeight, inputWidth, CV_8U, cv::Scalar(255));
 
@@ -829,6 +831,8 @@ void segmentationDecode(const dai::NNData& nnData,
         const uint8_t value = static_cast<uint8_t>(std::min(detIdx, 254));
         roiOut.setTo(value, paintMask);
     }
+    auto tEnd = std::chrono::steady_clock::now();
+    logger->warn("Time to transform: {} ns", std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count());
 
     outDetections.setCvSegmentationMask(indexMask);
 }
@@ -837,7 +841,7 @@ void keypointDecode(const dai::NNData& nnData,
                     std::vector<DetectionCandidate>& detectionCandidates,
                     dai::ImgDetections& outDetections,
                     DetectionParserProperties properties,
-                    std::shared_ptr<spdlog::async_logger> logger) {
+                    std::shared_ptr<spdlog::async_logger>& logger) {
     if(!properties.parser.nKeypoints) {
         logger->warn("Number of keypoints not set in properties.parser.nKeypoints. Skipping keypoints decoding.");
         return;
