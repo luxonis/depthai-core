@@ -581,8 +581,7 @@ bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties p
     int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
     int channelSize = anchorMultiplier * (properties.parser.classes + properties.parser.coordinates + 1);
 
-    auto checkAndFixOrder =
-        [&](int channelDimIndex, int alternativeDimIndex, dai::TensorInfo::StorageOrder alternativeOrder) -> bool {
+    auto checkAndFixOrder = [&](int channelDimIndex, int alternativeDimIndex, dai::TensorInfo::StorageOrder alternativeOrder) -> bool {
         // Check that the dims size is big enough
         if(static_cast<int>(tensorInfo.dims.size()) <= channelDimIndex || static_cast<int>(tensorInfo.dims.size()) <= alternativeDimIndex) {
             logger->error("Invalid tensor dims size. Skipping.");
@@ -607,13 +606,13 @@ bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties p
             if(!checkAndFixOrder(0, 2, dai::TensorInfo::StorageOrder::HWC)) return false;
             break;
         case dai::TensorInfo::StorageOrder::HWC:
-            if(!checkAndFixOrder( 2, 0, dai::TensorInfo::StorageOrder::CHW)) return false;
+            if(!checkAndFixOrder(2, 0, dai::TensorInfo::StorageOrder::CHW)) return false;
             break;
         case dai::TensorInfo::StorageOrder::NCHW:
-            if(!checkAndFixOrder( 1, 3, dai::TensorInfo::StorageOrder::NHWC)) return false;
+            if(!checkAndFixOrder(1, 3, dai::TensorInfo::StorageOrder::NHWC)) return false;
             break;
         case dai::TensorInfo::StorageOrder::NHWC:
-            if(!checkAndFixOrder( 3, 1, dai::TensorInfo::StorageOrder::NCHW)) return false;
+            if(!checkAndFixOrder(3, 1, dai::TensorInfo::StorageOrder::NCHW)) return false;
             break;
         case dai::TensorInfo::StorageOrder::NHCW:
         case dai::TensorInfo::StorageOrder::WHC:
@@ -755,6 +754,10 @@ void segmentationDecode(const dai::NNData& nnData,
 
     dai::NNData& nnDataNonConst = const_cast<dai::NNData&>(nnData);
     xt::xarray<float> protoData = nnDataNonConst.getTensor<float>(protoLayerNames[0], true);
+    if(protoInfo.order != dai::TensorInfo::StorageOrder::NHWC) {
+        logger->trace("Proto storage is not NHWC, changing order.");
+        nnDataNonConst.changeStorageOrder(protoData, protoInfo.order, dai::TensorInfo::StorageOrder::NHWC);
+    }
     Eigen::MatrixXf protoMatrix = Eigen::Map<Eigen::MatrixXf>(protoData.data(), protoChannels, protoHeight * protoWidth);
 
     Eigen::RowVectorXf coeffs(protoChannels);
