@@ -386,7 +386,7 @@ jobs:
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip-debug
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -510,7 +510,7 @@ jobs:
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip-debug
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -641,7 +641,7 @@ jobs:
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip-debug
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -702,7 +702,7 @@ jobs:
           mv wheelhouse/audited wheelhouse/audited_pre
           mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --log_level=debug
+          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
