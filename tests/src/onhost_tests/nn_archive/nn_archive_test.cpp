@@ -28,7 +28,7 @@ TEST_CASE("NNArchive loads a SUPERBLOB properly") {
     REQUIRE(!nnArchive.getBlob().has_value());
     REQUIRE(!nnArchive.getOtherModelFormat().has_value());
 
-    // Returns nothing for other types
+    // getSupportedPlatforms() should return a vector with one element: dai::Platform::RVC2
     REQUIRE(nnArchive.getSupportedPlatforms().size() == 1);
     REQUIRE(nnArchive.getSupportedPlatforms()[0] == dai::Platform::RVC2);
 }
