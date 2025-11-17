@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <opencv2/core/check.hpp>
 #include <stdexcept>
 #include <vector>
 
@@ -75,8 +76,8 @@ std::optional<dai::ImgFrame> ImgDetectionsT<DetectionT>::getSegmentationMask() c
 
 template <class DetectionT>
 void ImgDetectionsT<DetectionT>::setCvSegmentationMask(cv::Mat mask) {
-    if(mask.type() != CV_8U) {
-        throw("SetCvSegmentationMask: Mask must be of INT8 type.");
+    if(mask.type() != CV_8UC1) {
+        throw std::runtime_error("SetCvSegmentationMask: Mask must be of INT8 type, got opencv type " + cv::typeToString(mask.type()) + ".");
     }
     std::vector<std::uint8_t> dataVec;
     if(!mask.isContinuous()) {

@@ -15,7 +15,7 @@ if device.getPlatformAsString() == "RVC2":
 # Create pipeline
 with dai.Pipeline(device) as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build()
-    
+
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription(model_name))
     detectionNetwork.detectionParser.setRunOnHost(setRunOnHost)
     labelMap = detectionNetwork.getClasses()
