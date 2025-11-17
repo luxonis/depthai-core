@@ -267,5 +267,29 @@ NodeState::Timing NodeStateApi::otherTimings(const std::string& statName) {
     }
     return state->nodeStates[nodeId].otherTimings[statName];
 }
+void PipelineStateApi::stateAsync(std::function<void(const PipelineState&)> callback, std::optional<PipelineEventAggregationConfig> config) {
+    PipelineEventAggregationConfig cfg;
+    if(config.has_value()) {
+        cfg = *config;
+    } else {
+        cfg.repeat = true;
+        cfg.setTimestamp(std::chrono::steady_clock::now());
+        for(auto id : nodeIds) {
+            NodeEventAggregationConfig nodeCfg;
+            nodeCfg.nodeId = id;
+            nodeCfg.events = false;
+            cfg.nodes.push_back(nodeCfg);
+        }
+    }
+
+    pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+
+    pipelineStateOut->addCallback([callback](const std::shared_ptr<ADatatype>& data) {
+        if(data) {
+            const auto state = std::dynamic_pointer_cast<const PipelineState>(data);
+            if(state) callback(*state);
+        }
+    });
+}
 
 }  // namespace dai

@@ -472,6 +472,7 @@ void PipelineEventAggregation::run() {
 
     std::optional<PipelineEventAggregationConfig> currentConfig;
     uint32_t sequenceNum = 0;
+    std::chrono::time_point<std::chrono::steady_clock> lastSentTime;
     while(mainLoop()) {
         auto outState = std::make_shared<PipelineState>();
         bool gotConfig = false;
@@ -537,7 +538,13 @@ void PipelineEventAggregation::run() {
                     }
                 }
             }
-            if(gotConfig || (currentConfig.has_value() && currentConfig->repeat && updated)) out.send(outState);
+            auto now = std::chrono::steady_clock::now();
+            if(gotConfig
+               || (currentConfig.has_value() && currentConfig->repeat && updated
+                   && (now - lastSentTime >= std::chrono::milliseconds(properties.statsUpdateIntervalMs) / 2))) {
+                lastSentTime = now;
+                out.send(outState);
+            }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
