@@ -140,6 +140,7 @@ def combine_wheels_linux(args, wheel_infos):
             # Strip debug symbols from the main dynamic library
             if args.strip_debug:
                 logger.info(f"Stripping debug symbols from {wheel_dylib_path}")
+                subprocess.run(['strip', '--strip-unneeded', wheel_dylib_full_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
                 subprocess.run(['llvm-strip', '--strip-unneeded', wheel_dylib_full_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
 
             for file in wheel_files_to_copy:
@@ -153,6 +154,7 @@ def combine_wheels_linux(args, wheel_infos):
                 os.rename(lib_path, new_lib_path)
                 if args.strip_debug:
                     logger.info(f"Stripping debug symbols from {new_lib_name}")
+                    subprocess.run(['strip', '--strip-unneeded', new_lib_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
                     subprocess.run(['llvm-strip', '--strip-unneeded', new_lib_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
                 
             write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
