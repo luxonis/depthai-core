@@ -95,7 +95,6 @@ std::optional<std::vector<uint8_t>> NNArchive::getOtherModelFormat() const {
         case model::ModelType::BLOB:
         case model::ModelType::SUPERBLOB:
             return std::nullopt;
-            break;
         case model::ModelType::NNARCHIVE:
             DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;

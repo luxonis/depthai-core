@@ -54,7 +54,7 @@ class NNArchive {
     /**
      * @brief Return a model from the archive if getModelType() returns OTHER or DLC, nothing otherwise
      *
-     * @return std::optional<std::vector<uint8_t>: Model
+     * @return std::optional<std::vector<uint8_t>>: Model
      */
     std::optional<std::vector<uint8_t>> getOtherModelFormat() const;
 
