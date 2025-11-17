@@ -12,6 +12,7 @@
 #include <opencv2/core/base.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/opencv.hpp>
+#include <optional>
 #include <string>
 #include <vector>
 #include <xtensor/core/xtensor_forward.hpp>
@@ -130,17 +131,7 @@ void decodeR1AF(const dai::NNData& nnData,
                         ymax);
                     continue;
                 }
-                DetectionCandidate candidate = DetectionCandidate{
-                    xmin,
-                    ymin,
-                    xmax,
-                    ymax,
-                    bestConf * objectnessScore,
-                    bestC,
-                    strideIdx,
-                    row,
-                    col,
-                };
+                DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, bestConf * objectnessScore, bestC, strideIdx, row, col, std::nullopt};
 
                 detectionCandidates.emplace_back(std::move(candidate));
             }
@@ -287,17 +278,7 @@ void decodeV3AB(const dai::NNData& nnData,
                         continue;
                     }
 
-                    DetectionCandidate candidate = DetectionCandidate{
-                        xmin,
-                        ymin,
-                        xmax,
-                        ymax,
-                        conf,
-                        bestC,
-                        strideIdx,
-                        row,
-                        col,
-                    };
+                    DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, conf, bestC, strideIdx, row, col, std::nullopt};
 
                     detectionCandidates.emplace_back(std::move(candidate));
                 }
@@ -444,17 +425,7 @@ void decodeV5AB(const dai::NNData& nnData,
                     ymax = std::max(0.0f, std::min(ymax, float(inputHeight)));
 
                     if(xmax <= xmin || ymax <= ymin) continue;
-                    DetectionCandidate candidate = DetectionCandidate{
-                        xmin,
-                        ymin,
-                        xmax,
-                        ymax,
-                        conf,
-                        bestC,
-                        strideIdx,
-                        row,
-                        col,
-                    };
+                    DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, conf, bestC, strideIdx, row, col, std::nullopt};
 
                     detectionCandidates.emplace_back(std::move(candidate));
                 }
@@ -573,17 +544,7 @@ void decodeTLBR(const dai::NNData& nnData,
                     continue;
                 }
 
-                DetectionCandidate candidate = DetectionCandidate{
-                    xmin,
-                    ymin,
-                    xmax,
-                    ymax,
-                    bestConf,
-                    bestC,
-                    strideIdx,
-                    row,
-                    col,
-                };
+                DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, bestConf, bestC, strideIdx, row, col, std::nullopt};
 
                 detectionCandidates.emplace_back(std::move(candidate));
             }
@@ -888,7 +849,7 @@ void keypointDecode(const dai::NNData& nnData,
 
     auto yoloLayerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
     std::vector<int> featureMapWidths;
-    for(int i = 0; i < yoloLayerNames.size(); ++i) {
+    for(int i = 0; i < static_cast<int>(yoloLayerNames.size()); ++i) {
         auto tensorInfo = nnData.getTensorInfo(yoloLayerNames[i]);
         if(!tensorInfo) {
             logger->error("Tensor info for layer {} is null. Skipping keypoints decoding.", yoloLayerNames[i]);

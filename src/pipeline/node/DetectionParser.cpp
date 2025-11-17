@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -392,36 +393,36 @@ void DetectionParser::run() {
     using namespace std::chrono;
     while(isRunning()) {
         auto tAbsoluteBeginning = steady_clock::now();
-        std::shared_ptr<dai::NNData> inputData;
-        inputData = input.get<dai::NNData>();
-        if(!inputData) {
-            logger->error("Error while receiving NN frame.");
+        std::shared_ptr<dai::NNData> sharedInputData = input.get<dai::NNData>();
+        auto outDetections = std::make_shared<dai::ImgDetections>();
+
+        if(!sharedInputData) {
+            logger->error("NN Data is empty. Skipping processing.");
             continue;
         }
         auto tAfterMessageBeginning = steady_clock::now();
+        dai::NNData& inputData = *sharedInputData;
 
         if(!imgSizesSet) {
-            const bool containsTransformation = inputData->transformation.has_value();
+            const bool containsTransformation = inputData.transformation.has_value();
             if(containsTransformation) {
-                std::tie(imgWidth, imgHeight) = inputData->transformation->getSize();
+                std::tie(imgWidth, imgHeight) = inputData.transformation->getSize();
             } else {
                 logger->warn("No image size provided for detection parser. Skipping processing and sending empty detections.");
                 continue;
             }
-
+            // We have determined the image size, no need to try again in the future
             imgSizesSet = true;
         }
 
-        auto outDetections = std::make_shared<dai::ImgDetections>();
-
+        // Parse detections
         switch(properties.parser.nnFamily) {
             case DetectionNetworkType::YOLO: {
-                decodeYolo(inputData, outDetections);
+                decodeYolo(inputData, *outDetections);
                 break;
             }
             case DetectionNetworkType::MOBILENET: {
-                auto dets = decodeMobilenet(inputData, properties.parser.confidenceThreshold);  // TODO (aljaz) update to shared pointer
-                outDetections->detections = dets;
+                decodeMobilenet(inputData, *outDetections, properties.parser.confidenceThreshold);
                 break;
             }
             default: {
@@ -433,10 +434,11 @@ void DetectionParser::run() {
         auto tBeforeSend = steady_clock::now();
 
         // Copy over seq and ts
-        outDetections->setSequenceNum(inputData->getSequenceNum());
-        outDetections->setTimestamp(inputData->getTimestamp());
-        outDetections->setTimestampDevice(inputData->getTimestampDevice());
-        outDetections->transformation = inputData->transformation;
+        outDetections->setSequenceNum(inputData.getSequenceNum());
+        outDetections->setTimestamp(inputData.getTimestamp());
+        outDetections->setTimestampDevice(inputData.getTimestampDevice());
+        outDetections->transformation = inputData.transformation;
+
         // Send detections
         out.send(outDetections);
 
@@ -476,26 +478,34 @@ void DetectionParser::buildStage1() {
     }
 }
 
-std::vector<dai::ImgDetection> DetectionParser::decodeMobilenet(std::shared_ptr<dai::NNData> nnData, float confidenceThr) {
+void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& outDetections, float confidenceThr) {
     auto& logger = pimpl->logger;
 
-    if(!nnData) {
-        return {};
-    }
     int maxDetections = 100;
     std::vector<dai::ImgDetection> detections;
     std::string tensorName;
-    for(const auto& tensor : nnData->getAllLayers()) {
+    for(const auto& tensor : nnData.getAllLayers()) {
         if(tensor.offset == 0) {
+            // // The tensor we want to checkout
+            // if(tensor.numDimensions != 4) {
+            //     std::cout << "ERROR while decoding Mobilenet. Output tensor has incorrect dimensions. Number of dimensions: " << tensor.numDimensions
+            //               << std::endl;
+            // }
+            // // Get tensor output size in Bytes
+            // // Expected dimensions are [1, 1, N, 7] where N is number of detections
+            // if(tensor.dims[3] != 7) {
+            //     std::cout << "ERROR while decoding Mobilenet. Expecting 7 fields for every detection but: " << tensor.dims[3] << " found.\n";
+            // }
+            // maxDetections = tensor.dims[tensor.numDimensions - 2];
             tensorName = tensor.name;
         }
     }
 
-    auto tensorData = nnData->getTensor<float>(tensorName);
+    auto tensorData = nnData.getTensor<float>(tensorName);
     maxDetections = tensorData.size() / 7;
     if(static_cast<int>(tensorData.size()) < maxDetections * 7) {
         logger->error("Error while parsing Mobilenet. Vector not long enough, expected size: {}, real size {}", maxDetections * 7, tensorData.size());
-        return {};
+        return;
     }
 
     struct raw_Detection {  // need to update it to include more
@@ -529,13 +539,12 @@ std::vector<dai::ImgDetection> DetectionParser::decodeMobilenet(std::shared_ptr<
             d.xmax = temp.xmax;
             d.ymax = temp.ymax;
 
-            detections.push_back(d);
+            outDetections.detections.push_back(d);
         }
     }
-    return detections;
 }
 
-void DetectionParser::decodeYolo(std::shared_ptr<dai::NNData> nnData, std::shared_ptr<dai::ImgDetections> outDetections) {
+void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections) {
     auto& logger = pimpl->logger;
     switch(properties.parser.decodingFamily) {
         case YoloDecodingFamily::R1AF:  // anchor free: yolo v6r1
@@ -550,6 +559,9 @@ void DetectionParser::decodeYolo(std::shared_ptr<dai::NNData> nnData, std::share
         case YoloDecodingFamily::TLBR:  // top left bottom right anchor free: yolo v6r2, v8 v10 v11
             utilities::DetectionParserUtils::decodeTLBR(nnData, outDetections, properties, logger);
             break;
+        default:
+            logger->error("Unknown Yolo decoding family. 'R1AF', 'v3AB', 'v5AB' and 'TLBR' are supported.");
+            throw std::runtime_error("Unknown Yolo decoding family");
     }
 }
 

@@ -283,7 +283,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     void run() override;
 
-    std::vector<dai::ImgDetection> decodeMobilenet(std::shared_ptr<dai::NNData> nnData, float confidenceThr);
+    void decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& outDetections, float confidenceThr);
 
    private:
     bool runOnHostVar = false;
@@ -296,7 +296,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     // host runnable requirements
     void buildStage1() override;
-    void decodeYolo(std::shared_ptr<dai::NNData> nnData, std::shared_ptr<dai::ImgDetections> outDetections);
+    void decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections);
     std::vector<dai::TensorInfo> inTensorInfo;
     uint32_t imgWidth;
     uint32_t imgHeight;
