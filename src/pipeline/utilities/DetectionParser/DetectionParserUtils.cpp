@@ -578,19 +578,11 @@ void decodeTLBR(const dai::NNData& nnData,
 }
 
 bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties properties, std::shared_ptr<spdlog::async_logger>& logger) {
-    // Fix the channel order for Yolo - this is hacky and would be best to be fixed in the actual models and make it consistent
-    auto getYoloChannelSize = [&](int classes, int coordinates, int anchors) -> int {
-        if(anchors == 0) {
-            anchors = 1;
-        }
-        return anchors * (classes + coordinates + 1);
-    };
-
     int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
     int channelSize = anchorMultiplier * (properties.parser.classes + properties.parser.coordinates + 1);
 
     auto checkAndFixOrder =
-        [&](dai::TensorInfo::StorageOrder currentOrder, int channelDimIndex, int alternativeDimIndex, dai::TensorInfo::StorageOrder alternativeOrder) -> bool {
+        [&](int channelDimIndex, int alternativeDimIndex, dai::TensorInfo::StorageOrder alternativeOrder) -> bool {
         // Check that the dims size is big enough
         if(static_cast<int>(tensorInfo.dims.size()) <= channelDimIndex || static_cast<int>(tensorInfo.dims.size()) <= alternativeDimIndex) {
             logger->error("Invalid tensor dims size. Skipping.");
@@ -612,16 +604,16 @@ bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties p
 
     switch(tensorInfo.order) {
         case dai::TensorInfo::StorageOrder::CHW:
-            if(!checkAndFixOrder(dai::TensorInfo::StorageOrder::CHW, 0, 2, dai::TensorInfo::StorageOrder::HWC)) return false;
+            if(!checkAndFixOrder(0, 2, dai::TensorInfo::StorageOrder::HWC)) return false;
             break;
         case dai::TensorInfo::StorageOrder::HWC:
-            if(!checkAndFixOrder(dai::TensorInfo::StorageOrder::HWC, 2, 0, dai::TensorInfo::StorageOrder::CHW)) return false;
+            if(!checkAndFixOrder( 2, 0, dai::TensorInfo::StorageOrder::CHW)) return false;
             break;
         case dai::TensorInfo::StorageOrder::NCHW:
-            if(!checkAndFixOrder(dai::TensorInfo::StorageOrder::NCHW, 1, 3, dai::TensorInfo::StorageOrder::NHWC)) return false;
+            if(!checkAndFixOrder( 1, 3, dai::TensorInfo::StorageOrder::NHWC)) return false;
             break;
         case dai::TensorInfo::StorageOrder::NHWC:
-            if(!checkAndFixOrder(dai::TensorInfo::StorageOrder::NHWC, 3, 1, dai::TensorInfo::StorageOrder::NCHW)) return false;
+            if(!checkAndFixOrder( 3, 1, dai::TensorInfo::StorageOrder::NCHW)) return false;
             break;
         case dai::TensorInfo::StorageOrder::NHCW:
         case dai::TensorInfo::StorageOrder::WHC:
@@ -724,7 +716,6 @@ void segmentationDecode(const dai::NNData& nnData,
     std::pair<int, int> inputSize = nnData.transformation->getSize();
     int inputWidth = inputSize.first;
     int inputHeight = inputSize.second;
-    auto tStart = std::chrono::steady_clock::now();
 
     cv::Mat indexMask(inputHeight, inputWidth, CV_8U, cv::Scalar(255));
 
@@ -831,8 +822,6 @@ void segmentationDecode(const dai::NNData& nnData,
         const uint8_t value = static_cast<uint8_t>(std::min(detIdx, 254));
         roiOut.setTo(value, paintMask);
     }
-    auto tEnd = std::chrono::steady_clock::now();
-    logger->warn("Time to transform: {} ns", std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count());
 
     outDetections.setCvSegmentationMask(indexMask);
 }
