@@ -1,7 +1,5 @@
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 
-#include <opencv2/core/hal/interface.h>
-
 #include <algorithm>
 #include <array>
 #include <cstring>
