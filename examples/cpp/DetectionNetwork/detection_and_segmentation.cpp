@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <cstdio>
 #include <iostream>
-#include <memory>
 #include <map>
+#include <memory>
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
@@ -41,7 +41,6 @@ int main() {
     modelDescription.model = modelName;
     detectionNetwork->build(cameraNode, modelDescription);
     detectionNetwork->detectionParser->setRunOnHost(setRunOnHost);
-    auto labelMap = detectionNetwork->getClasses();
 
     // Create output queues
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();
@@ -137,10 +136,10 @@ int main() {
                             detections.begin(), detections.end(), [filteredLabel](const dai::ImgDetection& det) { return det.label != filteredLabel; }),
                         detections.end());
                 }
+
                 if(segmentationMask) {
                     cv::Mat lut(1, 256, CV_8U);
                     for(int i = 0; i < 256; ++i) lut.at<uchar>(i) = (i >= 255) ? 255 : cv::saturate_cast<uchar>(i * 25);
-
                     cv::Mat scaledMask;
                     cv::LUT(*segmentationMask, lut, scaledMask);
 
