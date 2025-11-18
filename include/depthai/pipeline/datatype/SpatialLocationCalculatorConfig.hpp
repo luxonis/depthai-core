@@ -88,7 +88,7 @@ DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds,
  * methods instead.
  */
 class SpatialLocationCalculatorConfig : public Buffer {
-   private:
+    public:
     int32_t globalStepSize = SpatialLocationCalculatorConfigData::AUTO;
     uint32_t globalLowerThreshold = 0;
     uint32_t globalUpperThreshold = 65535;
@@ -96,8 +96,6 @@ class SpatialLocationCalculatorConfig : public Buffer {
     int32_t globalKeypointRadius = 10;
     bool useKeypoints = false;
     bool useSegmentation = true;
-
-   public:
     std::vector<SpatialLocationCalculatorConfigData> config;
 
     /**
