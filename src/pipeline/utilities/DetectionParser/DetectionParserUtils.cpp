@@ -2,15 +2,25 @@
 
 #include <spdlog/async_logger.h>
 
+#include <Eigen/Dense>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <opencv2/core.hpp>
+#include <opencv2/core/base.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/opencv.hpp>
+#include <optional>
 #include <string>
 #include <vector>
+#include <xtensor/core/xtensor_forward.hpp>
 
+#include "DetectionParserUtils.hpp"
 #include "depthai/common/Keypoint.hpp"
+#include "depthai/common/KeypointsListT.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -23,11 +33,11 @@ namespace utilities {
 namespace DetectionParserUtils {
 
 // yolo v6 r1 - anchor free
-void decodeR1AF(std::shared_ptr<dai::NNData> nnData,
-                std::shared_ptr<dai::ImgDetections> outDetections,
-                DetectionParserProperties properties,
-                std::shared_ptr<spdlog::async_logger> logger) {
-    auto layerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNames);
+void decodeR1AF(const dai::NNData& nnData,
+                dai::ImgDetections& outDetections,
+                DetectionParserProperties& properties,
+                std::shared_ptr<spdlog::async_logger>& logger) {
+    auto layerNames = utilities::DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
 
     const std::vector<int> strides = properties.parser.strides;
     if(strides.size() != layerNames.size()) {
@@ -40,17 +50,18 @@ void decodeR1AF(std::shared_ptr<dai::NNData> nnData,
     const int numClasses = properties.parser.classes;
     int inputWidth;
     int inputHeight;
-    std::tie(inputWidth, inputHeight) = nnData->transformation->getSize();
+    std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
 
     if(inputWidth <= 0 || inputHeight <= 0) {
         throw std::runtime_error("Invalid input dimensions retrieved from NNData transformation.");
     }
     std::vector<DetectionCandidate> detectionCandidates;
-    detectionCandidates.reserve(250);
+    detectionCandidates.reserve(defaultMaxDetectionsPerFrame);
 
     for(int strideIdx = 0; strideIdx < static_cast<int>(layerNames.size()); ++strideIdx) {
         std::string layerName = layerNames[strideIdx];
-        auto tensorInfo = nnData->getTensorInfo(layerName);
+        int stride = strides[strideIdx];
+        auto tensorInfo = nnData.getTensorInfo(layerName);
         if(!tensorInfo) {
             std::string errorMsg = fmt::format("Tensor info for layer {} is null", layerName);
             throw std::runtime_error(errorMsg);
@@ -63,7 +74,7 @@ void decodeR1AF(std::shared_ptr<dai::NNData> nnData,
 
         int layerHeight = tensorInfo->getHeight();
         int layerWidth = tensorInfo->getWidth();
-        NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData->data, logger);
+        NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
         if(!outputData.build()) {
             std::string errorMsg = fmt::format("Failed to build NNDataViewer for layer {}", layerName);
             throw std::runtime_error(errorMsg);
@@ -71,8 +82,8 @@ void decodeR1AF(std::shared_ptr<dai::NNData> nnData,
 
         for(int row = 0; row < layerHeight; ++row) {
             for(int col = 0; col < layerWidth; ++col) {
-                const float score = outputData.get(4, row, col);
-                if(score < confidenceThr) {
+                const float objectnessScore = outputData.get(4, row, col);
+                if(objectnessScore < confidenceThr) {
                     continue;
                 }
 
@@ -85,7 +96,7 @@ void decodeR1AF(std::shared_ptr<dai::NNData> nnData,
                         bestC = c;
                     }
                 }
-                if(bestConf * score < confidenceThr) {
+                if(bestConf * objectnessScore < confidenceThr) {
                     continue;
                 }
 
@@ -105,25 +116,24 @@ void decodeR1AF(std::shared_ptr<dai::NNData> nnData,
                 ymax = std::max(0.0f, std::min(ymax, float(inputHeight)));
 
                 if(xmax <= xmin || ymax <= ymin) {
-                    logger->info("Invalid box with xmax <= xmin or ymax <= ymin, skipping");
+                    logger->info("Invalid bbox parameters. Either xmax <= xmin or ymax <= ymin. Skipping detection.");
+                    logger->debug(
+                        "Skipping invalid bbox: layer='{}', "
+                        "raw(cx,cy,w,h)=({:.2f},{:.2f},{:.2f},{:.2f}) "
+                        "clamped(xmin,ymin,xmax,ymax)=({:.2f},{:.2f},{:.2f},{:.2f}).",
+                        layerName,
+                        cx,
+                        cy,
+                        w,
+                        h,
+                        xmin,
+                        ymin,
+                        xmax,
+                        ymax);
                     continue;
                 }
-                DetectionCandidate candidate = DetectionCandidate{
-                    xmin,
-                    ymin,
-                    xmax,
-                    ymax,
-                    bestConf * score,
-                    bestC,
-                    strideIdx,
-                    row,
-                    col,
-                    std::nullopt,
-                };
+                DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, bestConf * objectnessScore, bestC, strideIdx, row, col, std::nullopt};
 
-                if(!properties.parser.classNames->empty()) {
-                    candidate.labelName = (*properties.parser.classNames)[bestC];
-                }
                 detectionCandidates.emplace_back(std::move(candidate));
             }
         }
@@ -133,6 +143,11 @@ void decodeR1AF(std::shared_ptr<dai::NNData> nnData,
     if(keepCandidates.size() == 0) {
         logger->trace("No detections after NMS, skipping overlay.");
         return;
+    }
+    if(!properties.parser.classNames->empty()) {
+        for(auto& candidate : keepCandidates) {
+            candidate.labelName = (*properties.parser.classNames)[candidate.label];
+        }
     }
 
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
@@ -151,11 +166,12 @@ void decodeR1AF(std::shared_ptr<dai::NNData> nnData,
 /*
 Decode anchor based yolo v3 and v3-Tiny
 */
-void decodeV3AB(std::shared_ptr<dai::NNData> nnData,
-                std::shared_ptr<dai::ImgDetections> outDetections,
-                DetectionParserProperties properties,
-                std::shared_ptr<spdlog::async_logger> logger) {
-    auto layerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNames);
+void decodeV3AB(const dai::NNData& nnData,
+                dai::ImgDetections& outDetections,
+                DetectionParserProperties& properties,
+                std::shared_ptr<spdlog::async_logger>& logger) {
+    auto layerNames = getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
+    auto sigmoid = [](float x) -> float { return 1.f / (1.f + std::exp(-x)); };
 
     const std::vector<int> strides = properties.parser.strides;
     if(strides.size() != layerNames.size()) {
@@ -169,7 +185,7 @@ void decodeV3AB(std::shared_ptr<dai::NNData> nnData,
     const int numClasses = properties.parser.classes;
     int inputWidth;
     int inputHeight;
-    std::tie(inputWidth, inputHeight) = nnData->transformation->getSize();
+    std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
     if(inputWidth <= 0 || inputHeight <= 0) {
         throw std::runtime_error("Invalid input dimensions retrieved from NNData transformation.");
     }
@@ -182,12 +198,12 @@ void decodeV3AB(std::shared_ptr<dai::NNData> nnData,
     }
 
     std::vector<DetectionCandidate> detectionCandidates;
-    detectionCandidates.reserve(250);
+    detectionCandidates.reserve(defaultMaxDetectionsPerFrame);
 
     for(int strideIdx = 0; strideIdx < static_cast<int>(layerNames.size()); ++strideIdx) {
         std::string layerName = layerNames[strideIdx];
         int stride = strides[strideIdx];
-        auto tensorInfo = nnData->getTensorInfo(layerName);
+        auto tensorInfo = nnData.getTensorInfo(layerName);
         if(!tensorInfo) {
             std::string errorMsg = fmt::format("Tensor info for layer {} is null", layerName);
             throw std::runtime_error(errorMsg);
@@ -202,7 +218,7 @@ void decodeV3AB(std::shared_ptr<dai::NNData> nnData,
         int layerWidth = tensorInfo->getWidth();
         int layerChannels = tensorInfo->getChannels();
 
-        NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData->data, logger);
+        NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
         if(!outputData.build()) {
             std::string errorMsg = fmt::format("Failed to build NNDataViewer for layer {}", layerName);
             throw std::runtime_error(errorMsg);
@@ -217,8 +233,6 @@ void decodeV3AB(std::shared_ptr<dai::NNData> nnData,
             throw std::runtime_error(errorMsg);
         }
 
-        auto sigmoid = [](float x) -> float { return 1.f / (1.f + std::exp(-x)); };
-
         for(int row = 0; row < layerHeight; ++row) {
             for(int col = 0; col < layerWidth; ++col) {
                 for(int a = 0; a < numAnchors; ++a) {
@@ -231,15 +245,15 @@ void decodeV3AB(std::shared_ptr<dai::NNData> nnData,
                     if(obj < confidenceThr) continue;
 
                     int bestC = 0;
-                    float clsProb = 0.0f;
+                    float clsLogit = 0.0f;
                     for(int c = 0; c < numClasses; ++c) {
-                        const float prob = outputData.get(ch0 + 5 + c, row, col);
-                        if(prob > clsProb) {
-                            clsProb = prob;
+                        const float candidateLogit = outputData.get(ch0 + 5 + c, row, col);
+                        if(candidateLogit > clsLogit) {
+                            clsLogit = candidateLogit;
                             bestC = c;
                         }
                     }
-                    const float conf = obj * 1.f / (1.f + std::exp(-clsProb));
+                    const float conf = obj * sigmoid(clsLogit);
                     if(conf < confidenceThr) continue;
 
                     // YOLOv3 decode
@@ -265,22 +279,8 @@ void decodeV3AB(std::shared_ptr<dai::NNData> nnData,
                         continue;
                     }
 
-                    DetectionCandidate candidate = DetectionCandidate{
-                        xmin,
-                        ymin,
-                        xmax,
-                        ymax,
-                        conf,
-                        bestC,
-                        strideIdx,
-                        row,
-                        col,
-                        std::nullopt,
-                    };
+                    DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, conf, bestC, strideIdx, row, col, std::nullopt};
 
-                    if(!properties.parser.classNames->empty()) {
-                        candidate.labelName = (*properties.parser.classNames)[bestC];
-                    }
                     detectionCandidates.emplace_back(std::move(candidate));
                 }
             }
@@ -291,6 +291,12 @@ void decodeV3AB(std::shared_ptr<dai::NNData> nnData,
     if(keepCandidates.size() == 0) {
         logger->trace("No detections after NMS, skipping overlay.");
         return;
+    }
+
+    if(!properties.parser.classNames->empty()) {
+        for(auto& candidate : keepCandidates) {
+            candidate.labelName = (*properties.parser.classNames)[candidate.label];
+        }
     }
 
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
@@ -311,11 +317,11 @@ void decodeV3AB(std::shared_ptr<dai::NNData> nnData,
 /*
 Decode anchor based networks, e.g., yolo v5, v7, P
 */
-void decodeV5AB(std::shared_ptr<dai::NNData> nnData,
-                std::shared_ptr<dai::ImgDetections> outDetections,
-                DetectionParserProperties properties,
-                std::shared_ptr<spdlog::async_logger> logger) {
-    auto layerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNames);
+void decodeV5AB(const dai::NNData& nnData,
+                dai::ImgDetections& outDetections,
+                DetectionParserProperties& properties,
+                std::shared_ptr<spdlog::async_logger>& logger) {
+    auto layerNames = getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
 
     const std::vector<int> strides = properties.parser.strides;
     if(strides.size() != layerNames.size()) {
@@ -329,7 +335,7 @@ void decodeV5AB(std::shared_ptr<dai::NNData> nnData,
     const int numClasses = properties.parser.classes;
     int inputWidth;
     int inputHeight;
-    std::tie(inputWidth, inputHeight) = nnData->transformation->getSize();
+    std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
 
     if(inputWidth <= 0 || inputHeight <= 0) {
         throw std::runtime_error("Invalid input dimensions retrieved from NNData transformation.");
@@ -343,12 +349,12 @@ void decodeV5AB(std::shared_ptr<dai::NNData> nnData,
     }
 
     std::vector<DetectionCandidate> detectionCandidates;
-    detectionCandidates.reserve(250);
+    detectionCandidates.reserve(defaultMaxDetectionsPerFrame);
 
     for(int strideIdx = 0; strideIdx < static_cast<int>(layerNames.size()); ++strideIdx) {
         std::string layerName = layerNames[strideIdx];
         int stride = strides[strideIdx];
-        auto tensorInfo = nnData->getTensorInfo(layerName);
+        auto tensorInfo = nnData.getTensorInfo(layerName);
         if(!tensorInfo) {
             std::string errorMsg = fmt::format("Tensor info for layer {} is null", layerName);
             throw std::runtime_error(errorMsg);
@@ -363,7 +369,7 @@ void decodeV5AB(std::shared_ptr<dai::NNData> nnData,
         int layerWidth = tensorInfo->getWidth();
         int layerChannels = tensorInfo->getChannels();
 
-        NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData->data, logger);
+        NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
         if(!outputData.build()) {
             std::string errorMsg = fmt::format("Failed to build NNDataViewer for layer {}", layerName);
             throw std::runtime_error(errorMsg);
@@ -393,9 +399,9 @@ void decodeV5AB(std::shared_ptr<dai::NNData> nnData,
                     int bestC = 0;
                     float bestConf = 0.0f;
                     for(int c = 0; c < numClasses; ++c) {
-                        const float prob = outputData.get(ch0 + 5 + c, row, col);
-                        if(prob > bestConf) {
-                            bestConf = prob;
+                        const float candidateProb = outputData.get(ch0 + 5 + c, row, col);
+                        if(candidateProb > bestConf) {
+                            bestConf = candidateProb;
                             bestC = c;
                         }
                     }
@@ -420,22 +426,8 @@ void decodeV5AB(std::shared_ptr<dai::NNData> nnData,
                     ymax = std::max(0.0f, std::min(ymax, float(inputHeight)));
 
                     if(xmax <= xmin || ymax <= ymin) continue;
-                    DetectionCandidate candidate = DetectionCandidate{
-                        xmin,
-                        ymin,
-                        xmax,
-                        ymax,
-                        conf,
-                        bestC,
-                        strideIdx,
-                        row,
-                        col,
-                        std::nullopt,
-                    };
+                    DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, conf, bestC, strideIdx, row, col, std::nullopt};
 
-                    if(!properties.parser.classNames->empty()) {
-                        candidate.labelName = (*properties.parser.classNames)[bestC];
-                    }
                     detectionCandidates.emplace_back(std::move(candidate));
                 }
             }
@@ -446,6 +438,12 @@ void decodeV5AB(std::shared_ptr<dai::NNData> nnData,
     if(keepCandidates.size() == 0) {
         logger->trace("No detections after NMS, skipping overlay.");
         return;
+    }
+
+    if(!properties.parser.classNames->empty()) {
+        for(auto& candidate : keepCandidates) {
+            candidate.labelName = (*properties.parser.classNames)[candidate.label];
+        }
     }
 
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
@@ -464,11 +462,11 @@ void decodeV5AB(std::shared_ptr<dai::NNData> nnData,
 /*
 Decode TLBR (top left bottom right) style networks, e.g., yolo v6r2, v8, v10, v11
 */
-void decodeTLBR(std::shared_ptr<dai::NNData> nnData,
-                std::shared_ptr<dai::ImgDetections> outDetections,
-                DetectionParserProperties properties,
-                std::shared_ptr<spdlog::async_logger> logger) {
-    auto layerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNames);
+void decodeTLBR(const dai::NNData& nnData,
+                dai::ImgDetections& outDetections,
+                DetectionParserProperties& properties,
+                std::shared_ptr<spdlog::async_logger>& logger) {
+    auto layerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
 
     const std::vector<int> strides = properties.parser.strides;
     if(strides.size() != layerNames.size()) {
@@ -481,19 +479,19 @@ void decodeTLBR(std::shared_ptr<dai::NNData> nnData,
     const int numClasses = properties.parser.classes;
     int inputWidth;
     int inputHeight;
-    std::tie(inputWidth, inputHeight) = nnData->transformation->getSize();
+    std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
 
     if(inputWidth <= 0 || inputHeight <= 0) {
         throw std::runtime_error("Invalid input dimensions retrieved from NNData transformation.");
     }
 
     std::vector<DetectionCandidate> detectionCandidates;
-    detectionCandidates.reserve(250);
+    detectionCandidates.reserve(defaultMaxDetectionsPerFrame);
 
     for(int strideIdx = 0; strideIdx < static_cast<int>(layerNames.size()); ++strideIdx) {
         std::string layerName = layerNames[strideIdx];
         int stride = strides[strideIdx];
-        auto tensorInfo = nnData->getTensorInfo(layerName);
+        auto tensorInfo = nnData.getTensorInfo(layerName);
         if(!tensorInfo) {
             std::string errorMsg = fmt::format("Tensor info for layer {} is null", layerName);
             throw std::runtime_error(errorMsg);
@@ -506,7 +504,7 @@ void decodeTLBR(std::shared_ptr<dai::NNData> nnData,
 
         int layerHeight = tensorInfo->getHeight();
         int layerWidth = tensorInfo->getWidth();
-        NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData->data, logger);
+        NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
         if(!outputData.build()) {
             std::string errorMsg = fmt::format("Failed to build NNDataViewer for layer {}", layerName);
             throw std::runtime_error(errorMsg);
@@ -547,23 +545,8 @@ void decodeTLBR(std::shared_ptr<dai::NNData> nnData,
                     continue;
                 }
 
-                DetectionCandidate candidate = DetectionCandidate{
-                    xmin,
-                    ymin,
-                    xmax,
-                    ymax,
-                    bestConf,
-                    bestC,
-                    strideIdx,
-                    row,
-                    col,
-                    std::nullopt,
+                DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, bestConf, bestC, strideIdx, row, col, std::nullopt};
 
-                };
-
-                if(!properties.parser.classNames->empty()) {
-                    candidate.labelName = (*properties.parser.classNames)[bestC];
-                }
                 detectionCandidates.emplace_back(std::move(candidate));
             }
         }
@@ -573,6 +556,12 @@ void decodeTLBR(std::shared_ptr<dai::NNData> nnData,
     if(keepCandidates.size() == 0) {
         logger->trace("No detections after NMS, skipping overlay.");
         return;
+    }
+
+    if(!properties.parser.classNames->empty()) {
+        for(auto& candidate : keepCandidates) {
+            candidate.labelName = (*properties.parser.classNames)[candidate.label];
+        }
     }
 
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
@@ -588,9 +577,7 @@ void decodeTLBR(std::shared_ptr<dai::NNData> nnData,
     }
 }
 
-bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties properties, std::shared_ptr<spdlog::async_logger> logger) {
-    // Fix the channel order for Yolo - this is hacky and would be best to be fixed in the actual models and make it consistent
-
+bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties properties, std::shared_ptr<spdlog::async_logger>& logger) {
     int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
     int channelSize = anchorMultiplier * (properties.parser.classes + properties.parser.coordinates + 1);
 
@@ -645,9 +632,9 @@ bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties p
     return true;
 }
 
-std::vector<std::string> getSortedDetectionLayerNames(std::shared_ptr<dai::NNData> nnData, std::string searchTerm, std::vector<std::string> outputNames) {
+std::vector<std::string> getSortedDetectionLayerNames(const dai::NNData& nnData, std::string searchTerm, std::vector<std::string> outputNames) {
     if(outputNames.empty()) {
-        outputNames = nnData->getAllLayerNames();
+        outputNames = nnData.getAllLayerNames();
     }
 
     std::vector<std::string> layerNames;
@@ -704,7 +691,7 @@ std::vector<DetectionCandidate> nonMaximumSuppression(std::vector<DetectionCandi
 }
 
 void createImgDetections(const std::vector<DetectionCandidate>& detectionCandidates,
-                         std::shared_ptr<dai::ImgDetections> outDetections,
+                         dai::ImgDetections& outDetections,
                          unsigned int width,
                          unsigned int height) {
     for(const auto& det : detectionCandidates) {
@@ -716,35 +703,20 @@ void createImgDetections(const std::vector<DetectionCandidate>& detectionCandida
         if(det.labelName) {
             detection.labelName = *det.labelName;
         }
-        outDetections->detections.push_back(std::move(detection));
+        outDetections.detections.push_back(std::move(detection));
     }
 }
 
-void segmentationDecode(std::shared_ptr<dai::NNData> nnData,
+void segmentationDecode(const dai::NNData& nnData,
                         std::vector<DetectionCandidate>& detectionCandidates,
-                        std::shared_ptr<dai::ImgDetections> outDetections,
+                        dai::ImgDetections& outDetections,
                         DetectionParserProperties properties,
-                        std::shared_ptr<spdlog::async_logger> logger) {
-    auto maskFromCoeffs = [](NNDataViewer& protos, const float* coeffs, int width, int height) -> cv::Mat {
-        cv::Mat maskLow(height, width, CV_32F);
-        for(int y = 0; y < maskLow.rows; ++y) {
-            float* row = maskLow.ptr<float>(y);
-            for(int x = 0; x < maskLow.cols; ++x) {
-                float sum = 0.f;
-                for(int c = 0; c < 32; ++c) sum += protos.get(c, y, x) * coeffs[c];
-                row[x] = 1.f / (1.f + std::exp(-sum));  // sigmoid
-            }
-        }
-        return maskLow;
-    };
-
-    std::pair<int, int> inputSize = nnData->transformation->getSize();
+                        std::shared_ptr<spdlog::async_logger>& logger) {
+    std::pair<int, int> inputSize = nnData.transformation->getSize();
     int inputWidth = inputSize.first;
     int inputHeight = inputSize.second;
 
     cv::Mat indexMask(inputHeight, inputWidth, CV_8U, cv::Scalar(255));
-
-    cv::Mat maskLow, maskUp;
 
     auto maskLayerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "masks", std::vector<std::string>{});
     if(properties.parser.strides.size() != maskLayerNames.size()) {
@@ -760,15 +732,51 @@ void segmentationDecode(std::shared_ptr<dai::NNData> nnData,
         return;
     }
 
-    NNDataViewer protoValues = NNDataViewer(*nnData->getTensorInfo(protoLayerNames[0]), nnData->data, logger);
+    NNDataViewer protoValues = NNDataViewer(*nnData.getTensorInfo(protoLayerNames[0]), nnData.data, logger);
     if(!protoValues.build()) {
         logger->error("Failed to build NNDataViewer for proto layer {}. Skipping segmentation decoding.", protoLayerNames[0]);
         return;
     }
 
+    TensorInfo protoInfo = *nnData.getTensorInfo(protoLayerNames[0]);
+    int protoWidth = protoInfo.getWidth();
+    int protoHeight = protoInfo.getHeight();
+    int protoChannels = protoInfo.getChannels();
+    if(protoWidth <= 0 || protoHeight <= 0 || protoChannels <= 0) {
+        logger->error("Invalid proto tensor dimensions: channels {}, height {}, width {}.", protoChannels, protoHeight, protoWidth);
+        return;
+    }
+    int protoWidthScaleFactor = inputWidth / protoWidth;
+    int protoHeightScaleFactor = inputHeight / protoHeight;
+
+    cv::Mat maskUp;
+    cv::Mat maskLow(protoHeight, protoWidth, CV_32F);
+
+    dai::NNData& nnDataNonConst = const_cast<dai::NNData&>(nnData);
+    xt::xarray<float> protoData = nnDataNonConst.getTensor<float>(protoLayerNames[0], true);
+    if(protoInfo.order != dai::TensorInfo::StorageOrder::NHWC) {
+        logger->trace("Proto storage is not NHWC, changing order.");
+        nnDataNonConst.changeStorageOrder(protoData, protoInfo.order, dai::TensorInfo::StorageOrder::NHWC);
+    }
+    Eigen::MatrixXf protoMatrix = Eigen::Map<Eigen::MatrixXf>(protoData.data(), protoChannels, protoHeight * protoWidth);
+
+    Eigen::RowVectorXf coeffs(protoChannels);
+
+    auto maskFromCoeffs = [logger, protoHeight, protoWidth, &maskLow](const Eigen::MatrixXf& protos2d, const Eigen::RowVectorXf& coeffs) -> void {
+        if(protos2d.rows() != coeffs.size()) {
+            throw std::runtime_error("Mask coefficients size does not match proto channels.");
+        }
+
+        Eigen::Map<Eigen::RowVectorXf> logits(maskLow.ptr<float>(), protoHeight * protoWidth);
+        logits.noalias() = coeffs * protos2d;
+
+        // no need to do sigmoid
+        // logits = (1.0f / (1.0f + (-logits.array()).exp())).matrix();
+    };
+
     std::map<int, NNDataViewer> maskValues;
     for(int strideIdx = 0; strideIdx < static_cast<int>(maskLayerNames.size()); ++strideIdx) {
-        maskValues.try_emplace(strideIdx, *nnData->getTensorInfo(maskLayerNames[strideIdx]), nnData->data, logger);
+        maskValues.try_emplace(strideIdx, *nnData.getTensorInfo(maskLayerNames[strideIdx]), nnData.data, logger);
         if(!maskValues.at(strideIdx).build()) {
             logger->error("Failed to build NNDataViewer for mask layer {}. Skipping segmentation decoding.", maskLayerNames[strideIdx]);
             return;
@@ -779,19 +787,15 @@ void segmentationDecode(std::shared_ptr<dai::NNData> nnData,
         const auto& c = detectionCandidates[i];
         const int detIdx = static_cast<int>(i);  // index in outDetections list
 
-        NNDataViewer mask = maskValues.at(c.headIndex);
-        std::array<float, 32> coeff;
-        for(int i = 0; i < 32; ++i) {
-            coeff[i] = mask.get(i, c.rowIndex, c.columnIndex);
+        NNDataViewer& mask = maskValues.at(c.headIndex);
+        for(int ch = 0; ch < protoChannels; ++ch) {
+            coeffs(ch) = mask.get(ch, c.rowIndex, c.columnIndex);
         }
+        // TODO (aljaz) perform operations on ROI only instead of the full resolution
+        // Eigen::MatrixXf roiMatrix = protoMatrix.block(0, y0 * protoWidth + x0, protoChannels, (y1 - y0) * (x1 - x0));
 
-        TensorInfo protoInfo = *nnData->getTensorInfo(protoLayerNames[0]);
-        int protoWidth = protoInfo.getWidth();
-        int protoHeight = protoInfo.getHeight();
-        maskLow = maskFromCoeffs(protoValues, coeff.data(), protoWidth, protoHeight);
+        maskFromCoeffs(protoMatrix, coeffs);
 
-        cv::resize(maskLow, maskUp, cv::Size(inputWidth, inputHeight), 0, 0, cv::INTER_LINEAR);
-        // ROI clamp
         int x0 = std::clamp(static_cast<int>(std::floor(c.xmin)), 0, inputWidth - 1);
         int y0 = std::clamp(static_cast<int>(std::floor(c.ymin)), 0, inputHeight - 1);
         int x1 = std::clamp(static_cast<int>(std::ceil(c.xmax)), 0, inputWidth);
@@ -800,10 +804,18 @@ void segmentationDecode(std::shared_ptr<dai::NNData> nnData,
         if(x1 <= x0 || y1 <= y0) continue;
         const cv::Rect roi(x0, y0, x1 - x0, y1 - y0);
 
+        int protoX0 = x0 / protoWidthScaleFactor;
+        int protoY0 = y0 / protoHeightScaleFactor;
+        int protoX1 = x1 / protoWidthScaleFactor;
+        int protoY1 = y1 / protoHeightScaleFactor;
+        const cv::Rect protoROI(protoX0, protoY0, protoX1 - protoX0, protoY1 - protoY0);
+
+        cv::Mat roiProb;
+        cv::resize(maskLow(protoROI), roiProb, roi.size(), 0, 0, cv::INTER_LINEAR);
+
         // Threshold & paint only unassigned pixels
-        cv::Mat roiProb = maskUp(roi);
         cv::Mat roiBin;
-        cv::compare(roiProb, static_cast<double>(0.5f), roiBin, cv::CMP_GT);
+        cv::compare(roiProb, 0.0f, roiBin, cv::CMP_GT);
         cv::Mat roiOut = indexMask(roi);
         cv::Mat unassigned;
         cv::compare(roiOut, 255, unassigned, cv::CMP_EQ);
@@ -814,22 +826,27 @@ void segmentationDecode(std::shared_ptr<dai::NNData> nnData,
         roiOut.setTo(value, paintMask);
     }
 
-    outDetections->setSegmentationMask(indexMask);
+    outDetections.setCvSegmentationMask(indexMask);
 }
 
-void keypointDecode(std::shared_ptr<dai::NNData> nnData,
+void keypointDecode(const dai::NNData& nnData,
                     std::vector<DetectionCandidate>& detectionCandidates,
-                    std::shared_ptr<dai::ImgDetections> outDetections,
+                    dai::ImgDetections& outDetections,
                     DetectionParserProperties properties,
-                    std::shared_ptr<spdlog::async_logger> logger) {
+                    std::shared_ptr<spdlog::async_logger>& logger) {
+    if(!properties.parser.nKeypoints) {
+        logger->warn("Number of keypoints not set in properties.parser.nKeypoints. Skipping keypoints decoding.");
+        return;
+    }
+
     int inputWidth;
     int inputHeight;
-    std::tie(inputWidth, inputHeight) = nnData->transformation->getSize();
+    std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
 
-    auto yoloLayerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNames);
+    auto yoloLayerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
     std::vector<int> featureMapWidths;
     for(int i = 0; i < static_cast<int>(yoloLayerNames.size()); ++i) {
-        auto tensorInfo = nnData->getTensorInfo(yoloLayerNames[i]);
+        auto tensorInfo = nnData.getTensorInfo(yoloLayerNames[i]);
         if(!tensorInfo) {
             logger->error("Tensor info for layer {} is null. Skipping keypoints decoding.", yoloLayerNames[i]);
             return;
@@ -850,18 +867,18 @@ void keypointDecode(std::shared_ptr<dai::NNData> nnData,
     // TODO (aljaz) move to a function
     std::map<int, NNDataViewer> keypointValues;
     for(int strideIdx = 0; strideIdx < static_cast<int>(kptsLayerNames.size()); ++strideIdx) {
-        keypointValues.try_emplace(strideIdx, *nnData->getTensorInfo(kptsLayerNames[strideIdx]), nnData->data, logger);
+        keypointValues.try_emplace(strideIdx, *nnData.getTensorInfo(kptsLayerNames[strideIdx]), nnData.data, logger);
         if(!keypointValues.at(strideIdx).build()) {
             logger->error("Failed to build NNDataViewer for keypoints layer {}. Skipping keypoints decoding.", kptsLayerNames[strideIdx]);
             return;
         }
     }
 
-    if(outDetections->detections.size() != detectionCandidates.size()) {
+    if(outDetections.detections.size() != detectionCandidates.size()) {
         logger->error(
             "Number of detections in ImgDetections does not match number of detection candidates. ImgDetections size: {}, detection candidates size: {}. "
             "Skipping keypoints decoding.",
-            outDetections->detections.size(),
+            outDetections.detections.size(),
             detectionCandidates.size());
         return;
     }
@@ -887,8 +904,7 @@ void keypointDecode(std::shared_ptr<dai::NNData> nnData,
 
             keypoints.push_back(dai::Keypoint{dai::Point2f(x, y), conf});
         }
-
-        outDetections->detections[i].keypoints = KeypointsList(keypoints, properties.parser.keypointEdges);
+        outDetections.detections[i].keypoints = KeypointsList(keypoints, properties.parser.keypointEdges);
     }
 }
 

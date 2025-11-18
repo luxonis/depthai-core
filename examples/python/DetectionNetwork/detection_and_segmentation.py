@@ -15,11 +15,11 @@ if device.getPlatformAsString() == "RVC2":
 # Create pipeline
 with dai.Pipeline(device) as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build()
-    
+
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription(model_name))
     detectionNetwork.detectionParser.setRunOnHost(setRunOnHost)
     labelMap = detectionNetwork.getClasses()
-
+    assert labelMap is not None
     qRgb = detectionNetwork.passthrough.createOutputQueue()
     qDet = detectionNetwork.out.createOutputQueue()
 
@@ -46,7 +46,7 @@ with dai.Pipeline(device) as pipeline:
             )
             cv2.putText(
                 frame,
-                labelMap[detection.label],
+                detection.labelName,
                 (bbox[0] + 10, bbox[1] + 20),
                 cv2.FONT_HERSHEY_TRIPLEX,
                 0.7,
@@ -62,27 +62,27 @@ with dai.Pipeline(device) as pipeline:
             )
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
         return frame
-        
+
     filtered_label = -1
     while pipeline.isRunning():
         inRgb: dai.ImgFrame = qRgb.get()
         inDet: dai.ImgDetections = qDet.get()
-        
+
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             pipeline.stop()
             break
-        
+
         if inRgb is not None:
             frame = inRgb.getCvFrame()
-            
+
             side_panel = np.ones((frame.shape[0], 400, 3), dtype=np.uint8) * 255
             if inDet is not None:
                 detections = inDet.detections
                 counter += 1
-                
+
                 labels = sorted(list(set(detection.label for detection in detections)))
-                
+
                 label_maps = [labelMap[l] for l in labels]
                 cv2.putText(side_panel, "Press index to filter by class:", (10, 20), cv2.FONT_HERSHEY_TRIPLEX, 0.7, (0, 0, 0), 1)
                 for i, label in enumerate(label_maps):
@@ -104,7 +104,7 @@ with dai.Pipeline(device) as pipeline:
                     (0, 0, 0),
                     1
                 )
-                
+
                 if key == ord('0') :
                     print("Showing all labels")
                     filtered_label = -1
@@ -113,24 +113,24 @@ with dai.Pipeline(device) as pipeline:
                     if len(labels) > int_key:
                         print(f"Showing only: {labelMap[labels[int_key]]}")
                         filtered_label = labels[int_key]
-                        
+
                 width = inDet.getSegmentationMaskWidth()
                 height = inDet.getSegmentationMaskHeight()
-                
+
                 segmentation_mask = cv2.Mat(np.zeros((height, width), dtype=np.uint8))
                 if filtered_label == -1:
                     segmentation_mask = inDet.getCvSegmentationMask()
                 else:
                     segmentation_mask = inDet.getCvSegmentationMaskByClass(filtered_label)
                     detections = [det for det in detections if det.label == filtered_label]
-            
+
             if segmentation_mask is not None:
                 scaled_mask = segmentation_mask.copy()
                 scaled_mask[segmentation_mask != 255] = segmentation_mask[segmentation_mask != 255] * 25 # scale for better visualization
                 colored_mask = cv2.applyColorMap(scaled_mask, cv2.COLORMAP_JET)
                 colored_mask[segmentation_mask == 255] = frame[segmentation_mask == 255]
                 frame = cv2.addWeighted(frame, 0.7, colored_mask, 0.3, 0)
-                 
+
             cv2.putText(
                 frame,
                 "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
@@ -139,7 +139,7 @@ with dai.Pipeline(device) as pipeline:
                 0.4,
                 color2,
             )
-            
+
         if frame is not None:
             frame = displayFrame(frame)
             concatenated_frame = cv2.hconcat([frame, side_panel])
