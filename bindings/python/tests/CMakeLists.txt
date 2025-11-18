@@ -14,6 +14,7 @@ set(PYBIND11_TEST_FILES
     # "dai_path_conversion_test.py" requires device
     "nndata_tensor_test.py"
     "pcldata_set_points_test.py"
+    "remote_connection_service_test.py"
     "messsage_queue_test.py"
     "imgframe_test.py"
     "inherited_messages_test.py"
