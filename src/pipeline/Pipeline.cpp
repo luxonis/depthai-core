@@ -913,7 +913,7 @@ void PipelineImpl::start() {
 
     if(utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
         getPipelineState().stateAsync(
-            [](const PipelineState& state) { Logging::getInstance().logger.debug("Pipeline state update: {}", ((nlohmann::json)state).dump()); });
+            [](const PipelineState& state) { Logging::getInstance().logger.trace("Pipeline state update: {}", ((nlohmann::json)state).dump()); });
     }
 }
 
