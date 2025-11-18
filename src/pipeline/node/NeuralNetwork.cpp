@@ -187,7 +187,9 @@ void NeuralNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numSha
 }
 
 void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    setModelPath(nnArchive.getModelPath().value());
+    DAI_CHECK_V(nnArchive.getModelType() == model::ModelType::DLC || nnArchive.getModelType() == model::ModelType::OTHER, "NNArchive type is not DLC or OTHER");
+    DAI_CHECK_V(nnArchive.getOtherModelFormat().has_value(), "Expected model format for DLC/OTHER type");
+    setOtherModelFormat(std::move(nnArchive.getOtherModelFormat().value()));
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
@@ -214,6 +216,18 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     properties.modelSource = Properties::ModelSource::BLOB;
 }
 
+void NeuralNetwork::setOtherModelFormat(std::vector<uint8_t> otherModel) {
+    auto asset = assetManager.set("__model", std::move(otherModel));
+    properties.modelUri = asset->getRelativeUri();
+    properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
+}
+
+void NeuralNetwork::setOtherModelFormat(const std::filesystem::path& path) {
+    auto modelAsset = assetManager.set("__model", path);
+    properties.modelUri = modelAsset->getRelativeUri();
+    properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
+}
+
 void NeuralNetwork::setModelPath(const std::filesystem::path& modelPath) {
     switch(model::readModelType(modelPath)) {
         case model::ModelType::BLOB:
@@ -226,11 +240,9 @@ void NeuralNetwork::setModelPath(const std::filesystem::path& modelPath) {
             setNNArchive(NNArchive(modelPath));
             break;
         case model::ModelType::DLC:
-        case model::ModelType::OTHER: {
-            auto modelAsset = assetManager.set("__model", modelPath);
-            properties.modelUri = modelAsset->getRelativeUri();
-            properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
-        } break;
+        case model::ModelType::OTHER:
+            setOtherModelFormat(modelPath);
+            break;
     }
 }
 
