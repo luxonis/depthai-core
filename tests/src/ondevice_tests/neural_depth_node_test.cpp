@@ -4,18 +4,23 @@
 #include "depthai/utility/CompilerWarnings.hpp"
 
 namespace {
-void testNeuralDepthModel(dai::DeviceModelZoo model) {
+void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
     dai::Pipeline pipeline;
-
+    constexpr float FPS = 60.0f;
     auto leftCamera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto rightCamera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
-    auto leftOutput = leftCamera->requestFullResolutionOutput();
-    auto rightOutput = rightCamera->requestFullResolutionOutput();
+    auto leftOutput = leftCamera->requestFullResolutionOutput(std::nullopt, FPS);
+    auto rightOutput = rightCamera->requestFullResolutionOutput(std::nullopt, FPS);
 
     auto neuralDepth = pipeline.create<dai::node::NeuralDepth>();
     neuralDepth->build(*leftOutput, *rightOutput, model);
 
+    auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
+    benchmarkIn->sendReportEveryNMessages(10);
+    neuralDepth->depth.link(benchmarkIn->input);
+
+    auto benchmarkOutputQueue = benchmarkIn->report.createOutputQueue(15, false);
     auto disparityQueue = neuralDepth->disparity.createOutputQueue();
     auto depthQueue = neuralDepth->depth.createOutputQueue();
     auto edgeQueue = neuralDepth->edge.createOutputQueue();
@@ -31,23 +36,30 @@ void testNeuralDepthModel(dai::DeviceModelZoo model) {
         REQUIRE(confidenceQueue->get<dai::ImgFrame>() != nullptr);
     }
 
+    for(int i = 0; i < 5; ++i) {
+        auto report = benchmarkOutputQueue->get<dai::BenchmarkReport>();
+        if(i == 0) {
+            continue;
+        }
+        REQUIRE(report->fps >= minFps);
+    }
+
     pipeline.stop();
 }
 }  // namespace
 
-
 TEST_CASE("Test NeuralDepth node NANO model") {
-    testNeuralDepthModel(dai::DeviceModelZoo::NEURAL_DEPTH_NANO);
+    testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_NANO, 55.0f);
 }
 
 TEST_CASE("Test NeuralDepth node SMALL model") {
-    testNeuralDepthModel(dai::DeviceModelZoo::NEURAL_DEPTH_SMALL);
+    testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_SMALL, 40.0f);
 }
 
 TEST_CASE("Test NeuralDepth node MEDIUM model") {
-    testNeuralDepthModel(dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM);
+    testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM, 24.0f);
 }
 
 TEST_CASE("Test NeuralDepth node LARGE model") {
-    testNeuralDepthModel(dai::DeviceModelZoo::NEURAL_DEPTH_LARGE);
+    testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_LARGE, 10.0f);
 }
