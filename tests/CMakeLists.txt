@@ -332,6 +332,20 @@ private_data(
     LOCATION yolo_v8_instance_segmentation_large_coco_640x352_kitchen_segmentation_gt_v2
 )
 
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/test_recording.tar"
+    SHA1 "5f93fba780c07ab858c8d5bef3a591078e021ff5"
+    FILE "test_recording.tar"
+    LOCATION test_recording
+)
+
+private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/test_calib.json"
+    SHA1 "d745e1cdf18dda1ef00311250676407df207df4c"
+    FILE "test_calib.json"
+    LOCATION test_calib
+)
+
 ### Helper script to wrap the tests with a timeout ############################
 
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
@@ -646,3 +660,7 @@ dai_set_test_labels(runtime_calibration_test ondevice rvc2_all rvc4 rvc4rgb ci)
 # NeuralDepth test
 dai_add_test(neural_depth_node_test src/ondevice_tests/neural_depth_node_test.cpp)
 dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci)
+target_compile_definitions(neural_depth_node_test PRIVATE
+    NEURAL_REPLAY_PATH="${test_recording}"
+    NEURAL_CALIBRATION_PATH="${test_calib}"
+)
