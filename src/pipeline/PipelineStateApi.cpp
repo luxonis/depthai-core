@@ -6,7 +6,6 @@ namespace dai {
 
 PipelineState NodesStateApi::summary() {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     for(auto id : nodeIds) {
         NodeEventAggregationConfig nodeCfg;
@@ -25,7 +24,6 @@ PipelineState NodesStateApi::summary() {
 }
 PipelineState NodesStateApi::detailed() {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     for(auto id : nodeIds) {
         NodeEventAggregationConfig nodeCfg;
@@ -41,7 +39,6 @@ PipelineState NodesStateApi::detailed() {
 }
 std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::OutputQueueState>> NodesStateApi::outputs() {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     for(auto id : nodeIds) {
         NodeEventAggregationConfig nodeCfg;
@@ -63,7 +60,6 @@ std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::OutputQu
 }
 std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::InputQueueState>> NodesStateApi::inputs() {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     for(auto id : nodeIds) {
         NodeEventAggregationConfig nodeCfg;
@@ -85,7 +81,6 @@ std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::InputQue
 }
 std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::Timing>> NodesStateApi::otherTimings() {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     for(auto id : nodeIds) {
         NodeEventAggregationConfig nodeCfg;
@@ -108,7 +103,6 @@ std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::Timing>>
 
 std::unordered_map<std::string, NodeState::OutputQueueState> NodeStateApi::outputs(const std::vector<std::string>& outputNames) {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
@@ -132,7 +126,6 @@ std::unordered_map<std::string, NodeState::OutputQueueState> NodeStateApi::outpu
 }
 NodeState::OutputQueueState NodeStateApi::outputs(const std::string& outputName) {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
@@ -155,7 +148,6 @@ NodeState::OutputQueueState NodeStateApi::outputs(const std::string& outputName)
 }
 std::vector<NodeState::DurationEvent> NodeStateApi::events() {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
@@ -175,7 +167,6 @@ std::vector<NodeState::DurationEvent> NodeStateApi::events() {
 }
 std::unordered_map<std::string, NodeState::InputQueueState> NodeStateApi::inputs(const std::vector<std::string>& inputNames) {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
@@ -199,7 +190,6 @@ std::unordered_map<std::string, NodeState::InputQueueState> NodeStateApi::inputs
 }
 NodeState::InputQueueState NodeStateApi::inputs(const std::string& inputName) {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
@@ -222,7 +212,6 @@ NodeState::InputQueueState NodeStateApi::inputs(const std::string& inputName) {
 }
 std::unordered_map<std::string, NodeState::Timing> NodeStateApi::otherTimings(const std::vector<std::string>& statNames) {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
@@ -246,7 +235,6 @@ std::unordered_map<std::string, NodeState::Timing> NodeStateApi::otherTimings(co
 }
 NodeState::Timing NodeStateApi::otherTimings(const std::string& statName) {
     PipelineEventAggregationConfig cfg;
-    cfg.repeat = false;
     cfg.setTimestamp(std::chrono::steady_clock::now());
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
@@ -272,7 +260,7 @@ void PipelineStateApi::stateAsync(std::function<void(const PipelineState&)> call
     if(config.has_value()) {
         cfg = *config;
     } else {
-        cfg.repeat = true;
+        cfg.repeatIntervalSeconds = 1;
         cfg.setTimestamp(std::chrono::steady_clock::now());
         for(auto id : nodeIds) {
             NodeEventAggregationConfig nodeCfg;

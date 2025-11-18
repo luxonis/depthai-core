@@ -476,14 +476,14 @@ void PipelineEventAggregation::run() {
     while(mainLoop()) {
         auto outState = std::make_shared<PipelineState>();
         bool gotConfig = false;
-        if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeat) || request.has()) {
+        if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeatIntervalSeconds.has_value()) || request.has()) {
             auto req = request.get<PipelineEventAggregationConfig>();
             if(req != nullptr) {
                 currentConfig = *req;
                 gotConfig = true;
             }
         }
-        if(gotConfig || (currentConfig.has_value() && currentConfig->repeat)) {
+        if(gotConfig || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value())) {
             bool sendEvents = false;
             if(currentConfig.has_value()) {
                 for(const auto& nodeCfg : currentConfig->nodes) {
@@ -540,8 +540,8 @@ void PipelineEventAggregation::run() {
             }
             auto now = std::chrono::steady_clock::now();
             if(gotConfig
-               || (currentConfig.has_value() && currentConfig->repeat && updated
-                   && (now - lastSentTime >= std::chrono::milliseconds(properties.statsUpdateIntervalMs) / 2))) {
+               || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value() && updated
+                   && (now - lastSentTime) >= std::chrono::seconds(currentConfig->repeatIntervalSeconds.value()))) {
                 lastSentTime = now;
                 out.send(outState);
             }

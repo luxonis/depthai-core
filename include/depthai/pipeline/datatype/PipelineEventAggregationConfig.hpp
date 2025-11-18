@@ -23,14 +23,14 @@ class NodeEventAggregationConfig {
 class PipelineEventAggregationConfig : public Buffer {
    public:
     std::vector<NodeEventAggregationConfig> nodes;
-    bool repeat = false;  // Keep sending the aggregated state without waiting for new config
+    std::optional<uint32_t> repeatIntervalSeconds = std::nullopt;  // Keep sending the aggregated state without waiting for new config
 
     PipelineEventAggregationConfig() = default;
     virtual ~PipelineEventAggregationConfig();
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodes, repeat);
+    DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodes, repeatIntervalSeconds);
 };
 
 }  // namespace dai

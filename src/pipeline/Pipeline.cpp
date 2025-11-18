@@ -20,6 +20,7 @@
 #include "utility/Logging.hpp"
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
+#include "utility/Serialization.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // shared
@@ -859,6 +860,8 @@ void PipelineImpl::start() {
     // Implicitly build (if not already)
     build();
 
+    Logging::getInstance().logger.debug("Full schema dump: ", ((nlohmann::json)getPipelineSchema(SerializationType::JSON, false)).dump());
+
     // Indicate that pipeline is running
     running = true;
 
@@ -874,6 +877,11 @@ void PipelineImpl::start() {
         std::shared_ptr<PipelineImpl> shared = shared_from_this();
         const auto weak = std::weak_ptr<PipelineImpl>(shared);
         defaultDevice->pipelinePtr = weak;
+    }
+
+    if(utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
+        getPipelineState().stateAsync(
+            [](const PipelineState& state) { Logging::getInstance().logger.debug("Pipeline state update: {}", ((nlohmann::json)state).dump()); });
     }
 }
 

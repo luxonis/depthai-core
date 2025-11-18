@@ -32,7 +32,7 @@ void PipelineStateMerge::run() {
     while(mainLoop()) {
         auto outState = std::make_shared<PipelineState>();
         bool waitForMatch = false;
-        if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeat) || request.has()) {
+        if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeatIntervalSeconds.has_value()) || request.has()) {
             auto req = request.get<PipelineEventAggregationConfig>();
             if(req != nullptr) {
                 currentConfig = *req;
