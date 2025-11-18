@@ -18,13 +18,13 @@ int main() {
     auto odom = pipeline.create<dai::node::RTABMapVIO>();
     auto slam = pipeline.create<dai::node::RTABMapSLAM>();
     auto rerun = pipeline.create<RerunNode>();
-    auto params = rtabmap::ParametersMap();
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), "30"));
+    std::map<std::string, std::string> params{};
+    params.insert(std::make_pair<std::string, std::string>("Odom/ResetCountDown", "30"));
 
     odom->setParams(params);
 
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDCreateOccupancyGrid(), "true"));
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGrid3D(), "true"));
+    params.insert(std::make_pair<std::string, std::string>("RGBD/CreateOccupancyGrid", "true"));
+    params.insert(std::make_pair<std::string, std::string>("Grid/3D", "true"));
     slam->setParams(params);
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
     imu->setBatchReportThreshold(1);

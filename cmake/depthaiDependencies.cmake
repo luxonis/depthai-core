@@ -63,6 +63,16 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         find_package(CURL ${_QUIET} CONFIG REQUIRED)
         find_package(cpr ${_QUIET} CONFIG REQUIRED)
     endif()
+    if(DEPTHAI_BASALT_SUPPORT)
+        find_package(basalt-headers ${_QUIET} CONFIG REQUIRED)
+        find_package(basalt_sdk ${_QUIET} CONFIG REQUIRED)
+    endif()
+    if(DEPTHAI_RTABMAP_SUPPORT)
+        find_package(g2o ${_QUIET} CONFIG REQUIRED)
+        find_package(Ceres ${_QUIET} CONFIG REQUIRED)
+        find_package(PCL CONFIG COMPONENTS common)
+        find_package(RTABMap ${_QUIET} CONFIG REQUIRED COMPONENTS core utilite)
+    endif()
 
     # Backward
     if(DEPTHAI_ENABLE_BACKWARD)
@@ -202,16 +212,6 @@ endif()
 if(DEPTHAI_PCL_SUPPORT)
     find_package(PCL CONFIG COMPONENTS common)
 endif()
-if(DEPTHAI_RTABMAP_SUPPORT)
-    find_package(RTABMap ${_QUIET} CONFIG REQUIRED COMPONENTS core utilite)
-    find_package(g2o ${_QUIET} CONFIG REQUIRED)
-    find_package(Ceres ${_QUIET} CONFIG REQUIRED)
-endif()
-
-if(DEPTHAI_BASALT_SUPPORT)
-    find_package(basalt-headers ${_QUIET} CONFIG REQUIRED)
-    find_package(basalt_sdk ${_QUIET} CONFIG REQUIRED)
-endif()
 
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)
@@ -289,6 +289,8 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         set(DYNAMIC_CALIBRATION_LIB
             $<$<CONFIG:Debug>:${DYNAMIC_CALIBRATION_DEBUG_LIB}>
             $<$<CONFIG:Release>:${DYNAMIC_CALIBRATION_RELEASE_LIB}>
+            $<$<CONFIG:RelWithDebInfo>::${DYNAMIC_CALIBRATION_RELEASE_LIB}>
+            $<$<CONFIG:MinSizeRel>:${DYNAMIC_CALIBRATION_RELEASE_LIB}>
         )
     else()
         set(DYNAMIC_CALIBRATION_LIB ${DYNAMIC_CALIBRATION_RELEASE})
@@ -310,7 +312,9 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         set_target_properties(dynamic_calibration_imported PROPERTIES
             IMPORTED_LOCATION_DEBUG "${DYNAMIC_CALIBRATION_RELEASE}"
             IMPORTED_LOCATION_RELEASE "${DYNAMIC_CALIBRATION_RELEASE}"
-            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
+            IMPORTED_LOCATION_RELWITHDEBINFO "${DYNAMIC_CALIBRATION_RELEASE}"
+            IMPORTED_LOCATION_MINSIZEREL "${DYNAMIC_CALIBRATION_RELEASE}"
+            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE;RELWITHDEBINFO;MINSIZEREL"
             INTERFACE_INCLUDE_DIRECTORIES "${DYNAMIC_CALIBRATION_DIR}/include"
         )
     endif()

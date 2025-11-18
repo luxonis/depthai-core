@@ -120,6 +120,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::ImgAnnotations, {}},
     {DatatypeEnum::ImageFiltersConfig, {}},
     {DatatypeEnum::ToFDepthConfidenceFilterConfig, {}},
+    {DatatypeEnum::MapData, {}},
     {DatatypeEnum::ObjectTrackerConfig, {}},
     {DatatypeEnum::DynamicCalibrationControl, {}},
     {DatatypeEnum::DynamicCalibrationResult, {}},
