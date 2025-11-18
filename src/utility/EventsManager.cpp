@@ -99,7 +99,7 @@ FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileN
     static const std::unordered_map<std::string, std::string> mimeTypeExtensionMap = {{".html", "text/html"},
                                                                                       {".htm", "text/html"},
                                                                                       {".css", "text/css"},
-                                                                                      {".js", "text/javascript"},
+                                                                                      {".js", "application/javascript"},
                                                                                       {".png", "image/png"},
                                                                                       {".jpg", "image/jpeg"},
                                                                                       {".jpeg", "image/jpeg"},
@@ -603,7 +603,7 @@ bool EventsManager::sendEvent(const std::string& name,
                               const std::vector<std::string>& associateFiles) {
     // Check if the configuration and limits have already been fetched
     if(!configurationLimitsFetched) {
-        logger::error("The configuration and limits have not been successfully fetched, event not send");
+        logger::error("The configuration and limits have not been successfully fetched, event not sent");
         return false;
     }
 
@@ -643,7 +643,7 @@ bool EventsManager::sendSnap(const std::string& name,
                              const std::string& deviceSerialNo) {
     // Check if the configuration and limits have already been fetched
     if(!configurationLimitsFetched) {
-        logger::error("The configuration and limits have not been successfully fetched, snap not send");
+        logger::error("The configuration and limits have not been successfully fetched, snap not sent");
         return false;
     }
 

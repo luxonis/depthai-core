@@ -15,7 +15,7 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
 int main() {
     dai::Pipeline pipeline(true);
 
-    // Enter you hub team's api-key
+    // Enter your hub team's api-key
     auto eventsManager = std::make_shared<dai::utility::EventsManager>();
     eventsManager->setToken("");
 

@@ -8,7 +8,7 @@ import time
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    # Enter you hub team's api-key
+    # Enter your hub team's api-key
     eventMan = dai.EventsManager()
     eventMan.setToken("")
 
