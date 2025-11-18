@@ -35,6 +35,8 @@ set(FLAG_CANDIDATES
 
 
 if (SANITIZE_ADDRESS AND (SANITIZE_THREAD OR SANITIZE_MEMORY))
+    message(STATUS "SANITIZE_THREAD  = ${SANITIZE_THREAD}")
+    message(STATUS "SANITIZE_ADDRESS  = ${SANITIZE_ADDRESS}")
     message(FATAL_ERROR "AddressSanitizer is not compatible with "
         "ThreadSanitizer or MemorySanitizer.")
 endif ()
