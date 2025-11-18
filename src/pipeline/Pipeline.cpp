@@ -195,13 +195,37 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
     schema.globalProperties = globalProperties;
     schema.bridges = xlinkBridges;
     int latestIoId = 0;
+
+    std::vector<Node::Id> pipelineDebuggingNodeIds;
+    if(!includePipelineDebugging) {
+        for(const auto& node : getAllNodes()) {
+            if(std::string(node->getName()) == std::string("PipelineEventAggregation") || std::string(node->getName()) == std::string("PipelineStateMerge")) {
+                pipelineDebuggingNodeIds.push_back(node->id);
+            }
+        }
+        for(const auto& conn : getConnectionsInternal()) {
+            auto outNode = conn.outputNode.lock();
+            auto inNode = conn.inputNode.lock();
+            if(std::string(outNode->getName()).find("XLink") != std::string::npos || std::string(inNode->getName()).find("XLink") != std::string::npos
+               || std::string(outNode->getName()).find("InputQueue") != std::string::npos || std::string(inNode->getName()).find("OutputQueue") != std::string::npos) {
+                if(std::find(pipelineDebuggingNodeIds.begin(), pipelineDebuggingNodeIds.end(), inNode->id) != pipelineDebuggingNodeIds.end()) {
+                    pipelineDebuggingNodeIds.push_back(outNode->id);
+                }
+                if(std::find(pipelineDebuggingNodeIds.begin(), pipelineDebuggingNodeIds.end(), outNode->id) != pipelineDebuggingNodeIds.end()) {
+                    pipelineDebuggingNodeIds.push_back(inNode->id);
+                }
+            }
+        }
+    }
+
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
         // const auto& node = kv.second;
         if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) {
             continue;
         }
-        if(!includePipelineDebugging && (std::string(node->getName()) == "PipelineEventAggregation" || std::string(node->getName()) == "PipelineStateMerge")) {
+        if(!includePipelineDebugging
+           && std::find(pipelineDebuggingNodeIds.begin(), pipelineDebuggingNodeIds.end(), node->id) != pipelineDebuggingNodeIds.end()) {
             continue;
         }
         // Create 'node' info
@@ -261,6 +285,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
 
         // Add outputs
         for(const auto& output : outputs) {
+            if(!includePipelineDebugging && output.getName() == "pipelineEventOutput") continue;
             NodeIoInfo io;
             io.id = latestIoId;
             latestIoId++;
@@ -309,6 +334,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
     // Node::Id xLinkBridgeId = latestId;
 
     for(const auto& conn : getConnectionsInternal()) {
+        if(!includePipelineDebugging && conn.outputName == "pipelineEventOutput") continue;
         NodeConnectionSchema c;
         auto outNode = conn.outputNode.lock();
         auto inNode = conn.inputNode.lock();
@@ -318,6 +344,12 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         c.node2Id = inNode->id;
         c.node2Input = conn.inputName;
         c.node2InputGroup = conn.inputGroup;
+
+        if(!includePipelineDebugging
+           && (std::find(pipelineDebuggingNodeIds.begin(), pipelineDebuggingNodeIds.end(), c.node1Id) != pipelineDebuggingNodeIds.end()
+               || std::find(pipelineDebuggingNodeIds.begin(), pipelineDebuggingNodeIds.end(), c.node2Id) != pipelineDebuggingNodeIds.end())) {
+            continue;
+        }
 
         bool outputHost = outNode->runOnHost();
         bool inputHost = inNode->runOnHost();
@@ -860,7 +892,7 @@ void PipelineImpl::start() {
     // Implicitly build (if not already)
     build();
 
-    Logging::getInstance().logger.debug("Full schema dump: ", ((nlohmann::json)getPipelineSchema(SerializationType::JSON, false)).dump());
+    Logging::getInstance().logger.debug("Full schema dump: {}", ((nlohmann::json)getPipelineSchema(SerializationType::JSON, false)).dump());
 
     // Indicate that pipeline is running
     running = true;
