@@ -29,10 +29,10 @@ jobs:
 
     - name: Install format dependencies
       run: |
-        sudo apt-get install clang-format-10
+        sudo apt-get install clang-format-18
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=clang-format-10
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=clang-format-18
 
     - name: check style
       run: ci/check_format.sh build
@@ -49,10 +49,10 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install clang-tidy-10
+        sudo apt-get install clang-tidy-18
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-10
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-18
 
     - name: Run clang-tidy
       run: cmake --build build --parallel 4
