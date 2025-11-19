@@ -110,9 +110,9 @@ void BenchmarkIn::run() {
             // Decide how to log (warn or info) once, then do all the logs
             auto logFunc = [&](auto fmt, auto... args) {
                 if(properties.logReportsAsWarnings) {
-                    logger->warn(fmt, std::forward<decltype(args)>(args)...);
+                    logger->warn(fmt::runtime(fmt), std::forward<decltype(args)>(args)...);
                 } else {
-                    logger->trace(fmt, std::forward<decltype(args)>(args)...);
+                    logger->trace(fmt::runtime(fmt), std::forward<decltype(args)>(args)...);
                 }
             };
 

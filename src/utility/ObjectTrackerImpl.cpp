@@ -855,7 +855,7 @@ std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<
     Eigen::MatrixXf inertia_X_ = inertia_X.replicate(1, X.cols());
     Eigen::MatrixXf diff_angle_cos = inertia_X_.array() * X.array() + inertia_Y_.array() * Y.array();
 
-    diff_angle_cos = (diff_angle_cos.array().min(1).max(-1)).matrix();
+    diff_angle_cos = (diff_angle_cos.array().min(1.0f).max(-1.0f)).matrix();
 
     Eigen::MatrixXf diff_angle = Eigen::acos(diff_angle_cos.array());
 

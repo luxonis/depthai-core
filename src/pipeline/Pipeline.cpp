@@ -955,20 +955,20 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
         {"asset",
          [moveAsset](PipelineImpl& p, const fs::path& uri) -> std::vector<uint8_t> {
              // First check the pipeline asset manager
-             auto asset = p.assetManager.get(uri.u8string());
+             auto asset = p.assetManager.get(uri.string());
              if(asset != nullptr) {
                  if(moveAsset) {
-                     p.assetManager.remove(uri.u8string());
+                     p.assetManager.remove(uri.string());
                      return std::move(asset->data);
                  }
                  return asset->data;
              }
              for(auto& node : p.nodes) {
                  auto& assetManager = node->getAssetManager();
-                 auto asset = assetManager.get(uri.u8string());
+                 auto asset = assetManager.get(uri.string());
                  if(asset != nullptr) {
                      if(moveAsset) {
-                         assetManager.remove(uri.u8string());
+                         assetManager.remove(uri.string());
                          return std::move(asset->data);
                      }
                      return asset->data;
@@ -982,7 +982,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
     for(const auto& handler : protocolHandlers) {
         std::string protocolPrefix = std::string(handler.protocol) + ":";
 
-        if(uri.u8string().find(protocolPrefix) == 0) {
+        if(uri.string().find(protocolPrefix) == 0) {
             // // protocol matches, resolve URI and call handler
             // std::filesystem::path path(uri.substr(protocolPrefix.size()));
             // // Create full path, and normalize
@@ -995,9 +995,9 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
             fs::path path;
             if(protocolPrefix == "asset:") {
                 auto absUri = getAbsUri(uri, cwd);
-                path = static_cast<fs::path>(absUri.u8string().substr(protocolPrefix.size()));
+                path = static_cast<fs::path>(absUri.string().substr(protocolPrefix.size()));
             } else {
-                path = static_cast<fs::path>(uri.u8string().substr(protocolPrefix.size()));
+                path = static_cast<fs::path>(uri.string().substr(protocolPrefix.size()));
             }
             return handler.handle(*this, path);
         }

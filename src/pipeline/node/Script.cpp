@@ -12,7 +12,7 @@ void Script::setScriptPath(const std::filesystem::path& path, const std::string&
     properties.scriptUri = assetManager.set("__script", path)->getRelativeUri();
     scriptPath = path;
     if(name.empty()) {
-        properties.scriptName = path.u8string();
+        properties.scriptName = path.string();
     } else {
         properties.scriptName = name;
     }

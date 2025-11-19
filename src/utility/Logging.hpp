@@ -41,42 +41,42 @@ inline spdlog::level::level_enum get_level() {
 
 template <typename FormatString, typename... Args>
 inline void log(spdlog::source_loc source, spdlog::level::level_enum lvl, const FormatString& fmt, Args&&... args) {
-    Logging::getInstance().logger.log(source, lvl, fmt, std::forward<Args>(args)...);
+    Logging::getInstance().logger.log(source, lvl, fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename FormatString, typename... Args>
 inline void log(spdlog::level::level_enum lvl, const FormatString& fmt, Args&&... args) {
-    Logging::getInstance().logger.log(spdlog::source_loc{}, lvl, fmt, std::forward<Args>(args)...);
+    Logging::getInstance().logger.log(spdlog::source_loc{}, lvl, fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename FormatString, typename... Args>
 inline void trace(const FormatString& fmt, Args&&... args) {
-    Logging::getInstance().logger.trace(fmt, std::forward<Args>(args)...);
+    Logging::getInstance().logger.trace(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename FormatString, typename... Args>
 inline void debug(const FormatString& fmt, Args&&... args) {
-    Logging::getInstance().logger.debug(fmt, std::forward<Args>(args)...);
+    Logging::getInstance().logger.debug(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename FormatString, typename... Args>
 inline void info(const FormatString& fmt, Args&&... args) {
-    Logging::getInstance().logger.info(fmt, std::forward<Args>(args)...);
+    Logging::getInstance().logger.info(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename FormatString, typename... Args>
 inline void warn(const FormatString& fmt, Args&&... args) {
-    Logging::getInstance().logger.warn(fmt, std::forward<Args>(args)...);
+    Logging::getInstance().logger.warn(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename FormatString, typename... Args>
 inline void error(const FormatString& fmt, Args&&... args) {
-    Logging::getInstance().logger.error(fmt, std::forward<Args>(args)...);
+    Logging::getInstance().logger.error(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename FormatString, typename... Args>
 inline void critical(const FormatString& fmt, Args&&... args) {
-    Logging::getInstance().logger.critical(fmt, std::forward<Args>(args)...);
+    Logging::getInstance().logger.critical(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename T>
