@@ -48,7 +48,6 @@ void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
 }
 }  // namespace
 
-
 constexpr size_t FRAMES_TO_SAMPLE = 12;
 
 struct DepthStats {
@@ -75,7 +74,6 @@ DepthStats computeDepthStats(const std::shared_ptr<dai::ImgFrame>& depthFrame) {
             samples.push_back(val);
         }
     }
-
 
     stats.validRatio = samples.empty() ? 0.0 : static_cast<double>(samples.size()) / static_cast<double>(totalPixels);
     if(samples.empty()) {
@@ -184,7 +182,6 @@ TEST_CASE("NeuralDepth replay aligns with StereoDepth medians") {
     auto stereoDepthQueue = stereoDepth->depth.createOutputQueue();
 
     pipeline.start();
-
 
     for(size_t idx = 0; idx < FRAMES_TO_SAMPLE; ++idx) {
         auto neuralDepthFrame = neuralDepthQueue->get<dai::ImgFrame>();
