@@ -6,6 +6,11 @@
 namespace {
 void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
     dai::Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    if(!device->isNeuralDepthSupported()) {
+        WARN("Skipping NeuralDepth replay test: device doesn't support NeuralDepth.");
+        return;
+    }
     constexpr float FPS = 60.0f;
     auto leftCamera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto rightCamera = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
