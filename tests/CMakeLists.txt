@@ -449,6 +449,9 @@ target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dy
 dai_add_test(dynamic_calibration_onhost_test src/onhost_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_onhost_test onhost)
 
+dai_add_test(flash_eeprom_fields_test src/ondevice_tests/flash_eeprom_fields_test.cpp)
+dai_set_test_labels(flash_eeprom_fields_test ondevice rvc2_all rvc4)
+
 # Neural network test
 dai_add_test(neural_network_test src/ondevice_tests/neural_network_test.cpp)
 target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
