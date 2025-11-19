@@ -146,6 +146,59 @@ TEST_CASE("NeuralDepth replay produces expected results") {
     pipeline.wait();
 }
 
+TEST_CASE("NeuralDepth replay aligns with StereoDepth medians") {
+    dai::Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    if(!device->isNeuralDepthSupported()) {
+        WARN("Skipping NeuralDepth replay comparison test: device doesn't support NeuralDepth.");
+        return;
+    }
+
+    pipeline.enableHolisticReplay(NEURAL_REPLAY_PATH);
+    pipeline.setCalibrationData(dai::CalibrationHandler(NEURAL_CALIBRATION_PATH));
+
+    auto cameraLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto cameraRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    auto leftOutput = cameraLeft->requestFullResolutionOutput();
+    auto rightOutput = cameraRight->requestFullResolutionOutput();
+
+    auto neuralDepth = pipeline.create<dai::node::NeuralDepth>();
+    SECTION("Test NANO model") {
+        neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_NANO);
+    }
+    SECTION("Test SMALL model") {
+        neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_SMALL);
+    }
+    SECTION("Test MEDIUM model") {
+        neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM);
+    }
+    SECTION("Test LARGE model") {
+        neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_LARGE);
+    }
+
+    auto stereoDepth = pipeline.create<dai::node::StereoDepth>();
+    stereoDepth->build(*leftOutput, *rightOutput);
+    stereoDepth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::FAST_ACCURACY);
+
+    auto neuralDepthQueue = neuralDepth->depth.createOutputQueue();
+    auto stereoDepthQueue = stereoDepth->depth.createOutputQueue();
+
+    pipeline.start();
+
+
+    for(size_t idx = 0; idx < FRAMES_TO_SAMPLE; ++idx) {
+        auto neuralDepthFrame = neuralDepthQueue->get<dai::ImgFrame>();
+        auto stereoDepthFrame = stereoDepthQueue->get<dai::ImgFrame>();
+        REQUIRE(neuralDepthFrame != nullptr);
+        REQUIRE(stereoDepthFrame != nullptr);
+
+        auto neuralStats = computeDepthStats(neuralDepthFrame);
+        auto stereoStats = computeDepthStats(stereoDepthFrame);
+        REQUIRE(neuralStats.median > (0.9 * stereoStats.median));
+        REQUIRE(neuralStats.median < (1.1 * stereoStats.median));
+    }
+}
+
 TEST_CASE("Test NeuralDepth node NANO model") {
     testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_NANO, 55.0f);
 }
