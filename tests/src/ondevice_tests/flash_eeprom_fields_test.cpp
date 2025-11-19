@@ -11,11 +11,9 @@
 // Nodes
 #include "depthai/common/CameraBoardSocket.hpp"
 
-
 class EepromRestoreGuard {
-public:
-    explicit EepromRestoreGuard(std::shared_ptr<dai::Device> dev)
-        : device(std::move(dev)), factoryCalib(device->readCalibration()) {}
+   public:
+    explicit EepromRestoreGuard(std::shared_ptr<dai::Device> dev) : device(std::move(dev)), factoryCalib(device->readCalibration()) {}
 
     ~EepromRestoreGuard() {
         try {
@@ -25,12 +23,10 @@ public:
         }
     }
 
-private:
+   private:
     std::shared_ptr<dai::Device> device;
     dai::CalibrationHandler factoryCalib;
 };
-
-
 
 TEST_CASE("EEPROM modify + round-trip") {
     auto device = std::make_shared<dai::Device>();
@@ -52,11 +48,7 @@ TEST_CASE("EEPROM modify + round-trip") {
     eeprom.housingExtrinsics.translation = {1.f, 2.f, 3.f};
     eeprom.housingExtrinsics.specTranslation = {1.f, 2.f, 3.f};
 
-    eeprom.housingExtrinsics.rotationMatrix = {
-        {1.f, 1.f, 0.f},
-        {0.f, 1.f, 0.f},
-        {0.f, 0.f, 1.f}
-    };
+    eeprom.housingExtrinsics.rotationMatrix = {{1.f, 1.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}};
 
     //
     // 3. Repack
@@ -80,14 +72,8 @@ TEST_CASE("EEPROM modify + round-trip") {
 
     REQUIRE(eeprom2.housingExtrinsics.toCameraSocket == dai::CameraBoardSocket::CAM_B);
 
-    std::vector<std::vector<float>> expected = {
-        {1.f, 1.f, 0.f},
-        {0.f, 1.f, 0.f},
-        {0.f, 0.f, 1.f}
-    };
+    std::vector<std::vector<float>> expected = {{1.f, 1.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}};
 
     for(int r = 0; r < 3; r++)
-        for(int c = 0; c < 3; c++)
-            REQUIRE(eeprom2.housingExtrinsics.rotationMatrix[r][c] == Catch::Approx(expected[r][c]));
+        for(int c = 0; c < 3; c++) REQUIRE(eeprom2.housingExtrinsics.rotationMatrix[r][c] == Catch::Approx(expected[r][c]));
 }
-
