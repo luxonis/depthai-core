@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/common/DepthUnit.hpp>
 #include <depthai/common/optional.hpp>
 #include <vector>
 
@@ -19,10 +20,7 @@ class NeuralDepthConfig : public Buffer {
     virtual ~NeuralDepthConfig();
 
     struct AlgorithmControl {
-        /**
-         * Measurement unit for depth data
-         */
-        enum class DepthUnit : int32_t { METER, CENTIMETER, MILLIMETER, INCH, FOOT, CUSTOM };
+        using DepthUnit = dai::DepthUnit;
 
         /**
          * Measurement unit for depth data.
@@ -77,6 +75,26 @@ class NeuralDepthConfig : public Buffer {
      * Get edge threshold for disparity calculation
      */
     uint8_t getEdgeThreshold() const;
+
+    /**
+     * Set depth unit of depth map.
+     */
+    NeuralDepthConfig& setDepthUnit(AlgorithmControl::DepthUnit depthUnit);
+
+    /**
+     * Get depth unit of depth map.
+     */
+    AlgorithmControl::DepthUnit getDepthUnit() const;
+
+    /**
+     * Set custom depth unit multiplier relative to 1 meter.
+     */
+    NeuralDepthConfig& setCustomDepthUnitMultiplier(float multiplier);
+
+    /**
+     * Get custom depth unit multiplier relative to 1 meter.
+     */
+    float getCustomDepthUnitMultiplier() const;
 
     /**
      * Controls the flow of stereo algorithm - left-right check, subpixel etc.

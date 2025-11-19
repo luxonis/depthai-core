@@ -38,5 +38,9 @@ void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack) {
         .def("setConfidenceThreshold", &NeuralDepthConfig::setConfidenceThreshold, DOC(dai, NeuralDepthConfig, setConfidenceThreshold))
         .def("getConfidenceThreshold", &NeuralDepthConfig::getConfidenceThreshold, DOC(dai, NeuralDepthConfig, getConfidenceThreshold))
         .def("setEdgeThreshold", &NeuralDepthConfig::setEdgeThreshold, DOC(dai, NeuralDepthConfig, setEdgeThreshold))
-        .def("getEdgeThreshold", &NeuralDepthConfig::getEdgeThreshold, DOC(dai, NeuralDepthConfig, getEdgeThreshold));
+        .def("getEdgeThreshold", &NeuralDepthConfig::getEdgeThreshold, DOC(dai, NeuralDepthConfig, getEdgeThreshold))
+        .def("setDepthUnit", &NeuralDepthConfig::setDepthUnit, DOC(dai, NeuralDepthConfig, setDepthUnit))
+        .def("getDepthUnit", &NeuralDepthConfig::getDepthUnit, DOC(dai, NeuralDepthConfig, getDepthUnit))
+        .def("setCustomDepthUnitMultiplier", &NeuralDepthConfig::setCustomDepthUnitMultiplier, DOC(dai, NeuralDepthConfig, setCustomDepthUnitMultiplier))
+        .def("getCustomDepthUnitMultiplier", &NeuralDepthConfig::getCustomDepthUnitMultiplier, DOC(dai, NeuralDepthConfig, getCustomDepthUnitMultiplier));
 }

@@ -27,4 +27,22 @@ NeuralDepthConfig& NeuralDepthConfig::setEdgeThreshold(uint8_t edgeThr) {
     return *this;
 }
 
+NeuralDepthConfig& NeuralDepthConfig::setDepthUnit(AlgorithmControl::DepthUnit depthUnit) {
+    algorithmControl.depthUnit = depthUnit;
+    return *this;
+}
+
+NeuralDepthConfig::AlgorithmControl::DepthUnit NeuralDepthConfig::getDepthUnit() const {
+    return algorithmControl.depthUnit;
+}
+
+NeuralDepthConfig& NeuralDepthConfig::setCustomDepthUnitMultiplier(float multiplier) {
+    algorithmControl.customDepthUnitMultiplier = multiplier;
+    return *this;
+}
+
+float NeuralDepthConfig::getCustomDepthUnitMultiplier() const {
+    return algorithmControl.customDepthUnitMultiplier;
+}
+
 }  // namespace dai
