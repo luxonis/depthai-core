@@ -22,7 +22,7 @@ int main() {
     bool setRunOnHost = false;
     auto device = std::make_shared<dai::Device>();
 
-    if(device->getPlatformAsString() == "RVC2") {
+    if(device->getPlatform() == dai::Platform::RVC2) {
         modelName = "luxonis/yolov8-instance-segmentation-nano:coco-512x288";
         setRunOnHost = true;
     }
@@ -139,7 +139,7 @@ int main() {
 
                 if(segmentationMask) {
                     cv::Mat lut(1, 256, CV_8U);
-                    for(int i = 0; i < 256; ++i) lut.at<uchar>(i) = (i >= 255) ? 255 : cv::saturate_cast<uchar>(i * 25);
+                    for(int i = 0; i < 256; ++i) lut.at<uchar>(i) = (i == 255) ? 255 : cv::saturate_cast<uchar>(i * 25);
                     cv::Mat scaledMask;
                     cv::LUT(*segmentationMask, lut, scaledMask);
 

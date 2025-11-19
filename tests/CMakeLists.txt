@@ -407,7 +407,7 @@ dai_set_test_labels(nndata_test onhost ci)
 
 #ImgDetections tests
 dai_add_test(imgdetections_test src/onhost_tests/pipeline/datatype/imgdetections_test.cpp)
-dai_set_test_labels(imgdetections_test ondevice rvc2 rvc4 onhost ci)
+dai_set_test_labels(imgdetections_test onhost ci)
 
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)

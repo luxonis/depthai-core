@@ -8,7 +8,7 @@ import time
 model_name = "luxonis/yolov8-instance-segmentation-large:coco-640x480"
 setRunOnHost = False
 device = dai.Device()
-if device.getPlatformAsString() == "RVC2":
+if device.getPlatform() == dai.Platform.RVC2:
     model_name = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
     setRunOnHost = True
 

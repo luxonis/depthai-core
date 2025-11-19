@@ -24,7 +24,7 @@ dai_add_example(detection_network_remap detection_network_remap.cpp ON OFF)
 dai_set_example_test_labels(detection_network_remap ondevice rvc2_all rvc4 ci)
 
 dai_add_example(detection_and_segmentation detection_and_segmentation.cpp ON OFF)
-dai_set_example_test_labels(detection_and_segmentation rvc4)
+dai_set_example_test_labels(detection_and_segmentation rvc2_all rvc4 ci)
 
 dai_add_example(detection_and_keypoints detection_and_keypoints.cpp ON OFF)
-dai_set_example_test_labels(detection_and_keypoints rvc4)
+dai_set_example_test_labels(detection_and_keypoints rvc2_all rvc4 ci)
