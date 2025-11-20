@@ -38,7 +38,6 @@
 #include "depthai/pipeline/node/Warp.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
-#include "depthai/pipeline/node/Vpp.hpp"
 
 // depthai/
 #include <memory>
