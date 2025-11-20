@@ -11,7 +11,8 @@ namespace dai {
 namespace node {
 
 /**
- * @brief SpatialLocationCalculator node. Calculates spatial location data on a set of ROIs on depth map.
+ * @brief SpatialLocationCalculator node. Calculates the spatial locations of detected objects based on the input depth map. Spatial location calculations can
+ * be additionally refined by using a segmentation mask. If keypoints are provided, the spatial location is calculated around each keypoint.
  */
 class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
    public:
@@ -19,7 +20,7 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
-    Properties& getProperties();
+    Properties& getProperties() override;
 
    public:
     SpatialLocationCalculator() = default;
