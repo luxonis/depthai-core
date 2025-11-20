@@ -140,7 +140,7 @@ def combine_wheels_linux(args, wheel_infos):
             # Strip debug symbols from the main dynamic library
             if args.strip_debug:
                 logger.info(f"Stripping debug symbols from {wheel_dylib_path}")
-                subprocess.run(['strip', '--strip-unneeded', wheel_dylib_full_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
+                subprocess.run(['strip', '--strip-unneeded', wheel_dylib_full_path], check=True)
                 subprocess.run(['llvm-strip', '--strip-unneeded', wheel_dylib_full_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
 
             for file in wheel_files_to_copy:
@@ -154,7 +154,7 @@ def combine_wheels_linux(args, wheel_infos):
                 os.rename(lib_path, new_lib_path)
                 if args.strip_debug:
                     logger.info(f"Stripping debug symbols from {new_lib_name}")
-                    subprocess.run(['strip', '--strip-unneeded', new_lib_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
+                    subprocess.run(['strip', '--strip-unneeded', new_lib_path], check=True)
                     subprocess.run(['llvm-strip', '--strip-unneeded', new_lib_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
                 
             write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
@@ -400,7 +400,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_folder", type=str, help="Path to the folder containing already repaired wheels for individual python versions that are to be combined into a single wheel")
     parser.add_argument("--output_folder", type=str, default=".", help="Path to the folder where the combined wheel will be saved")
-    parser.add_argument("--strip-debug", action="store_true", dest="strip_debug", help="Strip debug symbols from libraries to reduce size")
+    parser.add_argument("--strip-unneeded", action="store_true", dest="strip_debug", help="Strip unneeded debug symbols from libraries to reduce size")
     parser.add_argument("--log_level", type=str, default="INFO", help="Log level")
     parser.add_argument("--self-test", action="store_true", help="Run internal tests and exit")
     args = parser.parse_args()
