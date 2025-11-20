@@ -62,5 +62,7 @@ void bind_vppconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("maxPatchSize", &VppConfig::maxPatchSize, DOC(dai, VppConfig, maxPatchSize))
         .def_readwrite("patchColoringType", &VppConfig::patchColoringType, DOC(dai, VppConfig, patchColoringType))
         .def_readwrite("uniformPatch", &VppConfig::uniformPatch, DOC(dai, VppConfig, uniformPatch))
-        .def_readwrite("injectionParameters", &VppConfig::injectionParameters, DOC(dai, VppConfig, injectionParameters));
+        .def_readwrite("injectionParameters", &VppConfig::injectionParameters, DOC(dai, VppConfig, injectionParameters))
+        .def_readwrite("maxNumThreads", &VppConfig::maxNumThreads, DOC(dai, VppConfig, maxNumThreads))
+        .def_readwrite("maxFPS", &VppConfig::maxFPS, DOC(dai, VppConfig, maxFPS));
 }
