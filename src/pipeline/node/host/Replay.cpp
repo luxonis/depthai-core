@@ -170,13 +170,10 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CoverageData:
-<<<<<<< HEAD
         case DatatypeEnum::PipelineEvent:
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
-=======
         case DatatypeEnum::NeuralDepthConfig:
->>>>>>> 25340b3c487832095ef5a9a28b2886bb0c8f6aa0
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};
