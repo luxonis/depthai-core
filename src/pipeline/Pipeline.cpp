@@ -799,7 +799,7 @@ void PipelineImpl::build() {
                 connection.out->link(xLinkBridge.xLinkOut->input);
 
                 // Note the created bridge for serialization (for visualization)
-                xlinkBridges.push_back({outNode->id, inNode->id});
+                xlinkBridges.push_back({xLinkBridge.xLinkOut->id, xLinkBridge.xLinkInHost->id});
             }
             auto xLinkBridge = bridgesOut[connection.out];
             connection.out->unlink(*connection.in);  // Unlink the connection
@@ -829,6 +829,9 @@ void PipelineImpl::build() {
                 } else {
                     xLinkBridge.xLinkOutHost->allowStreamResize(false);
                 }
+
+                // Note the created bridge for serialization (for visualization)
+                xlinkBridges.push_back({xLinkBridge.xLinkOutHost->id, xLinkBridge.xLinkIn->id});
             }
             auto xLinkBridge = bridgesIn[connection.in];
             connection.out->unlink(*connection.in);  // Unlink the original connection
