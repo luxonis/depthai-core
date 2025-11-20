@@ -20,7 +20,11 @@ namespace utility {
 
 template <typename T, typename... Args>
 void addToFileData(std::vector<std::shared_ptr<FileData>>& container, Args&&... args) {
-    container.emplace_back(std::make_shared<T>(std::forward<Args>(args)...));
+    try {
+        container.emplace_back(std::make_shared<T>(std::forward<Args>(args)...));
+    } catch(const std::exception& e) {
+        logger::error("Failed to create FileData: {}", e.what());
+    }
 }
 
 void FileGroup::addFile(std::string fileName, std::string data, std::string mimeType) {
@@ -110,8 +114,7 @@ FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileN
     // Read the data
     std::ifstream fileStream(filePath, std::ios::binary | std::ios::ate);
     if(!fileStream) {
-        logger::error("File: {} doesn't exist", filePath.string());
-        return;
+        throw std::runtime_error("File: " + filePath.string() + " doesn't exist");
     }
     std::streamsize fileSize = fileStream.tellg();
     data.resize(static_cast<size_t>(fileSize));
@@ -137,9 +140,15 @@ FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileN
 FileData::FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName)
     : mimeType("image/jpeg"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
     // Convert ImgFrame to bytes
-    cv::Mat cvFrame = imgFrame->getCvFrame();
     std::vector<uchar> buffer;
-    cv::imencode(".jpg", cvFrame, buffer);
+    try {
+        cv::Mat cvFrame = imgFrame->getCvFrame();
+        if(!cv::imencode(".jpg", cvFrame, buffer)) {
+            throw std::runtime_error("ImgFrame encoding failed");
+        }
+    } catch(const cv::Exception& e) {
+        throw std::runtime_error(std::string("ImgFrame encoding failed due to OpenCV error: ") + e.what());
+    }
 
     std::stringstream ss;
     ss.write((const char*)buffer.data(), buffer.size());
@@ -152,8 +161,7 @@ FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::strin
     : mimeType("image/jpeg"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
     // Convert EncodedFrame to bytes
     if(encodedFrame->getProfile() != EncodedFrame::Profile::JPEG) {
-        logger::error("Only JPEG encoded frames are supported");
-        return;
+        throw std::runtime_error("Only JPEG encoded frames are supported");
     }
     std::stringstream ss;
     ss.write((const char*)encodedFrame->getData().data(), encodedFrame->getData().size());
@@ -185,13 +193,11 @@ FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::str
         if(imgDetectionsProto.ParseFromArray(imgDetectionsSerialized.data(), imgDetectionsSerialized.size())) {
             *snapAnnotation.mutable_detections() = imgDetectionsProto;
         } else {
-            logger::error("Failed to parse ImgDetections proto from serialized bytes");
-            return;
+            throw std::runtime_error("Failed to parse ImgDetections proto from serialized bytes");
         }
     }
     if(!snapAnnotation.SerializeToString(&data)) {
-        logger::error("Failed to serialize SnapAnnotations proto object to string");
-        return;
+        throw std::runtime_error("Failed to serialize SnapAnnotations proto object to string");
     }
     size = data.size();
     checksum = calculateSHA256Checksum(data);
