@@ -59,7 +59,7 @@ class NodeState {
             return timing.isValid();
         }
 
-        DEPTHAI_SERIALIZE(InputQueueState, state, numQueued, timing);
+        DEPTHAI_SERIALIZE(InputQueueState, state, numQueued, timing, queueStats);
     };
     struct OutputQueueState {
         // Current state of the output queue. Send should ideally be instant. This is not the case when the input queue is full.

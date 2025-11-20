@@ -206,8 +206,10 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         for(const auto& conn : getConnectionsInternal()) {
             auto outNode = conn.outputNode.lock();
             auto inNode = conn.inputNode.lock();
+            if(conn.outputName == "pipelineEventOutput") continue;
             if(std::string(outNode->getName()).find("XLink") != std::string::npos || std::string(inNode->getName()).find("XLink") != std::string::npos
-               || std::string(outNode->getName()).find("InputQueue") != std::string::npos || std::string(inNode->getName()).find("OutputQueue") != std::string::npos) {
+               || std::string(outNode->getName()).find("InputQueue") != std::string::npos
+               || std::string(inNode->getName()).find("OutputQueue") != std::string::npos) {
                 if(std::find(pipelineDebuggingNodeIds.begin(), pipelineDebuggingNodeIds.end(), inNode->id) != pipelineDebuggingNodeIds.end()) {
                     pipelineDebuggingNodeIds.push_back(outNode->id);
                 }
@@ -874,6 +876,39 @@ void PipelineImpl::build() {
             }
         }
     }
+
+    if(buildingOnHost && enablePipelineDebugging) {
+        std::shared_ptr<node::internal::PipelineEventAggregation> pipelineEventAggHost = nullptr;
+        std::shared_ptr<node::internal::PipelineEventAggregation> pipelineEventAggDevice = nullptr;
+        for(const auto& node : getAllNodes()) {
+            if(strcmp(node->getName(), "PipelineEventAggregation") == 0) {
+                if(node->runOnHost() && !pipelineEventAggHost) {
+                    pipelineEventAggHost = std::dynamic_pointer_cast<node::internal::PipelineEventAggregation>(node);
+                } else if(!node->runOnHost() && !pipelineEventAggDevice) {
+                    pipelineEventAggDevice = std::dynamic_pointer_cast<node::internal::PipelineEventAggregation>(node);
+                }
+            }
+            if(pipelineEventAggHost && pipelineEventAggDevice) {
+                break;
+            }
+        }
+        if(!pipelineEventAggHost || !pipelineEventAggDevice) {
+            throw std::runtime_error("PipelineEventAggregation nodes not found for pipeline debugging setup");
+        }
+        for(auto& bridge : bridgesOut) {
+            auto& nodes = bridge.second;
+            nodes.xLinkInHost->pipelineEventOutput.link(
+                pipelineEventAggHost->inputs[fmt::format("{} - {}", nodes.xLinkInHost->getName(), nodes.xLinkInHost->id)]);
+            nodes.xLinkOut->pipelineEventOutput.link(pipelineEventAggDevice->inputs[fmt::format("{} - {}", nodes.xLinkOut->getName(), nodes.xLinkOut->id)]);
+        }
+        for(auto& bridge : bridgesIn) {
+            auto& nodes = bridge.second;
+            nodes.xLinkIn->pipelineEventOutput.link(pipelineEventAggDevice->inputs[fmt::format("{} - {}", nodes.xLinkIn->getName(), nodes.xLinkIn->id)]);
+            nodes.xLinkOutHost->pipelineEventOutput.link(
+                pipelineEventAggHost->inputs[fmt::format("{} - {}", nodes.xLinkOutHost->getName(), nodes.xLinkOutHost->id)]);
+        }
+    }
+
     // Build
     if(!isHostOnly()) {
         // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
@@ -916,7 +951,7 @@ void PipelineImpl::start() {
 
     if(utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
         getPipelineState().stateAsync(
-            [](const PipelineState& state) { Logging::getInstance().logger.trace("Pipeline state update: {}", ((nlohmann::json)state).dump()); });
+            [](const PipelineState& state) { Logging::getInstance().logger.trace("Pipeline state update: {}", state.toJson().dump()); });
     }
 }
 
@@ -1198,6 +1233,10 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
 }
 
 void Pipeline::enablePipelineDebugging(bool enable) {
+    if(utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
+        throw std::runtime_error(
+            "You can enable pipeline debugging either through the DEPTHAI_PIPELINE_DEBUGGING environment variable or through the Pipeline API, not both");
+    }
     if(this->isBuilt()) {
         throw std::runtime_error("Cannot change pipeline debugging state after pipeline is built");
     }
