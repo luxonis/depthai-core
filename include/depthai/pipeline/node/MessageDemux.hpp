@@ -10,7 +10,7 @@ class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemu
    public:
     constexpr static const char* NAME = "MessageDemux";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-
+    ~MessageDemux() override;
     /**
      * Input message of type MessageGroup
      */

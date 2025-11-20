@@ -18,6 +18,7 @@
 #include "datatype/ImgFrame.hpp"
 #include "datatype/MessageGroup.hpp"
 #include "datatype/NNData.hpp"
+#include "datatype/NeuralDepthConfig.hpp"
 #include "datatype/PointCloudConfig.hpp"
 #include "datatype/PointCloudData.hpp"
 #include "datatype/RGBDData.hpp"

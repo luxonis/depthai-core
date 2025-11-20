@@ -34,6 +34,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/NeuralDepthConfig.hpp"
 #include "depthai/pipeline/datatype/ObjectTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
@@ -214,6 +215,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::StereoDepthConfig:
             return parseDatatype<StereoDepthConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::NeuralDepthConfig:
+            return parseDatatype<NeuralDepthConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::EdgeDetectorConfig:
