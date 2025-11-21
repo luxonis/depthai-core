@@ -60,7 +60,6 @@ void decodeR1AF(const dai::NNData& nnData,
 
     for(int strideIdx = 0; strideIdx < static_cast<int>(layerNames.size()); ++strideIdx) {
         std::string layerName = layerNames[strideIdx];
-        int stride = strides[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
         if(!tensorInfo) {
             std::string errorMsg = fmt::format("Tensor info for layer {} is null", layerName);
@@ -815,7 +814,7 @@ void segmentationDecode(const dai::NNData& nnData,
 
         // Threshold & paint only unassigned pixels
         cv::Mat roiBin;
-        cv::compare(roiProb, 0.0f, roiBin, cv::CMP_GT);
+        cv::compare(roiProb, 0.0, roiBin, cv::CMP_GT);
         cv::Mat roiOut = indexMask(roi);
         cv::Mat unassigned;
         cv::compare(roiOut, 255, unassigned, cv::CMP_EQ);
