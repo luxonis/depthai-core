@@ -49,19 +49,26 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
                           std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher = nullptr);
 
     MessageQueue(const MessageQueue& c)
-        : enable_shared_from_this(c), queue(c.queue), name(c.name), callbacks(c.callbacks), uniqueCallbackId(c.uniqueCallbackId){};
+        : enable_shared_from_this(c),
+          queue(c.queue),
+          name(c.name),
+          callbacks(c.callbacks),
+          uniqueCallbackId(c.uniqueCallbackId),
+          pipelineEventDispatcher(c.pipelineEventDispatcher) {};
     MessageQueue(MessageQueue&& m) noexcept
         : enable_shared_from_this(m),
           queue(std::move(m.queue)),
           name(std::move(m.name)),
           callbacks(std::move(m.callbacks)),
-          uniqueCallbackId(m.uniqueCallbackId){};
+          uniqueCallbackId(m.uniqueCallbackId),
+          pipelineEventDispatcher(m.pipelineEventDispatcher) {};
 
     MessageQueue& operator=(const MessageQueue& c) {
         queue = c.queue;
         name = c.name;
         callbacks = c.callbacks;
         uniqueCallbackId = c.uniqueCallbackId;
+        pipelineEventDispatcher = c.pipelineEventDispatcher;
         return *this;
     }
 
@@ -70,6 +77,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         name = std::move(m.name);
         callbacks = std::move(m.callbacks);
         uniqueCallbackId = m.uniqueCallbackId;
+        pipelineEventDispatcher = m.pipelineEventDispatcher;
         return *this;
     }
 

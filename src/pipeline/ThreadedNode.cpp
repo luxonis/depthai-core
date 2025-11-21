@@ -31,7 +31,6 @@ void ThreadedNode::initPipelineEventDispatcher(int64_t nodeId) {
 ThreadedNode::~ThreadedNode() = default;
 
 void ThreadedNode::start() {
-    initPipelineEventDispatcher(this->id);
     // A node should not be started if it is already running
     // We would be creating multiple threads for the same node
     DAI_CHECK_V(!isRunning(), "Node with id {} is already running. Cannot start it again. Node name: {}", id, getName());

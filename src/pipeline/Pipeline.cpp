@@ -877,7 +877,9 @@ void PipelineImpl::build() {
         }
     }
 
+    // Finish setting up pipeline debugging
     if(buildingOnHost && enablePipelineDebugging) {
+        // Enable events on xlink bridges
         std::shared_ptr<node::internal::PipelineEventAggregation> pipelineEventAggHost = nullptr;
         std::shared_ptr<node::internal::PipelineEventAggregation> pipelineEventAggDevice = nullptr;
         for(const auto& node : getAllNodes()) {
@@ -906,6 +908,14 @@ void PipelineImpl::build() {
             nodes.xLinkIn->pipelineEventOutput.link(pipelineEventAggDevice->inputs[fmt::format("{} - {}", nodes.xLinkIn->getName(), nodes.xLinkIn->id)]);
             nodes.xLinkOutHost->pipelineEventOutput.link(
                 pipelineEventAggHost->inputs[fmt::format("{} - {}", nodes.xLinkOutHost->getName(), nodes.xLinkOutHost->id)]);
+        }
+    }
+
+    // Initialize event dispatchers
+    for(const auto& node : getAllNodes()) {
+        auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(node);
+        if(threadedNode) {
+            threadedNode->initPipelineEventDispatcher(threadedNode->id);
         }
     }
 
