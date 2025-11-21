@@ -8,9 +8,8 @@ import time
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    # Enter your hub team's api-key
+    # Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or use the EventsManager setToken() method.
     eventMan = dai.EventsManager()
-    eventMan.setToken("")
 
     cameraNode = pipeline.create(dai.node.Camera).build()
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
@@ -31,7 +30,7 @@ with dai.Pipeline() as pipeline:
 
 
     while pipeline.isRunning():
-        if cv2.waitKey(1) == ord("q"):
+        if cv2.waitKey(1) != -1:
             pipeline.stop()
             break
 

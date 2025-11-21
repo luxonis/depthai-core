@@ -15,9 +15,8 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
 int main() {
     dai::Pipeline pipeline(true);
 
-    // Enter your hub team's api-key
+    // Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or use the EventsManager setToken() method.
     auto eventsManager = std::make_shared<dai::utility::EventsManager>();
-    eventsManager->setToken("");
 
     auto camRgb = pipeline.create<dai::node::Camera>()->build();
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
@@ -35,7 +34,7 @@ int main() {
 
     int counter = 0;
     while(pipeline.isRunning()) {
-        if(cv::waitKey(1) == 'q') {
+        if(cv::waitKey(1) != -1) {
             break;
         }
 
