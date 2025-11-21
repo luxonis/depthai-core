@@ -35,31 +35,41 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     spatialDetectionNetwork
         // Copied from NN node
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, NNModelDescription, std::optional<float>>(
-                 &SpatialDetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&,
+                               const std::shared_ptr<StereoDepth>&,
+                               NNModelDescription,
+                               std::optional<float>,
+                               std::optional<dai::ImgResizeMode>>(&SpatialDetectionNetwork::build),
              py::arg("input"),
              py::arg("stereo"),
              py::arg("model"),
              py::arg("fps") = std::nullopt,
+             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
              DOC(dai, node, SpatialDetectionNetwork, build))
         .def("build",
              ([](SpatialDetectionNetwork& self,
                  const std::shared_ptr<Camera>& input,
                  const std::shared_ptr<StereoDepth>& stereo,
                  std::string model,
-                 std::optional<float> fps) { return self.build(input, stereo, NNModelDescription{model}, fps); }),
+                 std::optional<float> fps,
+                 std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, stereo, NNModelDescription{model}, fps, resizeMode); }),
              py::arg("input"),
              py::arg("stereo"),
              py::arg("model"),
              py::arg("fps") = std::nullopt,
+             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
              DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, const NNArchive&, std::optional<float>>(
-                 &SpatialDetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&,
+                               const std::shared_ptr<StereoDepth>&,
+                               const NNArchive&,
+                               std::optional<float>,
+                               std::optional<dai::ImgResizeMode>>(&SpatialDetectionNetwork::build),
              py::arg("input"),
              py::arg("stereo"),
              py::arg("nnArchive"),
              py::arg("fps") = std::nullopt,
+             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
              DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
