@@ -1164,23 +1164,18 @@ void PipelineImpl::setupPipelineDebugging() {
     enablePipelineDebugging = enablePipelineDebugging || utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
     if(enablePipelineDebugging) {
         // Check if any nodes are on host or device
-        bool hasHostNodes = false;
         bool hasDeviceNodes = false;
         for(const auto& node : getAllNodes()) {
             if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
 
-            if(node->runOnHost()) {
-                hasHostNodes = true;
-            } else {
+            if(!node->runOnHost()) {
                 hasDeviceNodes = true;
             }
         }
         std::shared_ptr<node::internal::PipelineEventAggregation> hostEventAgg = nullptr;
         std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
-        if(hasHostNodes) {
-            hostEventAgg = parent.create<node::internal::PipelineEventAggregation>();
-            hostEventAgg->setRunOnHost(true);
-        }
+        hostEventAgg = parent.create<node::internal::PipelineEventAggregation>();
+        hostEventAgg->setRunOnHost(true);
         if(hasDeviceNodes) {
             deviceEventAgg = parent.create<node::internal::PipelineEventAggregation>();
             deviceEventAgg->setRunOnHost(false);
@@ -1197,7 +1192,7 @@ void PipelineImpl::setupPipelineDebugging() {
                 }
             }
         }
-        auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, hasHostNodes);
+        auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, true);
         if(deviceEventAgg) {
             deviceEventAgg->out.link(stateMerge->inputDevice);
             stateMerge->outRequest.link(deviceEventAgg->request);
