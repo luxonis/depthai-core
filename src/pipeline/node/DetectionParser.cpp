@@ -159,7 +159,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             std::vector<std::vector<float>> layerOut(anchorsIn[layer].size());
             for(size_t anchor = 0; anchor < layerOut.size(); ++anchor) {
                 std::vector<float> anchorOut(anchorsIn[layer][anchor].size());
-                if (anchorOut.size() != 2) {
+                if(anchorOut.size() != 2) {
                     throw std::runtime_error("Each anchor should have exactly 2 dimensions (width and height).");
                 }
                 for(size_t dim = 0; dim < anchorOut.size(); ++dim) {
