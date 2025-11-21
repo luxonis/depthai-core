@@ -24,8 +24,6 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
     py::class_<StereoDepthConfig::AlgorithmControl> algorithmControl(stereoDepthConfig, "AlgorithmControl", DOC(dai, StereoDepthConfig, AlgorithmControl));
     py::enum_<StereoDepthConfig::AlgorithmControl::DepthAlign> depthAlign(
         algorithmControl, "DepthAlign", DOC(dai, StereoDepthConfig, AlgorithmControl, DepthAlign));
-    py::enum_<StereoDepthConfig::AlgorithmControl::DepthUnit> depthUnit(
-        algorithmControl, "DepthUnit", DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit));
     py::class_<StereoDepthConfig::PostProcessing> postProcessing(stereoDepthConfig, "PostProcessing", DOC(dai, StereoDepthConfig, PostProcessing));
     py::class_<StereoDepthConfig::PostProcessing::ThresholdFilter> thresholdFilter(
         postProcessing, "ThresholdFilter", DOC(dai, StereoDepthConfig, PostProcessing, ThresholdFilter));
@@ -75,12 +73,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
 
     // m.attr("StereoDepthProperties").attr("DepthAlign") = depthAlign;
 
-    depthUnit.value("METER", StereoDepthConfig::AlgorithmControl::DepthUnit::METER, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit, METER))
-        .value("CENTIMETER", StereoDepthConfig::AlgorithmControl::DepthUnit::CENTIMETER, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit, CENTIMETER))
-        .value("MILLIMETER", StereoDepthConfig::AlgorithmControl::DepthUnit::MILLIMETER, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit, MILLIMETER))
-        .value("INCH", StereoDepthConfig::AlgorithmControl::DepthUnit::INCH, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit, INCH))
-        .value("FOOT", StereoDepthConfig::AlgorithmControl::DepthUnit::FOOT, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit, FOOT))
-        .value("CUSTOM", StereoDepthConfig::AlgorithmControl::DepthUnit::CUSTOM, DOC(dai, StereoDepthConfig, AlgorithmControl, DepthUnit, CUSTOM));
+    algorithmControl.attr("DepthUnit") = m.attr("DepthUnit");
 
     filterEnum.value("NONE", StereoDepthConfig::PostProcessing::Filter::NONE, DOC(dai, StereoDepthConfig, PostProcessing, Filter, NONE))
         .value("DECIMATION", StereoDepthConfig::PostProcessing::Filter::DECIMATION, DOC(dai, StereoDepthConfig, PostProcessing, Filter, DECIMATION))
@@ -338,6 +331,8 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def("getMaxDisparity", &StereoDepthConfig::getMaxDisparity, DOC(dai, StereoDepthConfig, getMaxDisparity))
         .def("setDepthUnit", &StereoDepthConfig::setDepthUnit, DOC(dai, StereoDepthConfig, setDepthUnit))
         .def("getDepthUnit", &StereoDepthConfig::getDepthUnit, DOC(dai, StereoDepthConfig, getDepthUnit))
+        .def("setCustomDepthUnitMultiplier", &StereoDepthConfig::setCustomDepthUnitMultiplier, DOC(dai, StereoDepthConfig, setCustomDepthUnitMultiplier))
+        .def("getCustomDepthUnitMultiplier", &StereoDepthConfig::getCustomDepthUnitMultiplier, DOC(dai, StereoDepthConfig, getCustomDepthUnitMultiplier))
         .def("setDisparityShift", &StereoDepthConfig::setDisparityShift, DOC(dai, StereoDepthConfig, setDisparityShift))
         .def("setNumInvalidateEdgePixels", &StereoDepthConfig::setNumInvalidateEdgePixels, DOC(dai, StereoDepthConfig, setNumInvalidateEdgePixels))
         // .def("set",                     &StereoDepthConfig::set, py::arg("config"), DOC(dai, StereoDepthConfig, set))

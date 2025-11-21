@@ -187,7 +187,13 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
     int getNumInferenceThreads();
-    // TODO add getters for other API
+
+    /**
+     * Set model from Device Model Zoo
+     * @param model DeviceModelZoo model enum
+     * @note Only applicable for RVC4 devices with OS 1.20.5 or higher
+     */
+    void setModelFromDeviceZoo(DeviceModelZoo model);
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);
