@@ -75,13 +75,12 @@ void convexHull(std::vector<Point2f>& _points, std::vector<Point2f>& _hull) {
 
     std::vector<Point2f*> _pointer(total);
     std::vector<int> _stack(total + 2), _hullbuf(total);
-    Point2f** pointer = _pointer.data();
-    Point2f** pointerf = (Point2f**)pointer;
+    Point2f** pointerf = _pointer.data();
     Point2f* data0 = _points.data();
     int* stack = _stack.data();
     int* hullbuf = _hullbuf.data();
 
-    for(i = 0; i < total; i++) pointer[i] = &data0[i];
+    for(i = 0; i < total; i++) pointerf[i] = &data0[i];
 
     // sort the point set by x-coordinate, find min and max y
     std::sort(pointerf, pointerf + total, [](const Point2f* p1, const Point2f* p2) {
@@ -95,7 +94,7 @@ void convexHull(std::vector<Point2f>& _points, std::vector<Point2f>& _hull) {
         if(pointerf[maxy_ind]->y < y) maxy_ind = i;
     }
 
-    if(pointer[0]->x == pointer[total - 1]->x && pointer[0]->y == pointer[total - 1]->y) {
+    if(pointerf[0]->x == pointerf[total - 1]->x && pointerf[0]->y == pointerf[total - 1]->y) {
         hullbuf[nout++] = 0;
     } else {
         // upper half
@@ -108,8 +107,8 @@ void convexHull(std::vector<Point2f>& _points, std::vector<Point2f>& _hull) {
         std::swap(tl_stack, tr_stack);
         std::swap(tl_count, tr_count);
 
-        for(i = 0; i < tl_count - 1; i++) hullbuf[nout++] = int(pointer[tl_stack[i]] - data0);
-        for(i = tr_count - 1; i > 0; i--) hullbuf[nout++] = int(pointer[tr_stack[i]] - data0);
+        for(i = 0; i < tl_count - 1; i++) hullbuf[nout++] = int(pointerf[tl_stack[i]] - data0);
+        for(i = tr_count - 1; i > 0; i--) hullbuf[nout++] = int(pointerf[tr_stack[i]] - data0);
         int stop_idx = tr_count > 2 ? tr_stack[1] : tl_count > 2 ? tl_stack[tl_count - 2] : -1;
 
         // lower half
@@ -120,7 +119,7 @@ void convexHull(std::vector<Point2f>& _points, std::vector<Point2f>& _hull) {
 
         if(stop_idx >= 0) {
             int check_idx = bl_count > 2 ? bl_stack[1] : bl_count + br_count > 2 ? br_stack[2 - bl_count] : -1;
-            if(check_idx == stop_idx || (check_idx >= 0 && pointer[check_idx]->x == pointer[stop_idx]->x && pointer[check_idx]->y == pointer[stop_idx]->y)) {
+            if(check_idx == stop_idx || (check_idx >= 0 && pointerf[check_idx]->x == pointerf[stop_idx]->x && pointerf[check_idx]->y == pointerf[stop_idx]->y)) {
                 // if all the points lie on the same line, then
                 // the bottom part of the convex hull is the mirrored top part
                 // (except the exteme points).
@@ -129,8 +128,8 @@ void convexHull(std::vector<Point2f>& _points, std::vector<Point2f>& _hull) {
             }
         }
 
-        for(i = 0; i < bl_count - 1; i++) hullbuf[nout++] = int(pointer[bl_stack[i]] - data0);
-        for(i = br_count - 1; i > 0; i--) hullbuf[nout++] = int(pointer[br_stack[i]] - data0);
+        for(i = 0; i < bl_count - 1; i++) hullbuf[nout++] = int(pointerf[bl_stack[i]] - data0);
+        for(i = br_count - 1; i > 0; i--) hullbuf[nout++] = int(pointerf[br_stack[i]] - data0);
 
         // try to make the convex hull indices form
         // an ascending or descending sequence by the cyclic
