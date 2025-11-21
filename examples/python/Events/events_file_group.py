@@ -3,7 +3,6 @@
 import cv2
 import depthai as dai
 import numpy as np
-import time
 
 
 # Create pipeline
@@ -29,6 +28,7 @@ with dai.Pipeline() as pipeline:
         return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
 
 
+    counter = 0
     while pipeline.isRunning():
         if cv2.waitKey(1) != -1:
             pipeline.stop()
@@ -68,6 +68,20 @@ with dai.Pipeline() as pipeline:
             # Show the frame
             cv2.imshow("rgb", frame)
 
-        # Trigger sendSnap()
-        if cv2.waitKey(1) == ord("s"):
-            eventMan.sendSnap("ImageDetection", None, inRgb, inDet, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"})
+        # Suppose we are only interested in the detections with confidence between 50% and 60%
+        borderDetectionsList = []
+        for detection in inDet.detections:
+            if detection.confidence > 0.5 and detection.confidence < 0.6:
+                borderDetectionsList.append(detection)
+
+        # Are there any border detections
+        if len(borderDetectionsList) > 0:
+            borderDetections = dai.ImgDetections()
+            borderDetections.detections = borderDetectionsList
+            fileName = f"ImageDetection_{counter}"
+
+            fileGroup = dai.FileGroup()
+            fileGroup.addImageDetectionsPair(fileName, inRgb, borderDetections)
+            eventMan.sendSnap("LowConfidenceDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"})
+
+            counter += 1
