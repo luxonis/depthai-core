@@ -56,7 +56,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("input"),
              py::arg("model"),
              py::arg("fps") = std::nullopt,
-             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, DetectionNetwork, build))
         .def("build",
              ([](DetectionNetwork& self,
@@ -67,7 +67,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("input"),
              py::arg("model"),
              py::arg("fps") = std::nullopt,
-             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, DetectionNetwork, build))
         .def("build",
              py::overload_cast<const std::shared_ptr<Camera>&, const NNArchive&, std::optional<float>, std::optional<dai::ImgResizeMode>>(
@@ -75,7 +75,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("input"),
              py::arg("nnArchive"),
              py::arg("fps") = std::nullopt,
-             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, DetectionNetwork, build, 3))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def("build",
@@ -84,7 +84,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("input"),
              py::arg("model"),
              py::arg("fps") = std::nullopt,
-             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, DetectionNetwork, build, 4))
         .def("build",
              py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>, std::optional<dai::ImgResizeMode>>(
@@ -92,7 +92,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("input"),
              py::arg("nnArchive"),
              py::arg("fps") = std::nullopt,
-             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, DetectionNetwork, build, 5))
 #endif
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {

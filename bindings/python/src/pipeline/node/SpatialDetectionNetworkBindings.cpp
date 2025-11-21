@@ -44,7 +44,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("stereo"),
              py::arg("model"),
              py::arg("fps") = std::nullopt,
-             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, SpatialDetectionNetwork, build))
         .def("build",
              ([](SpatialDetectionNetwork& self,
@@ -57,7 +57,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("stereo"),
              py::arg("model"),
              py::arg("fps") = std::nullopt,
-             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("build",
              py::overload_cast<const std::shared_ptr<Camera>&,
@@ -69,7 +69,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("stereo"),
              py::arg("nnArchive"),
              py::arg("fps") = std::nullopt,
-             py::arg("resizeMode") = dai::ImgResizeMode::CROP,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
