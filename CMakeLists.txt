@@ -66,8 +66,8 @@ endif()
 
 
 # Create depthai project
-project(depthai VERSION "3.1.0" LANGUAGES CXX C)
-set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
+project(depthai VERSION "3.2.0" LANGUAGES CXX C)
+set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
 # Set DEPTHAI_VERSION universally, not conditionally
