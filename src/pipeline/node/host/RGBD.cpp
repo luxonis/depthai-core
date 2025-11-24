@@ -14,6 +14,7 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/ImageAlign.hpp"
+#include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
@@ -328,6 +329,16 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     return build();
 }
 
+std::shared_ptr<RGBD> RGBD::build(const std::shared_ptr<Camera>& camera, const std::shared_ptr<StereoDepth>& stereo) {
+    alignDepth(stereo, camera);
+    return build();
+}
+
+std::shared_ptr<RGBD> RGBD::build(const std::shared_ptr<Camera>& camera, const std::shared_ptr<NeuralDepth>& neuralDepth) {
+    alignDepth(neuralDepth, camera);
+    return build();
+}
+
 void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     // Initialize the camera intrinsics
     // Check if width, width and cameraID match
@@ -458,6 +469,77 @@ void RGBD::useGPU(uint32_t device) {
 }
 void RGBD::printDevices() {
     pimpl->printDevices();
+}
+
+void RGBD::alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera) {
+    auto pipeline = getParentPipeline();
+    auto device = pipeline.getDefaultDevice();
+
+    std::optional<ImgFrame::Type> colorCamOutputType = ImgFrame::Type::RGB888i;
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    colorCamOutputType = std::nullopt;  // native output for each platform
+#endif
+
+    if(device) {
+        auto platform = device->getPlatform();
+
+        // Get the size from the stereo depth output
+        auto size = std::make_pair(640, 400);  // Default size, should match stereo
+
+        auto* colorCamOutput = camera->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, std::nullopt, true);
+
+        if(platform == Platform::RVC4) {
+            auto align = pipeline.create<node::ImageAlign>();
+            colorCamOutput->link(inColor);
+            stereo->depth.link(align->input);
+            colorCamOutput->link(align->inputAlignTo);
+            align->outputAligned.link(inDepth);
+        } else if(platform == Platform::RVC2) {
+            colorCamOutput->link(inColor);
+            colorCamOutput->link(stereo->inputAlignTo);
+            stereo->depth.link(inDepth);
+        } else {
+            throw std::runtime_error("Unsupported platform for RGBD with StereoDepth");
+        }
+    } else {
+        // Fallback without device info
+        auto size = std::make_pair(640, 400);
+        auto* colorCamOutput = camera->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, std::nullopt, true);
+        colorCamOutput->link(inColor);
+        stereo->depth.link(inDepth);
+        stereo->setDepthAlign(camera->getBoardSocket());
+    }
+}
+
+void RGBD::alignDepth(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera) {
+    auto pipeline = getParentPipeline();
+    auto device = pipeline.getDefaultDevice();
+
+    std::optional<ImgFrame::Type> colorCamOutputType = ImgFrame::Type::RGB888i;
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    colorCamOutputType = std::nullopt;  // native output for each platform
+#endif
+
+    if(!device) {
+        throw std::runtime_error("RGBD with NeuralDepth requires device to be set");
+    }
+
+    auto platform = device->getPlatform();
+
+    // Get the size from the neural depth output
+    auto size = std::make_pair(640, 400);  // Default size, should match neural depth
+
+    auto* colorCamOutput = camera->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, std::nullopt, true);
+
+    if(platform == Platform::RVC4) {
+        auto align = pipeline.create<node::ImageAlign>();
+        colorCamOutput->link(inColor);
+        neuralDepth->depth.link(align->input);
+        colorCamOutput->link(align->inputAlignTo);
+        align->outputAligned.link(inDepth);
+    } else {
+        throw std::runtime_error("NeuralDepth with RGBD currently only supported on RVC4 platform");
+    }
 }
 
 }  // namespace node

@@ -5,6 +5,7 @@
 #include "../../utility/ErrorMacros.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
+#include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "openvino/BlobReader.hpp"
 #include "openvino/OpenVINO.hpp"
@@ -48,6 +49,24 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+                                                                        const std::shared_ptr<NeuralDepth>& neuralDepth,
+                                                                        NNModelDescription modelDesc,
+                                                                        std::optional<float> fps) {
+    auto nnArchive = createNNArchive(modelDesc);
+    return build(camera, neuralDepth, nnArchive, fps);
+}
+
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+                                                                        const std::shared_ptr<NeuralDepth>& neuralDepth,
+                                                                        const NNArchive& nnArchive,
+                                                                        std::optional<float> fps) {
+    neuralNetwork->build(camera, nnArchive, fps);
+    detectionParser->setNNArchive(nnArchive);
+    alignDepth(neuralDepth, camera);
+    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
+}
+
 NNArchive SpatialDetectionNetwork::createNNArchive(NNModelDescription& modelDesc) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
@@ -86,6 +105,32 @@ void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<StereoDepth>& ste
     } else {
         stereo->depth.link(inputDepth);
         stereo->setDepthAlign(camera->getBoardSocket());
+    }
+}
+
+void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera) {
+    auto device = getDevice();
+    if(device) {
+        auto platform = device->getPlatform();
+        switch(platform) {
+            case Platform::RVC4: {
+                Subnode<ImageAlign>& align = *depthAlign;
+                neuralDepth->depth.link(align->input);
+                neuralNetwork->passthrough.link(align->inputAlignTo);
+                align->outputAligned.link(inputDepth);
+            } break;
+            case Platform::RVC2:
+                // NeuralDepth doesn't have inputAlignTo like StereoDepth, so we need to use ImageAlign
+                throw std::runtime_error("NeuralDepth with SpatialDetectionNetwork on RVC2 requires manual ImageAlign node setup");
+                break;
+            case Platform::RVC3:
+            default:
+                throw std::runtime_error("Unsupported platform");
+                break;
+        }
+    } else {
+        // Without device info, we can't automatically set up alignment for NeuralDepth
+        throw std::runtime_error("NeuralDepth with SpatialDetectionNetwork requires device to be set");
     }
 }
 // -------------------------------------------------------------------
