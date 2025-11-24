@@ -272,3 +272,254 @@ TEST_CASE("Camera pool sizes") {
         }
     }
 }
+
+inline bool isRvc2(std::shared_ptr<dai::Device> d) {
+    try {
+        return d->getDeviceName().find("OAK-") != std::string::npos;
+    } catch(...) {
+        return false;
+    }
+}
+
+std::pair<int, int> getResolutionSizeFromConfigName(const std::string& name) {
+    static const std::unordered_map<std::string, std::pair<int, int>> resolutionSizeMap = {
+        {"LCM48", {4056, 3040}},
+        {"IMX378", {4056, 3040}},
+        {"OV9282", {1280, 800}},
+        {"IMX214", {4208, 3120}},
+        {"IMX477", {4056, 3040}},
+        {"OV9782", {1280, 800}},
+        {"AR0234", {1920, 1200}},
+        {"IMX582", {4000, 3000}},
+        {"IMX462", {1920, 1080}},
+        {"IMX577", {4056, 3040}},
+        {"IMX586", {4056, 3040}},
+        {"S5K33D", {1280, 800}},
+        {"IMX334", {3840, 2160}},
+        {"IMX412", {4056, 3040}},
+        {"OV2735", {1920, 1080}},
+        {"SC8238", {3840, 2160}},
+    };
+
+    auto it = resolutionSizeMap.find(name);
+    if(it != resolutionSizeMap.end()) {
+        return it->second;
+    }
+
+    std::cerr << "Warning: Unknown camera config name '" << name << "', defaulting to 1920x1080 (1080P)" << std::endl;
+    return {1920, 1080};
+}
+
+TEST_CASE("Camera: Test isp output - Correct resolution - full resolution ") {
+    auto device = std::make_shared<dai::Device>();
+    if(!isRvc2(device)) {
+        WARN("Skipping: not running on RVC2");
+        return;
+    }
+    dai::Pipeline p(device);
+
+    auto cameraFeatures = device->getConnectedCameraFeatures();
+
+    std::vector<std::shared_ptr<dai::MessageQueue>> outputQueues;
+    std::vector<std::shared_ptr<dai::MessageQueue>> outputIspQueues;
+
+    for(const auto& feature : cameraFeatures) {
+        auto resolutionIspExpected = getResolutionSizeFromConfigName(feature.sensorName);
+        int width = resolutionIspExpected.first - 100;
+        int height = resolutionIspExpected.second - 100;
+
+        auto camera = p.create<dai::node::Camera>()->build(feature.socket);
+
+        outputQueues.push_back(camera->requestOutput({width, height})->createOutputQueue());
+        outputIspQueues.push_back(camera->requestIspOutput()->createOutputQueue());
+    }
+
+    p.start();
+
+    int i = 0;
+    for(const auto& feature : cameraFeatures) {
+        auto outputQueue = outputQueues[i];
+        auto outputIspQueue = outputIspQueues[i];
+
+        auto resolutionIspExpected = getResolutionSizeFromConfigName(feature.sensorName);
+        int width = resolutionIspExpected.first - 100;
+        int height = resolutionIspExpected.second - 100;
+
+        auto output = outputQueue->get<dai::ImgFrame>();
+        auto outputIsp = outputIspQueue->get<dai::ImgFrame>();
+
+        REQUIRE(output->getWidth() == width);
+        REQUIRE(output->getHeight() == height);
+
+        REQUIRE(outputIsp->getWidth() == resolutionIspExpected.first);
+        REQUIRE(outputIsp->getHeight() == resolutionIspExpected.second);
+
+        i++;
+    }
+}
+
+TEST_CASE("Camera: Test isp output - Correct resolution - half resolution") {
+    auto device = std::make_shared<dai::Device>();
+    if(!isRvc2(device)) {
+        WARN("Skipping: not running on RVC2");
+        return;
+    }
+    dai::Pipeline p(device);
+
+    auto cameraFeatures = device->getConnectedCameraFeatures();
+
+    std::vector<std::shared_ptr<dai::MessageQueue>> outputQueues;
+    std::vector<std::shared_ptr<dai::MessageQueue>> outputIspQueues;
+
+    for(const auto& feature : cameraFeatures) {
+        if(feature.socket == dai::CameraBoardSocket::CAM_A) {
+            continue;  // skip CAM_A if desired
+        }
+        auto resolutionIspExpected = getResolutionSizeFromConfigName(feature.sensorName);
+        int width = resolutionIspExpected.first / 2 - 100;
+        int height = resolutionIspExpected.second / 2 - 100;
+
+        auto camera = p.create<dai::node::Camera>()->build(feature.socket);
+
+        outputQueues.push_back(camera->requestOutput({width, height})->createOutputQueue());
+        outputIspQueues.push_back(camera->requestIspOutput()->createOutputQueue());
+    }
+
+    p.start();
+
+    int i = 0;
+    for(const auto& feature : cameraFeatures) {
+        if(feature.socket == dai::CameraBoardSocket::CAM_A) {
+            continue;  // skip CAM_A if desired
+        }
+
+        auto outputQueue = outputQueues[i];
+        auto outputIspQueue = outputIspQueues[i];
+
+        auto resolutionIspExpected = getResolutionSizeFromConfigName(feature.sensorName);
+        int width = resolutionIspExpected.first / 2 - 100;
+        int height = resolutionIspExpected.second / 2 - 100;
+
+        auto output = outputQueue->get<dai::ImgFrame>();
+        auto outputIsp = outputIspQueue->get<dai::ImgFrame>();
+
+        REQUIRE(output->getWidth() == width);
+        REQUIRE(output->getHeight() == height);
+
+        REQUIRE(outputIsp->getWidth() == resolutionIspExpected.first / 2);
+        REQUIRE(outputIsp->getHeight() == resolutionIspExpected.second / 2);
+
+        i++;
+    }
+}
+
+TEST_CASE("Camera: Test isp output - Correct fps2") {
+    auto device = std::make_shared<dai::Device>();
+    dai::Pipeline p(device);
+
+    auto cameraFeatures = device->getConnectedCameraFeatures();
+
+    if(cameraFeatures.size() == 0) {
+        return;
+    }
+
+    const auto& feature = cameraFeatures[0];
+    auto resolutionIspExpected = getResolutionSizeFromConfigName(feature.sensorName);
+    auto camera = p.create<dai::node::Camera>()->build(feature.socket);
+
+    int width = 200;
+    int height = 200;
+
+    auto outputQueue = camera->requestOutput({width, height}, std::nullopt, dai::ImgResizeMode::CROP, 30., std::nullopt)->createOutputQueue();
+    auto outputIspQueue = camera->requestIspOutput(10.)->createOutputQueue();
+
+    p.start();
+    int outCounter = 0;
+    int outIspCounter = 0;
+
+    // wait for the first img
+    outputQueue->get<dai::ImgFrame>();
+    outputIspQueue->get<dai::ImgFrame>();
+
+    using clock = std::chrono::steady_clock;
+    auto startTime = clock::now();
+    auto testDuration = std::chrono::seconds(10);
+
+    while(true) {
+        auto out = outputQueue->tryGet<dai::ImgFrame>();
+        auto outIsp = outputIspQueue->tryGet<dai::ImgFrame>();
+        if(out) {
+            outCounter += 1;
+        }
+        if(outIsp) {
+            outIspCounter += 1;
+        }
+
+        auto now = clock::now();
+        if(now - startTime > testDuration) {
+            break;
+        }
+    }
+    std::cout << testDuration.count() << "\n";
+    double fps = static_cast<double>(outCounter) / testDuration.count();
+    double fpsIsp = static_cast<double>(outIspCounter) / testDuration.count();
+    REQUIRE(fps > 26.0);
+    REQUIRE(fps < 34.0);
+    REQUIRE(fpsIsp > 6.0);
+    REQUIRE(fpsIsp < 14.0);
+}
+
+TEST_CASE("Camera: Test isp output - Correct fps") {
+    auto device = std::make_shared<dai::Device>();
+    dai::Pipeline p(device);
+
+    auto cameraFeatures = device->getConnectedCameraFeatures();
+
+    if(cameraFeatures.size() == 0) {
+        return;
+    }
+
+    const auto& feature = cameraFeatures[0];
+    auto resolutionIspExpected = getResolutionSizeFromConfigName(feature.sensorName);
+    auto camera = p.create<dai::node::Camera>()->build(feature.socket);
+
+    int width = 200;
+    int height = 200;
+
+    auto outputQueue = camera->requestOutput({width, height}, std::nullopt, dai::ImgResizeMode::CROP, 10., std::nullopt)->createOutputQueue();
+    auto outputIspQueue = camera->requestIspOutput(30.)->createOutputQueue();
+
+    p.start();
+    int outCounter = 0;
+    int outIspCounter = 0;
+
+    // wait for the first img
+    outputQueue->get<dai::ImgFrame>();
+    outputIspQueue->get<dai::ImgFrame>();
+
+    using clock = std::chrono::steady_clock;
+    auto startTime = clock::now();
+    auto testDuration = std::chrono::seconds(10);
+
+    while(true) {
+        auto out = outputQueue->tryGet<dai::ImgFrame>();
+        auto outIsp = outputIspQueue->tryGet<dai::ImgFrame>();
+        if(out) {
+            outCounter += 1;
+        }
+        if(outIsp) {
+            outIspCounter += 1;
+        }
+
+        auto now = clock::now();
+        if(now - startTime > testDuration) {
+            break;
+        }
+    }
+    double fps = static_cast<double>(outCounter) / testDuration.count();
+    double fpsIsp = static_cast<double>(outIspCounter) / testDuration.count();
+    REQUIRE(fps > 6.0);
+    REQUIRE(fps < 14.0);
+    REQUIRE(fpsIsp > 6.0);
+    REQUIRE(fpsIsp < 14.0);
+}
