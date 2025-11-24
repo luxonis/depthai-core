@@ -39,6 +39,7 @@ class NNDataViewer {
                 }
                 if(tensor.strides.size() != 4) {
                     logger->error("Invalid number of strides: {}, expected: {}", tensor.strides.size(), 4);
+                    return false;
                 }
                 factorsBefore.c = tensor.strides[1];
                 factorsBefore.h = tensor.strides[2];
@@ -51,6 +52,7 @@ class NNDataViewer {
                 }
                 if(tensor.strides.size() != 4) {
                     logger->error("Invalid number of strides: {}, expected: {}", tensor.strides.size(), 4);
+                    return false;
                 }
                 factorsBefore.h = tensor.strides[1];
                 factorsBefore.w = tensor.strides[2];
