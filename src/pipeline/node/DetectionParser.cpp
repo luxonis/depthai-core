@@ -376,9 +376,6 @@ std::vector<int> DetectionParser::getStrides() const {
 }
 
 void DetectionParser::setRunOnHost(bool runOnHost) {
-    if(runOnHost) {
-        pimpl->logger->warn("Detection parser set to run on host.");
-    }
     runOnHostVar = runOnHost;
 }
 
