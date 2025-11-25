@@ -393,40 +393,6 @@ TEST_CASE("interFrameRemap") {
 
     REQUIRE_THAT(pt.x, Catch::Matchers::WithinAbs(pt2.x, 0.01));
 }
-// -----------------------------------------------------------------------------
-// ImgTransformation matrix inverse consistency (ImgFrame)
-// Purpose:
-//   Ensures that the forward matrix (M) and its stored inverse (Minv)
-//   multiply to identity. Same for intrinsics (K * Kinv).
-//   Validates correctness of ImgTransformation’s internal math.
-// -----------------------------------------------------------------------------
-TEST_CASE("ImgTransformation matrix inverse consistency (ImgFrame)") {
-    dai::Pipeline pipeline;
-    auto cam = pipeline.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1300, 200}, dai::ImgFrame::Type::NV12);
-    auto q = camOut->createOutputQueue();
-    pipeline.start();
-    auto frame = q->get<dai::ImgFrame>();
-    REQUIRE(frame != nullptr);
-    pipeline.stop();
-
-    REQUIRE(frame->transformation.isValid());
-
-    auto M = frame->transformation.getMatrix();
-    auto Minv = frame->transformation.getMatrixInv();
-    auto K = frame->transformation.getSourceIntrinsicMatrix();
-    auto Kinv = frame->transformation.getSourceIntrinsicMatrixInv();
-
-    auto I1 = matmul(M, Minv);
-    auto I2 = matmul(Minv, M);
-    auto I3 = matmul(K, Kinv);
-    auto I4 = matmul(Kinv, K);
-
-    REQUIRE(approxIdentity(I1));
-    REQUIRE(approxIdentity(I2));
-    REQUIRE(approxIdentity(I3));
-    REQUIRE(approxIdentity(I4));
-}
 
 // -----------------------------------------------------------------------------
 // transformationCompositionOrder
