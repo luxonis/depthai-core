@@ -92,6 +92,7 @@ class PipelineStateApi {
         return NodeStateApi(nodeId, pipelineStateOut, pipelineStateRequest);
     }
     void stateAsync(std::function<void(const PipelineState&)> callback, std::optional<PipelineEventAggregationConfig> config = std::nullopt);
+    void configureTraceOutput(uint32_t repeatIntervalSeconds);
 };
 
 }  // namespace dai

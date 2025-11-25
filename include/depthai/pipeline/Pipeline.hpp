@@ -130,6 +130,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool enablePipelineDebugging = false;
     std::shared_ptr<MessageQueue> pipelineStateOut;
     std::shared_ptr<InputQueue> pipelineStateRequest;
+    std::shared_ptr<MessageQueue> pipelineStateTraceOut;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;

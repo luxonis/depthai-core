@@ -959,9 +959,16 @@ void PipelineImpl::start() {
         defaultDevice->pipelinePtr = weak;
     }
 
-    if(utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
-        getPipelineState().stateAsync(
-            [](const PipelineState& state) { Logging::getInstance().logger.trace("Pipeline state update: {}", state.toJson().dump()); });
+    if(buildingOnHost && utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
+        if(pipelineStateTraceOut) {
+            getPipelineState().configureTraceOutput(1);
+            pipelineStateTraceOut->addCallback([](const std::shared_ptr<ADatatype>& data) {
+                if(data) {
+                    auto state = std::dynamic_pointer_cast<const PipelineState>(data);
+                    if(state) Logging::getInstance().logger.trace("Pipeline state update: {}", state->toJson().dump());
+                }
+            });
+        }
     }
 }
 
@@ -1161,7 +1168,8 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
 
 void PipelineImpl::setupPipelineDebugging() {
     // Create pipeline event aggregator node and link
-    enablePipelineDebugging = enablePipelineDebugging || utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
+    bool envPipelineDebugging = utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
+    enablePipelineDebugging = enablePipelineDebugging || envPipelineDebugging;
     if(enablePipelineDebugging) {
         // Check if any nodes are on host or device
         bool hasDeviceNodes = false;
@@ -1176,9 +1184,11 @@ void PipelineImpl::setupPipelineDebugging() {
         std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
         hostEventAgg = parent.create<node::internal::PipelineEventAggregation>();
         hostEventAgg->setRunOnHost(true);
+        hostEventAgg->setTraceOutput(envPipelineDebugging);
         if(hasDeviceNodes) {
             deviceEventAgg = parent.create<node::internal::PipelineEventAggregation>();
             deviceEventAgg->setRunOnHost(false);
+            deviceEventAgg->setTraceOutput(envPipelineDebugging);
         }
         for(auto& node : getAllNodes()) {
             if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) continue;
@@ -1193,16 +1203,28 @@ void PipelineImpl::setupPipelineDebugging() {
             }
         }
         auto stateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, true);
+        std::shared_ptr<node::PipelineStateMerge> traceStateMerge;
+        if(envPipelineDebugging) {
+            traceStateMerge = parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, true);
+            traceStateMerge->setAllowConfiguration(false);
+        }
         if(deviceEventAgg) {
             deviceEventAgg->out.link(stateMerge->inputDevice);
             stateMerge->outRequest.link(deviceEventAgg->request);
+            if(envPipelineDebugging) {
+                deviceEventAgg->outTrace.link(traceStateMerge->inputDevice);
+            }
         }
         if(hostEventAgg) {
             hostEventAgg->out.link(stateMerge->inputHost);
             stateMerge->outRequest.link(hostEventAgg->request);
+            if(envPipelineDebugging) {
+                hostEventAgg->outTrace.link(traceStateMerge->inputHost);
+            }
         }
         pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
         pipelineStateRequest = stateMerge->request.createInputQueue();
+        if(envPipelineDebugging) pipelineStateTraceOut = traceStateMerge->out.createOutputQueue(1, false);
     }
 }
 

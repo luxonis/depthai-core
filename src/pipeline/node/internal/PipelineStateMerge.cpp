@@ -13,6 +13,11 @@ std::shared_ptr<PipelineStateMerge> PipelineStateMerge::build(bool hasDeviceNode
     return std::static_pointer_cast<PipelineStateMerge>(shared_from_this());
 }
 
+PipelineStateMerge& PipelineStateMerge::setAllowConfiguration(bool allow) {
+    this->allowConfiguration = allow;
+    return *this;
+}
+
 void mergeStates(std::shared_ptr<PipelineState>& outState, const std::shared_ptr<PipelineState>& inState) {
     for(const auto& [key, value] : inState->nodeStates) {
         if(outState->nodeStates.find(key) != outState->nodeStates.end()) {
@@ -32,7 +37,7 @@ void PipelineStateMerge::run() {
     while(mainLoop()) {
         auto outState = std::make_shared<PipelineState>();
         bool waitForMatch = false;
-        if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeatIntervalSeconds.has_value()) || request.has()) {
+        if(allowConfiguration && (!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeatIntervalSeconds.has_value()) || request.has())) {
             auto req = request.get<PipelineEventAggregationConfig>();
             if(req != nullptr) {
                 currentConfig = *req;

@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/internal/PipelineEventAggregation.hpp"
 
 #include <chrono>
+#include <optional>
 #include <shared_mutex>
 
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
@@ -464,6 +465,60 @@ bool PipelineEventAggregation::runOnHost() const {
     return runOnHostVar;
 }
 
+PipelineEventAggregation& PipelineEventAggregation::setTraceOutput(bool enable) {
+    properties.traceOutput = enable;
+    return *this;
+}
+
+std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHandler& handler, std::optional<PipelineEventAggregationConfig>& currentConfig, const uint32_t sequenceNum, bool sendEvents) {
+    auto outState = std::make_shared<PipelineState>();
+    bool updated = handler.getState(outState, sendEvents);
+    outState->sequenceNum = sequenceNum;
+    outState->configSequenceNum = currentConfig.has_value() ? currentConfig->sequenceNum : 0;
+    outState->setTimestamp(std::chrono::steady_clock::now());
+    outState->tsDevice = outState->ts;
+
+    if(!currentConfig->nodes.empty()) {
+        for(auto it = outState->nodeStates.begin(); it != outState->nodeStates.end();) {
+            auto nodeConfig = std::find_if(
+                currentConfig->nodes.begin(), currentConfig->nodes.end(), [&](const NodeEventAggregationConfig& cfg) { return cfg.nodeId == it->first; });
+            if(nodeConfig == currentConfig->nodes.end()) {
+                it = outState->nodeStates.erase(it);
+            } else {
+                if(nodeConfig->inputs.has_value()) {
+                    auto inputStates = it->second.inputStates;
+                    it->second.inputStates.clear();
+                    for(const auto& inputName : *nodeConfig->inputs) {
+                        if(inputStates.find(inputName) != inputStates.end()) {
+                            it->second.inputStates[inputName] = inputStates[inputName];
+                        }
+                    }
+                }
+                if(nodeConfig->outputs.has_value()) {
+                    auto outputStates = it->second.outputStates;
+                    it->second.outputStates.clear();
+                    for(const auto& outputName : *nodeConfig->outputs) {
+                        if(outputStates.find(outputName) != outputStates.end()) {
+                            it->second.outputStates[outputName] = outputStates[outputName];
+                        }
+                    }
+                }
+                if(nodeConfig->others.has_value()) {
+                    auto otherTimings = it->second.otherTimings;
+                    it->second.otherTimings.clear();
+                    for(const auto& otherName : *nodeConfig->others) {
+                        if(otherTimings.find(otherName) != otherTimings.end()) {
+                            it->second.otherTimings[otherName] = otherTimings[otherName];
+                        }
+                    }
+                }
+                ++it;
+            }
+        }
+    }
+    return {outState, updated};
+}
+
 void PipelineEventAggregation::run() {
     auto& logger = pimpl->logger;
 
@@ -471,10 +526,13 @@ void PipelineEventAggregation::run() {
     handler.run();
 
     std::optional<PipelineEventAggregationConfig> currentConfig;
+
+    std::optional<PipelineEventAggregationConfig> traceOutputConfig = std::nullopt;
+    std::thread traceOutputThread;
+
     uint32_t sequenceNum = 0;
     std::chrono::time_point<std::chrono::steady_clock> lastSentTime;
     while(mainLoop()) {
-        auto outState = std::make_shared<PipelineState>();
         bool gotConfig = false;
         if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeatIntervalSeconds.has_value()) || request.has()) {
             auto req = request.get<PipelineEventAggregationConfig>();
@@ -482,6 +540,21 @@ void PipelineEventAggregation::run() {
                 currentConfig = *req;
                 gotConfig = true;
             }
+        }
+        if(properties.traceOutput && !traceOutputConfig.has_value() && gotConfig && currentConfig->repeatIntervalSeconds.has_value()) {
+            traceOutputConfig = currentConfig;
+            traceOutputThread = std::thread([this, &handler, &traceOutputConfig]() {
+                uint32_t traceSequenceNum = 0;
+                PipelineEventHandler& traceHandler = handler;
+                std::optional<PipelineEventAggregationConfig> config = traceOutputConfig;
+                while(this->isRunning()) {
+                    auto start = std::chrono::steady_clock::now();
+                    auto [outState, updated] = makeOutputState(traceHandler, config, traceSequenceNum++, false);
+                    this->outTrace.send(outState);
+                    auto duration = std::chrono::steady_clock::now() - start;
+                    std::this_thread::sleep_for(std::chrono::seconds(config->repeatIntervalSeconds.value()) - duration);
+                }
+            });
         }
         if(gotConfig || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value())) {
             bool sendEvents = false;
@@ -493,51 +566,7 @@ void PipelineEventAggregation::run() {
                     }
                 }
             }
-            bool updated = handler.getState(outState, sendEvents);
-            outState->sequenceNum = sequenceNum++;
-            outState->configSequenceNum = currentConfig.has_value() ? currentConfig->sequenceNum : 0;
-            outState->setTimestamp(std::chrono::steady_clock::now());
-            outState->tsDevice = outState->ts;
-
-            if(!currentConfig->nodes.empty()) {
-                for(auto it = outState->nodeStates.begin(); it != outState->nodeStates.end();) {
-                    auto nodeConfig = std::find_if(currentConfig->nodes.begin(), currentConfig->nodes.end(), [&](const NodeEventAggregationConfig& cfg) {
-                        return cfg.nodeId == it->first;
-                    });
-                    if(nodeConfig == currentConfig->nodes.end()) {
-                        it = outState->nodeStates.erase(it);
-                    } else {
-                        if(nodeConfig->inputs.has_value()) {
-                            auto inputStates = it->second.inputStates;
-                            it->second.inputStates.clear();
-                            for(const auto& inputName : *nodeConfig->inputs) {
-                                if(inputStates.find(inputName) != inputStates.end()) {
-                                    it->second.inputStates[inputName] = inputStates[inputName];
-                                }
-                            }
-                        }
-                        if(nodeConfig->outputs.has_value()) {
-                            auto outputStates = it->second.outputStates;
-                            it->second.outputStates.clear();
-                            for(const auto& outputName : *nodeConfig->outputs) {
-                                if(outputStates.find(outputName) != outputStates.end()) {
-                                    it->second.outputStates[outputName] = outputStates[outputName];
-                                }
-                            }
-                        }
-                        if(nodeConfig->others.has_value()) {
-                            auto otherTimings = it->second.otherTimings;
-                            it->second.otherTimings.clear();
-                            for(const auto& otherName : *nodeConfig->others) {
-                                if(otherTimings.find(otherName) != otherTimings.end()) {
-                                    it->second.otherTimings[otherName] = otherTimings[otherName];
-                                }
-                            }
-                        }
-                        ++it;
-                    }
-                }
-            }
+            auto [outState, updated] = makeOutputState(handler, currentConfig, sequenceNum++, sendEvents);
             auto now = std::chrono::steady_clock::now();
             if(gotConfig
                || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value() && updated
@@ -549,6 +578,9 @@ void PipelineEventAggregation::run() {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     handler.stop();
+    if(traceOutputThread.joinable()) {
+        traceOutputThread.join();
+    }
 }
 
 }  // namespace internal

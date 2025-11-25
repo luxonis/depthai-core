@@ -31,9 +31,14 @@ class PipelineEventAggregation : public DeviceNodeCRTP<DeviceNode, PipelineEvent
     Input request{*this, {"request", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::PipelineEventAggregationConfig, false}}}, false}};
 
     /**
-     * Output message of type
+     * Output message of type PipelineState
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::PipelineState, false}}}}};
+
+    /**
+     * Continuous output message of type PipelineState
+     */
+    Output outTrace{*this, {"outTrace", DEFAULT_GROUP, {{{DatatypeEnum::PipelineState, false}}}}};
 
     /**
      * Specify whether to run on host or device
@@ -47,6 +52,8 @@ class PipelineEventAggregation : public DeviceNodeCRTP<DeviceNode, PipelineEvent
     bool runOnHost() const override;
 
     void run() override;
+
+    PipelineEventAggregation& setTraceOutput(bool enable);
 };
 
 }  // namespace internal

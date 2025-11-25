@@ -12,6 +12,8 @@ class PipelineStateMerge : public CustomThreadedNode<PipelineStateMerge> {
     bool hasDeviceNodes = false;
     bool hasHostNodes = false;
 
+    bool allowConfiguration = true;
+
    public:
     constexpr static const char* NAME = "PipelineStateMerge";
 
@@ -34,6 +36,8 @@ class PipelineStateMerge : public CustomThreadedNode<PipelineStateMerge> {
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::PipelineState, false}}}}};
 
     std::shared_ptr<PipelineStateMerge> build(bool hasDeviceNodes, bool hasHostNodes);
+
+    PipelineStateMerge& setAllowConfiguration(bool allow);
 
     void run() override;
 };
