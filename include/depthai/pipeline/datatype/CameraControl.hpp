@@ -765,14 +765,14 @@ class CameraControl : public Buffer {
     uint32_t aeMaxExposureTimeUs;
     bool aeLockMode{false};
     bool awbLockMode{false};
-    int8_t expCompensation;  //  -9 ..  9
-    int8_t brightness;       // -10 .. 10
-    int8_t contrast;         // -10 .. 10
-    int8_t saturation;       // -10 .. 10
-    uint8_t sharpness;       //   0 ..  4
-    uint8_t lumaDenoise = 0;     //   0 ..  4
-    uint8_t chromaDenoise = 0;   //   0 ..  4
-    uint16_t wbColorTemp;    // 1000 .. 12000
+    int8_t expCompensation;     //  -9 ..  9
+    int8_t brightness;          // -10 .. 10
+    int8_t contrast;            // -10 .. 10
+    int8_t saturation;          // -10 .. 10
+    uint8_t sharpness;          //   0 ..  4
+    uint8_t lumaDenoise = 0;    //   0 ..  4
+    uint8_t chromaDenoise = 0;  //   0 ..  4
+    uint16_t wbColorTemp;       // 1000 .. 12000
     uint8_t lowPowerNumFramesBurst;
     uint8_t lowPowerNumFramesDiscard;
     bool enableHdr{false};
