@@ -19,6 +19,28 @@ bool isIdentity(const std::array<std::array<float, 3>, 3>& mat) {
     return true;
 }
 
+bool approxIdentity(const std::array<std::array<float, 3>, 3>& mat, float eps = 1e-4f) {
+    for(int i = 0; i < 3; i++) {
+        for(int j = 0; j < 3; j++) {
+            float expected = (i == j) ? 1.0f : 0.0f;
+            if(std::abs(mat[i][j] - expected) > eps) return false;
+        }
+    }
+    return true;
+}
+
+inline std::array<std::array<float, 3>, 3> matmul(std::array<std::array<float, 3>, 3> A, std::array<std::array<float, 3>, 3> B) {
+    return {{{A[0][0] * B[0][0] + A[0][1] * B[1][0] + A[0][2] * B[2][0],
+              A[0][0] * B[0][1] + A[0][1] * B[1][1] + A[0][2] * B[2][1],
+              A[0][0] * B[0][2] + A[0][1] * B[1][2] + A[0][2] * B[2][2]},
+             {A[1][0] * B[0][0] + A[1][1] * B[1][0] + A[1][2] * B[2][0],
+              A[1][0] * B[0][1] + A[1][1] * B[1][1] + A[1][2] * B[2][1],
+              A[1][0] * B[0][2] + A[1][1] * B[1][2] + A[1][2] * B[2][2]},
+             {A[2][0] * B[0][0] + A[2][1] * B[1][0] + A[2][2] * B[2][0],
+              A[2][0] * B[0][1] + A[2][1] * B[1][1] + A[2][2] * B[2][1],
+              A[2][0] * B[0][2] + A[2][1] * B[1][2] + A[2][2] * B[2][2]}}};
+}
+
 // -----------------------------------------------------------------------------
 // ImgTransformation in ImgFrame
 // Purpose:
@@ -201,4 +223,40 @@ TEST_CASE("ImgTransformation remap vertical") {
     REQUIRE_THAT(sourceAR, Catch::Matchers::WithinAbs(destAR, 0.01));
 
     pipeline.stop();
+}
+
+
+// -----------------------------------------------------------------------------
+// ImgTransformation matrix inverse consistency (ImgFrame)
+// Purpose:
+//   Ensures that the forward matrix (M) and its stored inverse (Minv)
+//   multiply to identity. Same for intrinsics (K * Kinv).
+//   Validates correctness of ImgTransformation’s internal math.
+// -----------------------------------------------------------------------------
+TEST_CASE("ImgTransformation matrix inverse consistency (ImgFrame)") {
+    dai::Pipeline pipeline;
+    auto cam = pipeline.create<dai::node::Camera>()->build();
+    auto camOut = cam->requestOutput({1280, 800}, dai::ImgFrame::Type::NV12);
+    auto q = camOut->createOutputQueue();
+    pipeline.start();
+    auto frame = q->get<dai::ImgFrame>();
+    REQUIRE(frame != nullptr);
+    pipeline.stop();
+
+    REQUIRE(frame->transformation.isValid());
+
+    auto M = frame->transformation.getMatrix();
+    auto Minv = frame->transformation.getMatrixInv();
+    auto K = frame->transformation.getSourceIntrinsicMatrix();
+    auto Kinv = frame->transformation.getSourceIntrinsicMatrixInv();
+
+    auto I1 = matmul(M, Minv);
+    auto I2 = matmul(Minv, M);
+    auto I3 = matmul(K, Kinv);
+    auto I4 = matmul(Kinv, K);
+
+    REQUIRE(approxIdentity(I1));
+    REQUIRE(approxIdentity(I2));
+    REQUIRE(approxIdentity(I3));
+    REQUIRE(approxIdentity(I4));
 }
