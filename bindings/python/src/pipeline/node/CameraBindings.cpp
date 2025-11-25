@@ -69,6 +69,11 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
              "enableUndistortion"_a = std::nullopt,
              py::return_value_policy::reference_internal,
              DOC(dai, node, Camera, requestOutput))
+        .def("requestIspOutput",
+             py::overload_cast<std::optional<float>>(&Camera::requestIspOutput),
+             "fps"_a = std::nullopt,
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, Camera, requestIspOutput))
         .def("requestOutput",
              py::overload_cast<const Capability&, bool>(&Camera::requestOutput),
              "capability"_a,

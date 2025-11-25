@@ -246,9 +246,30 @@ Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size,
     return pimpl->requestOutput(*this, cap, false);
 }
 
+Node::Output* Camera::requestIspOutput(std::optional<float> fps) {
+    if(device) {
+        auto platform = device->getPlatform();
+        if(platform != Platform::RVC2) {
+            throw std::runtime_error("Vpp node is supported only on RVC2 devices.");
+        }
+    }
+
+    ImgFrameCapability cap;
+
+    if(fps.has_value()) {
+        cap.fps.fixed(fps.value());
+    }
+
+    cap.type = std::nullopt;
+    cap.enableUndistortion = false;
+    cap.ispOutput = true;
+    return pimpl->requestOutput(*this, cap, false);
+}
+
 Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
     return pimpl->requestOutput(*this, capability, onHost);
 }
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 Camera& Camera::setMockIsp(ReplayVideo& replay) {
     if(!replay.getReplayVideoFile().empty()) {

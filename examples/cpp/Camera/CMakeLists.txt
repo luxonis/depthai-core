@@ -27,3 +27,6 @@ dai_set_example_test_labels(camera_still_max_res ondevice rvc2_all rvc4 rvc4rgb 
 
 dai_add_example(camera_undistortion camera_undistortion.cpp ON OFF)
 dai_set_example_test_labels(camera_undistortion ondevice rvc2_all rvc4 ci)
+
+dai_add_example(camera_isp camera_isp.cpp ON OFF)
+dai_set_example_test_labels(camera_isp ondevice rvc2_all ci)
