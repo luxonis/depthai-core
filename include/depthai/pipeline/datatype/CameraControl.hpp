@@ -770,8 +770,8 @@ class CameraControl : public Buffer {
     int8_t contrast;         // -10 .. 10
     int8_t saturation;       // -10 .. 10
     uint8_t sharpness;       //   0 ..  4
-    uint8_t lumaDenoise;     //   0 ..  4
-    uint8_t chromaDenoise;   //   0 ..  4
+    uint8_t lumaDenoise = 0;     //   0 ..  4
+    uint8_t chromaDenoise = 0;   //   0 ..  4
     uint16_t wbColorTemp;    // 1000 .. 12000
     uint8_t lowPowerNumFramesBurst;
     uint8_t lowPowerNumFramesDiscard;
