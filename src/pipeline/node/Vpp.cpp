@@ -22,6 +22,12 @@ Vpp::Properties& Vpp::getProperties() {
 }
 
 void Vpp::buildInternal() {
+    if(device) {
+        auto platform = device->getPlatform();
+        if(platform != Platform::RVC4) {
+            throw std::runtime_error("Vpp node is supported only on RVC4 devices.");
+        }
+    }
     left = &sync->inputs[leftInputName];
     right = &sync->inputs[rightInputName];
     disparity = &sync->inputs[disparityName];
