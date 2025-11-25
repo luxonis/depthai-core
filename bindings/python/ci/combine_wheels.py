@@ -266,14 +266,14 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
                     _logger.info(f"Stripping debug symbols from {lib}")
                     lib_path = os.path.join(wheel_extract_dir, libs_folder, lib)
                     subprocess.run(["strip", "-S", lib_path], check=True)
-                    # subprocess.run(["llvm-strip", "-S", lib_path], check=True)
+                    subprocess.run(["llvm-strip", "-S", lib_path], check=True)
 
             # Strip debug symbols for the cpython library
             if strip:
                 _logger.info(f"Stripping debug symbols from {cpython_lib}")
                 cpython_lib_path = os.path.join(wheel_extract_dir, cpython_lib)
                 subprocess.run(["strip", "-S", cpython_lib_path], check=True)
-                # subprocess.run(["llvm-strip", "-S", cpython_lib_path], check=True)
+                subprocess.run(["llvm-strip", "-S", cpython_lib_path], check=True)
 
         # Step: Copy each wheel to the staging directory
         _logger.info("Step: Copying each wheel to the staging directory")
