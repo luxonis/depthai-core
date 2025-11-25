@@ -434,6 +434,9 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
     ├── <cpython_lib>.pyd
     ├── python3X.dll
     ├── <other_files>
+    ├── <extra_lib_1>.dll # this will get removed (it should be part of the platlib folder)
+    ├── <extra_lib_2>.dll # this will get removed (it should be part of the platlib folder)
+    ├── <extra_lib_n>.dll # this will get removed (it should be part of the platlib folder)
     ├── ...
 
     The combination process works as follows:
@@ -520,6 +523,12 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
             assert len(data_folders) == 1, f"Expected 1 .data folder, got {len(data_folders)}"
             data_folder = data_folders[0]
             _logger.debug(f"Found data folder: {data_folder}")
+
+            # Delete extra DLLs (already in the .data/platlib folder)
+            extra_dlls = [f for f in extracted_files if f.endswith(".dll") and (f != python_dll)]
+            _logger.info(f"Found extra DLLs: {extra_dlls}. Removing them.")
+            for dll in extra_dlls:
+                os.remove(os.path.join(wheel_extract_dir, dll))
 
             extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder))
 
