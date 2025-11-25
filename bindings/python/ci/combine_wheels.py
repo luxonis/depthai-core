@@ -465,17 +465,16 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
     _logger.info(f"Combined wheel name: {combined_info.wheel_name}")
     _logger.debug(f"Combined info: {combined_info}")
 
-    def _remangle_name(name, magic_hash):
+    def _remangle_name(lib, new_hash):
         """Remangle a DLL name to a new name.
-        For example, if the library name is "libfoo-<original_hash>.dll", the new name will be "libfoo-<new_hash>.dll".
+        Example: "libfoo-<original_hash>.dll" becomes "libfoo-<new_hash>.dll"
         """
-        base, ext = ".".join(name.split(".")[:-1]), "." + name.split(".")[-1]
-        # Remove existing hash if present (format: name-hash)
-        base_parts = base.split("-")
-        if len(base_parts) > 1:
-            base = "-".join(base_parts[:-1])
-        new_name = f"{base}-{magic_hash}{ext}"
-        return new_name
+        base = ".".join(lib.split(".")[:-1])
+        ext = "." + lib.split(".")[-1]
+        base = (
+            "".join(base.split("-")[:-1]) if len(base.split("-")) > 1 else base
+        )  # remove existing hash, or reuse base name if there is no hash
+        return f"{base}-{new_hash}{ext}"
 
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create extraction directory for individual wheels
@@ -530,7 +529,6 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
 
         # Store rename mappings for each wheel
         all_name_maps = {}
-
         for extracted_wheel in extracted_wheels:
             wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder = extracted_wheel
 
