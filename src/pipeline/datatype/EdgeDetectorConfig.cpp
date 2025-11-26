@@ -6,7 +6,7 @@ EdgeDetectorConfig::~EdgeDetectorConfig() = default;
 
 void EdgeDetectorConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
-    datatype = DatatypeEnum::EdgeDetectorConfig;
+    datatype = this->getDatatype();
 }
 
 void EdgeDetectorConfig::setSobelFilterKernels(const std::vector<std::vector<int>>& horizontalKernel, const std::vector<std::vector<int>>& verticalKernel) {

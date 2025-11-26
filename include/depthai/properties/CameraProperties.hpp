@@ -104,8 +104,8 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     int numFramesPoolStill = 4;  // No max size in bytes for still pool, used in mono and color cameras only, those are deprecated
 
     /** Outputs frame pools */
-    int numFramesPoolOutputs = 3;
-    int maxSizePoolOutputs = 10 * 1024 * 1024;  // 10MB
+    std::optional<int> numFramesPoolOutputs;
+    std::optional<int> maxSizePoolOutputs;
 
     ~CameraProperties() override;
 };

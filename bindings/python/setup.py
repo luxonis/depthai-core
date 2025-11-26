@@ -63,9 +63,31 @@ if len(__version__.split("+")) > 1 :
 long_description = open("README.md", "r", encoding="utf-8").read()
 
 ## Early settings
-MACOS_ARM64_WHEEL_NAME_OVERRIDE = 'macosx-11.0-arm64'
-if sys.platform == 'darwin' and platform.machine() == 'arm64':
-    os.environ['_PYTHON_HOST_PLATFORM'] = MACOS_ARM64_WHEEL_NAME_OVERRIDE
+MACOSX_DEPLOYMENT_TARGETS = {
+    "arm64": "11.0",
+    "x86_64": "11.0",
+}
+MACOS_SETTINGS = {}
+
+def _configure_macos_build_settings():
+    arch = platform.machine().lower()
+    arch = "arm64" if arch == "arm64" else "x86_64"
+    default_target = MACOSX_DEPLOYMENT_TARGETS[arch]
+    deployment_target = os.environ.get("MACOSX_DEPLOYMENT_TARGET", default_target)
+    os.environ["MACOSX_DEPLOYMENT_TARGET"] = deployment_target
+
+    wheel_tag = f"macosx-{deployment_target}-{arch}"
+    os.environ["_PYTHON_HOST_PLATFORM"] = wheel_tag
+    os.environ.setdefault("ARCHFLAGS", f"-arch {arch}")
+    os.environ.setdefault("CMAKE_OSX_ARCHITECTURES", arch)
+    return {
+        "arch": arch,
+        "deployment_target": deployment_target,
+        "wheel_tag": wheel_tag,
+    }
+
+if sys.platform == "darwin":
+    MACOS_SETTINGS = _configure_macos_build_settings()
 
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
@@ -206,12 +228,19 @@ class CMakeBuild(build_ext):
         else:
             # if macos add some additional env vars
             if sys.platform == 'darwin':
-                from distutils import util
-                if platform.machine() == 'arm64':
-                    # Build ARM64 wheels explicitly instead of universal2
-                    env['_PYTHON_HOST_PLATFORM'] = MACOS_ARM64_WHEEL_NAME_OVERRIDE
-                else:
-                    env['_PYTHON_HOST_PLATFORM'] = re.sub(r'macosx-[0-9]+\.[0-9]+-(.+)', r'macosx-10.9-\1', util.get_platform())
+                mac_arch = MACOS_SETTINGS.get('arch', platform.machine())
+                deployment_target = MACOS_SETTINGS.get('deployment_target')
+                wheel_tag = MACOS_SETTINGS.get('wheel_tag')
+                if wheel_tag:
+                    env['_PYTHON_HOST_PLATFORM'] = wheel_tag
+                if deployment_target:
+                    env['MACOSX_DEPLOYMENT_TARGET'] = deployment_target
+                env.setdefault('ARCHFLAGS', os.environ.get('ARCHFLAGS', f'-arch {mac_arch}'))
+                cmake_arch = os.environ.get('CMAKE_OSX_ARCHITECTURES', mac_arch)
+                if not any(arg.startswith('-DCMAKE_OSX_ARCHITECTURES=') for arg in cmake_args):
+                    cmake_args += [f'-DCMAKE_OSX_ARCHITECTURES={cmake_arch}']
+                if deployment_target and not any(arg.startswith('-DCMAKE_OSX_DEPLOYMENT_TARGET=') for arg in cmake_args):
+                    cmake_args += [f'-DCMAKE_OSX_DEPLOYMENT_TARGET={deployment_target}']
 
             # Specify how many threads to use when building, depending on available memory
             max_threads = os.cpu_count()
@@ -273,6 +302,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Programming Language :: C++",
         "Programming Language :: Python :: Implementation :: CPython",
         "Topic :: Scientific/Engineering",

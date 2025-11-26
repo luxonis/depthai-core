@@ -405,11 +405,11 @@ int Camera::getMaxSizePoolIsp() const {
     return properties.maxSizePoolIsp;
 }
 
-int Camera::getOutputsNumFramesPool() const {
+std::optional<int> Camera::getOutputsNumFramesPool() const {
     return properties.numFramesPoolOutputs;
 }
 
-int Camera::getOutputsMaxSizePool() const {
+std::optional<size_t> Camera::getOutputsMaxSizePool() const {
     return properties.maxSizePoolOutputs;
 }
 
