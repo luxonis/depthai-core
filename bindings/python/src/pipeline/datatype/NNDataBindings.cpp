@@ -171,6 +171,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         // TODO(Morato) - is this needed - doesn't get inherited from Buffer?
         .def("getTimestamp", &NNData::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &NNData::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", &NNData::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
         .def("getSequenceNum", &NNData::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         // .def("setTimestamp", &NNData::setTimestamp, DOC(dai, NNData, setTimestamp))
         // .def("setTimestampDevice", &NNData::setTimestampDevice, DOC(dai, NNData, setTimestampDevice))

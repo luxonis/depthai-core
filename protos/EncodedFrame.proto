@@ -21,6 +21,8 @@ message EncodedFrame {
     common.Timestamp tsDevice = 14;  // Timestamp from device
     common.ImgTransformation transformation = 15;
     bytes data = 16;  // Encoded frame data
+    common.Timestamp tsSystem = 17;  // Timestamp from system_clock
+    bool hasTsSystem = 18;
 }
 
 enum Profile {

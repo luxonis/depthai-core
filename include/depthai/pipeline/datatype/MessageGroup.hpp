@@ -63,7 +63,7 @@ class MessageGroup : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::MessageGroup;
     }
-    DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
+    DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, Buffer::tsSystem, Buffer::hasTsSystem);
 };
 
 }  // namespace dai
