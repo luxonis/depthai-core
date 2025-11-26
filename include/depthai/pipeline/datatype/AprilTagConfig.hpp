@@ -135,7 +135,9 @@ class AprilTagConfig : public Buffer {
                       refineEdges,
                       decodeSharpening,
                       maxHammingDistance,
-                      quadThresholds);
+                      quadThresholds,
+                      Buffer::tsSystem,
+                      Buffer::hasTsSystem);
 };
 
 }  // namespace dai

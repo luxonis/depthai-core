@@ -390,6 +390,7 @@ void RGBD::run() {
             auto pc = std::make_shared<PointCloudData>();
             pc->setTimestamp(colorFrame->getTimestamp());
             pc->setTimestampDevice(colorFrame->getTimestampDevice());
+            pc->setTimestampSystem(colorFrame->getTimestampSystem());
             pc->setSequenceNum(colorFrame->getSequenceNum());
             pc->setInstanceNum(colorFrame->getInstanceNum());
             auto width = colorFrame->getWidth();
@@ -427,6 +428,7 @@ void RGBD::run() {
             pc->setPointsRGB(points);
             pc->setTimestamp(colorFrame->getTimestamp());
             pc->setTimestampDevice(colorFrame->getTimestampDevice());
+            pc->setTimestampSystem(colorFrame->getTimestampSystem());
             pc->setSequenceNum(colorFrame->getSequenceNum());
             pc->setInstanceNum(colorFrame->getInstanceNum());
             if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty()) {
@@ -436,6 +438,7 @@ void RGBD::run() {
                 auto rgbdData = std::make_shared<RGBDData>();
                 rgbdData->setTimestamp(colorFrame->getTimestamp());
                 rgbdData->setTimestampDevice(colorFrame->getTimestampDevice());
+                rgbdData->setTimestampSystem(colorFrame->getTimestampSystem());
                 rgbdData->setSequenceNum(colorFrame->getSequenceNum());
                 rgbdData->setDepthFrame(depthFrame);
                 rgbdData->setRGBFrame(colorFrame);

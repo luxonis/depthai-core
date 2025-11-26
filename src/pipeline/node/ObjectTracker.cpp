@@ -194,6 +194,8 @@ void ObjectTracker::run() {
         auto trackletsMsg = std::make_shared<Tracklets>();
         trackletsMsg->ts = inputTrackerImg->ts;
         trackletsMsg->tsDevice = inputTrackerImg->tsDevice;
+        trackletsMsg->tsSystem = inputTrackerImg->tsSystem;
+        trackletsMsg->hasTsSystem = inputTrackerImg->hasTsSystem;
         trackletsMsg->sequenceNum = inputTrackerImg->sequenceNum;
         trackletsMsg->tracklets = tracker.isInitialized() ? tracker.getTracklets() : std::vector<Tracklet>();
         // Normalize the tracklets

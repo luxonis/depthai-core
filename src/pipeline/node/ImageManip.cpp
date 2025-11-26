@@ -49,6 +49,8 @@ void ImageManip::run() {
             dstFrame.instanceNum = srcFrame.instanceNum;
             dstFrame.sequenceNum = srcFrame.sequenceNum;
             dstFrame.tsDevice = srcFrame.tsDevice;
+            dstFrame.tsSystem = srcFrame.tsSystem;
+            dstFrame.hasTsSystem = srcFrame.hasTsSystem;
             dstFrame.ts = srcFrame.ts;
             dstFrame.category = srcFrame.category;
             dstFrame.event = srcFrame.event;
