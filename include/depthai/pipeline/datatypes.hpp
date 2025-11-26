@@ -15,6 +15,7 @@
 #include "datatype/ImgFrame.hpp"
 #include "datatype/MessageGroup.hpp"
 #include "datatype/NNData.hpp"
+#include "datatype/ObjectTrackerConfig.hpp"
 #include "datatype/PointCloudConfig.hpp"
 #include "datatype/PointCloudData.hpp"
 #include "datatype/SpatialImgDetections.hpp"
@@ -25,5 +26,3 @@
 #include "datatype/ToFConfig.hpp"
 #include "datatype/TrackedFeatures.hpp"
 #include "datatype/Tracklets.hpp"
-#include "datatype/ObjectTrackerConfig.hpp"
-
