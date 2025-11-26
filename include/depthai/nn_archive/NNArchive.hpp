@@ -14,8 +14,6 @@
 namespace dai {
 
 struct NNArchiveOptions {
-    NNArchiveOptions();
-
     // General parameters
     DEPTAHI_ARG_DEFAULT(NNArchiveEntry::Compression, compression, NNArchiveEntry::Compression::AUTO);
 
@@ -26,7 +24,7 @@ struct NNArchiveOptions {
     // ...
 
     // Parameters for other formats, ONNX, PT, etc..
-    DEPTAHI_ARG_DEFAULT(std::filesystem::path, extractFolder, std::filesystem::path());
+    // ...
 };
 
 class NNArchive {
@@ -54,11 +52,11 @@ class NNArchive {
     std::optional<OpenVINO::SuperBlob> getSuperBlob() const;
 
     /**
-     * @brief Return a path to the model inside the archive if getModelType() returns OTHER or DLC, nothing otherwise
+     * @brief Return a model from the archive if getModelType() returns OTHER or DLC, nothing otherwise
      *
-     * @return std::optional<Path>: Model path
+     * @return std::optional<std::vector<uint8_t>>: Model
      */
-    std::optional<std::filesystem::path> getModelPath() const;
+    std::optional<std::vector<uint8_t>> getOtherModelFormat() const;
 
     /**
      * @brief Get NNArchive config wrapper
@@ -117,9 +115,6 @@ class NNArchive {
     // Read model from archive
     std::vector<uint8_t> readModelFromArchive(const std::filesystem::path& archivePath, const std::string& modelPathInArchive) const;
 
-    // Unpack archive to tmp directory
-    void unpackArchiveInDirectory(const std::filesystem::path& archivePath, const std::filesystem::path& directory) const;
-
     model::ModelType modelType;
     NNArchiveOptions archiveOptions;
 
@@ -132,8 +127,8 @@ class NNArchive {
     // Superblob related stuff
     std::shared_ptr<OpenVINO::SuperBlob> superblobPtr;
 
-    // Other formats - return path to the unpacked archive
-    std::filesystem::path unpackedModelPath;
+    // Other formats
+    std::shared_ptr<std::vector<uint8_t>> otherModelFormatPtr;
 };
 
 }  // namespace dai

@@ -85,6 +85,7 @@ Node::Output* setupHolistiRecordCamera(
     }
     camWidth = width;
     camHeight = height;
+    // TODO remove once a lossless codec is used
     if(width * height > 9437184U) {
         recordConfig.videoEncoding.enabled = true;
     }
@@ -122,6 +123,8 @@ bool setupHolisticRecord(Pipeline& pipeline,
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
                 recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(".mp4"));
+                // TODO - once we allow for a lossless code, conditionally change the file extension
+                // recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(".avi"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
                 if(recordConfig.videoEncoding.enabled) {
                     auto videnc = pipeline.create<dai::node::VideoEncoder>();

@@ -76,6 +76,9 @@ class SpatialLocationCalculatorData : public Buffer {
     std::vector<SpatialLocations> spatialLocations;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::SpatialLocationCalculatorData;
+    }
     DEPTHAI_SERIALIZE(SpatialLocationCalculatorData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, spatialLocations);
 };
 

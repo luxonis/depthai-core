@@ -28,6 +28,9 @@ class SystemInformationS3 : public Buffer {
     ChipTemperatureS3 chipTemperature;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::SystemInformationS3;
+    }
 
     DEPTHAI_SERIALIZE(SystemInformationS3, ddrMemoryUsage, cpuAvgUsage, cpuUsages, chipTemperature);
 };

@@ -54,8 +54,8 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.14.1', '1.15.0', '1.18.3']"
-      luxonis_os_versions_to_test_rgb: "['1.18.3']"
+      luxonis_os_versions_to_test: "['1.14.1', '1.18.3', '1.20.5']"
+      luxonis_os_versions_to_test_rgb: "['1.20.5']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -66,7 +66,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
-      luxonis_os_versions_to_test: "['1.18.3']"
+      luxonis_os_versions_to_test: "['1.20.5']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -77,7 +77,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
-      luxonis_os_versions_to_test: "['1.18.3']"
+      luxonis_os_versions_to_test: "['1.20.5']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -87,7 +87,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     uses: ./.github/workflows/test_child_windows.yml
     with:
-      luxonis_os_versions_to_test: "['1.18.3']"
+      luxonis_os_versions_to_test: "['1.20.5']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}

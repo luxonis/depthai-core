@@ -52,7 +52,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* message, bool);
 template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool);
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly);
 template <>

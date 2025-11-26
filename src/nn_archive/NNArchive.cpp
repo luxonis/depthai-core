@@ -15,12 +15,7 @@
 
 namespace dai {
 
-NNArchiveOptions::NNArchiveOptions() {
-    // Default options
-    extractFolder(platform::getTempPath());
-}
-
-NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions options) : archiveOptions(options) {
+NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions options) : archiveOptions(std::move(options)) {
     // Make sure archive exits
     if(!std::filesystem::exists(archivePath)) DAI_CHECK_V(false, "Archive file does not exist: {}", archivePath);
 
@@ -34,11 +29,6 @@ NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions 
     // Read archive type
     modelType = model::readModelType(modelPathInArchive);
 
-    // Unpack model
-    std::filesystem::path unpackedArchivePath = std::filesystem::path(archiveOptions.extractFolder()) / std::filesystem::path(archivePath).filename();
-    unpackArchiveInDirectory(archivePath, unpackedArchivePath);
-    unpackedModelPath = (unpackedArchivePath / modelPathInArchive);
-
     switch(modelType) {
         case model::ModelType::BLOB:
             blobPtr.reset(new OpenVINO::Blob(readModelFromArchive(archivePath, modelPathInArchive)));
@@ -48,7 +38,8 @@ NNArchive::NNArchive(const std::filesystem::path& archivePath, NNArchiveOptions 
             break;
         case model::ModelType::DLC:
         case model::ModelType::OTHER:
-            break;  // Just do nothing, model is already unpacked
+            otherModelFormatPtr = std::make_shared<std::vector<uint8_t>>(readModelFromArchive(archivePath, modelPathInArchive));
+            break;
         case model::ModelType::NNARCHIVE:
             DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;
@@ -96,14 +87,14 @@ std::optional<OpenVINO::SuperBlob> NNArchive::getSuperBlob() const {
     }
 }
 
-std::optional<std::filesystem::path> NNArchive::getModelPath() const {
+std::optional<std::vector<uint8_t>> NNArchive::getOtherModelFormat() const {
     switch(modelType) {
         case model::ModelType::OTHER:
         case model::ModelType::DLC:
+            return *otherModelFormatPtr;
         case model::ModelType::BLOB:
         case model::ModelType::SUPERBLOB:
-            return unpackedModelPath;
-            break;
+            return std::nullopt;
         case model::ModelType::NNARCHIVE:
             DAI_CHECK_V(false, "NNArchive inside NNArchive is not supported. Please unpack the inner archive first.");
             break;
@@ -127,11 +118,6 @@ std::vector<uint8_t> NNArchive::readModelFromArchive(const std::filesystem::path
     const bool success = archive.readEntry(modelPathInArchive, modelBytes);
     DAI_CHECK_V(success, "No model {} found in NNArchive {} | Please check your NNArchive.", modelPathInArchive, archivePath);
     return modelBytes;
-}
-
-void NNArchive::unpackArchiveInDirectory(const std::filesystem::path& archivePath, const std::filesystem::path& directory) const {
-    utility::ArchiveUtil archive(archivePath, archiveOptions.compression());
-    archive.unpackArchiveInDirectory(directory);
 }
 
 std::optional<std::pair<uint32_t, uint32_t>> NNArchive::getInputSize(uint32_t index) const {
@@ -186,34 +172,28 @@ std::optional<uint32_t> NNArchive::getInputHeight(uint32_t index) const {
 }
 
 std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
-    auto pathToModel = getModelPath();
-    if(!pathToModel) {
-        return {};
-    }
-    auto pathToModelChecked = *pathToModel;
+    switch(modelType) {
+        case model::ModelType::DLC:
+            return {Platform::RVC4};
 
-    auto endsWith = [](const std::filesystem::path& path, const std::string& suffix) { return path.extension() == suffix; };
-
-    if(endsWith(pathToModelChecked, ".dlc")) {
-        return {Platform::RVC4};
-    }
-    if(endsWith(pathToModelChecked, ".superblob")) {
-        return {Platform::RVC2};
-    }
-    if(endsWith(pathToModelChecked, ".blob")) {
-        auto model = OpenVINO::Blob(pathToModelChecked);
-        if(model.device == OpenVINO::Device::VPUX) {
-            return {Platform::RVC3};
-        }
-        if(model.device == OpenVINO::Device::VPU) {
+        case model::ModelType::SUPERBLOB:
             return {Platform::RVC2};
-        }
 
-        // Should never get here
-        return {};
+        case model::ModelType::BLOB:
+            if(blobPtr->device == OpenVINO::Device::VPUX) {
+                return {Platform::RVC3};
+            }
+            if(blobPtr->device == OpenVINO::Device::VPU) {
+                return {Platform::RVC2};
+            }
+            // Should never get here
+            return {};
+
+        case model::ModelType::NNARCHIVE:
+        case model::ModelType::OTHER:
+        default:
+            return {};
     }
-
-    return {};
 }
 
 }  // namespace dai

@@ -1,5 +1,7 @@
 #include "depthai/utility/EventsManager.hpp"
 
+#include <openssl/sha.h>
+
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -15,153 +17,553 @@
 namespace dai {
 
 namespace utility {
-using std::move;
 
-EventData::EventData(const std::string& data, const std::string& fileName, const std::string& mimeType)
-    : fileName(fileName), mimeType(mimeType), data(data), type(EventDataType::DATA) {}
-
-EventData::EventData(std::string fileUrl) : data(std::move(fileUrl)), type(EventDataType::FILE_URL) {
-    fileName = std::filesystem::path(data).filename().string();
-    static std::map<std::string, std::string> mimeTypes = {{".html", "text/html"},
-                                                           {".htm", "text/html"},
-                                                           {".css", "text/css"},
-                                                           {".js", "application/javascript"},
-                                                           {".png", "image/png"},
-                                                           {".jpg", "image/jpeg"},
-                                                           {".jpeg", "image/jpeg"},
-                                                           {".gif", "image/gif"},
-                                                           {".svg", "image/svg+xml"},
-                                                           {".json", "application/json"},
-                                                           {".txt", "text/plain"}};
-    auto ext = std::filesystem::path(data).extension().string();
-    auto it = mimeTypes.find(ext);
-    mimeType = "application/octet-stream";
-    if(it != mimeTypes.end()) {
-        mimeType = it->second;
+template <typename T, typename... Args>
+void addToFileData(std::vector<std::shared_ptr<FileData>>& container, Args&&... args) {
+    try {
+        container.emplace_back(std::make_shared<T>(std::forward<Args>(args)...));
+    } catch(const std::exception& e) {
+        logger::error("Failed to create FileData: {}", e.what());
     }
 }
 
-EventData::EventData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName)
-    : fileName(std::move(fileName)), mimeType("image/jpeg"), type(EventDataType::IMG_FRAME) {
-    // Convert ImgFrame to bytes
-    cv::Mat cvFrame = imgFrame->getCvFrame();
-    std::vector<uchar> buf;
-    cv::imencode(".jpg", cvFrame, buf);
-    std::stringstream ss;
-    ss.write((const char*)buf.data(), buf.size());
-    data = ss.str();
+void FileGroup::addFile(std::string fileName, std::string data, std::string mimeType) {
+    addToFileData<dai::utility::FileData>(fileData, std::move(data), std::move(fileName), std::move(mimeType));
 }
 
-EventData::EventData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName)
-    : fileName(std::move(fileName)), type(EventDataType::ENCODED_FRAME) {
+void FileGroup::addFile(std::string fileName, std::filesystem::path filePath) {
+    addToFileData<dai::utility::FileData>(fileData, std::move(filePath), std::move(fileName));
+}
+
+void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgFrame>& imgFrame) {
+    std::string dataFileName = fileName.value_or("Image");
+    addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(dataFileName));
+}
+
+void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<EncodedFrame>& encodedFrame) {
+    std::string dataFileName = fileName.value_or("Image");
+    addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(dataFileName));
+}
+
+// void FileGroup::addFile(std::string fileName, const std::shared_ptr<NNData>& nnData) {
+//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+// }
+
+void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgDetections>& imgDetections) {
+    std::string dataFileName = fileName.value_or("Detections");
+    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
+}
+
+void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
+                                       const std::shared_ptr<ImgFrame>& imgFrame,
+                                       const std::shared_ptr<ImgDetections>& imgDetections) {
+    std::string dataFileName = fileName.value_or("ImageDetection");
+    addToFileData<dai::utility::FileData>(fileData, imgFrame, dataFileName);
+    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
+}
+
+void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
+                                       const std::shared_ptr<EncodedFrame>& encodedFrame,
+                                       const std::shared_ptr<ImgDetections>& imgDetections) {
+    std::string dataFileName = fileName.value_or("ImageDetection");
+    addToFileData<dai::utility::FileData>(fileData, encodedFrame, dataFileName);
+    addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
+}
+
+// void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& nnData) {
+//     addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
+//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+// }
+
+// void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& nnData) {
+//     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
+//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+// }
+
+std::string calculateSHA256Checksum(const std::string& data) {
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    SHA256(reinterpret_cast<const unsigned char*>(data.data()), data.size(), digest);
+
+    std::ostringstream oss;
+    for(int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(digest[i]);
+    }
+    return oss.str();
+}
+
+FileData::FileData(std::string data, std::string fileName, std::string mimeType)
+    : mimeType(std::move(mimeType)),
+      fileName(std::move(fileName)),
+      data(std::move(data)),
+      size(data.size()),
+      checksum(calculateSHA256Checksum(data)),
+      classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {}
+
+FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileName(std::move(fileName)) {
+    static const std::unordered_map<std::string, std::string> mimeTypeExtensionMap = {{".html", "text/html"},
+                                                                                      {".htm", "text/html"},
+                                                                                      {".css", "text/css"},
+                                                                                      {".js", "application/javascript"},
+                                                                                      {".png", "image/png"},
+                                                                                      {".jpg", "image/jpeg"},
+                                                                                      {".jpeg", "image/jpeg"},
+                                                                                      {".gif", "image/gif"},
+                                                                                      {".svg", "image/svg+xml"},
+                                                                                      {".json", "application/json"},
+                                                                                      {".txt", "text/plain"}};
+    // Read the data
+    std::ifstream fileStream(filePath, std::ios::binary | std::ios::ate);
+    if(!fileStream) {
+        throw std::runtime_error("File: " + filePath.string() + " doesn't exist");
+    }
+    std::streamsize fileSize = fileStream.tellg();
+    data.resize(static_cast<size_t>(fileSize));
+    fileStream.seekg(0, std::ios::beg);
+    fileStream.read(data.data(), fileSize);
+    size = data.size();
+    checksum = calculateSHA256Checksum(data);
+    // Determine the mime type
+    auto it = mimeTypeExtensionMap.find(filePath.extension().string());
+    if(it != mimeTypeExtensionMap.end()) {
+        mimeType = it->second;
+    } else {
+        mimeType = "application/octet-stream";
+    }
+    static const std::unordered_set<std::string> imageMimeTypes = {"image/jpeg", "image/png", "image/webp", "image/bmp", "image/tiff"};
+    if(imageMimeTypes.find(mimeType) != imageMimeTypes.end()) {
+        classification = proto::event::PrepareFileUploadClass::IMAGE_COLOR;
+    } else {
+        classification = proto::event::PrepareFileUploadClass::UNKNOWN_FILE;
+    }
+}
+
+FileData::FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName)
+    : mimeType("image/jpeg"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
+    // Convert ImgFrame to bytes
+    std::vector<uchar> buffer;
+    try {
+        cv::Mat cvFrame = imgFrame->getCvFrame();
+        if(!cv::imencode(".jpg", cvFrame, buffer)) {
+            throw std::runtime_error("ImgFrame encoding failed");
+        }
+    } catch(const cv::Exception& e) {
+        throw std::runtime_error(std::string("ImgFrame encoding failed due to OpenCV error: ") + e.what());
+    }
+
+    std::stringstream ss;
+    ss.write((const char*)buffer.data(), buffer.size());
+    data = ss.str();
+    size = data.size();
+    checksum = calculateSHA256Checksum(data);
+}
+
+FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName)
+    : mimeType("image/jpeg"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
     // Convert EncodedFrame to bytes
     if(encodedFrame->getProfile() != EncodedFrame::Profile::JPEG) {
-        logger::error("Only JPEG encoded frames are supported");
-        return;
+        throw std::runtime_error("Only JPEG encoded frames are supported");
     }
     std::stringstream ss;
     ss.write((const char*)encodedFrame->getData().data(), encodedFrame->getData().size());
     data = ss.str();
-    mimeType = "image/jpeg";
+    size = data.size();
+    checksum = calculateSHA256Checksum(data);
 }
 
-EventData::EventData(const std::shared_ptr<NNData>& nnData, std::string fileName)
-    : fileName(std::move(fileName)), mimeType("application/octet-stream"), type(EventDataType::NN_DATA) {
-    // Convert NNData to bytes
-    std::stringstream ss;
-    ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
-    data = ss.str();
+// FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
+//     : mimeType("application/octet-stream"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {
+//     // Convert NNData to bytes
+//     std::stringstream ss;
+//     ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
+//     data = ss.str();
+//     size = data.size();
+//     checksum = calculateSHA256Checksum(data);
+// }
+
+FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName)
+    : mimeType("application/x-protobuf; proto=SnapAnnotation"),
+      fileName(std::move(fileName)),
+      classification(proto::event::PrepareFileUploadClass::ANNOTATION) {
+    // Serialize imgDetections object, add it to SnapAnnotation proto
+    proto::event::SnapAnnotations snapAnnotation;
+    proto::img_detections::ImgDetections imgDetectionsProto;
+
+    if(imgDetections) {
+        std::vector<uint8_t> imgDetectionsSerialized = imgDetections->serializeProto();
+        if(imgDetectionsProto.ParseFromArray(imgDetectionsSerialized.data(), imgDetectionsSerialized.size())) {
+            *snapAnnotation.mutable_detections() = imgDetectionsProto;
+        } else {
+            throw std::runtime_error("Failed to parse ImgDetections proto from serialized bytes");
+        }
+    }
+    if(!snapAnnotation.SerializeToString(&data)) {
+        throw std::runtime_error("Failed to serialize SnapAnnotations proto object to string");
+    }
+    size = data.size();
+    checksum = calculateSHA256Checksum(data);
 }
 
-bool EventData::toFile(const std::string& path) {
-    // check if filename is not empty
+bool FileData::toFile(const std::filesystem::path& inputPath) {
     if(fileName.empty()) {
         logger::error("Filename is empty");
         return false;
     }
-    std::filesystem::path p(path);
-    if(type == EventDataType::FILE_URL) {
-        // get the filename from the url
-        std::filesystem::copy(data, p / fileName);
-    } else {
-        std::string extension = mimeType == "image/jpeg" ? ".jpg" : ".txt";
-        // check if file exists, if yes, append a number to the filename
-        std::string fileNameTmp = fileName;
-        int i = 0;
-        while(std::filesystem::exists(p / (fileNameTmp + extension))) {
-            logger::warn("File {} already exists, appending number to filename", fileNameTmp);
-            fileNameTmp = fileName + "_" + std::to_string(i);
-            i++;
-        }
-        std::ofstream fileStream(p / (fileNameTmp + extension), std::ios::binary);
-        fileStream.write(data.data(), data.size());
+    std::string extension = mimeType == "image/jpeg" ? ".jpg" : ".txt";
+    // Choose a unique filename
+    std::filesystem::path target = inputPath / (fileName + extension);
+    for(int i = 1; std::filesystem::exists(target); ++i) {
+        logger::warn("File {} exists, trying a new name", target.string());
+        target = inputPath / (fileName + "_" + std::to_string(i) + extension);
+    }
+    std::ofstream fileStream(target, std::ios::binary);
+    if(!fileStream) {
+        logger::error("Failed to open file for writing: {}", target.string());
+        return false;
+    }
+    fileStream.write(data.data(), static_cast<std::streamsize>(data.size()));
+    if(!fileStream) {
+        logger::error("Failed to write all data to: {}", target.string());
+        return false;
     }
     return true;
 }
-EventsManager::EventsManager(std::string url, bool uploadCachedOnStart, float publishInterval)
-    : url(std::move(url)),
-      queueSize(10),
-      publishInterval(publishInterval),
+
+EventsManager::EventsManager(bool uploadCachedOnStart)
+    : publishInterval(30.0f),
       logResponse(false),
       verifySsl(true),
       cacheDir("/internal/private"),
       cacheIfCannotSend(false),
-      stopEventBuffer(false) {
-    sourceAppId = utility::getEnvAs<std::string>("OAKAGENT_APP_VERSION", "");
+      stopUploadThread(false),
+      configurationLimitsFetched(false),
+      warningStorageBytes(52428800) {
+    auto appId = utility::getEnvAs<std::string>("OAKAGENT_APP_ID", "");
+    auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
+    sourceAppId = appId == "" ? containerId : appId;
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
+    url = utility::getEnvAs<std::string>("DEPTHAI_HUB_EVENTS_BASE_URL", "https://events.cloud.luxonis.com");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
-    eventBufferThread = std::make_unique<std::thread>([this]() {
-        while(!stopEventBuffer) {
-            sendEventBuffer();
-            std::unique_lock<std::mutex> lock(eventBufferMutex);
-            eventBufferCondition.wait_for(lock, std::chrono::seconds(static_cast<int>(this->publishInterval)));
+    // Thread handling preparation and uploads
+    uploadThread = std::make_unique<std::thread>([this]() {
+        // Fetch configuration limits when starting the new thread
+        configurationLimitsFetched = fetchConfigurationLimits();
+        auto currentTime = std::chrono::steady_clock::now();
+        auto nextTime = currentTime + std::chrono::hours(1);
+        while(!stopUploadThread) {
+            // Hourly check for fetching configuration and limits
+            currentTime = std::chrono::steady_clock::now();
+            if(currentTime >= nextTime) {
+                fetchConfigurationLimits();
+                nextTime += std::chrono::hours(1);
+                if(remainingStorageBytes <= warningStorageBytes) {
+                    logger::warn("Current remaining storage is running low: {} MB", remainingStorageBytes / (1024 * 1024));
+                }
+            }
+            // Prepare the batch first to reduce contention
+            std::deque<std::shared_ptr<SnapData>> snapBatch;
+            {
+                std::lock_guard<std::mutex> lock(snapBufferMutex);
+                const std::size_t size = std::min<std::size_t>(snapBuffer.size(), maxGroupsPerBatch);
+                snapBatch.insert(snapBatch.end(), std::make_move_iterator(snapBuffer.begin()), std::make_move_iterator(snapBuffer.begin() + size));
+                snapBuffer.erase(snapBuffer.begin(), snapBuffer.begin() + size);
+            }
+
+            uploadFileBatchFutures.emplace_back(
+                std::async(std::launch::async, [&, inputSnapBatch = std::move(snapBatch)]() mutable { uploadFileBatch(std::move(inputSnapBatch)); }));
+            // Clean up finished futures
+            for(auto iterator = uploadFileBatchFutures.begin(); iterator != uploadFileBatchFutures.end();) {
+                if(iterator->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                    iterator->get();
+                    iterator = uploadFileBatchFutures.erase(iterator);
+                } else {
+                    ++iterator;
+                }
+            }
+
+            uploadEventBatch();
+            std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
+            eventBufferCondition.wait_for(lock, std::chrono::seconds(static_cast<int>(this->publishInterval)), [this]() { return stopUploadThread.load(); });
         }
     });
-    checkConnection();
+    // Upload or clear previously cached data on start
     if(uploadCachedOnStart) {
         uploadCachedData();
+    } else {
+        clearCachedData(cacheDir);
     }
 }
 
 EventsManager::~EventsManager() {
-    stopEventBuffer = true;
-    {
-        std::unique_lock<std::mutex> lock(eventBufferMutex);
-        eventBufferCondition.notify_one();
-    }
-    if(eventBufferThread->joinable()) {
-        eventBufferThread->join();
+    stopUploadThread = true;
+    eventBufferCondition.notify_all();
+    if(uploadThread && uploadThread->joinable()) {
+        uploadThread->join();
     }
 }
 
-void EventsManager::sendEventBuffer() {
-    auto batchEvent = std::make_unique<proto::event::BatchUploadEvents>();
+bool EventsManager::fetchConfigurationLimits() {
+    logger::info("Fetching configuration limits");
+    if(token.empty()) {
+        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
+        return false;
+    }
+    auto header = cpr::Header();
+    header["Authorization"] = "Bearer " + token;
+    cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
+    int retryAttempt = 0;
+    while(!stopUploadThread) {
+        cpr::Response response = cpr::Get(
+            cpr::Url{requestUrl},
+            cpr::Header{header},
+            cpr::VerifySsl(verifySsl),
+            cpr::ProgressCallback(
+                [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                    (void)userdata;
+                    (void)downloadTotal;
+                    (void)downloadNow;
+                    (void)uploadTotal;
+                    (void)uploadNow;
+                    if(stopUploadThread) {
+                        return false;
+                    }
+                    return true;
+                }));
+        if(response.status_code != cpr::status::HTTP_OK) {
+            logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
+
+            // Apply exponential backoff
+            auto factor = std::pow(uploadRetryPolicy.factor, ++retryAttempt);
+            std::chrono::milliseconds duration = std::chrono::milliseconds(uploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
+            logger::info("Retrying to fetch configuration limits, (attempt {} in {} ms)", retryAttempt, duration.count());
+
+            std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
+            eventBufferCondition.wait_for(lock, duration, [this]() { return stopUploadThread.load(); });
+        } else {
+            logger::info("Configuration limits fetched successfully");
+            auto apiUsage = std::make_unique<proto::event::ApiUsage>();
+            apiUsage->ParseFromString(response.text);
+            if(logResponse) {
+                logger::info("ApiUsage response: \n{}", apiUsage->DebugString());
+            }
+            // TO DO: Use this data
+            maxFileSizeBytes = apiUsage->files().max_file_size_bytes();           //
+            remainingStorageBytes = apiUsage->files().remaining_storage_bytes();  //
+            bytesPerHour = apiUsage->files().bytes_per_hour_rate();
+            uploadsPerHour = apiUsage->files().uploads_per_hour_rate();
+            maxGroupsPerBatch = apiUsage->files().groups_per_allocation();         //
+            maxFilesPerGroup = apiUsage->files().files_per_group_in_allocation();  //
+            eventsPerHour = apiUsage->events().events_per_hour_rate();
+            snapsPerHour = apiUsage->events().snaps_per_hour_rate();
+            eventsPerRequest = apiUsage->events().events_per_request();  //
+
+            return true;
+        }
+    }
+    return false;
+}
+
+void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputSnapBatch) {
+    // Prepare files for upload
+    auto fileGroupBatchPrepare = std::make_unique<proto::event::BatchPrepareFileUpload>();
+    if(inputSnapBatch.empty()) {
+        return;
+    }
+    if(token.empty()) {
+        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
+        return;
+    }
+    // Fill the batch with the groups from inputSnapBatch and their corresponding files
+    for(size_t i = 0; i < inputSnapBatch.size(); ++i) {
+        auto fileGroup = std::make_unique<proto::event::PrepareFileUploadGroup>();
+        for(auto& file : inputSnapBatch.at(i)->fileGroup->fileData) {
+            auto addedFile = fileGroup->add_files();
+            addedFile->set_checksum(file->checksum);
+            addedFile->set_mime_type(file->mimeType);
+            addedFile->set_size(file->size);
+            addedFile->set_filename(file->fileName);
+            addedFile->set_classification(file->classification);
+        }
+        fileGroupBatchPrepare->add_groups()->Swap(fileGroup.get());
+    }
+
+    int retryAttempt = 0;
+    while(!stopUploadThread) {
+        std::string serializedBatch;
+        fileGroupBatchPrepare->SerializeToString(&serializedBatch);
+        cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/files/prepare-batch");
+        cpr::Response response = cpr::Post(
+            cpr::Url{requestUrl},
+            cpr::Body{serializedBatch},
+            cpr::Header{{"Authorization", "Bearer " + token}},
+            cpr::VerifySsl(verifySsl),
+            cpr::ProgressCallback(
+                [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                    (void)userdata;
+                    (void)downloadTotal;
+                    (void)downloadNow;
+                    (void)uploadTotal;
+                    (void)uploadNow;
+                    if(stopUploadThread) {
+                        return false;
+                    }
+                    return true;
+                }));
+        if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
+            logger::error("Failed to prepare a batch of file groups, status code: {}", response.status_code);
+            // Apply exponential backoff
+            auto factor = std::pow(uploadRetryPolicy.factor, ++retryAttempt);
+            std::chrono::milliseconds duration = std::chrono::milliseconds(uploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
+            logger::info("Retrying to prepare a batch of file groups (attempt {} in {} ms)", retryAttempt, duration.count());
+
+            std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
+            eventBufferCondition.wait_for(lock, duration, [this]() { return stopUploadThread.load(); });
+            // After retrying a defined number of times, we can determine the connection is not established, cache if enabled
+            if(retryAttempt >= uploadRetryPolicy.maxAttempts) {
+                if(cacheIfCannotSend) {
+                    cacheSnapData(inputSnapBatch);
+                } else {
+                    logger::warn("Caching is not enabled, dropping snapBatch");
+                }
+                return;
+            }
+        } else {
+            logger::info("Batch of file groups has been successfully prepared");
+            auto prepareBatchResults = std::make_unique<proto::event::BatchFileUploadResult>();
+            prepareBatchResults->ParseFromString(response.text);
+            if(logResponse) {
+                logger::info("BatchFileUploadResult response: \n{}", prepareBatchResults->DebugString());
+            }
+
+            // Upload groups of files
+            std::vector<std::future<bool>> groupUploadResults;
+            for(int i = 0; i < prepareBatchResults->groups_size(); i++) {
+                auto snapData = inputSnapBatch.at(i);
+                auto prepareGroupResult = prepareBatchResults->groups(i);
+                // Skip rejected groups
+                if(prepareGroupResult.has_rejected()) {
+                    std::string rejectionReason = dai::proto::event::RejectedFileGroupReason_descriptor()
+                                                      ->FindValueByNumber(static_cast<int>(prepareGroupResult.rejected().reason()))
+                                                      ->name();
+                    logger::info("A group has been rejected because of {}", rejectionReason);
+                    continue;
+                }
+                // Handle groups asynchronously
+                groupUploadResults.emplace_back(
+                    std::async(std::launch::async, [&, snap = std::move(snapData), group = std::move(prepareGroupResult)]() mutable {
+                        return uploadGroup(std::move(snap), std::move(group));
+                    }));
+            }
+            // Wait for all of the reponses, indicating the finish of group uploads
+            for(auto& uploadResult : groupUploadResults) {
+                if(!uploadResult.valid() || !uploadResult.get()) {
+                    logger::info("Failed to upload all of the groups in the given batch");
+                    // File upload was unsuccesful, cache if enabled
+                    if(cacheIfCannotSend) {
+                        cacheSnapData(inputSnapBatch);
+                    } else {
+                        logger::warn("Caching is not enabled, dropping snapBatch");
+                    }
+                    return;
+                }
+            }
+            return;
+        }
+    }
+}
+
+bool EventsManager::uploadGroup(std::shared_ptr<SnapData> snapData, dai::proto::event::FileUploadGroupResult prepareGroupResult) {
+    std::vector<std::future<bool>> fileUploadResults;
+    for(int i = 0; i < prepareGroupResult.files_size(); i++) {
+        auto prepareFileResult = prepareGroupResult.files(i);
+        if(prepareFileResult.result_case() == proto::event::FileUploadResult::kAccepted) {
+            // Add an associate file to the event
+            auto associateFile = snapData->event->add_associate_files();
+            associateFile->set_id(prepareFileResult.accepted().id());
+            // Upload files asynchronously
+            fileUploadResults.emplace_back(std::async(
+                std::launch::async,
+                [&, fileData = std::move(snapData->fileGroup->fileData.at(i)), uploadUrl = std::move(prepareFileResult.accepted().upload_url())]() mutable {
+                    return uploadFile(std::move(fileData), std::move(uploadUrl));
+                }));
+        } else {
+            return false;
+        }
+    }
+    // Wait for all of the results, indicating the finish of file uploads
+    for(auto& uploadResult : fileUploadResults) {
+        if(!uploadResult.valid() || !uploadResult.get()) {
+            logger::info("Failed to upload all of the files in the given group");
+            return false;
+        }
+    }
+    // Once all of the files are uploaded, the event can be sent
+    std::lock_guard<std::mutex> lock(eventBufferMutex);
+    eventBuffer.push_back(std::move(snapData->event));
+    return true;
+}
+
+bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string uploadUrl) {
+    logger::info("Uploading file {} to: {}", fileData->fileName, uploadUrl);
+    auto header = cpr::Header();
+    header["Content-Type"] = fileData->mimeType;
+    for(int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread; ++i) {
+        cpr::Response response = cpr::Put(
+            cpr::Url{uploadUrl},
+            cpr::Body{fileData->data},
+            cpr::Header{header},
+            cpr::VerifySsl(verifySsl),
+            cpr::ProgressCallback(
+                [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
+                    (void)userdata;
+                    (void)downloadTotal;
+                    (void)downloadNow;
+                    (void)uploadTotal;
+                    (void)uploadNow;
+                    if(stopUploadThread) {
+                        return false;
+                    }
+                    return true;
+                }));
+        if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
+            logger::error("Failed to upload file {}, status code: {}", fileData->fileName, response.status_code);
+            if(logResponse) {
+                logger::info("Response {}", response.text);
+            }
+            // Apply exponential backoff
+            auto factor = std::pow(uploadRetryPolicy.factor, i + 1);
+            std::chrono::milliseconds duration = std::chrono::milliseconds(uploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
+            logger::info("Retrying upload of file {}, (attempt {}/{}) in {} ms", fileData->fileName, i + 1, uploadRetryPolicy.maxAttempts, duration.count());
+
+            std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
+            eventBufferCondition.wait_for(lock, duration, [this]() { return stopUploadThread.load(); });
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
+
+void EventsManager::uploadEventBatch() {
+    auto eventBatch = std::make_unique<proto::event::BatchUploadEvents>();
     {
         std::lock_guard<std::mutex> lock(eventBufferMutex);
         if(eventBuffer.empty()) {
             return;
         }
         if(token.empty()) {
-            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use setToken method");
+            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
             return;
         }
-        if(!checkConnection()) {
-            if(cacheIfCannotSend) {
-                cacheEvents();
-            }
-            return;
-        }
-        for(auto& eventM : eventBuffer) {
-            auto& event = eventM->event;
-            batchEvent->add_events()->Swap(event.get());
+        for(size_t i = 0; i < eventBuffer.size() && i < eventsPerRequest; ++i) {
+            eventBatch->add_events()->CopyFrom(*eventBuffer.at(i).get());
         }
     }
-    std::string serializedEvent;
-    batchEvent->SerializeToString(&serializedEvent);
-    cpr::Url reqUrl = static_cast<cpr::Url>(this->url + "/v1/events");
-    cpr::Response r = cpr::Post(
-        cpr::Url{reqUrl},
-        cpr::Body{serializedEvent},
+    std::string serializedBatch;
+    eventBatch->SerializeToString(&serializedBatch);
+    cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/events");
+    cpr::Response response = cpr::Post(
+        cpr::Url{requestUrl},
+        cpr::Body{serializedBatch},
         cpr::Header{{"Authorization", "Bearer " + token}},
         cpr::VerifySsl(verifySsl),
         cpr::ProgressCallback(
@@ -171,304 +573,331 @@ void EventsManager::sendEventBuffer() {
                 (void)downloadNow;
                 (void)uploadTotal;
                 (void)uploadNow;
-                if(stopEventBuffer) {
+                if(stopUploadThread) {
                     return false;
                 }
                 return true;
             }));
-    if(r.status_code != cpr::status::HTTP_OK) {
-        logger::error("Failed to send event: {} {}", r.text, r.status_code);
+    if(response.status_code != cpr::status::HTTP_OK) {
+        logger::error("Failed to send event, status code: {}", response.status_code);
+        // In case the eventBuffer gets too full (dropped connection), cache the events or drop them
+        if(eventBuffer.size() >= EVENT_BUFFER_MAX_SIZE) {
+            if(cacheIfCannotSend) {
+                cacheEvents();
+            } else {
+                logger::warn("EventBuffer is full and caching is not enabled, dropping events");
+                std::lock_guard<std::mutex> lock(eventBufferMutex);
+                eventBuffer.clear();
+            }
+        }
     } else {
         logger::info("Event sent successfully");
         if(logResponse) {
-            logger::info("Response: {}", r.text);
+            auto eventBatchUploadResults = std::make_unique<proto::event::BatchUploadEventsResult>();
+            eventBatchUploadResults->ParseFromString(response.text);
+            logger::info("BatchUploadEvents response: \n{}", eventBatchUploadResults->DebugString());
         }
-        // upload files
-        auto batchUploadEventResult = std::make_unique<proto::event::BatchUploadEventsResult>();
-        batchUploadEventResult->ParseFromString(r.text);
-        for(int i = 0; i < batchUploadEventResult->events_size(); i++) {
-            auto eventResult = batchUploadEventResult->events(i);
-            if(eventResult.accepted().file_upload_urls_size() > 0) {
-                for(int j = 0; j < eventResult.accepted().file_upload_urls().size(); j++) {
-                    cpr::Url fileUrl = static_cast<cpr::Url>(this->url + eventResult.accepted().file_upload_urls(j));
-
-                    sendFile(eventBuffer[i]->data[j], fileUrl.str());
-                }
-            }
-        }
-        for(auto& eventM : eventBuffer) {
-            if(!eventM->cachePath.empty() && std::filesystem::exists(eventM->cachePath)) {
-                std::filesystem::remove_all(eventM->cachePath);
-            }
-        }
-        eventBuffer.clear();
+        std::lock_guard<std::mutex> lock(eventBufferMutex);
+        eventBuffer.erase(eventBuffer.begin(), eventBuffer.begin() + eventBatch->events_size());
     }
 }
 
 bool EventsManager::sendEvent(const std::string& name,
-                              const std::shared_ptr<ImgFrame>& imgFrame,
-                              std::vector<std::shared_ptr<EventData>> data,
                               const std::vector<std::string>& tags,
-                              const std::unordered_map<std::string, std::string>& extraData,
-                              const std::string& deviceSerialNo) {
-    // Create event
+                              const std::unordered_map<std::string, std::string>& extras,
+                              const std::string& deviceSerialNo,
+                              const std::vector<std::string>& associateFiles) {
+    // Check if the configuration and limits have already been fetched
+    if(!configurationLimitsFetched) {
+        logger::error("The configuration and limits have not been successfully fetched, event not sent");
+        return false;
+    }
+
+    // Create an event
     auto event = std::make_unique<proto::event::Event>();
-    event->set_nonce(createUUID());
-    event->set_name(name);
     event->set_created_at(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    event->set_name(name);
     for(const auto& tag : tags) {
         event->add_tags(tag);
     }
     auto* extrasData = event->mutable_extras();
-    for(const auto& entry : extraData) {
+    for(const auto& entry : extras) {
         extrasData->insert({entry.first, entry.second});
     }
-
-    if(imgFrame != nullptr) {
-        auto fileData = std::make_shared<EventData>(imgFrame, "img.jpg");
-        data.push_back(fileData);
-    }
-    event->set_expect_files_num(data.size());
-
-    event->set_source_serial_number(deviceSerialNo.empty() ? deviceSerialNumber : deviceSerialNo);
+    event->set_source_serial_number(deviceSerialNo);
     event->set_source_app_id(sourceAppId);
     event->set_source_app_identifier(sourceAppIdentifier);
-    // Add event to buffer
-    if(eventBuffer.size() <= queueSize) {
-        std::lock_guard<std::mutex> lock(eventBufferMutex);
-        auto eventMessage = std::make_unique<EventMessage>();
-        eventMessage->data = std::move(data);
-        eventMessage->event = std::move(event);
-        eventBuffer.push_back(std::move(eventMessage));
-    } else {
-        logger::warn("Event buffer is full, dropping event");
+    for(const auto& file : associateFiles) {
+        auto addedFile = event->add_associate_files();
+        addedFile->set_id(file);
+    }
+    if(!validateEvent(*event)) {
+        logger::error("Failed to send event, validation failed");
         return false;
     }
+
+    // Add event to eventBuffer
+    std::lock_guard<std::mutex> lock(eventBufferMutex);
+    eventBuffer.push_back(std::move(event));
     return true;
 }
 
 bool EventsManager::sendSnap(const std::string& name,
-                             const std::shared_ptr<ImgFrame>& imgFrame,
-                             std::vector<std::shared_ptr<EventData>> data,
+                             const std::shared_ptr<FileGroup> fileGroup,
                              const std::vector<std::string>& tags,
-                             const std::unordered_map<std::string, std::string>& extraData,
+                             const std::unordered_map<std::string, std::string>& extras,
                              const std::string& deviceSerialNo) {
-    std::vector<std::string> tagsTmp = tags;
-    tagsTmp.emplace_back("snap");
-    // exactly one image needs to be sent, either from imgFrame or from data
-    bool send = false;
-    if(imgFrame != nullptr && !data.empty()) {
-        logger::error("For sending snap, provide either imgFrame or single image in data list, not both. Use sendEvent for multiple files");
+    // Check if the configuration and limits have already been fetched
+    if(!configurationLimitsFetched) {
+        logger::error("The configuration and limits have not been successfully fetched, snap not sent");
         return false;
-    } else if(imgFrame == nullptr && data.empty()) {
-        logger::error("No image or data provided");
+    }
+
+    // Prepare snapData
+    auto snapData = std::make_unique<SnapData>();
+    snapData->fileGroup = fileGroup;
+    // Create an event
+    snapData->event = std::make_unique<proto::event::Event>();
+    snapData->event->set_created_at(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+    snapData->event->set_name(name);
+    snapData->event->add_tags("snap");
+    for(const auto& tag : tags) {
+        snapData->event->add_tags(tag);
+    }
+    auto* extrasData = snapData->event->mutable_extras();
+    for(const auto& entry : extras) {
+        extrasData->insert({entry.first, entry.second});
+    }
+    snapData->event->set_source_serial_number(deviceSerialNo);
+    snapData->event->set_source_app_id(sourceAppId);
+    snapData->event->set_source_app_identifier(sourceAppIdentifier);
+    if(!validateEvent(*snapData->event)) {
+        logger::error("Failed to send snap, validation failed");
         return false;
-    } else if(imgFrame == nullptr && !data.empty()) {
-        if(data.size() > 1) {
-            logger::error("More than one file provided in data. For sendings snaps, only one image file is allowed. Use sendEvent for multiple files");
+    }
+    if(fileGroup->fileData.size() > maxFilesPerGroup) {
+        logger::error("Failed to send snap, the number of files in a file group {} exceeds {}", fileGroup->fileData.size(), maxFilesPerGroup);
+        return false;
+    } else if(fileGroup->fileData.empty()) {
+        logger::error("Failed to send snap, the file group is empty");
+        return false;
+    }
+    for(const auto& file : fileGroup->fileData) {
+        if(file->size >= maxFileSizeBytes) {
+            logger::error("Failed to send snap, file: {} is bigger then the configured maximum size: {}", file->fileName, maxFileSizeBytes);
             return false;
         }
-        if(data[0]->mimeType == "image/jpeg" || data[0]->mimeType == "image/png" || data[0]->mimeType == "image/webp") {
-            send = true;
-        }
-        if(send == false) {
-            logger::error("Only image files are allowed for snaps");
-            return false;
-        }
-    } else {
-        send = true;
     }
-    if(send) {
-        return sendEvent(name, imgFrame, data, tagsTmp, extraData, deviceSerialNo);
-    }
-    return false;
+    // Add the snap to snapBuffer
+    std::lock_guard<std::mutex> lock(snapBufferMutex);
+    snapBuffer.push_back(std::move(snapData));
+    return true;
 }
 
-void EventsManager::sendFile(const std::shared_ptr<EventData>& file, const std::string& url) {
-    // if file struct contains byte data, send it, along with filename and mime type
-    // if it file url, send it directly via url
-    logger::info("Uploading file: to {}", url);
-    auto header = cpr::Header{{"Authorization", "Bearer " + token}};
-    cpr::Multipart fileM{};
-    if(file->type != EventDataType::FILE_URL) {
-        fileM = cpr::Multipart{{"file", cpr::Buffer{file->data.begin(), file->data.end(), file->fileName}, file->mimeType}};
-        header["File-Size"] = std::to_string(std::size(file->data));
+bool EventsManager::sendSnap(const std::string& name,
+                             const std::optional<std::string>& fileName,
+                             const std::shared_ptr<ImgFrame> imgFrame,
+                             const std::optional<std::shared_ptr<ImgDetections>>& imgDetections,
+                             const std::vector<std::string>& tags,
+                             const std::unordered_map<std::string, std::string>& extras,
+                             const std::string& deviceSerialNo) {
+    // Create a FileGroup and send a snap containing it
+    auto fileGroup = std::make_shared<dai::utility::FileGroup>();
+    if(imgDetections.has_value()) {
+        fileGroup->addImageDetectionsPair(fileName, imgFrame, imgDetections.value());
     } else {
-        fileM = cpr::Multipart{{
-            "file",
-            cpr::File{file->data},
-        }};
-        header["File-Size"] = std::to_string(std::filesystem::file_size(file->data));
+        fileGroup->addFile(fileName, imgFrame);
     }
-    cpr::Response r = cpr::Post(
-        cpr::Url{url},
-        cpr::Multipart{fileM},
-        cpr::Header{header},
-        cpr::VerifySsl(verifySsl),
 
-        cpr::ProgressCallback(
-            [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
-                (void)userdata;
-                (void)downloadTotal;
-                (void)downloadNow;
-                (void)uploadTotal;
-                (void)uploadNow;
-                if(stopEventBuffer) {
-                    return false;
-                }
-                return true;
-            }));
-    if(r.status_code != cpr::status::HTTP_OK) {
-        logger::error("Failed to upload file: {} error code {}", r.text, r.status_code);
+    return sendSnap(name, fileGroup, tags, extras, deviceSerialNo);
+}
+
+bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
+    // Name
+    const auto& name = inputEvent.name();
+    if(name.empty()) {
+        logger::error("Invalid event name: empty string");
+        return false;
     }
-    if(logResponse) {
-        logger::info("Response: {}", r.text);
+    if(name.length() > EVENT_VALIDATION_NAME_LENGTH) {
+        logger::error("Invalid event name: length {} exceeds {}", name.length(), EVENT_VALIDATION_NAME_LENGTH);
+        return false;
     }
+
+    // Tags
+    if(inputEvent.tags_size() > EVENT_VALIDATION_MAX_TAGS) {
+        logger::error("Invalid event tags: number of tags {} exceeds {}", inputEvent.tags_size(), EVENT_VALIDATION_MAX_TAGS);
+        return false;
+    }
+    for(int i = 0; i < inputEvent.tags_size(); ++i) {
+        const auto& tag = inputEvent.tags(i);
+        if(tag.empty()) {
+            logger::error("Invalid event tags: tag[{}] empty string", i);
+            return false;
+        }
+        if(tag.length() > EVENT_VALIDATION_TAG_LENGTH) {
+            logger::error("Invalid event tags: tag[{}] length {} exceeds {}", i, tag.length(), EVENT_VALIDATION_TAG_LENGTH);
+            return false;
+        }
+    }
+
+    // Event extras
+    if(inputEvent.extras_size() > EVENT_VALIDATION_MAX_EXTRAS) {
+        logger::error("Invalid event extras: number of extras {} exceeds {}", inputEvent.extras_size(), EVENT_VALIDATION_MAX_EXTRAS);
+        return false;
+    }
+    int index = 0;
+    for(const auto& extra : inputEvent.extras()) {
+        const auto& key = extra.first;
+        const auto& value = extra.second;
+        if(key.empty()) {
+            logger::error("Invalid event extras: extra[{}] key empty string", index);
+            return false;
+        }
+        if(key.length() > EVENT_VALIDATION_EXTRA_KEY_LENGTH) {
+            logger::error("Invalid event extras: extra[{}] key length {} exceeds {}", index, key.length(), EVENT_VALIDATION_EXTRA_KEY_LENGTH);
+            return false;
+        }
+        if(value.length() > EVENT_VALIDATION_EXTRA_VALUE_LENGTH) {
+            logger::error("Invalid event extras: extra[{}] value length {} exceeds {}", index, value.length(), EVENT_VALIDATION_EXTRA_VALUE_LENGTH);
+            return false;
+        }
+        index++;
+    }
+
+    // Associate files
+    if(inputEvent.associate_files_size() > EVENT_VALIDATION_MAX_ASSOCIATE_FILES) {
+        logger::error(
+            "Invalid associate files: number of associate files {} exceeds {}", inputEvent.associate_files_size(), EVENT_VALIDATION_MAX_ASSOCIATE_FILES);
+        return false;
+    }
+
+    return true;
 }
 
 void EventsManager::cacheEvents() {
+    // Create a unique directory and save the protobuf message for each event in the eventBuffer
     logger::info("Caching events");
-    // for each event, create a unique directory, save protobuf message and associated files
     std::lock_guard<std::mutex> lock(eventBufferMutex);
-    for(auto& eventM : eventBuffer) {
-        auto& event = eventM->event;
-        auto& data = eventM->data;
-        std::filesystem::path p(cacheDir);
-        p = p / ("event_" + event->name() + "_" + event->nonce());
-        std::string eventDir = p.string();
+    for(const auto& event : eventBuffer) {
+        std::filesystem::path path(cacheDir);
+        path = path / ("event_" + event->name() + "_" + std::to_string(event->created_at()));
+        std::string eventDir = path.string();
         logger::info("Caching event to {}", eventDir);
         if(!std::filesystem::exists(cacheDir)) {
             std::filesystem::create_directories(cacheDir);
         }
         std::filesystem::create_directory(eventDir);
-        std::ofstream eventFile(p / "event.pb", std::ios::binary);
+        std::ofstream eventFile(path / "event.pb", std::ios::binary);
         event->SerializeToOstream(&eventFile);
-        for(auto& file : data) {
-            file->toFile(eventDir);
-        }
     }
     eventBuffer.clear();
 }
 
+void EventsManager::cacheSnapData(std::deque<std::shared_ptr<SnapData>>& inputSnapBatch) {
+    // Create a unique directory and save the snapData
+    logger::info("Caching snapData");
+    for(const auto& snap : inputSnapBatch) {
+        std::filesystem::path path(cacheDir);
+        path = path / ("snap_" + snap->event->name() + "_" + std::to_string(snap->event->created_at()));
+        std::string snapDir = path.string();
+        logger::info("Caching snap to {}", snapDir);
+        if(!std::filesystem::exists(cacheDir)) {
+            std::filesystem::create_directories(cacheDir);
+        }
+        std::filesystem::create_directory(snapDir);
+        std::ofstream eventFile(path / "snap.pb", std::ios::binary);
+        snap->event->SerializeToOstream(&eventFile);
+        for(auto& file : snap->fileGroup->fileData) {
+            file->toFile(path);
+        }
+    }
+}
+
 void EventsManager::uploadCachedData() {
-    // iterate over all directories in cacheDir, read event.pb and associated files, and send them
+    // Iterate over the directories in cacheDir, add events and snapsData to buffers
+    if(!checkForCachedData()) {
+        logger::warn("Cache directory is empty, no cached data will be uploaded");
+        return;
+    }
     logger::info("Uploading cached data");
-    if(!checkConnection()) {
-        return;
-    }
-    // check if cacheDir exists
-    if(!std::filesystem::exists(cacheDir)) {
-        logger::warn("Cache directory does not exist");
-        return;
-    }
+
     for(const auto& entry : std::filesystem::directory_iterator(cacheDir)) {
-        if(entry.is_directory()) {
-            const auto& eventDir = entry.path();
-            std::ifstream eventFile(eventDir / "event.pb", std::ios::binary);
-            proto::event::Event event;
-            event.ParseFromIstream(&eventFile);
-            std::vector<std::shared_ptr<EventData>> data;
-            for(const auto& fileEntry : std::filesystem::directory_iterator(eventDir)) {
-                if(fileEntry.is_regular_file() && fileEntry.path() != eventDir / "event.pb") {
-                    auto fileData = std::make_shared<EventData>(fileEntry.path().string());
-                    data.push_back(fileData);
+        if(!entry.is_directory()) {
+            continue;
+        }
+
+        if(entry.path().filename().string().rfind("event", 0) == 0) {
+            std::ifstream eventFile(entry.path() / "event.pb", std::ios::binary);
+            auto event = std::make_shared<proto::event::Event>();
+            event->ParseFromIstream(&eventFile);
+            std::lock_guard<std::mutex> lock(eventBufferMutex);
+            eventBuffer.push_back(std::move(event));
+            // Clear entries added to the eventBuffer
+            clearCachedData(entry.path());
+
+        } else if(entry.path().filename().string().rfind("snap", 0) == 0) {
+            std::ifstream snapFile(entry.path() / "snap.pb", std::ios::binary);
+            auto snapData = std::make_unique<SnapData>();
+            auto event = std::make_shared<proto::event::Event>();
+            auto fileGroup = std::make_shared<dai::utility::FileGroup>();
+            event->ParseFromIstream(&snapFile);
+            for(const auto& fileEntry : std::filesystem::directory_iterator(entry.path())) {
+                if(fileEntry.is_regular_file() && fileEntry.path() != entry.path() / "snap.pb") {
+                    auto fileData = std::make_shared<FileData>(fileEntry.path(), fileEntry.path().filename().string());
+                    fileGroup->fileData.push_back(fileData);
                 }
             }
-            std::lock_guard<std::mutex> lock(eventBufferMutex);
-            auto eventPtr = std::make_shared<proto::event::Event>(event);
-            auto eventMessage = std::make_shared<EventMessage>();
-            eventMessage->event = eventPtr;
-            eventMessage->data = data;
-            eventMessage->cachePath = eventDir.string();
-            eventBuffer.push_back(eventMessage);
+            snapData->event = event;
+            snapData->fileGroup = fileGroup;
+            std::lock_guard<std::mutex> lock(snapBufferMutex);
+            snapBuffer.push_back(std::move(snapData));
+            // Clear entries added to the snapBuffer
+            clearCachedData(entry.path());
         }
     }
 }
 
 bool EventsManager::checkForCachedData() {
-    // check if cacheDir exists
     if(!std::filesystem::exists(cacheDir)) {
-        logger::warn("Cache directory does not exist");
         return false;
     }
     return std::any_of(
         std::filesystem::directory_iterator(cacheDir), std::filesystem::directory_iterator(), [](const auto& entry) { return entry.is_directory(); });
 }
 
+void EventsManager::clearCachedData(const std::filesystem::path& directory) {
+    if(!checkForCachedData()) {
+        return;
+    }
+    std::error_code ec;
+    std::filesystem::remove_all(directory, ec);
+    if(ec) {
+        logger::error("Failed to remove cache directory {}: {}", directory.string(), ec.message());
+    } else {
+        logger::info("Cleared cache directory {}", directory.string());
+    }
+}
+
 void EventsManager::setCacheDir(const std::string& cacheDir) {
     this->cacheDir = cacheDir;
-}
-
-void EventsManager::setUrl(const std::string& url) {
-    this->url = url;
-}
-
-void EventsManager::setSourceAppId(const std::string& sourceAppId) {
-    this->sourceAppId = sourceAppId;
-}
-
-void EventsManager::setSourceAppIdentifier(const std::string& sourceAppIdentifier) {
-    this->sourceAppIdentifier = sourceAppIdentifier;
 }
 
 void EventsManager::setToken(const std::string& token) {
     this->token = token;
 }
 
-bool EventsManager::checkConnection() {
-    cpr::Response r = cpr::Get(cpr::Url{url + "/health"}, cpr::VerifySsl(verifySsl));
-    if(r.status_code != cpr::status::HTTP_OK) {
-        logger::error("Failed to connect to events service: {} {}", r.text, r.status_code);
-        return false;
-    }
-    logger::info("Connected to events service");
-    return true;
-}
-std::string EventsManager::createUUID() {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 15);
-    std::uniform_int_distribution<> dis2(8, 11);
-
-    std::stringstream ss;
-    int i = 0;
-    ss << std::hex;
-    for(i = 0; i < 8; i++) {
-        ss << dis(gen);
-    }
-    ss << "-";
-    for(i = 0; i < 4; i++) {
-        ss << dis(gen);
-    }
-    ss << "-4";
-    for(i = 0; i < 3; i++) {
-        ss << dis(gen);
-    }
-    ss << "-";
-    ss << dis2(gen);
-    for(i = 0; i < 3; i++) {
-        ss << dis(gen);
-    }
-    ss << "-";
-    for(i = 0; i < 12; i++) {
-        ss << dis(gen);
-    };
-    return ss.str();
-}
-void EventsManager::setQueueSize(uint64_t queueSize) {
-    this->queueSize = queueSize;
-}
 void EventsManager::setLogResponse(bool logResponse) {
     this->logResponse = logResponse;
 }
-void EventsManager::setDeviceSerialNumber(const std::string& deviceSerialNumber) {
-    this->deviceSerialNumber = deviceSerialNumber;
-}
+
 void EventsManager::setVerifySsl(bool verifySsl) {
     this->verifySsl = verifySsl;
 }
+
 void EventsManager::setCacheIfCannotSend(bool cacheIfCannotSend) {
     this->cacheIfCannotSend = cacheIfCannotSend;
 }
+
 }  // namespace utility
 }  // namespace dai

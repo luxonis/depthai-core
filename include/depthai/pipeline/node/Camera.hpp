@@ -212,13 +212,13 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Get number of frames in outputs pool for all outputs
      * @return Number of frames
      */
-    int getOutputsNumFramesPool() const;
+    std::optional<int> getOutputsNumFramesPool() const;
 
     /**
      * Get maximum size of outputs pool for all outputs
      * @return Maximum size in bytes of image manip pool
      */
-    int getOutputsMaxSizePool() const;
+    std::optional<size_t> getOutputsMaxSizePool() const;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**

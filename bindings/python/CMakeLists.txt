@@ -106,6 +106,8 @@ set(SOURCE_LIST
     src/pipeline/node/ImageAlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
     src/pipeline/node/ImageFiltersBindings.cpp
+    src/pipeline/node/RectificationBindings.cpp
+    src/pipeline/node/NeuralDepthBindings.cpp
     src/pipeline/FilterParamsBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
@@ -124,6 +126,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/IMUDataBindings.cpp
     src/pipeline/datatype/MessageGroupBindings.cpp
     src/pipeline/datatype/NNDataBindings.cpp
+    src/pipeline/datatype/NeuralDepthConfigBindings.cpp
     src/pipeline/datatype/RGBDDataBindings.cpp
     src/pipeline/datatype/SpatialImgDetectionsBindings.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfigBindings.cpp

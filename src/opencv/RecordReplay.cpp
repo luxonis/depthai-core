@@ -72,6 +72,8 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
         case VideoCodec::RAW:
             cvWriter = std::make_unique<cv::VideoWriter>();
             cvWriter->open(filePath, cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps, cv::Size(width, height));
+            // TODO - It would be better to use a lossless codec here
+            // cvWriter->open(filePath, cv::VideoWriter::fourcc('F','F','V','1'), fps, cv::Size(width, height));
             assert(cvWriter->isOpened());
             break;
     }

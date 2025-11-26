@@ -1,6 +1,5 @@
-#include <catch2/catch_all.hpp>
-
 #include <array>
+#include <catch2/catch_all.hpp>
 #include <cstdint>
 #include <cstring>
 #include <vector>
@@ -106,7 +105,6 @@ TEST_CASE("SpatialLocationCalculator synthetic depth data test") {
     auto outputQueue = spatial->out.createOutputQueue();
     auto passthroughQueue = spatial->passthroughDepth.createOutputQueue();
 
-    
     std::vector<std::uint16_t> depthPixels(width * height, 1000);
     auto setRegionDepth = [&](const RoiSpec& spec) {
         const int x0 = static_cast<int>(spec.roi.x);
@@ -120,7 +118,7 @@ TEST_CASE("SpatialLocationCalculator synthetic depth data test") {
     for(const auto& spec : roiSpecs) {
         setRegionDepth(spec);
     }
-    
+
     // Prepare synthetic depth frame
     auto depthFrame = std::make_shared<dai::ImgFrame>();
     depthFrame->setType(dai::ImgFrame::Type::RAW16);

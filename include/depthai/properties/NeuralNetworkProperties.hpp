@@ -1,8 +1,8 @@
 #pragma once
 
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/properties/Properties.hpp"
-
 namespace dai {
 
 /**
@@ -53,10 +53,24 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
      * Specify backend properties
      */
     std::map<std::string, std::string> backendProperties;
+    /**
+     * Device model from device model zoo
+     */
+    std::optional<DeviceModelZoo> deviceModel = std::nullopt;
 
     ~NeuralNetworkProperties() override;
 };
-DEPTHAI_SERIALIZE_EXT(
-    NeuralNetworkProperties, modelSource, blobSize, blobUri, modelUri, numFrames, numThreads, numNCEPerThread, numShavesPerThread, backend, backendProperties);
+DEPTHAI_SERIALIZE_EXT(NeuralNetworkProperties,
+                      modelSource,
+                      blobSize,
+                      blobUri,
+                      modelUri,
+                      numFrames,
+                      numThreads,
+                      numNCEPerThread,
+                      numShavesPerThread,
+                      backend,
+                      backendProperties,
+                      deviceModel);
 
 }  // namespace dai

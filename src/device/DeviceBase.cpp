@@ -1299,6 +1299,10 @@ UsbSpeed DeviceBase::getUsbSpeed() {
     return pimpl->rpcCall("getUsbSpeed").as<UsbSpeed>();
 }
 
+bool DeviceBase::isNeuralDepthSupported() {
+    return pimpl->rpcCall("isNeuralDepthSupported").as<bool>();
+}
+
 std::optional<Version> DeviceBase::getBootloaderVersion() {
     return bootloaderVersion;
 }

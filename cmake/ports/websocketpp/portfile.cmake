@@ -2,9 +2,9 @@
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO amini-allight/websocketpp
-    REF ee8cf4257e001d939839cff5b1766a835b749cd6 # 0.8.2
-    SHA512 b8af1874655b29786e03ffd4bc91bcfdcad8a2a83cb26544269ec7f5a6464e83a36c2015a997d6128a088b92d22594ca47022cb250558f4bf97cb793e81f045d
+    REPO luxonis/websocketpp
+    REF cebc62c393f07e664121f9b801ee7e8a1b273cee
+    SHA512 ca48ebf3c7811e6194eeb97ba86b72c49d442f831549995c67edb4827b1b859c30b636ddd6478a5c9814a5438a40a59e59d3c4a76bdc9330d7cf28e3d1a5070b
     HEAD_REF develop
 )
 

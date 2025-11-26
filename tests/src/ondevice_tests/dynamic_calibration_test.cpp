@@ -2,46 +2,159 @@
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <depthai/depthai.hpp>
+#include <iomanip>
 #include <memory>
+#include <sstream>
+#include <string>
 #include <thread>
 
 // Nodes
+#include "../../src/utility/Platform.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/node/DynamicCalibrationNode.hpp"  // provides dai::node::DynamicCalibration
+#include "depthai/utility/Compression.hpp"
+#include "depthai/utility/matrixOps.hpp"
+
+// This is a workaround to Windows API. Windows defines 2 WinAPI functions: LoadImageA and LoadImageW
+// However, for user, a macro LoadImage is provided which selectes which of those 2 function will be
+// used during compilation.
+// When using our LoadImage in dcl namespace, the macro translates it and the compilation fails.
+#undef LoadImage
 
 using namespace std::chrono_literals;
 
 namespace {
-
-dai::Pipeline makePipeline(const std::shared_ptr<dai::Device>& device,
-                           std::shared_ptr<dai::node::DynamicCalibration>& dynCalibOut,
-                           std::shared_ptr<dai::node::StereoDepth>& stereoOut) {
+dai::Pipeline makePipeline(const std::shared_ptr<dai::Device>& device, std::shared_ptr<dai::node::DynamicCalibration>& dynCalib, bool linkStreams = true) {
     // Construct pipeline bound to the device
     dai::Pipeline p(device);
+    dynCalib = p.create<dai::node::DynamicCalibration>();
+    if(linkStreams) {
+        // Cameras via .build(socket)
+        auto camLeft = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+        auto camRight = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
-    // Cameras via .build(socket)
-    auto camLeft = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto camRight = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+        // Full-res NV12 outputs; NOTE: these return pointers
+        auto* leftOut = camLeft->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
+        auto* rightOut = camRight->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
 
-    // Full-res NV12 outputs; NOTE: these return pointers
-    auto* leftOut = camLeft->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
-    auto* rightOut = camRight->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
-
-    // DynamicCalibration
-    auto dynCalib = p.create<dai::node::DynamicCalibration>();
-    leftOut->link(dynCalib->left);
-    rightOut->link(dynCalib->right);
-
-    // StereoDepth (sanity streams)
-    auto stereo = p.create<dai::node::StereoDepth>();
-    leftOut->link(stereo->left);
-    rightOut->link(stereo->right);
-
-    // Return nodes to caller
-    dynCalibOut = dynCalib;
-    stereoOut = stereo;
+        // DynamicCalibration
+        leftOut->link(dynCalib->left);
+        rightOut->link(dynCalib->right);
+    }
     return p;
 }
 
+class TestHelper {
+   public:
+    TestHelper() {
+        using std::filesystem::create_directories;
+        using std::filesystem::path;
+
+        testFolder = dai::platform::getTempPath();
+        create_directories(testFolder);
+        path outRoot = path(testFolder) / "extracted";
+        create_directories(outRoot);
+
+        auto recordingFilenames = dai::utility::filenamesInTar(RECORDING_PATH);
+        std::vector<std::string> srcFiles;  // filtered names from tar (files only)
+        std::vector<path> dstFiles;         // matching output paths
+
+        srcFiles.reserve(recordingFilenames.size());
+        dstFiles.reserve(recordingFilenames.size());
+
+        for(const auto& name : recordingFilenames) {
+            if(name.empty()) continue;
+
+            // Treat entries ending with '/' (or with empty filename) as directories
+            bool isDirEntry = name.back() == '/' || path{name}.filename().string().empty();
+            path outPath = outRoot / name;
+
+            if(isDirEntry) {
+                // Make sure directory structure exists and skip adding to untar file lists
+                create_directories(outPath);
+                continue;
+            }
+            // Ensure parent directories exist for files
+            create_directories(outPath.parent_path());
+
+            srcFiles.push_back(name);
+            dstFiles.push_back(outPath);
+        }
+        // Extract only file entries; directories already created above
+        dai::utility::untarFiles(RECORDING_PATH, srcFiles, dstFiles);
+    }
+
+    ~TestHelper() {
+        try {
+            std::filesystem::remove_all(testFolder);
+            std::filesystem::remove(testFolder);
+        } catch(const std::exception& e) {
+            std::cerr << "Failed to remove test folder: " << e.what() << std::endl;
+        }
+    }
+
+    std::filesystem::path testFolder;
+};
+
+std::string makeFilename(const std::string& prefix, int index, TestHelper& helper) {
+    std::ostringstream oss;
+    oss << prefix << index << ".png";
+    auto path = std::filesystem::path(helper.testFolder).append("extracted").append(oss.str());
+    return path.string();
+}
+
+std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& leftPath, const std::string& rightPath) {
+    // Load left image
+    cv::Mat leftMat = cv::imread(leftPath, cv::IMREAD_GRAYSCALE);
+    if(leftMat.empty()) {
+        throw std::runtime_error("Failed to load left image: " + leftPath);
+    }
+
+    auto left = std::make_shared<dai::ImgFrame>();
+    left->setType(dai::ImgFrame::Type::GRAY8);
+    left->setWidth(leftMat.cols);
+    left->setHeight(leftMat.rows);
+    left->setCvFrame(leftMat, dai::ImgFrame::Type::GRAY8);
+    left->setInstanceNum(1);
+
+    // Load right image
+    cv::Mat rightMat = cv::imread(rightPath, cv::IMREAD_GRAYSCALE);
+    if(rightMat.empty()) {
+        throw std::runtime_error("Failed to load right image: " + rightPath);
+    }
+
+    auto right = std::make_shared<dai::ImgFrame>();
+    right->setType(dai::ImgFrame::Type::GRAY8);
+    right->setWidth(rightMat.cols);
+    right->setHeight(rightMat.rows);
+    right->setCvFrame(rightMat, dai::ImgFrame::Type::GRAY8);
+    right->setInstanceNum(2);
+
+    auto group = std::make_shared<dai::MessageGroup>();
+    group->add("right", right);
+    group->add("left", left);
+    return group;
+}
+
+static dai::CalibrationHandler getHandler() {
+    std::vector<std::vector<float>> intrinsics = {{564.0, 0.0, 640.0}, {0.0, 564.0, 400.0}, {0.0, 0.0, 1.0}};
+    std::vector<float> distortion = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+    dai::CalibrationHandler handler;
+    auto eepromdata = handler.getEepromData();
+    eepromdata.stereoUseSpecTranslation = false;
+    eepromdata.stereoEnableDistortionCorrection = true;
+    handler = dai::CalibrationHandler(eepromdata);
+    handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_B, intrinsics, 1280, 800);
+    handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_C, intrinsics, 1280, 800);
+    handler.setDistortionCoefficients(dai::CameraBoardSocket::CAM_B, distortion);
+    handler.setDistortionCoefficients(dai::CameraBoardSocket::CAM_C, distortion);
+    const double rvec[3] = {0.01, 0.01, 0.01};
+    std::vector<std::vector<float>> rotation = dai::matrix::rvecToRotationMatrix(rvec);
+    std::vector<float> translation = {7.5, 0.0, 0.0};
+    handler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, rotation, translation, {7.5f, 0.0f, 0.0f});
+    return handler;
+}
 }  // namespace
 
 TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
@@ -55,35 +168,19 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     });
 
     std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
-    std::shared_ptr<dai::node::StereoDepth> stereo;
-    auto pipeline = makePipeline(device, dynCalib, stereo);
+    auto pipeline = makePipeline(device, dynCalib);
     REQUIRE(dynCalib);
-    REQUIRE(stereo);
 
     // Queues
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
     auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    auto leftXout = stereo->syncedLeft.createOutputQueue();
-    auto rightXout = stereo->syncedRight.createOutputQueue();
-    auto dispXout = stereo->disparity.createOutputQueue();
-
     device->setCalibration(device->readCalibration());
 
     pipeline.start();
 
     std::this_thread::sleep_for(1s);
-
-    {
-        auto l = leftXout->get<dai::ImgFrame>();
-        auto r = rightXout->get<dai::ImgFrame>();
-        auto d = dispXout->get<dai::ImgFrame>();
-        REQUIRE(l != nullptr);
-        REQUIRE(r != nullptr);
-        REQUIRE(d != nullptr);
-    }
-
     // Kick off calibration
     commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
 
@@ -156,27 +253,17 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
     });
 
     std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
-    std::shared_ptr<dai::node::StereoDepth> stereo;
-    auto pipeline = makePipeline(device, dynCalib, stereo);
+    auto pipeline = makePipeline(device, dynCalib);
     REQUIRE(dynCalib);
-    REQUIRE(stereo);
 
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
     auto qualityOutput = dynCalib->qualityOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    auto leftXout = stereo->syncedLeft.createOutputQueue();
-    auto rightXout = stereo->syncedRight.createOutputQueue();
-    auto dispXout = stereo->disparity.createOutputQueue();
-
     device->setCalibration(device->readCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(1s);
-
-    REQUIRE(leftXout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(rightXout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(dispXout->get<dai::ImgFrame>() != nullptr);
 
     // 1) Calibrate (default)
     {
@@ -231,25 +318,15 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
     });
 
     std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
-    std::shared_ptr<dai::node::StereoDepth> stereo;
-    auto pipeline = makePipeline(device, dynCalib, stereo);
+    auto pipeline = makePipeline(device, dynCalib);
     REQUIRE(dynCalib);
-    REQUIRE(stereo);
 
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    auto leftXout = stereo->syncedLeft.createOutputQueue();
-    auto rightXout = stereo->syncedRight.createOutputQueue();
-    auto dispXout = stereo->disparity.createOutputQueue();
-
     device->setCalibration(device->readCalibration());
 
     pipeline.start();
-
-    REQUIRE(leftXout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(rightXout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(dispXout->get<dai::ImgFrame>() != nullptr);
 
     commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::StartCalibration{}));
 
@@ -282,27 +359,17 @@ TEST_CASE("DynamicCalibration: reset data") {
     });
 
     std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
-    std::shared_ptr<dai::node::StereoDepth> stereo;
-    auto pipeline = makePipeline(device, dynCalib, stereo);
+    auto pipeline = makePipeline(device, dynCalib);
     REQUIRE(dynCalib);
-    REQUIRE(stereo);
 
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
     auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    auto leftXout = stereo->syncedLeft.createOutputQueue();
-    auto rightXout = stereo->syncedRight.createOutputQueue();
-    auto dispXout = stereo->disparity.createOutputQueue();
-
     device->setCalibration(device->readCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(1s);
-
-    REQUIRE(leftXout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(rightXout->get<dai::ImgFrame>() != nullptr);
-    REQUIRE(dispXout->get<dai::ImgFrame>() != nullptr);
 
     // Load one image into the calibration process to produce coverage
     commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
@@ -334,15 +401,10 @@ TEST_CASE("DynamicCalibration: Empty command") {
     });
 
     std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
-    std::shared_ptr<dai::node::StereoDepth> stereo;
-    auto pipeline = makePipeline(device, dynCalib, stereo);
+    auto pipeline = makePipeline(device, dynCalib);
     REQUIRE(dynCalib);
 
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
-
-    auto leftXout = stereo->syncedLeft.createOutputQueue();
-    auto rightXout = stereo->syncedRight.createOutputQueue();
-    auto dispXout = stereo->disparity.createOutputQueue();
 
     device->setCalibration(device->readCalibration());
 
@@ -353,4 +415,53 @@ TEST_CASE("DynamicCalibration: Empty command") {
 
     pipeline.stop();
     pipeline.wait();
+}
+
+TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
+    TestHelper helper;
+
+    auto device = std::make_shared<dai::Device>();
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    auto p = makePipeline(device, dynCalib, false);
+
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();
+    auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+
+    device->setCalibration(getHandler());
+    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper));
+    dynCalib->syncInput.send(group);
+    p.start();
+    std::this_thread::sleep_for(0.5s);
+
+    // load image
+    for(int i = 0; i < 7; i++) {
+        auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper));
+        dynCalib->syncInput.send(group);
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
+        auto coverage = coverageOutput->get<dai::CoverageData>();
+        REQUIRE(coverage->coverageAcquired > 0.0f);
+    }
+
+    // calibrate
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
+    auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
+
+    REQUIRE(result != nullptr);
+    REQUIRE(result->calibrationData != std::nullopt);
+
+    auto rotationMatrixOld = result->calibrationData->currentCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C);
+    std::vector<float> rvecOld = dai::matrix::rotationMatrixToVector(rotationMatrixOld);
+    auto rotationMatrix = result->calibrationData->newCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C);
+    REQUIRE(std::fabs(rvecOld[0] - 0.01) < 0.00001);
+    REQUIRE(std::fabs(rvecOld[1] - 0.01) < 0.00001);
+    REQUIRE(std::fabs(rvecOld[2] - 0.01) < 0.00001);
+
+    std::vector<float> rvec = dai::matrix::rotationMatrixToVector(rotationMatrix);
+    float threshold = 1e-7f;
+    REQUIRE(std::fabs(rvec[0]) < threshold);
+    REQUIRE(std::fabs(rvec[1]) < threshold);
+    REQUIRE(std::fabs(rvec[2]) < threshold);
+    p.stop();
+    p.wait();
 }
