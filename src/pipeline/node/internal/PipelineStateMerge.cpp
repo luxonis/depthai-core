@@ -28,6 +28,9 @@ void mergeStates(std::shared_ptr<PipelineState>& outState, const std::shared_ptr
 }
 void PipelineStateMerge::run() {
     auto& logger = pimpl->logger;
+
+    this->pipelineEventDispatcher->sendEvents = false;
+
     if(!hasDeviceNodes && !hasHostNodes) {
         logger->warn("PipelineStateMerge: both device and host nodes are disabled. Have you built the node?");
     }

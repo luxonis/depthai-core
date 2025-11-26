@@ -894,7 +894,7 @@ void PipelineImpl::build() {
                 break;
             }
         }
-        if(!pipelineEventAggHost || !pipelineEventAggDevice) {
+        if(!(bridgesOut.empty() && bridgesIn.empty()) && (!pipelineEventAggHost || !pipelineEventAggDevice)) {
             throw std::runtime_error("PipelineEventAggregation nodes not found for pipeline debugging setup");
         }
         for(auto& bridge : bridgesOut) {

@@ -522,6 +522,8 @@ std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHa
 void PipelineEventAggregation::run() {
     auto& logger = pimpl->logger;
 
+    this->pipelineEventDispatcher->sendEvents = false;
+
     PipelineEventHandler handler(&inputs, properties.aggregationWindowSize, properties.statsUpdateIntervalMs, properties.eventWaitWindow, logger);
     handler.run();
 

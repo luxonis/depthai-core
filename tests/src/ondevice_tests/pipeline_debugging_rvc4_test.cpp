@@ -49,6 +49,11 @@ TEST_CASE("Object Tracker Pipeline Debugging") {
     auto state = pipeline.getPipelineState().nodes().detailed();
 
     for(const auto& [nodeId, nodeState] : state.nodeStates) {
+        if(nodeId == 9) continue; // XLinkOutHost of merge outRequest
+        if(nodeId == 12) continue; // XLinkInHost of merge inputDevice
+        if(nodeId == 10) continue; // XLinkIn of aggregation request
+        if(nodeId == 11) continue; // XLinkOut of aggregation out
+
         auto node = pipeline.getNode(nodeId);
         REQUIRE(nodeState.mainLoopTiming.isValid());
         if(!node->getInputs().empty()) REQUIRE(nodeState.inputsGetTiming.isValid());
