@@ -272,3 +272,21 @@ TEST_CASE("Camera pool sizes") {
         }
     }
 }
+
+TEST_CASE("Camera run without calibration") {
+    dai::Pipeline p;
+    p.setCalibrationData(dai::CalibrationHandler());  // empty calibration data
+    std::vector<std::shared_ptr<dai::MessageQueue>> outputQueues;
+    for(auto socket : p.getDefaultDevice()->getConnectedCameras()) {
+        auto camera = p.create<dai::node::Camera>()->build(socket);
+        auto* output = camera->requestFullResolutionOutput();
+        REQUIRE(output != nullptr);
+        outputQueues.emplace_back(output->createOutputQueue());
+    }
+    p.start();
+    for(auto& queue : outputQueues) {
+        auto frame = queue->get<dai::ImgFrame>();
+        REQUIRE(frame->getWidth() > 0);
+        REQUIRE(frame->getHeight() > 0);
+    }
+}
