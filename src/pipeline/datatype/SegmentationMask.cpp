@@ -92,6 +92,7 @@ void SegmentationMask::setMask(dai::ImgFrame& frame) {
     this->transformation = frame.transformation;
     setTimestamp(frame.getTimestamp());
     setTimestampDevice(frame.getTimestampDevice());
+    setTimestampSystem(frame.getTimestampSystem());
     setSequenceNum(frame.getSequenceNum());
 }
 
@@ -108,6 +109,7 @@ dai::ImgFrame SegmentationMask::getFrame() const {
     img.setSequenceNum(getSequenceNum());
     img.setTimestamp(getTimestamp());
     img.setTimestampDevice(getTimestampDevice());
+    img.setTimestampSystem(getTimestampSystem());
     if(transformation) {
         img.transformation = *transformation;
     }

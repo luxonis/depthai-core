@@ -13,6 +13,7 @@ message SpatialImgDetections {
     int64 segmentationMaskWidth = 6;
     int64 segmentationMaskHeight = 7;
     bytes maskData = 8;
+    optional common.Timestamp tsSystem = 9;
 }
 
 message SpatialImgDetection {

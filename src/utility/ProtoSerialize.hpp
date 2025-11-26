@@ -3,8 +3,10 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/util/time_util.h>
 
+#include <chrono>
 #include <memory>
 
+#include "common/Timestamp.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
@@ -37,10 +39,20 @@ DatatypeEnum schemaNameToDatatype(const std::string& schemaName);
 // Returns true if deserialization is supported for given datatype, extend for new datatypes
 bool deserializationSupported(DatatypeEnum datatype);
 
-inline std::chrono::time_point<std::chrono::steady_clock> fromProtoTimestamp(const dai::proto::common::Timestamp& ts) {
+template <typename Clock>
+inline std::chrono::time_point<Clock> fromProtoTimestamp(const dai::proto::common::Timestamp& ts) {
     using namespace std::chrono;
-    return time_point<steady_clock>(seconds(ts.sec()) + nanoseconds(ts.nsec()));
+    using Duration = typename Clock::duration;
+    auto total = seconds(ts.sec()) + nanoseconds(ts.nsec());
+    auto dur = duration_cast<Duration>(total);
+    return time_point<Clock>(dur);
 }
+
+template <typename Clock>
+std::chrono::time_point<Clock> safeTimestamp(const dai::proto::common::Timestamp& protoTs, bool hasField) {
+    using tp = std::chrono::time_point<Clock>;
+    return hasField ? fromProtoTimestamp<Clock>(protoTs) : tp{};
+};
 
 // Helpers to serialize messages to protobuf
 template <typename T>

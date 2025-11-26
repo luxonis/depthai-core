@@ -125,6 +125,20 @@ class AprilTagConfig : public Buffer {
      */
     QuadThresholds quadThresholds;
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(AprilTagConfig,
+                      Buffer::sequenceNum,
+                      Buffer::ts,
+                      Buffer::tsDevice,
+                      Buffer::tsSystem,
+                      family,
+                      quadDecimate,
+                      quadSigma,
+                      refineEdges,
+                      decodeSharpening,
+                      maxHammingDistance,
+                      quadThresholds);
+    #else
     DEPTHAI_SERIALIZE(AprilTagConfig,
                       Buffer::sequenceNum,
                       Buffer::ts,
@@ -136,6 +150,7 @@ class AprilTagConfig : public Buffer {
                       decodeSharpening,
                       maxHammingDistance,
                       quadThresholds);
+    #endif
 };
 
 }  // namespace dai
