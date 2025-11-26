@@ -6,21 +6,21 @@ CoverageData::~CoverageData() = default;
 
 void CoverageData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
-    datatype = DatatypeEnum::CoverageData;
+    datatype = this->getDatatype();
 }
 
 CalibrationQuality::~CalibrationQuality() = default;
 
 void CalibrationQuality::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
-    datatype = DatatypeEnum::CalibrationQuality;
+    datatype = this->getDatatype();
 }
 
 DynamicCalibrationResult::~DynamicCalibrationResult() = default;
 
 void DynamicCalibrationResult::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
-    datatype = DatatypeEnum::DynamicCalibrationResult;
+    datatype = this->getDatatype();
 }
 
 }  // namespace dai

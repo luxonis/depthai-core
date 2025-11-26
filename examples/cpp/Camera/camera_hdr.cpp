@@ -74,12 +74,12 @@ int main() {
             std::cout << "Setting HDR exposure ratio to " << ratio << std::endl;
             cameraControlQueue->send(ctrl);
         } else if(key == 'w') {
-            weight = clamp(weight + 1/32.0f, minWeight, maxWeight);
+            weight = clamp(weight + 1 / 32.0f, minWeight, maxWeight);
             ctrl->setMisc("hdr-local-tone-weight", weight);
             std::cout << "Setting HDR local tone weight to " << weight << std::endl;
             cameraControlQueue->send(ctrl);
         } else if(key == 'e') {
-            weight = clamp(weight - 1/32.0f, minWeight, maxWeight);
+            weight = clamp(weight - 1 / 32.0f, minWeight, maxWeight);
             ctrl->setMisc("hdr-local-tone-weight", weight);
             std::cout << "Setting HDR local tone weight to " << weight << std::endl;
             cameraControlQueue->send(ctrl);

@@ -57,6 +57,7 @@ class RemoteConnectionImpl {
     void exposeTopicGroupsService();
     void exposeKeyPressedService();
     void exposePipelineService(const Pipeline& pipeline);
+    void exposeLibraryVersionService();
     void keyPressedCallback(int key);
 
     std::mutex keyMutex;
@@ -75,6 +76,7 @@ class RemoteConnectionImpl {
     std::unique_ptr<httplib::Server> httpServer;
     std::unique_ptr<std::thread> httpServerThread;
     std::map<foxglove::ServiceId, std::function<foxglove::ServiceResponse(foxglove::ServiceResponse)>> serviceMap;
+    std::function<uint8_t(DatatypeEnum)> getMessagePriority;
 };
 
 }  // namespace dai

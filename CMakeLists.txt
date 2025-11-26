@@ -66,8 +66,8 @@ endif()
 
 
 # Create depthai project
-project(depthai VERSION "3.1.0" LANGUAGES CXX C)
-set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
+project(depthai VERSION "3.2.0" LANGUAGES CXX C)
+set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
 # Set DEPTHAI_VERSION universally, not conditionally
@@ -311,6 +311,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/utilities/DetectionParser/DetectionParserUtils.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
@@ -321,6 +322,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/node/NeuralDepth.cpp
+    src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
@@ -331,6 +334,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImageAlignConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
+    src/pipeline/datatype/ImgDetectionsT.cpp
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
@@ -343,6 +347,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/Tracklets.cpp
     src/pipeline/datatype/IMUData.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
+    src/pipeline/datatype/NeuralDepthConfig.cpp
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
@@ -749,12 +754,14 @@ target_include_directories(${TARGET_CORE_NAME}
         "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
 
         # Build time path to include directories
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
     #INTERFACE
     #    # ...
     PRIVATE
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/depthai>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
@@ -887,6 +894,10 @@ endif()
 # Add patch only mode definition
 if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
+endif()
+
+if(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
 endif()
 
 # Helper function
@@ -1207,7 +1218,12 @@ string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
 message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}, BUILD_COMMIT_DATETIME: ${BUILD_COMMIT_DATETIME}")
 
 # Configure build information (version, opencv, pcl support)
-configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
+set(DEPTHAI_VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build/version.hpp")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build")
+configure_file(
+    "${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in"
+    "${DEPTHAI_VERSION_HEADER}"
+)
 
 ########################
 # Export and install
@@ -1268,6 +1284,7 @@ if(DEPTHAI_INSTALL)
 
     # Install depthai public headers
     install(DIRECTORY include/depthai DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(FILES "${DEPTHAI_VERSION_HEADER}" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai/build")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install resources if not RC'd

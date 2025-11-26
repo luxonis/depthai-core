@@ -608,6 +608,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, getLeonMssCpuUsage))
         .def(
+            "getProcessMemoryUsage",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getProcessMemoryUsage();
+            },
+            DOC(dai, DeviceBase, getProcessMemoryUsage))
+        .def(
             "addLogCallback",
             [](DeviceBase& d, std::function<void(LogMessage)> callback) {
                 py::gil_scoped_release release;
@@ -790,15 +797,23 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(
             "readCalibrationRaw",
             [](DeviceBase& d) {
-                py::gil_scoped_release release;
-                return d.readCalibrationRaw();
+                std::vector<uint8_t> data;
+                {
+                    py::gil_scoped_release release;
+                    data = d.readCalibrationRaw();
+                }
+                return py::bytes(reinterpret_cast<const char*>(data.data()), data.size());
             },
             DOC(dai, DeviceBase, readCalibrationRaw))
         .def(
             "readFactoryCalibrationRaw",
             [](DeviceBase& d) {
-                py::gil_scoped_release release;
-                return d.readFactoryCalibrationRaw();
+                std::vector<uint8_t> data;
+                {
+                    py::gil_scoped_release release;
+                    data = d.readFactoryCalibrationRaw();
+                }
+                return py::bytes(reinterpret_cast<const char*>(data.data()), data.size());
             },
             DOC(dai, DeviceBase, readFactoryCalibrationRaw))
         .def(
@@ -858,8 +873,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 py::gil_scoped_release release;
                 return d.crashDevice();
             },
-            DOC(dai, DeviceBase, crashDevice));
-
+            DOC(dai, DeviceBase, crashDevice))
+        .def(
+            "isNeuralDepthSupported",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.isNeuralDepthSupported();
+            },
+            DOC(dai, DeviceBase, isNeuralDepthSupported));
     // Bind constructors
     bindConstructors<Device>(device);
 
