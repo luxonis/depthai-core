@@ -186,11 +186,16 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         // getters
         .def("getTimestamp", py::overload_cast<>(&ImgFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", py::overload_cast<>(&ImgFrame::Buffer::getTimestampDevice, py::const_), DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", py::overload_cast<>(&ImgFrame::Buffer::getTimestampSystem, py::const_), DOC(dai, Buffer, getTimestampSystem))
         .def("getTimestamp", py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestamp, py::const_), py::arg("offset"), DOC(dai, ImgFrame, getTimestamp))
         .def("getTimestampDevice",
              py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampDevice, py::const_),
              py::arg("offset"),
              DOC(dai, ImgFrame, getTimestampDevice))
+        .def("getTimestampSystem",
+             py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampSystem, py::const_),
+             py::arg("offset"),
+             DOC(dai, ImgFrame, getTimestampSystem))
         .def("getSequenceNum", &ImgFrame::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getInstanceNum", &ImgFrame::getInstanceNum, DOC(dai, ImgFrame, getInstanceNum))
         .def("getCategory", &ImgFrame::getCategory, DOC(dai, ImgFrame, getCategory))

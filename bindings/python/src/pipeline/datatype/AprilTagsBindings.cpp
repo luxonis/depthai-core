@@ -49,6 +49,7 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
             "aprilTags", [](AprilTags& det) { return &det.aprilTags; }, [](AprilTags& det, std::vector<AprilTag> val) { det.aprilTags = val; })
         .def("getTimestamp", &AprilTags::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &AprilTags::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", &AprilTags::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
         .def("getSequenceNum", &AprilTags::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         // .def("setTimestamp", &AprilTags::setTimestamp, DOC(dai, Buffer, setTimestamp))
         // .def("setTimestampDevice", &AprilTags::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))

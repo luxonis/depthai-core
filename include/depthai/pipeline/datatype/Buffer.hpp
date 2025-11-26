@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <optional>
 
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
@@ -61,6 +62,12 @@ class Buffer : public ADatatype {
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
 
     /**
+     * Retrieves timestamp directly captured from device's system clock,
+     * that can be synchronized using PTP
+     */
+    std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> getTimestampSystem() const;
+
+    /**
      * Sets image timestamp related to dai::Clock::now()
      */
     void setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
@@ -69,6 +76,11 @@ class Buffer : public ADatatype {
      * Sets image timestamp related to dai::Clock::now()
      */
     void setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    void setTimestampSystem(std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> timestamp);
 
     /**
      * Retrieves image sequence number
@@ -92,7 +104,9 @@ class Buffer : public ADatatype {
     int64_t sequenceNum = 0;  // increments for each message
     Timestamp ts = {};        // generation timestamp, synced to host time
     Timestamp tsDevice = {};  // generation timestamp, direct device monotonic clock
-    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice);
+    Timestamp tsSystem = {};  // generation timestamp, direct device system clock
+    bool hasTsSystem = false;
+    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem, hasTsSystem);
 };
 
 }  // namespace dai

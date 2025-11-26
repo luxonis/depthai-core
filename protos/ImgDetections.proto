@@ -12,6 +12,8 @@ message ImgDetections {
     int64 segmentationMaskWidth = 6;
     int64 segmentationMaskHeight = 7;
     bytes data = 8;
+    common.Timestamp tsSystem = 9;
+    bool hasTsSystem = 10;
 }
 
 message ImgDetection {

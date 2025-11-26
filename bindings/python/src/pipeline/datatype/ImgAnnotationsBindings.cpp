@@ -97,5 +97,6 @@ void bind_imageannotations(pybind11::module& m, void* pCallstack) {
         .def_readwrite("annotations", &ImgAnnotations::annotations)
         .def("getTimestamp", &ImgAnnotations::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &ImgAnnotations::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", &ImgAnnotations::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
         .def("getSequenceNum", &ImgAnnotations::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum));
 }

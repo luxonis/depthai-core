@@ -66,6 +66,7 @@ std::optional<dai::ImgFrame> ImgDetectionsT<DetectionT>::getSegmentationMask() c
     img.setSequenceNum(sequenceNum);
     img.setTimestamp(getTimestamp());
     img.setTimestampDevice(getTimestampDevice());
+    img.setTimestampSystem(getTimestampSystem());
     img.setData(*maskData);
 
     return img;

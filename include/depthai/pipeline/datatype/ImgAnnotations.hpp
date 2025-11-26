@@ -82,7 +82,7 @@ class ImgAnnotations : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, annotations);
+    DEPTHAI_SERIALIZE(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, annotations, Buffer::tsSystem, Buffer::hasTsSystem);
 };
 
 }  // namespace dai
