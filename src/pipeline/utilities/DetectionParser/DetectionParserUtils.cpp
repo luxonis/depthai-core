@@ -715,7 +715,6 @@ void segmentationDecode(const dai::NNData& nnData,
     int inputWidth = inputSize.first;
     int inputHeight = inputSize.second;
 
-    logger->warn("printing");
     cv::Mat indexMask(inputHeight, inputWidth, CV_8U, cv::Scalar(255));
 
     auto maskLayerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "masks", std::vector<std::string>{});

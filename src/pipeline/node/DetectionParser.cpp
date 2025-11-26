@@ -4,7 +4,6 @@
 #include <cctype>
 #include <cstddef>
 #include <iostream>
-#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -94,9 +93,6 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
     DAI_CHECK_V(numYoloHeads == 1, "NNArchive should contain exactly one YOLO head. Found {} YOLO heads.", numYoloHeads);  // no support for multi-head YOLO
     const auto head = (*model.heads)[yoloHeadIndex];
-    
-    //print extra params
-    
     if(head.parser == "YOLO" || head.parser == "YOLOExtendedParser") {
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
         if(head.metadata.subtype) {
