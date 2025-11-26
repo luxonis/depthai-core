@@ -44,6 +44,7 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
+    using Buffer::getTimestampSystem;
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
@@ -295,7 +296,15 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
         return DatatypeEnum::PointCloudData;
     }
 
-    DEPTHAI_SERIALIZE(PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation, ts, tsDevice, sequenceNum);
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(
+        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation,
+        ts, tsDevice, tsSystem, sequenceNum);
+    #else
+    DEPTHAI_SERIALIZE(
+        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation,
+        ts, tsDevice, sequenceNum);
+    #endif
 };
 
 }  // namespace dai

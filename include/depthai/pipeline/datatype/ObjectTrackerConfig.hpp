@@ -40,7 +40,11 @@ class ObjectTrackerConfig : public Buffer {
         return DatatypeEnum::ObjectTrackerConfig;
     }
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(ObjectTrackerConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, trackletIdsToRemove);
+    #else
     DEPTHAI_SERIALIZE(ObjectTrackerConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, trackletIdsToRemove);
+    #endif
 };
 
 }  // namespace dai

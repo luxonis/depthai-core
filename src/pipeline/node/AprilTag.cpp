@@ -323,6 +323,7 @@ void AprilTag::run() {
         aprilTags->setSequenceNum(inFrame->getSequenceNum());
         aprilTags->setTimestamp(inFrame->getTimestamp());
         aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
+        aprilTags->setTimestampSystem(inFrame->getTimestampSystem());
         aprilTags->setTransformation(inFrame->transformation);
 
         {

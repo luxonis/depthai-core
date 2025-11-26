@@ -124,7 +124,11 @@ class Tracklets : public Buffer, public TransformableCRTP<Tracklets> {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, ts, tsDevice, sequenceNum, tsSystem, unit);
+    #else
     DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, ts, tsDevice, sequenceNum, unit);
+    #endif
 };
 
 }  // namespace dai

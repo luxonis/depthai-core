@@ -156,6 +156,7 @@ ImgFrame EncodedFrame::getImgFrameMeta() const {
     frame.setSequenceNum(getSequenceNum());
     frame.setTimestamp(getTimestamp());
     frame.setTimestampDevice(getTimestampDevice());
+    frame.setTimestampSystem(getTimestampSystem());
     return frame;
 }
 

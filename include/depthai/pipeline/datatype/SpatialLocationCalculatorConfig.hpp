@@ -235,7 +235,21 @@ class SpatialLocationCalculatorConfig : public Buffer {
         return DatatypeEnum::SpatialLocationCalculatorConfig;
     }
 
-    DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig,
+    #ifndef DEPTHAI_MESSAGES_RVC2
+        DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig,
+                      globalStepSize,
+                      globalLowerThreshold,
+                      globalUpperThreshold,
+                      globalCalculationAlgorithm,
+                      globalKeypointRadius,
+                      calculateSpatialKeypoints,
+                      useSegmentation,
+                      segmentationPassthrough,
+                      bBoxScaleFactor,
+                      config,
+                      Buffer::tsSystem);
+    #else
+        DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig,
                       globalStepSize,
                       globalLowerThreshold,
                       globalUpperThreshold,
@@ -246,6 +260,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
                       segmentationPassthrough,
                       bBoxScaleFactor,
                       config);
+    #endif
 };
 
 }  // namespace dai
