@@ -416,7 +416,7 @@ jobs:
           EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
         if: success()
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -546,7 +546,7 @@ jobs:
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
         if: success()
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -680,7 +680,7 @@ jobs:
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
         if: success()
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -742,7 +742,7 @@ jobs:
           python bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
         if: success()
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -790,7 +790,7 @@ jobs:
           PYPI_USER: ${{ secrets.PYPI_USER }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       - name: Run deploy to Artifactory
-        run: cd bindings/python && bash ./ci/upload-artifactory-release.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --release
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
