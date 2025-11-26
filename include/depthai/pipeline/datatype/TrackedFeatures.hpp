@@ -66,7 +66,7 @@ class TrackedFeatures : public Buffer {
         return DatatypeEnum::TrackedFeatures;
     }
 
-    DEPTHAI_SERIALIZE(TrackedFeatures, trackedFeatures, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice);
+    DEPTHAI_SERIALIZE(TrackedFeatures, trackedFeatures, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::hasTsSystem);
 };
 
 }  // namespace dai

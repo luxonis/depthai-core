@@ -180,7 +180,9 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
                       detections,
                       transformation,
                       segmentationMaskWidth,
-                      segmentationMaskHeight);
+                      segmentationMaskHeight,
+                      Base::Buffer::tsSystem,
+                      Base::Buffer::hasTsSystem);
 };
 
 }  // namespace dai

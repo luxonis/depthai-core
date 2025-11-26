@@ -132,6 +132,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
             py::return_value_policy::reference_internal)
         .def("getTimestamp", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
         .def("getSequenceNum", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](ImgDetections& msg) { return msg.transformation; })
         .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })

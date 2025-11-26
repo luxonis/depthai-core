@@ -567,6 +567,7 @@ void ImageAlign::run() {
 
         alignedImg->setTimestamp(inputImg->getTimestamp());
         alignedImg->setTimestampDevice(inputImg->getTimestampDevice());
+        alignedImg->setTimestampSystem(inputImg->getTimestampSystem());
         alignedImg->setSequenceNum(inputImg->getSequenceNum());
 
         alignedImg->transformation = inputAlignToTransform;

@@ -32,6 +32,7 @@ class PointCloudData : public Buffer, public ProtoSerializable {
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
+    using Buffer::getTimestampSystem;
 
     /**
      * Construct PointCloudData message.
@@ -236,7 +237,8 @@ class PointCloudData : public Buffer, public ProtoSerializable {
         return DatatypeEnum::PointCloudData;
     }
     DEPTHAI_SERIALIZE(
-        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, sparse, instanceNum, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
+        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, sparse,instanceNum,
+        Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, Buffer::tsSystem, Buffer::hasTsSystem);
 };
 
 }  // namespace dai
