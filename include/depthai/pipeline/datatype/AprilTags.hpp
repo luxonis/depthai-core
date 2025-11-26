@@ -76,7 +76,7 @@ class AprilTags : public Buffer {
     }
 
     std::vector<AprilTag> aprilTags;
-    DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, aprilTags);
+    DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, aprilTags, Buffer::tsSystem, Buffer::hasTsSystem);
 };
 
 }  // namespace dai
