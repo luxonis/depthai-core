@@ -414,7 +414,8 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      *
      * Copies cv::Mat data to the ImgFrame buffer and converts to a specific type.
      *
-     * @param frame Input cv::Mat BGR frame from which to copy the data
+     * @param frame Input cv::Mat BGR frame or single channel frame from which to copy the data from.
+     * @param type  Specifies the target image format for the internal buffer, including color space, layout, and bit depth.
      */
     ImgFrame& setCvFrame(cv::Mat frame, Type type);
 
