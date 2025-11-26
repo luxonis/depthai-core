@@ -306,6 +306,7 @@ void AprilTag::run() {
         aprilTags->setSequenceNum(inFrame->getSequenceNum());
         aprilTags->setTimestamp(inFrame->getTimestamp());
         aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
+        aprilTags->setTimestampSystem(inFrame->getTimestampSystem());
 
         // Send detections and pass through input frame
         out.send(aprilTags);

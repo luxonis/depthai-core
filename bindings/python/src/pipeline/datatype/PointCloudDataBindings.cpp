@@ -116,6 +116,7 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
         .def("getInstanceNum", &PointCloudData::getInstanceNum, DOC(dai, PointCloudData, getInstanceNum))
         .def("getTimestamp", &PointCloudData::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &PointCloudData::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", &PointCloudData::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
         .def("getSequenceNum", &PointCloudData::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("setPoints",
              [](py::object& obj, py::array_t<float>& arr) {

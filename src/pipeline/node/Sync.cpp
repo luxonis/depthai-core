@@ -131,6 +131,7 @@ void Sync::run() {
         }
         outputGroup->setTimestamp(newestFrame->getTimestamp());
         outputGroup->setTimestampDevice(newestFrame->getTimestampDevice());
+        outputGroup->setTimestampSystem(newestFrame->getTimestampSystem());
         outputGroup->setSequenceNum(newestFrame->getSequenceNum());
         out.send(outputGroup);
         auto tAbsoluteEnd = steady_clock::now();
