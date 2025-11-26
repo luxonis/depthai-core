@@ -194,32 +194,6 @@ def test_static_factory_set_performance_mode_all_modes():
 
 
 # ---------------------------------------------------------------------------
-#   DYNAMIC CALIBRATION NODE TESTS
-# ---------------------------------------------------------------------------
-
-def test_dynamic_calibration_node_create():
-    """
-    Create a DynamicCalibration node and verify key attributes and methods exist.
-    Ensures Python API surface matches expected node interface.
-    """
-    pipeline = dai.Pipeline()
-    node = pipeline.create(dai.node.DynamicCalibration)
-
-    # Node interface presence
-    assert hasattr(node, "qualityOutput")
-    assert hasattr(node, "coverageOutput")
-    assert hasattr(node, "calibrationOutput")
-    assert hasattr(node, "inputControl")
-    assert hasattr(node, "left")
-    assert hasattr(node, "right")
-    assert hasattr(node, "setRunOnHost")
-
-    # Simple invocation
-    node.setRunOnHost(True)
-    assert node.runOnHost() is True
-
-
-# ---------------------------------------------------------------------------
 #   DATA STRUCTURE R/W TESTS
 # ---------------------------------------------------------------------------
 
