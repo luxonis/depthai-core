@@ -94,7 +94,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
     uint32_t globalUpperThreshold = 65535;
     SpatialLocationCalculatorAlgorithm globalCalculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
     int32_t globalKeypointRadius = 10;
-    bool useKeypoints = false;
+    bool calculateSpatialKeypoints = true;
     bool useSegmentation = true;
     std::vector<SpatialLocationCalculatorConfigData> config;
 
@@ -152,12 +152,11 @@ class SpatialLocationCalculatorConfig : public Buffer {
     void setKeypointRadius(int32_t radius);
 
     /**
-     * If true, the spatial location of a detection will be equal to the average of the spatial location of its keypoints. Otherwise, the bounding box center
-     * is used as the location.
-     * @param useKeypoints
+     * If false, spatial coordinates of keypoints will not be calculated.
+     * @param calculateSpatialKeypoints
      * @warning Only applicable to ImgDetections with keypoints.
      */
-    void useImgDetectionKeypoints(bool useKeypoints);
+    void setCalculateSpatialKeypoints(bool calculateSpatialKeypoints);
 
     /**
      * Specify whether to consider only segmented pixels within a detection bounding box for spatial calculations.
@@ -196,12 +195,12 @@ class SpatialLocationCalculatorConfig : public Buffer {
     /*
      * Retrieve whether keypoints are used for spatial location calculation.
      */
-    bool isUsingImgDetectionKeypoints() const;
+    bool getCalculateSpatialKeypoints() const;
 
     /*
      * Retrieve whether segmentation is used for spatial location calculation.
      */
-    bool isUsingImgDetectionSegmentation() const;
+    bool getUseImgDetectionSegmentation() const;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
@@ -215,7 +214,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
                       globalUpperThreshold,
                       globalCalculationAlgorithm,
                       globalKeypointRadius,
-                      useKeypoints,
+                      calculateSpatialKeypoints,
                       useSegmentation,
                       config);
 };

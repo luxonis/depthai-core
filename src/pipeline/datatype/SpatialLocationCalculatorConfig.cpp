@@ -47,8 +47,8 @@ void SpatialLocationCalculatorConfig::setKeypointRadius(int32_t radius) {
     globalKeypointRadius = radius;
 }
 
-void SpatialLocationCalculatorConfig::useImgDetectionKeypoints(bool useKeypoints) {
-    this->useKeypoints = useKeypoints;
+void SpatialLocationCalculatorConfig::setCalculateSpatialKeypoints(bool calculateSpatialKeypoints) {
+    this->calculateSpatialKeypoints = calculateSpatialKeypoints;
 }
 
 void SpatialLocationCalculatorConfig::useImgDetectionSegmentation(bool useSegmentation) {
@@ -71,11 +71,11 @@ int32_t SpatialLocationCalculatorConfig::getKeypointRadius() const {
     return globalKeypointRadius;
 }
 
-bool SpatialLocationCalculatorConfig::isUsingImgDetectionKeypoints() const {
-    return useKeypoints;
+bool SpatialLocationCalculatorConfig::getCalculateSpatialKeypoints() const {
+    return calculateSpatialKeypoints;
 }
 
-bool SpatialLocationCalculatorConfig::isUsingImgDetectionSegmentation() const {
+bool SpatialLocationCalculatorConfig::getUseImgDetectionSegmentation() const {
     return useSegmentation;
 }
 
