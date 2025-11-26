@@ -74,7 +74,6 @@ struct CoverageData : public Buffer {
  * @ingroup dcl_results
  */
 struct CalibrationQuality : public Buffer {
-
     /**
      * @brief Quality metrics describing differences between current
      *        and predicted calibration.
@@ -105,15 +104,13 @@ struct CalibrationQuality : public Buffer {
      * @param qualityData Metrics describing the quality difference.
      * @param info Informational text describing the result.
      */
-    CalibrationQuality(Data qualityData, std::string info)
-        : qualityData(std::make_optional(std::move(qualityData))), info(std::move(info)) {}
+    CalibrationQuality(Data qualityData, std::string info) : qualityData(std::make_optional(std::move(qualityData))), info(std::move(info)) {}
 
     /**
      * @brief Construct a CalibrationQuality message without metric data.
      * @param info Informational text describing the result.
      */
-    CalibrationQuality(std::string info)
-        : qualityData(std::nullopt), info(std::move(info)) {}
+    CalibrationQuality(std::string info) : qualityData(std::nullopt), info(std::move(info)) {}
 
     /** Optional quality metrics. */
     std::optional<Data> qualityData;
@@ -141,7 +138,6 @@ struct CalibrationQuality : public Buffer {
  * @ingroup dcl_results
  */
 struct DynamicCalibrationResult : public Buffer {
-
     /**
      * @brief Detailed calibration result.
      *
@@ -166,14 +162,12 @@ struct DynamicCalibrationResult : public Buffer {
     /**
      * @brief Construct result including calibration data.
      */
-    DynamicCalibrationResult(const Data& data, std::string information)
-        : calibrationData(std::make_optional(data)), info(std::move(information)) {}
+    DynamicCalibrationResult(const Data& data, std::string information) : calibrationData(std::make_optional(data)), info(std::move(information)) {}
 
     /**
      * @brief Construct result containing only info text.
      */
-    DynamicCalibrationResult(std::string information)
-        : calibrationData(std::nullopt), info(std::move(information)) {}
+    DynamicCalibrationResult(std::string information) : calibrationData(std::nullopt), info(std::move(information)) {}
 
     /** Optional calibration result data. */
     std::optional<Data> calibrationData;
@@ -192,4 +186,4 @@ struct DynamicCalibrationResult : public Buffer {
 
 /** @}  End of dcl_results group */
 
-} // namespace dai
+}  // namespace dai

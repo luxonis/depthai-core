@@ -27,7 +27,6 @@ namespace dai {
  */
 class DynamicCalibrationControl : public Buffer {
    public:
-
     /**
      * @brief Performance mode for Dynamic Calibration.
      *
@@ -49,7 +48,6 @@ class DynamicCalibrationControl : public Buffer {
      * can execute. Each command corresponds to a specific action or configuration update.
      */
     struct Commands {
-
         /**
          * @brief Command to perform a full calibration run.
          */
@@ -78,8 +76,8 @@ class DynamicCalibrationControl : public Buffer {
             explicit StartCalibration(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f)
                 : loadImagePeriod(loadImagePeriod), calibrationPeriod(calibrationPeriod) {}
 
-            float loadImagePeriod = 0.5f;     ///< Seconds between image loads.
-            float calibrationPeriod = 5.0f;   ///< Seconds between calibration cycles.
+            float loadImagePeriod = 0.5f;    ///< Seconds between image loads.
+            float calibrationPeriod = 5.0f;  ///< Seconds between calibration cycles.
 
             DEPTHAI_SERIALIZE(StartCalibration, loadImagePeriod, calibrationPeriod);
         };
@@ -119,7 +117,7 @@ class DynamicCalibrationControl : public Buffer {
             SetPerformanceMode() : performanceMode(PerformanceMode::DEFAULT) {}
             explicit SetPerformanceMode(PerformanceMode performanceMode) : performanceMode(performanceMode) {}
 
-            PerformanceMode performanceMode; ///< Desired performance mode.
+            PerformanceMode performanceMode;  ///< Desired performance mode.
             DEPTHAI_SERIALIZE(SetPerformanceMode, performanceMode);
         };
     };
@@ -130,17 +128,16 @@ class DynamicCalibrationControl : public Buffer {
      * Only one command may be active at any time. If no command is present,
      * the variant contains `std::monostate`.
      */
-    using Command = std::variant<
-        std::monostate,                         ///< No command
-        Commands::Calibrate,                    ///< Run calibration
-        Commands::CalibrationQuality,           ///< Run calibration quality check
-        Commands::StartCalibration,             ///< Start periodic calibration
-        Commands::StopCalibration,              ///< Stop calibration
-        Commands::LoadImage,                    ///< Load an image
-        Commands::ApplyCalibration,             ///< Apply calibration data
-        Commands::ResetData,                    ///< Reset calibration data
-        Commands::SetPerformanceMode            ///< Set performance mode
-    >;
+    using Command = std::variant<std::monostate,                ///< No command
+                                 Commands::Calibrate,           ///< Run calibration
+                                 Commands::CalibrationQuality,  ///< Run calibration quality check
+                                 Commands::StartCalibration,    ///< Start periodic calibration
+                                 Commands::StopCalibration,     ///< Stop calibration
+                                 Commands::LoadImage,           ///< Load an image
+                                 Commands::ApplyCalibration,    ///< Apply calibration data
+                                 Commands::ResetData,           ///< Reset calibration data
+                                 Commands::SetPerformanceMode   ///< Set performance mode
+                                 >;
 
     Command command{};
 
@@ -153,7 +150,7 @@ class DynamicCalibrationControl : public Buffer {
     // ---------- Named constructors that return shared_ptr ----------
     /**
      * @brief Create a command that triggers a full calibration run.
-     * 
+     *
      * @param force If true, force calibration even if the quality check passes.
      * @return Shared pointer to a DynamicCalibrationControl command.
      */
@@ -178,10 +175,7 @@ class DynamicCalibrationControl : public Buffer {
      * @param calibrationPeriod How often a new calibration should be executed, in seconds.
      * @return Shared pointer to a DynamicCalibrationControl command.
      */
-    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> startCalibration(
-        float loadImagePeriod = 0.5f,
-        float calibrationPeriod = 5.0f
-    ) {
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> startCalibration(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f) {
         return std::make_shared<DynamicCalibrationControl>(Commands::StartCalibration{loadImagePeriod, calibrationPeriod});
     }
 
@@ -228,9 +222,7 @@ class DynamicCalibrationControl : public Buffer {
      * @param mode Performance mode to use. Defaults to PerformanceMode::DEFAULT.
      * @return Shared pointer to a DynamicCalibrationControl command.
      */
-    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> setPerformanceMode(
-        PerformanceMode mode = PerformanceMode::DEFAULT
-    ) {
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> setPerformanceMode(PerformanceMode mode = PerformanceMode::DEFAULT) {
         return std::make_shared<DynamicCalibrationControl>(Commands::SetPerformanceMode{mode});
     }
 
