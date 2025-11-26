@@ -142,6 +142,7 @@ void Sync::run() {
         }
         outputGroup->setTimestamp(newestFrame->getTimestamp());
         outputGroup->setTimestampDevice(newestFrame->getTimestampDevice());
+        outputGroup->setTimestampSystem(newestFrame->getTimestampSystem());
         outputGroup->setSequenceNum(newestFrame->getSequenceNum());
         {
             auto blockEvent = this->outputBlockEvent();

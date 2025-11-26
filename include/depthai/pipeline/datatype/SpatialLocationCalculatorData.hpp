@@ -79,7 +79,7 @@ class SpatialLocationCalculatorData : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::SpatialLocationCalculatorData;
     }
-    DEPTHAI_SERIALIZE(SpatialLocationCalculatorData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, spatialLocations);
+    DEPTHAI_SERIALIZE(SpatialLocationCalculatorData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, spatialLocations, Buffer::tsSystem, Buffer::hasTsSystem);
 };
 
 }  // namespace dai
