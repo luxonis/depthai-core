@@ -24,6 +24,7 @@
     <depend>zip</depend>
     <depend>tar</depend>
     <depend>unzip</depend>
+    <depend>rtabmap</depend>
 
     <buildtool_depend>ament_cmake</buildtool_depend>
 
