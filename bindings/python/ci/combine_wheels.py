@@ -11,6 +11,8 @@ import subprocess
 import sys
 import re
 import random
+import hashlib
+import base64
 
 from collections import defaultdict
 
@@ -26,6 +28,38 @@ class WheelInfo:
     python_tag: str
     abi_tag: str
     platform_tag: str
+
+def _sha256_hash_b64url(data: bytes) -> str:
+    """Return sha256 hash in base64url encoding (no padding) as used in RECORD."""
+    digest = hashlib.sha256(data).digest()
+    b64 = base64.urlsafe_b64encode(digest).decode('ascii')
+    return b64.rstrip('=')
+
+def _generate_combined_wheel_content(wheel_infos, first_wheel_extract_dir: str):
+    """Generate combined WHEEL file content (multi-Tag)."""
+    # Find .dist-info in first wheel
+    dist_info_dirs = [d for d in os.listdir(first_wheel_extract_dir) if d.endswith(".dist-info")]
+    if not dist_info_dirs:
+        raise FileNotFoundError("No .dist-info in first wheel")
+    dist_info_name = dist_info_dirs[0]
+    wheel_file_path = os.path.join(first_wheel_extract_dir, dist_info_name, "WHEEL")
+    with open(wheel_file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    non_tag_lines = [line for line in lines if not line.startswith("Tag:")]
+    tag_lines = set()
+    for info in wheel_infos:
+        py_tags = info.python_tag.split(".")
+        abi_tags = info.abi_tag.split(".")
+        platform_tags = info.platform_tag.split(".")
+        n = max(len(py_tags), len(abi_tags), len(platform_tags))
+        py_tags = py_tags * n if len(py_tags) == 1 else py_tags[:n]
+        abi_tags = abi_tags * n if len(abi_tags) == 1 else abi_tags[:n]
+        platform_tags = platform_tags * n if len(platform_tags) == 1 else platform_tags[:n]
+        for i in range(n):
+            tag = f"{py_tags[i]}-{abi_tags[i]}-{platform_tags[i]}"
+            tag_lines.add(f"Tag: {tag}\n")
+    return "".join(non_tag_lines + sorted(tag_lines)), dist_info_name
 
 def _python_tag_sort_key(tag: str):
     key_parts = []
@@ -80,6 +114,15 @@ def combine_wheels_linux(args, wheel_infos):
 
         dynlib_renames = defaultdict(lambda: defaultdict(dict))
 
+        # Extract first wheel to get .dist-info metadata
+        first_wheel_info = wheel_infos[0]
+        first_wheel_extract_dir = os.path.join(temp_dir, "first_wheel")
+        os.makedirs(first_wheel_extract_dir, exist_ok=True)
+        with zipfile.ZipFile(first_wheel_info.wheel_path, 'r') as z:
+            z.extractall(first_wheel_extract_dir)
+
+        combined_wheel_content, dist_info_name = _generate_combined_wheel_content(wheel_infos, first_wheel_extract_dir)
+
         common_magic_hash = str(time.perf_counter())[-5:]
 
         combined_python_tag = ".".join([wheel_info.python_tag for wheel_info in wheel_infos])
@@ -97,6 +140,7 @@ def combine_wheels_linux(args, wheel_infos):
 
         output_zip_path = os.path.join(args.output_folder, combined_wheel_name)
         output_zip = zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
+        file_records = {}
 
         # Extract each wheel into a subdirectory named after the wheel
         for wheel_info in wheel_infos:
@@ -138,7 +182,7 @@ def combine_wheels_linux(args, wheel_infos):
                     subprocess.run(['patchelf', '--replace-needed', old_lib, new_lib, file], check=True)
 
             for file in wheel_files_to_copy:
-                write_to_zip(output_zip, wheel_extract_dir, file)
+                write_to_zip(output_zip, wheel_extract_dir, file, file_records, dist_info_name)
 
             # Write the .libs folder contents to the zip
             for lib in bundled_libs:
@@ -150,19 +194,42 @@ def combine_wheels_linux(args, wheel_infos):
                     logger.info(f"Stripping {new_lib_path}")
                     subprocess.run(['strip', '--strip-unneeded', new_lib_path], check=True)
                 
-            write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
+            write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path, file_records, dist_info_name)
+
+        # Write .dist-info (only from first wheel)
+        write_to_zip(output_zip, first_wheel_extract_dir, dist_info_name, file_records, dist_info_name)
+
+        # Manually write combined WHEEL
+        wheel_arcname = f"{dist_info_name}/WHEEL"
+        output_zip.writestr(wheel_arcname, combined_wheel_content.encode("utf-8"))
+        file_records[wheel_arcname] = (combined_wheel_content.encode("utf-8"), len(combined_wheel_content))
 
         output_zip.close()
+
+        # Generate and write RECORD
+        record_lines = []
+        record_arcname = f"{dist_info_name}/RECORD"
+        for arcname in sorted(file_records):
+            if arcname == record_arcname:
+                record_lines.append(f"{arcname},,")
+            else:
+                data, size = file_records[arcname]
+                hash_b64 = _sha256_hash_b64url(data)
+                record_lines.append(f"{arcname},sha256={hash_b64},{size}")
+        record_content = "\n".join(record_lines) + "\n"
+        with zipfile.ZipFile(output_zip_path, 'a', zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+            zf.writestr(record_arcname, record_content.encode("utf-8"))
+
         logger.info("Output zip closed")
         logger.info(f"Output zip size: {os.path.getsize(output_zip_path) / (1024 * 1024):.2f} MB")
-        logger.info(f"Combined wheel saved to {output_zip_path}")
+        logger.info(f"✅ Combined wheel saved to {output_zip_path}")
 
 def combine_wheels_windows(args, wheel_infos):
 
     logger.info("Combining wheels for Windows!")
     from delvewheel import _dll_utils as dll_utils
 
-    # Make sure that on linux, all the wheels have the same platform tag
+    # Make sure that on windows, all the wheels have the same platform tag
     platform_tags = set(wheel_info.platform_tag for wheel_info in wheel_infos)
     if len(platform_tags) > 1:
         raise ValueError(f"All wheels must have the same platform tag. Found: {platform_tags}")
@@ -171,6 +238,15 @@ def combine_wheels_windows(args, wheel_infos):
     with tempfile.TemporaryDirectory() as temp_dir:
 
         dynlib_renames = defaultdict(lambda: defaultdict(dict))
+
+        # Extract first wheel to get .dist-info metadata
+        first_wheel_info = wheel_infos[0]
+        first_wheel_extract_dir = os.path.join(temp_dir, "first_wheel")
+        os.makedirs(first_wheel_extract_dir, exist_ok=True)
+        with zipfile.ZipFile(first_wheel_info.wheel_path, 'r') as z:
+            z.extractall(first_wheel_extract_dir)
+
+        combined_wheel_content, dist_info_name = _generate_combined_wheel_content(wheel_infos, first_wheel_extract_dir)
 
         common_magic_hash = str(time.perf_counter())[-5:]
 
@@ -189,6 +265,7 @@ def combine_wheels_windows(args, wheel_infos):
 
         output_zip_path = os.path.join(args.output_folder, combined_wheel_name)
         output_zip = zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
+        file_records = {}
 
         # Extract each wheel into a subdirectory named after the wheel
         for wheel_info in wheel_infos:
@@ -219,12 +296,12 @@ def combine_wheels_windows(args, wheel_infos):
             wheel_files_to_copy = [wheel_dylib_path, python_dll_path]
             wheel_files_to_copy.extend([f for f in extracted_files if not f.endswith(".pyd") and not f.endswith(".dll") and not f.endswith(".data")])
 
-             ## Unmangle the wheel's dynamic library names
+            ## Unmangle the wheel's dynamic library names
             bundled_libs = os.listdir(os.path.join(wheel_extract_dir, wheel_libs_path, "platlib"))
             unmangled_libs = list()
             for lib in bundled_libs:
                 base, ext = ".".join(lib.split(".")[:-1]), "." + lib.split(".")[-1]
-                base = "".join(base.split("-")[:-1]) if len(base.split("-")) > 1 else base # remove hash, or reuse base name if there is no hash
+                base = "".join(base.split("-")[:-1]) if len(base.split("-")) > 1 else base
                 unmangled_libs.append(base + "-" + common_magic_hash + ext)
                 dynlib_renames[wheel_info.wheel_name][lib] = unmangled_libs[-1]
 
@@ -241,7 +318,7 @@ def combine_wheels_windows(args, wheel_infos):
                     continue
 
             for file in wheel_files_to_copy:
-                write_to_zip(output_zip, wheel_extract_dir, file)
+                write_to_zip(output_zip, wheel_extract_dir, file, file_records, dist_info_name)
 
             for lib in bundled_libs:
                 lib_path = os.path.join(wheel_extract_dir, wheel_libs_path, "platlib", lib)
@@ -250,12 +327,35 @@ def combine_wheels_windows(args, wheel_infos):
                 logger.info(f"Renaming {lib_path} to {new_lib_path}")
                 os.rename(lib_path, new_lib_path)
 
-            write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
+            write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path, file_records, dist_info_name)
+
+        # Write .dist-info (only from first wheel)
+        write_to_zip(output_zip, first_wheel_extract_dir, dist_info_name, file_records, dist_info_name)
+
+        # Manually write combined WHEEL
+        wheel_arcname = f"{dist_info_name}/WHEEL"
+        output_zip.writestr(wheel_arcname, combined_wheel_content.encode("utf-8"))
+        file_records[wheel_arcname] = (combined_wheel_content.encode("utf-8"), len(combined_wheel_content))
 
         output_zip.close()
+
+        # Generate and write RECORD
+        record_lines = []
+        record_arcname = f"{dist_info_name}/RECORD"
+        for arcname in sorted(file_records):
+            if arcname == record_arcname:
+                record_lines.append(f"{arcname},,")
+            else:
+                data, size = file_records[arcname]
+                hash_b64 = _sha256_hash_b64url(data)
+                record_lines.append(f"{arcname},sha256={hash_b64},{size}")
+        record_content = "\n".join(record_lines) + "\n"
+        with zipfile.ZipFile(output_zip_path, 'a', zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+            zf.writestr(record_arcname, record_content.encode("utf-8"))
+
         logger.info("Output zip closed")
         logger.info(f"Output zip size: {os.path.getsize(output_zip_path) / (1024 * 1024):.2f} MB")
-        logger.info(f"Combined wheel saved to {output_zip_path}")
+        logger.info(f"✅ Combined wheel saved to {output_zip_path}")
 
 def combine_wheels_macos(args, all_wheel_infos):
 
@@ -268,6 +368,15 @@ def combine_wheels_macos(args, all_wheel_infos):
 
     ## Create a temporary directory for extracting wheels
     with tempfile.TemporaryDirectory() as temp_dir:
+
+        # Extract first wheel to get .dist-info metadata
+        first_wheel_info = all_wheel_infos[0]
+        first_wheel_extract_dir = os.path.join(temp_dir, "first_wheel")
+        os.makedirs(first_wheel_extract_dir, exist_ok=True)
+        with zipfile.ZipFile(first_wheel_info.wheel_path, 'r') as z:
+            z.extractall(first_wheel_extract_dir)
+
+        combined_wheel_content, dist_info_name = _generate_combined_wheel_content(all_wheel_infos, first_wheel_extract_dir)
 
         combined_python_tag = ".".join([wheel_info.python_tag for wheel_info in all_wheel_infos])
         combined_abi_tag = ".".join([wheel_info.abi_tag for wheel_info in all_wheel_infos])
@@ -284,6 +393,7 @@ def combine_wheels_macos(args, all_wheel_infos):
 
         output_zip_path = os.path.join(args.output_folder, combined_wheel_name)
         output_zip = zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
+        file_records = {}
 
         # Extract each wheel into a subdirectory named after the wheel
         for wheel_info in all_wheel_infos:
@@ -298,33 +408,70 @@ def combine_wheels_macos(args, all_wheel_infos):
             for file in os.listdir(wheel_extract_dir):
                 if file.endswith(".dylib"):
                     continue # .dylib files are already contained within the "platform.dylibs" folder (put there by delocate)
-                write_to_zip(output_zip, wheel_extract_dir, file)
+                write_to_zip(output_zip, wheel_extract_dir, file, file_records, dist_info_name)
+
+        # Ensure .dist-info from first wheel is used (in case later wheels overwrote)
+        write_to_zip(output_zip, first_wheel_extract_dir, dist_info_name, file_records, dist_info_name)
+
+        # Manually write combined WHEEL
+        wheel_arcname = f"{dist_info_name}/WHEEL"
+        output_zip.writestr(wheel_arcname, combined_wheel_content.encode("utf-8"))
+        file_records[wheel_arcname] = (combined_wheel_content.encode("utf-8"), len(combined_wheel_content))
 
         output_zip.close()
+
+        # Generate and write RECORD
+        record_lines = []
+        record_arcname = f"{dist_info_name}/RECORD"
+        for arcname in sorted(file_records):
+            if arcname == record_arcname:
+                record_lines.append(f"{arcname},,")
+            else:
+                data, size = file_records[arcname]
+                hash_b64 = _sha256_hash_b64url(data)
+                record_lines.append(f"{arcname},sha256={hash_b64},{size}")
+        record_content = "\n".join(record_lines) + "\n"
+        with zipfile.ZipFile(output_zip_path, 'a', zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+            zf.writestr(record_arcname, record_content.encode("utf-8"))
+
         logger.info("Output zip closed")
         logger.info(f"Output zip size: {os.path.getsize(output_zip_path) / (1024 * 1024):.2f} MB")
         logger.info(f"Combined wheel saved to {output_zip_path}")
 
 
-def write_to_zip(zip_file: zipfile.ZipFile, path: str, file: str):
+def write_to_zip(zip_file: zipfile.ZipFile, path: str, file: str, file_records: dict, dist_info_name: str = None):
     file_path = os.path.join(path, file)
     if os.path.isdir(file_path):
         for root, _, files in os.walk(file_path):
             for f in files:
                 arcname = file + "/" + os.path.relpath(os.path.join(root, f), file_path)
                 arcname = arcname.replace("\\", "/") if sys.platform == "win32" else arcname
+                
+                if arcname.endswith(("/WHEEL", "/RECORD")):
+                    continue
+                    
                 try:
-                    # This will throw a KeyError if the file is not in the zip, in that case we write the file to the zip
                     zip_file.getinfo(arcname)
                 except KeyError:
-                    root = root.replace("\\", "/") if sys.platform == "win32" else root
-                    zip_file.write(os.path.join(root, f), arcname)
+                    full_path = os.path.join(root, f)
+                    with open(full_path, "rb") as infile:
+                        data = infile.read()
+                    zip_file.writestr(arcname, data)
+                    if not arcname.endswith("/RECORD"):
+                        file_records[arcname] = (data, len(data))
     else:
+        # Single file
+        arcname = file.replace("\\", "/")
+        if arcname.endswith("/WHEEL") or arcname.endswith("/RECORD"):
+            return
+            
         try:
-            # This will throw a KeyError if the file is not in the zip, in that case we write the file to the zip
             zip_file.getinfo(file)
         except KeyError:
-            zip_file.write(file_path, file)
+            with open(file_path, "rb") as infile:
+                data = infile.read()
+            zip_file.writestr(file, data)
+            file_records[file] = (data, len(data))
 
 
 def main(args: argparse.Namespace):
@@ -349,10 +496,12 @@ def main(args: argparse.Namespace):
     for wheel_path in wheels:
         wheel_name = os.path.basename(wheel_path)[:-4] # remove the .whl extension
         parts = wheel_name.split('-')
-        wheel_dvb = "-".join(parts[:2])
-        python_tag = parts[-3]
-        abi_tag = parts[-2]
+        if len(parts) < 3:
+            raise ValueError(f"Invalid wheel filename: {wheel_path}")
         platform_tag = parts[-1]
+        abi_tag = parts[-2]
+        python_tag = parts[-3]
+        wheel_dvb = "-".join(parts[:-3])
         wheel_infos.append(WheelInfo(
             wheel_name=wheel_name,
             wheel_path=wheel_path,
