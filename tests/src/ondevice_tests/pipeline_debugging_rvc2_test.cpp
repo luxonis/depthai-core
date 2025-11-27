@@ -5,10 +5,28 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "depthai/depthai.hpp"
+#include "utility/Environment.hpp"
 
 #define VIDEO_DURATION_SECONDS 5
 
 TEST_CASE("Object Tracker Pipeline Debugging") {
+    std::vector<int64_t> skipNodeIds;
+    if(!dai::utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
+        skipNodeIds = {
+            9,  // XLinkOutHost of merge outRequest
+            10, // XLinkIn of aggregation request
+            11, // XLinkOut of aggregation out
+            12, // XLinkInHost of merge inputDevice
+        };
+    } else {
+        skipNodeIds = {
+            11,
+            12,
+            15,
+            16,
+        };
+    }
+
     // Create pipeline
     dai::Pipeline pipeline;
     pipeline.enablePipelineDebugging();
@@ -49,8 +67,9 @@ TEST_CASE("Object Tracker Pipeline Debugging") {
     auto state = pipeline.getPipelineState().nodes().detailed();
 
     for(const auto& [nodeId, nodeState] : state.nodeStates) {
+        if(std::find(skipNodeIds.begin(), skipNodeIds.end(), nodeId) != skipNodeIds.end()) continue;
+
         auto node = pipeline.getNode(nodeId);
-        if(node->id == 11) continue;
         // REQUIRE(nodeState.mainLoopTiming.isValid());
         // if(!node->getInputs().empty()) REQUIRE(nodeState.inputsGetTiming.isValid());
         // if(!node->getOutputs().empty()) REQUIRE(nodeState.outputsSendTiming.isValid());
