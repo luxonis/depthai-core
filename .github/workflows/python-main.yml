@@ -749,6 +749,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Slack notification
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
           USER_ID="U09DNCMM0DB"
           
@@ -765,7 +767,7 @@ jobs:
             '{"channel": $user_id, "text": $message}' > payload.json
           
           curl -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer U095Z2ZBLAY" \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H "Content-type: application/json" \
             --data @payload.json
 
