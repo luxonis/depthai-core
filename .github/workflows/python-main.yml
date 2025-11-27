@@ -776,7 +776,8 @@ jobs:
           fi
 
           MESSAGE="*A new DepthAI build is ready!*
-          *Source Branch or Tag:* $BRANCH
+          Source Branch or Tag: $BRANCH
+          
           It can be installed using:
           $INSTALL_COMMAND"
           
