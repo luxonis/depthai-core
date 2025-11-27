@@ -557,8 +557,11 @@ void PipelineEventAggregation::run() {
                     std::this_thread::sleep_for(std::chrono::seconds(config->repeatIntervalSeconds.value()) - duration);
                 }
             });
+            currentConfig = std::nullopt;
+            continue;
         }
-        if(gotConfig || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value())) {
+        auto now = std::chrono::steady_clock::now();
+        if(gotConfig || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value() && (now - lastSentTime) >= std::chrono::seconds(currentConfig->repeatIntervalSeconds.value()))) {
             bool sendEvents = false;
             if(currentConfig.has_value()) {
                 for(const auto& nodeCfg : currentConfig->nodes) {
@@ -569,7 +572,6 @@ void PipelineEventAggregation::run() {
                 }
             }
             auto [outState, updated] = makeOutputState(handler, currentConfig, sequenceNum++, sendEvents);
-            auto now = std::chrono::steady_clock::now();
             if(gotConfig
                || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value() && updated
                    && (now - lastSentTime) >= std::chrono::seconds(currentConfig->repeatIntervalSeconds.value()))) {

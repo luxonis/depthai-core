@@ -961,7 +961,11 @@ void PipelineImpl::start() {
 
     if(buildingOnHost && utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
         if(pipelineStateTraceOut) {
-            getPipelineState().configureTraceOutput(1);
+            PipelineEventAggregationConfig cfg;
+            cfg.repeatIntervalSeconds = 1;
+            cfg.setTimestamp(std::chrono::steady_clock::now());
+            pipelineStateTraceRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
+
             pipelineStateTraceOut->addCallback([](const std::shared_ptr<ADatatype>& data) {
                 if(data) {
                     auto state = std::dynamic_pointer_cast<const PipelineState>(data);
@@ -1213,6 +1217,7 @@ void PipelineImpl::setupPipelineDebugging() {
             stateMerge->outRequest.link(deviceEventAgg->request);
             if(envPipelineDebugging) {
                 deviceEventAgg->outTrace.link(traceStateMerge->inputDevice);
+                traceStateMerge->outRequest.link(deviceEventAgg->request);
             }
         }
         if(hostEventAgg) {
@@ -1220,11 +1225,15 @@ void PipelineImpl::setupPipelineDebugging() {
             stateMerge->outRequest.link(hostEventAgg->request);
             if(envPipelineDebugging) {
                 hostEventAgg->outTrace.link(traceStateMerge->inputHost);
+                traceStateMerge->outRequest.link(hostEventAgg->request);
             }
         }
         pipelineStateOut = stateMerge->out.createOutputQueue(1, false);
         pipelineStateRequest = stateMerge->request.createInputQueue();
-        if(envPipelineDebugging) pipelineStateTraceOut = traceStateMerge->out.createOutputQueue(1, false);
+        if(envPipelineDebugging) {
+            pipelineStateTraceOut = traceStateMerge->out.createOutputQueue(1, false);
+            pipelineStateTraceRequest = traceStateMerge->request.createInputQueue();
+        }
     }
 }
 
@@ -1260,10 +1269,6 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
 }
 
 void Pipeline::enablePipelineDebugging(bool enable) {
-    if(utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
-        throw std::runtime_error(
-            "You can enable pipeline debugging either through the DEPTHAI_PIPELINE_DEBUGGING environment variable or through the Pipeline API, not both");
-    }
     if(this->isBuilt()) {
         throw std::runtime_error("Cannot change pipeline debugging state after pipeline is built");
     }

@@ -279,18 +279,5 @@ void PipelineStateApi::stateAsync(std::function<void(const PipelineState&)> call
         }
     });
 }
-void PipelineStateApi::configureTraceOutput(uint32_t repeatIntervalSeconds) {
-    PipelineEventAggregationConfig cfg;
-    cfg.repeatIntervalSeconds = repeatIntervalSeconds;
-    cfg.setTimestamp(std::chrono::steady_clock::now());
-    for(auto id : nodeIds) {
-        NodeEventAggregationConfig nodeCfg;
-        nodeCfg.nodeId = id;
-        nodeCfg.events = false;
-        cfg.nodes.push_back(nodeCfg);
-    }
-
-    pipelineStateRequest->send(std::make_shared<PipelineEventAggregationConfig>(cfg));
-}
 
 }  // namespace dai

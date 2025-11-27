@@ -583,7 +583,8 @@ TEST_CASE("State callback test") {
 
     {
         std::lock_guard<std::mutex> lock(mtx);
-        REQUIRE(callbackCount >= 5);  // At least 3 callbacks in 5 seconds
+        REQUIRE(callbackCount >= 5);  // At least 5 callbacks in 8 seconds
+        REQUIRE(callbackCount <= 11);  // At most 11 callbacks in 8 seconds
     }
 
     ph.stop();

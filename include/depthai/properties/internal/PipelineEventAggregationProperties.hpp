@@ -11,6 +11,7 @@ struct PipelineEventAggregationProperties : PropertiesSerializable<Properties, P
     uint32_t aggregationWindowSize = 100;
     uint32_t statsUpdateIntervalMs = 1000;
     uint32_t eventWaitWindow = 16;
+    // Enables traceOut output. Will use the first received repeating configuration.
     bool traceOutput = false;
 
     ~PipelineEventAggregationProperties() override;

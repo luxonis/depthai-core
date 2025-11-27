@@ -12,7 +12,7 @@ class PipelineStateMerge : public CustomThreadedNode<PipelineStateMerge> {
     bool hasDeviceNodes = false;
     bool hasHostNodes = false;
 
-    bool allowConfiguration = true;
+    bool allowReconfiguration = true;
 
    public:
     constexpr static const char* NAME = "PipelineStateMerge";

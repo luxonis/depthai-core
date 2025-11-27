@@ -131,6 +131,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::shared_ptr<MessageQueue> pipelineStateOut;
     std::shared_ptr<InputQueue> pipelineStateRequest;
     std::shared_ptr<MessageQueue> pipelineStateTraceOut;
+    std::shared_ptr<InputQueue> pipelineStateTraceRequest;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
