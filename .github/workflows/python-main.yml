@@ -747,6 +747,12 @@ jobs:
     needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
       - name: Send Slack notification
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -770,7 +776,7 @@ jobs:
           fi
 
           MESSAGE="*A new DepthAI build is ready!*
-          *Source Branch: $BRANCH*
+          *Source Branch or Tag:* $BRANCH
           It can be installed using:
           $INSTALL_COMMAND"
           
