@@ -26,22 +26,13 @@ class VideoSaver : public dai::node::CustomNode<VideoSaver> {
         if(!fileHandle.is_open()) {
             return nullptr;
         }
-
-        auto encodedFrame = message->get<dai::EncodedFrame>("data");
-
-        // Fail safe for dropped frame(s), duplicate current frame
-        if(encodedFrame->sequenceNum > frameIndex) {
-            for(int index = 0; index < encodedFrame->sequenceNum - index; ++index) {
-                fileHandle.write(reinterpret_cast<const char*>(encodedFrame->getData().data()), encodedFrame->getData().size());
-            }
-        }
-
         if(frameIndex == NUM_FRAMES) {
             this->stop();
             return nullptr;
         }
 
         // Write the frame
+        auto encodedFrame = message->get<dai::EncodedFrame>("data");
         fileHandle.write(reinterpret_cast<const char*>(encodedFrame->getData().data()), encodedFrame->getData().size());
         frameIndex++;
 
