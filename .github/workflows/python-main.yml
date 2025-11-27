@@ -806,7 +806,7 @@ jobs:
         run: ls -lah
       - name: Run deploy to PyPi
         run: cd bindings/python && bash ./ci/upload-pypi.sh
-        if: ${{!contains(github.ref, 'alpha') && !contains(github.ref, 'beta')}}
+        if: ${{!contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')}}
         env:
           PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
           PYPI_USER: ${{ secrets.PYPI_USER }}
