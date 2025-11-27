@@ -754,14 +754,26 @@ jobs:
         run: |
           USER_ID="U09DNCMM0DB"
           
-          # Determine branch based on trigger event
+          # Branch or tag name
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BRANCH="${{ github.head_ref }}"
           else
             BRANCH="${{ github.ref_name }}"
           fi
-          
-          MESSAGE="Hey you - released from branch: $BRANCH"
+
+          # Determine the version and the install command
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+            INSTALL_COMMAND="\`python3 -m pip install depthai==$VERSION\`"
+          else
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+            INSTALL_COMMAND="\`python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai==$VERSION\`"
+          fi
+
+          MESSAGE="*A new DepthAI build is ready!*
+          *Source Branch: $BRANCH*
+          It can be installed using:
+          $INSTALL_COMMAND"
           
           jq -n --arg user_id "$USER_ID" --arg message "$MESSAGE" \
             '{"channel": $user_id, "text": $message}' > payload.json
