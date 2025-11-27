@@ -743,12 +743,12 @@ jobs:
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
   notify-slack:
-    needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    needs: [precheck]
+    #needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
     runs-on: ubuntu-latest
     steps:
       - name: Send Slack notification
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
           USER_ID="U09DNCMM0DB"
           
@@ -765,7 +765,7 @@ jobs:
             '{"channel": $user_id, "text": $message}' > payload.json
           
           curl -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Authorization: Bearer U095Z2ZBLAY" \
             -H "Content-type: application/json" \
             --data @payload.json
 
