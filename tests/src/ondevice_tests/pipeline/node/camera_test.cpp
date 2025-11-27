@@ -165,6 +165,64 @@ TEST_CASE("Test how default FPS is generated for a specific output") {
     }
 }
 
+TEST_CASE("Camera high fps values") {
+    auto firstDevice = dai::Device::getFirstAvailableDevice();
+    auto isRvc4 = std::get<1>(firstDevice).platform == X_LINK_RVC4;
+    if(!isRvc4) {
+        std::cout << "Skipping this test as this is not a RVC4 device\n" << std::flush;
+        return;
+    }
+    std::vector<std::map<dai::CameraBoardSocket, std::vector<std::tuple<int, int, float>>>> tests{
+        {
+            {dai::CameraBoardSocket::CAM_A, {{640, 480, 60.0f}}},
+            {dai::CameraBoardSocket::CAM_B, {{640, 400, 60.0f}}},
+            {dai::CameraBoardSocket::CAM_C, {{640, 400, 60.0f}}},
+        },
+        // This works because at 90+ fps fsync is turned off for now
+        {
+            {dai::CameraBoardSocket::CAM_A, {{640, 480, 120.0f}}},
+            {dai::CameraBoardSocket::CAM_B, {{640, 400, 60.0f}}},
+            {dai::CameraBoardSocket::CAM_C, {{640, 400, 60.0f}}},
+        },
+        // This works because at 90+ fps fsync is turned off for now
+        {
+            {dai::CameraBoardSocket::CAM_A, {{200, 200, 240.0f}}},
+            /* this doesn't work (yet?) - TODO(jakgra)
+            {dai::CameraBoardSocket::CAM_B, {{200, 200, 30.0f}}},
+            {dai::CameraBoardSocket::CAM_C, {{200, 200, 30.0f}}},
+            */
+        },
+        // Regression
+        {
+            {dai::CameraBoardSocket::CAM_A, {{640, 480, 42.0f}}},
+        },
+    };
+    for(const auto& streams : tests) {
+        dai::Pipeline pipeline;
+        std::vector<std::pair<float, std::shared_ptr<dai::MessageQueue>>> fpsToReportQueue;
+        for(const auto& [socket, resolutions] : streams) {
+            auto camera = pipeline.create<dai::node::Camera>()->build(socket);
+            for(const auto& resolution : resolutions) {
+                auto fps = std::get<2>(resolution);
+                auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
+                benchmarkIn->sendReportEveryNMessages(static_cast<uint32_t>(std::round(fps) * 2));
+                auto* output = camera->requestOutput({std::get<0>(resolution), std::get<1>(resolution)}, std::nullopt, dai::ImgResizeMode::CROP, fps);
+                REQUIRE(output != nullptr);
+                output->link(benchmarkIn->input);
+                fpsToReportQueue.push_back({fps, benchmarkIn->report.createOutputQueue()});
+            }
+        }
+        pipeline.start();
+        for(int i = 0; i < 3; i++) {
+            for(auto& [fps, queue] : fpsToReportQueue) {
+                auto benchmarkReport = queue->get<dai::BenchmarkReport>();
+                // Allow +-10% difference
+                REQUIRE(benchmarkReport->fps == Catch::Approx(fps).margin(fps * 0.1));
+            }
+        }
+    }
+}
+
 TEST_CASE("Camera pool sizes") {
     auto firstDevice = dai::Device::getFirstAvailableDevice();
     auto isRvc4 = std::get<1>(firstDevice).platform == X_LINK_RVC4;
