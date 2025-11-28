@@ -29,6 +29,15 @@ namespace dai {
  *  - boardOptions
  *  - productName
  */
+
+ enum class HousingCoordinateSystem : int32_t {
+    FRONT_COVER_LEFT,
+    FRONT_COVER_RIGHT,
+    FRONT_COVER_RGB,
+    OPTICAL_PLANE,
+    VESA_RIGHT
+};
+
 class CalibrationHandler {
    public:
     CalibrationHandler() = default;
@@ -225,7 +234,7 @@ class CalibrationHandler {
      *
      */
     std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
-
+    std::vector<std::vector<float>> getHousingCalibration(CameraBoardSocket srcCamera, HousingCoordinateSystem housingCS, bool useSpecTranslation = false) const;
     /**
      * Get the Camera translation vector between two cameras from the calibration data.
      *
@@ -611,6 +620,7 @@ class CalibrationHandler {
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
     std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
+    std::vector<std::vector<float>> getHousingToOrigin(HousingCoordinateSystem housingCS, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
 };

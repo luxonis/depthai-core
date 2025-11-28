@@ -8,6 +8,15 @@
 void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
+     // Bind HousingCoordinateSystem enum
+     py::enum_<dai::HousingCoordinateSystem>(m, "HousingCoordinateSystem")
+     .value("FRONT_COVER_LEFT", dai::HousingCoordinateSystem::FRONT_COVER_LEFT)
+     .value("FRONT_COVER_RIGHT", dai::HousingCoordinateSystem::FRONT_COVER_RIGHT)
+     .value("FRONT_COVER_RGB", dai::HousingCoordinateSystem::FRONT_COVER_RGB)
+     .value("OPTICAL_PLANE", dai::HousingCoordinateSystem::OPTICAL_PLANE)
+     .value("VESA_RIGHT", dai::HousingCoordinateSystem::VESA_RIGHT)
+     .export_values();
+
     // Type definitions
     py::class_<CalibrationHandler> calibrationHandler(m, "CalibrationHandler", DOC(dai, CalibrationHandler));
 
@@ -75,6 +84,13 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("dstCamera"),
              py::arg("useSpecTranslation") = false,
              DOC(dai, CalibrationHandler, getCameraExtrinsics))
+
+        .def("getHousingCalibration",
+             &CalibrationHandler::getHousingCalibration,
+             py::arg("srcCamera"),
+             py::arg("housingCS"),
+             py::arg("useSpecTranslation") = false,
+             DOC(dai, CalibrationHandler, getHousingCalibration))
 
         .def("getCameraTranslationVector",
              &CalibrationHandler::getCameraTranslationVector,

@@ -447,6 +447,69 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
     return extrinsics;
 }
 
+std::vector<std::vector<float>> CalibrationHandler::getHousingToOrigin(
+        HousingCoordinateSystem housingCS,
+        bool useSpecTranslation,
+        CameraBoardSocket& originSocket) const 
+{
+    originSocket = eepromData.housingExtrinsics.toCameraSocket;
+
+    auto housingRotation        = eepromData.housingExtrinsics.rotationMatrix;
+    auto housingTranslation     = eepromData.housingExtrinsics.translation;      // Point3f
+    auto housingSpecTranslation = eepromData.housingExtrinsics.specTranslation;  // Point3f
+
+    // Build 4x4 transform matrix
+    std::vector<std::vector<float>> T(4, std::vector<float>(4, 0.0f));
+
+    for(int r = 0; r < 3; ++r) {
+        // Copy rotation row
+        for(int c = 0; c < 3; ++c) {
+            T[r][c] = housingRotation[r][c];
+        }
+
+        // Pick translation vector
+        const auto& t = useSpecTranslation ? housingSpecTranslation : housingTranslation;
+
+        // Map row index -> x/y/z
+        float tval = (r == 0 ? t.x : (r == 1 ? t.y : t.z));
+        T[r][3] = tval;
+    }
+
+    // Last row = [0 0 0 1]
+    T[3][3] = 1.0f;
+
+    return T;
+}
+
+std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(CameraBoardSocket srcCamera,
+                                                                        HousingCoordinateSystem housingCS,
+                                                                        bool useSpecTranslation) const {
+
+    if(eepromData.cameraData.find(srcCamera) == eepromData.cameraData.end()) {
+        throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
+    }
+
+    std::vector<std::vector<float>> extrinsics;
+    CameraBoardSocket originCamera1;
+    CameraBoardSocket originCamera2;
+
+    // Get matrix from src to -1 camera and dst to -1 camera and set originCamera1 and originCamera2
+    std::vector<std::vector<float>> srcOriginMatrix = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera1);
+    std::vector<std::vector<float>> dstOriginMatrix = getHousingToOrigin(housingCS, useSpecTranslation, originCamera2);
+
+    if(originCamera1 != originCamera2) {
+        throw std::runtime_error("Missing extrinsic link from source camera to to destination camera.");
+    }
+
+    // Invert the matrix dstOriginMatrix
+    invertSe3Matrix4x4InPlace(dstOriginMatrix);
+
+    // Get the matrix from src to dst camera
+    extrinsics = matMul(dstOriginMatrix, srcOriginMatrix);
+
+    return extrinsics;
+}
+
 std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) const {
     std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, useSpecTranslation);
 
