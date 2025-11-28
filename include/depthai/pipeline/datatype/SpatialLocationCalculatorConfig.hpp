@@ -88,8 +88,9 @@ DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds,
  * methods instead.
  */
 class SpatialLocationCalculatorConfig : public Buffer {
+    static constexpr std::int32_t AUTO = -1;
    public:
-    int32_t globalStepSize = SpatialLocationCalculatorConfigData::AUTO;
+    int32_t globalStepSize = AUTO;
     uint32_t globalLowerThreshold = 0;
     uint32_t globalUpperThreshold = 65535;
     SpatialLocationCalculatorAlgorithm globalCalculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
