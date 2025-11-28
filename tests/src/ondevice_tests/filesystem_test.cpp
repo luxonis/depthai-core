@@ -5,7 +5,7 @@ using namespace Catch::Matchers;
 
 // Include depthai library
 #include <cstdio>
-#if(__cplusplus >= 201703L) || (_MSVC_LANG >= 201703L)
+#if (__cplusplus >= 201703L) || (_MSVC_LANG >= 201703L)
     #include <filesystem>
 #endif
 #include <algorithm>

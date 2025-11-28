@@ -13,10 +13,10 @@ TEST_CASE("Object Tracker Pipeline Debugging") {
     std::vector<int64_t> skipNodeIds;
     if(!dai::utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
         skipNodeIds = {
-            9,  // XLinkOutHost of merge outRequest
-            10, // XLinkIn of aggregation request
-            11, // XLinkOut of aggregation out
-            12, // XLinkInHost of merge inputDevice
+            9,   // XLinkOutHost of merge outRequest
+            10,  // XLinkIn of aggregation request
+            11,  // XLinkOut of aggregation out
+            12,  // XLinkInHost of merge inputDevice
         };
     } else {
         skipNodeIds = {

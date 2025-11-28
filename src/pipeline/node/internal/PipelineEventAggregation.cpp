@@ -470,7 +470,10 @@ PipelineEventAggregation& PipelineEventAggregation::setTraceOutput(bool enable) 
     return *this;
 }
 
-std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHandler& handler, std::optional<PipelineEventAggregationConfig>& currentConfig, const uint32_t sequenceNum, bool sendEvents) {
+std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHandler& handler,
+                                                                 std::optional<PipelineEventAggregationConfig>& currentConfig,
+                                                                 const uint32_t sequenceNum,
+                                                                 bool sendEvents) {
     auto outState = std::make_shared<PipelineState>();
     bool updated = handler.getState(outState, sendEvents);
     outState->sequenceNum = sequenceNum;
@@ -561,7 +564,9 @@ void PipelineEventAggregation::run() {
             continue;
         }
         auto now = std::chrono::steady_clock::now();
-        if(gotConfig || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value() && (now - lastSentTime) >= std::chrono::seconds(currentConfig->repeatIntervalSeconds.value()))) {
+        if(gotConfig
+           || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value()
+               && (now - lastSentTime) >= std::chrono::seconds(currentConfig->repeatIntervalSeconds.value()))) {
             bool sendEvents = false;
             if(currentConfig.has_value()) {
                 for(const auto& nodeCfg : currentConfig->nodes) {
