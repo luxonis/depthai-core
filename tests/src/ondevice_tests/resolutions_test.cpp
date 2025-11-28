@@ -228,7 +228,7 @@ void getImages(bool debugOn,
         if(inRgbOrig) {
             if(debugOn) {
                 std::cout << "Got origi[" << origFramesCount << "] of size " << inRgbOrig->getWidth() << "x" << inRgbOrig->getHeight()
-                          << " timestamp: " << inRgbOrig->tsDevice.get().time_since_epoch().count() << "\n"
+                          << " timestamp: " << inRgbOrig->tsDevice.get<std::chrono::steady_clock>().time_since_epoch().count() << "\n"
                           << std::flush;
             }
             ++origFramesCount;
@@ -243,7 +243,7 @@ void getImages(bool debugOn,
                 std::cout << "Adding origFramesBuffer size was: " << origFramesBuffer.size() << "\n" << std::flush;
             }
             for(auto& compare : imgComparesOut) {
-                if(compare.second == nullptr && compare.first->tsDevice.get() == inRgbOrig->tsDevice.get()) {
+                if(compare.second == nullptr && compare.first->tsDevice.get<std::chrono::steady_clock>() == inRgbOrig->tsDevice.get<std::chrono::steady_clock>()) {
                     if(debugOn) {
                         std::cout << "Found compare.second...\n" << std::flush;
                     }
@@ -255,7 +255,7 @@ void getImages(bool debugOn,
         if(inRgb) {
             if(debugOn) {
                 std::cout << "Got frame[" << framesCount << "] of size " << inRgb->getWidth() << "x" << inRgb->getHeight()
-                          << " timestamp: " << inRgb->tsDevice.get().time_since_epoch().count() << "\n"
+                          << " timestamp: " << inRgb->tsDevice.get<std::chrono::steady_clock>().time_since_epoch().count() << "\n"
                           << std::flush;
             }
             ++framesCount;
@@ -268,7 +268,7 @@ void getImages(bool debugOn,
                 REQUIRE(inRgb->getHeight() == std::get<1>(size));
                 std::shared_ptr<dai::ImgFrame> origFrame;
                 for(const auto& frame : origFramesBuffer) {
-                    if(frame->tsDevice.get() == inRgb->tsDevice.get()) {
+                    if(frame->tsDevice.get<std::chrono::steady_clock>() == inRgb->tsDevice.get<std::chrono::steady_clock>()) {
                         origFrame = frame;
                     }
                 }
@@ -278,7 +278,7 @@ void getImages(bool debugOn,
         }
         if(imgComparesOut.size() == framesWantedCount) {
             if(std::find_if(imgComparesOut.begin(), imgComparesOut.end(), [](const auto& iter) { return iter.second == nullptr; }) == imgComparesOut.end()
-               || (inRgbOrig && inRgbOrig->tsDevice.get() > imgComparesOut.back().first->tsDevice.get())) {
+               || (inRgbOrig && inRgbOrig->tsDevice.get<std::chrono::steady_clock>() > imgComparesOut.back().first->tsDevice.get<std::chrono::steady_clock>())) {
                 if(debugOn) {
                     std::cout << "Got all frames\n" << std::flush;
                 }

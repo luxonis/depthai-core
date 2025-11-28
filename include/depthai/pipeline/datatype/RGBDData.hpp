@@ -30,7 +30,7 @@ class RGBDData : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::RGBDData;
     }
-    DEPTHAI_SERIALIZE(RGBDData, frames, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
+    DEPTHAI_SERIALIZE(RGBDData, frames, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, Buffer::tsSystem, Buffer::hasTsSystem);
 };
 
 }  // namespace dai

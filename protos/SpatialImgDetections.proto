@@ -10,6 +10,8 @@ message SpatialImgDetections {
     common.Timestamp tsDevice = 3;
     repeated SpatialImgDetection detections = 4;
     common.ImgTransformation transformation = 5;
+    common.Timestamp tsSystem = 6;
+    bool hasTsSystem = 7;
 }
 
 message SpatialImgDetection {
