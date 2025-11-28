@@ -869,6 +869,9 @@ void PipelineImpl::build() {
                     xLinkBridge.xLinkInHost->setStreamName(streamName);
                     xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
                     queueConnection.output->link(xLinkBridge.xLinkOut->input);
+
+                    // Note the created bridge for serialization (for visualization)
+                    xlinkBridges.push_back({xLinkBridge.xLinkOut->id, xLinkBridge.xLinkInHost->id});
                 }
                 auto xLinkBridge = bridgesOut[queueConnection.output];
                 queueConnection.output->unlink(queueConnection.queue);  // Unlink the original connection
