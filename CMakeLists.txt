@@ -1200,7 +1200,15 @@ if (EMSCRIPTEN)
 endif()
 
 if (DEPTHAI_BUILD_PYTHON)
-  add_subdirectory(bindings/python)
+    if(DEPTHAI_PYTHON_EMBEDDED_MODULE_TARGET)
+        set(TARGET_EMBED_ALIAS "embed")
+        set(TARGET_EMBED_NAME ${PROJECT_NAME}-${TARGET_EMBED_ALIAS} CACHE INTERNAL "Embedded Python module target name")
+        add_subdirectory(bindings/python)
+        set_target_properties(${TARGET_EMBED_NAME} PROPERTIES EXPORT_NAME ${TARGET_EMBED_ALIAS})
+        list(APPEND targets_to_export ${TARGET_EMBED_NAME})
+    else ()
+        add_subdirectory(bindings/python)
+    endif ()
 endif()
 
 ########################
