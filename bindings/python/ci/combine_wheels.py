@@ -9,6 +9,8 @@ import time
 import tempfile
 import subprocess
 import sys
+import re
+import random
 
 from collections import defaultdict
 
@@ -24,6 +26,45 @@ class WheelInfo:
     python_tag: str
     abi_tag: str
     platform_tag: str
+
+def _python_tag_sort_key(tag: str):
+    key_parts = []
+    for component in tag.split("."):
+        match = re.match(r"([a-zA-Z]+)(\d+)$", component)
+        if match:
+            prefix, numeric = match.groups()
+            key_parts.append((prefix, int(numeric)))
+        else:
+            key_parts.append((component, 0))
+    return tuple(key_parts)
+
+def _run_self_test():
+    logger.info("Running combine_wheels self-test")
+    simple_tags = ["cp39", "cp310", "cp311", "cp38"]
+    expected_simple = ["cp38", "cp39", "cp310", "cp311"]
+    actual_simple = sorted(simple_tags, key=_python_tag_sort_key)
+    assert actual_simple == expected_simple, f"Simple ordering failed: {actual_simple}"
+
+    composite_tags = ["cp39.cp310", "cp39.cp312", "cp38.cp310", "cp310.cp311", "cp39.cp311"]
+    expected_composite = ["cp38.cp310", "cp39.cp310", "cp39.cp311", "cp39.cp312", "cp310.cp311"]
+    actual_composite = sorted(composite_tags, key=_python_tag_sort_key)
+    assert actual_composite == expected_composite, f"Composite ordering failed: {actual_composite}"
+
+    wheels = [
+        WheelInfo(
+            wheel_name=f"depthai-foo-{tag}-abi-{idx}",
+            wheel_path=f"/tmp/{tag}-{idx}.whl",
+            wheel_dvb="depthai-foo",
+            python_tag=tag,
+            abi_tag=f"abi{idx}",
+            platform_tag="plat",
+        )
+        for idx, tag in enumerate(composite_tags)
+    ]
+    random.shuffle(wheels)
+    wheels.sort(key=lambda info: _python_tag_sort_key(info.python_tag))
+    assert [w.python_tag for w in wheels] == expected_composite, "WheelInfo sorting failed"
+    logger.info("Self-test passed")
 
 def combine_wheels_linux(args, wheel_infos):
 
@@ -295,6 +336,11 @@ def main(args: argparse.Namespace):
         format=FORMAT,
         datefmt=DATEFMT
     )
+    if args.self_test:
+        _run_self_test()
+        return
+    if not args.input_folder:
+        raise ValueError("--input_folder is required unless --self-test is specified")
     ## Get a list of all wheels in the input folder
     wheels = glob.glob(os.path.join(args.input_folder, "*.whl"))
 
@@ -315,7 +361,8 @@ def main(args: argparse.Namespace):
             abi_tag=abi_tag, 
             platform_tag=platform_tag
         ))
-    
+    wheel_infos.sort(key=lambda info: _python_tag_sort_key(info.python_tag))
+
     if sys.platform == "linux":
         combine_wheels_linux(args, wheel_infos)
     elif sys.platform == "win32":
@@ -329,9 +376,10 @@ def main(args: argparse.Namespace):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_folder", type=str, required=True, help="Path to the folder containing already repaired wheels for individual python versions that are to be combined into a single wheel")
+    parser.add_argument("--input_folder", type=str, help="Path to the folder containing already repaired wheels for individual python versions that are to be combined into a single wheel")
     parser.add_argument("--output_folder", type=str, default=".", help="Path to the folder where the combined wheel will be saved")
     parser.add_argument("--strip_unneeded", action="store_true", help="Strip the libraries to reduce size")
     parser.add_argument("--log_level", type=str, default="INFO", help="Log level")
+    parser.add_argument("--self-test", action="store_true", help="Run internal tests and exit")
     args = parser.parse_args()
     main(args)

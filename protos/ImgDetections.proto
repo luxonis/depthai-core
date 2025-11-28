@@ -9,6 +9,9 @@ message ImgDetections {
     common.Timestamp tsDevice = 3;
     repeated ImgDetection detections = 4;
     common.ImgTransformation transformation = 5;
+    int64 segmentationMaskWidth = 6;
+    int64 segmentationMaskHeight = 7;
+    bytes data = 8;
 }
 
 message ImgDetection {
@@ -19,4 +22,6 @@ message ImgDetection {
     float xmax = 5;
     float ymax = 6;
     string labelName = 7;
+    common.RotatedRect boundingBox = 8;
+    common.KeypointsList keypoints = 9;
 }
