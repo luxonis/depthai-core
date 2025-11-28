@@ -225,6 +225,16 @@ TEST_CASE("ImgTransformation remap vertical") {
     pipeline.stop();
 }
 
+template <typename T, size_t R, size_t C>
+static std::ostream& printMatrix(std::ostream& os, const std::array<std::array<T, C>, R>& M) {
+    for(size_t r = 0; r < R; r++) {
+        for(size_t c = 0; c < C; c++) {
+            os << M[r][c] << " ";
+        }
+        os << "\n";
+    }
+    return os;
+}
 
 // -----------------------------------------------------------------------------
 // ImgTransformation matrix inverse consistency (ImgFrame)
@@ -254,6 +264,17 @@ TEST_CASE("ImgTransformation matrix inverse consistency (ImgFrame)") {
     auto I2 = matmul(Minv, M);
     auto I3 = matmul(K, Kinv);
     auto I4 = matmul(Kinv, K);
+    Catch::cout() << "I1:\n";
+    printMatrix(Catch::cout(), I1);
+
+    Catch::cout() << "I2:\n";
+    printMatrix(Catch::cout(), I2);
+
+    Catch::cout() << "I3:\n";
+    printMatrix(Catch::cout(), I3);
+
+    Catch::cout() << "I4:\n";
+    printMatrix(Catch::cout(), I4);
 
     REQUIRE(approxIdentity(I1));
     REQUIRE(approxIdentity(I2));
