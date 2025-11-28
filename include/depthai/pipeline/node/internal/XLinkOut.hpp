@@ -49,12 +49,20 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
      */
     void setMetadataOnly(bool metadataOnly);
 
+    void setPacketSize(int packetSize);
+
+    void setPacketFrequency(int packetFrequency);
+
     /// Get stream name
     std::string getStreamName() const;
     /// Get rate limit in messages per second
     float getFpsLimit() const;
     /// Get whether to transfer only messages attributes and not buffer data
     bool getMetadataOnly() const;
+
+    int getPacketSize() const;
+
+    int getPacketFrequency() const;
 
     void buildInternal() override;
 };
