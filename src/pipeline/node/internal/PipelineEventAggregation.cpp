@@ -454,6 +454,47 @@ class PipelineEventHandler {
     }
 };
 
+std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHandler& handler,
+                                                                 std::optional<PipelineEventAggregationConfig>& currentConfig,
+                                                                 const uint32_t sequenceNum,
+                                                                 bool sendEvents);
+
+class TraceOutputHandler {
+    std::atomic<bool> running;
+    std::thread thread;
+    Node::Output& outTrace;
+    PipelineEventHandler& handler;
+    std::shared_ptr<spdlog::async_logger> logger;
+
+   public:
+    TraceOutputHandler(Node::Output& outTrace, PipelineEventHandler& handler, std::shared_ptr<spdlog::async_logger> logger)
+        : outTrace(outTrace), handler(handler), logger(logger) {}
+
+    void run(const std::optional<PipelineEventAggregationConfig>& traceOutputConfig) {
+        running = true;
+        thread = std::thread([this, &traceOutputConfig]() {
+            uint32_t traceSequenceNum = 0;
+            PipelineEventHandler& traceHandler = handler;
+            std::optional<PipelineEventAggregationConfig> config = traceOutputConfig;
+            while(this->running) {
+                auto start = std::chrono::steady_clock::now();
+                auto [outState, updated] = makeOutputState(traceHandler, config, traceSequenceNum++, false);
+                this->outTrace.send(outState);
+                auto duration = std::chrono::steady_clock::now() - start;
+                std::this_thread::sleep_for(std::chrono::seconds(config->repeatIntervalSeconds.value()) - duration);
+            }
+        });
+    }
+    void stop() {
+        running = false;
+        if(thread.joinable()) thread.join();
+    }
+
+    ~TraceOutputHandler() {
+        stop();
+    }
+};
+
 void PipelineEventAggregation::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
@@ -533,7 +574,7 @@ void PipelineEventAggregation::run() {
     std::optional<PipelineEventAggregationConfig> currentConfig;
 
     std::optional<PipelineEventAggregationConfig> traceOutputConfig = std::nullopt;
-    std::thread traceOutputThread;
+    TraceOutputHandler traceOutputHandler(this->outTrace, handler, logger);
 
     uint32_t sequenceNum = 0;
     std::chrono::time_point<std::chrono::steady_clock> lastSentTime;
@@ -548,18 +589,7 @@ void PipelineEventAggregation::run() {
         }
         if(properties.traceOutput && !traceOutputConfig.has_value() && gotConfig && currentConfig->repeatIntervalSeconds.has_value()) {
             traceOutputConfig = currentConfig;
-            traceOutputThread = std::thread([this, &handler, &traceOutputConfig]() {
-                uint32_t traceSequenceNum = 0;
-                PipelineEventHandler& traceHandler = handler;
-                std::optional<PipelineEventAggregationConfig> config = traceOutputConfig;
-                while(this->isRunning()) {
-                    auto start = std::chrono::steady_clock::now();
-                    auto [outState, updated] = makeOutputState(traceHandler, config, traceSequenceNum++, false);
-                    this->outTrace.send(outState);
-                    auto duration = std::chrono::steady_clock::now() - start;
-                    std::this_thread::sleep_for(std::chrono::seconds(config->repeatIntervalSeconds.value()) - duration);
-                }
-            });
+            traceOutputHandler.run(traceOutputConfig);
             currentConfig = std::nullopt;
             continue;
         }
@@ -586,10 +616,8 @@ void PipelineEventAggregation::run() {
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+    traceOutputHandler.stop();
     handler.stop();
-    if(traceOutputThread.joinable()) {
-        traceOutputThread.join();
-    }
 }
 
 }  // namespace internal
