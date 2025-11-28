@@ -757,7 +757,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
-          USER_ID="U09DNCMM0DB"
+          USER_ID="CS74T452P"
           
           # Branch or tag name
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
