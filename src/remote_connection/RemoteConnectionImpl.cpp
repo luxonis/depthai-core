@@ -331,8 +331,7 @@ bool RemoteConnectionImpl::initHttpServer(const std::string& address, uint16_t p
         return false;
     }
 
-    std::cout << "To connect to the DepthAI visualizer, open http://localhost:" << port << " in your browser" << std::endl;
-    std::cout << "In case of a different client, replace 'localhost' with the correct hostname" << std::endl;
+    std::cout << "To connect to the OAK visualizer, open http://" << address << ":" << port << " in your browser" << std::endl;
     httpServerThread = std::make_unique<std::thread>([this]() { httpServer->listen_after_bind(); });
     return true;
 }
