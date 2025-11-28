@@ -36,6 +36,7 @@
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/NeuralDepthConfig.hpp"
 #include "depthai/pipeline/datatype/ObjectTrackerConfig.hpp"
+#include "depthai/pipeline/datatype/PacketizedData.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
@@ -291,6 +292,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<VppConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
         }
+        case DatatypeEnum::PacketizedData: {
+            return parseDatatype<PacketizedData>(metadataStart, serializedObjectSize, data, fd);
+        } break;
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);

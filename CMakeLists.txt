@@ -368,6 +368,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/ThermalConfig.cpp
     src/pipeline/datatype/TransformData.cpp
+    src/pipeline/datatype/PacketizedData.cpp
     src/properties/Properties.cpp
     src/capabilities/Capabilities.cpp
     src/pipeline/datatype/VppConfig.cpp
