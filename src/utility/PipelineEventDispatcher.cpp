@@ -63,9 +63,10 @@ void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::st
     event.event.source = source;
     event.ongoing = true;
 
-    if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(event.event));
-    }
+    if(out) try {
+            out->send(std::make_shared<dai::PipelineEvent>(event.event));
+        } catch(const MessageQueue::QueueException&) {
+        }
 }
 void PipelineEventDispatcher::startInputEvent(const std::string& source, std::optional<uint32_t> queueSize) {
     startEvent(PipelineEvent::Type::INPUT, source, std::move(queueSize));
@@ -99,9 +100,10 @@ void PipelineEventDispatcher::endEvent(PipelineEvent::Type type, const std::stri
     event.event.source = source;
     event.ongoing = false;
 
-    if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(event.event));
-    }
+    if(out) try {
+            out->send(std::make_shared<dai::PipelineEvent>(event.event));
+        } catch(const MessageQueue::QueueException&) {
+        }
 
     event.event.queueSize = std::nullopt;
 }
@@ -129,9 +131,10 @@ void PipelineEventDispatcher::startTrackedEvent(PipelineEvent event, std::option
     event.nodeId = nodeId;
     event.interval = PipelineEvent::Interval::START;
 
-    if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(event));
-    }
+    if(out) try {
+            out->send(std::make_shared<dai::PipelineEvent>(event));
+        } catch(const MessageQueue::QueueException&) {
+        }
 }
 void PipelineEventDispatcher::startTrackedEvent(PipelineEvent::Type type,
                                                 const std::string& source,
@@ -158,9 +161,10 @@ void PipelineEventDispatcher::endTrackedEvent(PipelineEvent event, std::optional
     event.nodeId = nodeId;
     event.interval = PipelineEvent::Interval::END;
 
-    if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(event));
-    }
+    if(out) try {
+            out->send(std::make_shared<dai::PipelineEvent>(event));
+        } catch(const MessageQueue::QueueException&) {
+        }
 }
 void PipelineEventDispatcher::endTrackedEvent(PipelineEvent::Type type,
                                               const std::string& source,
@@ -193,9 +197,10 @@ void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::str
     event.event.type = type;
     event.event.source = source;
 
-    if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(event.event));
-    }
+    if(out) try {
+            out->send(std::make_shared<dai::PipelineEvent>(event.event));
+        } catch(const MessageQueue::QueueException&) {
+        }
 }
 void PipelineEventDispatcher::pingMainLoopEvent() {
     pingEvent(PipelineEvent::Type::LOOP, "_mainLoop");
@@ -223,9 +228,10 @@ void PipelineEventDispatcher::pingInputEvent(const std::string& source, int32_t 
     eventCopy.type = PipelineEvent::Type::INPUT;
     eventCopy.source = source;
 
-    if(out) {
-        out->send(std::make_shared<dai::PipelineEvent>(eventCopy));
-    }
+    if(out) try {
+            out->send(std::make_shared<dai::PipelineEvent>(eventCopy));
+        } catch(const MessageQueue::QueueException&) {
+        }
 }
 PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::blockEvent(PipelineEvent::Type type,
                                                                                 const std::string& source,
