@@ -20,6 +20,10 @@ void XLinkOut::setMetadataOnly(bool metadataOnly) {
     properties.metadataOnly = metadataOnly;
 }
 
+void XLinkOut::setPacketSize(int packetSize) {
+    properties.packetSize = packetSize;
+}
+
 std::string XLinkOut::getStreamName() const {
     return properties.streamName;
 }

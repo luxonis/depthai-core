@@ -49,6 +49,8 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
      */
     void setMetadataOnly(bool metadataOnly);
 
+    void setPacketSize(int packetSize);
+
     /// Get stream name
     std::string getStreamName() const;
     /// Get rate limit in messages per second

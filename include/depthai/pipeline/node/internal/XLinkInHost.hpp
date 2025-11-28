@@ -2,6 +2,9 @@
 
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "depthai/pipeline/datatype/PacketizedData.hpp"
+#include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
@@ -15,6 +18,10 @@ class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
     std::condition_variable isWaitingForReconnect;
     std::mutex mtx;
     bool isDisconnected = false;
+
+    std::shared_ptr<ADatatype> readData(XLinkStream& stream);
+    std::shared_ptr<ADatatype> parsePacketizedData(std::shared_ptr<PacketizedData>& packetizedData, XLinkStream& stream);
+    void parseMessageGroup(std::shared_ptr<MessageGroup>& messageGroup, XLinkStream& stream);
 
    public:
     constexpr static const char* NAME = "XLinkInHost";
