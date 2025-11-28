@@ -20,6 +20,7 @@
 #include "depthai/capabilities/Capability.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
+#include "depthai/utility/PipelineEventDispatcherInterface.hpp"
 
 // libraries
 #include <optional>
@@ -65,7 +66,9 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto DEFAULT_NAME = "";
 #define DEFAULT_TYPES                  \
     {                                  \
-        { DatatypeEnum::Buffer, true } \
+        {                              \
+            DatatypeEnum::Buffer, true \
+        }                              \
     }
     static constexpr auto DEFAULT_BLOCKING = true;
     static constexpr auto DEFAULT_QUEUE_SIZE = 3;
@@ -82,6 +85,8 @@ class Node : public std::enable_shared_from_this<Node> {
     std::vector<OutputMap*> outputMapRefs;
     std::vector<InputMap*> inputMapRefs;
     std::vector<std::shared_ptr<Node>*> nodeRefs;
+
+    std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
     // helpers for setting refs
     void setOutputRefs(std::initializer_list<Output*> l);
@@ -129,11 +134,12 @@ class Node : public std::enable_shared_from_this<Node> {
         std::vector<QueueConnection> queueConnections;
         Type type = Type::MSender;  // Slave sender not supported yet
         OutputDescription desc;
+        std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
        public:
         // std::vector<Capability> possibleCapabilities;
 
-        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)) {
+        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)), pipelineEventDispatcher(par.pipelineEventDispatcher) {
             // Place oneself to the parents references
             if(ref) {
                 par.setOutputRefs(this);
@@ -346,15 +352,13 @@ class Node : public std::enable_shared_from_this<Node> {
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;
         explicit Input(Node& par, InputDescription desc, bool ref = true)
-            : MessageQueue(std::move(desc.name), desc.queueSize, desc.blocking),
+            : MessageQueue(desc.name.empty() ? par.createUniqueInputName() : desc.name, desc.queueSize, desc.blocking, par.pipelineEventDispatcher),
               parent(par),
               waitForMessage(desc.waitForMessage),
+              group(desc.group),
               possibleDatatypes(std::move(desc.types)) {
             if(ref) {
                 par.setInputRefs(this);
-            }
-            if(getName().empty()) {
-                setName(par.createUniqueInputName());
             }
         }
 

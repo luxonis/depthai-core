@@ -2,6 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <memory>
+
+#include "depthai/utility/PipelineEventDispatcher.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -18,6 +21,11 @@ ThreadedNode::ThreadedNode() {
         level = Logging::parseLevel(envLevel);
     }
     pimpl->logger->set_level(level);
+    pipelineEventDispatcher = std::make_shared<utility::PipelineEventDispatcher>(&pipelineEventOutput);
+}
+
+void ThreadedNode::initPipelineEventDispatcher(int64_t nodeId) {
+    pipelineEventDispatcher->setNodeId(nodeId);
 }
 
 ThreadedNode::~ThreadedNode() = default;
@@ -84,6 +92,21 @@ dai::LogLevel ThreadedNode::getLogLevel() const {
 
 bool ThreadedNode::isRunning() const {
     return running;
+}
+
+bool ThreadedNode::mainLoop() {
+    this->pipelineEventDispatcher->pingMainLoopEvent();
+    return isRunning();
+}
+
+utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::blockEvent(PipelineEvent::Type type, const std::string& source) {
+    return pipelineEventDispatcher->blockEvent(type, source);
+}
+utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::inputBlockEvent() {
+    return pipelineEventDispatcher->inputBlockEvent();
+}
+utility::PipelineEventDispatcherInterface::BlockPipelineEvent ThreadedNode::outputBlockEvent() {
+    return pipelineEventDispatcher->outputBlockEvent();
 }
 
 }  // namespace dai

@@ -38,10 +38,14 @@ void XLinkInHost::run() {
     while(reconnect) {
         reconnect = false;
         XLinkStream stream(std::move(conn), streamName, 1);
-        while(isRunning()) {
+        while(mainLoop()) {
             try {
                 // Blocking -- parse packet and gather timing information
-                auto packet = stream.readMove();
+                StreamPacketDesc packet;
+                {
+                    auto blockEvent = this->inputBlockEvent();
+                    packet = stream.readMove();
+                }
                 const auto t1Parse = std::chrono::steady_clock::now();
                 const auto msg = StreamMessageParser::parseMessage(std::move(packet));
                 if(std::dynamic_pointer_cast<MessageGroup>(msg) != nullptr) {
@@ -66,7 +70,10 @@ void XLinkInHost::run() {
                                   spdlog::to_hex(metadata));
                 }
 
-                out.send(msg);
+                {
+                    auto blockEvent = this->outputBlockEvent();
+                    out.send(msg);
+                }
                 // // Add 'data' to queue
                 // if(!queue.push(msg)) {
                 //     throw std::runtime_error(fmt::format("Underlying queue destructed"));

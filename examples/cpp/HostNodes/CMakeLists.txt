@@ -17,6 +17,7 @@ dai_set_example_test_labels(host_node ondevice rvc2_all rvc4 ci)
 
 dai_add_example(image_manip_host image_manip_host.cpp ON OFF "${construction_vest}")
 dai_set_example_test_labels(image_manip_host ondevice rvc2_all rvc4 rvc4rgb ci)
+target_compile_definitions(image_manip_host PRIVATE VIDEO_PATH="${construction_vest}")
 
 dai_add_example(image_manip_color_conversion_host image_manip_color_conversion.cpp ON OFF)
 dai_set_example_test_labels(image_manip_color_conversion_host ondevice rvc2_all rvc4 rvc4rgb ci)

@@ -9,12 +9,20 @@
 namespace dai {
 
 class ThreadedNode : public Node {
+    friend class PipelineImpl;
+
    private:
     JoiningThread thread;
     AtomicBool running{false};
 
+   protected:
+    void initPipelineEventDispatcher(int64_t nodeId);
+
    public:
+    Output pipelineEventOutput{*this, {"pipelineEventOutput", DEFAULT_GROUP, {{{DatatypeEnum::PipelineEvent, false}}}}};
+
     using Node::Node;
+
     ThreadedNode();
     virtual ~ThreadedNode();
 
@@ -45,6 +53,8 @@ class ThreadedNode : public Node {
     // check if still running
     bool isRunning() const;
 
+    bool mainLoop();
+
     /**
      * @brief Sets the logging severity level for this node.
      *
@@ -58,6 +68,10 @@ class ThreadedNode : public Node {
      * @returns Logging severity level
      */
     virtual dai::LogLevel getLogLevel() const;
+
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent inputBlockEvent();
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent outputBlockEvent();
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source);
 
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;
