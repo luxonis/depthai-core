@@ -84,8 +84,12 @@ struct CalibrationQuality : public Buffer {
         /** Rotation difference between old and new extrinsics (degrees). */
         std::array<float, 3> rotationChange;
 
-        /** Depth accuracy difference at distances {1m, 2m, 5m, 10m}. (%) */
-        std::vector<float> depthErrorDifference;
+        /**
+         * Predicted relative depth error difference between current and new calibration.
+         * Reported at reference distances [1m, 2m, 5m, 10m].
+         * Units: percent [%].
+         */
+        std::vector<double> depthErrorDifference;
 
         /** Sampson error of currently installed calibration. */
         float sampsonErrorCurrent = 0.0f;
