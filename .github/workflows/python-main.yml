@@ -386,7 +386,7 @@ jobs:
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -416,7 +416,7 @@ jobs:
           EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -484,7 +484,7 @@ jobs:
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Audit wheels
-        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -506,11 +506,14 @@ jobs:
           pattern: audited-wheels-linux-x86_64-*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
+      - name: Install llvm-strip
+        run: |
+          yum install -y llvm # for llvm-strip, strip leads to "ELF load command address/offset not page-aligned" errors 
       - name: Combine wheels
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -543,7 +546,7 @@ jobs:
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -614,7 +617,7 @@ jobs:
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Auditing wheels
-        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -637,11 +640,14 @@ jobs:
           pattern: audited-wheels-linux-arm64-*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
+      - name: Install llvm-strip
+        run: |
+          yum install -y llvm # for llvm-strip, strip leads to "ELF load command address/offset not page-aligned" errors
       - name: Combine wheels
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -674,7 +680,7 @@ jobs:
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -702,7 +708,7 @@ jobs:
           mv wheelhouse/audited wheelhouse/audited_pre
           mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --log_level=debug
+          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -736,7 +742,7 @@ jobs:
           python bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -831,7 +837,7 @@ jobs:
           PYPI_USER: ${{ secrets.PYPI_USER }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       - name: Run deploy to Artifactory
-        run: cd bindings/python && bash ./ci/upload-artifactory-release.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --release
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
