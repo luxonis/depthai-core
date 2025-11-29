@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
@@ -17,8 +18,16 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
 }
 
 int main() {
+    std::string modelName = "luxonis/yolov8-instance-segmentation-large:coco-640x352";
+    bool setRunOnHost = false;
+    auto device = std::make_shared<dai::Device>();
+
+    if(device->getPlatform() == dai::Platform::RVC2) {
+        modelName = "luxonis/yolov8-instance-segmentation-nano:coco-512x288";
+        setRunOnHost = true;
+    }
     // Create pipeline
-    dai::Pipeline pipeline;
+    dai::Pipeline pipeline{device};
 
     // Create and configure camera node
     auto cameraNode = pipeline.create<dai::node::Camera>();
@@ -28,8 +37,10 @@ int main() {
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
 
     dai::NNModelDescription modelDescription;
-    modelDescription.model = "luxonis/yolov8-instance-segmentation-large:coco-640x480";
+
+    modelDescription.model = modelName;
     detectionNetwork->build(cameraNode, modelDescription);
+    detectionNetwork->detectionParser->setRunOnHost(setRunOnHost);
 
     // Create output queues
     auto qRgb = detectionNetwork->passthrough.createOutputQueue();

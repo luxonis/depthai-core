@@ -66,7 +66,7 @@ endif()
 
 
 # Create depthai project
-project(depthai VERSION "3.1.0" LANGUAGES CXX C)
+project(depthai VERSION "3.2.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -311,6 +311,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/utilities/DetectionParser/DetectionParserUtils.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
