@@ -32,6 +32,7 @@ int main() {
 
     pipeline.start();
 
+    int counter = 0;
     while(pipeline.isRunning()) {
         if(cv::waitKey(1) != -1) {
             break;
@@ -70,9 +71,25 @@ int main() {
             cv::imshow("rgb", frame);
         }
 
-        // Trigger sendSnap()
-        if(cv::waitKey(1) == 's') {
-            eventsManager->sendSnap("ImageDetection", std::nullopt, inRgb, inDet, {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}});
+        // Suppose we are only interested in the detections with confidence between 50% and 60%
+        auto borderDetections = std::make_shared<dai::ImgDetections>();
+        for(const auto& detection : inDet->detections) {
+            if(detection.confidence > 0.5f && detection.confidence < 0.6f) {
+                borderDetections->detections.emplace_back(detection);
+            }
+        }
+
+        // Are there any border detections
+        if(borderDetections->detections.size() > 0) {
+            std::string fileName = "ImageDetection_";
+            std::stringstream ss;
+            ss << fileName << counter;
+
+            auto fileGroup = std::make_shared<dai::utility::FileGroup>();
+            fileGroup->addImageDetectionsPair(ss.str(), inRgb, borderDetections);
+            eventsManager->sendSnap("LowConfidenceDetection", fileGroup, {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}});
+
+            counter++;
         }
     }
 

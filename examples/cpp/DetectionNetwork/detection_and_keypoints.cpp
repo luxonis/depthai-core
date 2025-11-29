@@ -22,7 +22,7 @@ int main() {
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
 
     dai::NNModelDescription modelDescription;
-    modelDescription.model = "luxonis/yolov8-large-pose-estimation:coco-640x352:1868e39";
+    modelDescription.model = "luxonis/yolov8-nano-pose-estimation:coco-512x288";
     detectionNetwork->build(cameraNode, modelDescription);
 
     // Create output queues
