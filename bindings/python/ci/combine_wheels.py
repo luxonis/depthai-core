@@ -526,7 +526,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
 
             # Delete extra DLLs (already in the .data/platlib folder)
             extra_dlls = [f for f in extracted_files if f.endswith(".dll") and (f != python_dll)]
-            _logger.info(f"Found extra DLLs: {extra_dlls}. Removing them.")
+            _logger.debug(f"Found extra DLLs: {extra_dlls}. Removing them.")
             for dll in extra_dlls:
                 os.remove(os.path.join(wheel_extract_dir, dll))
 
