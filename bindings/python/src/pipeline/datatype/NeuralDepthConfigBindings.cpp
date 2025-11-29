@@ -48,7 +48,8 @@ void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack) {
 
     // PostProcessing
     postProcessing.def(py::init<>())
-        .def_readwrite("confidenceThreshold", &NeuralDepthConfig::PostProcessing::confidenceThreshold, DOC(dai, NeuralDepthConfig, PostProcessing, confidenceThreshold))
+        .def_readwrite(
+            "confidenceThreshold", &NeuralDepthConfig::PostProcessing::confidenceThreshold, DOC(dai, NeuralDepthConfig, PostProcessing, confidenceThreshold))
         .def_readwrite("edgeThreshold", &NeuralDepthConfig::PostProcessing::edgeThreshold, DOC(dai, NeuralDepthConfig, PostProcessing, edgeThreshold))
         .def_readwrite("temporalFilter", &NeuralDepthConfig::PostProcessing::temporalFilter, DOC(dai, NeuralDepthConfig, PostProcessing, temporalFilter));
 }

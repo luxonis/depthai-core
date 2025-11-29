@@ -66,6 +66,7 @@ int main() {
     std::cout << " - 's': Decrease confidence threshold" << std::endl;
     std::cout << " - 'd': Increase edge threshold" << std::endl;
     std::cout << " - 'a': Decrease edge threshold" << std::endl;
+    std::cout << " - 't': Toggle temporal filtering" << std::endl;
 
     while(!quitEvent && pipeline.isRunning()) {
         // Get confidence data and display it
@@ -121,6 +122,11 @@ int main() {
             uint8_t currentThreshold = currentConfig->getEdgeThreshold();
             currentConfig->setEdgeThreshold(currentThreshold - 1);  // uint8_t will wrap around on underflow
             std::cout << "Setting edge threshold to: " << (int)currentConfig->getEdgeThreshold() << std::endl;
+            configChanged = true;
+        } else if(key == 't') {
+            bool enable = !currentConfig->postProcessing.temporalFilter.enable;
+            currentConfig->postProcessing.temporalFilter.enable = enable;
+            std::cout << "Temporal filtering: " << (enable ? "on" : "off") << std::endl;
             configChanged = true;
         }
 
