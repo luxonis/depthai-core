@@ -80,17 +80,18 @@ function(dai_add_example example_name example_src enable_test use_pcl)
 
     endif()
 
-    # Copy over required DLLs (Windows)
+    # Symlink required DLLs (Windows) - requires Developer Mode or admin privileges
     if(WIN32)
-        # Copy dlls to target directory - Windows only
         # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
         if(CMAKE_VERSION VERSION_LESS "3.21")
             file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
         else()
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
         endif()
+        # Create symlinks for each DLL using mklink
         add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
-            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${example_name}>>"
+            ${CMAKE_COMMAND} -DDLLS="${depthai_dll_libraries}" -DDEST_DIR="$<TARGET_FILE_DIR:${example_name}>"
+            -P "${TOP_CPP_EXAMPLES_CMAKE_DIR}/cmake/CreateSymlinks.cmake"
             COMMAND_EXPAND_LISTS
             VERBATIM
         )
@@ -123,7 +124,8 @@ function(dai_set_example_test_labels example_name)
 endfunction()
 
 function(dai_install_file example_name file_name)
-    file(COPY ${CMAKE_CURRENT_LIST_DIR}/${file_name} DESTINATION ".")  # copy file to where the example is built
+    # Create symlink instead of copying (more efficient, always reflects source changes)
+    file(CREATE_LINK ${CMAKE_CURRENT_LIST_DIR}/${file_name} ${CMAKE_CURRENT_BINARY_DIR}/${file_name} SYMBOLIC)
 endfunction()
 
 add_subdirectory(AprilTags)
