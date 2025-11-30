@@ -10,6 +10,10 @@
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
+#include "depthai/pipeline/node/internal/XLinkIn.hpp"
+#include "depthai/pipeline/node/internal/XLinkInHost.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
+#include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 // Libraries
@@ -235,6 +239,12 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     daiNodeModule = m.def_submodule("node");
     daiNodeInternalModule = m.def_submodule("node").def_submodule("internal");
 
+    // XLink bridge structures
+    py::class_<dai::node::internal::XLinkInBridge, std::shared_ptr<dai::node::internal::XLinkInBridge>> pyXLinkInBridge(
+        daiNodeInternalModule, "XLinkInBridge", "XLink bridge for host-to-device communication");
+    py::class_<dai::node::internal::XLinkOutBridge, std::shared_ptr<dai::node::internal::XLinkOutBridge>> pyXLinkOutBridge(
+        daiNodeInternalModule, "XLinkOutBridge", "XLink bridge for device-to-host communication");
+
     // Properties
     py::class_<Node, std::shared_ptr<Node>> pyNode(m, "Node", DOC(dai, Node));
 
@@ -292,6 +302,46 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("datatype", &Node::DatatypeHierarchy::datatype)
         .def_readwrite("descendants", &Node::DatatypeHierarchy::descendants);
 
+    // XLink internal node bindings
+    py::class_<node::internal::XLinkIn, DeviceNode, std::shared_ptr<node::internal::XLinkIn>> pyXLinkIn(
+        daiNodeInternalModule, "XLinkIn", "XLinkIn node. Receives messages over XLink.");
+    py::class_<node::internal::XLinkOut, DeviceNode, std::shared_ptr<node::internal::XLinkOut>> pyXLinkOut(
+        daiNodeInternalModule, "XLinkOut", "XLinkOut node. Sends messages over XLink.");
+    py::class_<node::internal::XLinkInHost, Node, std::shared_ptr<node::internal::XLinkInHost>> pyXLinkInHost(
+        daiNodeInternalModule, "XLinkInHost", "XLinkInHost node. Receives messages over XLink on host.");
+    py::class_<node::internal::XLinkOutHost, Node, std::shared_ptr<node::internal::XLinkOutHost>> pyXLinkOutHost(
+        daiNodeInternalModule, "XLinkOutHost", "XLinkOutHost node. Sends messages over XLink from host.");
+
+    // XLink bridge bindings
+    pyXLinkInBridge.def_readonly("xLinkOutHost", &dai::node::internal::XLinkInBridge::xLinkOutHost, "XLinkOutHost node pointer")
+        .def_readonly("xLinkIn", &dai::node::internal::XLinkInBridge::xLinkIn, "XLinkIn node pointer");
+
+    pyXLinkOutBridge.def_readonly("xLinkOut", &dai::node::internal::XLinkOutBridge::xLinkOut, "XLinkOut node pointer")
+        .def_readonly("xLinkInHost", &dai::node::internal::XLinkOutBridge::xLinkInHost, "XLinkInHost node pointer");
+
+    // Bind XLink node methods
+    pyXLinkIn.def("setStreamName", &node::internal::XLinkIn::setStreamName, py::arg("name"), "Set XLink stream name")
+        .def("getStreamName", &node::internal::XLinkIn::getStreamName, "Get XLink stream name")
+        .def("setMaxDataSize", &node::internal::XLinkIn::setMaxDataSize, py::arg("maxDataSize"), "Set maximum message size")
+        .def("getMaxDataSize", &node::internal::XLinkIn::getMaxDataSize, "Get maximum message size")
+        .def("setNumFrames", &node::internal::XLinkIn::setNumFrames, py::arg("numFrames"), "Set number of frames in pool")
+        .def("getNumFrames", &node::internal::XLinkIn::getNumFrames, "Get number of frames in pool")
+        .def_readonly("out", &node::internal::XLinkIn::out, "Output");
+
+    pyXLinkOut.def("setStreamName", &node::internal::XLinkOut::setStreamName, py::arg("name"), "Set XLink stream name")
+        .def("getStreamName", &node::internal::XLinkOut::getStreamName, "Get XLink stream name")
+        .def("setFpsLimit", &node::internal::XLinkOut::setFpsLimit, py::arg("fps"), "Set FPS limit")
+        .def("getFpsLimit", &node::internal::XLinkOut::getFpsLimit, "Get FPS limit")
+        .def("setMetadataOnly", &node::internal::XLinkOut::setMetadataOnly, py::arg("metadataOnly"), "Set metadata only mode")
+        .def("getMetadataOnly", &node::internal::XLinkOut::getMetadataOnly, "Get metadata only mode")
+        .def_readonly("input", &node::internal::XLinkOut::input, "Input");
+
+    pyXLinkInHost.def("setStreamName", &node::internal::XLinkInHost::setStreamName, py::arg("name"), "Set XLink stream name")
+        .def_readonly("out", &node::internal::XLinkInHost::out, "Output");
+
+    pyXLinkOutHost.def("setStreamName", &node::internal::XLinkOutHost::setStreamName, py::arg("name"), "Set XLink stream name")
+        .def_readonly("in", &node::internal::XLinkOutHost::in, "Input");
+
     // Node::Input bindings
     nodeInputType.value("SReceiver", Node::Input::Type::SReceiver).value("MReceiver", Node::Input::Type::MReceiver);
 
@@ -345,7 +395,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              &Node::Input::createInputQueue,
              py::arg("maxSize") = Node::Input::INPUT_QUEUE_DEFAULT_MAX_SIZE,
              py::arg("blocking") = Node::Input::INPUT_QUEUE_DEFAULT_BLOCKING,
-             DOC(dai, Node, Input, createInputQueue));
+             DOC(dai, Node, Input, createInputQueue))
+        .def("getXLinkBridge", &Node::Input::getXLinkBridge, DOC(dai, Node, Input, getXLinkBridge));
 
     // Node::Output bindings
     nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
@@ -392,7 +443,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())
         .def("getName", &Node::Output::getName, DOC(dai, Node, Output, getName))
-        .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend));
+        .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend))
+        .def("getXLinkBridge", &Node::Output::getXLinkBridge, DOC(dai, Node, Output, getXLinkBridge));
 
     nodeConnection.def_readwrite("outputId", &Node::Connection::outputId, DOC(dai, Node, Connection, outputId))
         .def_readwrite("outputName", &Node::Connection::outputName, DOC(dai, Node, Connection, outputName))
