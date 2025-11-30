@@ -28,6 +28,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::Tracklets,
          DatatypeEnum::IMUData,
          DatatypeEnum::StereoDepthConfig,
+         DatatypeEnum::NeuralDepthConfig,
          DatatypeEnum::FeatureTrackerConfig,
          DatatypeEnum::ThermalConfig,
          DatatypeEnum::ToFConfig,
@@ -43,9 +44,12 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::ImgAnnotations,
          DatatypeEnum::ImageFiltersConfig,
          DatatypeEnum::ToFDepthConfidenceFilterConfig,
-#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+         DatatypeEnum::ObjectTrackerConfig,
          DatatypeEnum::DynamicCalibrationControl,
-#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+         DatatypeEnum::DynamicCalibrationResult,
+         DatatypeEnum::CoverageData,
+         DatatypeEnum::CalibrationQuality,
+
      }},
     {DatatypeEnum::Buffer,
      {
@@ -65,6 +69,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::Tracklets,
          DatatypeEnum::IMUData,
          DatatypeEnum::StereoDepthConfig,
+         DatatypeEnum::NeuralDepthConfig,
          DatatypeEnum::FeatureTrackerConfig,
          DatatypeEnum::ThermalConfig,
          DatatypeEnum::ToFConfig,
@@ -80,9 +85,11 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::ImgAnnotations,
          DatatypeEnum::ImageFiltersConfig,
          DatatypeEnum::ToFDepthConfidenceFilterConfig,
-#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+         DatatypeEnum::ObjectTrackerConfig,
          DatatypeEnum::DynamicCalibrationControl,
-#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+         DatatypeEnum::DynamicCalibrationResult,
+         DatatypeEnum::CoverageData,
+         DatatypeEnum::CalibrationQuality,
      }},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
@@ -100,6 +107,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::Tracklets, {}},
     {DatatypeEnum::IMUData, {}},
     {DatatypeEnum::StereoDepthConfig, {}},
+    {DatatypeEnum::NeuralDepthConfig, {}},
     {DatatypeEnum::FeatureTrackerConfig, {}},
     {DatatypeEnum::ThermalConfig, {}},
     {DatatypeEnum::ToFConfig, {}},
@@ -115,9 +123,11 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::ImgAnnotations, {}},
     {DatatypeEnum::ImageFiltersConfig, {}},
     {DatatypeEnum::ToFDepthConfidenceFilterConfig, {}},
-#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    {DatatypeEnum::ObjectTrackerConfig, {}},
     {DatatypeEnum::DynamicCalibrationControl, {}},
-#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    {DatatypeEnum::DynamicCalibrationResult, {}},
+    {DatatypeEnum::CoverageData, {}},
+    {DatatypeEnum::CalibrationQuality, {}},
 };
 
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children) {

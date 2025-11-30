@@ -24,6 +24,9 @@ on:
         type: string
         default: "stereo"
         description: "Which device to test - stereo or rgb"
+      additional_options:
+        required: false
+        type: string
 
 jobs:
   id:
@@ -95,11 +98,14 @@ jobs:
             HOLD_RESERVATION="--hold-reservation"
           fi
 
+          if [[ -n "${{ github.event.inputs.additional_options }}" ]]; then
+            ADDITIONAL_OPTIONS="${{ github.event.inputs.additional_options }}"
+          fi
+
           if [[ "${{ github.event.inputs.device }}" == 'stereo' ]]; then
             MODELS="oak4_pro or oak4_d"
           else
             MODELS="oak4_s"
             RGB="rgb"
           fi
-
-          exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4$RGB"
+          exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait $ADDITIONAL_OPTIONS --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4$RGB"

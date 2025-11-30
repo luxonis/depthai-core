@@ -54,8 +54,8 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.14.1', '1.15.0', '1.18.3']"
-      luxonis_os_versions_to_test_rgb: "['1.18.3']"
+      luxonis_os_versions_to_test: "['1.14.1', '1.18.3', '1.20.5']"
+      luxonis_os_versions_to_test_rgb: "['1.20.5']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -66,7 +66,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
-      luxonis_os_versions_to_test: "['1.18.3']"
+      luxonis_os_versions_to_test: "['1.20.5']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -77,44 +77,18 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
-      luxonis_os_versions_to_test: "['1.18.3']"
+      luxonis_os_versions_to_test: "['1.20.5']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
-  windows_rvc2_rvc4_test:
+  run_windows_tests:
     needs: [precheck]
     if: needs.precheck.outputs.should_run == 'true'
-    runs-on: ['self-hosted', 'windows', 'hil-test']
-    env:
-      LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
+    uses: ./.github/workflows/test_child_windows.yml
+    with:
+      luxonis_os_versions_to_test: "['1.20.5']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
-    - name: Configure, Build and Test
-      run: |
-        $isPR = "${{ github.head_ref }}" -ne ""
-        $extraFlags = ""
-
-        if (-not $isPR) {
-          $extraFlags = @(
-            '-DDEPTHAI_BUILD_EXAMPLES=ON',
-            '-DDEPTHAI_BUILD_PYTHON=ON',
-            '-DDEPTHAI_PYTHON_ENABLE_TESTS=ON',
-            '-DDEPTHAI_TEST_EXAMPLES=ON',
-            '-DDEPTHAI_PYTHON_TEST_EXAMPLES=ON',
-            '-DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON'
-          ) -join ' '
-        }
-
-        $cmakeConfigureCommand = "cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF -DVCPKG_OVERLAY_TRIPLETS=./cmake/triplets/release -DDEPTHAI_BUILD_TESTS=ON $extraFlags"
-        Write-Host "Running: $cmakeConfigureCommand"
-        Invoke-Expression $cmakeConfigureCommand
-
-        $cmakeBuildCommand = "cmake --build build --parallel 4 --config Release"
-        Write-Host "Running: $cmakeBuildCommand"
-        Invoke-Expression $cmakeBuildCommand
-        cd tests
-        python run_tests.py

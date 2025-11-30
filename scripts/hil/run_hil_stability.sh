@@ -1,15 +1,20 @@
 #!/bin/bash
 
 # Get depthai version from input argument or print message
-if [ -z "$1" ] || [ "$1" == "latest" ]; then
+DEPTHAI_VERSION="$1"
+
+RELEASE_URL="https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/"
+SNAPSHOT_URL="https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/"
+
+if [ -z "$DEPTHAI_VERSION" ] || [ "$DEPTHAI_VERSION" == "latest" ]; then
     echo "Using latest depthai"
     source /home/hil/.hil/bin/activate
 else
-    DEPTHAI_VERSION="$1"
+    echo "Installing depthai==$DEPTHAI_VERSION (checking both release and snapshot artifactories)"
     rm -rf venv
     python3 -m venv venv
     source venv/bin/activate
-    pip install --no-cache-dir --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-release-local/ depthai=="$DEPTHAI_VERSION"
+    pip install --no-cache-dir --extra-index-url "$RELEASE_URL" --extra-index-url "$SNAPSHOT_URL" depthai=="$DEPTHAI_VERSION"
 fi
 
 export DEPTHAI_PLATFORM=rvc4

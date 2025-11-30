@@ -6,7 +6,7 @@
 
 DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
 
->  **Important — You’re viewing the `v3.x.y` _release-candidate_ branch.**
+>  **Important — You’re viewing the `v3.x.y` branch.**
 >
 > * For production projects that still rely on **v2**, check out the
 >   [`v2_stable` branch](https://github.com/luxonis/depthai-core/tree/v2_stable).
@@ -14,9 +14,6 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
-
-## Disclaimer
-DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking.
 
 ## Examples
 Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
@@ -220,6 +217,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in milliseconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
 | DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
+| DEPTHAI_HUB_EVENTS_BASE_URL | URL for events of the Luxonis Hub |
 | DEPTHAI_HUB_API_KEY | API key for the Luxonis Hub |
 | DEPTHAI_ZOO_INTERNET_CHECK | (Default) 1 - perform internet check, if available, download the newest model version 0 - skip internet check and use cached model |
 | DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT | (Default) 1000 - timeout in milliseconds for the internet check |

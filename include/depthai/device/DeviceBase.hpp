@@ -593,6 +593,13 @@ class DeviceBase {
     CpuUsage getLeonMssCpuUsage();
 
     /**
+     * Retrieves current Rss memory usage of the device process
+     *
+     * @returns Current Rss memory used
+     */
+    int64_t getProcessMemoryUsage();
+
+    /**
      * Check if EEPROM is available
      * @returns True if EEPROM is present on board, false otherwise
      */
@@ -728,6 +735,13 @@ class DeviceBase {
      * @returns USB connection speed of connected device if applicable. Unknown otherwise.
      */
     UsbSpeed getUsbSpeed();
+
+    /**
+     * Checks if Neural Depth is supported on the device
+     *
+     * @returns True if supported, false otherwise
+     */
+    bool isNeuralDepthSupported();
 
     /**
      * Configures Timesync service on device. It keeps host and device clocks in sync

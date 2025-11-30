@@ -38,6 +38,10 @@ class TransformData : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::TransformData;
+    }
+
     Point3d getTranslation() const;
     Point3d getRotationEuler() const;
     Quaterniond getQuaternion() const;

@@ -175,6 +175,9 @@ dai_set_example_test_labels(camera_max_resolution ondevice rvc2_all rvc4 rvc4rgb
 add_python_example(camera_undistortion Camera/camera_undistortion.py)
 dai_set_example_test_labels(camera_undistortion ondevice rvc2_all rvc4 ci)
 
+add_python_example(camera_hdr Camera/camera_hdr.py)
+dai_set_example_test_labels(camera_hdr ondevice rvc4 rvc4rgb ci)
+
 ## AprilTags
 add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
 dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 rvc4rgb ci nowindows)
@@ -238,6 +241,9 @@ dai_set_example_test_labels(visualizer_rgbd_autocreate ondevice rvc2 usb rvc4 ci
 
 add_python_example(rgbd_o3d RGBD/rgbd_o3d.py)
 dai_set_example_test_labels(rgbd_o3d ondevice rvc2_all rvc4 ci nowindows)
+
+add_python_example(rgbd_pcl_processing RGBD/rgbd_pcl_processing.py)
+dai_set_example_test_labels(rgbd_pcl_processing ondevice rvc2_all rvc4 ci nowindows)
 
 add_python_example(person_crop_out Misc/DigitalZoom/person_crop_out.py)
 dai_set_example_test_labels(person_crop_out ondevice rvc2_all rvc4 rvc4rgb ci)

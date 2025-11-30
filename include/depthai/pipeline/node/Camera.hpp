@@ -9,11 +9,11 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/properties/CameraProperties.hpp"
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "depthai/pipeline/node/host/Replay.hpp"
 #endif
-#include "depthai/properties/CameraProperties.hpp"
-#include "depthai/utility/span.hpp"
 
 namespace dai {
 namespace node {
@@ -124,6 +124,102 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      */
     CameraBoardSocket getBoardSocket() const;
 
+    /**
+     * Set number of frames in raw pool (will be automatically reduced if the maximum pool memory size is exceeded)
+     * @param num Number of frames
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setRawNumFramesPool(int num);
+
+    /**
+     * Set maximum size of raw pool
+     * @param size Maximum size in bytes of raw pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setMaxSizePoolRaw(int size);
+
+    /**
+     * Set number of frames in isp pool (will be automatically reduced if the maximum pool memory size is exceeded)
+     * @param num Number of frames
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setIspNumFramesPool(int num);
+
+    /**
+     * Set maximum size of isp pool
+     * @param size Maximum size in bytes of isp pool
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setMaxSizePoolIsp(int size);
+
+    /**
+     * Set number of frames in all pools (will be automatically reduced if the maximum pool memory size is exceeded)
+     * @param raw Number of frames in raw pool
+     * @param isp Number of frames in isp pool
+     * @param outputs Number of frames in outputs pools
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setNumFramesPools(int raw, int isp, int outputs);
+
+    /**
+     * Set maximum memory size of all pools
+     * @param raw Maximum size in bytes of raw pool
+     * @param isp Maximum size in bytes of isp pool
+     * @param outputs Maximum size in bytes of outputs pools
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setMaxSizePools(int raw, int isp, int outputs);
+
+    /**
+     * Set number of frames in pools for all outputs
+     * @param num Number of frames in pools for all outputs
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setOutputsNumFramesPool(int num);
+
+    /**
+     * Set maximum size of pools for all outputs
+     * @param size Maximum size in bytes of pools for all outputs
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setOutputsMaxSizePool(int size);
+
+    /**
+     * Get number of frames in raw pool
+     * @return Number of frames
+     */
+    int getRawNumFramesPool() const;
+
+    /**
+     * Get maximum size of raw pool
+     * @return Maximum size in bytes of raw pool
+     */
+    int getMaxSizePoolRaw() const;
+
+    /**
+     * Get number of frames in isp pool
+     * @return Number of frames
+     */
+    int getIspNumFramesPool() const;
+
+    /**
+     * Get maximum size of isp pool
+     * @return Maximum size in bytes of isp pool
+     */
+    int getMaxSizePoolIsp() const;
+
+    /**
+     * Get number of frames in outputs pool for all outputs
+     * @return Number of frames
+     */
+    std::optional<int> getOutputsNumFramesPool() const;
+
+    /**
+     * Get maximum size of outputs pool for all outputs
+     * @return Maximum size in bytes of image manip pool
+     */
+    std::optional<size_t> getOutputsMaxSizePool() const;
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Set mock ISP for Camera node. Automatically sets mockIsp size.
@@ -169,11 +265,6 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
    private:
     bool isBuilt = false;
     CameraFeatures cameraFeatures;
-
-    /*
-    Output& getRecordOutput() override;
-    Input& getReplayInput() override;
-    */
 };
 
 }  // namespace node

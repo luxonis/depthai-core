@@ -24,10 +24,14 @@ namespace node {
 class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
-        : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device),
+        : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device)
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+          ,
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough} {
+          passthrough{neuralNetwork->passthrough}
+#endif
+    {
         if(device) {
             auto platform = device->getPlatform();
             if(platform == Platform::RVC4) {
@@ -36,7 +40,14 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         }
     };
     SpatialDetectionNetwork(std::unique_ptr<Properties> props)
-        : DeviceNodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {
+        : DeviceNodeCRTP(std::move(props))
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+          ,
+          input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough}
+#endif
+    {
         auto device = getDevice();
         if(device) {
             auto platform = device->getPlatform();
@@ -46,7 +57,14 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         }
     };
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
-        : DeviceNodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {
+        : DeviceNodeCRTP(std::move(props), confMode)
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+          ,
+          input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough}
+#endif
+    {
         auto device = getDevice();
         if(device) {
             auto platform = device->getPlatform();
@@ -56,10 +74,15 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         }
     };
     SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
-        : DeviceNodeCRTP(device, std::move(props), confMode),
+        : DeviceNodeCRTP(device, std::move(props), confMode)
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+          ,
+
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough} {
+          passthrough{neuralNetwork->passthrough}
+#endif
+    {
         if(device) {
             auto platform = device->getPlatform();
             if(platform == Platform::RVC4) {
@@ -83,6 +106,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
     std::unique_ptr<Subnode<ImageAlign>> depthAlign;
 
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /**
      * Input message with data to be inferred upon
      * Default queue is blocking with size 5
@@ -100,6 +124,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output& passthrough;
+#endif
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object
