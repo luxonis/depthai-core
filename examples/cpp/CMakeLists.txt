@@ -99,7 +99,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
                 VERBATIM
             )
         endforeach()
-        add_runtime_dependencies(${example_name} usb-1.0)
+        add_runtime_dependencies_symlinked(${example_name} usb-1.0)
     endif()
 endfunction()
 

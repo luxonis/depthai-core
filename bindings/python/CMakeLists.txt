@@ -195,13 +195,11 @@ if(WIN32)
     else()
         set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${TARGET_NAME}>")
     endif()
-    foreach(dll_path IN LISTS depthai_dll_libraries)
-        add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -DDLLS=${dll_path} -DDEST_DIR=$<TARGET_FILE_DIR:${example_name}>
-            -P "${TOP_CPP_EXAMPLES_CMAKE_DIR}/cmake/CreateSymlinks.cmake"
-            VERBATIM
-        )
-    endforeach()
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND
+        "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${TARGET_NAME}>>"
+        COMMAND_EXPAND_LISTS
+        VERBATIM
+    )
 
     # Disable "d" postfix, so python can import the library as is
     set_target_properties(${TARGET_NAME} PROPERTIES DEBUG_POSTFIX "")
