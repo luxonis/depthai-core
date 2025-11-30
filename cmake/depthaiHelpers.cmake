@@ -19,11 +19,13 @@ macro(add_runtime_dependencies depending_target dependency)
     endif()
     # Copy the required dlls
     if(WIN32)
-        add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-            "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
-            COMMAND_EXPAND_LISTS
-            VERBATIM
-        )
+        foreach(dll_path IN LISTS required_dll_files)
+            add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
+                ${CMAKE_COMMAND} -DDLLS=${dll_path} -DDEST_DIR=$<TARGET_FILE_DIR:${depending_target}>
+                -P "${CMAKE_SOURCE_DIR}/cmake/CreateSymlinks.cmake"
+                VERBATIM
+            )
+        endforeach()
         message(DEBUG "Required dlls for ${depending_target} are: ${required_dll_files}")
     endif()
 endmacro()

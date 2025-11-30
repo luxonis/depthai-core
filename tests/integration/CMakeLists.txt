@@ -32,10 +32,13 @@ function(add_runtime_dependencies depending_target dependency)
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${depending_target}>")
         endif()
         # Copy the required dlls
-        add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different ${dlls} ${depthai_dll_libraries} $<TARGET_FILE_DIR:${depending_target}>
-            COMMAND_EXPAND_LISTS
-        )
+        foreach(dll_path IN LISTS depthai_dll_libraries)
+            add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
+                ${CMAKE_COMMAND} -DDLLS=${dll_path} -DDEST_DIR=$<TARGET_FILE_DIR:${depending_target}>
+                -P "${CMAKE_SOURCE_DIR}/cmake/CreateSymlinks.cmake"
+                VERBATIM
+            )
+        endforeach()
     endif()
 endfunction()
 
