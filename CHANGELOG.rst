@@ -35,7 +35,6 @@ On the LuxonisOS 1.20.5 and newer, up to 240 FPS is now supported
 * [_RVC2_] Fix a rare issue of IMU preventing a device reboot
 * [_RVC2_] Patch ToF calibration that caused a minor bump in readout values in the middle of the frame
 
-
 3.1.0 (2025-11-05)
 ------------------
 ## Features
