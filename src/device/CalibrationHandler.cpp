@@ -481,28 +481,66 @@ std::vector<std::vector<float>> CalibrationHandler::getOriginToHousing(
     return T;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(CameraBoardSocket srcCamera,
-                                                                        HousingCoordinateSystem housingCS,
-                                                                        bool useSpecTranslation) const {
-
+std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(
+        CameraBoardSocket srcCamera,
+        HousingCoordinateSystem housingCS,
+        bool useSpecTranslation) const 
+{
+    // Ensure we have calibration data for the requested source camera
     if(eepromData.cameraData.find(srcCamera) == eepromData.cameraData.end()) {
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
+        throw std::runtime_error(
+            "There is no Camera data available corresponding to the requested source cameraId");
     }
 
     std::vector<std::vector<float>> camToHousing;
+    std::vector<std::vector<float>> camToHousingOrigin;
+    CameraBoardSocket housingOriginCamera;
     CameraBoardSocket originCamera1;
     CameraBoardSocket originCamera2;
 
-    // Get matrix from src camera socket to housing CS
-    std::vector<std::vector<float>> camToOrigin = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera1);
-    std::vector<std::vector<float>> OriginToHousing = getOriginToHousing(housingCS, useSpecTranslation, originCamera2);
+    // ------------------------------------------------------------
+    // 1. Retrieve the following transformations:
+    //    cam_src           → origin
+    //    housing_origin    → origin
+    //    housing_origin    → housing
+    // These are provided by the calibration data.
+    // ------------------------------------------------------------
 
+    std::vector<std::vector<float>> HousingOriginToHousing =
+        getOriginToHousing(housingCS, useSpecTranslation, housingOriginCamera);
+
+    std::vector<std::vector<float>> HousingOriginToOrigin =
+        getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
+
+    std::vector<std::vector<float>> camToOrigin =
+        getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera2);
+
+    // The "origin" for both lookups must be the same camera
     if(originCamera1 != originCamera2) {
-        throw std::runtime_error("Missing extrinsic link from source camera to to destination camera.");
+        throw std::runtime_error("Missing extrinsic link from source camera to destination camera.");
     }
 
-    // Get the transformtion matrix from camera to housing
-    camToHousing = matMul(OriginToHousing, camToOrigin);
+    // ------------------------------------------------------------
+    // 2. To combine cam_src → origin with origin → housing_origin,
+    //    we need the matrix:
+    //         origin → housing_origin
+    //    But what we have: housing_origin → origin
+    //    So we invert that SE3 transform first.
+    // ------------------------------------------------------------
+    invertSe3Matrix4x4InPlace(HousingOriginToOrigin);   // now represents origin → housing_origin
+
+    // ------------------------------------------------------------
+    // 3. Compose transformations:
+    //    cam_src → origin → housing_origin
+    // ------------------------------------------------------------
+    camToHousingOrigin = matMul(HousingOriginToOrigin, camToOrigin);
+
+    // ------------------------------------------------------------
+    // 4. And finally:
+    //    cam_src → housing_origin → housing
+    //    Which gives us: cam_src → housing
+    // ------------------------------------------------------------
+    camToHousing = matMul(HousingOriginToHousing, camToHousingOrigin);
 
     return camToHousing;
 }
