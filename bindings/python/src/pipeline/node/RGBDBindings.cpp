@@ -40,9 +40,33 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
              static_cast<std::shared_ptr<RGBD> (RGBD::*)(bool, StereoDepth::PresetMode, std::pair<int, int>, std::optional<float>)>(&RGBD::build),
              py::arg("autocreate"),
              py::arg("mode") = StereoDepth::PresetMode::DEFAULT,
-             py::arg("size") = std::pair<int, int>(640, 400),
+             py::arg("frameSize") = std::make_pair(640, 400),
              py::arg("fps") = std::nullopt,
              DOC(dai, node, RGBD, build, 2))
+        .def("build",
+             static_cast<std::shared_ptr<RGBD> (RGBD::*)(
+                 const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, std::pair<int, int>, std::optional<float>)>(&RGBD::build),
+             py::arg("camera"),
+             py::arg("stereo"),
+             py::arg("frameSize") = std::make_pair(640, 400),
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, RGBD, build, 3))
+        .def("build",
+             static_cast<std::shared_ptr<RGBD> (RGBD::*)(
+                 const std::shared_ptr<Camera>&, const std::shared_ptr<NeuralDepth>&, std::pair<int, int>, std::optional<float>)>(&RGBD::build),
+             py::arg("camera"),
+             py::arg("neuralDepth"),
+             py::arg("frameSize") = std::make_pair(640, 400),
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, RGBD, build, 4))
+        .def("build",
+             static_cast<std::shared_ptr<RGBD> (RGBD::*)(
+                 const std::shared_ptr<Camera>&, const std::shared_ptr<ToF>&, std::pair<int, int>, std::optional<float>)>(&RGBD::build),
+             py::arg("camera"),
+             py::arg("tof"),
+             py::arg("frameSize") = std::make_pair(640, 400),
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, RGBD, build, 5))
         .def("setDepthUnits", &RGBD::setDepthUnit, py::arg("units"), DOC(dai, node, RGBD, setDepthUnit))
         .def("useCPU", &RGBD::useCPU, DOC(dai, node, RGBD, useCPU))
         .def("useCPUMT", &RGBD::useCPUMT, py::arg("numThreads") = 2, DOC(dai, node, RGBD, useCPUMT))

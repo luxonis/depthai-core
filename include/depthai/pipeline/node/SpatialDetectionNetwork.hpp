@@ -5,13 +5,13 @@
 #include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 #include <depthai/pipeline/node/ImageAlign.hpp>
+
+// depth map source nodes
 #include <depthai/pipeline/node/NeuralDepth.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
+#include <depthai/pipeline/node/ToF.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
-
-// standard
-#include <fstream>
 
 // shared
 #include <depthai/properties/SpatialDetectionNetworkProperties.hpp>
@@ -110,6 +110,15 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
 
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<NeuralDepth>& neuralDepth,
+                                                   const dai::NNArchive& nnArchive,
+                                                   std::optional<float> fps = std::nullopt);
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
+                                                   const std::shared_ptr<ToF>& tof,
+                                                   dai::NNModelDescription modelDesc,
+                                                   std::optional<float> fps = std::nullopt);
+
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
+                                                   const std::shared_ptr<ToF>& tof,
                                                    const dai::NNArchive& nnArchive,
                                                    std::optional<float> fps = std::nullopt);
 
@@ -328,8 +337,11 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
+
+    // Helpers, same API, different depth map source nodes
     void alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
     void alignDepth(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera);
+    void alignDepth(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera);
 
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;
