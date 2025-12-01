@@ -31,5 +31,8 @@ void bind_mapdata(pybind11::module& m, void* pCallstack) {
 
     // Metadata / raw
     mapData.def(py::init<>())
-        .def("__repr__", &MapData::str);
+        .def("__repr__", &MapData::str)
+        .def_readwrite("map", &MapData::map)
+        .def_readwrite("minX", &MapData::minX)
+        .def_readwrite("minY", &MapData::minY);
 }
