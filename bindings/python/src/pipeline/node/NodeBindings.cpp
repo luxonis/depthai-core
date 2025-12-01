@@ -245,7 +245,6 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<dai::node::internal::XLinkOutBridge, std::shared_ptr<dai::node::internal::XLinkOutBridge>> pyXLinkOutBridge(
         daiNodeInternalModule, "XLinkOutBridge", DOC(dai, node, internal, XLinkOutBridge));
 
-
     // Properties
     py::class_<Node, std::shared_ptr<Node>> pyNode(m, "Node", DOC(dai, Node));
 
