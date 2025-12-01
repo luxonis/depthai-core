@@ -165,6 +165,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     void stop() override;
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
     std::shared_ptr<ImgFrame> leftImg;
+    std::mutex imgMtx;
     bool initialized = false;
     std::string configPath = "";
     int imuUpdateRate = 200;

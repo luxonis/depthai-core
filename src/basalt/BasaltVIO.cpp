@@ -83,6 +83,7 @@ void BasaltVIO::run() {
         auto rot = finalPose.unit_quaternion();
         auto out = std::make_shared<TransformData>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w());
         transform.send(out);
+        std::lock_guard<std::mutex> lck(imgMtx);
         passthrough.send(leftImg);
     }
 }
@@ -103,6 +104,7 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
     for(auto& msg : *group) {
         std::shared_ptr<ImgFrame> imgFrame = std::dynamic_pointer_cast<ImgFrame>(msg.second);
         if(i == 0) {
+            std::lock_guard<std::mutex> lck(imgMtx);
             leftImg = imgFrame;
         };
         auto t = imgFrame->getTimestamp();
