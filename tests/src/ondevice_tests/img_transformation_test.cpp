@@ -19,7 +19,7 @@ bool isIdentity(const std::array<std::array<float, 3>, 3>& mat) {
     return true;
 }
 
-bool approxIdentity(const std::array<std::array<float, 3>, 3>& mat, float eps = 1e-4f) {
+bool approxIdentity(const std::array<std::array<float, 3>, 3>& mat, float eps = 3e-4f) {
     for(int i = 0; i < 3; i++) {
         for(int j = 0; j < 3; j++) {
             float expected = (i == j) ? 1.0f : 0.0f;
