@@ -69,43 +69,40 @@ void XLinkOutHost::run() {
                 if(outgoingDataSize > currentMaxSize - metadata.size()) {
                     increaseBufferSize(outgoingDataSize + metadata.size());
                 }
-                {
-                    auto blockEvent = this->outputBlockEvent();
-                    if(outgoing->data->getSize() > 0) {
-                        auto sharedMemory = std::dynamic_pointer_cast<SharedMemory>(outgoing->data);
-                        if(sharedMemory && sharedMemory->getFd() > 0) {
-                            stream.write(sharedMemory->getFd(), metadata);
-                        } else {
-                            stream.write(outgoing->data->getData(), metadata);
-                        }
+                if(outgoing->data->getSize() > 0) {
+                    auto sharedMemory = std::dynamic_pointer_cast<SharedMemory>(outgoing->data);
+                    if(sharedMemory && sharedMemory->getFd() > 0) {
+                        stream.write(sharedMemory->getFd(), metadata);
                     } else {
-                        stream.write(metadata);
+                        stream.write(outgoing->data->getData(), metadata);
                     }
-                    auto t2 = steady_clock::now();
-                    // Log
-                    if(spdlog::get_level() == spdlog::level::trace) {
-                        logger::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
-                                      stream.getStreamName(),
-                                      outgoing->data->getSize(),
-                                      spdlog::to_hex(metadata),
-                                      duration_cast<microseconds>(t2 - t1));
-                    }
+                } else {
+                    stream.write(metadata);
+                }
+                auto t2 = steady_clock::now();
+                // Log
+                if(spdlog::get_level() == spdlog::level::trace) {
+                    logger::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
+                                  stream.getStreamName(),
+                                  outgoing->data->getSize(),
+                                  spdlog::to_hex(metadata),
+                                  duration_cast<microseconds>(t2 - t1));
+                }
 
-                    // Attempt dynamic cast to MessageGroup
-                    if(auto msgGroupPtr = std::dynamic_pointer_cast<MessageGroup>(outgoing)) {
-                        logger::trace("Sending group message to device with {} messages", msgGroupPtr->group.size());
-                        for(auto& msg : msgGroupPtr->group) {
-                            logger::trace("Sending part of a group message: {}", msg.first);
-                            auto metadata = StreamMessageParser::serializeMetadata(msg.second);
-                            outgoingDataSize = msg.second->data->getSize();
-                            if(outgoingDataSize > currentMaxSize - metadata.size()) {
-                                increaseBufferSize(outgoingDataSize + metadata.size());
-                            }
-                            if(msg.second->data->getSize() > 0) {
-                                stream.write(msg.second->data->getData(), metadata);
-                            } else {
-                                stream.write(metadata);
-                            }
+                // Attempt dynamic cast to MessageGroup
+                if(auto msgGroupPtr = std::dynamic_pointer_cast<MessageGroup>(outgoing)) {
+                    logger::trace("Sending group message to device with {} messages", msgGroupPtr->group.size());
+                    for(auto& msg : msgGroupPtr->group) {
+                        logger::trace("Sending part of a group message: {}", msg.first);
+                        auto metadata = StreamMessageParser::serializeMetadata(msg.second);
+                        outgoingDataSize = msg.second->data->getSize();
+                        if(outgoingDataSize > currentMaxSize - metadata.size()) {
+                            increaseBufferSize(outgoingDataSize + metadata.size());
+                        }
+                        if(msg.second->data->getSize() > 0) {
+                            stream.write(msg.second->data->getData(), metadata);
+                        } else {
+                            stream.write(metadata);
                         }
                     }
                 }

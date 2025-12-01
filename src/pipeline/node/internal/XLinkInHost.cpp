@@ -42,10 +42,7 @@ void XLinkInHost::run() {
             try {
                 // Blocking -- parse packet and gather timing information
                 StreamPacketDesc packet;
-                {
-                    auto blockEvent = this->inputBlockEvent();
-                    packet = stream.readMove();
-                }
+                packet = stream.readMove();
                 const auto t1Parse = std::chrono::steady_clock::now();
                 const auto msg = StreamMessageParser::parseMessage(std::move(packet));
                 if(std::dynamic_pointer_cast<MessageGroup>(msg) != nullptr) {
