@@ -405,67 +405,27 @@ void RGBD::run() {
             pimpl->computePointCloud(depthData, colorData, points);
 
             auto calibHandler = getParentPipeline().getCalibrationData();
-
-            // Placeholder translation vector (mm)
-            float tvec_rgb_to_housing[3] = {
-                10000.0f,   // tx
-                0.0f,       // ty
-                0.0f        // tz
-            };
-
-            // Placeholder rotation vector (Rodrigues) in radians
-            float rvec_rgb_to_housing[3] = {
-                0.0f,   // rx
-                0.0f,   // ry
-                0.0f    // rz
-            };
-
-            // Compute rotation matrix from rotation vector
-            float theta = std::sqrt(
-                rvec_rgb_to_housing[0]*rvec_rgb_to_housing[0] +
-                rvec_rgb_to_housing[1]*rvec_rgb_to_housing[1] +
-                rvec_rgb_to_housing[2]*rvec_rgb_to_housing[2]
-            );
+            auto rgbCameraSocket = CameraBoardSocket::CAM_A;
+            auto T_rgb_to_housing = calibHandler.getHousingCalibration(rgbCameraSocket, dai::HousingCoordinateSystem::VESA_RIGHT, true);
 
             float R_rgb_to_housing[3][3];
 
-            if(theta < 1e-9f) {
-                // Identity rotation
-                R_rgb_to_housing[0][0] = 1; R_rgb_to_housing[0][1] = 0; R_rgb_to_housing[0][2] = 0;
-                R_rgb_to_housing[1][0] = 0; R_rgb_to_housing[1][1] = 1; R_rgb_to_housing[1][2] = 0;
-                R_rgb_to_housing[2][0] = 0; R_rgb_to_housing[2][1] = 0; R_rgb_to_housing[2][2] = 1;
-            } else {
-                // Normalize axis
-                float kx = rvec_rgb_to_housing[0] / theta;
-                float ky = rvec_rgb_to_housing[1] / theta;
-                float kz = rvec_rgb_to_housing[2] / theta;
-
-                float c = std::cos(theta);
-                float s = std::sin(theta);
-
-                // Rodrigues matrix
-                R_rgb_to_housing[0][0] = c + kx*kx*(1-c);
-                R_rgb_to_housing[0][1] = kx*ky*(1-c) - kz*s;
-                R_rgb_to_housing[0][2] = kx*kz*(1-c) + ky*s;
-
-                R_rgb_to_housing[1][0] = ky*kx*(1-c) + kz*s;
-                R_rgb_to_housing[1][1] = c + ky*ky*(1-c);
-                R_rgb_to_housing[1][2] = ky*kz*(1-c) - kx*s;
-
-                R_rgb_to_housing[2][0] = kz*kx*(1-c) - ky*s;
-                R_rgb_to_housing[2][1] = kz*ky*(1-c) + kx*s;
-                R_rgb_to_housing[2][2] = c + kz*kz*(1-c);
+            // Extract rotation matrix
+            for(int r = 0; r < 3; ++r) {
+                for(int c = 0; c < 3; ++c) {
+                    R_rgb_to_housing[r][c] = T_rgb_to_housing[r][c];
+                }
             }
 
             // Build translation vector for transform function
-            Vec3 t_rgb_to_housing = {
-                tvec_rgb_to_housing[0],
-                tvec_rgb_to_housing[1],
-                tvec_rgb_to_housing[2]
+            Vec3 tvec_rgb_to_housing = {
+                T_rgb_to_housing[0][3],
+                T_rgb_to_housing[1][3],
+                T_rgb_to_housing[2][3]
             };
 
             // Apply the transform to the entire point cloud
-            transformPointCloudRGBA(points, R_rgb_to_housing, t_rgb_to_housing);
+            transformPointCloudRGBA(points, R_rgb_to_housing, tvec_rgb_to_housing);
 
             float minX = 0.0;
             float minY = 0.0;

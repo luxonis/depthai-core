@@ -447,7 +447,7 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
     return extrinsics;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getHousingToOrigin(
+std::vector<std::vector<float>> CalibrationHandler::getOriginToHousing(
         HousingCoordinateSystem housingCS,
         bool useSpecTranslation,
         CameraBoardSocket& originSocket) const 
@@ -489,25 +489,22 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
         throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
     }
 
-    std::vector<std::vector<float>> extrinsics;
+    std::vector<std::vector<float>> camToHousing;
     CameraBoardSocket originCamera1;
     CameraBoardSocket originCamera2;
 
-    // Get matrix from src to -1 camera and dst to -1 camera and set originCamera1 and originCamera2
-    std::vector<std::vector<float>> srcOriginMatrix = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera1);
-    std::vector<std::vector<float>> dstOriginMatrix = getHousingToOrigin(housingCS, useSpecTranslation, originCamera2);
+    // Get matrix from src camera socket to housing CS
+    std::vector<std::vector<float>> camToOrigin = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera1);
+    std::vector<std::vector<float>> OriginToHousing = getOriginToHousing(housingCS, useSpecTranslation, originCamera2);
 
     if(originCamera1 != originCamera2) {
         throw std::runtime_error("Missing extrinsic link from source camera to to destination camera.");
     }
 
-    // Invert the matrix dstOriginMatrix
-    invertSe3Matrix4x4InPlace(dstOriginMatrix);
+    // Get the transformtion matrix from camera to housing
+    camToHousing = matMul(OriginToHousing, camToOrigin);
 
-    // Get the matrix from src to dst camera
-    extrinsics = matMul(dstOriginMatrix, srcOriginMatrix);
-
-    return extrinsics;
+    return camToHousing;
 }
 
 std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) const {
