@@ -1,5 +1,6 @@
 #pragma once
 
+#include <depthai/common/DepthUnit.hpp>
 #include <depthai/common/ProcessorType.hpp>
 #include <depthai/common/optional.hpp>
 #include <vector>
@@ -28,10 +29,7 @@ class StereoDepthConfig : public Buffer {
          */
         enum class DepthAlign : int32_t { RECTIFIED_RIGHT, RECTIFIED_LEFT, CENTER };
 
-        /**
-         * Measurement unit for depth data
-         */
-        enum class DepthUnit : int32_t { METER, CENTIMETER, MILLIMETER, INCH, FOOT, CUSTOM };
+        using DepthUnit = dai::DepthUnit;
 
         /**
          * Set the disparity/depth alignment to the perspective of a rectified output, or center it
@@ -748,6 +746,16 @@ class StereoDepthConfig : public Buffer {
      * Get depth unit of depth map.
      */
     AlgorithmControl::DepthUnit getDepthUnit();
+
+    /**
+     * Set custom depth unit multiplier relative to 1 meter.
+     */
+    StereoDepthConfig& setCustomDepthUnitMultiplier(float multiplier);
+
+    /**
+     * Get custom depth unit multiplier relative to 1 meter.
+     */
+    float getCustomDepthUnitMultiplier() const;
 
     /**
      * Shift input frame by a number of pixels to increase minimum depth.

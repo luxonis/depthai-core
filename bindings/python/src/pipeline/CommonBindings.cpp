@@ -16,8 +16,10 @@
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/ConnectionInterface.hpp"
 #include "depthai/common/CpuUsage.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "depthai/common/DetectionParserOptions.hpp"
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/Interpolation.hpp"
@@ -71,6 +73,13 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
+    py::enum_<DepthUnit> depthUnitEnum(m, "DepthUnit", DOC(dai, DepthUnit));
+    depthUnitEnum.value("METER", DepthUnit::METER)
+        .value("CENTIMETER", DepthUnit::CENTIMETER)
+        .value("MILLIMETER", DepthUnit::MILLIMETER)
+        .value("INCH", DepthUnit::INCH)
+        .value("FOOT", DepthUnit::FOOT)
+        .value("CUSTOM", DepthUnit::CUSTOM);
     py::enum_<YoloDecodingFamily> yoloDecodingFamily(m, "YoloDecodingFamily");
     py::enum_<SerializationType> serializationType(m, "SerializationType");
     py::class_<DetectionParserOptions> detectionParserOptions(m, "DetectionParserOptions", DOC(dai, DetectionParserOptions));
@@ -83,6 +92,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
     py::class_<ProfilingData> profilingData(m, "ProfilingData", DOC(dai, ProfilingData));
     py::enum_<Interpolation> interpolation(m, "Interpolation", DOC(dai, Interpolation));
+    py::enum_<DeviceModelZoo> deviceModelZoo(m, "DeviceModelZoo", DOC(dai, DeviceModelZoo));
     py::class_<Keypoint> keypoint(m, "Keypoint", DOC(dai, Keypoint));
     py::class_<KeypointsList> keypointsList(m, "KeypointsList", DOC(dai, KeypointsList));
 
@@ -484,4 +494,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     profilingData.def_readwrite("numBytesWritten", &ProfilingData::numBytesWritten, DOC(dai, ProfilingData, numBytesWritten))
         .def_readwrite("numBytesRead", &ProfilingData::numBytesRead, DOC(dai, ProfilingData, numBytesRead));
+
+    deviceModelZoo.value("NEURAL_DEPTH_LARGE", DeviceModelZoo::NEURAL_DEPTH_LARGE)
+        .value("NEURAL_DEPTH_MEDIUM", DeviceModelZoo::NEURAL_DEPTH_MEDIUM)
+        .value("NEURAL_DEPTH_SMALL", DeviceModelZoo::NEURAL_DEPTH_SMALL)
+        .value("NEURAL_DEPTH_NANO", DeviceModelZoo::NEURAL_DEPTH_NANO);
 }

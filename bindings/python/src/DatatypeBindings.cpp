@@ -19,6 +19,7 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack);
 void bind_imudata(pybind11::module& m, void* pCallstack);
 void bind_message_group(pybind11::module& m, void* pCallstack);
 void bind_nndata(pybind11::module& m, void* pCallstack);
+void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack);
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack);
 void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack);
 void bind_spatiallocationcalculatordata(pybind11::module& m, void* pCallstack);
@@ -61,6 +62,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_imudata);
     callstack.push_front(bind_message_group);
     callstack.push_front(bind_nndata);
+    callstack.push_front(bind_neuraldepthconfig);
     callstack.push_front(bind_spatialimgdetections);
     callstack.push_front(bind_spatiallocationcalculatorconfig);
     callstack.push_front(bind_spatiallocationcalculatordata);

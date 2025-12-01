@@ -109,6 +109,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
         .def("setBackend", &NeuralNetwork::setBackend, py::arg("setBackend"), DOC(dai, node, NeuralNetwork, setBackend))
         .def("setBackendProperties", &NeuralNetwork::setBackendProperties, py::arg("setBackendProperties"), DOC(dai, node, NeuralNetwork, setBackendProperties))
         .def("getNNArchive", &NeuralNetwork::getNNArchive, DOC(dai, node, NeuralNetwork, getNNArchive))
+        .def("setModelFromDeviceZoo", &NeuralNetwork::setModelFromDeviceZoo, py::arg("model"), DOC(dai, node, NeuralNetwork, setModelFromDeviceZoo))
 
         .def_readonly("inputs", &NeuralNetwork::inputs, DOC(dai, node, NeuralNetwork, inputs))
         .def_readonly("passthroughs", &NeuralNetwork::passthroughs, DOC(dai, node, NeuralNetwork, passthroughs))

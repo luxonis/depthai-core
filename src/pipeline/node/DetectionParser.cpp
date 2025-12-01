@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -13,6 +14,8 @@
 #include "nn_archive/NNArchive.hpp"
 #include "nn_archive/v1/Head.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "pipeline/datatype/NNData.hpp"
+#include "pipeline/utilities/DetectionParser/DetectionParserUtils.hpp"
 
 // internal headers
 #include "utility/ErrorMacros.hpp"
@@ -156,6 +159,9 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             std::vector<std::vector<float>> layerOut(anchorsIn[layer].size());
             for(size_t anchor = 0; anchor < layerOut.size(); ++anchor) {
                 std::vector<float> anchorOut(anchorsIn[layer][anchor].size());
+                if(anchorOut.size() != 2) {
+                    throw std::runtime_error("Each anchor should have exactly 2 dimensions (width and height).");
+                }
                 for(size_t dim = 0; dim < anchorOut.size(); ++dim) {
                     anchorOut[dim] = static_cast<float>(anchorsIn[layer][anchor][dim]);
                 }
@@ -367,6 +373,196 @@ bool DetectionParser::getDecodeSegmentation() const {
 
 std::vector<int> DetectionParser::getStrides() const {
     return properties.parser.strides;
+}
+
+void DetectionParser::setRunOnHost(bool runOnHost) {
+    runOnHostVar = runOnHost;
+}
+
+/**
+ * Check if the node is set to run on host
+ */
+bool DetectionParser::runOnHost() const {
+    return runOnHostVar;
+}
+
+void DetectionParser::run() {
+    auto& logger = ThreadedNode::pimpl->logger;
+    logger->info("Detection parser running on host.");
+
+    using namespace std::chrono;
+    while(isRunning()) {
+        auto tAbsoluteBeginning = steady_clock::now();
+        std::shared_ptr<dai::NNData> sharedInputData = input.get<dai::NNData>();
+        auto outDetections = std::make_shared<dai::ImgDetections>();
+
+        if(!sharedInputData) {
+            logger->error("NN Data is empty. Skipping processing.");
+            continue;
+        }
+        auto tAfterMessageBeginning = steady_clock::now();
+        dai::NNData& inputData = *sharedInputData;
+
+        if(!imgSizesSet) {
+            const bool containsTransformation = inputData.transformation.has_value();
+            if(containsTransformation) {
+                std::tie(imgWidth, imgHeight) = inputData.transformation->getSize();
+            } else {
+                logger->warn("No image size provided for detection parser. Skipping processing and sending empty detections.");
+                continue;
+            }
+            // We have determined the image size, no need to try again in the future
+            imgSizesSet = true;
+        }
+
+        // Parse detections
+        switch(properties.parser.nnFamily) {
+            case DetectionNetworkType::YOLO: {
+                decodeYolo(inputData, *outDetections);
+                break;
+            }
+            case DetectionNetworkType::MOBILENET: {
+                decodeMobilenet(inputData, *outDetections, properties.parser.confidenceThreshold);
+                break;
+            }
+            default: {
+                logger->error("Unknown NN family. 'YOLO' and 'MOBILENET' are supported.");
+                break;
+            }
+        }
+
+        auto tBeforeSend = steady_clock::now();
+
+        // Copy over seq and ts
+        outDetections->setSequenceNum(inputData.getSequenceNum());
+        outDetections->setTimestamp(inputData.getTimestamp());
+        outDetections->setTimestampDevice(inputData.getTimestampDevice());
+        outDetections->transformation = inputData.transformation;
+
+        // Send detections
+        out.send(outDetections);
+
+        auto tAbsoluteEnd = steady_clock::now();
+        logger->debug("Detection parser total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
+                      duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
+                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
+                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
+                      duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+    }
+}
+
+void DetectionParser::buildStage1() {
+    auto& logger = ThreadedNode::pimpl->logger;
+
+    // Grab dimensions from input tensor info
+    if(properties.networkInputs.size() > 0) {
+        if(properties.networkInputs.size() > 1) {
+            logger->warn("Detection parser supports only single input networks, assuming first input");
+        }
+        for(const auto& kv : properties.networkInputs) {
+            const dai::TensorInfo& tensorInfo = kv.second;
+            inTensorInfo.push_back(tensorInfo);
+        }
+    }
+    if(inTensorInfo.size() > 0) {
+        int numDimensions = inTensorInfo[0].numDimensions;
+        if(numDimensions < 2) {
+            logger->error("Number of input dimensions is less than 2");
+        } else {
+            imgSizesSet = true;
+            imgWidth = inTensorInfo[0].dims[numDimensions - 1];
+            imgHeight = inTensorInfo[0].dims[numDimensions - 2];
+        }
+    } else {
+        logger->info("Unable to read input tensor height and width from static inputs. The node will try to get input sizes at runtime.");
+    }
+}
+
+void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& outDetections, float confidenceThr) {
+    auto& logger = ThreadedNode::pimpl->logger;
+
+    int maxDetections = 100;
+    std::vector<dai::ImgDetection> detections;
+    std::string tensorName;
+    for(const auto& tensor : nnData.getAllLayers()) {
+        if(tensor.offset == 0) {
+            // // The tensor we want to checkout
+            // if(tensor.numDimensions != 4) {
+            //     std::cout << "ERROR while decoding Mobilenet. Output tensor has incorrect dimensions. Number of dimensions: " << tensor.numDimensions
+            //               << std::endl;
+            // }
+            // // Get tensor output size in Bytes
+            // // Expected dimensions are [1, 1, N, 7] where N is number of detections
+            // if(tensor.dims[3] != 7) {
+            //     std::cout << "ERROR while decoding Mobilenet. Expecting 7 fields for every detection but: " << tensor.dims[3] << " found.\n";
+            // }
+            // maxDetections = tensor.dims[tensor.numDimensions - 2];
+            tensorName = tensor.name;
+        }
+    }
+
+    auto tensorData = nnData.getTensor<float>(tensorName);
+    maxDetections = tensorData.size() / 7;
+    if(static_cast<int>(tensorData.size()) < maxDetections * 7) {
+        logger->error("Error while parsing Mobilenet. Vector not long enough, expected size: {}, real size {}", maxDetections * 7, tensorData.size());
+        return;
+    }
+
+    struct raw_Detection {  // need to update it to include more
+        float header;
+        float label;
+        float confidence;
+        float xmin;
+        float ymin;
+        float xmax;
+        float ymax;
+    };
+
+    float* rawPtr = tensorData.data();
+    for(int i = 0; i < maxDetections; i++) {
+        raw_Detection temp;
+        // TODO This is likely unnecessary optimisation
+        memcpy(&temp, &rawPtr[i * 7], sizeof(raw_Detection));
+
+        // if header == -1, stop sooner
+        if(temp.header == -1.0f) break;
+
+        float currentConfidence = temp.confidence;
+        if(currentConfidence >= confidenceThr) {
+            dai::ImgDetection d;
+            d.label = temp.label;
+
+            d.confidence = currentConfidence;
+
+            d.xmin = temp.xmin;
+            d.ymin = temp.ymin;
+            d.xmax = temp.xmax;
+            d.ymax = temp.ymax;
+
+            outDetections.detections.push_back(d);
+        }
+    }
+}
+
+void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections) {
+    std::shared_ptr<spdlog::async_logger>& logger = ThreadedNode::pimpl->logger;
+    switch(properties.parser.decodingFamily) {
+        case YoloDecodingFamily::R1AF:  // anchor free: yolo v6r1
+            utilities::DetectionParserUtils::decodeR1AF(nnData, outDetections, properties, logger);
+            break;
+        case YoloDecodingFamily::v3AB:  // anchor based yolo v3 v3-Tiny
+            utilities::DetectionParserUtils::decodeV3AB(nnData, outDetections, properties, logger);
+            break;
+        case YoloDecodingFamily::v5AB:  // anchor based yolo v5, v7, P
+            utilities::DetectionParserUtils::decodeV5AB(nnData, outDetections, properties, logger);
+            break;
+        case YoloDecodingFamily::TLBR:  // top left bottom right anchor free: yolo v6r2, v8 v10 v11
+            utilities::DetectionParserUtils::decodeTLBR(nnData, outDetections, properties, logger);
+            break;
+        default:
+            logger->error("Unknown Yolo decoding family. 'R1AF', 'v3AB', 'v5AB' and 'TLBR' are supported.");
+            throw std::runtime_error("Unknown Yolo decoding family");
+    }
 }
 
 }  // namespace node
