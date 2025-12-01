@@ -22,6 +22,10 @@ struct CoverageData : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::CoverageData;
+    }
+
     /**
      * 2D coverage matrix for input A (e.g. left image).
      * Each cell represents how well that spatial bin is populated; range [0, 1].
@@ -125,6 +129,10 @@ struct CalibrationQuality : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::CalibrationQuality;
+    }
+
     DEPTHAI_SERIALIZE(CalibrationQuality, qualityData, info);
 };
 
@@ -190,6 +198,10 @@ struct DynamicCalibrationResult : public Buffer {
     std::string info;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::DynamicCalibrationResult;
+    }
 
     DEPTHAI_SERIALIZE(DynamicCalibrationResult, calibrationData, info);
 };

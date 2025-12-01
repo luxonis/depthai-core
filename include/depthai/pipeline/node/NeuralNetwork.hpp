@@ -126,6 +126,21 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     void setBlob(const std::filesystem::path& path);
 
     /**
+     * Load network model into assets and use once pipeline is started.
+     *
+     * @param model Network model
+     */
+    void setOtherModelFormat(std::vector<uint8_t> model);
+
+    /**
+     * Load network model into assets and use once pipeline is started.
+     *
+     * @throws Error if file doesn't exist or isn't a valid network model.
+     * @param path Path to the network model
+     */
+    void setOtherModelFormat(const std::filesystem::path& path);
+
+    /**
      * Load network xml and bin files into assets.
      * @param xmlModelPath Path to the neural network model file.
      */
@@ -172,7 +187,13 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
     int getNumInferenceThreads();
-    // TODO add getters for other API
+
+    /**
+     * Set model from Device Model Zoo
+     * @param model DeviceModelZoo model enum
+     * @note Only applicable for RVC4 devices with OS 1.20.5 or higher
+     */
+    void setModelFromDeviceZoo(DeviceModelZoo model);
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);

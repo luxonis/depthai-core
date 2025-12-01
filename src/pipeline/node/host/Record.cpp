@@ -49,7 +49,6 @@ void RecordVideo::run() {
     DatatypeEnum streamType = DatatypeEnum::ADatatype;
     unsigned int width = 0;
     unsigned int height = 0;
-    unsigned int fps = 0;
     unsigned int i = 0;
     auto start = std::chrono::steady_clock::now();
     auto end = std::chrono::steady_clock::now();
@@ -86,53 +85,60 @@ void RecordVideo::run() {
                                                                          : "Byte");
         }
         if(streamType == DatatypeEnum::ImgFrame || streamType == DatatypeEnum::EncodedFrame) {
-            if(i == 0)
-                start = msg->getTimestampDevice();
-            else if(i == fpsInitLength - 1) {
-                end = msg->getTimestampDevice();
-                fps = roundf((fpsInitLength * 1e6f) / (float)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-                if(logger) logger->trace("RecordVideo node detected {} fps", fps);
-                if(streamType == DatatypeEnum::EncodedFrame) {
-                    auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
-                    videoRecorder->init(recordVideoFile.string(),
-                                        width,
-                                        height,
-                                        fps,
-                                        encFrame->getProfile() == EncodedFrame::Profile::JPEG ? VideoCodec::MJPEG : VideoCodec::H264);
-                } else {
-                    videoRecorder->init(recordVideoFile.string(), width, height, fps, VideoCodec::RAW);
+            if(!videoRecorder->isInitialized()) {
+                if(i == 0) {
+                    start = msg->getTimestampDevice();
                 }
-            }
-            if(i >= fpsInitLength - 1) {
-                auto data = msg->getData();
-                if(streamType == DatatypeEnum::ImgFrame) {
-    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-                    auto imgFrame = std::dynamic_pointer_cast<ImgFrame>(msg);
-                    auto frame = imgFrame->getCvFrame();
-                    bool isGrayscale = imgFrame->getType() == ImgFrame::Type::GRAY8 || imgFrame->getType() == ImgFrame::Type::GRAYF16
-                                       || (ImgFrame::Type::RAW16 <= imgFrame->getType() && imgFrame->getType() <= ImgFrame::Type::RAW8);
-                    if(isGrayscale) {
-                        cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
-                    }
-                    assert(frame.isContinuous());
-                    span cvData(frame.data, frame.total() * frame.elemSize());
-                    videoRecorder->write(cvData, frame.step);
-                    if(recordMetadata) {
-                        byteRecorder.write(imgFrame->serializeProto(true));
-                    }
-    #else
-                    throw std::runtime_error("RecordVideo node requires OpenCV support");
-    #endif
-                } else {
-                    videoRecorder->write(data);
-                    if(recordMetadata) {
+
+                if(fps.has_value() || i == (fpsInitLength - 1)) {
+                    end = msg->getTimestampDevice();
+                    unsigned int calculatedFps =
+                        roundf((fpsInitLength * 1e6f) / (float)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
+                    if(logger) logger->trace("RecordVideo node detected {} fps", fps.value_or(calculatedFps));
+                    if(streamType == DatatypeEnum::EncodedFrame) {
                         auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
-                        auto imgFrame = encFrame->getImgFrameMeta();
-                        byteRecorder.write(imgFrame.serializeProto(true));
+                        videoRecorder->init(recordVideoFile.string(),
+                                            width,
+                                            height,
+                                            fps.value_or(calculatedFps),
+                                            encFrame->getProfile() == EncodedFrame::Profile::JPEG ? VideoCodec::MJPEG : VideoCodec::H264);
+                    } else {
+                        videoRecorder->init(recordVideoFile.string(), width, height, fps.value_or(calculatedFps), VideoCodec::RAW);
                     }
+                } else if(i < fpsInitLength) {
+                    i++;
+                    continue;
                 }
             }
-            if(i < fpsInitLength) ++i;
+
+            // Record the data
+            auto data = msg->getData();
+            if(streamType == DatatypeEnum::ImgFrame) {
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+                auto imgFrame = std::dynamic_pointer_cast<ImgFrame>(msg);
+                auto frame = imgFrame->getCvFrame();
+                bool isGrayscale = imgFrame->getType() == ImgFrame::Type::GRAY8 || imgFrame->getType() == ImgFrame::Type::GRAYF16
+                                   || (ImgFrame::Type::RAW16 <= imgFrame->getType() && imgFrame->getType() <= ImgFrame::Type::RAW8);
+                if(isGrayscale) {
+                    cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
+                }
+                assert(frame.isContinuous());
+                span cvData(frame.data, frame.total() * frame.elemSize());
+                videoRecorder->write(cvData, frame.step);
+                if(recordMetadata) {
+                    byteRecorder.write(imgFrame->serializeProto(true));
+                }
+    #else
+                throw std::runtime_error("RecordVideo node requires OpenCV support");
+    #endif
+            } else {
+                videoRecorder->write(data);
+                if(recordMetadata) {
+                    auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
+                    auto imgFrame = encFrame->getImgFrameMeta();
+                    byteRecorder.write(imgFrame.serializeProto(true));
+                }
+            }
         } else {
             throw std::runtime_error("RecordVideo can only record video streams.");
         }
@@ -202,6 +208,10 @@ RecordVideo& RecordVideo::setRecordVideoFile(const std::filesystem::path& record
 }
 RecordVideo& RecordVideo::setCompressionLevel(CompressionLevel compressionLevel) {
     this->compressionLevel = compressionLevel;
+    return *this;
+}
+RecordVideo& RecordVideo::setFps(unsigned int fps) {
+    this->fps = fps;
     return *this;
 }
 

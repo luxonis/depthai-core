@@ -2,6 +2,39 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.2.1 (2025-12-01)
+------------------
+## Bug fixes
+* [_RVC4_] Fix a regression for IMX586 only working with the 4000x3000 sensor config at 30 FPS
+On the LuxonisOS 1.20.5 and newer, up to 240 FPS is now supported
+
+3.2.0 (2025-12-01)
+------------------
+## Features
+* Extend `DetectionParser` and `ImgDetections` message with **instance segmentation** and **keypoints** parsing
+     * Keypoints run on device for both RVC2 and RVC4
+     * Instance segmentation runs on device for RVC4 and on host for RVC2
+     * C++  examples [here](https://github.com/luxonis/depthai-core/tree/v3.2.0/examples/cpp/DetectionNetwork) and Python examples [here](https://github.com/luxonis/depthai-core/tree/v3.2.0/examples/python/DetectionNetwork)
+* Add support for the new Snaps&Events API:
+    * Example for C++ [here](https://github.com/luxonis/depthai-core/tree/v3.2.0/examples/cpp/Events) and for Python [here](https://github.com/luxonis/depthai-core/tree/v3.2.0/examples/python/Events)
+* [_RVC4_] Add **NeuralDepth** node supporting the neural depth running on device
+     * Supported on Luxonis OS 1.20.4 and newer
+     * Four sizes supported
+         * LARGE -> 768x480 @ 10.8 FPS
+         * MEDIUM -> 576x360 @ 25.5 FPS
+         * SMALL -> 480x300 @ 42.5 FPS
+         * NANO -> 384x240 @ 59.7 FPS
+     * Examples for C++ [here](https://github.com/luxonis/depthai-core/tree/v3.2.0/examples/cpp/NeuralDepth) and for Python [here](https://github.com/luxonis/depthai-core/tree/v3.2.0/examples/python/NeuralDepth)
+* [_RVC4_] Switch the front LED to green when DepthAI is running
+* [_RVC2_] Add tuning for the IMX577 sensor, removing the previously present blue tint
+
+
+## Bug fixes and stability
+* Fix an edge case for IPv4LL discovery on MacOS https://github.com/luxonis/XLink/pull/100
+* [_RVC4_] Fix a small memory leak on RVC4 happening in Camera node and in StereoDepth when extended mode is enabled
+* [_RVC2_] Fix a rare issue of IMU preventing a device reboot
+* [_RVC2_] Patch ToF calibration that caused a minor bump in readout values in the middle of the frame
+
 3.1.0 (2025-11-05)
 ------------------
 ## Features
