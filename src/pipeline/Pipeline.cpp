@@ -868,9 +868,9 @@ void PipelineImpl::stop() {
 
     // Close the task queue
     tasks.destruct();
-    // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
-    // Close the devices
-    if(!isHostOnly()) {
+
+    // Close device if specified
+    if(defaultDevice) {
         defaultDevice->close();
     }
 
