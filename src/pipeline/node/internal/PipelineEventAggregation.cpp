@@ -3,6 +3,7 @@
 #include <chrono>
 #include <optional>
 #include <shared_mutex>
+#include <thread>
 
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
 #include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
@@ -426,7 +427,7 @@ class PipelineEventHandler {
                 }
             }
             if(!gotEvents && running) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::yield();
             }
         }
     }

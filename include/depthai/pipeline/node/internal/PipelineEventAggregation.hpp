@@ -23,7 +23,7 @@ class PipelineEventAggregation : public DeviceNodeCRTP<DeviceNode, PipelineEvent
     /**
      * A map of inputs
      */
-    InputMap inputs{*this, "inputs", {DEFAULT_NAME, DEFAULT_GROUP, false, 16, {{{DatatypeEnum::PipelineEvent, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    InputMap inputs{*this, "inputs", {DEFAULT_NAME, DEFAULT_GROUP, true, 32, {{{DatatypeEnum::PipelineEvent, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input PipelineEventAggregationConfig message with state request parameters
