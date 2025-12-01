@@ -10,6 +10,8 @@ import subprocess
 import sys
 import re
 import shutil
+import hashlib
+import base64
 from collections import namedtuple
 from dataclasses import dataclass
 
@@ -139,6 +141,79 @@ def find_all_wheels(input_folder: str, sort: bool = True) -> list[WheelInfo]:
     return infos
 
 
+def _calculate_file_hash(file_path):
+    """Calculate the SHA256 hash of a file."""
+    hash_sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_sha256.update(chunk)
+    digest = hash_sha256.digest()
+    b64 = base64.urlsafe_b64encode(digest).decode("ascii")
+    return b64.rstrip("=")
+
+
+def _generate_record_file(staging_dir: str, dist_info_dir: str):
+    """
+    Generate a RECORD file for the wheel as per PEP 427.
+    The RECORD file lists every file in the wheel except itself.
+    """
+    record_path = os.path.join(dist_info_dir, "RECORD")
+    with open(record_path, "w", encoding="utf-8") as record_file:
+        # Add entries for all files in the wheel
+        for root, _, files in os.walk(staging_dir):
+            for file in files:
+                # Skip the RECORD file itself
+                if file == "RECORD":
+                    continue
+                
+                file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(file_path, staging_dir).replace("\\", "/")
+                
+                # Calculate hash and size
+                file_hash = _calculate_file_hash(file_path)
+                file_size = os.path.getsize(file_path)
+                
+                # Write to RECORD file
+                record_file.write(f"{rel_path},sha256={file_hash},{file_size}\n")
+        
+        # Add entry for the RECORD file itself (hash and size are empty as per PEP 427)
+        record_rel_path = os.path.relpath(record_path, staging_dir)
+        record_file.write(f"{record_rel_path},,\n")
+    
+    return record_path
+
+
+def _update_wheel_file(dist_info_dir: str, combined_info: WheelInfo):
+    """
+    Update the WHEEL file in the .dist-info directory with new, combined tags.
+    This preserves other metadata in the file.
+    """
+    wheel_path = os.path.join(dist_info_dir, "WHEEL")
+    if not os.path.exists(wheel_path):
+        _logger.warning("WHEEL file not found in dist-info directory. Skipping update.")
+        return
+
+    _logger.info(f"Updating tags in {wheel_path}")
+    
+    # Read existing content
+    with open(wheel_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    # Filter out old Tag lines
+    new_lines = [line for line in lines if not line.startswith("Tag:")]
+    
+    plat_tag = combined_info.platform_tag.split('.')[0]
+    
+    # Generate new Tag lines
+    for py_tag in combined_info.python_tag.split('.'):
+        #for abi_tag in combined_info.abi_tag.split('.'):
+        new_lines.append(f"Tag: {py_tag}-{py_tag}-{plat_tag}\n")
+
+    # Write the updated content back
+    with open(wheel_path, "w") as f:
+        f.writelines(new_lines)
+
+
 def _combine_wheels_linux(input_folder, output_folder, strip):
     """
     Each wheel is expected to have the following structure:
@@ -147,6 +222,11 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
     │   ├── <lib1>.so
     │   ├── <lib2>.so
     │   ├── ...
+    ├── <package_name>-<version>.dist-info
+    │   ├── WHEEL
+    │   ├── METADATA
+    │   ├── RECORD
+    │   └── ...
     ├── <cpython_lib>.so
     ├── <extra_lib_1>.so # this will get removed (it should be part of the libs folder)
     ├── <extra_lib_2>.so # this will get removed (it should be part of the libs folder)
@@ -160,8 +240,12 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
     3. In each directory, the cpython library is relinked to the new names
     4. In each directory, the other libraries are relinked to the new names
     5. In each directory, the debug symbols are stripped for all libraries (if strip is True)
-    6. A staging directory is created, and each wheel is copied to the staging directory
-    7. The staging directory is zipped into a single wheel
+    6. A staging directory is created. A new .dist-info directory is created within it.
+    7. Metadata (excluding WHEEL/RECORD) is copied from the first wheel's .dist-info to the new one.
+    8. The WHEEL file in the new .dist-info is updated with combined tags.
+    9. All other files (libs, .so files) are copied to the staging directory.
+    10. The RECORD file is generated for PEP 427 compliance.
+    11. The staging directory is zipped into a single wheel.
     """
 
     _logger.info("Combining wheels for Linux!")
@@ -195,7 +279,7 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
         staging_dir = os.path.join(temp_dir, "staging")
         os.makedirs(staging_dir, exist_ok=True)
 
-        ExtractedWheel = namedtuple("ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "libs_folder"])
+        ExtractedWheel = namedtuple("ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "libs_folder", "dist_info_dir"])
 
         # Step: Each wheel is extracted to a separate directory
         extracted_wheels = []
@@ -221,19 +305,25 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
             libs_folder = libs_folders[0]
             _logger.debug(f"Found libs folder: {libs_folder}")
 
+            # Find .dist-info directory
+            dist_info_dirs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".dist-info")]
+            assert len(dist_info_dirs) == 1, f"Expected 1 .dist-info directory, got {len(dist_info_dirs)}"
+            dist_info_dir = dist_info_dirs[0]
+            _logger.debug(f"Found dist-info directory: {dist_info_dir}")
+
             # Remove extra .so files (any .so file already is part of the .libs folder)
             extra_libs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".so") and "cpython" not in f]
             _logger.debug(f"Found extra libs: {extra_libs}. Removing them.")
             for lib in extra_libs:
                 os.remove(os.path.join(wheel_extract_dir, lib))
 
-            extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, libs_folder))
+            extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, libs_folder, dist_info_dir))
 
         # Step: In each folder, rename libraries in the .libs folder to the new names
         magic_hash = str(time.perf_counter())[-5:] + "abc"
         _logger.info("Step: Renaming libraries in the .libs folder | Magic hash: %s", magic_hash)
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, libs_folder = extracted_wheel
+            wheel_info, wheel_extract_dir, cpython_lib, libs_folder, dist_info_dir = extracted_wheel
 
             # Generate rename mapping for libraries in the .libs folder
             name_map = dict()
@@ -275,18 +365,37 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
                 subprocess.run(["strip", "-S", cpython_lib_path], check=True)
                 subprocess.run(["llvm-strip", "-S", cpython_lib_path], check=True)
 
-        # Step: Copy each wheel to the staging directory
-        _logger.info("Step: Copying each wheel to the staging directory")
+        # Step: Prepare staging directory's .dist-info
+        _logger.info("Step: Preparing .dist-info directory in staging area")
+        # The name of the .dist-info directory is based on the combined package name and version
+        new_dist_info_path = os.path.join(staging_dir, extracted_wheels[0].dist_info_dir)
+        os.makedirs(new_dist_info_path, exist_ok=True)
+
+        # Copy metadata files from the first wheel, excluding WHEEL and RECORD
+        first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
+        for item in os.listdir(first_wheel_dist_info):
+            if item.lower() not in ["record"]:
+                shutil.copy2(os.path.join(first_wheel_dist_info, item), new_dist_info_path)
+
+        # Step: Copy all other content to the staging directory
+        _logger.info("Step: Copying all other content to the staging directory")
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, libs_folder = extracted_wheel
-            # Copy everything from wheel_extract_dir to staging_dir (flattened)
+            wheel_info, wheel_extract_dir, cpython_lib, libs_folder, dist_info_dir = extracted_wheel
             for item in os.listdir(wheel_extract_dir):
+                # Skip the old .dist-info directory
+                if item.endswith(".dist-info"):
+                    continue
                 src_path = os.path.join(wheel_extract_dir, item)
                 dest_path = os.path.join(staging_dir, item)
                 if os.path.isdir(src_path):
                     shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
                 else:
                     shutil.copy2(src_path, dest_path)
+
+        # Step: Update WHEEL and generate RECORD files for PEP 427 compliance
+        _logger.info("Step: Updating WHEEL and generating RECORD file for PEP 427 compliance")
+        _update_wheel_file(new_dist_info_path, combined_info)
+        _generate_record_file(staging_dir, new_dist_info_path)
 
         # Step: zip the staging directory
         _logger.info("Step: Zipping the staging directory")
@@ -310,6 +419,11 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
     │   ├── <lib1>.dylib
     │   ├── <lib2>.dylib
     │   ├── ...
+    ├── <package_name>-<version>.dist-info
+    │   ├── WHEEL
+    │   ├── METADATA
+    │   ├── RECORD
+    │   └── ...
     ├── <cpython_lib>.so
     ├── <extra_lib_1>.dylib # this will get removed (it should be part of the libs folder)
     ├── <extra_lib_2>.dylib # this will get removed (it should be part of the libs folder)
@@ -320,8 +434,12 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
     The combination process works as follows:
     1. Each wheel is extracted to a separate directory (in a temporary directory)
     2. Extra .dylib files are removed (any .dylib file already is part of the .libs folder)
-    3. A staging directory is created, and each wheel is copied to the staging directory
-    4. The staging directory is zipped into a single wheel
+    3. A staging directory is created. A new .dist-info directory is created within it.
+    4. Metadata (excluding WHEEL/RECORD) is copied from the first wheel's .dist-info to the new one.
+    5. The WHEEL file in the new .dist-info is updated with combined tags.
+    6. All other files (libs, .dylib files) are copied to the staging directory.
+    7. The RECORD file is generated for PEP 427 compliance.
+    8. The staging directory is zipped into a single wheel.
     """
     _logger.info("Combining wheels for MacOS!")
     _logger.info(f"Stripping unneeded debug symbols: {strip}")
@@ -346,7 +464,7 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
         os.makedirs(staging_dir, exist_ok=True)
 
         ExtractedWheel = namedtuple(
-            "ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "palace_dylibs"]
+            "ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "palace_dylibs", "dist_info_dir"]
         )
 
         # Step: Each wheel is extracted to a separate directory
@@ -371,18 +489,24 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
             palace_dylibs = "palace.dylibs"
             _logger.debug(f"Found palace.dylibs: {palace_dylibs}")
 
+            # Find .dist-info directory
+            dist_info_dirs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".dist-info")]
+            assert len(dist_info_dirs) == 1, f"Expected 1 .dist-info directory, got {len(dist_info_dirs)}"
+            dist_info_dir = dist_info_dirs[0]
+            _logger.debug(f"Found dist-info directory: {dist_info_dir}")
+
             # Remove extra .dylib files (any .dylib file already is part of the palace.dylibs folder)
             extra_libs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".dylib")]
             _logger.debug(f"Found extra libs: {extra_libs}. Removing them.")
             for lib in extra_libs:
                 os.remove(os.path.join(wheel_extract_dir, lib))
 
-            extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, palace_dylibs))
+            extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, palace_dylibs, dist_info_dir))
 
         # Step: In each folder, strip debug symbols for all libraries
         _logger.info("Step: Stripping debug symbols for all libraries")
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, palace_dylibs = extracted_wheel
+            wheel_info, wheel_extract_dir, cpython_lib, palace_dylibs, dist_info_dir = extracted_wheel
 
             # Strip debug symbols for all libraries
             if strip:
@@ -395,18 +519,35 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
             # TODO: Invalid signature error, fix this
             _logger.debug(f"Found cpython lib: {cpython_lib}, but not stripping debug symbols for it")
 
-        # Step: Copy each wheel to the staging directory
-        _logger.info("Step: Copying each wheel to the staging directory")
+        # Step: Prepare staging directory's .dist-info
+        _logger.info("Step: Preparing .dist-info directory in staging area")
+        new_dist_info_path = os.path.join(staging_dir, extracted_wheels[0].dist_info_dir)
+        os.makedirs(new_dist_info_path, exist_ok=True)
+
+        # Copy metadata files from the first wheel, excluding WHEEL and RECORD
+        first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
+        for item in os.listdir(first_wheel_dist_info):
+            if item.lower() not in ["record"]:
+                shutil.copy2(os.path.join(first_wheel_dist_info, item), new_dist_info_path)
+
+        # Step: Copy all other content to the staging directory
+        _logger.info("Step: Copying all other content to the staging directory")
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, palace_dylibs = extracted_wheel
-            # Copy everything from wheel_extract_dir to staging_dir (flattened)
+            wheel_info, wheel_extract_dir, cpython_lib, palace_dylibs, dist_info_dir = extracted_wheel
             for item in os.listdir(wheel_extract_dir):
+                if item.endswith(".dist-info"):
+                    continue
                 src_path = os.path.join(wheel_extract_dir, item)
                 dest_path = os.path.join(staging_dir, item)
                 if os.path.isdir(src_path):
                     shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
                 else:
                     shutil.copy2(src_path, dest_path)
+
+        # Step: Update WHEEL and generate RECORD files for PEP 427 compliance
+        _logger.info("Step: Updating WHEEL and generating RECORD file for PEP 427 compliance")
+        _update_wheel_file(new_dist_info_path, combined_info)
+        _generate_record_file(staging_dir, new_dist_info_path)
 
         # Step: zip the staging directory
         _logger.info("Step: Zipping the staging directory")
@@ -431,6 +572,11 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
     │   │   ├── <lib1>.dll
     │   │   ├── <lib2>.dll
     │   │   ├── ...
+    ├── <package_name>-<version>.dist-info
+    │   ├── WHEEL
+    │   ├── METADATA
+    │   ├── RECORD
+    │   └── ...
     ├── <cpython_lib>.pyd
     ├── python3X.dll
     ├── <other_files>
@@ -443,8 +589,12 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
     1. Each wheel is extracted to a separate directory (in a temporary directory)
     2. In each directory, the libraries in the .data/platlib folder are renamed (remangled with common hash)
     3. In each directory, the .pyd file and bundled DLLs are patched to link to the new names
-    4. A staging directory is created, and each wheel is copied to the staging directory
-    5. The staging directory is zipped into a single wheel
+    4. A staging directory is created. A new .dist-info directory is created within it.
+    5. Metadata (excluding WHEEL/RECORD) is copied from the first wheel's .dist-info to the new one.
+    6. The WHEEL file in the new .dist-info is updated with combined tags.
+    7. All other files (libs, .dll files) are copied to the staging directory.
+    8. The RECORD file is generated for PEP 427 compliance.
+    9. The staging directory is zipped into a single wheel.
     """
 
     _logger.info("Combining wheels for Windows!")
@@ -489,7 +639,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         os.makedirs(staging_dir, exist_ok=True)
 
         ExtractedWheel = namedtuple(
-            "ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "python_dll", "data_folder"]
+            "ExtractedWheel", ["wheel_info", "wheel_extract_dir", "cpython_lib", "python_dll", "data_folder", "dist_info_dir"]
         )
 
         # Step: Each wheel is extracted to a separate directory
@@ -524,13 +674,19 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
             data_folder = data_folders[0]
             _logger.debug(f"Found data folder: {data_folder}")
 
+            # Find .dist-info directory
+            dist_info_dirs = [f for f in extracted_files if f.endswith(".dist-info")]
+            assert len(dist_info_dirs) == 1, f"Expected 1 .dist-info directory, got {len(dist_info_dirs)}"
+            dist_info_dir = dist_info_dirs[0]
+            _logger.debug(f"Found dist-info directory: {dist_info_dir}")
+
             # Delete extra DLLs (already in the .data/platlib folder)
             extra_dlls = [f for f in extracted_files if f.endswith(".dll") and (f != python_dll)]
             _logger.debug(f"Found extra DLLs: {extra_dlls}. Removing them.")
             for dll in extra_dlls:
                 os.remove(os.path.join(wheel_extract_dir, dll))
 
-            extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder))
+            extracted_wheels.append(ExtractedWheel(wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir))
 
         # Step: Rename libraries in the .data/platlib folder to new names (remangling)
         magic_hash = str(time.perf_counter())[-5:] + "win"
@@ -539,7 +695,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         # Store rename mappings for each wheel
         all_name_maps = {}
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder = extracted_wheel
+            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir = extracted_wheel
 
             platlib_dir = os.path.join(wheel_extract_dir, data_folder, "platlib")
             if not os.path.exists(platlib_dir):
@@ -563,7 +719,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         # Step: Patch all binaries to use the new DLL names
         _logger.info("Step: Patching binaries with new DLL names")
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder = extracted_wheel
+            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir = extracted_wheel
             name_map = all_name_maps[wheel_info.wheel_name]
 
             if not name_map:
@@ -600,7 +756,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         # Step: Actually rename the DLL files
         _logger.info("Step: Renaming DLL files")
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder = extracted_wheel
+            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir = extracted_wheel
             name_map = all_name_maps[wheel_info.wheel_name]
 
             if not name_map:
@@ -615,18 +771,35 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
                     _logger.debug(f"Renaming {original_name} -> {new_name}")
                     os.rename(old_path, new_path)
 
-        # Step: Copy each wheel to the staging directory
-        _logger.info("Step: Copying each wheel to the staging directory")
+        # Step: Prepare staging directory's .dist-info
+        _logger.info("Step: Preparing .dist-info directory in staging area")
+        new_dist_info_path = os.path.join(staging_dir, extracted_wheels[0].dist_info_dir)
+        os.makedirs(new_dist_info_path, exist_ok=True)
+
+        # Copy metadata files from the first wheel, excluding WHEEL and RECORD
+        first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
+        for item in os.listdir(first_wheel_dist_info):
+            if item.lower() not in ["record"]:
+                shutil.copy2(os.path.join(first_wheel_dist_info, item), new_dist_info_path)
+
+        # Step: Copy all other content to the staging directory
+        _logger.info("Step: Copying all other content to the staging directory")
         for extracted_wheel in extracted_wheels:
-            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder = extracted_wheel
-            # Copy everything from wheel_extract_dir to staging_dir (flattened)
+            wheel_info, wheel_extract_dir, cpython_lib, python_dll, data_folder, dist_info_dir = extracted_wheel
             for item in os.listdir(wheel_extract_dir):
+                if item.endswith(".dist-info"):
+                    continue
                 src_path = os.path.join(wheel_extract_dir, item)
                 dest_path = os.path.join(staging_dir, item)
                 if os.path.isdir(src_path):
                     shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
                 else:
                     shutil.copy2(src_path, dest_path)
+
+        # Step: Update WHEEL and generate RECORD files for PEP 427 compliance
+        _logger.info("Step: Updating WHEEL and generating RECORD file for PEP 427 compliance")
+        _update_wheel_file(new_dist_info_path, combined_info)
+        _generate_record_file(staging_dir, new_dist_info_path)
 
         # Step: zip the staging directory
         _logger.info("Step: Zipping the staging directory")
