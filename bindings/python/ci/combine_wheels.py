@@ -16,7 +16,7 @@ from collections import defaultdict
 
 from dataclasses import dataclass
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("merger")
 
 @dataclass
 class WheelInfo:
@@ -137,6 +137,12 @@ def combine_wheels_linux(args, wheel_infos):
                     logger.debug(f"Patching {file} to replace {old_lib} with {new_lib}")
                     subprocess.run(['patchelf', '--replace-needed', old_lib, new_lib, file], check=True)
 
+            # Strip debug symbols from the main dynamic library
+            if args.strip_debug:
+                logger.info(f"Stripping debug symbols from {wheel_dylib_path}")
+                subprocess.run(['strip', '--strip-unneeded', wheel_dylib_full_path], check=True)
+                subprocess.run(['llvm-strip', '--strip-unneeded', wheel_dylib_full_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
+
             for file in wheel_files_to_copy:
                 write_to_zip(output_zip, wheel_extract_dir, file)
 
@@ -146,9 +152,10 @@ def combine_wheels_linux(args, wheel_infos):
                 new_lib_name = dynlib_renames[wheel_info.wheel_name][lib]
                 new_lib_path = os.path.join(wheel_extract_dir, wheel_libs_path, new_lib_name)
                 os.rename(lib_path, new_lib_path)
-                if args.strip_unneeded:
-                    logger.info(f"Stripping {new_lib_path}")
+                if args.strip_debug:
+                    logger.info(f"Stripping debug symbols from {new_lib_name}")
                     subprocess.run(['strip', '--strip-unneeded', new_lib_path], check=True)
+                    subprocess.run(['llvm-strip', '--strip-unneeded', new_lib_path], check=True) # strip leads to "ELF load command address/offset not page-aligned" errors
                 
             write_to_zip(output_zip, wheel_extract_dir, wheel_libs_path)
 
@@ -298,7 +305,22 @@ def combine_wheels_macos(args, all_wheel_infos):
             for file in os.listdir(wheel_extract_dir):
                 if file.endswith(".dylib"):
                     continue # .dylib files are already contained within the "platform.dylibs" folder (put there by delocate)
+                # Strip debug symbols from .so files
+                file_path = os.path.join(wheel_extract_dir, file)
+                if args.strip_debug and file.endswith(".so"):
+                    logger.info(f"Stripping debug symbols from {file}")
+                    subprocess.run(['strip', '-S', file_path], check=True)
                 write_to_zip(output_zip, wheel_extract_dir, file)
+
+            # Strip debug symbols from bundled dylibs
+            if args.strip_debug:
+                dylibs_folder = os.path.join(wheel_extract_dir, "depthai.libs")
+                if os.path.exists(dylibs_folder):
+                    for dylib in os.listdir(dylibs_folder):
+                        if dylib.endswith(".dylib"):
+                            dylib_path = os.path.join(dylibs_folder, dylib)
+                            logger.info(f"Stripping debug symbols from {dylib}")
+                            subprocess.run(['strip', '-S', dylib_path], check=True)
 
         output_zip.close()
         logger.info("Output zip closed")
@@ -378,7 +400,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_folder", type=str, help="Path to the folder containing already repaired wheels for individual python versions that are to be combined into a single wheel")
     parser.add_argument("--output_folder", type=str, default=".", help="Path to the folder where the combined wheel will be saved")
-    parser.add_argument("--strip_unneeded", action="store_true", help="Strip the libraries to reduce size")
+    parser.add_argument("--strip-unneeded", action="store_true", dest="strip_debug", help="Strip unneeded debug symbols from libraries to reduce size")
     parser.add_argument("--log_level", type=str, default="INFO", help="Log level")
     parser.add_argument("--self-test", action="store_true", help="Run internal tests and exit")
     args = parser.parse_args()
