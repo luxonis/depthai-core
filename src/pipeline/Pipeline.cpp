@@ -869,7 +869,8 @@ void PipelineImpl::stop() {
     // Close the task queue
     tasks.destruct();
 
-    // Close device if specified
+    // Close device if present - a pipeline might be host only and still have a device
+    // For example, one only adds host nodes
     if(defaultDevice) {
         defaultDevice->close();
     }
