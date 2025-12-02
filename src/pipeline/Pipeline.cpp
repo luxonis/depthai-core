@@ -612,9 +612,9 @@ bool PipelineImpl::isBuilt() const {
 
 void PipelineImpl::build() {
     // TODO(themarpe) - add mutex and set running up ahead
-    if(isBuild) return;
-
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
+
+    if(isBuild) return;
 
     utility::PipelineImplHelper(this).setupHolisticRecordAndReplay();
 
