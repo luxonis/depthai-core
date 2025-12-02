@@ -371,7 +371,7 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
         new_dist_info_path = os.path.join(staging_dir, extracted_wheels[0].dist_info_dir)
         os.makedirs(new_dist_info_path, exist_ok=True)
 
-        # Copy metadata files from the first wheel, excluding WHEEL and RECORD
+        # Copy metadata files from the first wheel, excluding RECORD
         first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
         for item in os.listdir(first_wheel_dist_info):
             if item.lower() not in ["record"]:
@@ -524,7 +524,7 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
         new_dist_info_path = os.path.join(staging_dir, extracted_wheels[0].dist_info_dir)
         os.makedirs(new_dist_info_path, exist_ok=True)
 
-        # Copy metadata files from the first wheel, excluding WHEEL and RECORD
+        # Copy metadata files from the first wheel, excluding RECORD
         first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
         for item in os.listdir(first_wheel_dist_info):
             if item.lower() not in ["record"]:
@@ -776,7 +776,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
         new_dist_info_path = os.path.join(staging_dir, extracted_wheels[0].dist_info_dir)
         os.makedirs(new_dist_info_path, exist_ok=True)
 
-        # Copy metadata files from the first wheel, excluding WHEEL and RECORD
+        # Copy metadata files from the first wheel, excluding RECORD
         first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
         for item in os.listdir(first_wheel_dist_info):
             if item.lower() not in ["record"]:
