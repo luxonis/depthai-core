@@ -1,3 +1,10 @@
+import os
+import sys
+
+sys.path.insert(0, '/home/tomas/code/depthai-device-kb/external/depthai-core/build/bindings/python/')
+os.environ["DEPTHAI_LEVEL"] = "info"
+os.environ["DEPTHAI_DEVICE_RVC4_FWP"] = "/home/tomas/code/depthai-device-kb/build_docker_arm64_rvc4/RelWithDebInfo/depthai-device-rvc4-fwp.tar.xz"
+
 import time
 import depthai as dai
 import sys
@@ -54,9 +61,61 @@ class O3DNode(dai.node.ThreadedHostNode):
         vis.destroy_window()
 
 
-# Create pipeline
+# Target device IP
+TARGET_IP = "10.11.1.218"
+deviceInfo = dai.DeviceInfo(TARGET_IP)
+device = dai.Device(deviceInfo)
 
-with dai.Pipeline() as p:
+# Read current calibration
+calibration_handler = device.readCalibration()
+eepromData = calibration_handler.getEepromData()
+
+# Prepare extrinsics
+rotation_x_90 = np.array([
+    [1, 0, 0],
+    [0, 0, -1],
+    [0, 1, 0]
+]).tolist()
+rotation_none = np.array([
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1]
+]).tolist()
+
+# Set toCameraSocket first
+eepromData.housingExtrinsics.toCameraSocket = dai.CameraBoardSocket.CAM_C
+
+# Set rotation and translation
+eepromData.housingExtrinsics.rotationMatrix = rotation_none
+eepromData.housingExtrinsics.translation.x = 10000
+eepromData.housingExtrinsics.translation.y = 0
+eepromData.housingExtrinsics.translation.z = 0
+
+# Set specTranslation
+eepromData.housingExtrinsics.specTranslation.x = 10000
+eepromData.housingExtrinsics.specTranslation.y = 0
+eepromData.housingExtrinsics.specTranslation.z = 0
+
+# Apply new calibration
+calibration_handler = dai.CalibrationHandler(eepromData)
+device.flashCalibration(calibration_handler)
+device.setCalibration(calibration_handler)
+
+# Verify
+src_camera = dai.CameraBoardSocket.CAM_A
+T_src_to_housing = calibration_handler.getHousingCalibration(
+    srcCamera=src_camera,
+    housingCS=dai.HousingCoordinateSystem.VESA_RIGHT,
+    useSpecTranslation=True
+)
+print("Source Camera to Housing Calibration 4x4 Matrix:")
+for row in T_src_to_housing:
+    print(row)
+
+print(calibration_handler.getCameraExtrinsics(dai.CameraBoardSocket.CAM_A, dai.CameraBoardSocket.CAM_B))
+
+with dai.Pipeline(device) as p:
+    p.setCalibrationData(calibration_handler)
     fps = 30
     # Define sources and outputs
     left = p.create(dai.node.Camera)
