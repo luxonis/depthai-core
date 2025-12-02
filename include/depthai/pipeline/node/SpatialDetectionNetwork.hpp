@@ -93,30 +93,68 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     };
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
+
+    /**
+     * @brief Build SpatialDetectionNetwork node with StereoDepth as depth source
+     * @param inputRgb Input RGB camera
+     * @param stereo StereoDepth node
+     * @param modelDesc Model description
+     * @param fps Frames per second
+     * @return Shared pointer to SpatialDetectionNetwork node
+     */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<StereoDepth>& stereo,
                                                    dai::NNModelDescription modelDesc,
                                                    std::optional<float> fps = std::nullopt);
 
-    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
-                                                   const std::shared_ptr<StereoDepth>& stereo,
-                                                   const dai::NNArchive& nnArchive,
-                                                   std::optional<float> fps = std::nullopt);
-
+    /**
+     * @brief Build SpatialDetectionNetwork node with StereoDepth as depth source
+     * @param inputRgb Input RGB camera
+     * @param stereo StereoDepth node
+     * @param nnArchive NN archive
+     * @param fps Frames per second
+     * @return Shared pointer to SpatialDetectionNetwork node
+     */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<NeuralDepth>& neuralDepth,
                                                    dai::NNModelDescription modelDesc,
                                                    std::optional<float> fps = std::nullopt);
 
+    /**
+     * @brief Build SpatialDetectionNetwork node with NeuralDepth as depth source
+     * @param inputRgb Input RGB camera
+     * @param neuralDepth NeuralDepth node
+     * @param nnArchive NN archive
+     * @param fps Frames per second
+     * @return Shared pointer to SpatialDetectionNetwork node
+     */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<NeuralDepth>& neuralDepth,
                                                    const dai::NNArchive& nnArchive,
                                                    std::optional<float> fps = std::nullopt);
+
+    /**
+     * @brief Build SpatialDetectionNetwork node with ToF as depth source
+     * @param inputRgb Input RGB camera
+     * @param tof ToF node
+     * @param modelDesc Model description
+     * @param fps Frames per second
+     * @return Shared pointer to SpatialDetectionNetwork node
+     */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<ToF>& tof,
                                                    dai::NNModelDescription modelDesc,
                                                    std::optional<float> fps = std::nullopt);
 
+
+    /**
+     * @brief Build SpatialDetectionNetwork node with ToF as depth source
+     * @param inputRgb Input RGB camera
+     * @param tof ToF node
+     * @param nnArchive NN archive
+     * @param fps Frames per second
+     * @return Shared pointer to SpatialDetectionNetwork node
+     */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<ToF>& tof,
                                                    const dai::NNArchive& nnArchive,

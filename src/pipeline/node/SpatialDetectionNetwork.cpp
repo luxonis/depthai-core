@@ -130,7 +130,7 @@ void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<NeuralDepth>& neu
     (void)camera;  // make compiler happy
     auto device = getDevice();
     DAI_CHECK_V(device, "Device is not set.");
-    DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "NeuralDepth with SpatialDetectionNetwork is only supported on RVC4 platform");
+    DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "NeuralDepth with SpatialDetectionNetwork is only supported on RVC4 platforms");
     Subnode<ImageAlign>& align = *depthAlign;
     neuralDepth->depth.link(align->input);
     neuralNetwork->passthrough.link(align->inputAlignTo);
@@ -143,6 +143,9 @@ void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<ToF>& tof, const 
     tof->depth.link(align->input);
     neuralNetwork->passthrough.link(align->inputAlignTo);
     align->outputAligned.link(inputDepth);
+
+    // ImageAlign does not work on ToF cameras as they don't have sufficient memory
+    align->setRunOnHost(true);
 }
 
 // -------------------------------------------------------------------
