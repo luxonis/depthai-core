@@ -35,6 +35,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
     friend class DeviceBase;
+    friend class utility::PipelineImplHelper;
 
    public:
     PipelineImpl(Pipeline& pipeline, bool createImplicitDevice = true) : assetManager("/pipeline/"), parent(pipeline) {
@@ -48,6 +49,28 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl(PipelineImpl&&) = delete;
     PipelineImpl& operator=(PipelineImpl&&) = delete;
     ~PipelineImpl();
+
+protected:
+    // Record and Replay
+    RecordConfig recordConfig;
+    bool enableHolisticRecordReplay = false;
+    std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
+    bool removeRecordReplayFiles = true;
+    std::string defaultDeviceId;
+    // Is the pipeline building on host? Some steps should be skipped when building on device
+    bool buildingOnHost = true;
+
+    // Pipeline events
+    bool enablePipelineDebugging = false;
+    std::shared_ptr<MessageQueue> pipelineStateOut;
+    std::shared_ptr<InputQueue> pipelineStateRequest;
+    std::shared_ptr<MessageQueue> pipelineStateTraceOut;
+    std::shared_ptr<InputQueue> pipelineStateTraceRequest;
+
+    // Access to nodes
+    std::vector<std::shared_ptr<Node>> getAllNodes() const;
+    std::shared_ptr<Node> getNode(Node::Id id) const;
+    std::vector<std::shared_ptr<Node>> getSourceNodes();
 
    private:
     // static functions
@@ -67,11 +90,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
     BoardConfig getBoardConfig() const;
-
-    // Access to nodes
-    std::vector<std::shared_ptr<Node>> getAllNodes() const;
-    std::shared_ptr<Node> getNode(Node::Id id) const;
-    std::vector<std::shared_ptr<Node>> getSourceNodes();
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson(bool includeAssets) const;
@@ -116,22 +134,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Board configuration
     BoardConfig board;
-
-    // Record and Replay
-    RecordConfig recordConfig;
-    bool enableHolisticRecordReplay = false;
-    std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
-    bool removeRecordReplayFiles = true;
-    std::string defaultDeviceId;
-    // Is the pipeline building on host? Some steps should be skipped when building on device
-    bool buildingOnHost = true;
-
-    // Pipeline events
-    bool enablePipelineDebugging = false;
-    std::shared_ptr<MessageQueue> pipelineStateOut;
-    std::shared_ptr<InputQueue> pipelineStateRequest;
-    std::shared_ptr<MessageQueue> pipelineStateTraceOut;
-    std::shared_ptr<InputQueue> pipelineStateTraceRequest;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
@@ -241,8 +243,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void wait();
     void stop();
     void run();
-
-    void setupPipelineDebugging();
 
     // Reset connections
     void resetConnections();

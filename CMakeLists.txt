@@ -379,6 +379,7 @@ set(TARGET_CORE_SOURCES
     src/utility/Resources.cpp
     src/utility/Platform.cpp
     src/utility/PipelineEventDispatcher.cpp
+    src/utility/PipelineImplHelper.cpp
     src/utility/RecordReplay.cpp
     src/utility/McapImpl.cpp
     src/utility/Environment.cpp

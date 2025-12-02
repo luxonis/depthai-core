@@ -29,6 +29,9 @@ namespace dai {
 // fwd declare Pipeline
 class Pipeline;
 class PipelineImpl;
+namespace utility {
+class PipelineImplHelper;
+}
 
 // fwd declare input queue class
 class InputQueue;
@@ -39,6 +42,7 @@ class InputQueue;
 class Node : public std::enable_shared_from_this<Node> {
     friend class Pipeline;
     friend class PipelineImpl;
+    friend class utility::PipelineImplHelper;
     friend class Device;
 
    public:

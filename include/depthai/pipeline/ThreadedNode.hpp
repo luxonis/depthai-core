@@ -10,6 +10,7 @@ namespace dai {
 
 class ThreadedNode : public Node {
     friend class PipelineImpl;
+    friend class utility::PipelineImplHelper;
 
    private:
     JoiningThread thread;
