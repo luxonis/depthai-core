@@ -309,8 +309,8 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
         std::uint32_t counter = 0;
 
         std::vector<uint16_t> validPixels;
-        for(unsigned int y = ystart; y < yend; y = +stepSize) {
-            for(unsigned int x = xstart; x < xend; x = +stepSize) {
+        for(unsigned int y = ystart; y < yend; y += stepSize) {
+            for(unsigned int x = xstart; x < xend; x += stepSize) {
                 int index = y * depthWidth + x;
                 uint16_t px = plane[index];
 
