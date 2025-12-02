@@ -1,5 +1,7 @@
 #pragma once
 
+#include <spdlog/async_logger.h>
+
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
@@ -14,18 +16,23 @@ namespace node {
  * @brief SpatialLocationCalculator node. Calculates the spatial locations of detected objects based on the input depth map. Spatial location calculations can
  * be additionally refined by using a segmentation mask. If keypoints are provided, the spatial location is calculated around each keypoint.
  */
-class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
+class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "SpatialLocationCalculator";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+   private:
+    bool runOnHostVar = false;
 
    protected:
     Properties& getProperties() override;
 
    public:
     SpatialLocationCalculator() = default;
-    SpatialLocationCalculator(std::unique_ptr<Properties> props);
+    SpatialLocationCalculator(std::unique_ptr<Properties> props)
+        : DeviceNodeCRTP(std::move(props)), roiConfig(std::make_shared<SpatialLocationCalculatorConfig>(properties.roiConfig)) {}
 
+    std::shared_ptr<SpatialLocationCalculatorConfig> roiConfig;
     /**
      * Initial config to use when calculating spatial location data.
      */
@@ -65,6 +72,19 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
 };
 
 }  // namespace node
