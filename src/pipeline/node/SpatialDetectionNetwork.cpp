@@ -151,7 +151,7 @@ void SpatialDetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, 
 }
 
 void SpatialDetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::OTHER, "NNArchive type is not OTHER");
+    DAI_CHECK_V(nnArchive.getModelType() == model::ModelType::DLC || nnArchive.getModelType() == model::ModelType::OTHER, "NNArchive type is not DLC or OTHER");
     detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive);
 }
