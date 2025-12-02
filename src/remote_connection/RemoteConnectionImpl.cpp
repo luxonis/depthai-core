@@ -122,7 +122,7 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
 
     // Server options
     foxglove::ServerOptions serverOptions;
-    serverOptions.numCallbackThreads = 1; // one thread handles all service callbacks
+    serverOptions.numCallbackThreads = 1;                              // one thread handles all service callbacks
     serverOptions.sendBufferPriorityLimitMessages = {{0, 3}, {1, 5}};  // 3 messages for low priority, 5 messages for high priority
     serverOptions.messageDropPolicy = foxglove::MessageDropPolicy::MAX_MESSAGE_COUNT;
     serverOptions.capabilities.emplace_back("services");
