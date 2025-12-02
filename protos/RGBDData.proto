@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dai.proto.rgbd_data;
+
+import "ImgFrame.proto";
+import "common.proto";
+
+message RGBDData {
+    common.Timestamp ts = 1;
+    common.Timestamp tsDevice = 2;
+    int64 sequenceNum = 3;
+    img_frame.ImgFrame colorFrame = 4;
+    img_frame.ImgFrame depthFrame = 5;
+}
