@@ -183,7 +183,7 @@ def _generate_record_file(staging_dir: str, dist_info_dir: str):
     return record_path
 
 
-def _update_wheel_file(dist_info_dir: str, combined_info: WheelInfo):
+def _update_wheel_file(dist_info_dir: str, combined_infos: list[WheelInfo]):
     """
     Update the WHEEL file in the .dist-info directory with new, combined tags.
     This preserves other metadata in the file.
@@ -202,12 +202,9 @@ def _update_wheel_file(dist_info_dir: str, combined_info: WheelInfo):
     # Filter out old Tag lines
     new_lines = [line for line in lines if not line.startswith("Tag:")]
     
-    plat_tag = combined_info.platform_tag.split('.')[0]
-    
     # Generate new Tag lines
-    for py_tag in combined_info.python_tag.split('.'):
-        #for abi_tag in combined_info.abi_tag.split('.'):
-        new_lines.append(f"Tag: {py_tag}-{py_tag}-{plat_tag}\n")
+    for wheel_info in combined_infos:
+        new_lines.append(f"Tag: {wheel_info.python_tag}-{wheel_info.abi_tag}-{wheel_info.platform_tag}\n")
 
     # Write the updated content back
     with open(wheel_path, "w") as f:
@@ -394,7 +391,7 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
 
         # Step: Update WHEEL and generate RECORD files for PEP 427 compliance
         _logger.info("Step: Updating WHEEL and generating RECORD file for PEP 427 compliance")
-        _update_wheel_file(new_dist_info_path, combined_info)
+        _update_wheel_file(new_dist_info_path, infos)
         _generate_record_file(staging_dir, new_dist_info_path)
 
         # Step: zip the staging directory
@@ -546,7 +543,7 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
 
         # Step: Update WHEEL and generate RECORD files for PEP 427 compliance
         _logger.info("Step: Updating WHEEL and generating RECORD file for PEP 427 compliance")
-        _update_wheel_file(new_dist_info_path, combined_info)
+        _update_wheel_file(new_dist_info_path, infos)
         _generate_record_file(staging_dir, new_dist_info_path)
 
         # Step: zip the staging directory
@@ -798,7 +795,7 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
 
         # Step: Update WHEEL and generate RECORD files for PEP 427 compliance
         _logger.info("Step: Updating WHEEL and generating RECORD file for PEP 427 compliance")
-        _update_wheel_file(new_dist_info_path, combined_info)
+        _update_wheel_file(new_dist_info_path, infos)
         _generate_record_file(staging_dir, new_dist_info_path)
 
         # Step: zip the staging directory
