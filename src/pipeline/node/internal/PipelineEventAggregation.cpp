@@ -480,7 +480,10 @@ class TraceOutputHandler {
             while(this->running) {
                 auto start = std::chrono::steady_clock::now();
                 auto [outState, updated] = makeOutputState(traceHandler, config, traceSequenceNum++, false);
-                this->outTrace.send(outState);
+                try {
+                    this->outTrace.send(outState);
+                } catch(const dai::MessageQueue::QueueException&) {
+                }
                 auto duration = std::chrono::steady_clock::now() - start;
                 std::this_thread::sleep_for(std::chrono::seconds(config->repeatIntervalSeconds.value()) - duration);
             }

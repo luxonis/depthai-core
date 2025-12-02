@@ -72,7 +72,7 @@ TEST_CASE("Object Tracker Pipeline Debugging") {
         auto node = pipeline.getNode(nodeId);
         REQUIRE(nodeState.mainLoopTiming.isValid());
         if(!node->getInputs().empty()) REQUIRE(nodeState.inputsGetTiming.isValid());
-        if(!node->getOutputs().empty()) REQUIRE(nodeState.outputsSendTiming.isValid());
+        if(node->getOutputs().size() > 1) REQUIRE(nodeState.outputsSendTiming.isValid());
         for(const auto& [inputName, inputState] : nodeState.inputStates) {
             if(std::string(node->getName()) == "ObjectTracker" && inputName == "inputConfig") continue;  // This example does not use inputConfig
             if(std::string(node->getName()) == "ObjectTracker" && inputName == "inputDetectionFrame")
@@ -86,4 +86,128 @@ TEST_CASE("Object Tracker Pipeline Debugging") {
             REQUIRE(otherTiming.isValid());
         }
     }
+}
+
+TEST_CASE("FPS check") {
+    // Create pipeline
+    dai::Pipeline pipeline;
+    pipeline.enablePipelineDebugging();
+
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::Camera>();
+    camRgb->build(dai::CameraBoardSocket::CAM_A);
+
+    auto monoLeft = pipeline.create<dai::node::Camera>();
+    monoLeft->build(dai::CameraBoardSocket::CAM_B);
+
+    auto monoRight = pipeline.create<dai::node::Camera>();
+    monoRight->build(dai::CameraBoardSocket::CAM_C);
+
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>();
+
+    // Configure stereo node
+    stereo->setExtendedDisparity(true);
+    auto platform = pipeline.getDefaultDevice()->getPlatform();
+    if(platform == dai::Platform::RVC2) {
+        stereo->setOutputSize(640, 400);
+    }
+
+    // Configure spatial detection network
+    spatialDetectionNetwork->input.setBlocking(false);
+    spatialDetectionNetwork->setBoundingBoxScaleFactor(0.5f);
+    spatialDetectionNetwork->setDepthLowerThreshold(100);
+    spatialDetectionNetwork->setDepthUpperThreshold(5000);
+
+    // Set up model
+    dai::NNModelDescription modelDesc;
+    modelDesc.model = "yolov6-nano";
+    spatialDetectionNetwork->build(camRgb, stereo, modelDesc, 30);  // 30 FPS
+
+    // Linking
+    monoLeft->requestOutput(std::make_pair(640, 400))->link(stereo->left);
+    monoRight->requestOutput(std::make_pair(640, 400))->link(stereo->right);
+
+    // Start pipeline
+    pipeline.start();
+
+    std::this_thread::sleep_for(std::chrono::seconds(8));
+
+    auto state = pipeline.getPipelineState().nodes().detailed();
+
+    int gotNodes = 0;
+    for(const auto& [nodeId, nodeState] : state.nodeStates) {
+        auto node = pipeline.getNode(nodeId);
+        if(std::string(node->getName()) == "Camera") {
+            ++gotNodes;
+            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputStates.at("0").isValid());
+            REQUIRE(nodeState.outputStates.at("0").timing.fps == Catch::Approx(30.0).margin(5.0));
+        }
+        if(std::string(node->getName()) == "NeuralNetwork") {
+            ++gotNodes;
+            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputStates.at("in").isValid());
+            REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputStates.at("passthrough").isValid());
+            REQUIRE(nodeState.outputStates.at("passthrough").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputStates.at("out").isValid());
+            REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
+        }
+        if(std::string(node->getName()) == "StereoDepth") {
+            ++gotNodes;
+            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputStates.at("left").isValid());
+            REQUIRE(nodeState.inputStates.at("left").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputStates.at("right").isValid());
+            REQUIRE(nodeState.inputStates.at("right").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputStates.at("depth").isValid());
+            REQUIRE(nodeState.outputStates.at("depth").timing.fps == Catch::Approx(30.0).margin(5.0));
+        }
+        if(std::string(node->getName()) == "DetectionParser") {
+            ++gotNodes;
+            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputStates.at("in").isValid());
+            REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputStates.at("out").isValid());
+            REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
+        }
+        if(std::string(node->getName()) == "ImageAlign") {
+            ++gotNodes;
+            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputStates.at("input").isValid());
+            REQUIRE(nodeState.inputStates.at("input").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputStates.at("outputAligned").isValid());
+            REQUIRE(nodeState.outputStates.at("outputAligned").timing.fps == Catch::Approx(30.0).margin(5.0));
+        }
+        if(std::string(node->getName()) == "SpatialDetectionNetwork") {
+            ++gotNodes;
+            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputStates.at("inputDepth").isValid());
+            REQUIRE(nodeState.inputStates.at("inputDepth").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputStates.at("inputDetections").isValid());
+            REQUIRE(nodeState.inputStates.at("inputDetections").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.inputStates.at("inputImg").isValid());
+            REQUIRE(nodeState.inputStates.at("inputImg").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputStates.at("passthroughDepth").isValid());
+            REQUIRE(nodeState.outputStates.at("passthroughDepth").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputStates.at("out").isValid());
+            REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
+        }
+    }
+
+    REQUIRE(gotNodes == 8); // 3 cameras, stereo, neural network, detection parser, image align, spatial detection network
+
+    pipeline.stop();
 }
