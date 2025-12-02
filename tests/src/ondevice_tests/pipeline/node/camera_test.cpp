@@ -7,6 +7,7 @@
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
@@ -165,6 +166,59 @@ TEST_CASE("Test how default FPS is generated for a specific output") {
     }
 }
 
+TEST_CASE("Camera sensor configs configurations") {
+    // Test that cameras can stream at all advertised configs
+    // For RVC4 there are currently some limitations:
+    // Max 240 FPS and it has to be rounded down
+    // Minimum FPS is incorrectly advertised, so this test sets the minimum to 5 FPS.
+
+    constexpr float MINIMUM_FPS_RVC4 = 8.0f;  // TODO(Jakob) - remove this when fixed on device side
+    dai::DeviceInfo connectedDeviceInfo;
+    std::vector<dai::CameraFeatures> connectedCameraFeautres;
+    {
+        auto device = dai::Device();
+        connectedCameraFeautres = device.getConnectedCameraFeatures();
+        connectedDeviceInfo.deviceId = device.getDeviceId();
+        connectedDeviceInfo.platform = device.getDeviceInfo().platform;
+    }
+
+    for(const auto& cameraFeatures : connectedCameraFeautres) {
+        for(const auto& config : cameraFeatures.configs) {
+            float maxFps = config.maxFps;
+            if(config.maxFps > 240.5f) {
+                std::cout << "Skipping testing high fps on camera " << cameraFeatures.socket << " with max fps " << config.maxFps << " on device "
+                          << connectedDeviceInfo.getDeviceId() << "\n"
+                          << std::flush;
+                continue;
+            }
+            if(config.maxFps > 120.0f) {
+                // round down to nearest integer fps for high fps values to avoid issues with non integer fps settings
+                // TODO(Jakob) - fix this on device side when HFR is implemented
+                maxFps = static_cast<float>(static_cast<int>(config.maxFps));
+            }
+            auto minimumFps = connectedDeviceInfo.platform == X_LINK_RVC4 ? std::max(MINIMUM_FPS_RVC4, config.minFps) : config.minFps;
+            for(const auto& fpsVariant : {maxFps, minimumFps}) {
+                std::cout << "Testing camera " << cameraFeatures.socket << " with resolution " << config.width << "x" << config.height << " at fps "
+                          << fpsVariant << " on device " << connectedDeviceInfo.getDeviceId() << "\n"
+                          << std::flush;
+                dai::Pipeline pipeline{std::make_shared<dai::Device>(connectedDeviceInfo)};
+                auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
+                benchmarkIn->sendReportEveryNMessages(static_cast<uint32_t>(std::round(fpsVariant)));
+                auto camera = pipeline.create<dai::node::Camera>()->build(cameraFeatures.socket, std::pair(config.width, config.height), fpsVariant);
+                camera->requestOutput(std::pair(config.width, config.height))->link(benchmarkIn->input);
+                auto benchmarkQueue = benchmarkIn->report.createOutputQueue();
+                pipeline.start();
+                benchmarkQueue->get<dai::BenchmarkReport>();  // Warmup
+                for(int i = 0; i < 3; i++) {
+                    auto benchmarkReport = benchmarkQueue->get<dai::BenchmarkReport>();
+                    // Allow +-10% difference
+                    REQUIRE(benchmarkReport->fps == Catch::Approx(fpsVariant).margin(fpsVariant * 0.1));
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("Camera pool sizes") {
     auto firstDevice = dai::Device::getFirstAvailableDevice();
     auto isRvc4 = std::get<1>(firstDevice).platform == X_LINK_RVC4;
@@ -270,5 +324,23 @@ TEST_CASE("Camera pool sizes") {
         for(const auto& count : outQueuesCounter) {
             REQUIRE(count > queueSize + 200);
         }
+    }
+}
+
+TEST_CASE("Camera run without calibration") {
+    dai::Pipeline p;
+    p.setCalibrationData(dai::CalibrationHandler());  // empty calibration data
+    std::vector<std::shared_ptr<dai::MessageQueue>> outputQueues;
+    for(auto socket : p.getDefaultDevice()->getConnectedCameras()) {
+        auto camera = p.create<dai::node::Camera>()->build(socket);
+        auto* output = camera->requestFullResolutionOutput();
+        REQUIRE(output != nullptr);
+        outputQueues.emplace_back(output->createOutputQueue());
+    }
+    p.start();
+    for(auto& queue : outputQueues) {
+        auto frame = queue->get<dai::ImgFrame>();
+        REQUIRE(frame->getWidth() > 0);
+        REQUIRE(frame->getHeight() > 0);
     }
 }
