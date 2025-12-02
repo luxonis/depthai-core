@@ -68,25 +68,17 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @param input: ReplayVideo node
      * @param modelDesc: Neural network model description
      * @param fps: Desired frames per second
-     * @param resizeMode: Resize mode for input frames
      * @returns Shared pointer to NeuralNetwork node
      */
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input,
-                                         NNModelDescription modelDesc,
-                                         std::optional<float> fps = std::nullopt,
-                                         std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
     /**
      * @brief Build NeuralNetwork node. Connect ReplayVideo output to this node's input.
      * @param input: ReplayVideo node
      * @param nnArchive: Neural network archive
      * @param fps: Desired frames per second
-     * @param resizeMode: Resize mode for input frames
      * @returns Shared pointer to NeuralNetwork node
      */
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input,
-                                         const NNArchive& nnArchive,
-                                         std::optional<float> fps = std::nullopt,
-                                         std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
 #endif
 
     /**

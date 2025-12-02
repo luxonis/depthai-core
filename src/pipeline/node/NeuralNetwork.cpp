@@ -55,20 +55,14 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input,
-                                                    NNModelDescription modelDesc,
-                                                    std::optional<float> fps,
-                                                    std::optional<dai::ImgResizeMode> resizeMode) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(input, nnArchive, fps, resizeMode);
+    return build(input, nnArchive, fps);
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input,
-                                                    const NNArchive& nnArchive,
-                                                    std::optional<float> fps,
-                                                    std::optional<dai::ImgResizeMode> resizeMode) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
     setNNArchive(nnArchive);
-    auto cap = getFrameCapability(nnArchive, fps, resizeMode);
+    auto cap = getFrameCapability(nnArchive, fps, std::nullopt);
     input->setOutFrameType(cap.type.value());
     if(fps.has_value()) {
         input->setFps(*fps);

@@ -71,18 +71,12 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input,
-                                                          NNModelDescription modelDesc,
-                                                          std::optional<float> fps,
-                                                          std::optional<dai::ImgResizeMode> resizeMode) {
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(input, nnArchive, fps, resizeMode);
+    return build(input, nnArchive, fps);
 }
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input,
-                                                          const NNArchive& nnArchive,
-                                                          std::optional<float> fps,
-                                                          std::optional<dai::ImgResizeMode> resizeMode) {
-    neuralNetwork->build(input, nnArchive, fps, resizeMode);
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
+    neuralNetwork->build(input, nnArchive, fps);
     detectionParser->setNNArchive(nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }

@@ -95,20 +95,16 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             DOC(dai, node, NeuralNetwork, build))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>, std::optional<dai::ImgResizeMode>>(
-                 &NeuralNetwork::build),
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>>(&NeuralNetwork::build),
              py::arg("input"),
              py::arg("model"),
              py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, NeuralNetwork, build, 4))
         .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>, std::optional<dai::ImgResizeMode>>(
-                 &NeuralNetwork::build),
+             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>>(&NeuralNetwork::build),
              py::arg("input"),
              py::arg("nnArchive"),
              py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
              DOC(dai, node, NeuralNetwork, build, 5))
 #endif
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
