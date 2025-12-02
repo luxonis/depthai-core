@@ -5,9 +5,6 @@
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/ImageFilters.hpp>
 
-// standard
-#include <fstream>
-
 // shared
 #include <depthai/properties/ToFProperties.hpp>
 
