@@ -121,10 +121,10 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
                                                    std::optional<float> fps = std::nullopt);
 
     /**
-     * @brief Build SpatialDetectionNetwork node with StereoDepth as depth source
+     * @brief Build SpatialDetectionNetwork node with NeuralDepth as depth source
      * @param inputRgb Input RGB camera
-     * @param stereo StereoDepth node
-     * @param nnArchive NN archive
+     * @param neuralDepth NeuralDepth node
+     * @param modelDesc Model description
      * @param fps Frames per second
      * @return Shared pointer to SpatialDetectionNetwork node
      */
