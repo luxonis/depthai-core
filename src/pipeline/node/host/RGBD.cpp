@@ -567,6 +567,9 @@ void RGBD::alignDepth(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Cam
     tof->depth.link(align->input);
     colorCamOutput->link(align->inputAlignTo);
     align->outputAligned.link(inDepth);
+
+    // ImageAlign does not work on ToF cameras as they don't have sufficient memory
+    align->setRunOnHost(true);
 }
 
 }  // namespace node
