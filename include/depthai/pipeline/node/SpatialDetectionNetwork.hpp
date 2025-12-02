@@ -116,6 +116,19 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * @return Shared pointer to SpatialDetectionNetwork node
      */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
+                                                   const std::shared_ptr<StereoDepth>& stereo,
+                                                   const dai::NNArchive& nnArchive,
+                                                   std::optional<float> fps = std::nullopt);
+
+    /**
+     * @brief Build SpatialDetectionNetwork node with StereoDepth as depth source
+     * @param inputRgb Input RGB camera
+     * @param stereo StereoDepth node
+     * @param nnArchive NN archive
+     * @param fps Frames per second
+     * @return Shared pointer to SpatialDetectionNetwork node
+     */
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const std::shared_ptr<NeuralDepth>& neuralDepth,
                                                    dai::NNModelDescription modelDesc,
                                                    std::optional<float> fps = std::nullopt);
@@ -145,7 +158,6 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
                                                    const std::shared_ptr<ToF>& tof,
                                                    dai::NNModelDescription modelDesc,
                                                    std::optional<float> fps = std::nullopt);
-
 
     /**
      * @brief Build SpatialDetectionNetwork node with ToF as depth source
