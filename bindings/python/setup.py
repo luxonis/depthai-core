@@ -311,7 +311,6 @@ setup(
     python_requires='>=3.7',
     install_requires=[
         "numpy<3.0.0",
-        "websockets>11.0.0"
     ],
     entry_points={
         "console_scripts": [
