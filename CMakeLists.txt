@@ -6,10 +6,6 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
-set(HUNTER_SKIP_PACKAGE_nlohmann_json OFF)
-set(BUILD_SHARED_LIBS ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
 # Early options
 option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
 
@@ -59,7 +55,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.30.0" LANGUAGES CXX C)
+project(depthai VERSION "2.31.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -281,6 +277,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/ObjectTrackerConfig.cpp
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
@@ -839,7 +836,4 @@ if(DEPTHAI_HAVE_PCL_SUPPORT)
         "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
         $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
     )
-endif()
-if ( ament_cmake_FOUND )
-    ament_package()
 endif()

@@ -42,6 +42,12 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
     Input inputDetections{*this, "inputDetections", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgDetections, true}}};
 
     /**
+     * Input ObjectTrackerConfig message with ability to modify parameters at runtime.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ObjectTrackerConfig, false}}};
+
+    /**
      * Outputs Tracklets message that carries object tracking results.
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Tracklets, false}}};
