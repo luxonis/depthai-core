@@ -251,9 +251,9 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
 
     std::optional<std::vector<std::uint8_t>> optMaskData = imgDetections.getMaskData();
 
-    static uint32_t lowerThreshold = config->globalLowerThreshold;
-    static uint32_t upperThreshold = config->globalUpperThreshold;
-    static SpatialLocationCalculatorAlgorithm calculationAlgorithm = config->globalCalculationAlgorithm;
+    const uint32_t lowerThreshold = config->globalLowerThreshold;
+    const uint32_t upperThreshold = config->globalUpperThreshold;
+    const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config->globalCalculationAlgorithm;
     int stepSize = config->globalStepSize;
     if(stepSize == SpatialLocationCalculatorConfigData::AUTO) {
         if(calculationAlgorithm == SpatialLocationCalculatorAlgorithm::MODE || calculationAlgorithm == SpatialLocationCalculatorAlgorithm::MEDIAN) {
@@ -262,9 +262,10 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
             stepSize = 1;
         }
     }
-    static int32_t keypointRadius = config->globalKeypointRadius;
-    static bool calculateSpatialKeypoints = config->calculateSpatialKeypoints;
-    static bool useSegmentation = config->useSegmentation && optMaskData.has_value();
+    const int32_t keypointRadius = config->globalKeypointRadius;
+    const bool calculateSpatialKeypoints = config->calculateSpatialKeypoints;
+    const bool useSegmentation = config->useSegmentation && optMaskData.has_value();
+
 
     std::int32_t depthWidth = depthFrame->getWidth();
     std::int32_t depthHeight = depthFrame->getHeight();
@@ -330,9 +331,9 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
         }
         dai::SpatialImgDetection spatialDetection;
         // logger->warn("Pushed back {} valid pixels", validPixels.size());
-        logger->warn("use keypoints set to {}", calculateSpatialKeypoints);
+        // logger->warn("use keypoints set to {}", calculateSpatialKeypoints);
         if(calculateSpatialKeypoints) {
-            logger->info("Calculating spatial keypoints for detection {}", i);
+            // logger->info("Calculating spatial keypoints for detection {}", i);
             std::vector<dai::SpatialKeypoint> spatialKeypoints;
             for(auto kp : detection.getKeypoints()) {
                 int kpx = static_cast<int>(kp.imageCoordinates.x * depthWidth);
@@ -382,8 +383,8 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
         }
 
         // logger->warn("calculating depth for detection {}", i);
-        logger->warn(
-            "calculateDepth params - calcalgo {}, sum: {}, counter: {}, min: {}, max: {}", static_cast<int>(calculationAlgorithm), sum, counter, min, max);
+        // logger->warn(
+        //     "calculateDepth params - calcalgo {}, sum: {}, counter: {}, min: {}, max: {}", static_cast<int>(calculationAlgorithm), sum, counter, min, max);
         float z = calculateDepth(calculationAlgorithm, validPixels, sum, counter, min, max);
 
         spatialDetection.setBoundingBox(rotatedRect);
