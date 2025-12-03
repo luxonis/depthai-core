@@ -14,6 +14,7 @@
 #include "pipeline/datatype/ImgAnnotations.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"
+#include "utility/Platform.hpp"
 #include "utility/ProtoSerializable.hpp"
 #include "utility/Resources.hpp"
 
@@ -33,29 +34,6 @@ static std::shared_ptr<Buffer> getVisualizableMessage(const std::shared_ptr<Buff
         return *imgAnnotations;
     }
     return message;
-}
-
-static std::string getLocalIpAddress() {
-    ifaddrs* ifaddr = nullptr;
-    if(getifaddrs(&ifaddr) == -1) {
-        logger::error("getifaddrs failed");
-        return "127.0.0.1";
-    }
-
-    std::string result = "127.0.0.1";
-    for(auto* ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
-        if(!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) continue;
-
-        auto* sin = reinterpret_cast<sockaddr_in*>(ifa->ifa_addr);
-        std::string ip = inet_ntoa(sin->sin_addr);
-        if(ip != "127.0.0.1" && strncmp(ifa->ifa_name, "lo", 2) != 0) {
-            result = ip;
-            break;
-        }
-    }
-
-    freeifaddrs(ifaddr);
-    return result;
 }
 
 RemoteConnectionImpl::RemoteConnectionImpl(const std::string& address, uint16_t webSocketPort, bool serveFrontend, uint16_t httpPort) {
@@ -355,7 +333,7 @@ bool RemoteConnectionImpl::initHttpServer(const std::string& address, uint16_t p
     }
 
     // Get the external ip address
-    std::string externalAddress = address == "0.0.0.0" ? getLocalIpAddress() : address;
+    std::string externalAddress = address == "0.0.0.0" ? platform::getLocalIpAddress() : address;
     std::cout << "To connect to the OAK visualizer, open http://" << externalAddress << ":" << port << " in your browser" << std::endl;
     httpServerThread = std::make_unique<std::thread>([this]() { httpServer->listen_after_bind(); });
     return true;
