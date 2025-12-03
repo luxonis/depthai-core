@@ -1,3 +1,5 @@
+#pragma once
+
 /*M///////////////////////////////////////////////////////////////////////////////////////
 //
 //  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
@@ -123,7 +125,7 @@ static int SklanskyPort(PointPort<_Tp>** array, int start, int end, int* stack, 
 }
 
 void convexHullPort(std::vector<PointPort<float>>& points, std::vector<PointPort<float>>& _hull, bool clockwise) {
-    static_assert(sizeof(PointPort<int>) == sizeof(PointPort<float>), "Both int and float should have the same size (4 bytes).");
+    static_assert(sizeof(PointPort<int>) == sizeof(PointPort<float>), "Both int and float PointPorts should have the same size.");
     int i, total = points.size(), nout = 0;
     int miny_ind = 0, maxy_ind = 0;
 
@@ -206,7 +208,7 @@ void convexHullPort(std::vector<PointPort<float>>& points, std::vector<PointPort
             if(check_idx == stop_idx || (check_idx >= 0 && pointer[check_idx]->x == pointer[stop_idx]->x && pointer[check_idx]->y == pointer[stop_idx]->y)) {
                 // if all the points lie on the same line, then
                 // the bottom part of the convex hull is the mirrored top part
-                // (except the exteme points).
+                // (except the extreme points).
                 bl_count = std::min(bl_count, 2);
                 br_count = std::min(br_count, 2);
             }
