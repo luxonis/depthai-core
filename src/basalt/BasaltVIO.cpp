@@ -1,10 +1,10 @@
 #include "depthai/basalt/BasaltVIO.hpp"
-#include <basalt/utils/common_types.h>
 
 #include "../utility/PimplImpl.hpp"
 #include "basalt/calibration/calibration.hpp"
 #include "basalt/serialization/headers_serialization.h"
 #include "basalt/spline/se3_spline.h"
+#include "basalt/utils/common_types.h"
 #include "basalt/utils/vio_config.h"
 #include "basalt/vi_estimator/vio_estimator.h"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -315,7 +315,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
 void BasaltVIO::runSyncOnHost(bool runOnHost) {
     sync->setRunOnHost(runOnHost);
 }
-void BasaltVIO::setConfig(const BasaltVIO::VioConfig& config){
+void BasaltVIO::setConfig(const BasaltVIO::VioConfig& config) {
     pimpl->vioConfig.optical_flow_type = config.optical_flow_type;
     pimpl->vioConfig.optical_flow_detection_grid_size = config.optical_flow_detection_grid_size;
     pimpl->vioConfig.optical_flow_detection_num_points_cell = config.optical_flow_detection_num_points_cell;

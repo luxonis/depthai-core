@@ -16,7 +16,6 @@ namespace node {
 
 */
 class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
-
    public:
     enum class LinearizationType { ABS_QR, ABS_SC, REL_SC };
     enum class MatchingGuessType { SAME_PIXEL, REPROJ_FIX_DEPTH, REPROJ_AVG_DEPTH };
