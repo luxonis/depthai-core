@@ -12,6 +12,8 @@
 #include <string>
 
 #include "depthai/common/YoloDecodingFamily.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
 namespace node {
@@ -20,7 +22,7 @@ namespace node {
  * @brief DetectionParser node. Parses detection results from different neural networks and is being used internally by MobileNetDetectionNetwork and
  * YoloDetectionNetwork.
  */
-class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties> {
+class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "DetectionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -268,13 +270,38 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      */
     const NNArchiveVersionedConfig& getNNArchiveVersionedConfig() const;
 
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
+
+    void decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& outDetections, float confidenceThr);
+
    private:
+    bool runOnHostVar = false;
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     void setConfig(const dai::NNArchiveVersionedConfig& config);
     YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& subtype);
     bool decodeSegmentationResolver(const std::vector<std::string>& outputs);
+
+    // host runnable requirements
+    void buildStage1() override;
+    void decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections);
+    std::vector<dai::TensorInfo> inTensorInfo;
+    uint32_t imgWidth;
+    uint32_t imgHeight;
+    uint32_t imgSizesSet = false;
+    //
 
     std::optional<NNArchive> mArchive;
 

@@ -66,17 +66,22 @@ inline bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array
     return true;
 }
 
-std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix) {
+std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix_float) {
+    // Step 1: Convert to double
+    std::array<std::array<double, 3>, 3> matrix;
+    for(int i = 0; i < 3; ++i)
+        for(int j = 0; j < 3; ++j) matrix[i][j] = static_cast<double>(matrix_float[i][j]);
+
     std::array<std::array<float, 3>, 3> inv;
-    float det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
-                - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
-                + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+    double det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
+                 - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
+                 + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
 
     if(det == 0) {
         throw std::runtime_error("Matrix is singular and cannot be inverted.");
     }
 
-    std::array<std::array<float, 3>, 3> adj;
+    std::array<std::array<double, 3>, 3> adj;
 
     adj[0][0] = (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]);
     adj[0][1] = -(matrix[0][1] * matrix[2][2] - matrix[0][2] * matrix[2][1]);
@@ -90,11 +95,11 @@ std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array
     adj[2][1] = -(matrix[0][0] * matrix[2][1] - matrix[0][1] * matrix[2][0]);
     adj[2][2] = (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]);
 
-    float invDet = 1.0f / det;
+    double invDet = 1.0 / det;
 
     for(int i = 0; i < 3; ++i) {
         for(int j = 0; j < 3; ++j) {
-            inv[i][j] = adj[i][j] * invDet;
+            inv[i][j] = static_cast<float>(adj[i][j] * invDet);
         }
     }
 

@@ -868,9 +868,10 @@ void PipelineImpl::stop() {
 
     // Close the task queue
     tasks.destruct();
-    // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
-    // Close the devices
-    if(!isHostOnly()) {
+
+    // Close device if present - a pipeline might be host only and still have a device
+    // For example, one only adds host nodes
+    if(defaultDevice) {
         defaultDevice->close();
     }
 

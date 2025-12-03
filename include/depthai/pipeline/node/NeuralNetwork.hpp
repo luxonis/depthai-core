@@ -36,10 +36,48 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, std::optional<float> fps = std::nullopt);
+
+    /**
+     * @brief Build NeuralNetwork node. Connect Camera output to this node's input. Also call setNNArchive() with provided model description.
+     * @param input: Camera node
+     * @param modelDesc: Neural network model description
+     * @param fps: Desired frames per second
+     * @param resizeMode: Resize mode for input frames
+     *
+     * @returns Shared pointer to NeuralNetwork node
+     */
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input,
+                                         NNModelDescription modelDesc,
+                                         std::optional<float> fps = std::nullopt,
+                                         std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
+    /**
+     * @brief Build NeuralNetwork node. Connect Camera output to this node's input. Also call setNNArchive() with provided NNArchive.
+     * @param input: Camera node
+     * @param nnArchive: Neural network archive
+     * @param fps: Desired frames per second
+     * @param resizeMode: Resize mode for input frames
+     * @returns Shared pointer to NeuralNetwork node
+     */
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input,
+                                         NNArchive nnArchive,
+                                         std::optional<float> fps = std::nullopt,
+                                         std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    /**
+     * @brief Build NeuralNetwork node. Connect ReplayVideo output to this node's input. Also call setNNArchive() with provided model description.
+     * @param input: ReplayVideo node
+     * @param modelDesc: Neural network model description
+     * @param fps: Desired frames per second
+     * @returns Shared pointer to NeuralNetwork node
+     */
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
+    /**
+     * @brief Build NeuralNetwork node. Connect ReplayVideo output to this node's input.
+     * @param input: ReplayVideo node
+     * @param nnArchive: Neural network archive
+     * @param fps: Desired frames per second
+     * @returns Shared pointer to NeuralNetwork node
+     */
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
 #endif
 
@@ -187,14 +225,20 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
     int getNumInferenceThreads();
-    // TODO add getters for other API
+
+    /**
+     * Set model from Device Model Zoo
+     * @param model DeviceModelZoo model enum
+     * @note Only applicable for RVC4 devices with OS 1.20.5 or higher
+     */
+    void setModelFromDeviceZoo(DeviceModelZoo model);
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-    ImgFrameCapability getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps);
+    ImgFrameCapability getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps, std::optional<dai::ImgResizeMode> resizeMode);
     std::optional<NNArchive> nnArchive;
 };
 
