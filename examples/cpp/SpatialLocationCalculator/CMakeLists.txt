@@ -6,3 +6,6 @@ cmake_minimum_required(VERSION 3.10)
 
 dai_add_example(spatial_location_calculator spatial_location_calculator.cpp ON OFF)
 dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 ci)
+
+dai_add_example(spatial_segmentation spatial_segmentation.cpp ON OFF)
+dai_set_example_test_labels(spatial_segmentation ondevice rvc2_all rvc4 ci)
