@@ -372,7 +372,12 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
         first_wheel_dist_info = os.path.join(extracted_wheels[0].wheel_extract_dir, extracted_wheels[0].dist_info_dir)
         for item in os.listdir(first_wheel_dist_info):
             if item.lower() not in ["record"]:
-                shutil.copy2(os.path.join(first_wheel_dist_info, item), new_dist_info_path)
+                src_path = os.path.join(first_wheel_dist_info, item)
+                dest_path = os.path.join(new_dist_info_path, item)
+                if os.path.isdir(src_path):
+                    shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src_path, dest_path)
 
         # Step: Copy all other content to the staging directory
         _logger.info("Step: Copying all other content to the staging directory")
