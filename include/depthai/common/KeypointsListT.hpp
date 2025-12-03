@@ -52,7 +52,7 @@ struct KeypointsListT {
         return keypoints.cend();
     }
     bool empty() const noexcept {
-    return keypoints.empty();
+        return keypoints.empty();
     }
     size_t size() const noexcept {
         return keypoints.size();
