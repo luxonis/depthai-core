@@ -9,7 +9,7 @@ parser.add_argument("--httpPort", type=int, default=8082)
 
 args = parser.parse_args()
 
-remoteConnector = dai.RemoteConnection(address="127.0.0.1", webSocketPort=args.webSocketPort, httpPort=args.httpPort)
+remoteConnector = dai.RemoteConnection(webSocketPort=args.webSocketPort, httpPort=args.httpPort)
 ENCODER_PROFILE = dai.VideoEncoderProperties.Profile.MJPEG
 class ImgAnnotationsGenerator(dai.node.ThreadedHostNode):
     def __init__(self):
