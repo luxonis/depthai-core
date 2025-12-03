@@ -620,7 +620,7 @@ class CalibrationHandler {
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
     std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
-    std::vector<std::vector<float>> getOriginToHousing(HousingCoordinateSystem housingCS, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
+    std::vector<std::vector<float>> getHousingToHousingOrigin(HousingCoordinateSystem housingCS, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
 };
