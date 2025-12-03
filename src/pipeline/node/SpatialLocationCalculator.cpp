@@ -25,7 +25,7 @@ bool SpatialLocationCalculator::runOnHost() const {
 
 void SpatialLocationCalculator::run() {
     auto& logger = ThreadedNode::pimpl->logger;
-    logger->warn("Start SpatialLocationCalculator");
+    logger->debug("Start SpatialLocationCalculator");
 
     bool inputConfigSync = inputConfig.getWaitForMessage();
     auto eepromData = getParentPipeline().getEepromData();
@@ -34,7 +34,7 @@ void SpatialLocationCalculator::run() {
     }
 
     while(isRunning()) {
-        logger->warn("Running");
+        logger->debug("Running");
         bool hasConfig = false;
         std::shared_ptr<SpatialLocationCalculatorConfig> config;
         std::shared_ptr<ImgFrame> imgFrame;
