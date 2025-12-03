@@ -408,6 +408,11 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
         // logger->warn("Pushing back spatial detection {}", i);
         spatialDetections.detections[i] = spatialDetection;
     }
+
+    std::optional<std::vector<std::uint8_t>> maskData = imgDetections.getMaskData();
+    if(maskData) {
+        spatialDetections.setSegmentationMask(*maskData, imgDetections.getSegmentationMaskWidth(), imgDetections.getSegmentationMaskHeight());
+    }
 }
 
 }  // namespace SpatialUtils
