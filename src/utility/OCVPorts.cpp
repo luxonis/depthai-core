@@ -1,5 +1,3 @@
-#pragma once
-
 /*M///////////////////////////////////////////////////////////////////////////////////////
 //
 //  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
@@ -47,6 +45,10 @@
 
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
+
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 
 using namespace dai;
 
