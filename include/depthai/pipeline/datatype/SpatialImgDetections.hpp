@@ -159,9 +159,9 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     using Base = ImgDetectionsT<SpatialImgDetection>;
     using Base::Base;
     using Base::detections;
-    using Base::transformation;
     using Base::segmentationMaskHeight;
     using Base::segmentationMaskWidth;
+    using Base::transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 

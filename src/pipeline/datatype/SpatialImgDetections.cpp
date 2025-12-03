@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "depthai/common/Point3f.hpp"
 #include "depthai/common/Keypoint.hpp"
+#include "depthai/common/Point3f.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/SpatialImgDetections.pb.h"
     #include "utility/ProtoSerialize.hpp"

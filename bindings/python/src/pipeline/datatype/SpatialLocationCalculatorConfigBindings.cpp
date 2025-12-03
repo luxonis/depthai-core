@@ -71,16 +71,23 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         .def("addROI", &SpatialLocationCalculatorConfig::addROI, py::arg("ROI"), DOC(dai, SpatialLocationCalculatorConfig, addROI))
         .def("getConfigData", &SpatialLocationCalculatorConfig::getConfigData, DOC(dai, SpatialLocationCalculatorConfig, getConfigData))
         .def("setDepthThresholds", &SpatialLocationCalculatorConfig::setDepthThresholds, DOC(dai, SpatialLocationCalculatorConfig, setDepthThresholds))
-        .def("setCalculationAlgorithm", &SpatialLocationCalculatorConfig::setCalculationAlgorithm, DOC(dai, SpatialLocationCalculatorConfig, setCalculationAlgorithm))
+        .def("setCalculationAlgorithm",
+             &SpatialLocationCalculatorConfig::setCalculationAlgorithm,
+             DOC(dai, SpatialLocationCalculatorConfig, setCalculationAlgorithm))
         .def("setStepSize", &SpatialLocationCalculatorConfig::setStepSize, DOC(dai, SpatialLocationCalculatorConfig, setStepSize))
         .def("setKeypointRadius", &SpatialLocationCalculatorConfig::setKeypointRadius, DOC(dai, SpatialLocationCalculatorConfig, setKeypointRadius))
-        .def("setCalculateSpatialKeypoints", &SpatialLocationCalculatorConfig::setCalculateSpatialKeypoints, DOC(dai, SpatialLocationCalculatorConfig, setCalculateSpatialKeypoints))
+        .def("setCalculateSpatialKeypoints",
+             &SpatialLocationCalculatorConfig::setCalculateSpatialKeypoints,
+             DOC(dai, SpatialLocationCalculatorConfig, setCalculateSpatialKeypoints))
         .def("setUseSegmentation", &SpatialLocationCalculatorConfig::setUseSegmentation, DOC(dai, SpatialLocationCalculatorConfig, setUseSegmentation))
         .def("getDepthThresholds", &SpatialLocationCalculatorConfig::getDepthThresholds, DOC(dai, SpatialLocationCalculatorConfig, getDepthThresholds))
-        .def("getCalculationAlgorithm", &SpatialLocationCalculatorConfig::getCalculationAlgorithm, DOC(dai, SpatialLocationCalculatorConfig, getCalculationAlgorithm))
+        .def("getCalculationAlgorithm",
+             &SpatialLocationCalculatorConfig::getCalculationAlgorithm,
+             DOC(dai, SpatialLocationCalculatorConfig, getCalculationAlgorithm))
         .def("getStepSize", &SpatialLocationCalculatorConfig::getStepSize, DOC(dai, SpatialLocationCalculatorConfig, getStepSize))
         .def("getKeypointRadius", &SpatialLocationCalculatorConfig::getKeypointRadius, DOC(dai, SpatialLocationCalculatorConfig, getKeypointRadius))
-        .def("getCalculateSpatialKeypoints", &SpatialLocationCalculatorConfig::getCalculateSpatialKeypoints, DOC(dai, SpatialLocationCalculatorConfig, getCalculateSpatialKeypoints))
-        .def("getUseSegmentation", &SpatialLocationCalculatorConfig::getUseSegmentation, DOC(dai, SpatialLocationCalculatorConfig, getUseSegmentation))
-        ;
+        .def("getCalculateSpatialKeypoints",
+             &SpatialLocationCalculatorConfig::getCalculateSpatialKeypoints,
+             DOC(dai, SpatialLocationCalculatorConfig, getCalculateSpatialKeypoints))
+        .def("getUseSegmentation", &SpatialLocationCalculatorConfig::getUseSegmentation, DOC(dai, SpatialLocationCalculatorConfig, getUseSegmentation));
 }

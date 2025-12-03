@@ -176,8 +176,13 @@ void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
 
         if(ystart > depthHeight || yend > depthHeight || xstart > depthWidth || xend > depthWidth) {
             skipCalculation = true;
-            logger->warn(
-                "Invalid ROI. Depth image size: {}, {}. Bounding box: start - {},{} | end - {},{}. Skipping calculation.", depthWidth, depthHeight, xstart, ystart, xend, yend);
+            logger->warn("Invalid ROI. Depth image size: {}, {}. Bounding box: start - {},{} | end - {},{}. Skipping calculation.",
+                         depthWidth,
+                         depthHeight,
+                         xstart,
+                         ystart,
+                         xend,
+                         yend);
         }
         if(ystart >= yend || xstart >= xend) {
             skipCalculation = true;

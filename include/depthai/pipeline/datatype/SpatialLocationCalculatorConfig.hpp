@@ -89,6 +89,7 @@ DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds,
  */
 class SpatialLocationCalculatorConfig : public Buffer {
     static constexpr std::int32_t AUTO = -1;
+
    public:
     int32_t globalStepSize = AUTO;
     uint32_t globalLowerThreshold = 0;
