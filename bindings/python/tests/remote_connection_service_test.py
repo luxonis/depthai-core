@@ -24,7 +24,7 @@ async def call_service(ws, service_name, service_id):
     return None
 
 
-async def test_available_services():
+async def get_available_services():
     async with websockets.connect(uri, subprotocols=["foxglove.websocket.v1"]) as ws:
         while True:
             msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
@@ -54,7 +54,7 @@ def test_remote_connection_services():
     remoteConnection = dai.RemoteConnection()
     remoteConnection.registerService("custom_service", custom_service)
 
-    results = asyncio.run(test_available_services())
+    results = asyncio.run(get_available_services())
     assert(json.loads(results["custom_service"]) == {"result": "custom_service_result"})
     assert(results["libraryVersion"] in dai.__version__)
     assert(results["topicGroups"] == "{}")
