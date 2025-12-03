@@ -506,6 +506,10 @@ TEST_CASE("Get outer rect opencv comparison") {
         }
         auto rrImpl = dai::impl::getOuterRotatedRect(pointsArr);
         auto rrCv = cv::minAreaRect(cvPointsArr);
+        while(rrCv.angle >= 90.f) {
+            rrCv.angle -= 90.f;
+            std::swap(rrCv.size.width, rrCv.size.height);
+        }
         REQUIRE_THAT(rrImpl.center.x, Catch::Matchers::WithinAbs(rrCv.center.x, 0.01));
         REQUIRE_THAT(rrImpl.center.y, Catch::Matchers::WithinAbs(rrCv.center.y, 0.01));
         REQUIRE_THAT(rrImpl.size.width, Catch::Matchers::WithinAbs(rrCv.size.width, 0.01));

@@ -535,5 +535,10 @@ dai::RotatedRect dai::utility::getOuterRotatedRect(const std::vector<std::array<
     for(const auto& p : points) {
         daiPoints.emplace_back(p[0], p[1]);
     }
-    return minAreaRectPort(daiPoints);
+    auto minAreaRect = minAreaRectPort(daiPoints);
+    while(minAreaRect.angle >= 90.f) {
+        minAreaRect.angle -= 90.f;
+        std::swap(minAreaRect.size.width, minAreaRect.size.height);
+    }
+    return minAreaRect;
 }
