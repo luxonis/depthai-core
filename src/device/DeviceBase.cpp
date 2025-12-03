@@ -582,12 +582,49 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
 }
 
+unsigned int getRPCReadTimeout() {
+    auto currentTimeout = currentRpcTimeout();
+    if(currentTimeout) {
+        return static_cast<unsigned int>(currentTimeout->count());
+    }
+
+    std::string timeoutStr = utility::getEnv("DEPTHAI_RPC_READ_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr);
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_RPC_READ_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_RPC_READ_TIMEOUT;
+}
+
+unsigned int getRPCWriteTimeout() {
+    std::string timeoutStr = utility::getEnv("DEPTHAI_RPC_WRITE_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr);
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_RPC_WRITE_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_RPC_WRITE_TIMEOUT;
+}
+
+tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
+    std::vector<uint8_t> data;
+    utility::serialize<SerializationType::JSON>(dump, data);
+    auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+    return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
+}
+
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
+    auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
     bool shouldGetCrashDump = false;
-    if(!dumpOnly) {
-        pimpl->logger.debug("Device about to be closed...");
+    if(!dumpOnly && timeout > 0) {
+        pimpl->logger.debug("Crash dump collection enabled - first try to extract an existing crash dump");
         try {
             if(hasCrashDump()) {
                 connection->setRebootOnDestruction(true);
@@ -1229,40 +1266,6 @@ std::tuple<bool, unsigned int> DeviceBase::getIMUFirmwareUpdateStatus() {
     return pimpl->rpcCall("getIMUFirmwareUpdateStatus").as<std::tuple<bool, unsigned int>>();
 }
 
-std::string DeviceBase::getConnectedIMU() {
-    return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
-}
-
-dai::Version DeviceBase::getIMUFirmwareVersion() {
-    std::string versionStr = pimpl->rpcClient->call("getIMUFirmwareVersion").as<std::string>();
-    try {
-        dai::Version version = dai::Version(versionStr);
-        return version;
-    } catch(const std::exception&) {
-        dai::Version version = dai::Version(0, 0, 0);
-        return version;
-    }
-}
-
-dai::Version DeviceBase::getEmbeddedIMUFirmwareVersion() {
-    std::string versionStr = pimpl->rpcClient->call("getEmbeddedIMUFirmwareVersion").as<std::string>();
-    try {
-        dai::Version version = dai::Version(versionStr);
-        return version;
-    } catch(const std::exception&) {
-        dai::Version version = dai::Version(0, 0, 0);
-        return version;
-    }
-}
-
-bool DeviceBase::startIMUFirmwareUpdate(bool forceUpdate) {
-    return pimpl->rpcClient->call("startIMUFirmwareUpdate", forceUpdate).as<bool>();
-}
-
-std::tuple<bool, unsigned int> DeviceBase::getIMUFirmwareUpdateStatus() {
-    return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, unsigned int>>();
-}
-
 // Convenience functions for querying current system information
 MemoryInfo DeviceBase::getDdrMemoryUsage() {
     return pimpl->rpcCall("getDdrUsage").as<MemoryInfo>();
@@ -1322,10 +1325,6 @@ int DeviceBase::getXLinkChunkSize() {
 
 void DeviceBase::setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize, int waitUs) {
     pimpl->rpcCall("setXLinkRateLimit", maxRateBytesPerSecond, burstSize, waitUs);
-}
-
-void DeviceBase::setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize, int waitUs) {
-    pimpl->rpcClient->call("setXLinkRateLimit", maxRateBytesPerSecond, burstSize, waitUs);
 }
 
 DeviceInfo DeviceBase::getDeviceInfo() const {
@@ -1689,10 +1688,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     // print assets on device side for test
     pimpl->rpcCall("printAssets");
-
-    // Log the pipeline
-    logCollection::logPipeline(schema, deviceInfo);
-    this->pipelineSchema = schema;  // Save the schema so it can be passed alongside the crashdump
 
     // Log the pipeline
     logCollection::logPipeline(schema, deviceInfo);
