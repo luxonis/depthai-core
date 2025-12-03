@@ -5,7 +5,6 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <memory>
 #include <optional>
 #include <tuple>
@@ -274,7 +273,7 @@ TEST_CASE("Spatial keypoints support") {
     initialConfig.setDepthThresholds(0, maxDepthThreshold);
     initialConfig.setKeypointRadius(kpRadius);
     initialConfig.setCalculateSpatialKeypoints(true);
-    initialConfig.useImgDetectionSegmentation(false);
+    initialConfig.setUseSegmentation(false);
 
     auto detectionMsg = std::make_shared<dai::ImgDetections>();
     detectionMsg->detections.resize(1);
@@ -377,7 +376,7 @@ TEST_CASE("Spatial detections respect segmentation mask pixels") {
     dai::SpatialLocationCalculatorConfig initialConfig;
     initialConfig.setCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm::AVERAGE);
     initialConfig.setDepthThresholds(0, 10000);
-    initialConfig.useImgDetectionSegmentation(true);
+    initialConfig.setUseSegmentation(true);
     initialConfig.setCalculateSpatialKeypoints(false);
 
     auto detectionMsg = std::make_shared<dai::ImgDetections>();
@@ -453,7 +452,7 @@ TEST_CASE("Segmentation usage can be toggled") {
         dai::SpatialLocationCalculatorConfig initialConfig;
         initialConfig.setCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm::AVERAGE);
         initialConfig.setDepthThresholds(0, 10000);
-        initialConfig.useImgDetectionSegmentation(useSegmentation);
+        initialConfig.setUseSegmentation(useSegmentation);
         initialConfig.setCalculateSpatialKeypoints(false);
 
         auto detectionMsg = std::make_shared<dai::ImgDetections>();
@@ -514,7 +513,7 @@ TEST_CASE("Spatial detections return zero depth when depth frame is empty") {
     dai::SpatialLocationCalculatorConfig initialConfig;
     initialConfig.setCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm::AVERAGE);
     initialConfig.setDepthThresholds(0, 5000);
-    initialConfig.useImgDetectionSegmentation(false);
+    initialConfig.setUseSegmentation(false);
     initialConfig.setCalculateSpatialKeypoints(false);
 
     auto detectionMsg = std::make_shared<dai::ImgDetections>();
@@ -557,7 +556,7 @@ TEST_CASE("Spatial keypoints can be disabled") {
     initialConfig.setDepthThresholds(0, 10000);
     initialConfig.setKeypointRadius(6);
     initialConfig.setCalculateSpatialKeypoints(false);
-    initialConfig.useImgDetectionSegmentation(false);
+    initialConfig.setUseSegmentation(false);
 
     auto detectionMsg = std::make_shared<dai::ImgDetections>();
     detectionMsg->detections.resize(1);
@@ -631,7 +630,7 @@ TEST_CASE("Keypoint spatial calculation skips invalid or thresholded depth") {
     initialConfig.setDepthThresholds(100, 2000);
     initialConfig.setKeypointRadius(8);
     initialConfig.setCalculateSpatialKeypoints(true);
-    initialConfig.useImgDetectionSegmentation(false);
+    initialConfig.setUseSegmentation(false);
 
     auto detectionMsg = std::make_shared<dai::ImgDetections>();
     detectionMsg->detections.resize(1);
@@ -689,7 +688,7 @@ TEST_CASE("Spatial detections handle segmentation and keypoints together") {
     initialConfig.setDepthThresholds(0, 10000);
     initialConfig.setKeypointRadius(6);
     initialConfig.setCalculateSpatialKeypoints(true);
-    initialConfig.useImgDetectionSegmentation(true);
+    initialConfig.setUseSegmentation(true);
 
     auto detectionMsg = std::make_shared<dai::ImgDetections>();
     detectionMsg->detections.resize(1);

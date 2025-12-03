@@ -73,23 +73,19 @@ void SpatialLocationCalculator::run() {
         outputSpatial->setTimestampDevice(imgFrame->getTimestampDevice());
         outputSpatial->setTimestamp(imgFrame->getTimestamp());
         if(roiConfig->getConfigData().size() > 0) {
-            logger->warn("Clearing previous spatial locations data!");
             utilities::SpatialUtils::computeSpatialData(imgFrame, roiConfig->getConfigData(), spatialLocations, logger);
             auto stop = high_resolution_clock::now();
             auto timeToComputeSpatialData = duration_cast<microseconds>(stop - start);
 
             logger->trace("Time to compute spatial data CPU: {} us", timeToComputeSpatialData.count());
-            logger->warn("Computed spatial data for {} ROIs", spatialLocations.size());
             outputSpatial->spatialLocations = std::move(spatialLocations);
         }
 
         // process imgDetections
 
         auto outputSpatialImgDetections = std::make_shared<dai::SpatialImgDetections>();
-        logger->warn("Running imgDetections");
         if(input.isConnected()) {  // detections are connected and need to be processed
             std::shared_ptr<dai::ImgDetections> imgDetections = nullptr;
-            logger->warn("No ROI config data, assumming imgDetections will come in");
             imgDetections = input.get<dai::ImgDetections>();
 
             if(imgDetections != nullptr) {
@@ -104,9 +100,9 @@ void SpatialLocationCalculator::run() {
             outputSpatialImgDetections->setTimestampDevice(imgFrame->getTimestampDevice());
             outputSpatialImgDetections->setTimestamp(imgFrame->getTimestamp());
             outputSpatialImgDetections->transformation = imgFrame->transformation;
-            spatialOutput.send(outputSpatialImgDetections);
         }
 
+        spatialOutput.send(outputSpatialImgDetections);
         out.send(outputSpatial);
         passthroughDepth.send(imgFrame);
     }

@@ -164,7 +164,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
      * @param useSegmentation
      * @warning Only applicable to ImgDetections with segmentation masks.
      */
-    void useImgDetectionSegmentation(bool useSegmentation);
+    void setUseSegmentation(bool useSegmentation);
 
     /**
      * Retrieve configuration data for SpatialLocationCalculator
@@ -190,18 +190,21 @@ class SpatialLocationCalculatorConfig : public Buffer {
 
     /*
      * Retrieve radius around keypoints used to calculate spatial coordinates.
+
      */
     int32_t getKeypointRadius() const;
 
     /*
      * Retrieve whether keypoints are used for spatial location calculation.
+     * @warning Only applicable to ImgDetections  ImgDetections with keypoints.
      */
     bool getCalculateSpatialKeypoints() const;
 
     /*
      * Retrieve whether segmentation is used for spatial location calculation.
+     * @warning Only applicable to ImgDetections with segmentation masks.
      */
-    bool getUseImgDetectionSegmentation() const;
+    bool getUseSegmentation() const;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 

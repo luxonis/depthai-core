@@ -177,13 +177,11 @@ void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
         if(ystart > depthHeight || yend > depthHeight || xstart > depthWidth || xend > depthWidth) {
             skipCalculation = true;
             logger->warn(
-                "Invalid ROI. Depth image size: {}, {}. Bounding box: start - {},{} | end - {},{}", depthWidth, depthHeight, xstart, ystart, xend, yend);
-            logger->warn("Skipping calculation.");
+                "Invalid ROI. Depth image size: {}, {}. Bounding box: start - {},{} | end - {},{}. Skipping calculation.", depthWidth, depthHeight, xstart, ystart, xend, yend);
         }
         if(ystart >= yend || xstart >= xend) {
             skipCalculation = true;
-            logger->warn("Invalid ROI. Bounding box: start - {},{} | end - {},{}", xstart, ystart, xend, yend);
-            logger->warn("Skipping calculation.");
+            logger->warn("Invalid ROI. Bounding box: start - {},{} | end - {},{}. Skipping calculation.", xstart, ystart, xend, yend);
         }
 
         std::vector<uint16_t> validPixels;
@@ -223,7 +221,7 @@ void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
             float roiCy = denormRoi.y + denormRoi.height / 2.0f;
             std::array<std::array<float, 3>, 3> intrinsicMatrix = depthFrame->transformation.getIntrinsicMatrix();
             dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, intrinsicMatrix, dai::Point2f(roiCx, roiCy));
-            logger->info("Calculated spatial cooridantes: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
+            logger->debug("Calculated spatial cooridantes: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
             spatialData.spatialCoordinates = spatialCoordinates;
         }
@@ -237,7 +235,7 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
                               dai::ImgDetections& imgDetections,
                               dai::SpatialImgDetections& spatialDetections,
                               std::shared_ptr<spdlog::async_logger> logger) {
-    // logger->warn("Computing spatial image detections!");
+    logger->info("Computing spatial image detections!");
 
     if(!imgDetections.transformation.has_value()) {
         throw std::runtime_error("No transformation set on ImgDetections. Cannot compute spatial coordinates.");
@@ -266,13 +264,11 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
     const bool calculateSpatialKeypoints = config->calculateSpatialKeypoints;
     const bool useSegmentation = config->useSegmentation && optMaskData.has_value();
 
-
     std::int32_t depthWidth = depthFrame->getWidth();
     std::int32_t depthHeight = depthFrame->getHeight();
     uint8_t* maskPtr = nullptr;
-    // logger->warn("Depth frame size: {}x{}", depthWidth, depthHeight);
     if(useSegmentation) {
-        // logger->warn("Using segmentation for spatial image calculations.");
+        logger->debug("Using segmentation for spatial image calculations.");
         std::size_t segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
         std::size_t segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
         std::optional<cv::Mat> optSeg = imgDetections.getCvSegmentationMask();
@@ -292,18 +288,15 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
     const uint16_t* plane = (uint16_t*)depthFrame->data->getData().data();
 
     for(int i = 0; i < static_cast<int>(imgDetectionsVector.size()); i++) {
-        // logger->warn("Computing spatial data for detection {}", i);
         const dai::ImgDetection& detection = imgDetectionsVector[i];
         dai::RotatedRect rotatedRect = detection.getBoundingBox();
         rotatedRect = rotatedRect.denormalize(depthWidth, depthHeight, true);
 
         const auto& outerPoints = rotatedRect.getOuterRect();
-
         unsigned int xstart = std::min(std::max(0, (int)outerPoints[0]), depthWidth - 1);
         unsigned int ystart = std::min(std::max(0, (int)outerPoints[1]), depthHeight - 1);
         unsigned int xend = std::min(depthWidth - 1, (int)outerPoints[2]);
         unsigned int yend = std::min(depthHeight - 1, (int)outerPoints[3]);
-        // logger->warn("xstart {} ystart {} xend {} yend {}", xstart, ystart, xend, yend);
 
         std::uint32_t sum = 0;
         std::uint16_t min = 65535, max = 0;
@@ -330,10 +323,8 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
             }
         }
         dai::SpatialImgDetection spatialDetection;
-        // logger->warn("Pushed back {} valid pixels", validPixels.size());
-        // logger->warn("use keypoints set to {}", calculateSpatialKeypoints);
         if(calculateSpatialKeypoints) {
-            // logger->info("Calculating spatial keypoints for detection {}", i);
+            logger->info("Calculating spatial keypoints for detection {}", i);
             std::vector<dai::SpatialKeypoint> spatialKeypoints;
             for(auto kp : detection.getKeypoints()) {
                 int kpx = static_cast<int>(kp.imageCoordinates.x * depthWidth);
@@ -382,22 +373,14 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
             spatialDetection.setKeypoints(spatialKeypoints);
         }
 
-        // logger->warn("calculating depth for detection {}", i);
-        // logger->warn(
-        //     "calculateDepth params - calcalgo {}, sum: {}, counter: {}, min: {}, max: {}", static_cast<int>(calculationAlgorithm), sum, counter, min, max);
         float z = calculateDepth(calculationAlgorithm, validPixels, sum, counter, min, max);
-
         spatialDetection.setBoundingBox(rotatedRect);
-        // logger->warn("set bbox");
         spatialDetection.label = detection.label;
-        // logger->warn("set label");
         spatialDetection.confidence = detection.confidence;
-        // logger->warn("set confidence");
         spatialDetection.labelName = detection.labelName;
-        // logger->warn("set label name");
 
         dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, imgDetections.transformation->getIntrinsicMatrix(), rotatedRect.center);
-        // logger->warn("Calculated spatial cooridantes: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
+        logger->debug("Calculated spatial cooridantes: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
         spatialDetection.spatialCoordinates = spatialCoordinates;
 
@@ -406,7 +389,6 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
         boundingBoxMapping.depthThresholds.upperThreshold = upperThreshold;
         boundingBoxMapping.calculationAlgorithm = calculationAlgorithm;
         spatialDetection.boundingBoxMapping = boundingBoxMapping;
-        // logger->warn("Pushing back spatial detection {}", i);
         spatialDetections.detections[i] = spatialDetection;
     }
 

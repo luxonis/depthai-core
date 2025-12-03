@@ -51,7 +51,7 @@ void SpatialLocationCalculatorConfig::setCalculateSpatialKeypoints(bool calculat
     this->calculateSpatialKeypoints = calculateSpatialKeypoints;
 }
 
-void SpatialLocationCalculatorConfig::useImgDetectionSegmentation(bool useSegmentation) {
+void SpatialLocationCalculatorConfig::setUseSegmentation(bool useSegmentation) {
     this->useSegmentation = useSegmentation;
 }
 
@@ -75,7 +75,7 @@ bool SpatialLocationCalculatorConfig::getCalculateSpatialKeypoints() const {
     return calculateSpatialKeypoints;
 }
 
-bool SpatialLocationCalculatorConfig::getUseImgDetectionSegmentation() const {
+bool SpatialLocationCalculatorConfig::getUseSegmentation() const {
     return useSegmentation;
 }
 
