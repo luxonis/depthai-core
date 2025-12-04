@@ -1,5 +1,4 @@
 #include <cassert>
-#include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
 
