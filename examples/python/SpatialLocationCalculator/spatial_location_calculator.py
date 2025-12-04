@@ -53,12 +53,14 @@ with pipeline:
     while pipeline.isRunning():
         spatialData = xoutSpatialQueue.get().getSpatialLocations()
 
-        print("Use WASD keys to move ROI!")
+        #print("Use WASD keys to move ROI!")
         outputDepthIMage : dai.ImgFrame = outputDepthQueue.get()
 
         frameDepth = outputDepthIMage.getCvFrame()
         frameDepth = outputDepthIMage.getFrame()
-        print("Median depth value: ", np.median(frameDepth))
+        median = np.median(frameDepth)
+        if median > 0.0:
+            print("Median depth value: ", median)
 
         depthFrameColor = cv2.normalize(frameDepth, None, 255, 0, cv2.NORM_INF, cv2.CV_8UC1)
         depthFrameColor = cv2.equalizeHist(depthFrameColor)
