@@ -98,7 +98,6 @@ set(SOURCE_LIST
     src/pipeline/node/UVCBindings.cpp
     src/pipeline/node/ToFBindings.cpp
     src/pipeline/node/PointCloudBindings.cpp
-    src/pipeline/node/PipelineEventAggregationBindings.cpp
     src/pipeline/node/MessageDemuxBindings.cpp
     src/pipeline/node/HostNodeBindings.cpp
     src/pipeline/node/RecordBindings.cpp

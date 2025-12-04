@@ -611,7 +611,6 @@ bool PipelineImpl::isBuilt() const {
 }
 
 void PipelineImpl::build() {
-    // TODO(themarpe) - add mutex and set running up ahead
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
 
     if(isBuild) return;
