@@ -34,16 +34,18 @@ void SpatialDetectionNetwork::buildInternal() {
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         NNModelDescription modelDesc,
-                                                                        std::optional<float> fps) {
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(inputRgb, stereo, nnArchive, fps);
+    return build(inputRgb, stereo, nnArchive, fps, resizeMode);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         const NNArchive& nnArchive,
-                                                                        std::optional<float> fps) {
-    neuralNetwork->build(inputRgb, nnArchive, fps);
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
+    neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
     detectionParser->setNNArchive(nnArchive);
     alignDepth(stereo, inputRgb);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
@@ -52,16 +54,18 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const std::shared_ptr<NeuralDepth>& neuralDepth,
                                                                         NNModelDescription modelDesc,
-                                                                        std::optional<float> fps) {
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(inputRgb, neuralDepth, nnArchive, fps);
+    return build(inputRgb, neuralDepth, nnArchive, fps, resizeMode);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const std::shared_ptr<NeuralDepth>& neuralDepth,
                                                                         const NNArchive& nnArchive,
-                                                                        std::optional<float> fps) {
-    neuralNetwork->build(inputRgb, nnArchive, fps);
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
+    neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
     detectionParser->setNNArchive(nnArchive);
     alignDepth(neuralDepth, inputRgb);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
@@ -70,16 +74,18 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const std::shared_ptr<ToF>& tof,
                                                                         NNModelDescription modelDesc,
-                                                                        std::optional<float> fps) {
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(inputRgb, tof, nnArchive, fps);
+    return build(inputRgb, tof, nnArchive, fps, resizeMode);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const std::shared_ptr<ToF>& tof,
                                                                         const NNArchive& nnArchive,
-                                                                        std::optional<float> fps) {
-    neuralNetwork->build(inputRgb, nnArchive, fps);
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
+    neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
     detectionParser->setNNArchive(nnArchive);
     alignDepth(tof, inputRgb);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());

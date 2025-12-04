@@ -51,32 +51,46 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             DETECTION_NETWORK_BUILD_PYARGS,
             DETECTION_NETWORK_PYARGS)
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, NNModelDescription, std::optional<float>>(&DetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, NNModelDescription, std::optional<float>, std::optional<dai::ImgResizeMode>>(
+                 &DetectionNetwork::build),
              py::arg("input"),
              py::arg("model"),
-             py::arg("fps") = std::nullopt)
+             py::arg("fps") = std::nullopt,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+             DOC(dai, node, DetectionNetwork, build))
         .def("build",
-             ([](DetectionNetwork& self, const std::shared_ptr<Camera>& input, std::string model, std::optional<float> fps) {
-                 return self.build(input, NNModelDescription{model}, fps);
-             }),
+             ([](DetectionNetwork& self,
+                 const std::shared_ptr<Camera>& input,
+                 std::string model,
+                 std::optional<float> fps,
+                 std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, NNModelDescription{model}, fps, resizeMode); }),
              py::arg("input"),
              py::arg("model"),
-             py::arg("fps") = std::nullopt)
+             py::arg("fps") = std::nullopt,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+             DOC(dai, node, DetectionNetwork, build))
         .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, const NNArchive&, std::optional<float>>(&DetectionNetwork::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, const NNArchive&, std::optional<float>, std::optional<dai::ImgResizeMode>>(
+                 &DetectionNetwork::build),
              py::arg("input"),
              py::arg("nnArchive"),
-             py::arg("fps") = std::nullopt)
+             py::arg("fps") = std::nullopt,
+             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+             DOC(dai, node, DetectionNetwork, build, 3))
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def("build",
              py::overload_cast<const std::shared_ptr<ReplayVideo>&, NNModelDescription, std::optional<float>>(&DetectionNetwork::build),
              py::arg("input"),
              py::arg("model"),
-             py::arg("fps") = std::nullopt)
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, DetectionNetwork, build, 4))
         .def("build",
              py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>>(&DetectionNetwork::build),
              py::arg("input"),
              py::arg("nnArchive"),
-             py::arg("fps") = std::nullopt)
+             py::arg("fps") = std::nullopt,
+             DOC(dai, node, DetectionNetwork, build, 5))
+#endif
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
                  auto self = getImplicitPipeline()->create<DetectionNetwork>();
                  self->build(input, nnArchive);
