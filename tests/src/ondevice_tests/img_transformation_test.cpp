@@ -225,7 +225,6 @@ TEST_CASE("ImgTransformation remap vertical") {
     pipeline.stop();
 }
 
-
 // -----------------------------------------------------------------------------
 // ImgTransformation matrix inverse consistency (ImgFrame)
 // Purpose:
