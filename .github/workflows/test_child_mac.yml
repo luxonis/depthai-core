@@ -49,4 +49,4 @@ jobs:
             fi
             source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
             export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-mac-${{ matrix.rvc4os }}-${{ inputs.flavor }}"
-            exec hil_runner --basic-sanity --models "oak4_pro or oak4_d" -os mac --sync-workspace --rsync-args="--exclude=venv" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "cd /tmp/depthai-core && ./scripts/hil/run_hil_tests_mac.sh ${{ inputs.flavor }} --rvc4"
+            exec hil_runner --basic-sanity --models "oak4_pro or oak4_d" -os mac --sync-workspace --rsync-args="--exclude=venv" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "cd /tmp/depthai-core && ./scripts/hil/run_hil_tests_mac.sh $PULL_REQUEST ${{ inputs.flavor }} --rvc4"
