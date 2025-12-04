@@ -13,11 +13,11 @@ private_data(
 )
 
 dai_add_example(april_tags april_tags.cpp ON OFF)
-dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 rvc4rgb ci)
 
 dai_add_example(april_tags_12mp april_tags_12mp.cpp ON OFF)
-dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 rvc4rgb ci)
 
 dai_add_example(april_tags_replay april_tags_replay.cpp ON OFF)
 target_compile_definitions(april_tags_replay PRIVATE APRIL_TAGS_PATH="${april_tags}")
-dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 rvc4rgb ci)

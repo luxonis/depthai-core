@@ -13,12 +13,13 @@ namespace dai {
 class AprilTagConfig : public Buffer {
    public:
     AprilTagConfig() = default;
-    virtual ~AprilTagConfig() = default;
 
-    virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
-        (void)metadata;
-        datatype = DatatypeEnum::AprilTagConfig;
-    };
+    ~AprilTagConfig() override;
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::AprilTagConfig;
+    }
 
     /**
      * Supported AprilTag families.

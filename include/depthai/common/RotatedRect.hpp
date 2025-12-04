@@ -24,10 +24,15 @@ struct RotatedRect {
             throw std::runtime_error("Cannot create RotatedRect with mixed normalization");
         }
     }
-    RotatedRect(const Rect& rect, float angle)
+    RotatedRect(const Rect& rect, float angle = 0.f)
         : center(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, rect.isNormalized()),
           size(rect.width, rect.height, rect.isNormalized()),
           angle(angle) {}
+
+    operator Rect() const {
+        const auto [minx, miny, maxx, maxy] = getOuterRect();
+        return Rect(minx, miny, maxx - minx, maxy - miny);
+    }
 
     bool isNormalized() const {
         if(size.isNormalized() != center.isNormalized()) {
@@ -41,6 +46,9 @@ struct RotatedRect {
      * @return Normalized rotated rectangle
      */
     RotatedRect normalize(unsigned int width, unsigned int height) const {
+        if(width == 0 || height == 0) {
+            throw std::runtime_error("Width and height must be non-zero to denormalize RotatedRect");
+        }
         if(isNormalized()) return *this;
         RotatedRect normalized = *this;
         normalized.center = dai::Point2f(center.x / width, center.y / height, true);
@@ -52,8 +60,11 @@ struct RotatedRect {
      * Denormalize the rotated rectangle. The denormalized rectangle will have center and size coordinates in range [0, width] and [0, height]
      * @return Denormalized rotated rectangle
      */
-    RotatedRect denormalize(unsigned int width, unsigned int height) const {
-        if(!isNormalized()) return *this;
+    RotatedRect denormalize(unsigned int width, unsigned int height, bool force = false) const {
+        if(width == 0 || height == 0) {
+            throw std::runtime_error("Width and height must be non-zero to denormalize RotatedRect");
+        }
+        if(!force && !isNormalized()) return *this;
         RotatedRect denormalized = *this;
         denormalized.center = dai::Point2f(center.x * width, center.y * height, false);
         denormalized.size = dai::Size2f(size.width * width, size.height * height, false);
@@ -102,6 +113,24 @@ struct RotatedRect {
         float miny = std::min({points[0].y, points[1].y, points[2].y, points[3].y});
         float maxy = std::max({points[0].y, points[1].y, points[2].y, points[3].y});
         return {minx, miny, maxx, maxy};
+    }
+
+    /**
+     * Returns the outer non-rotated rectangle in the COCO (xmin, ymin, width, height) format.
+     * @return (top-left point, size)
+     */
+    std::tuple<dai::Point2f, dai::Size2f> getOuterXYWH() const {
+        auto [minx, miny, maxx, maxy] = getOuterRect();
+        return {dai::Point2f{minx, miny, isNormalized()}, dai::Size2f{maxx - minx, maxy - miny, isNormalized()}};
+    }
+
+    /**
+     * Returns the outer non-rotated rectangle in the YOLO (xcenter, ycenter, width, height) format.
+     * @return (center point, size)
+     */
+    std::tuple<dai::Point2f, dai::Size2f> getOuterCXCYWH() const {
+        auto [minx, miny, maxx, maxy] = getOuterRect();
+        return {dai::Point2f{(minx + maxx) / 2.0f, (miny + maxy) / 2.0f, isNormalized()}, dai::Size2f{maxx - minx, maxy - miny, isNormalized()}};
     }
 };
 

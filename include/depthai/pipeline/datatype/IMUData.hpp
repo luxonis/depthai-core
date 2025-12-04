@@ -217,14 +217,15 @@ class IMUData : public Buffer, public ProtoSerializable {
    public:
     // Construct IMUData message
     IMUData() = default;
-    virtual ~IMUData() = default;
+    virtual ~IMUData();
 
     /// Detections
     std::vector<IMUPacket> packets;
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::IMUData;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::IMUData;
+    }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

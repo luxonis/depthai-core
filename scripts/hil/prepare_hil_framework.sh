@@ -1,8 +1,18 @@
 #!/bin/bash
 
-echo "/home/$USER/hil_framework/lib_testbed/tools" >> $GITHUB_PATH
-echo "PYTHONPATH="$PYTHONPATH:/home/$USER/hil_framework"" >> $GITHUB_ENV
-echo "HIL_FRAMEWORK_PATH="/home/$USER/hil_framework"" >> $GITHUB_ENV
+# Check if PAT token argument is provided
+if [ -z "$1" ]; then
+  echo "Usage: $0 <PAT_TOKEN>"
+  exit 1
+fi
 
-pushd /home/$USER/hil_framework/ > /dev/null 2>&1 && git pull && git submodule update --init --recursive > /dev/null 2>&1 && popd > /dev/null 2>&1
-pushd /home/$USER/hil_framework/ > /dev/null 2>&1 && pip install -r requirements.txt  > /dev/null 2>&1 && popd > /dev/null 2>&1
+PAT_TOKEN=$1
+
+# Set up a Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install required Python packages
+pip install hil-framework --upgrade --no-cache-dir \
+  --index-url "https://__token__:$PAT_TOKEN@gitlab.luxonis.com/api/v4/projects/213/packages/pypi/simple" \
+  > /dev/null 2>&1

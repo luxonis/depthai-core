@@ -52,6 +52,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     find_package(httplib ${_QUIET} CONFIG REQUIRED)
     # ZLIB for compressing Apps
     find_package(ZLIB REQUIRED)
+    find_package(Eigen3 ${_QUIET} CONFIG REQUIRED)
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
@@ -176,7 +177,7 @@ else()
     FetchContent_Declare(
         XLink
         GIT_REPOSITORY https://github.com/luxonis/XLink.git
-        GIT_TAG        87785828fabdb1718760bb0a044405d5bbfbb3a2
+        GIT_TAG        ffe0f85a0d0cdfd89cfef90611eb53af2748ea11
     )
 
     FetchContent_MakeAvailable(
@@ -215,6 +216,104 @@ endif()
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)
     include(${DEPTHAI_DEPENDENCY_INCLUDE} OPTIONAL)
+endif()
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    set(DEPTHAI_DYNAMIC_CALIBRATION_PATH "" CACHE FILEPATH "Override path to local dynamic_calibration .zip file")
+
+    if(DEPTHAI_DYNAMIC_CALIBRATION_PATH AND EXISTS "${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
+        message(STATUS "Using local dynamic_calibration zip: ${DEPTHAI_DYNAMIC_CALIBRATION_PATH}")
+        FetchContent_Declare(
+            dynamic_calibration
+            URL "file://${DEPTHAI_DYNAMIC_CALIBRATION_PATH}"
+        )
+    else()
+        include(Depthai/DepthaiDynamicCalibrationConfig)
+        include(PlatformParsing)
+        detect_platform_arch(DEPTHAI_HOST_PLATFORM_ARCH)
+        message(STATUS "Platform architecture: ${DEPTHAI_HOST_PLATFORM_ARCH}")
+        # TODO - Add URL_HASH
+        message(STATUS "Using remote dynamic_calibration zip")
+        FetchContent_Declare(
+            dynamic_calibration
+            URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_${DEPTHAI_HOST_PLATFORM_ARCH}.zip"
+        )
+    endif()
+
+    FetchContent_MakeAvailable(dynamic_calibration)
+    message(STATUS "Dynamic calibration extracted to ${dynamic_calibration_SOURCE_DIR}")
+    set(DYNAMIC_CALIBRATION_DIR ${dynamic_calibration_SOURCE_DIR})
+
+    if(WIN32)
+        # On Windows, find both .lib (import libraries) and .dll (runtime libraries)
+        # Search for the import libraries (.lib files)
+        find_library(DYNAMIC_CALIBRATION_RELEASE_LIB dynamic_calibration
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+        find_library(DYNAMIC_CALIBRATION_DEBUG_LIB dynamic_calibrationd
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+
+        # Search for the runtime libraries (.dll files)
+        find_file(DYNAMIC_CALIBRATION_RELEASE_DLL dynamic_calibration.dll
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/bin ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+        find_file(DYNAMIC_CALIBRATION_DEBUG_DLL dynamic_calibrationd.dll
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/bin ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+
+        if(NOT DYNAMIC_CALIBRATION_DEBUG_LIB OR NOT DYNAMIC_CALIBRATION_DEBUG_DLL)
+            message(FATAL_ERROR "Dynamic Calibration debug library (.lib) or runtime (.dll) not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
+        endif()
+        if(NOT DYNAMIC_CALIBRATION_RELEASE_LIB OR NOT DYNAMIC_CALIBRATION_RELEASE_DLL)
+            message(FATAL_ERROR "Dynamic Calibration release library (.lib) or runtime (.dll) not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
+        endif()
+    else()
+        # On non-Windows platforms, search for the release version of the library
+        find_library(DYNAMIC_CALIBRATION_RELEASE dynamic_calibration
+            PATHS ${DYNAMIC_CALIBRATION_DIR}/lib
+            NO_DEFAULT_PATH
+        )
+        if(NOT DYNAMIC_CALIBRATION_RELEASE)
+            message(FATAL_ERROR "Dynamic Calibration library not found, disable support by setting DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT to OFF")
+        endif()
+    endif()
+
+    # Set up legacy variables for backward compatibility
+    if(WIN32)
+        # Set a generator expression to select the right one based on build type (import libraries)
+        set(DYNAMIC_CALIBRATION_LIB
+            $<$<CONFIG:Debug>:${DYNAMIC_CALIBRATION_DEBUG_LIB}>
+            $<$<CONFIG:Release>:${DYNAMIC_CALIBRATION_RELEASE_LIB}>
+        )
+    else()
+        set(DYNAMIC_CALIBRATION_LIB ${DYNAMIC_CALIBRATION_RELEASE})
+    endif()
+
+    # Create imported target for runtime dependencies
+    add_library(dynamic_calibration_imported SHARED IMPORTED)
+    if(WIN32)
+        set_target_properties(dynamic_calibration_imported PROPERTIES
+            IMPORTED_LOCATION_DEBUG "${DYNAMIC_CALIBRATION_DEBUG_DLL}"
+            IMPORTED_LOCATION_RELEASE "${DYNAMIC_CALIBRATION_RELEASE_DLL}"
+            IMPORTED_IMPLIB_DEBUG "${DYNAMIC_CALIBRATION_DEBUG_LIB}"
+            IMPORTED_IMPLIB_RELEASE "${DYNAMIC_CALIBRATION_RELEASE_LIB}"
+            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
+            INTERFACE_INCLUDE_DIRECTORIES "${DYNAMIC_CALIBRATION_DIR}/include"
+        )
+    else()
+        # On non-Windows platforms, use the release library for all configurations
+        set_target_properties(dynamic_calibration_imported PROPERTIES
+            IMPORTED_LOCATION_DEBUG "${DYNAMIC_CALIBRATION_RELEASE}"
+            IMPORTED_LOCATION_RELEASE "${DYNAMIC_CALIBRATION_RELEASE}"
+            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
+            INTERFACE_INCLUDE_DIRECTORIES "${DYNAMIC_CALIBRATION_DIR}/include"
+        )
+    endif()
 endif()
 
 # Cleanup

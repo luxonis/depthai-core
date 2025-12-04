@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <thread>
 
+#include "../../src/utility/Platform.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
@@ -41,22 +42,21 @@ bool folderHasWritePermissions(const std::filesystem::path& folder) {
 class TestHelper {
    public:
     TestHelper() {
-        srand(time(nullptr));
-        testFolder = std::filesystem::path("/tmp/depthai_test_" + std::to_string(rand())).string();
+        testFolder = dai::platform::getTempPath();
         std::filesystem::create_directories(testFolder);
-        std::filesystem::create_directories(testFolder + "/recording_metadata");
-        std::filesystem::create_directories(testFolder + "/recording_video");
-        std::filesystem::create_directories(testFolder + "/extracted");
+        std::filesystem::create_directories(std::filesystem::path(testFolder).append("recording_metadata"));
+        std::filesystem::create_directories(std::filesystem::path(testFolder).append("recording_video"));
+        std::filesystem::create_directories(std::filesystem::path(testFolder).append("extracted"));
 
         if(!folderHasWritePermissions(testFolder)) {
-            throw std::runtime_error("Test folder does not have write permissions: " + testFolder);
+            throw std::runtime_error("Test folder does not have write permissions: " + testFolder.string());
         }
 
         auto recordingFilenames = dai::utility::filenamesInTar(RECORDING_PATH);
-        std::vector<std::string> recordingExtFiles;
+        std::vector<std::filesystem::path> recordingExtFiles;
         recordingExtFiles.reserve(recordingFilenames.size());
         for(const auto& filename : recordingFilenames) {
-            recordingExtFiles.push_back(testFolder + "/extracted/" + filename);
+            recordingExtFiles.push_back(std::filesystem::path(testFolder).append("extracted").append(filename));
         }
         dai::utility::untarFiles(RECORDING_PATH, recordingFilenames, recordingExtFiles);
     }
@@ -65,7 +65,7 @@ class TestHelper {
         std::filesystem::remove_all(testFolder);
     }
 
-    std::string testFolder;
+    std::filesystem::path testFolder;
 };
 
 TEST_CASE("RecordMetadataOnly node") {
@@ -79,7 +79,7 @@ TEST_CASE("RecordMetadataOnly node") {
     imu->setBatchReportThreshold(100);
 
     auto recordNode = p.create<dai::node::RecordMetadataOnly>();
-    recordNode->setRecordFile(helper.testFolder + "/recording_metadata/metadata.mcap");
+    recordNode->setRecordFile(std::filesystem::path(helper.testFolder).append("recording_metadata").append("metadata.mcap"));
 
     imu->out.link(recordNode->input);
 
@@ -91,7 +91,7 @@ TEST_CASE("RecordMetadataOnly node") {
 
     p.stop();
 
-    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_metadata/metadata.mcap"));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_metadata").append("metadata.mcap")));
 }
 
 TEST_CASE("RecordVideo raw color") {
@@ -103,8 +103,8 @@ TEST_CASE("RecordVideo raw color") {
     auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::BGR888i);
 
     auto recordNode = p.create<dai::node::RecordVideo>();
-    recordNode->setRecordMetadataFile(helper.testFolder + "/recording_video/metadata_color.mcap");
-    recordNode->setRecordVideoFile(helper.testFolder + "/recording_video/video_color.mp4");
+    recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_color.mcap"));
+    recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_color.mp4"));
 
     camOut->link(recordNode->input);
 
@@ -116,8 +116,8 @@ TEST_CASE("RecordVideo raw color") {
 
     p.stop();
 
-    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/metadata_color.mcap"));
-    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/video_color.mp4"));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_color.mcap")));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_color.mp4")));
 }
 
 // TODO: uncomment when GRAY8 camera output is supported on RVC4
@@ -130,8 +130,8 @@ TEST_CASE("RecordVideo raw color") {
 //     auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::GRAY8);
 //
 //     auto recordNode = p.create<dai::node::RecordVideo>();
-//     recordNode->setRecordMetadataFile(helper.testFolder + "/recording_video/metadata_gray.mcap");
-//     recordNode->setRecordVideoFile(helper.testFolder + "/recording_video/video_gray.mp4");
+//     recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap"));
+//     recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.mp4"));
 //
 //     camOut->link(recordNode->input);
 //
@@ -143,8 +143,8 @@ TEST_CASE("RecordVideo raw color") {
 //
 //     p.stop();
 //
-//     REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/metadata_gray.mcap"));
-//     REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/video_gray.mp4"));
+//     REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap")));
+//     REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.mp4")));
 // }
 
 TEST_CASE("RecordVideo encoded h264") {
@@ -157,8 +157,8 @@ TEST_CASE("RecordVideo encoded h264") {
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();
-    recordNode->setRecordMetadataFile(helper.testFolder + "/recording_video/metadata_h264.mcap");
-    recordNode->setRecordVideoFile(helper.testFolder + "/recording_video/video_h264.mp4");
+    recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_h264.mcap"));
+    recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_h264.mp4"));
 
     videoEncoder->setProfile(dai::VideoEncoderProperties::Profile::H264_MAIN);
 
@@ -173,8 +173,8 @@ TEST_CASE("RecordVideo encoded h264") {
 
     p.stop();
 
-    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/metadata_h264.mcap"));
-    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/video_h264.mp4"));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_h264.mcap")));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_h264.mp4")));
 }
 
 TEST_CASE("RecordVideo encoded mjpeg") {
@@ -187,8 +187,8 @@ TEST_CASE("RecordVideo encoded mjpeg") {
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();
-    recordNode->setRecordMetadataFile(helper.testFolder + "/recording_video/metadata_mjpeg.mcap");
-    recordNode->setRecordVideoFile(helper.testFolder + "/recording_video/video_mjpeg.mp4");
+    recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_mjpeg.mcap"));
+    recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_mjpeg.mp4"));
 
     videoEncoder->setProfile(dai::VideoEncoderProperties::Profile::MJPEG);
 
@@ -203,8 +203,8 @@ TEST_CASE("RecordVideo encoded mjpeg") {
 
     p.stop();
 
-    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/metadata_mjpeg.mcap"));
-    REQUIRE(std::filesystem::exists(helper.testFolder + "/recording_video/video_mjpeg.mp4"));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_mjpeg.mcap")));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_mjpeg.mp4")));
 }
 
 TEST_CASE("MockIn Camera") {
@@ -213,8 +213,8 @@ TEST_CASE("MockIn Camera") {
     dai::Pipeline p;
 
     auto replayNode = p.create<dai::node::ReplayVideo>();
-    replayNode->setReplayMetadataFile(helper.testFolder + "/extracted/CameraCAM_A.mcap");
-    replayNode->setReplayVideoFile(helper.testFolder + "/extracted/CameraCAM_A.mp4");
+    replayNode->setReplayMetadataFile(std::filesystem::path(helper.testFolder).append("extracted").append("CameraCAM_A.mcap"));
+    replayNode->setReplayVideoFile(std::filesystem::path(helper.testFolder).append("extracted").append("CameraCAM_A.mp4"));
     replayNode->setLoop(false);
 
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, *replayNode);
@@ -252,7 +252,7 @@ TEST_CASE("MockIn IMU") {
     dai::Pipeline p;
 
     auto replayNode = p.create<dai::node::ReplayMetadataOnly>();
-    replayNode->setReplayFile(helper.testFolder + "/extracted/IMU.mcap");
+    replayNode->setReplayFile(std::filesystem::path(helper.testFolder).append("extracted").append("IMU.mcap"));
     replayNode->setLoop(false);
 
     auto imu = p.create<dai::node::IMU>();

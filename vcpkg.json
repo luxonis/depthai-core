@@ -17,6 +17,7 @@
         "fmt",
         "neargye-semver",
         "magic-enum",
+        "eigen3",
         {
             "name": "libarchive",
             "default-features": false
@@ -223,6 +224,14 @@
             "dependencies": [
                 {
                     "name": "rerun-sdk"
+                }
+            ]
+        },
+        "zoo-helper": {
+            "description": "Enable Zoo helper build",
+            "dependencies": [
+                {
+                    "name": "argparse"
                 }
             ]
         }

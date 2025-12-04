@@ -16,7 +16,7 @@ class FeatureTrackerConfig : public Buffer {
      * Construct FeatureTrackerConfig message.
      */
     FeatureTrackerConfig() = default;
-    virtual ~FeatureTrackerConfig() = default;
+    virtual ~FeatureTrackerConfig();
 
     static constexpr const std::int32_t AUTO = 0;
 
@@ -315,10 +315,11 @@ class FeatureTrackerConfig : public Buffer {
     FeatureMaintainer featureMaintainer;
 
    public:
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::FeatureTrackerConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::FeatureTrackerConfig;
+    }
 
     DEPTHAI_SERIALIZE(FeatureTrackerConfig, cornerDetector, motionEstimator, featureMaintainer);
 };

@@ -33,7 +33,13 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        auto devicesBefore = dai::Device::getAllAvailableDevices().size();
+        auto devicesBefore = 0;
+
+        while(devicesBefore < 1 ) {
+            devicesBefore = dai::Device::getAllAvailableDevices().size();
+            std::cout << "Devices now: " << devicesBefore << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+        }
 
         // Run the process with captured output and timeout
         auto start = std::chrono::steady_clock::now();
@@ -73,7 +79,7 @@ int main(int argc, char* argv[]) {
 #else
             std::cerr << "Sending SIGINT..." << std::endl;
             proc.kill(SIGINT);  // Try graceful termination first
-            std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait for it to exit
+            std::this_thread::sleep_for(std::chrono::seconds(7)); // Wait for it to exit
 
             if(proc.poll() == -1) { // Check if it's still running
                 std::cerr << "Process still running after SIGINT, sending SIGKILL..." << std::endl;
@@ -91,11 +97,15 @@ int main(int argc, char* argv[]) {
             std::cout << "Devices now: " << dai::Device::getAllAvailableDevices().size() << std::endl;
         }
 
-        // Only call communicate() once and save the results
-        auto results = proc.communicate();
-
         // Now we can safely check the return code
         int retcode = proc.retcode();
+        // 2 signifies that proc was killed by a timeout
+        if (retcode == 2) {
+            retcode = 0;
+        }
+
+        // Only call communicate() once and save the results
+        auto results = proc.communicate();
 
         // Always print the output regardless of return code
         std::string stdoutStr(results.first.buf.data(), results.first.length);

@@ -1,26 +1,13 @@
 name: BOM Testing
 
 on:
-  push:
-    branches:
-      - develop
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       distinct_id:
         description: 'run identifier'
         required: false
-      testbed:
-          description: 'On what testbed will tests be run'
-          required: false
-          type: string
       reservation_name:
           description: 'Reservation name - usually usually unique identifier of root CI run'
-          required: false
-          type: string
-      luxonis_os:
-          description: 'Which RVC4 os version to install before starting tests'
           required: false
           type: string
       hold_reservation:
@@ -32,6 +19,14 @@ on:
         type: string
         default: "develop"
         description: "Version for depthai"
+      device:
+        required: false
+        type: string
+        default: "stereo"
+        description: "Which device to test - stereo or rgb"
+      additional_options:
+        required: false
+        type: string
 
 jobs:
   id:
@@ -42,11 +37,43 @@ jobs:
       - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
         run: echo ${{ github.event.inputs.distinct_id }}
 
+
+  build_docker_container:
+    runs-on: ['self-hosted', 'hil-test-v3']
+    outputs:
+        tag: ${{ steps.build_and_push.outputs.tag }}
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Checkout source code from tag
+      uses: actions/checkout@v3
+      with:
+            ref: ${{ github.event.inputs.depthai }}
+            path: depthai-core
+
+    - name: Build and push
+      id: build_and_push
+      run: |
+        cp -n scripts/hil/build_and_push.sh depthai-core/scripts/hil/build_and_push.sh
+        rm depthai-core/tests/Dockerfile
+        cp tests/Dockerfile depthai-core/tests/Dockerfile
+        cp -n tests/run_tests_entrypoint.sh depthai-core/tests/run_tests_entrypoint.sh
+        cd depthai-core
+
+        COMMIT_SHA=$(git rev-parse HEAD)
+
+        TAG="vanilla_$COMMIT_SHA"
+
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "Using branch: $BRANCH_NAME"
+        scripts/hil/build_and_push.sh "vanilla" "${{ github.event.inputs.depthai }}" "${{ secrets.CONTAINER_REGISTRY }}" "$COMMIT_SHA" "$PARALLEL_JOBS" "false" "$TAG"
+
   # Testing
   rvc4_test_bom:
       env:
         VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       if: github.event_name == 'workflow_dispatch'
+      needs: ["build_docker_container"]
       strategy:
         matrix:
           arch: ['x64']
@@ -57,26 +84,9 @@ jobs:
       steps:
       - uses: actions/checkout@v3
 
-      - name: Checkout source code from tag
-        uses: actions/checkout@v3
-        with:
-            ref: ${{ github.event.inputs.depthai }}
-            path: depthai-core
-            submodules: 'recursive'
-
-      - name: Prepare HIL Framework
-        run: source scripts/hil/prepare_hil_framework.sh
-
       - name: Configure, Build and Test
         run: |
-          rm -rf depthai-core/scripts/hil/ && mkdir -p depthai-core/scripts/hil/ && cp -r scripts/hil/* depthai-core/scripts/hil/
-          rm depthai-core/tests/run_tests.py && cp tests/run_tests.py depthai-core/tests/run_tests.py
-          cd depthai-core
-
-          if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
-            TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
-          fi
-
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           if [[ -n "${{ github.event.inputs.reservation_name }}" ]]; then
             RESERVATION_OPTION="--reservation-name ${{ github.event.inputs.reservation_name }}"
           else
@@ -88,7 +98,14 @@ jobs:
             HOLD_RESERVATION="--hold-reservation"
           fi
 
-          if [[ -n  "${{ github.event.inputs.luxonis_os }}" ]]; then
-            UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
+          if [[ -n "${{ github.event.inputs.additional_options }}" ]]; then
+            ADDITIONAL_OPTIONS="${{ github.event.inputs.additional_options }}"
           fi
-          exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
+
+          if [[ "${{ github.event.inputs.device }}" == 'stereo' ]]; then
+            MODELS="oak4_pro or oak4_d"
+          else
+            MODELS="oak4_s"
+            RGB="rgb"
+          fi
+          exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait $ADDITIONAL_OPTIONS --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4$RGB"

@@ -5,16 +5,16 @@
 namespace dai {
 namespace node {
 
-ToF::ToF(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, ToF, ToFProperties>(std::move(props)),
+ToFBase::ToFBase(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties>(std::move(props)),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
-ToF::Properties& ToF::getProperties() {
+ToFBase::Properties& ToFBase::getProperties() {
     properties.initialConfig = *initialConfig;
     return properties;
 }
 
-std::shared_ptr<ToF> ToF::build(CameraBoardSocket boardSocket, float fps) {
+std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ImageFiltersPresetMode presetMode, std::optional<float> fps) {
     if(isBuilt) {
         throw std::runtime_error("ToF node is already built");
     }
@@ -59,14 +59,20 @@ std::shared_ptr<ToF> ToF::build(CameraBoardSocket boardSocket, float fps) {
         throw std::runtime_error("Camera socket not found on the connected device");
     }
 
+    // Set profile preset for ToFConfig
+    initialConfig->setProfilePreset(presetMode);
+
     properties.boardSocket = boardSocket;
-    properties.fps = fps;
+    properties.fps = fps.value_or(ToFProperties::AUTO);
+
     isBuilt = true;
-    return std::static_pointer_cast<ToF>(shared_from_this());
+    return std::static_pointer_cast<ToFBase>(shared_from_this());
 }
 
+ToF::~ToF() = default;
+
 // Get current board socket
-CameraBoardSocket ToF::getBoardSocket() const {
+CameraBoardSocket ToFBase::getBoardSocket() const {
     if(!isBuilt) {
         throw std::runtime_error("ToF node must be built before calling getBoardSocket()");
     }

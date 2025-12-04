@@ -164,7 +164,7 @@ std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std
 #endif
 }
 
-bool checkRecordConfig(std::string& recordPath, RecordConfig& config) {
+bool checkRecordConfig(std::filesystem::path& recordPath, RecordConfig& config) {
     if(!platform::checkPathExists(recordPath)) {
         spdlog::warn("DEPTHAI_RECORD path does not exist or is invalid. Record disabled.");
         return false;
@@ -174,8 +174,7 @@ bool checkRecordConfig(std::string& recordPath, RecordConfig& config) {
         config.outputDir = recordPath;
     } else {
         // Is a file
-        std::string ext = recordPath.substr(recordPath.find_last_of('.') + 1);
-        if(ext != "json") {
+        if(recordPath.extension() != ".json") {
             spdlog::warn("DEPTHAI_RECORD path is not a directory or a json file. Record disabled.");
             return false;
         }

@@ -34,6 +34,8 @@ struct WarpProperties : PropertiesSerializable<Properties, WarpProperties> {
     std::vector<int> warpHwIds;
 
     Interpolation interpolation = Interpolation::AUTO;
+
+    ~WarpProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(WarpProperties, outputWidth, outputHeight, outputFrameSize, numFramesPool, meshWidth, meshHeight, meshUri, warpHwIds, interpolation);

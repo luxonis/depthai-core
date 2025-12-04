@@ -4,14 +4,17 @@ name: Depthai Python CI/CD
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-    - develop
   push:
     branches:
-    - develop*
+      - main
+      - develop
     tags:
-    - 'v*'
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, synchronize, reopened, labeled]
 
 ###################################
 ###################################
@@ -22,9 +25,38 @@ env:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
 
+  # The precheck job determines whether a workflow should be run in full
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+    - name: Evaluate trigger condition
+      id: check
+      run: |
+        EVENT_NAME="${{ github.event_name }}"
+
+        RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
+        if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
+          LABELS="[]"
+        else
+          LABELS="$RAW_LABELS"
+        fi
+
+        SHOULD_RUN="true"
+        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
+          fi
+        fi
+
+        echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+
   # Job which builds docstrings for the rest of the wheel builds
   build-docstrings:
     runs-on: ubuntu-latest
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
     env:
       VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     steps:
@@ -63,6 +95,7 @@ jobs:
           cmake -S . \
             -B build \
             -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
+            -DVCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -DDEPTHAI_BUILD_PYTHON=ON \
             -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON \
             -DDEPTHAI_BASALT_SUPPORT=ON \
@@ -165,6 +198,7 @@ jobs:
             -DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
             -DDEPTHAI_BUILD_PYTHON=ON \
             -D CMAKE_BUILD_TYPE=Release \
+            -D VCPKG_OVERLAY_TRIPLETS="$PWD/cmake/triplets/release" \
             -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp \
             -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
             cmake --build build --parallel 4
@@ -182,7 +216,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10', '3.11', '3.12', '3.13']
+        python-version: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
         python-architecture: [x64] # TODO(Morato) - re-enable x86
       fail-fast: false
     env:
@@ -226,6 +260,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.python-architecture }}
+      - name: Set UTF-8 encoding
+        run: |
+          echo "PYTHONIOENCODING=utf-8" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "PYTHONUTF8=1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -233,30 +271,36 @@ jobs:
         run: |
           python -m pip install --upgrade pip
       - name: Building wheels
-        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/audited/ --verbose
+        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
+      - name: Install delvewheel
+        run: python -m pip install delvewheel
+      - name: List wheelhouse
+        run: cd bindings/python && ls ./wheelhouse
+      - name: Auditing wheels
+        shell: bash
+        run: |
+          cd bindings/python
+          EXTRA_DLL_PATH=$(find ./build -type d -name "temp.win*" -exec ls -d {} \; | head -n 1)/Release/Release
+          echo "delvewheel extra dll path: $EXTRA_DLL_PATH"
+          for wheel in ./wheelhouse/*.whl; do
+            delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" --include vcruntime140.dll --include vcruntime140_1.dll --include ucrtbase.dll -w wheelhouse/audited
+          done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
           name: audited-wheels-windows-${{ matrix.python-version }}
           path: bindings/python/wheelhouse/audited/*
-      - name: Deploy wheels to artifactory (if not a release)
-        if: startsWith(github.ref, 'refs/tags/v') != true
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
-        env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
   # This job builds wheels for macOS arch
   build-macos:
     needs: build-docstrings
     strategy:
       matrix:
-        python-version: [3.8, 3.9, '3.10', '3.11', '3.12', '3.13']
-        os: [macos-13, macos-14] # macos-13 is x64, macos-14 is arm64
+        python-version: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
+        os: [macos-15-intel, macos-14]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
@@ -311,7 +355,7 @@ jobs:
           brew install nasm
           python -m pip install delocate
       - name: Building wheels
-        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
+        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
@@ -322,9 +366,57 @@ jobs:
         with:
           name: audited-wheels-macos-${{ matrix.os }}-${{ matrix.python-version }}
           path: bindings/python/wheelhouse/audited/*
-      - name: Deploy wheels to artifactory (if not a release)
+
+  combine-macos-wheels:
+    needs: build-macos
+    strategy:
+      matrix:
+        os: [macos-15-intel, macos-14]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download audited wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels-macos-${{ matrix.os }}-*
+          path: bindings/python/wheelhouse/audited/
+          merge-multiple: true
+      - name: Combine wheels
+        run: |
+          cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
+          echo "Combining repaired wheels into one master wheel"
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
+      - name: Upload combined wheels as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-combined-macos-${{ matrix.os }}
+          path: bindings/python/wheelhouse/audited/*
+      - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Install combined wheel and run a smoke-test
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          set -euo pipefail
+
+          # Resolve the exact dev version (includes commit hash)
+          ver=$(python -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
+          echo "Installing depthai==$ver using $(python -V)"
+
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel=$(ls bindings/python/wheelhouse/audited/*.whl)
+
+          # Install wheel
+          python -m pip install -U pip
+          python -m pip install --force-reinstall $wheel
+
+          EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
+      - name: Upload combined wheels to artifactory
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -335,12 +427,12 @@ jobs:
     needs: build-docstrings
     runs-on: ubuntu-latest
     container:
-      image: quay.io/pypa/manylinux_2_28_x86_64:2024.12.05-1
+      image: quay.io/pypa/manylinux_2_28_x86_64:2025.11.10-2
       env:
         PLAT: manylinux_2_28_x86_64
     strategy:
       matrix:
-        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313"]
+        python-set: ["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314"]
     env:
       DEPTHAI_BUILD_BASALT: ON
       DEPTHAI_BUILD_PCL: ON
@@ -381,25 +473,80 @@ jobs:
       - name: Building source distribution
         run: |
           cd bindings/python
-          /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
+          /opt/python/cp310-cp310/bin/python3.10 -m pip install --upgrade setuptools
+          /opt/python/cp310-cp310/bin/python3.10 setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
         run: |
-          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Audit wheels
-        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
           name: audited-wheels-linux-x86_64-${{ matrix.python-set }}
           path: bindings/python/wheelhouse/audited/*
-      - name: Deploy wheels to artifactory (if not a release)
+
+  combine-linux-x86_64-wheels:
+    needs: build-linux-x86_64
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux_2_28_x86_64:2025.11.10-2
+      env:
+        PLAT: manylinux_2_28_x86_64
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download audited wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels-linux-x86_64-*
+          path: bindings/python/wheelhouse/audited/
+          merge-multiple: true
+      - name: Install llvm-strip
+        run: |
+          yum install -y llvm # for llvm-strip, strip leads to "ELF load command address/offset not page-aligned" errors 
+      - name: Combine wheels
+        run: |
+          cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
+          echo "Combining repaired wheels into one master wheel"
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
+      - name: Upload combined wheels as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-combined-linux-x86_64
+          path: bindings/python/wheelhouse/audited/*
+      - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Install combined wheel and run a smoke-test
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          set -euo pipefail
+
+          PYBIN="/opt/python/cp310-cp310/bin/python"
+
+          # Resolve the exact dev version (includes commit hash)
+          ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
+          echo "Installing depthai==$ver using $($PYBIN -V)"
+
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel=$(ls bindings/python/wheelhouse/audited/*.whl)
+
+          "$PYBIN" -m ensurepip --upgrade || true
+          "$PYBIN" -m pip install -U pip
+          "$PYBIN" -m pip install --force-reinstall $wheel
+
+          # Smoke test: fail hard on any exception or version mismatch
+          EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
+      - name: Upload combined wheels to artifactory
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -411,12 +558,12 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 1440  # Set timeout to 24 hours
     container:
-      image: quay.io/pypa/manylinux_2_28_aarch64:2024.12.05-1
+      image: quay.io/pypa/manylinux_2_28_aarch64:2025.11.10-2
       env:
         PLAT: manylinux_2_28_aarch64
     strategy:
       matrix:
-        python-set: ["cp37-cp37m", "cp38-cp38", "cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313"]
+        python-set: ["cp39-cp39", "cp310-cp310", "cp311-cp311", "cp312-cp312", "cp313-cp313", "cp314-cp314"]
     env:
       # workaround required for cache@v3, https://github.com/actions/cache/issues/1428
       VCPKG_FORCE_SYSTEM_BINARIES: "1" # Needed so vpckg can bootstrap itself
@@ -464,31 +611,194 @@ jobs:
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
         run: |
-          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+          cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Auditing wheels
-        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
           name: audited-wheels-linux-arm64-${{ matrix.python-set }}
           path: bindings/python/wheelhouse/audited/*
-      - name: Deploy wheels to artifactory (if not a release)
+
+  combine-linux-arm64-wheels:
+    needs: build-linux-arm64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 1440  # Set timeout to 24 hours
+    container:
+      image: quay.io/pypa/manylinux_2_28_aarch64:2025.11.10-2
+      env:
+        PLAT: manylinux_2_28_aarch64
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download audited wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels-linux-arm64-*
+          path: bindings/python/wheelhouse/audited/
+          merge-multiple: true
+      - name: Install llvm-strip
+        run: |
+          yum install -y llvm # for llvm-strip, strip leads to "ELF load command address/offset not page-aligned" errors
+      - name: Combine wheels
+        run: |
+          cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
+          echo "Combining repaired wheels into one master wheel"
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
+      - name: Upload combined wheels as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-combined-linux-arm64
+          path: bindings/python/wheelhouse/audited/*
+      - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
+      - name: Install combined wheel and run a smoke-test
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          set -euo pipefail
+
+          PYBIN="/opt/python/cp310-cp310/bin/python"
+
+          # Resolve the exact dev version (includes commit hash)
+          ver=$("$PYBIN" -c "import os,sys,pathlib; sys.path.insert(0, str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))")
+          echo "Installing depthai==$ver using $($PYBIN -V)"
+
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          wheel=$(ls bindings/python/wheelhouse/audited/*.whl)
+
+          # Install combined wheel
+          "$PYBIN" -m ensurepip --upgrade || true
+          "$PYBIN" -m pip install -U pip
+          "$PYBIN" -m pip install --force-reinstall $wheel
+
+          EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
+      - name: Upload combined wheels to artifactory
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
+  combine-windows-x86_64-wheels:
+    needs: build-windows-x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download audited wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels-windows-*
+          path: bindings/python/wheelhouse/audited/
+          merge-multiple: true
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Combine wheels
+        run: |
+          python -m pip install delvewheel # Install delvewheel for patching wheels
+          cd bindings/python
+          mv wheelhouse/audited wheelhouse/audited_pre
+          mkdir -p wheelhouse/audited
+          echo "Combining repaired wheels into one master wheel"
+          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+      - name: Upload combined wheels as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-wheels-combined-windows-x86_64
+          path: bindings/python/wheelhouse/audited/*
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install combined wheel and run a smoke-test
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        shell: pwsh
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+        run: |
+          $env:PYTHONIOENCODING = 'utf-8'
+          $ErrorActionPreference = "Stop"  # Fail on any error
+
+          # Resolve the exact dev version (includes commit hash)
+          $ver = python -c "import os,sys,pathlib; sys.path.insert(0,str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))"
+          Write-Host "Installing depthai==$ver using:"; python -VV
+
+          # Get the name of the one file in bindings/python/wheelhouse/audited
+          $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl).Name
+
+          # Install combined wheel
+          python -m pip install -U pip
+          python -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
+
+          # Smoke test (no heredoc; YAML-safe). Fail on import error or version mismatch.
+          $env:EXPECTED_VERSION = $ver
+          python bindings/python/ci/smoke_depthai.py
+      - name: Upload combined wheels to artifactory
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
+        env:
+          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+
+  notify-slack:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Send Slack notification
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_BOT_CHANNEL_ID: ${{ secrets.SLACK_BOT_CHANNEL_ID }}
+        run: |
+          # Branch or tag name
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH="${{ github.head_ref }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
+
+          # Determine the version and the install command
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+            INSTALL_COMMAND="\`python3 -m pip install depthai==$VERSION\`"
+          else
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+            INSTALL_COMMAND="\`python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai==$VERSION\`"
+          fi
+
+          MESSAGE="*A new DepthAI build is ready!*
+          Source Branch or Tag: $BRANCH
+          
+          It can be installed using:
+          $INSTALL_COMMAND"
+          
+          jq -n --arg user_id "$SLACK_BOT_CHANNEL_ID" --arg message "$MESSAGE" \
+            '{"channel": $user_id, "text": $message}' > payload.json
+          
+          curl -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-type: application/json" \
+            --data @payload.json
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     # needs: [pytest, build-linux-armhf, build-windows-x86_64, build-macos-x86_64, build-macos-arm64, build-linux-x86_64, build-linux-arm64]
     # needs: [pytest, build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
-    needs: [build-windows-x86_64, build-macos, build-linux-x86_64, build-linux-arm64]
+    needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
     runs-on: ubuntu-latest
 
     steps:
@@ -514,20 +824,20 @@ jobs:
           submodules: 'recursive'
       - uses: actions/download-artifact@v4
         with:
-          pattern: audited-wheels*
+          pattern: audited-wheels-combined-*
           merge-multiple: true
           path: bindings/python/wheelhouse/audited/
       - name: List files
         run: ls -lah
       - name: Run deploy to PyPi
         run: cd bindings/python && bash ./ci/upload-pypi.sh
-        if: ${{!contains(github.ref, 'alpha') && !contains(github.ref, 'beta')}}
+        if: ${{!contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')}}
         env:
           PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
           PYPI_USER: ${{ secrets.PYPI_USER }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       - name: Run deploy to Artifactory
-        run: cd bindings/python && bash ./ci/upload-artifactory-release.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --release
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}

@@ -16,14 +16,17 @@ struct XLinkInProperties : PropertiesSerializable<Properties, XLinkInProperties>
     std::string streamName;
 
     /**
-     * Maximum input data size
+     * Maximum input data size:
+     * NV12 --> 1.5 = (3/2) bytes per pixel, roughly 17.6MB for a 4032x3056 frame
      */
-    std::uint32_t maxDataSize = dai::device::XLINK_USB_BUFFER_MAX_SIZE;
+    std::uint32_t maxDataSize = ((4032 * 3056) * 3) / 2;
 
     /**
      * Number of frames in pool
      */
     std::uint32_t numFrames = 8;
+
+    ~XLinkInProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(XLinkInProperties, streamName, maxDataSize, numFrames);

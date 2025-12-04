@@ -10,8 +10,8 @@ int main() {
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
-    auto monoLeftOut = monoLeft->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
-    auto monoRightOut = monoRight->requestFullResolutionOutput(dai::ImgFrame::Type::NV12);
+    auto monoLeftOut = monoLeft->requestFullResolutionOutput();
+    auto monoRightOut = monoRight->requestFullResolutionOutput();
 
     monoLeftOut->link(stereo->left);
     monoRightOut->link(stereo->right);
@@ -20,20 +20,12 @@ int main() {
     stereo->setExtendedDisparity(true);
     stereo->setLeftRightCheck(true);
 
-    auto syncedLeftQueue = stereo->syncedLeft.createOutputQueue();
-    auto syncedRightQueue = stereo->syncedRight.createOutputQueue();
     auto disparityQueue = stereo->disparity.createOutputQueue();
 
     double maxDisparity = 1.0;
     pipeline.start();
     while(true) {
-        auto leftSynced = syncedLeftQueue->get<dai::ImgFrame>();
-        auto rightSynced = syncedRightQueue->get<dai::ImgFrame>();
         auto disparity = disparityQueue->get<dai::ImgFrame>();
-
-        cv::imshow("left", leftSynced->getCvFrame());
-        cv::imshow("right", rightSynced->getCvFrame());
-
         cv::Mat npDisparity = disparity->getFrame();
 
         double minVal, curMax;

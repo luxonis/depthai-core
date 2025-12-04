@@ -1,14 +1,13 @@
 #pragma once
 
 #include <cstring>
-
 namespace dai {
 
 class Capability {
    public:
     virtual const char* getName() const = 0;
     // virtual Capability getIntersection(const Capability& other) = 0;
-    virtual ~Capability() = default;
+    virtual ~Capability();
 };
 
 // Capability CRTP class

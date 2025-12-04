@@ -5,6 +5,8 @@ namespace node {
 
 UVC::UVC(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, UVC, UVCProperties>(std::move(props)) {}
 
+UVC::~UVC() = default;
+
 void UVC::setGpiosOnInit(std::unordered_map<int, int> list) {
     properties.gpioInit = list;
 }

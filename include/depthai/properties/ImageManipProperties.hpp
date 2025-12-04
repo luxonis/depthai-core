@@ -38,6 +38,8 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
     /// Using HW backend can cause some unexpected behavior when using multiple ImageManip nodes in series
     Backend backend = Backend::CPU;
     PerformanceMode performanceMode = PerformanceMode::PERFORMANCE;
+
+    ~ImageManipProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(ImageManipProperties, initialConfig, outputFrameSize, numFramesPool, backend, performanceMode);

@@ -21,7 +21,7 @@
 namespace dai {
 
 struct OpBase {
-    virtual ~OpBase() = default;
+    virtual ~OpBase();
     virtual std::string toStr() const = 0;
 };
 
@@ -29,6 +29,8 @@ struct Translate : OpBase {
     float offsetX;
     float offsetY;
     bool normalized;
+
+    ~Translate() override;
 
     Translate() = default;
     Translate(float offsetX, float offsetY, bool normalized = false) : offsetX(offsetX), offsetY(offsetY), normalized(normalized) {}
@@ -50,6 +52,8 @@ struct Rotate : OpBase {
     float offsetY;
     bool normalized;
 
+    ~Rotate() override;
+
     Rotate() = default;
     explicit Rotate(float angle, bool center = true, float offsetX = 0, float offsetY = 0, bool normalized = false)
         : angle(angle), center(center), offsetX(offsetX), offsetY(offsetY), normalized(normalized) {}
@@ -70,6 +74,8 @@ struct Resize : OpBase {
     float height;
     bool normalized;
     Mode mode = FIT;
+
+    ~Resize() override;
 
     Resize() = default;
     Resize(float width, float height, bool normalized = false) : width(width), height(height), normalized(normalized), mode(VALUE) {}
@@ -101,6 +107,8 @@ struct Flip : OpBase {
     Direction direction = HORIZONTAL;
     bool center = false;  // if true, flip is around center of image, otherwise around top-left corner
 
+    ~Flip() override;
+
     Flip() = default;
     explicit Flip(Direction direction, bool center = true) : direction(direction), center(center) {}
 
@@ -117,6 +125,8 @@ struct Flip : OpBase {
 struct Affine : OpBase {
     std::array<float, 4> matrix{1, 0, 0, 1};
 
+    ~Affine() override;
+
     Affine() = default;
     explicit Affine(std::array<float, 4> matrix) : matrix(matrix) {}
 
@@ -132,6 +142,8 @@ struct Affine : OpBase {
 
 struct Perspective : OpBase {
     std::array<float, 9> matrix{1, 0, 0, 0, 1, 0, 0, 0, 1};
+
+    ~Perspective() override;
 
     Perspective() = default;
     explicit Perspective(std::array<float, 9> matrix) : matrix(matrix) {}
@@ -151,6 +163,8 @@ struct FourPoints : OpBase {
     std::array<dai::Point2f, 4> src{dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
     std::array<dai::Point2f, 4> dst{dai::Point2f(0.0, 0.0), dai::Point2f(1.0, 0.0), dai::Point2f(1.0, 1.0), dai::Point2f(0.0, 1.0)};
     bool normalized = false;
+
+    ~FourPoints() override;
 
     FourPoints() = default;
     FourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalized = false) : src(src), dst(dst), normalized(normalized) {}
@@ -172,6 +186,8 @@ struct Crop : OpBase {
     float height;
     bool normalized;
     bool center;
+
+    ~Crop() override;
 
     Crop() : width(0), height(0), normalized(true), center(true) {}
     Crop(float width, float height, bool normalized = false, bool center = false) : width(width), height(height), normalized(normalized), center(center) {}
@@ -246,7 +262,7 @@ class ImageManipOpsBase : public ImageManipOpsEnums {
     }
 
     bool hasWarp(const size_t inputWidth, const size_t inputHeight) const {
-        return operations.size() > 0 || (outputWidth != 0 && outputWidth != inputWidth) || (outputHeight != 0 && outputHeight != inputHeight);
+        return operations.size() > 0 || (outputWidth != 0 && outputWidth != inputWidth) || (outputHeight != 0 && outputHeight != inputHeight) || undistort;
     }
 
     ImageManipOpsBase& addOp(ManipOp op) {
@@ -409,7 +425,7 @@ class ImageManipConfig : public Buffer {
 
    public:
     ImageManipConfig() = default;
-    virtual ~ImageManipConfig() = default;
+    virtual ~ImageManipConfig();
 
     using ResizeMode = ImageManipOpsBase<Container>::ResizeMode;
 
@@ -562,9 +578,10 @@ class ImageManipConfig : public Buffer {
 
     DEPTHAI_SERIALIZE(ImageManipConfig, base, outputFrameType, reusePreviousImage, skipCurrentImage);
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::ImageManipConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::ImageManipConfig;
+    }
 };
 }  // namespace dai

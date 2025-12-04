@@ -20,15 +20,12 @@ void SpatialDetectionNetwork::buildInternal() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
-    neuralNetwork->passthrough.link(detectionParser->imageIn);
     neuralNetwork->passthrough.link(inputImg);
     detectionParser->out.link(inputDetections);
 
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
     detectionParser->input.setMaxSize(1);
-    detectionParser->imageIn.setBlocking(false);
-    detectionParser->imageIn.setMaxSize(1);
     inputDetections.setMaxSize(1);
     inputDetections.setBlocking(true);
 }
@@ -36,16 +33,18 @@ void SpatialDetectionNetwork::buildInternal() {
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         NNModelDescription modelDesc,
-                                                                        std::optional<float> fps) {
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(camera, stereo, nnArchive, fps);
+    return build(camera, stereo, nnArchive, fps, resizeMode);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         const NNArchive& nnArchive,
-                                                                        std::optional<float> fps) {
-    neuralNetwork->build(camera, nnArchive, fps);
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
+    neuralNetwork->build(camera, nnArchive, fps, resizeMode);
     detectionParser->setNNArchive(nnArchive);
     alignDepth(stereo, camera);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
@@ -154,12 +153,12 @@ void SpatialDetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, 
 }
 
 void SpatialDetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::OTHER, "NNArchive type is not OTHER");
+    DAI_CHECK_V(nnArchive.getModelType() == model::ModelType::DLC || nnArchive.getModelType() == model::ModelType::OTHER, "NNArchive type is not DLC or OTHER");
     detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive);
 }
 
-void SpatialDetectionNetwork::setBlobPath(const dai::Path& path) {
+void SpatialDetectionNetwork::setBlobPath(const std::filesystem::path& path) {
     neuralNetwork->setBlobPath(path);
     detectionParser->setBlobPath(path);
 }
@@ -169,12 +168,12 @@ void SpatialDetectionNetwork::setBlob(OpenVINO::Blob blob) {
     detectionParser->setBlob(blob);
 }
 
-void SpatialDetectionNetwork::setBlob(const dai::Path& path) {
+void SpatialDetectionNetwork::setBlob(const std::filesystem::path& path) {
     neuralNetwork->setBlob(path);
     detectionParser->setBlob(path);
 }
 
-void SpatialDetectionNetwork::setModelPath(const dai::Path& modelPath) {
+void SpatialDetectionNetwork::setModelPath(const std::filesystem::path& modelPath) {
     neuralNetwork->setModelPath(modelPath);
     detectionParser->setModelPath(modelPath);
 }

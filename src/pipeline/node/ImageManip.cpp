@@ -7,6 +7,10 @@ namespace dai {
 
 namespace node {
 
+inline std::array<float, 9> flatten(std::array<std::array<float, 3>, 3> mat) {
+    return {mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]};
+}
+
 ImageManip::ImageManip(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
@@ -21,6 +25,16 @@ void ImageManip::run() {
         [&](const ImageManipConfig& config, const ImgFrame& frame) {
             auto srcFrameSpecs = impl::getSrcFrameSpecs(frame.fb);
             manip.build(config.base, config.outputFrameType, srcFrameSpecs, frame.getType());
+            auto newCameraMatrix = impl::matmul(manip.getMatrix(), frame.transformation.getIntrinsicMatrix());
+            manip.buildUndistort(config.base.undistort,
+                                 flatten(frame.transformation.getIntrinsicMatrix()),
+                                 flatten(newCameraMatrix),
+                                 frame.transformation.getDistortionCoefficients(),
+                                 frame.getType(),
+                                 frame.getWidth(),
+                                 frame.getHeight(),
+                                 manip.getOutputWidth(),
+                                 manip.getOutputHeight());
             return manip.getOutputSize();
         },
         [&](std::shared_ptr<Memory>& src, std::shared_ptr<impl::_ImageManipMemory> dst) {
@@ -48,6 +62,9 @@ void ImageManip::run() {
 
             // Transformations
             dstFrame.transformation = srcFrame.transformation;
+            if(manip.undistortEnabled()) {
+                dstFrame.transformation.setDistortionCoefficients({});
+            }
             auto srcCrops = manip.getSrcCrops();
             dstFrame.transformation.addSrcCrops(srcCrops);
             dstFrame.transformation.addTransformation(manip.getMatrix());

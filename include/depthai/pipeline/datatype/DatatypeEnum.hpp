@@ -24,6 +24,7 @@ enum class DatatypeEnum : std::int32_t {
     Tracklets,
     IMUData,
     StereoDepthConfig,
+    NeuralDepthConfig,
     FeatureTrackerConfig,
     ThermalConfig,
     ToFConfig,
@@ -36,7 +37,13 @@ enum class DatatypeEnum : std::int32_t {
     RGBDData,
     ImageAlignConfig,
     ImgAnnotations,
-    ObjectTrackerConfig
+    ImageFiltersConfig,
+    ToFDepthConfidenceFilterConfig,
+    ObjectTrackerConfig,
+    DynamicCalibrationControl,
+    DynamicCalibrationResult,
+    CalibrationQuality,
+    CoverageData,
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

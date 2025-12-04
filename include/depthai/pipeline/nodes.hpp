@@ -8,12 +8,17 @@
 #include "node/ColorCamera.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
+#include "node/Rectification.hpp"
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    #include "node/DynamicCalibrationNode.hpp"
+#endif
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"
 #include "node/IMU.hpp"
 #include "node/ImageManip.hpp"
 #include "node/MessageDemux.hpp"
 #include "node/MonoCamera.hpp"
+#include "node/NeuralDepth.hpp"
 #include "node/NeuralNetwork.hpp"
 #include "node/ObjectTracker.hpp"
 #include "node/PointCloud.hpp"

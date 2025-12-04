@@ -50,6 +50,7 @@ RemoteConnectionImpl::RemoteConnectionImpl(const std::string& address, uint16_t 
     // Expose services
     exposeKeyPressedService();
     exposeTopicGroupsService();
+    exposeLibraryVersionService();
 }
 
 RemoteConnectionImpl::~RemoteConnectionImpl() {
@@ -118,10 +119,22 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
                 logger::info(msgStr);
         }
     };
+
+    // Server options
     foxglove::ServerOptions serverOptions;
-    serverOptions.sendBufferLimitBytes = 100 * 1024 * 1024;  // 100 MB
+    serverOptions.numCallbackThreads = 1;                              // one thread handles all service callbacks
+    serverOptions.sendBufferPriorityLimitMessages = {{0, 3}, {1, 5}};  // 3 messages for low priority, 5 messages for high priority
+    serverOptions.messageDropPolicy = foxglove::MessageDropPolicy::MAX_MESSAGE_COUNT;
     serverOptions.capabilities.emplace_back("services");
     serverOptions.supportedEncodings.emplace_back("json");
+
+    // Priority assignment function - based on their datatype (see server options above)
+    getMessagePriority = [](DatatypeEnum dtype) -> uint8_t {
+        if(dtype == DatatypeEnum::ImgDetections || dtype == DatatypeEnum::ImgAnnotations) {
+            return 1;
+        }
+        return 0;  // anything else is low priority
+    };
 
     server = foxglove::ServerFactory::createServer<websocketpp::connection_hdl>("DepthAI RemoteConnection", logHandler, serverOptions);
     if(!server) {
@@ -232,8 +245,9 @@ void RemoteConnectionImpl::addPublishThread(const std::string& topicName,
                 continue;
             }
 
+            uint8_t priority = getMessagePriority(message->getDatatype());
             auto serializedMsg = serializableMessage->serializeProto();
-            server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size());
+            server->broadcastMessage(channelId, nanosecondsSinceEpoch(), static_cast<const uint8_t*>(serializedMsg.data()), serializedMsg.size(), priority);
         }
     });
 }
@@ -418,6 +432,35 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
         auto response = foxglove::ServiceResponse();
         response.data = std::vector<uint8_t>(serializedPipelineStr.begin(), serializedPipelineStr.end());
         return response;
+    };
+}
+
+void RemoteConnectionImpl::exposeLibraryVersionService() {
+    std::string serviceName = "libraryVersion";
+    foxglove::ServiceWithoutId service;
+    service.name = serviceName;
+    service.type = "json";
+
+    foxglove::ServiceRequestDefinition requestDef;
+    requestDef.schemaName = serviceName + "Request";
+    requestDef.encoding = "json";
+    service.request = requestDef;
+
+    foxglove::ServiceRequestDefinition responseDef;
+    responseDef.schemaName = serviceName + "Response";
+    responseDef.encoding = "json";
+    service.response = responseDef;
+
+    auto ids = server->addServices({service});
+    assert(ids.size() == 1);
+    auto id = ids[0];
+
+    serviceMap[id] = [](foxglove::ServiceResponse request) {
+        nlohmann::json jsonRequest = nlohmann::json::parse(request.data);
+        std::string responseMsg = std::string(build::VERSION);
+        foxglove::ServiceResponse ret;
+        ret.data = std::vector<uint8_t>(responseMsg.begin(), responseMsg.end());
+        return ret;
     };
 }
 

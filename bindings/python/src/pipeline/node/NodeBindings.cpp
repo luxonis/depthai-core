@@ -157,15 +157,21 @@ void bind_sync(pybind11::module& m, void* pCallstack);
 void bind_messagedemux(pybind11::module& m, void* pCallstack);
 void bind_hostnode(pybind11::module& m, void* pCallstack);
 void bind_record(pybind11::module& m, void* pCallstack);
+void bind_imagefilters(pybind11::module& m, void* pCallstack);
 void bind_replay(pybind11::module& m, void* pCallstack);
 void bind_imagealign(pybind11::module& m, void* pCallstack);
 void bind_rgbd(pybind11::module& m, void* pCallstack);
+void bind_rectification(pybind11::module& m, void* pCallstack);
+void bind_neuraldepth(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
 #endif
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
 void bind_rtabmapvionode(pybind11::module& m, void* pCallstack);
 void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack);
+#endif
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+void bind_dynamic_calibration(pybind11::module& m, void* pCallstack);
 #endif
 void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind Node et al
@@ -202,15 +208,21 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_messagedemux);
     callstack.push_front(bind_hostnode);
     callstack.push_front(bind_record);
+    callstack.push_front(bind_imagefilters);
     callstack.push_front(bind_replay);
     callstack.push_front(bind_imagealign);
     callstack.push_front(bind_rgbd);
+    callstack.push_front(bind_rectification);
+    callstack.push_front(bind_neuraldepth);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);
 #endif
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     callstack.push_front(bind_rtabmapvionode);
     callstack.push_front(bind_rtabmapslamnode);
+#endif
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    callstack.push_front(bind_dynamic_calibration);
 #endif
 }
 
@@ -379,6 +391,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("link", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::link), py::arg("input"), DOC(dai, Node, Output, link))
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())
+        .def("getName", &Node::Output::getName, DOC(dai, Node, Output, getName))
         .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend));
 
     nodeConnection.def_readwrite("outputId", &Node::Connection::outputId, DOC(dai, Node, Connection, outputId))

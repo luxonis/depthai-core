@@ -4,13 +4,14 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
+#include "depthai/common/CameraSensorType.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
 
 /**
- *  Specify properties for ColorCamera such as camera ID, ...
+ *  Specify properties for Camera such as camera ID, ...
  */
 struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     static constexpr int AUTO = -1;
@@ -18,17 +19,22 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     std::vector<ImgFrameCapability> outputRequests;
 
     /**
-     * Initial controls applied to ColorCamera node
+     * Initial controls applied to the camera node
      */
     CameraControl initialControl;
 
     /**
-     * Which socket will color camera use
+     * Which socket will this camera node use
      */
     CameraBoardSocket boardSocket = CameraBoardSocket::AUTO;
 
     /**
-     * Which camera name will color camera use
+     * Camera sensor type (you can pick one in case the given sensor supports multiple types)
+     */
+    CameraSensorType sensorType = CameraSensorType::AUTO;
+
+    /**
+     * Which camera name will this camera node use (e.g. "IMX378", "OV9282")
      */
     std::string cameraName = "";
 
@@ -38,31 +44,31 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     CameraImageOrientation imageOrientation = CameraImageOrientation::AUTO;
 
     /**
-     * Select the camera sensor width
+     * Select the camera sensor width (e.g. 1920, 1280, 640, etc.)
      */
     int32_t resolutionWidth = AUTO;
     /**
-     * Select the camera sensor height
+     * Select the camera sensor height (e.g. 1080, 720, 400, etc.)
      */
     int32_t resolutionHeight = AUTO;
 
     /**
-     * Select the mock isp width. Overrides resolutionWidth/height if mockIsp is connected.
+     * Select the mock isp width. Overrides resolutionWidth/height if mockIsp is connected (e.g. 1920, 1280, 640, etc.)
      */
     int32_t mockIspWidth = AUTO;
 
     /**
-     * Select the mock isp height. Overrides resolutionWidth/height if mockIsp is connected.
+     * Select the mock isp height. Overrides resolutionWidth/height if mockIsp is connected (e.g. 1080, 720, 400, etc.)
      */
     int32_t mockIspHeight = AUTO;
 
     /**
-     * Select the mock isp fps. Overrides fps if mockIsp is connected.
+     * Select the mock isp fps. Overrides fps if mockIsp is connected (e.g. 30, 25, 20, etc.)
      */
     float mockIspFps = AUTO;
 
     /**
-     * Camera sensor FPS
+     * Camera sensor FPS (e.g. 30, 25, 20, etc.)
      */
     float fps = AUTO;
 
@@ -77,18 +83,37 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     int isp3aFps = 0;
 
     /**
-     * Pool sizes
+     * Number of frames in different pools and the maximum size in bytes of each pool (number of frames will be automatically reduced if the size is exceeded)
      */
+
+    /** Raw pool */
     int numFramesPoolRaw = 3;
+    int maxSizePoolRaw = 1024 * 1024 * 10;  // 10MB
+
+    /** Isp pool */
     int numFramesPoolIsp = 3;
-    int numFramesPoolVideo = 4;
-    int numFramesPoolPreview = 4;
-    int numFramesPoolStill = 4;
+    int maxSizePoolIsp = 1024 * 1024 * 10;  // 10MB
+
+    /** Video pool */
+    int numFramesPoolVideo = 4;  // No max size in bytes for video pool, used in mono and color cameras only, those are deprecated
+
+    /** Preview pool */
+    int numFramesPoolPreview = 4;  // No max size in bytes for preview pool, used in mono and color cameras only, those are deprecated
+
+    /** Still pool */
+    int numFramesPoolStill = 4;  // No max size in bytes for still pool, used in mono and color cameras only, those are deprecated
+
+    /** Outputs frame pools */
+    std::optional<int> numFramesPoolOutputs;
+    std::optional<int> maxSizePoolOutputs;
+
+    ~CameraProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       initialControl,
                       boardSocket,
+                      sensorType,
                       cameraName,
                       imageOrientation,
                       resolutionWidth,
@@ -98,10 +123,14 @@ DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       fps,
                       isp3aFps,
                       numFramesPoolRaw,
+                      maxSizePoolRaw,
                       numFramesPoolIsp,
+                      maxSizePoolIsp,
                       numFramesPoolVideo,
                       numFramesPoolPreview,
                       numFramesPoolStill,
+                      numFramesPoolOutputs,
+                      maxSizePoolOutputs,
                       outputRequests);
 
 }  // namespace dai

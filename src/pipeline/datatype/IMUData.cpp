@@ -8,6 +8,13 @@
 
 namespace dai {
 
+IMUData::~IMUData() = default;
+
+void IMUData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::IMUData;
+}
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 
 ProtoSerializable::SchemaPair IMUData::serializeSchema() const {

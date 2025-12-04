@@ -1,43 +1,79 @@
 #include <chrono>
 #include <iostream>
+#include <opencv2/opencv.hpp>
 #include <string>
 
 #include "depthai/depthai.hpp"
 #include "depthai/utility/EventsManager.hpp"
 
-int main(int argc, char* argv[]) {
+// Helper function to normalize frame coordinates
+cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai::Point2f& bottomRight) {
+    float width = frame.cols, height = frame.rows;
+    return cv::Rect(cv::Point(topLeft.x * width, topLeft.y * height), cv::Point(bottomRight.x * width, bottomRight.y * height));
+}
+
+int main() {
     dai::Pipeline pipeline(true);
 
+    // Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or use the EventsManager setToken() method.
     auto eventsManager = std::make_shared<dai::utility::EventsManager>();
-    eventsManager->setLogResponse(true);
-    // Color camera node
-    auto camRgb = pipeline.create<dai::node::Camera>()->build();
-    auto* preview = camRgb->requestOutput(std::make_pair(256, 256));
 
-    auto previewQ = preview->createOutputQueue();
+    auto camRgb = pipeline.create<dai::node::Camera>()->build();
+    auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
+
+    dai::NNModelDescription modelDescription;
+    modelDescription.model = "yolov6-nano";
+    detectionNetwork->build(camRgb, modelDescription);
+    auto labelMap = detectionNetwork->getClasses();
+
+    // Create output queues
+    auto qRgb = detectionNetwork->passthrough.createOutputQueue();
+    auto qDet = detectionNetwork->out.createOutputQueue();
 
     pipeline.start();
-    bool sent = false;
-    eventsManager->sendEvent("test", nullptr, {}, {"tag1", "tag2"}, {{"key1", "value1"}});
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(7000));
-
-    auto fileData = std::make_shared<dai::utility::EventData>("abc", "test_bin.txt", "text/plain");
-    std::vector<std::shared_ptr<dai::utility::EventData>> data;
-    data.emplace_back(fileData);
-    eventsManager->sendEvent("testdata", nullptr, data, {"tag3", "tag4"}, {{"key8", "value8"}});
     while(pipeline.isRunning()) {
-        auto rgb = previewQ->get<dai::ImgFrame>();
-
-        // Do something with the data
-        // ...
-
-        if(!sent) {
-            eventsManager->sendSnap("rgb", rgb, {}, {"tag11", "tag12"}, {{"key", "value"}});
-            sent = true;
+        if(cv::waitKey(1) != -1) {
+            break;
         }
-        //
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+        auto inRgb = qRgb->get<dai::ImgFrame>();
+        auto inDet = qDet->get<dai::ImgDetections>();
+        if(inRgb == nullptr || inDet == nullptr) {
+            continue;
+        }
+
+        // Display the video stream and detections
+        cv::Mat frame = inRgb->getCvFrame();
+        if(!frame.empty()) {
+            // Display detections
+            for(const auto& detection : inDet->detections) {
+                auto bbox = frameNorm(frame, dai::Point2f(detection.xmin, detection.ymin), dai::Point2f(detection.xmax, detection.ymax));
+
+                // Draw label
+                cv::putText(
+                    frame, labelMap.value()[detection.label], cv::Point(bbox.x + 10, bbox.y + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, cv::Scalar(255, 255, 255));
+
+                // Draw confidence
+                cv::putText(frame,
+                            std::to_string(static_cast<int>(detection.confidence * 100)) + "%",
+                            cv::Point(bbox.x + 10, bbox.y + 40),
+                            cv::FONT_HERSHEY_TRIPLEX,
+                            0.5,
+                            cv::Scalar(255, 255, 255));
+
+                // Draw rectangle
+                cv::rectangle(frame, bbox, cv::Scalar(255, 0, 0), 2);
+            }
+
+            // Show the frame
+            cv::imshow("rgb", frame);
+        }
+
+        // Trigger sendSnap()
+        if(cv::waitKey(1) == 's') {
+            eventsManager->sendSnap("ImageDetection", std::nullopt, inRgb, inDet, {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}});
+        }
     }
 
     return EXIT_SUCCESS;

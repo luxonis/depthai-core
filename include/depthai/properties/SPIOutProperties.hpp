@@ -17,6 +17,8 @@ struct SPIOutProperties : PropertiesSerializable<Properties, SPIOutProperties> {
      * SPI bus to use
      */
     int busId = 0;
+
+    ~SPIOutProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(SPIOutProperties, streamName, busId);

@@ -32,6 +32,11 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
     std::optional<dai::EepromData> calibData;
 
     /**
+     * Unique identifier for the eeprom data in the pipeline.
+     */
+    uint32_t eepromId = 0;
+
+    /**
      * Camera tuning blob size in bytes
      */
     std::optional<std::uint32_t> cameraTuningBlobSize;
@@ -63,6 +68,8 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
      * Units are bytes.
      */
     uint32_t sippDmaBufferSize = SIPP_DMA_BUFFER_DEFAULT_SIZE;
+
+    ~GlobalProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(GlobalProperties,
@@ -73,6 +80,7 @@ DEPTHAI_SERIALIZE_EXT(GlobalProperties,
                       cameraTuningBlobSize,
                       cameraTuningBlobUri,
                       calibData,
+                      eepromId,
                       xlinkChunkSize,
                       sippBufferSize,
                       sippDmaBufferSize);

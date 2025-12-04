@@ -20,6 +20,13 @@ Buffer::Buffer(long fd, size_t size) : Buffer() {
     data = mem;
 }
 
+Buffer::~Buffer() = default;
+
+void Buffer::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = this->getDatatype();
+};
+
 span<uint8_t> Buffer::getData() {
     return data->getData();
 }

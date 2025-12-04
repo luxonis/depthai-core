@@ -58,20 +58,20 @@ bool equalStrings(const U a, const V b) {
     });
 }
 
-TEST_CASE("dai::Path utf-8 and native char set handling") {
-    const dai::Path emptyPath;
-    const dai::Path::string_type emptyString = emptyPath;
+TEST_CASE("std::filesystem::path utf-8 and native char set handling") {
+    const std::filesystem::path emptyPath;
+    const std::filesystem::path::string_type emptyString = emptyPath;
     REQUIRE(emptyString.empty());
 
-    const dai::Path path1(PATH1);
+    const std::filesystem::path path1(PATH1);
     const NATIVETYPE string1(path1);
     REQUIRE(string1 == MAKENATIVE(PATH1));
 
-    const dai::Path path2(PATH2);
+    const std::filesystem::path path2(PATH2);
     const NATIVETYPE string2(path2);
     REQUIRE(string2 == MAKENATIVE(PATH2));
 
-    const dai::Path path3(PATH3);
+    const std::filesystem::path path3(PATH3);
     const NATIVETYPE string3(path3);
     REQUIRE(string3 == MAKENATIVE(PATH3));
 
@@ -79,8 +79,8 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     REQUIRE(std::tmpnam(reinterpret_cast<char*>(&tmp_name4[0])) != nullptr);
     U8STRING string4(tmp_name4);
     string4 += PATH4;
-    const dai::Path path4(string4);
-    const dai::Path path4compare(PATH4);
+    const std::filesystem::path path4(string4);
+    const std::filesystem::path path4compare(PATH4);
     REQUIRE(u8length(string4.c_str()) == NATIVELENGTH(path4));
 
     REQUIRE_NOTHROW([&]() {
@@ -97,7 +97,7 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     }());
     DELETEFILE(static_cast<NATIVETYPE>(path4).c_str());
 
-    auto getBlob = [](const dai::Path& path) -> bool { return !static_cast<NATIVETYPE>(path).empty(); };
+    auto getBlob = [](const std::filesystem::path& path) -> bool { return !static_cast<NATIVETYPE>(path).empty(); };
     REQUIRE(getBlob(string4));
     REQUIRE(getBlob("mypath/myfile.blob"));
     REQUIRE(getBlob([]() -> std::string { return "mypath/rvalue.blob"; }()));
@@ -107,7 +107,7 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     REQUIRE(getBlob(move2ndTry));
     REQUIRE(getBlob(std::move(move2ndTry)));
 
-    const dai::Path path4wide(LPATH4);
+    const std::filesystem::path path4wide(LPATH4);
     REQUIRE(equalStrings(path4compare.native(), path4wide.native()));
     REQUIRE(equalStrings(path4compare.u8string(), path4wide.u8string()));
 
@@ -120,8 +120,8 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     REQUIRE(path3.u8string().length() == (sizeof(PATH3) - 1));
     REQUIRE(path4.u8string() == string4);
 
-    auto wrapper = [&getBlob](const dai::Path& path) -> bool { return getBlob(path); };
-    REQUIRE(wrapper("pass dai::Path across functions"));
+    auto wrapper = [&getBlob](const std::filesystem::path& path) -> bool { return getBlob(path); };
+    REQUIRE(wrapper("pass std::filesystem::path across functions"));
 
     // test with std::filesystem
 #if defined(__cpp_lib_filesystem)
@@ -140,12 +140,12 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
 #endif
 }
 
-TEST_CASE("dai::Path with NN blobs") {
+TEST_CASE("std::filesystem::path with NN blobs") {
     U8CHAR osTmpPathname[L_tmpnam];
     REQUIRE(std::tmpnam(reinterpret_cast<char*>(&osTmpPathname[0])) != nullptr);
     U8STRING strPath(osTmpPathname);
     strPath += PATH4;
-    const dai::Path daiPath(strPath);
+    const std::filesystem::path daiPath(strPath);
 
     dai::Pipeline pipeline;
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
@@ -156,17 +156,17 @@ TEST_CASE("dai::Path with NN blobs") {
     REQUIRE_THROWS_WITH(nn->setBlobPath(strPath), ContainsSubstring("Cannot load blob") && ContainsSubstring("not convertible"));
     REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), ContainsSubstring("Cannot load blob") && ContainsSubstring("not convertible"));
 #else
-    REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), ContainsSubstring(std::string("Cannot load blob")) && ContainsSubstring(dai::Path(PATH4).string()));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), ContainsSubstring(std::string("Cannot load blob")) && ContainsSubstring(std::filesystem::path(PATH4).string()));
     REQUIRE_THROWS_WITH(nn->setBlobPath(strPath),
                         ContainsSubstring("Cannot load blob") && ContainsSubstring(std::string{reinterpret_cast<const char*>(strPath.c_str())}));
     REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), ContainsSubstring("Cannot load blob") && ContainsSubstring(daiPath.string()));
 #endif
 
     // use blob at known test path
-    const std::string blobPath(BLOB_PATH);
-    const dai::Path diaPath2(BLOB_PATH);
-    const dai::Path diaPath3(blobPath);
-    const dai::Path diaPath4(diaPath2);
+    const std::filesystem::path blobPath(BLOB_PATH);
+    const std::filesystem::path diaPath2(BLOB_PATH);
+    const std::filesystem::path diaPath3(blobPath);
+    const std::filesystem::path diaPath4(diaPath2);
     REQUIRE_NOTHROW(nn->setBlobPath(BLOB_PATH));
     nn->getAssetManager().remove("__blob");
     REQUIRE_NOTHROW(nn->setBlobPath(blobPath));
@@ -186,10 +186,10 @@ TEST_CASE("dai::Path with NN blobs") {
 #endif
 }
 // TODO(Morato) - Port to V3
-// TEST_CASE("dai::Path with Device") {
+// TEST_CASE("std::filesystem::path with Device") {
 //     const char badfile[] = PATH5;
 //     const std::string strBadfile(&badfile[0]);
-//     const dai::Path diaBadFile(PATH5);
+//     const std::filesystem::path diaBadFile(PATH5);
 //     dai::Pipeline pipeline;
 //     auto nn = pipeline.create<dai::node::NeuralNetwork>();
 //     REQUIRE_NOTHROW(nn->setBlobPath(BLOB_PATH));
@@ -201,7 +201,7 @@ TEST_CASE("dai::Path with NN blobs") {
 // #if defined(_WIN32) && defined(_MSC_VER)
 //     const wchar_t wideBadfile[] = LPATH5;
 //     const std::wstring wstrBadfile(LPATH5);
-//     const dai::Path diaFileFromWide(LPATH5);
+//     const std::filesystem::path diaFileFromWide(LPATH5);
 //     REQUIRE_THROWS_WITH(dai::Device(pipeline, LPATH5), ContainsSubstring(PATH5));
 //     REQUIRE_THROWS_WITH(dai::Device(pipeline, &wideBadfile[0]), ContainsSubstring(PATH5));
 //     REQUIRE_THROWS_WITH(dai::Device(pipeline, wstrBadfile), ContainsSubstring(PATH5));
@@ -216,12 +216,12 @@ TEST_CASE("dai::Path with NN blobs") {
 //     dai::Device d(pipeline);
 // }
 
-TEST_CASE("dai::Path with CalibrationHandler") {
+TEST_CASE("std::filesystem::path with CalibrationHandler") {
     U8CHAR tmpFilename[L_tmpnam];
     REQUIRE(std::tmpnam(reinterpret_cast<char*>(&tmpFilename[0])) != nullptr);
     U8STRING strFilename(tmpFilename);
     strFilename += PATH4;
-    dai::Path daiFilename(strFilename);
+    std::filesystem::path daiFilename(strFilename);
 
     CHECK_NOTHROW([&]() {
         dai::Device device;
@@ -237,14 +237,14 @@ TEST_CASE("dai::Path with CalibrationHandler") {
     DELETEFILE(static_cast<NATIVETYPE>(daiFilename).c_str());
 }
 
-TEST_CASE("dai::Path with DeviceBootloader") {
+TEST_CASE("std::filesystem::path with DeviceBootloader") {
     const U8CHAR badfile[] = PATH4;
     const U8STRING strBadfile(&badfile[0]);
-    const dai::Path diaBadfile(PATH4);
+    const std::filesystem::path diaBadfile(PATH4);
 #if defined(_WIN32) && defined(_MSC_VER)
     const wchar_t wideBadfile[] = LPATH5;
     const std::wstring wstrBadfile(LPATH5);
-    const dai::Path diaBadWide(LPATH5);
+    const std::filesystem::path diaBadWide(LPATH5);
 #endif
     std::this_thread::sleep_for(std::chrono::seconds(10));
     bool found = false;
@@ -319,12 +319,12 @@ TEST_CASE("dai::Path with DeviceBootloader") {
     }
 }
 
-TEST_CASE("dai::Path with AssetManager, StereoDepth") {
+TEST_CASE("std::filesystem::path with AssetManager, StereoDepth") {
     U8CHAR tmp_name4[L_tmpnam];
     REQUIRE(std::tmpnam(reinterpret_cast<char*>(&tmp_name4[0])) != nullptr);
     U8STRING string4(tmp_name4);
     string4 += PATH4;
-    const dai::Path path4(string4);
+    const std::filesystem::path path4(string4);
     REQUIRE_NOTHROW([&]() {
         std::ofstream file(path4);
         file.write(FILETEXT, sizeof(FILETEXT) - 1);
@@ -377,12 +377,12 @@ TEST_CASE("dai::Path with AssetManager, StereoDepth") {
     DELETEFILE(static_cast<NATIVETYPE>(path4).c_str());
 }
 
-TEST_CASE("dai::Path with Script") {
+TEST_CASE("std::filesystem::path with Script") {
     U8CHAR tmp_name4[L_tmpnam];
     REQUIRE(std::tmpnam(reinterpret_cast<char*>(&tmp_name4[0])) != nullptr);
     U8STRING string4(tmp_name4);
     string4 += PATH4;
-    const dai::Path path4(string4);
+    const std::filesystem::path path4(string4);
     REQUIRE_NOTHROW([&]() {
         std::ofstream file(path4);
         file.write(FILETEXT, sizeof(FILETEXT) - 1);

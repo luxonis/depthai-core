@@ -20,7 +20,7 @@ class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    public:
-    virtual ~XLinkIn() = default;
+    virtual ~XLinkIn();
 
     /**
      * Outputs message of same type as send from host.

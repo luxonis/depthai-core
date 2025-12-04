@@ -57,13 +57,14 @@ class TrackedFeatures : public Buffer {
      * Construct TrackedFeatures message.
      */
     TrackedFeatures() = default;
-    virtual ~TrackedFeatures() = default;
+    virtual ~TrackedFeatures();
 
     std::vector<TrackedFeature> trackedFeatures;
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::TrackedFeatures;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::TrackedFeatures;
+    }
 
     DEPTHAI_SERIALIZE(TrackedFeatures, trackedFeatures, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice);
 };

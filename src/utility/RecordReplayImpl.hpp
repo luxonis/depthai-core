@@ -158,7 +158,7 @@ class BytePlayer {
     bool initialized = false;
 };
 
-bool checkRecordConfig(std::string& recordPath, RecordConfig& config);
+bool checkRecordConfig(std::filesystem::path& recordPath, RecordConfig& config);
 
 bool allMatch(const std::vector<std::string>& v1, const std::vector<std::string>& v2);
 

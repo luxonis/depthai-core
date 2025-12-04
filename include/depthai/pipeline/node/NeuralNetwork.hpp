@@ -26,6 +26,8 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
+    ~NeuralNetwork() override;
+
     /**
      * @brief Build NeuralNetwork node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
      *
@@ -34,10 +36,48 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, std::optional<float> fps = std::nullopt);
+
+    /**
+     * @brief Build NeuralNetwork node. Connect Camera output to this node's input. Also call setNNArchive() with provided model description.
+     * @param input: Camera node
+     * @param modelDesc: Neural network model description
+     * @param fps: Desired frames per second
+     * @param resizeMode: Resize mode for input frames
+     *
+     * @returns Shared pointer to NeuralNetwork node
+     */
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input,
+                                         NNModelDescription modelDesc,
+                                         std::optional<float> fps = std::nullopt,
+                                         std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
+    /**
+     * @brief Build NeuralNetwork node. Connect Camera output to this node's input. Also call setNNArchive() with provided NNArchive.
+     * @param input: Camera node
+     * @param nnArchive: Neural network archive
+     * @param fps: Desired frames per second
+     * @param resizeMode: Resize mode for input frames
+     * @returns Shared pointer to NeuralNetwork node
+     */
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input,
+                                         NNArchive nnArchive,
+                                         std::optional<float> fps = std::nullopt,
+                                         std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    /**
+     * @brief Build NeuralNetwork node. Connect ReplayVideo output to this node's input. Also call setNNArchive() with provided model description.
+     * @param input: ReplayVideo node
+     * @param modelDesc: Neural network model description
+     * @param fps: Desired frames per second
+     * @returns Shared pointer to NeuralNetwork node
+     */
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
+    /**
+     * @brief Build NeuralNetwork node. Connect ReplayVideo output to this node's input.
+     * @param input: ReplayVideo node
+     * @param nnArchive: Neural network archive
+     * @param fps: Desired frames per second
+     * @returns Shared pointer to NeuralNetwork node
+     */
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
 #endif
 
@@ -70,6 +110,13 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     OutputMap passthroughs{*this, "passthroughs", {"", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
+     * @brief Get the archive owned by this Node.
+     *
+     * @returns constant reference to this Nodes archive
+     */
+    std::optional<std::reference_wrapper<const NNArchive>> getNNArchive() const;
+
+    /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
      *
      * @param nnArchive: NNArchive to set
@@ -99,7 +146,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlobPath(const dai::Path& path);
+    void setBlobPath(const std::filesystem::path& path);
 
     /**
      * Load network blob into assets and use once pipeline is started.
@@ -114,13 +161,28 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlob(const dai::Path& path);
+    void setBlob(const std::filesystem::path& path);
+
+    /**
+     * Load network model into assets and use once pipeline is started.
+     *
+     * @param model Network model
+     */
+    void setOtherModelFormat(std::vector<uint8_t> model);
+
+    /**
+     * Load network model into assets and use once pipeline is started.
+     *
+     * @throws Error if file doesn't exist or isn't a valid network model.
+     * @param path Path to the network model
+     */
+    void setOtherModelFormat(const std::filesystem::path& path);
 
     /**
      * Load network xml and bin files into assets.
      * @param xmlModelPath Path to the neural network model file.
      */
-    void setModelPath(const dai::Path& modelPath);
+    void setModelPath(const std::filesystem::path& modelPath);
 
     /**
      * Specifies how many frames will be available in the pool
@@ -163,14 +225,20 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
     int getNumInferenceThreads();
-    // TODO add getters for other API
+
+    /**
+     * Set model from Device Model Zoo
+     * @param model DeviceModelZoo model enum
+     * @note Only applicable for RVC4 devices with OS 1.20.5 or higher
+     */
+    void setModelFromDeviceZoo(DeviceModelZoo model);
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-    ImgFrameCapability getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps);
+    ImgFrameCapability getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps, std::optional<dai::ImgResizeMode> resizeMode);
     std::optional<NNArchive> nnArchive;
 };
 

@@ -48,7 +48,10 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
         .def("setOutKeepAspectRatio", &ImageAlign::setOutKeepAspectRatio, py::arg("keep"), DOC(dai, node, ImageAlign, setOutKeepAspectRatio))
         .def("setInterpolation", &ImageAlign::setInterpolation, py::arg("interp"), DOC(dai, node, ImageAlign, setInterpolation))
         .def("setNumShaves", &ImageAlign::setNumShaves, py::arg("numShaves"), DOC(dai, node, ImageAlign, setNumShaves))
-        .def("setNumFramesPool", &ImageAlign::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, ImageAlign, setNumFramesPool));
+        .def("setNumFramesPool", &ImageAlign::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, ImageAlign, setNumFramesPool))
+        .def("setRunOnHost", &ImageAlign::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, ImageAlign, setRunOnHost))
+        .def("runOnHost", &ImageAlign::runOnHost, DOC(dai, node, ImageAlign, runOnHost));
+
     // ALIAS
     daiNodeModule.attr("ImageAlign").attr("Properties") = imageAlignProperties;
 }

@@ -49,6 +49,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("phaseUnwrapErrorThreshold", &ToFConfig::phaseUnwrapErrorThreshold, DOC(dai, ToFConfig, phaseUnwrapErrorThreshold))
 
         .def("setMedianFilter", &ToFConfig::setMedianFilter, DOC(dai, ToFConfig, setMedianFilter))
+        .def("setProfilePreset", &ToFConfig::setProfilePreset, DOC(dai, ToFConfig, setProfilePreset))
 
         // .def("set", &ToFConfig::set, py::arg("config"), DOC(dai, ToFConfig, set))
         // .def("get", &ToFConfig::get, DOC(dai, ToFConfig, get))

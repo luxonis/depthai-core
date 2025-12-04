@@ -176,6 +176,8 @@ struct IMUProperties : PropertiesSerializable<Properties, IMUProperties> {
      * Default value: false.
      */
     std::optional<bool> enableFirmwareUpdate = false;
+
+    ~IMUProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(IMUProperties, imuSensors, batchReportThreshold, maxBatchReports, enableFirmwareUpdate);

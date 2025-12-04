@@ -1,24 +1,14 @@
 #pragma once
-
-#include <cstdint>
-#include <mutex>
 #include <string>
-#include <thread>
-#include <unordered_map>
-#include <vector>
 
 // libraries
+#include <spdlog/fmt/std.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 // shared
 #include <depthai/log/LogConstants.hpp>
-
-// project
-#include <depthai/device/Device.hpp>
-#include <depthai/device/DeviceBootloader.hpp>
-#include <depthai/openvino/OpenVINO.hpp>
-#include <depthai/utility/Path.hpp>
+#include <depthai/log/LogLevel.hpp>
 
 namespace dai {
 

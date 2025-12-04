@@ -10,6 +10,13 @@
 #endif
 namespace dai {
 
+ImgFrame::~ImgFrame() = default;
+
+void ImgFrame::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::ImgFrame;
+}
+
 ImgFrame::ImgFrame() {
     // Set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
@@ -185,6 +192,23 @@ ImgFrame& ImgFrame::setMetadata(const std::shared_ptr<ImgFrame>& sourceFrame) {
         throw std::invalid_argument("Source frame is null");
     }
     return setMetadata(*sourceFrame);
+}
+
+ImgFrame& ImgFrame::copyDataFrom(const ImgFrame& sourceFrame) {
+    std::vector<uint8_t> data(sourceFrame.data->getData().begin(), sourceFrame.data->getData().end());
+    setData(std::move(data));
+    return *this;
+}
+
+ImgFrame& ImgFrame::copyDataFrom(const std::shared_ptr<ImgFrame>& sourceFrame) {
+    return copyDataFrom(*sourceFrame);
+}
+
+std::shared_ptr<ImgFrame> ImgFrame::clone() const {
+    auto clone = std::make_shared<ImgFrame>();
+    clone->setMetadata(*this);
+    clone->copyDataFrom(*this);
+    return clone;
 }
 
 bool ImgFrame::validateTransformations() const {
