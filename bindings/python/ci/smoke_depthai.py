@@ -1,4 +1,8 @@
-import os, sys, traceback, platform
+#!/usr/bin/env python3
+import os
+import sys
+import traceback
+import platform
 
 try:
     import depthai as dai
