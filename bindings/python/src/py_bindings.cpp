@@ -43,7 +43,9 @@
 
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
     #include <pybind11/embed.h>
+// Don't think this symbol ever exists? Not finding it using `objdump -T libdepthai-core.so | grep bindngs`
 extern "C" void depthai_bindings_init() {}  // to force inclusion
+extern "C" PyObject* pybind11_init_impl_depthai();
 #endif
 
 // Specify module
