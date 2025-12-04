@@ -489,7 +489,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         computeCoverage();
         return error;
 #else
-        logger->error("DynamicCalibrationNode was built without OpenCV support, cannot load images.");
+        throw std::runtime_error("DynamicCalibrationNode was built without OpenCV support, cannot load images.");
 #endif
     }
     // Apply calibration
@@ -546,7 +546,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         error = runLoadImage(true);
 #else
-        logger->error("DynamicCalibrationNode was built without OpenCV support, cannot load images.");
+        throw std::runtime_error("DynamicCalibrationNode was built without OpenCV support, cannot load images.");
 #endif
     }
 
