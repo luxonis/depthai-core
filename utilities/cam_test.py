@@ -27,6 +27,7 @@ Other controls:
 '\' - Select control: scene mode
 ';' - Select control: control mode
 ''' - Select control: capture intent
+'*' - Select control: manual white balance
 'a' 'd' - Increase/decrease dot projector intensity
 'w' 's' - Increase/decrease flood LED intensity
 
@@ -507,6 +508,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     sharpness = 0
     luma_denoise = 0
     chroma_denoise = 0
+    wb_manual = 5500
     control = 'none'
     show = args.show_meta
 
@@ -711,7 +713,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 floodIntensity = 0
             device.setIrFloodLightIntensity(floodIntensity)
             print(f'IR Flood intensity:', floodIntensity)
-        elif key >= 0 and chr(key) in '34567890[]p\\;\'':
+        elif key >= 0 and chr(key) in '34567890[]p\\;\'*':
             if key == ord('3'):
                 control = 'awb_mode'
             elif key == ord('4'):
@@ -740,6 +742,8 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 control = 'chroma_denoise'
             elif key == ord('p'):
                 control = 'tof_amplitude_min'
+            elif key == ord('*'):
+                control = 'wb_manual'
             print("Selected control:", control)
         elif key in [ord('-'), ord('_'), ord('+'), ord('=')]:
             change = 0
@@ -802,6 +806,11 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
                 chroma_denoise = clamp(chroma_denoise + change, 0, 4)
                 print("Chroma denoise:", chroma_denoise)
                 ctrl.setChromaDenoise(chroma_denoise)
+            elif control == 'wb_manual':
+                wb_manual = wb_manual + change * 100
+                print("White balance:", wb_manual)
+                ctrl.setManualWhiteBalance(wb_manual)
+
             # elif control == 'tof_amplitude_min' and tof: # TODO
             #     amp_min = clamp(
             #         tofConfig.depthParams.minimumAmplitude + change, 0, 50)
