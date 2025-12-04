@@ -336,11 +336,13 @@ bool RemoteConnectionImpl::initHttpServer(const std::string& address, uint16_t p
     std::string externalAddress = address == "0.0.0.0" ? platform::getLocalIpAddress() : address;
     std::cout << "To connect to the OAK visualizer use the following:\n";
     std::cout << "If you are opening the visualizer locally, open http://localhost:" << port << " in your browser\n";
-    if (port == 8082) {
-        std::cout << "If you are using peripheral mode and viewing from another machine, open http://"  << externalAddress << ":" << port << " in your browser\n";
-        std::cout << "If you are using oakapp base image, open http://" << externalAddress << ":" << "9000" << " in your browser" << std::endl;
+    if(port == 8082) {
+        std::cout << "If you are using peripheral mode and viewing from another machine, open http://" << externalAddress << ":" << port
+                  << " in your browser\n";
+        std::cout << "If you are using oakapp base image, open https://" << externalAddress << ":" << "9000" << " in your browser" << std::endl;
     } else {
-        std::cout << "If you are using peripheral mode and viewing from another machine, set the http port to 8082. Your current port setting is: " << port << "\n";
+        std::cout << "If you are using peripheral mode and viewing from another machine, set the http port to 8082. Your current port setting is: " << port
+                  << "\n";
         std::cout << "If you are using oakapp base image, set the http port to 8082. Your current port setting is: " << port << std::endl;
     }
     httpServerThread = std::make_unique<std::thread>([this]() { httpServer->listen_after_bind(); });
