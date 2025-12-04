@@ -39,9 +39,9 @@ int main() {
         }
 
         auto monoLeft = pipeline.create<dai::node::Camera>();
-        monoLeft->build(dai::CameraBoardSocket::CAM_B);
+        monoLeft->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
         auto monoRight = pipeline.create<dai::node::Camera>();
-        monoRight->build(dai::CameraBoardSocket::CAM_C);
+        monoRight->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
 
         auto stereo = pipeline.create<dai::node::StereoDepth>();
         stereo->setRectification(true);
@@ -75,7 +75,6 @@ int main() {
             if(!inSpatialDet || !rgbFrame || !depthFrame) {
                 continue;
             }
-
             cv::Mat depthCv = depthFrame->getCvFrame();
             cv::Mat depthAbs, colorizedDepth;
             cv::convertScaleAbs(depthCv, depthAbs, 0.03);

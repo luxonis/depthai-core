@@ -142,7 +142,6 @@ with dai.Pipeline(device) as pipeline:
 
         # origin=[0,0,0]. X=Red, Y=Green, Z=Blue
         np_points = np.array(spatial_points_cm, dtype=np.float32)
-
         line_set.points = o3d.utility.Vector3dVector(np_points)
         line_set.lines = o3d.utility.Vector2iVector(np.array(lines))
         line_set.colors = o3d.utility.Vector3dVector(np.tile([0,1 ,0], (len(lines),1)))
@@ -151,10 +150,8 @@ with dai.Pipeline(device) as pipeline:
         # Color points bright magenta in 3D view
         colors = np.tile([1.0, 0.0, 1.0], (len(np_points), 1))
         point_cloud.colors = o3d.utility.Vector3dVector(colors)
-
         vis.update_geometry(point_cloud)
         vis.update_geometry(line_set)
-
         vis.poll_events()
         vis.update_renderer()
 
