@@ -10,6 +10,7 @@ namespace dai {
 namespace utility {
 
 void PipelineImplHelper::setupHolisticRecordAndReplay() {
+    // TODO: Refactor this function to reduce complexity
     if(pipeline->buildingOnHost) {
         if(pipeline->defaultDevice) {
             auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));

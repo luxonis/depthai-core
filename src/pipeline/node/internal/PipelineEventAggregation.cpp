@@ -67,6 +67,7 @@ class NodeEventAggregation {
     std::atomic<bool> updated = false;
 
    private:
+    // Find the latest ongoing event with the given sequence number
     inline std::optional<PipelineEvent>* findOngoingEvent(uint32_t sequenceNum, utility::CircularBuffer<std::optional<PipelineEvent>>& buffer) {
         for(auto rit = buffer.rbegin(); rit != buffer.rend(); ++rit) {
             if(rit->has_value() && rit->value().sequenceNum == sequenceNum) {
@@ -78,11 +79,13 @@ class NodeEventAggregation {
         return nullptr;
     }
 
+    // Update buffers for interval events (start/end)
     inline bool updateIntervalBuffers(PipelineEvent& event) {
         using namespace std::chrono;
         std::unique_ptr<utility::CircularBuffer<uint64_t>> emptyIntBuffer;
         std::unique_ptr<utility::CircularBuffer<FpsMeasurement>> emptyTimeBuffer;
 
+        // Get the correct buffers based on event type
         auto& ongoingEvents = [&]() -> std::unique_ptr<utility::CircularBuffer<std::optional<PipelineEvent>>>& {
             switch(event.type) {
                 case PipelineEvent::Type::LOOP:
@@ -135,14 +138,16 @@ class NodeEventAggregation {
             return emptyTimeBuffer;  // To silence compiler warning
         }();
 
+        // Initialize buffers if they don't exist yet
         if(ongoingEvents == nullptr) ongoingEvents = std::make_unique<utility::CircularBuffer<std::optional<PipelineEvent>>>(eventWaitWindow);
         if(timingsBuffer == nullptr) timingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
         if(fpsBuffer == nullptr) fpsBuffer = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
 
+        // Find ongoing event with the same sequence number
         auto* ongoingEvent = findOngoingEvent(event.sequenceNum, *ongoingEvents);
 
         if(ongoingEvent && ongoingEvent->has_value() && event.interval == PipelineEvent::Interval::END) {
-            // End event
+            // End event - add duration event and update buffers
             NodeState::DurationEvent durationEvent;
             durationEvent.startEvent = ongoingEvent->value();
             durationEvent.durationUs = duration_cast<microseconds>(event.getTimestamp() - ongoingEvent->value().getTimestamp()).count();
@@ -161,11 +166,13 @@ class NodeEventAggregation {
         return false;
     }
 
+    // Update buffers for ping events
     inline bool updatePingBuffers(PipelineEvent& event) {
         using namespace std::chrono;
         std::unique_ptr<utility::CircularBuffer<uint64_t>> emptyIntBuffer;
         std::unique_ptr<utility::CircularBuffer<FpsMeasurement>> emptyTimeBuffer;
 
+        // Get the correct buffers based on event type
         auto& ongoingEvents = [&]() -> std::unique_ptr<utility::CircularBuffer<std::optional<PipelineEvent>>>& {
             switch(event.type) {
                 case PipelineEvent::Type::LOOP:
@@ -209,14 +216,16 @@ class NodeEventAggregation {
             return emptyTimeBuffer;  // To silence compiler warning
         }();
 
+        // Initialize buffers if they don't exist yet
         if(ongoingEvents == nullptr) ongoingEvents = std::make_unique<utility::CircularBuffer<std::optional<PipelineEvent>>>(eventWaitWindow);
         if(timingsBuffer == nullptr) timingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
         if(fpsBuffer == nullptr) fpsBuffer = std::make_unique<utility::CircularBuffer<FpsMeasurement>>(windowSize);
 
+        // Find ongoing event with the previous sequence number
         auto* ongoingEvent = findOngoingEvent(event.sequenceNum - 1, *ongoingEvents);
 
         if(ongoingEvent && ongoingEvent->has_value()) {
-            // End event
+            // End event and update buffers
             NodeState::DurationEvent durationEvent;
             durationEvent.startEvent = ongoingEvent->value();
             durationEvent.durationUs = duration_cast<microseconds>(event.getTimestamp() - ongoingEvent->value().getTimestamp()).count();
@@ -236,9 +245,11 @@ class NodeEventAggregation {
         return false;
     }
 
+    // Calculate and update timing statistics from the given buffer
     inline void updateTimingStats(NodeState::TimingStats& stats, const utility::CircularBuffer<uint64_t>& buffer) {
         if(buffer.size() == 0) return;
 
+        // Reset stats
         stats.minMicros = std::min(stats.minMicros, buffer.last());
         stats.maxMicros = std::max(stats.maxMicros, buffer.last());
         stats.averageMicrosRecent = 0;
@@ -251,6 +262,7 @@ class NodeEventAggregation {
             sum += v;
         }
         stats.averageMicrosRecent = sum / bufferByType.size();
+
         // Calculate standard deviation
         for(auto v : bufferByType) {
             auto diff = v - stats.averageMicrosRecent;
@@ -267,6 +279,7 @@ class NodeEventAggregation {
             stats.medianMicrosRecent = (stats.medianMicrosRecent + bufferByType[bufferByType.size() / 2 - 1]) / 2;
         }
     }
+    // Calculate and update FPS statistics from the given buffer
     inline void updateFpsStats(NodeState::Timing& timing, const utility::CircularBuffer<FpsMeasurement>& buffer) {
         if(buffer.size() < 2) return;
         auto timeDiff = std::chrono::duration_cast<std::chrono::microseconds>(buffer.last().time - buffer.first().time).count();
@@ -279,7 +292,7 @@ class NodeEventAggregation {
    public:
     void add(PipelineEvent& event) {
         using namespace std::chrono;
-        // Update states
+        // Update states and queue sizes
         switch(event.type) {
             case PipelineEvent::Type::CUSTOM:
             case PipelineEvent::Type::LOOP:
@@ -329,6 +342,7 @@ class NodeEventAggregation {
         }
         if(addedEvent && std::chrono::steady_clock::now() - lastUpdated >= std::chrono::milliseconds(statsUpdateIntervalMs)) {
             lastUpdated = std::chrono::steady_clock::now();
+            // Update stats for all event types and sources
             for(int i = (int)PipelineEvent::Type::CUSTOM; i <= (int)PipelineEvent::Type::OUTPUT_BLOCK; ++i) {
                 // By instance
                 switch((PipelineEvent::Type)i) {
@@ -346,6 +360,7 @@ class NodeEventAggregation {
                         for(auto& [source, _] : inputTimingsBuffers) {
                             updateTimingStats(state.inputStates[source].timing.durationStats, *inputTimingsBuffers[source]);
                             updateFpsStats(state.inputStates[source].timing, *inputFpsBuffers[source]);
+                            // Update queue size stats
                             if(inputQueueSizesBuffers.find(source) != inputQueueSizesBuffers.end()) {
                                 auto& qStats = state.inputStates[source].queueStats;
                                 auto& qBuffer = *inputQueueSizesBuffers[source];
@@ -412,6 +427,7 @@ class PipelineEventHandler {
         while(running) {
             std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
             bool gotEvents = false;
+            // Wait for any events
             for(auto& [k, v] : *inputs) {
                 try {
                     events[k.second] = v.tryGet<PipelineEvent>();
@@ -419,6 +435,7 @@ class PipelineEventHandler {
                 } catch(const dai::MessageQueue::QueueException&) {
                 }
             }
+            // Process events
             for(auto& [k, event] : events) {
                 if(event != nullptr) {
                     std::unique_lock lock(mutex);
@@ -440,6 +457,7 @@ class PipelineEventHandler {
         if(thread.joinable()) thread.join();
     }
     bool getState(std::shared_ptr<PipelineState> outState, bool sendEvents) {
+        // Copy over node states and return if any were recently updated
         std::shared_lock lock(mutex);
         bool updated = false;
         for(auto& [nodeId, nodeState] : nodeStates) {
@@ -460,6 +478,7 @@ std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHa
                                                                  const uint32_t sequenceNum,
                                                                  bool sendEvents);
 
+// Handles sending trace output state at configured intervals (if DEPTHAI_PIPELINE_DEBUGGING is enabled)
 class TraceOutputHandler {
     std::atomic<bool> running;
     std::thread thread;
@@ -526,16 +545,20 @@ std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHa
     outState->setTimestamp(std::chrono::steady_clock::now());
     outState->tsDevice = outState->ts;
 
+    // Filter state based on current configuration
     if(!currentConfig->nodes.empty()) {
         for(auto it = outState->nodeStates.begin(); it != outState->nodeStates.end();) {
             auto nodeConfig = std::find_if(
                 currentConfig->nodes.begin(), currentConfig->nodes.end(), [&](const NodeEventAggregationConfig& cfg) { return cfg.nodeId == it->first; });
             if(nodeConfig == currentConfig->nodes.end()) {
+                // If the config is not empty and the node is not found in the config, remove it
                 it = outState->nodeStates.erase(it);
             } else {
+                // Filter inputs/outputs/others based on config
                 if(nodeConfig->inputs.has_value()) {
                     auto inputStates = it->second.inputStates;
                     it->second.inputStates.clear();
+                    // Re-insert only inputs that are in the config
                     for(const auto& inputName : *nodeConfig->inputs) {
                         if(inputStates.find(inputName) != inputStates.end()) {
                             it->second.inputStates[inputName] = inputStates[inputName];
@@ -545,6 +568,7 @@ std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHa
                 if(nodeConfig->outputs.has_value()) {
                     auto outputStates = it->second.outputStates;
                     it->second.outputStates.clear();
+                    // Re-insert only outputs that are in the config
                     for(const auto& outputName : *nodeConfig->outputs) {
                         if(outputStates.find(outputName) != outputStates.end()) {
                             it->second.outputStates[outputName] = outputStates[outputName];
@@ -554,6 +578,7 @@ std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHa
                 if(nodeConfig->others.has_value()) {
                     auto otherTimings = it->second.otherTimings;
                     it->second.otherTimings.clear();
+                    // Re-insert only timings that are in the config
                     for(const auto& otherName : *nodeConfig->others) {
                         if(otherTimings.find(otherName) != otherTimings.end()) {
                             it->second.otherTimings[otherName] = otherTimings[otherName];
@@ -572,6 +597,7 @@ void PipelineEventAggregation::run() {
 
     this->pipelineEventDispatcher->sendEvents = false;
 
+    // Create handler for incoming events
     PipelineEventHandler handler(&inputs, properties.aggregationWindowSize, properties.statsUpdateIntervalMs, properties.eventWaitWindow, logger);
     handler.run();
 
@@ -584,6 +610,8 @@ void PipelineEventAggregation::run() {
     std::chrono::time_point<std::chrono::steady_clock> lastSentTime;
     while(mainLoop()) {
         bool gotConfig = false;
+        // Wait for config if the node is not yet configured, if the current config has no repeat interval (wait for new request),
+        // or if a new config is available
         if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeatIntervalSeconds.has_value()) || request.has()) {
             auto req = request.get<PipelineEventAggregationConfig>();
             if(req != nullptr) {
@@ -592,12 +620,14 @@ void PipelineEventAggregation::run() {
             }
         }
         if(properties.traceOutput && !traceOutputConfig.has_value() && gotConfig && currentConfig->repeatIntervalSeconds.has_value()) {
+            // Use the first repeating config for trace output if enabled
             traceOutputConfig = currentConfig;
             traceOutputHandler.run(traceOutputConfig);
             currentConfig = std::nullopt;
             continue;
         }
         auto now = std::chrono::steady_clock::now();
+        // If we got a new config, or if the repeat interval has elapsed, send an update
         if(gotConfig
            || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value()
                && (now - lastSentTime) >= std::chrono::seconds(currentConfig->repeatIntervalSeconds.value()))) {
@@ -611,6 +641,7 @@ void PipelineEventAggregation::run() {
                 }
             }
             auto [outState, updated] = makeOutputState(handler, currentConfig, sequenceNum++, sendEvents);
+            // If the state is the same as before, do not send for a repeating config
             if(gotConfig
                || (currentConfig.has_value() && currentConfig->repeatIntervalSeconds.has_value() && updated
                    && (now - lastSentTime) >= std::chrono::seconds(currentConfig->repeatIntervalSeconds.value()))) {
