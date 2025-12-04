@@ -15,7 +15,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
         rec.log_static("world", rerun::ViewCoordinates::RDF);
-        while(isRunning()) {
+        while(mainLoop()) {
             auto pclIn = inputPCL.get<dai::PointCloudData>();
             auto rgbdIn = inputRGBD.get<dai::RGBDData>();
             if(pclIn != nullptr) {

@@ -129,7 +129,7 @@ void RTABMapVIO::syncCB(std::shared_ptr<dai::ADatatype> data) {
 }
 
 void RTABMapVIO::run() {
-    while(isRunning()) {
+    while(mainLoop()) {
         auto msg = inSync.get<dai::ADatatype>();
         if(msg != nullptr) {
             syncCB(msg);
