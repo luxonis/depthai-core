@@ -226,7 +226,7 @@ void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
             float roiCy = denormRoi.y + denormRoi.height / 2.0f;
             std::array<std::array<float, 3>, 3> intrinsicMatrix = depthFrame->transformation.getIntrinsicMatrix();
             dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, intrinsicMatrix, dai::Point2f(roiCx, roiCy));
-            logger->debug("Calculated spatial cooridantes: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
+            logger->debug("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
             spatialData.spatialCoordinates = spatialCoordinates;
         }
@@ -284,7 +284,7 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
         // add if opencv support here
         cv::Mat seg = optSeg.value();
         if(static_cast<int>(segmentationMaskHeight) != depthHeight || static_cast<int>(segmentationMaskWidth) != depthWidth) {
-            logger->debug("Segmentation mask size {}x{} does not match depth frame size {}x{}. Resizing to depth frame size.");
+            logger->debug("Segmentation mask size {}x{} does not match depth frame size {}x{}. Resizing to depth frame size.", segmentationMaskWidth, segmentationMaskHeight, depthWidth, depthHeight);
             cv::resize(seg, seg, cv::Size(depthWidth, depthHeight), 0, 0, cv::INTER_NEAREST);
         }
         maskPtr = seg.data;
@@ -385,7 +385,7 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
         spatialDetection.labelName = detection.labelName;
 
         dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, imgDetections.transformation->getIntrinsicMatrix(), rotatedRect.center);
-        logger->debug("Calculated spatial cooridantes: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
+        logger->debug("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
         spatialDetection.spatialCoordinates = spatialCoordinates;
 

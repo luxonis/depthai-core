@@ -107,9 +107,9 @@ class SpatialLocationCalculatorConfig : public Buffer {
     virtual ~SpatialLocationCalculatorConfig();
 
     /**
-     * Specify an additional regions of interest (ROI) to calculate their spatial coordinates. Results of ROI coordinates are available on
+     * Specify additional regions of interest (ROI) to calculate their spatial coordinates. Results of ROI coordinates are available on
      SpatialLocationCalculatorData output.
-     * @param ROIs Vector of configuration parameters for ROIs (region of interests)P
+     * @param ROIs Vector of configuration parameters for ROIs (region of interests)
      * @warning Will be deprecated in future releases.
      */
     void setROIs(std::vector<SpatialLocationCalculatorConfigData> ROIs);
@@ -189,15 +189,14 @@ class SpatialLocationCalculatorConfig : public Buffer {
      */
     int32_t getStepSize() const;
 
-    /*
+    /**
      * Retrieve radius around keypoints used to calculate spatial coordinates.
-
      */
     int32_t getKeypointRadius() const;
 
     /*
      * Retrieve whether keypoints are used for spatial location calculation.
-     * @warning Only applicable to ImgDetections  ImgDetections with keypoints.
+     * @warning Only applicable to ImgDetections with keypoints.
      */
     bool getCalculateSpatialKeypoints() const;
 
