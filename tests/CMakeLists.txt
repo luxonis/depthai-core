@@ -653,7 +653,7 @@ dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4rgb ci)
 target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # XLinkIn test
-dai_add_test(xlink_test src/ondevice_tests/xlink_tests.cpp)
+dai_add_test(xlink_test src/ondevice_tests/xlink_test.cpp)
 dai_set_test_labels(xlink_test ondevice rvc2_all ci)
 
 # runtime_calibration_test test
