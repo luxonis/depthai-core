@@ -654,7 +654,7 @@ target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction
 
 # XLinkIn test
 dai_add_test(xlink_test src/ondevice_tests/xlink_test.cpp)
-dai_set_test_labels(xlink_test ondevice rvc2_all ci)
+dai_set_test_labels(xlink_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # runtime_calibration_test test
 dai_add_test(runtime_calibration_test src/ondevice_tests/runtime_calibration_test.cpp)

@@ -2,8 +2,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <depthai/depthai.hpp>
-#include <depthai/pipeline/node/internal/XLinkIn.hpp>
 #include <thread>
+
 using namespace std::chrono_literals;
 
 TEST_CASE("XLinkIn lazy allocation test") {
