@@ -9,10 +9,12 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 #include <opencv2/core.hpp>
 #include <opencv2/core/base.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/opencv.hpp>
+#endif
 #include <optional>
 #include <string>
 #include <vector>
@@ -711,6 +713,7 @@ void segmentationDecode(const dai::NNData& nnData,
                         dai::ImgDetections& outDetections,
                         DetectionParserProperties properties,
                         std::shared_ptr<spdlog::async_logger>& logger) {
+  #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     std::pair<int, int> inputSize = nnData.transformation->getSize();
     int inputWidth = inputSize.first;
     int inputHeight = inputSize.second;
@@ -826,6 +829,7 @@ void segmentationDecode(const dai::NNData& nnData,
     }
 
     outDetections.setCvSegmentationMask(indexMask);
+#endif
 }
 
 void keypointDecode(const dai::NNData& nnData,
