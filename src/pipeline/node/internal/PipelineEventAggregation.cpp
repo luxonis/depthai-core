@@ -428,12 +428,16 @@ class PipelineEventHandler {
             std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
             bool gotEvents = false;
             // Wait for any events
-            for(auto& [k, v] : *inputs) {
-                try {
-                    events[k.second] = v.tryGet<PipelineEvent>();
-                    gotEvents = gotEvents || (events[k.second] != nullptr);
-                } catch(const dai::MessageQueue::QueueException&) {
+            try {
+                auto msgs = inputs->getAny();
+                for(auto& [k, v] : msgs) {
+                    auto event = std::dynamic_pointer_cast<PipelineEvent>(v);
+                    if(event != nullptr) {
+                        events[k.second] = event;
+                        gotEvents = true;
+                    }
                 }
+            } catch(const dai::MessageQueue::QueueException&) {
             }
             // Process events
             for(auto& [k, event] : events) {
@@ -442,9 +446,6 @@ class PipelineEventHandler {
                     nodeStates.try_emplace(event->nodeId, aggregationWindowSize, statsUpdateIntervalMs, eventWaitWindow, logger);
                     nodeStates.at(event->nodeId).add(*event);
                 }
-            }
-            if(!gotEvents && running) {
-                std::this_thread::yield();
             }
         }
     }
