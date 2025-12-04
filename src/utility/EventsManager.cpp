@@ -9,7 +9,6 @@
 #include <random>
 #include <sstream>
 #include <utility>
-#include <opencv2/core.hpp>
 
 #include "Environment.hpp"
 #include "Logging.hpp"
