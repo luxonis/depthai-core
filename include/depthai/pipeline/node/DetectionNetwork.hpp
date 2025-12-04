@@ -28,11 +28,47 @@ class DetectionNetwork : public DeviceNodeGroup {
         return networkPtr;
     }
 
+    /**
+     * @brief Build DetectionNetwork node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
+     * @param output: Output to link
+     * @param nnArchive: Neural network archive
+     * @returns Shared pointer to DetectionNetwork node
+     */
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
-    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
+    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input,
+                                            NNModelDescription modelDesc,
+                                            std::optional<float> fps = std::nullopt,
+                                            std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
+
+    /**
+     * @brief Build DetectionNetwork node. Connect Camera output to this node's input. Also call setNNArchive() with provided NNArchive.
+     * @param input: Camera node
+     * @param nnArchive: Neural network archive
+     * @param fps: Desired frames per second
+     * @param resizeMode: Resize mode for input frames
+     * @returns Shared pointer to DetectionNetwork node
+     */
+    std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input,
+                                            const NNArchive& nnArchive,
+                                            std::optional<float> fps = std::nullopt,
+                                            std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    /*
+     * @brief Build DetectionNetwork node. Connect ReplayVideo output to this node's input. Also call setNNArchive() with provided model description.
+     * @param input: ReplayVideo node
+     * @param modelDesc: Neural network model description
+     * @param fps: Desired frames per second
+     * @returns Shared pointer to DetectionNetwork node
+     */
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
+    /**
+     * @brief Build DetectionNetwork node. Connect ReplayVideo output to this node's input.
+     * @param input: ReplayVideo node
+     * @param nnArchive: Neural network archive
+     * @param fps: Desired frames per second
+     * @returns Shared pointer to DetectionNetwork node
+     */
+
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
 #endif
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
