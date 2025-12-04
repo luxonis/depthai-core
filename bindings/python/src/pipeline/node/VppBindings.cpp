@@ -49,7 +49,12 @@ void bind_vpp(pybind11::module& m, void* pCallstack) {
         .def_readonly("syncedInputs", &Vpp::syncedInputs, DOC(dai, node, Vpp, syncedInputs), "Synchronised Left Img, Right Img, Dispatiy and confidence input.")
         .def_readonly("leftOut", &Vpp::leftOut, DOC(dai, node, Vpp, leftOut), "Left output with same resolution as input.")
         .def_readonly("rightOut", &Vpp::rightOut, DOC(dai, node, Vpp, rightOut), "Right output with same resolution as input.")
-        .def_readonly("initialConfig", &Vpp::initialConfig, DOC(dai, node, Vpp, initialConfig), "Input config of the node.");
+        .def_property(
+            "initialConfig",
+            [](Vpp& self) { return self.initialConfig; },
+            [](Vpp& self, std::shared_ptr<VppConfig> cfg) { self.initialConfig = cfg; },
+            DOC(dai, node, Vpp, initialConfig),
+            "Initial config of the node.");
 
     // ALIAS
     daiNodeModule.attr("Vpp").attr("Properties") = vppProperties;
