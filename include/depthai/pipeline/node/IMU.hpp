@@ -5,6 +5,12 @@
 // shared
 #include <depthai/properties/IMUProperties.hpp>
 
+#ifdef _WIN32
+    #include <windows.h>
+    #include <timeapi.h>
+    #pragma comment(lib, "winmm.lib")
+#endif
+
 namespace dai {
 namespace node {
 
@@ -21,6 +27,43 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties>, public Source
    public:
     constexpr static const char* NAME = "IMU";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    /**
+     * Destructor - Disables high-resolution timer when IMU node is destroyed
+     */
+    ~IMU() override {
+        #ifdef _WIN32
+            if(highResTimerEnabled) {
+                timeEndPeriod(1);
+                highResTimerEnabled = false;
+            }
+        #endif
+    }
+
+    /**
+     * Enable high-resolution timer for precise IMU sampling on Windows
+     */
+    void enableHighResolutionTimer() {
+        #ifdef _WIN32
+            std::cout << "I HAVE ENABLED THE HIGH RESOLUTION TIMER INSIDE OF WINDOWS !!!!!!!!!!!!\n";
+            if(!highResTimerEnabled && timeBeginPeriod(1) == TIMERR_NOERROR) {
+                std::cout << "IT WAS SUCCESSFUL !!!!!  !!!!!  !!!!!!!!!!!!\n";
+                highResTimerEnabled = true;
+            }
+        #endif
+    }
+
+    /**
+     * Disable high-resolution timer
+     */
+    void disableHighResolutionTimer() {
+        #ifdef _WIN32
+            if(highResTimerEnabled) {
+                timeEndPeriod(1);
+                highResTimerEnabled = false;
+            }
+        #endif
+    }
 
     /**
      * Outputs IMUData message that carries IMU packets.
@@ -77,6 +120,9 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties>, public Source
      * Default value: false.
      */
     void enableFirmwareUpdate(bool enable);
+
+   private:
+    bool highResTimerEnabled = false;
 };
 
 }  // namespace node

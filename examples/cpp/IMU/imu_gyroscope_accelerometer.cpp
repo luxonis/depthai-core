@@ -16,6 +16,7 @@ int main() {
 
     // Define sources and outputs
     auto imu = pipeline.create<dai::node::IMU>();
+    imu->enableHighResolutionTimer();
 
     // Enable ACCELEROMETER_RAW at 480 hz rate
     imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 480);
