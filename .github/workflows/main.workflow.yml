@@ -20,7 +20,7 @@ on:
 jobs:
 
   style:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v4
@@ -29,17 +29,17 @@ jobs:
 
     - name: Install format dependencies
       run: |
-        sudo apt-get install clang-format-10
+        sudo apt-get install clang-format-18
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=clang-format-10
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=clang-format-18
 
     - name: check style
       run: ci/check_format.sh build
 
 
   tidy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v4
@@ -49,10 +49,10 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install clang-tidy-10
+        sudo apt-get install clang-tidy-18
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-10
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-18
 
     - name: Run clang-tidy
       run: cmake --build build --parallel 4
@@ -62,12 +62,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-14, windows-latest, ubuntu-latest]
         cmake: ['3.10.x', '3.29.x'] # Older version (Ubuntu 18.04) and newest
         exclude:
           - os: windows-latest
             cmake: '3.10.x'
-          - os: macos-latest # Skip the old cmake on latest macos - doesn't handle ARM64 aarch correctly
+          - os: macos-14 # Skip the old cmake on latest macos - doesn't handle ARM64 aarch correctly
             cmake: '3.10.x'
 
     steps:
@@ -94,7 +94,7 @@ jobs:
         cmake-version: ${{ matrix.cmake }}
 
     - name: Install dependencies
-      if: matrix.os == 'macos-11'
+      if: matrix.os == 'macos-14'
       run: |
         brew install opencv
 
@@ -133,7 +133,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-11, windows-latest, ubuntu-latest]
+        os: [macos-14, windows-latest, ubuntu-latest]
         build-type: [Debug, Release]
         shared: [true, false]
         platform: [x64]
@@ -165,7 +165,7 @@ jobs:
         submodules: 'recursive'
 
     - name: Install dependencies
-      if: matrix.os == 'macos-11'
+      if: matrix.os == 'macos-14'
       run: |
         brew install opencv
 

@@ -907,6 +907,12 @@ class DeviceBase {
     bool isClosed() const;
 
     /**
+     * Crashes the device
+     * @warning ONLY FOR TESTING PURPOSES, it causes an unrecoverable crash on the device
+     */
+    void crashDevice();
+
+    /**
      * Returns underlying XLinkConnection
      */
     std::shared_ptr<XLinkConnection> getConnection() {
