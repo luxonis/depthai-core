@@ -64,7 +64,10 @@ if requireOpenCv:
 if args.install_rerun:
     DEPENDENCIES.append('rerun-sdk')
 if args.install_open3d_cpu:
-    DEPENDENCIES.append('open3d-cpu')
+    if platform.system() == "Darwin":
+        DEPENDENCIES.append("open3d")
+    else:
+        DEPENDENCIES.append("open3d-cpu")
 # Constants
 ARTIFACTORY_URL = 'https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local'
 
