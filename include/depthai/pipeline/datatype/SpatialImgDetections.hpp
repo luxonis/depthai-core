@@ -36,9 +36,10 @@ struct SpatialImgDetection {
     SpatialLocationCalculatorConfigData boundingBoxMapping;
 
     SpatialImgDetection() = default;
-    SpatialImgDetection(const RotatedRect& boundingBox, Point3f spatialCoordinates, float confidence, uint32_t label);
+    SpatialImgDetection(const RotatedRect& boundingBox, Point3f spatialCoordinates, float confidence = 1.f, uint32_t label = 0);
     SpatialImgDetection(const RotatedRect& boundingBox, Point3f spatialCoordinates, std::string labelName, float confidence, uint32_t label);
-    SpatialImgDetection(const RotatedRect& boundingBox, Point3f spatialCoordinates, const SpatialKeypointsList& keypoints, float confidence, uint32_t label);
+    SpatialImgDetection(
+        const RotatedRect& boundingBox, Point3f spatialCoordinates, const SpatialKeypointsList& keypoints, float confidence = 1.f, uint32_t label = 0);
     SpatialImgDetection(const RotatedRect& boundingBox,
                         Point3f spatialCoordinates,
                         const SpatialKeypointsList& keypoints,

@@ -13,20 +13,19 @@ namespace dai {
 
 // SpatialImgDetection functions
 
-SpatialImgDetection::SpatialImgDetection(const dai::RotatedRect& boundingBox, Point3f spatialCoordinates, float conf = 0.f, uint32_t label = 0) {
+SpatialImgDetection::SpatialImgDetection(const dai::RotatedRect& boundingBox, Point3f spatialCoordinates, float conf, uint32_t label) {
     setBoundingBox(boundingBox);
     this->spatialCoordinates = spatialCoordinates;
     this->confidence = conf;
     this->label = label;
 }
-SpatialImgDetection::SpatialImgDetection(
-    const dai::RotatedRect& boundingBox, Point3f spatialCoordinates, std::string labelName, float conf = 0.f, uint32_t label = 0)
+SpatialImgDetection::SpatialImgDetection(const dai::RotatedRect& boundingBox, Point3f spatialCoordinates, std::string labelName, float conf, uint32_t label)
     : SpatialImgDetection(boundingBox, spatialCoordinates, conf, label) {
     this->labelName = std::move(labelName);
 }
 
 SpatialImgDetection::SpatialImgDetection(
-    const dai::RotatedRect& boundingBox, Point3f spatialCoordinates, const dai::SpatialKeypointsList& keypoints, float conf = 0.f, uint32_t label = 0)
+    const dai::RotatedRect& boundingBox, Point3f spatialCoordinates, const dai::SpatialKeypointsList& keypoints, float conf, uint32_t label)
     : SpatialImgDetection(boundingBox, spatialCoordinates, conf, label) {
     this->keypoints = keypoints;
 }
@@ -35,8 +34,8 @@ SpatialImgDetection::SpatialImgDetection(const dai::RotatedRect& boundingBox,
                                          Point3f spatialCoordinates,
                                          const dai::SpatialKeypointsList& keypoints,
                                          std::string labelName,
-                                         float conf = 0.f,
-                                         uint32_t label = 0)
+                                         float conf,
+                                         uint32_t label)
     : SpatialImgDetection(boundingBox, spatialCoordinates, conf, label) {
     this->keypoints = keypoints;
     this->labelName = std::move(labelName);
