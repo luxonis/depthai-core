@@ -2,6 +2,29 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.31.0 (2025-12-03)
+-------------------
+## Features
+* Add tuning for the IMX577 sensor, removing the previously present blue tint
+* Improve IMX678 support on RVC2 with better black level correction, improving brightness and color accuracy
+
+## New devices support
+* Add support for a new revision of OAK-Thermal (R8)
+* Add support for OAK-ToF (R4)
+* Add support for a new revision of OAK-D-S2-[Pro]-Wide OV9728 variant (R8)
+ 
+## Bug fixes and stability
+* Fix a rare issue of IMU preventing a device reboot
+* Fix a timestamp overflow bug on the BNO08x IMU
+* Fix an edge case where `dai.Device` constructor could get stuck indefinitely if the device lost connection at the wrong time by adding a timeout internally
+* Turn on the watchdog early during discovery of RVC2 USB devices to avoid soft bricking the device along with handling the case where the device gets into that state to recover it on the next boot
+* Fully disable crashdump extraction when `DEPTHAI_CRASHDUMP=0` is set
+
+## Misc
+* Add support to explicitly remove tracklets in `ObjectTracker` node
+* Remove limitation for the maximum watchdog frequency from 4.5 seconds to unlimited ("infinity") by adding a software watchdog in firmware
+
+
 2.30.0 (2025-03-18)
 -------------------
 * Features
