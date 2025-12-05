@@ -477,8 +477,6 @@ class Node : public std::enable_shared_from_this<Node> {
         Input& operator[](std::pair<std::string, std::string> groupKey);
         // Check if the input exists
         bool has(const std::string& key) const;
-        // Get any inputs
-        std::unordered_map<std::pair<std::string, std::string>, std::shared_ptr<ADatatype>, PairHash> getAny();
     };
 
     /// Connection between an Input and Output internal

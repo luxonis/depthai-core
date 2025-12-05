@@ -424,17 +424,18 @@ class PipelineEventHandler {
           eventWaitWindow(eventWaitWindow),
           logger(logger) {}
     void threadedRun() {
+        std::unordered_map<std::string, MessageQueue&> inputMap;
+        for(auto& [key, input] : *inputs) {
+            inputMap.insert_or_assign(key.second, input);
+        }
         while(running) {
             std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
-            bool gotEvents = false;
-            // Wait for any events
             try {
-                auto msgs = inputs->getAny();
+                // Wait for any events
+                auto msgs = getAny<PipelineEvent>(inputMap);
                 for(auto& [k, v] : msgs) {
-                    auto event = std::dynamic_pointer_cast<PipelineEvent>(v);
-                    if(event != nullptr) {
-                        events[k.second] = event;
-                        gotEvents = true;
+                    if(v != nullptr) {
+                        events[k] = v;
                     }
                 }
             } catch(const dai::MessageQueue::QueueException&) {

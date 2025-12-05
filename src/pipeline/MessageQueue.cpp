@@ -34,6 +34,8 @@ void MessageQueue::close() {
     // Destroy queue
     queue.destruct();
 
+    notifyCondVars();
+
     // Log if name not empty
     if(!name.empty()) spdlog::debug("MessageQueue ({}) closed", name);
 }
@@ -99,6 +101,20 @@ int MessageQueue::addCallback(const std::function<void()>& callback) {
     return addCallback([callback](const std::string&, std::shared_ptr<ADatatype>) { callback(); });
 }
 
+int MessageQueue::addCondVar(std::shared_ptr<std::condition_variable> cv) {
+    // Lock first
+    std::unique_lock<std::mutex> lock(cvNotifyMtx);
+
+    // Get unique id
+    int uniqueId = uniqueCondVarId++;
+
+    // assign callback
+    condVars[uniqueId] = std::move(cv);
+
+    // return id assigned to the callback
+    return uniqueId;
+}
+
 bool MessageQueue::removeCallback(int callbackId) {
     // Lock first
     std::unique_lock<std::mutex> lock(callbacksMtx);
@@ -108,6 +124,18 @@ bool MessageQueue::removeCallback(int callbackId) {
 
     // Otherwise erase and return true
     callbacks.erase(callbackId);
+    return true;
+}
+
+bool MessageQueue::removeCondVar(int condVarId) {
+    // Lock first
+    std::unique_lock<std::mutex> lock(cvNotifyMtx);
+
+    // If callback with id 'callbackId' doesn't exists, return false
+    if(condVars.count(condVarId) == 0) return false;
+
+    // Otherwise erase and return true
+    condVars.erase(condVarId);
     return true;
 }
 
@@ -175,6 +203,86 @@ void MessageQueue::callCallbacks(std::shared_ptr<ADatatype> message) {
     }
 }
 
+void MessageQueue::notifyCondVars() {
+    // Lock first
+    std::lock_guard<std::mutex> lock(cvNotifyMtx);
+
+    // Call all callbacks
+    for(auto& keyValue : condVars) {
+        keyValue.second->notify_one();
+    }
+}
+
 MessageQueue::QueueException::~QueueException() noexcept = default;
+
+std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues) {
+    std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> callbackIds;
+    std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> condVarIds;
+    callbackIds.reserve(queues.size());
+    condVarIds.reserve(queues.size());
+    std::unordered_map<std::string, std::shared_ptr<ADatatype>> inputs;
+
+    std::mutex inputsWaitMutex;
+    auto inputsWaitCv = std::make_shared<std::condition_variable>();
+    bool receivedMessage = false;
+
+    // Register callbacks
+    for(auto& kv : queues) {
+        auto& input = kv.second;
+        auto callbackId = input.addCallback([&]() {
+            {
+                std::lock_guard<std::mutex> lock(inputsWaitMutex);
+                receivedMessage = true;
+            }
+            inputsWaitCv->notify_all();
+        });
+
+        callbackIds.push_back({input, callbackId});
+        // Also add condition variable to be notified on close
+        auto condVarId = input.addCondVar(inputsWaitCv);
+        condVarIds.push_back({input, condVarId});
+    }
+
+    // Check if any messages already present
+    bool hasAnyMessages = false;
+    for(auto& kv : queues) {
+        if(kv.second.has()) {
+            hasAnyMessages = true;
+            break;
+        }
+    }
+
+    if(!hasAnyMessages) {
+        // Wait for any message to arrive
+        std::unique_lock<std::mutex> lock(inputsWaitMutex);
+        inputsWaitCv->wait(lock, [&]() {
+            for(auto& kv : queues) {
+                if(kv.second.isClosed()) {
+                    return true;
+                }
+            }
+            return receivedMessage;
+        });
+    }
+
+    // Remove callbacks
+    for(auto& [input, callbackId] : callbackIds) {
+        input.removeCallback(callbackId);
+    }
+    // Remove condition variables
+    for(auto& [input, condVarId] : condVarIds) {
+        input.removeCondVar(condVarId);
+    }
+
+    // Collect all available messages
+    for(auto& kv : queues) {
+        auto& input = kv.second;
+        if(input.has()) {
+            inputs[kv.first] = input.get<ADatatype>();
+        }
+    }
+
+    return inputs;
+}
 
 }  // namespace dai

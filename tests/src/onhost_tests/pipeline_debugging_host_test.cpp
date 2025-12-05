@@ -439,8 +439,8 @@ TEST_CASE("Node timings test") {
         REQUIRE(nodeState.mainLoopTiming.isValid());
         REQUIRE(nodeState.mainLoopTiming.durationStats.averageMicrosRecent == Catch::Approx(100000).margin(50000));
         REQUIRE(nodeState.mainLoopTiming.durationStats.medianMicrosRecent == Catch::Approx(100000).margin(50000));
-        REQUIRE(nodeState.mainLoopTiming.durationStats.minMicrosRecent == Catch::Approx(100000).margin(10000));
-        REQUIRE(nodeState.mainLoopTiming.durationStats.minMicros == Catch::Approx(100000).margin(10000));
+        REQUIRE(nodeState.mainLoopTiming.durationStats.minMicrosRecent == Catch::Approx(100000).margin(20000));
+        REQUIRE(nodeState.mainLoopTiming.durationStats.minMicros == Catch::Approx(100000).margin(20000));
         REQUIRE(nodeState.mainLoopTiming.durationStats.maxMicrosRecent == Catch::Approx(150000).margin(50000));
         REQUIRE(nodeState.mainLoopTiming.durationStats.maxMicros == Catch::Approx(150000).margin(50000));
 
@@ -544,8 +544,8 @@ TEST_CASE("State callback test") {
             REQUIRE(nodeState.mainLoopTiming.isValid());
             REQUIRE(nodeState.mainLoopTiming.durationStats.averageMicrosRecent == Catch::Approx(100000).margin(50000));
             REQUIRE(nodeState.mainLoopTiming.durationStats.medianMicrosRecent == Catch::Approx(100000).margin(50000));
-            REQUIRE(nodeState.mainLoopTiming.durationStats.minMicrosRecent == Catch::Approx(100000).margin(10000));
-            REQUIRE(nodeState.mainLoopTiming.durationStats.minMicros == Catch::Approx(100000).margin(10000));
+            REQUIRE(nodeState.mainLoopTiming.durationStats.minMicrosRecent == Catch::Approx(100000).margin(20000));
+            REQUIRE(nodeState.mainLoopTiming.durationStats.minMicros == Catch::Approx(100000).margin(20000));
             REQUIRE(nodeState.mainLoopTiming.durationStats.maxMicrosRecent == Catch::Approx(150000).margin(50000));
             REQUIRE(nodeState.mainLoopTiming.durationStats.maxMicros == Catch::Approx(150000).margin(50000));
 

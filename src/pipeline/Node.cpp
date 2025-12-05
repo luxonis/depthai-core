@@ -395,60 +395,6 @@ bool Node::InputMap::has(const std::string& key) const {
     return count({name, key}) > 0;
 }
 
-std::unordered_map<std::pair<std::string, std::string>, std::shared_ptr<ADatatype>, Node::PairHash> Node::InputMap::getAny() {
-    std::vector<std::pair<Node::Input&, MessageQueue::CallbackId>> callbackIds;
-    callbackIds.reserve(size());
-    std::unordered_map<std::pair<std::string, std::string>, std::shared_ptr<ADatatype>, PairHash> inputs;
-
-    std::mutex inputsWaitMutex;
-    std::condition_variable inputsWaitCv;
-    bool receivedMessage = false;
-
-    // Register callbacks
-    for(auto& kv : *this) {
-        auto& input = kv.second;
-        auto callbackId = input.addCallback([&]() {
-            {
-                std::lock_guard<std::mutex> lock(inputsWaitMutex);
-                receivedMessage = true;
-            }
-            inputsWaitCv.notify_all();
-        });
-
-        callbackIds.push_back({input, callbackId});
-    }
-
-    // Check if any messages already present
-    bool hasAnyMessages = false;
-    for(auto& kv : *this) {
-        if(kv.second.has()) {
-            hasAnyMessages = true;
-            break;
-        }
-    }
-
-    if(!hasAnyMessages) {
-        // Wait for any message to arrive
-        std::unique_lock<std::mutex> lock(inputsWaitMutex);
-        inputsWaitCv.wait(lock, [&]() { return receivedMessage; });
-    }
-
-    // Remove callbacks
-    for(auto& [input, callbackId] : callbackIds) {
-        input.removeCallback(callbackId);
-    }
-
-    // Collect all available messages
-    for(auto& kv : *this) {
-        auto& input = kv.second;
-        if(input.has()) {
-            inputs[kv.first] = input.get<ADatatype>();
-        }
-    }
-
-    return inputs;
-}
-
 /// Retrieves all nodes outputs
 std::vector<Node::Output> Node::getOutputs() {
     std::vector<Node::Output> result;

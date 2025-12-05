@@ -1,6 +1,7 @@
 #pragma once
 
 // std
+#include <condition_variable>
 #include <memory>
 #include <vector>
 
@@ -16,6 +17,8 @@ namespace dai {
  * Thread safe queue to send messages between nodes
  */
 class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
+    friend std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues);
+
    public:
     /// Alias for callback id
     using CallbackId = int;
@@ -31,6 +34,10 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::string name;
 
+    std::mutex cvNotifyMtx;
+    std::unordered_map<CallbackId, std::shared_ptr<std::condition_variable>> condVars;
+    CallbackId uniqueCondVarId{0};
+
    public:
     std::mutex callbacksMtx;                                                                                 // Only public for the Python bindings
     std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;  // Only public for the Python bindings
@@ -38,6 +45,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
 
    private:
     void callCallbacks(std::shared_ptr<ADatatype> msg);
+    void notifyCondVars();
     std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
    public:
@@ -170,6 +178,8 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     CallbackId addCallback(const std::function<void()>& callback);
 
+    CallbackId addCondVar(std::shared_ptr<std::condition_variable> cv);
+
     /**
      * Removes a callback
      *
@@ -177,6 +187,8 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      * @returns True if callback was removed, false otherwise
      */
     bool removeCallback(CallbackId callbackId);
+
+    bool removeCondVar(CallbackId condVarId);
 
     /**
      * Check whether front of the queue has message of type T
@@ -460,5 +472,19 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     bool trySend(const std::shared_ptr<ADatatype>& msg);
 };
+
+std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues);
+template <typename T>
+std::unordered_map<std::string, std::shared_ptr<T>> getAny(std::unordered_map<std::string, MessageQueue&> queues) {
+    auto resultADatatype = getAny(queues);
+    std::unordered_map<std::string, std::shared_ptr<T>> result;
+    for(auto& [k, v] : resultADatatype) {
+        auto casted = std::dynamic_pointer_cast<T>(v);
+        if(casted) {
+            result[k] = casted;
+        }
+    }
+    return result;
+}
 
 }  // namespace dai
