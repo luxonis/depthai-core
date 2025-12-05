@@ -30,8 +30,9 @@ struct DclUtils {
         const std::pair<int, int>& resolutionA,
         const std::pair<int, int>& resolutionB);
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     static dcl::ImageData cvMatToImageData(const cv::Mat& mat);
-
+#endif
     static dcl::PerformanceMode daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode);
 };
 
