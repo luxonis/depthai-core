@@ -5,6 +5,7 @@
 #include "../../utility/ErrorMacros.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
+#include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "openvino/BlobReader.hpp"
 #include "openvino/OpenVINO.hpp"
@@ -30,23 +31,63 @@ void SpatialDetectionNetwork::buildInternal() {
     inputDetections.setBlocking(true);
 }
 
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         NNModelDescription modelDesc,
                                                                         std::optional<float> fps,
                                                                         std::optional<dai::ImgResizeMode> resizeMode) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(camera, stereo, nnArchive, fps, resizeMode);
+    return build(inputRgb, stereo, nnArchive, fps, resizeMode);
 }
 
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         const NNArchive& nnArchive,
                                                                         std::optional<float> fps,
                                                                         std::optional<dai::ImgResizeMode> resizeMode) {
-    neuralNetwork->build(camera, nnArchive, fps, resizeMode);
+    neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
     detectionParser->setNNArchive(nnArchive);
-    alignDepth(stereo, camera);
+    alignDepth(stereo, inputRgb);
+    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
+}
+
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
+                                                                        const std::shared_ptr<NeuralDepth>& neuralDepth,
+                                                                        NNModelDescription modelDesc,
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
+    auto nnArchive = createNNArchive(modelDesc);
+    return build(inputRgb, neuralDepth, nnArchive, fps, resizeMode);
+}
+
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
+                                                                        const std::shared_ptr<NeuralDepth>& neuralDepth,
+                                                                        const NNArchive& nnArchive,
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
+    neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
+    detectionParser->setNNArchive(nnArchive);
+    alignDepth(neuralDepth, inputRgb);
+    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
+}
+
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
+                                                                        const std::shared_ptr<ToF>& tof,
+                                                                        NNModelDescription modelDesc,
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
+    auto nnArchive = createNNArchive(modelDesc);
+    return build(inputRgb, tof, nnArchive, fps, resizeMode);
+}
+
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
+                                                                        const std::shared_ptr<ToF>& tof,
+                                                                        const NNArchive& nnArchive,
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
+    neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
+    detectionParser->setNNArchive(nnArchive);
+    alignDepth(tof, inputRgb);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
@@ -90,6 +131,29 @@ void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<StereoDepth>& ste
         stereo->setDepthAlign(camera->getBoardSocket());
     }
 }
+
+void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera) {
+    (void)camera;  // make compiler happy
+    auto device = getDevice();
+    DAI_CHECK_V(device, "Device is not set.");
+    DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "NeuralDepth with SpatialDetectionNetwork is only supported on RVC4 platforms");
+    Subnode<ImageAlign>& align = *depthAlign;
+    neuralDepth->depth.link(align->input);
+    neuralNetwork->passthrough.link(align->inputAlignTo);
+    align->outputAligned.link(inputDepth);
+}
+
+void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera) {
+    (void)camera;  // make compiler happy
+    Subnode<ImageAlign>& align = *depthAlign;
+    tof->depth.link(align->input);
+    neuralNetwork->passthrough.link(align->inputAlignTo);
+    align->outputAligned.link(inputDepth);
+
+    // ImageAlign does not work on ToF cameras as they don't have sufficient memory
+    align->setRunOnHost(true);
+}
+
 // -------------------------------------------------------------------
 // Neural Network API
 // -------------------------------------------------------------------
