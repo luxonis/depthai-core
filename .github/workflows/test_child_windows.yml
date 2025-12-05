@@ -23,6 +23,7 @@ jobs:
       VCPKG_DEFAULT_TRIPLET: x64-windows
       VCPKG_DOWNLOADS: C:\vcpkg_downloads
       VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
+      VCPKG_BINARY_SOURCES: "clear;files,C:\\vcpkg_binaries,readwrite"
     steps:
 
     - name: Try reusing existing artifact for this commit
@@ -35,15 +36,21 @@ jobs:
         ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
       run: |
         Write-Host "REPO=$env:REPO  RUN_ID=$env:RUN_ID  NAME=$env:ARTIFACT_NAME"
-        $id = gh api "repos/$env:REPO/actions/runs/$env:RUN_ID/artifacts" `
-          --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"" and .expired==false) | .id"
+
+        $json = gh api "repos/$env:REPO/actions/runs/$env:RUN_ID/artifacts"
+        $artifacts = $json | ConvertFrom-Json
+
+        $id = $artifacts.artifacts `
+          | Where-Object { $_.name -eq $env:ARTIFACT_NAME -and -not $_.expired } `
+          | Select-Object -ExpandProperty id -First 1
+
         if ($id) {
           "skip_build=true"  >> $env:GITHUB_OUTPUT
           "artifact_id=$id"  >> $env:GITHUB_OUTPUT
-          Write-Host "Found artifact id=$id on this run; skipping build."
+          Write-Host "Found NON-EXPIRED artifact id=$id on this run; skipping build."
         } else {
           "skip_build=false" >> $env:GITHUB_OUTPUT
-          Write-Host "No artifact named $env:ARTIFACT_NAME on this run."
+          Write-Host "No non-expired artifact named $env:ARTIFACT_NAME on this run."
         }
 
 
@@ -87,7 +94,7 @@ jobs:
         pip install --upgrade pip
         pip install numpy pytest pytest-html
         $buildDir = 'C:/depthai-core/build'
-        $overlay  = 'C:/depthai-core/cmake/triplets/release'  # make it absolute
+        $overlay  = 'C:/depthai-core/cmake/triplets/release'
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
