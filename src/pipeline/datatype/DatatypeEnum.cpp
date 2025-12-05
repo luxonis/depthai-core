@@ -14,6 +14,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::Buffer,
          DatatypeEnum::ImgFrame,
          DatatypeEnum::EncodedFrame,
+         DatatypeEnum::SegmentationMask,
          DatatypeEnum::NNData,
          DatatypeEnum::ImageManipConfig,
          DatatypeEnum::CameraControl,
@@ -55,6 +56,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
      {
          DatatypeEnum::ImgFrame,
          DatatypeEnum::EncodedFrame,
+         DatatypeEnum::SegmentationMask,
          DatatypeEnum::NNData,
          DatatypeEnum::ImageManipConfig,
          DatatypeEnum::CameraControl,
@@ -93,6 +95,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
      }},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
+    {DatatypeEnum::SegmentationMask, {}},
     {DatatypeEnum::NNData, {}},
     {DatatypeEnum::ImageManipConfig, {}},
     {DatatypeEnum::ImageAlignConfig, {}},
