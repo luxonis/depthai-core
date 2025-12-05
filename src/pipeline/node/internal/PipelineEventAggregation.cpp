@@ -288,6 +288,18 @@ class NodeEventAggregation {
             timing.fps = numFrames * (1e6f / (float)timeDiff);
         }
     }
+    // Calculate and update queue size statistics
+    inline void updateQueueStats(NodeState::QueueStats& queueStats, const utility::CircularBuffer<uint32_t>& buffer) {
+        auto qBufferData = buffer.getBuffer();
+        std::sort(qBufferData.begin(), qBufferData.end());
+        queueStats.maxQueued = std::max(queueStats.maxQueued, qBufferData.back());
+        queueStats.minQueuedRecent = qBufferData.front();
+        queueStats.maxQueuedRecent = qBufferData.back();
+        queueStats.medianQueuedRecent = qBufferData[qBufferData.size() / 2];
+        if(qBufferData.size() % 2 == 0) {
+            queueStats.medianQueuedRecent = (queueStats.medianQueuedRecent + qBufferData[qBufferData.size() / 2 - 1]) / 2;
+        }
+    }
 
    public:
     void add(PipelineEvent& event) {
@@ -362,17 +374,7 @@ class NodeEventAggregation {
                             updateFpsStats(state.inputStates[source].timing, *inputFpsBuffers[source]);
                             // Update queue size stats
                             if(inputQueueSizesBuffers.find(source) != inputQueueSizesBuffers.end()) {
-                                auto& qStats = state.inputStates[source].queueStats;
-                                auto& qBuffer = *inputQueueSizesBuffers[source];
-                                auto qBufferData = qBuffer.getBuffer();
-                                std::sort(qBufferData.begin(), qBufferData.end());
-                                qStats.maxQueued = std::max(qStats.maxQueued, qBufferData.back());
-                                qStats.minQueuedRecent = qBufferData.front();
-                                qStats.maxQueuedRecent = qBufferData.back();
-                                qStats.medianQueuedRecent = qBufferData[qBufferData.size() / 2];
-                                if(qBufferData.size() % 2 == 0) {
-                                    qStats.medianQueuedRecent = (qStats.medianQueuedRecent + qBufferData[qBufferData.size() / 2 - 1]) / 2;
-                                }
+                                updateQueueStats(state.inputStates[source].queueStats, *inputQueueSizesBuffers[source]);
                             }
                         }
                         break;
