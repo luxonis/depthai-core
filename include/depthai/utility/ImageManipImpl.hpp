@@ -2855,7 +2855,7 @@ bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(
             switch(base.colormap) {  // TODO(asahtik): set correct stereo colormaps
                 case Colormap::TURBO:
                 case Colormap::STEREO_TURBO:
-                    // cvColormap = cv::COLORMAP_TURBO;
+                    cvColormap = cv::COLORMAP_TURBO;
                     break;
                 case Colormap::STEREO_JET:
                 case Colormap::JET:
