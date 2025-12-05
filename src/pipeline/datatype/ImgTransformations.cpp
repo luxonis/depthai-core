@@ -126,7 +126,7 @@ dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const Im
         auto point = interSourceFrameTransform(points[i], from, to);
         vPoints[i] = {point.x, point.y};
     }
-    return impl::getRotatedRectFromPoints(vPoints);
+    return impl::getOuterRotatedRect(vPoints);
 }
 
 void ImgTransformation::calcCrops() {
@@ -170,7 +170,7 @@ dai::RotatedRect ImgTransformation::transformRect(dai::RotatedRect rect) const {
         auto point = transformPoint(points[i]);
         vPoints[i] = {point.x, point.y};
     }
-    return impl::getRotatedRectFromPoints(vPoints);
+    return impl::getOuterRotatedRect(vPoints);
 }
 dai::Point2f ImgTransformation::invTransformPoint(dai::Point2f point) const {
     auto transformed = matvecmul(transformationMatrixInv, {point.x, point.y});
@@ -183,7 +183,7 @@ dai::RotatedRect ImgTransformation::invTransformRect(dai::RotatedRect rect) cons
         auto point = invTransformPoint(points[i]);
         vPoints[i] = {point.x, point.y};
     }
-    return impl::getRotatedRectFromPoints(vPoints);
+    return impl::getOuterRotatedRect(vPoints);
 }
 
 std::pair<size_t, size_t> ImgTransformation::getSize() const {
@@ -300,7 +300,7 @@ ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int heigh
     for(auto i = 0; i < 4; ++i) {
         srcCorners[i] = matvecmul(transformationMatrix, corners[i]);
     }
-    auto rect = impl::getRotatedRectFromPoints(srcCorners);
+    auto rect = impl::getOuterRotatedRect(srcCorners);
     srcCrops.push_back(rect);
     cropsValid = false;
     return *this;
@@ -429,9 +429,13 @@ dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai
     if(normalized) {
         rect = rect.denormalize(width, height);
     }
-    auto sourceRectFrom = invTransformRect(rect);
-    auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, *this, to);
-    auto transformed = to.transformRect(sourceRectTo);
+    const auto points = rect.getPoints();
+    std::vector<std::array<float, 2>> vPoints(points.size());
+    for(auto i = 0U; i < points.size(); ++i) {
+        auto point = remapPointTo(to, points[i]);
+        vPoints[i] = {point.x, point.y};
+    }
+    auto transformed = impl::getOuterRotatedRect(vPoints);
     if(normalized) {
         transformed = transformed.normalize(to.width, to.height);
     }
@@ -442,9 +446,13 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
     if(normalized) {
         rect = rect.denormalize(from.width, from.height);
     }
-    auto sourceRectFrom = from.invTransformRect(rect);
-    auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, from, *this);
-    auto transformed = transformRect(sourceRectTo);
+    const auto points = rect.getPoints();
+    std::vector<std::array<float, 2>> vPoints(points.size());
+    for(auto i = 0U; i < points.size(); ++i) {
+        auto point = remapPointFrom(from, points[i]);
+        vPoints[i] = {point.x, point.y};
+    }
+    auto transformed = impl::getOuterRotatedRect(vPoints);
     if(normalized) {
         transformed = transformed.normalize(width, height);
     }

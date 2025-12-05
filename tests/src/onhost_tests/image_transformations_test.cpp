@@ -483,3 +483,37 @@ TEST_CASE("flipRotateFlip") {
     REQUIRE_THAT(p2.x, Catch::Matchers::WithinAbs(p.x, 0.01));
     REQUIRE_THAT(p2.y, Catch::Matchers::WithinAbs(p.y, 0.01));
 }
+
+// -----------------------------------------------------------------------------
+// Purpose:
+//  Compares the custom getOuterRotatedRect implementation against OpenCV's
+//  minAreaRect to ensure they produce similar results.
+// -----------------------------------------------------------------------------
+TEST_CASE("Get outer rect opencv comparison") {
+    for(auto i = 0u; i < 10000u; ++i) {
+        // Generate random rect
+        float x = static_cast<float>(rand() % 1000);
+        float y = static_cast<float>(rand() % 1000);
+        float w = static_cast<float>(rand() % 500 + 1);
+        float h = static_cast<float>(rand() % 500 + 1);
+        float angle = static_cast<float>(rand() % 360);
+        std::vector<std::array<float, 2>> pointsArr;
+        std::vector<cv::Point2f> cvPointsArr;
+        dai::RotatedRect rr{dai::Point2f{x + w / 2.0f, y + h / 2.0f}, dai::Size2f{w, h}, angle};
+        for(const auto& p : rr.getPoints()) {
+            pointsArr.push_back({p.x, p.y});
+            cvPointsArr.emplace_back(p.x, p.y);
+        }
+        auto rrImpl = dai::impl::getOuterRotatedRect(pointsArr);
+        auto rrCv = cv::minAreaRect(cvPointsArr);
+        while(rrCv.angle >= 90.f) {
+            rrCv.angle -= 90.f;
+            std::swap(rrCv.size.width, rrCv.size.height);
+        }
+        REQUIRE_THAT(rrImpl.center.x, Catch::Matchers::WithinAbs(rrCv.center.x, 0.01));
+        REQUIRE_THAT(rrImpl.center.y, Catch::Matchers::WithinAbs(rrCv.center.y, 0.01));
+        REQUIRE_THAT(rrImpl.size.width, Catch::Matchers::WithinAbs(rrCv.size.width, 0.01));
+        REQUIRE_THAT(rrImpl.size.height, Catch::Matchers::WithinAbs(rrCv.size.height, 0.01));
+        REQUIRE_THAT(rrImpl.angle, Catch::Matchers::WithinAbs(rrCv.angle, 0.01));
+    }
+}
