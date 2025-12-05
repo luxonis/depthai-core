@@ -9,7 +9,7 @@ fps = 30
 if device.getPlatform() == dai.Platform.RVC2:
     model_name = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
     setRunOnHost = True
-    fps =  10
+    fps = 10
 
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
