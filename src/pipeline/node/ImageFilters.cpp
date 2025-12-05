@@ -950,7 +950,7 @@ void ToFDepthConfidenceFilter::run() {
         // Update threshold dynamically
         while(inputConfig.has()) {
             auto configMsg = inputConfig.get<ToFDepthConfidenceFilterConfig>();
-            if(configMsg){
+            if(configMsg) {
                 confidenceThreshold = configMsg->confidenceThreshold;
             }
         }

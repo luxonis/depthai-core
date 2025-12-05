@@ -13,8 +13,8 @@ using namespace Catch::Matchers;
 #include <depthai/depthai.hpp>
 #include <fstream>
 #include <sstream>
-#include <thread>
 #include <string>
+#include <thread>
 
 #if defined(_WIN32) && defined(_MSC_VER)
     #define NATIVETYPE std::wstring
