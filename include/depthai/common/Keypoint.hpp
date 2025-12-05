@@ -47,20 +47,6 @@ struct KeypointsList : KeypointsListT<Keypoint> {
 
     /**
      * Sets the keypoints list.
-     * @param keypoints list of Point3f objects to set.
-     * @note This will clear any existing keypoints and edges.
-     */
-    void setKeypoints(const std::vector<Point3f> kps3) {
-        edges.clear();
-        keypoints.clear();
-        keypoints.reserve(kps3.size());
-        for(const auto& kp : kps3) {
-            keypoints.emplace_back(Keypoint(kp));
-        }
-    }
-
-    /**
-     * Sets the keypoints list.
      * @param keypoints list of Point2f objects to set.
      * @note This will clear any existing keypoints and edges.
      */
