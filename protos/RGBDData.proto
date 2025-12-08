@@ -14,12 +14,12 @@ message RGBDData {
     // Color frame can be either ImgFrame or EncodedFrame
     oneof color_frame {
         img_frame.ImgFrame colorImgFrame = 4;
-        encoded_frame.EncodedFrame colorEncodedFrame = 6;
+        encoded_frame.EncodedFrame colorEncodedFrame = 5;
     }
 
     // Depth frame can be either ImgFrame or EncodedFrame
     oneof depth_frame {
-        img_frame.ImgFrame depthImgFrame = 5;
+        img_frame.ImgFrame depthImgFrame = 6;
         encoded_frame.EncodedFrame depthEncodedFrame = 7;
     }
 }

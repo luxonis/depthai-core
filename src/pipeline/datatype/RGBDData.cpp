@@ -46,7 +46,7 @@ std::optional<RGBDData::FrameVariant> RGBDData::getDepthFrame() const {
         return std::nullopt;
     }
 
-    auto type = depthFrame->get()->getDatatype();
+    auto type = depthFrame.value()->getDatatype();
     if(type == DatatypeEnum::ImgFrame) {
         return std::make_optional(std::dynamic_pointer_cast<ImgFrame>(depthFrame.value()));
     } else if(type == DatatypeEnum::EncodedFrame) {

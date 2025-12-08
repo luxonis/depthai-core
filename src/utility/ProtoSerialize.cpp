@@ -628,7 +628,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
                     populateEncodedFrameToProto(rgbdData->mutable_colorencodedframe(), framePtr.get(), metadataOnly);
                 }
             } else {
-                static_assert([]() constexpr { return false; }(), "Unhandled frame type in RGBDData color frame variant");
+                static_assert(sizeof(T*) == 0, "Unhandled frame type in RGBDData color frame variant");
             }
         };
 
@@ -649,7 +649,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
                     populateEncodedFrameToProto(rgbdData->mutable_depthencodedframe(), framePtr.get(), metadataOnly);
                 }
             } else {
-                static_assert([]() constexpr { return false; }(), "Unhandled frame type in RGBDData depth frame variant");
+                static_assert(sizeof(T*) == 0, "Unhandled frame type in RGBDData depth frame variant");
             }
         };
 
@@ -671,6 +671,9 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
 template <>
 void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
     auto imuData = dynamic_cast<const proto::imu_data::IMUData*>(msg);
+    if(imuData == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to IMUData");
+    }
     obj.packets.clear();
     obj.packets.reserve(imuData->packets().size());
     for(auto packet : imuData->packets()) {
@@ -918,6 +921,9 @@ static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::Img
 template <>
 void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool metadataOnly) {
     auto rgbdData = dynamic_cast<const proto::rgbd_data::RGBDData*>(msg);
+    if(rgbdData == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to RGBDData");
+    }
 
     obj.setTimestamp(utility::fromProtoTimestamp(rgbdData->ts()));
     obj.setTimestampDevice(utility::fromProtoTimestamp(rgbdData->tsdevice()));
