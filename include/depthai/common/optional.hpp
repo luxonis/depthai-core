@@ -86,7 +86,7 @@ struct Encoding<std::optional<T>> : EncodingIO<std::optional<T>> {
         if(prefix == EncodingByte::Empty) {
             value->reset();
         } else {
-            T temp;
+            T temp{};
             auto status = Encoding<T>::ReadPayload(prefix, &temp, reader);
             if(!status) return status;
 
