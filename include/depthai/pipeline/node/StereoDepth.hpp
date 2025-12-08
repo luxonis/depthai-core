@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/Subnode.hpp>
 #include <memory>
 
 // shared
@@ -55,10 +56,14 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
                                        std::pair<int, int> size = {640, 400},
                                        std::optional<float> fps = std::nullopt);
 
-   protected:
-    Properties& getProperties();
     StereoDepth() = default;
     StereoDepth(std::unique_ptr<Properties> props);
+
+   protected:
+    Properties& getProperties();
+    
+    template <typename T>
+    friend class Subnode;
 
    private:
     PresetMode presetMode = PresetMode::DEFAULT;

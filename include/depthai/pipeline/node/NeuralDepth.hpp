@@ -18,12 +18,15 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
    public:
     constexpr static const char* NAME = "NeuralDepth";
 
+    NeuralDepth() = default;
+    NeuralDepth(std::unique_ptr<Properties> props);
+
    protected:
     Properties& getProperties() override;
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    NeuralDepth() = default;
-    NeuralDepth(std::unique_ptr<Properties> props);
+    template <typename T>
+    friend class Subnode;
 
    public:
     /**
