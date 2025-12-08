@@ -221,8 +221,6 @@ void Rectification::run() {
             logger->debug("TARGET_MATRIX1 = {}", matToString(cv_targetCameraMatrix1));
             logger->debug("TARGET_MATRIX2 = {}", matToString(cv_targetCameraMatrix2));
 
-            logger->warn("Rectification matrices initialized");
-
             initialized = true;
         }
 
