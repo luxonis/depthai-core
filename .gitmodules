@@ -16,3 +16,9 @@
 [submodule "3rdparty/ws-protocol"]
 	path = 3rdparty/foxglove/ws-protocol
 	url = https://github.com/luxonis/ws-protocol.git
+[submodule "shared/depthai_boards"]
+	path = shared/depthai_boards
+	url = https://github.com/luxonis/depthai-boards
+[submodule "shared/depthai_calibration"]
+	path = shared/depthai_calibration
+	url = https://github.com/luxonis/depthai-calibration
