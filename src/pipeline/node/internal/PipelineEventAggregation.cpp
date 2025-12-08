@@ -246,7 +246,7 @@ class NodeEventAggregation {
     }
 
     // Calculate and update timing statistics from the given buffer
-    inline void updateTimingStats(NodeState::TimingStats& stats, const utility::CircularBuffer<uint64_t>& buffer) {
+    inline void updateTimingStats(NodeState::DurationStats& stats, const utility::CircularBuffer<uint64_t>& buffer) {
         if(buffer.size() == 0) return;
 
         // Reset stats
@@ -323,7 +323,8 @@ class NodeEventAggregation {
                         state.inputStates[event.source].state = NodeState::InputQueueState::State::IDLE;
                         break;
                     case PipelineEvent::Interval::NONE:
-                        if(event.status == -1 || event.status == -2) state.inputStates[event.source].state = NodeState::InputQueueState::State::BLOCKED;
+                        if(event.status == PipelineEvent::Status::BLOCKED || event.status == PipelineEvent::Status::CANCELLED)
+                            state.inputStates[event.source].state = NodeState::InputQueueState::State::BLOCKED;
                         break;
                 }
                 break;

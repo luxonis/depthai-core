@@ -10,6 +10,7 @@
 
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "foxglove/websocket/common.hpp"
+#include "pipeline/PipelineStateApi.hpp"
 #include "pipeline/datatype/Buffer.hpp"
 #include "pipeline/datatype/ImgAnnotations.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -282,7 +283,7 @@ bool RemoteConnectionImpl::removeTopic(const std::string& topicName) {
     return true;
 }
 
-void RemoteConnectionImpl::registerPipeline(Pipeline& pipeline) {
+void RemoteConnectionImpl::registerPipeline(const Pipeline& pipeline) {
     exposePipelineService(pipeline);
 }
 
@@ -405,7 +406,7 @@ void RemoteConnectionImpl::exposeKeyPressedService() {
     };
 }
 
-void RemoteConnectionImpl::exposePipelineService(Pipeline& pipeline) {
+void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
     // Make sure pipeline is built so that we can serialize it.
     // If not built, an error is thrown is case there are host -> device or device -> host connections.
     DAI_CHECK(pipeline.isBuilt(), "Pipeline is not built. Call Pipeline::build first!");
@@ -483,12 +484,16 @@ void RemoteConnectionImpl::exposePipelineService(Pipeline& pipeline) {
 
         auto id = ids[2];
 
-        serviceMap[id] = [&pipeline](foxglove::ServiceResponse request) {
+        PipelineStateApi pipelineStateApi(pipeline.getPipelineStateOut(), pipeline.getPipelineStateRequest(), pipeline.getAllNodes());
+
+        serviceMap[id] = [pipelineStateApi](foxglove::ServiceResponse request) mutable {
             (void)request;
             std::string stateStr;
             try {
-                auto state = pipeline.getPipelineState().nodes().detailed();
+                auto state = pipelineStateApi.nodes().detailed();
                 stateStr = state.toJson().dump();
+            } catch(const dai::MessageQueue::QueueException& ex) {
+                stateStr = R"({"error": "Message queue closed."})";
             } catch(const std::runtime_error& e) {
                 stateStr = R"({"error": "Pipeline debugging disabled. Cannot get pipeline state."})";
             }

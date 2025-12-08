@@ -208,7 +208,7 @@ void PipelineEventDispatcher::pingMainLoopEvent() {
 void PipelineEventDispatcher::pingCustomEvent(const std::string& source) {
     pingEvent(PipelineEvent::Type::CUSTOM, source);
 }
-void PipelineEventDispatcher::pingInputEvent(const std::string& source, int32_t status, std::optional<uint32_t> queueSize) {
+void PipelineEventDispatcher::pingInputEvent(const std::string& source, PipelineEvent::Status status, std::optional<uint32_t> queueSize) {
     if(!sendEvents) return;
     if(blacklist(PipelineEvent::Type::INPUT, source)) return;
     checkNodeId();

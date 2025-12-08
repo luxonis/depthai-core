@@ -1062,6 +1062,13 @@ void Pipeline::enablePipelineDebugging(bool enable) {
     impl()->enablePipelineDebugging = enable;
 }
 
+std::shared_ptr<MessageQueue> Pipeline::getPipelineStateOut() const {
+    return impl()->pipelineStateOut;
+}
+std::shared_ptr<InputQueue> Pipeline::getPipelineStateRequest() const {
+    return impl()->pipelineStateRequest;
+}
+
 PipelineStateApi Pipeline::getPipelineState() {
     return impl()->getPipelineState();
 }

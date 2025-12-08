@@ -77,7 +77,7 @@ class RemoteConnection {
      *
      * @param pipeline The pipeline to register.
      */
-    void registerPipeline(Pipeline& pipeline);
+    void registerPipeline(const Pipeline& pipeline);
 
     /**
      * @brief Waits for a key event.

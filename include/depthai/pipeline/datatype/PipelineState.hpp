@@ -14,7 +14,7 @@ class NodeState {
         uint64_t durationUs;
         DEPTHAI_SERIALIZE(DurationEvent, startEvent, durationUs);
     };
-    struct TimingStats {
+    struct DurationStats {
         uint64_t minMicros = -1;
         uint64_t maxMicros = 0;
         uint64_t averageMicrosRecent = 0;
@@ -22,11 +22,11 @@ class NodeState {
         uint64_t minMicrosRecent = -1;
         uint64_t maxMicrosRecent = 0;
         uint64_t medianMicrosRecent = 0;
-        DEPTHAI_SERIALIZE(TimingStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent);
+        DEPTHAI_SERIALIZE(DurationStats, minMicros, maxMicros, averageMicrosRecent, stdDevMicrosRecent, minMicrosRecent, maxMicrosRecent, medianMicrosRecent);
     };
     struct Timing {
         float fps = 0.0f;
-        TimingStats durationStats;
+        DurationStats durationStats;
 
         bool isValid() const {
             return durationStats.minMicros <= durationStats.maxMicros;

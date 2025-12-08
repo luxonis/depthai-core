@@ -16,7 +16,7 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
 
     py::class_<NodeState> nodeState(m, "NodeState", DOC(dai, NodeState));
     py::class_<NodeState::DurationEvent> durationEvent(nodeState, "DurationEvent", DOC(dai, NodeState, DurationEvent));
-    py::class_<NodeState::TimingStats> nodeStateTimingStats(nodeState, "TimingStats", DOC(dai, NodeState, TimingStats));
+    py::class_<NodeState::DurationStats> nodeStateDurationStats(nodeState, "DurationStats", DOC(dai, NodeState, DurationStats));
     py::class_<NodeState::Timing> nodeStateTiming(nodeState, "Timing", DOC(dai, NodeState, Timing));
     py::class_<NodeState::QueueStats> nodeStateQueueStats(nodeState, "QueueStats", DOC(dai, NodeState, QueueStats));
     py::class_<NodeState::InputQueueState> nodeStateInputQueueState(nodeState, "InputQueueState", DOC(dai, NodeState, InputQueueState));
@@ -54,15 +54,15 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def_readwrite("startEvent", &NodeState::DurationEvent::startEvent, DOC(dai, NodeState, DurationEvent, startEvent))
         .def_readwrite("durationUs", &NodeState::DurationEvent::durationUs, DOC(dai, NodeState, DurationEvent, durationUs));
 
-    nodeStateTimingStats.def(py::init<>())
-        .def("__repr__", &NodeState::TimingStats::str)
-        .def_readwrite("minMicros", &NodeState::TimingStats::minMicros, DOC(dai, NodeState, TimingStats, minMicros))
-        .def_readwrite("maxMicros", &NodeState::TimingStats::maxMicros, DOC(dai, NodeState, TimingStats, maxMicros))
-        .def_readwrite("averageMicrosRecent", &NodeState::TimingStats::averageMicrosRecent, DOC(dai, NodeState, TimingStats, averageMicrosRecent))
-        .def_readwrite("stdDevMicrosRecent", &NodeState::TimingStats::stdDevMicrosRecent, DOC(dai, NodeState, TimingStats, stdDevMicrosRecent))
-        .def_readwrite("minMicrosRecent", &NodeState::TimingStats::minMicrosRecent, DOC(dai, NodeState, TimingStats, minMicrosRecent))
-        .def_readwrite("maxMicrosRecent", &NodeState::TimingStats::maxMicrosRecent, DOC(dai, NodeState, TimingStats, maxMicrosRecent))
-        .def_readwrite("medianMicrosRecent", &NodeState::TimingStats::medianMicrosRecent, DOC(dai, NodeState, TimingStats, medianMicrosRecent));
+    nodeStateDurationStats.def(py::init<>())
+        .def("__repr__", &NodeState::DurationStats::str)
+        .def_readwrite("minMicros", &NodeState::DurationStats::minMicros, DOC(dai, NodeState, DurationStats, minMicros))
+        .def_readwrite("maxMicros", &NodeState::DurationStats::maxMicros, DOC(dai, NodeState, DurationStats, maxMicros))
+        .def_readwrite("averageMicrosRecent", &NodeState::DurationStats::averageMicrosRecent, DOC(dai, NodeState, DurationStats, averageMicrosRecent))
+        .def_readwrite("stdDevMicrosRecent", &NodeState::DurationStats::stdDevMicrosRecent, DOC(dai, NodeState, DurationStats, stdDevMicrosRecent))
+        .def_readwrite("minMicrosRecent", &NodeState::DurationStats::minMicrosRecent, DOC(dai, NodeState, DurationStats, minMicrosRecent))
+        .def_readwrite("maxMicrosRecent", &NodeState::DurationStats::maxMicrosRecent, DOC(dai, NodeState, DurationStats, maxMicrosRecent))
+        .def_readwrite("medianMicrosRecent", &NodeState::DurationStats::medianMicrosRecent, DOC(dai, NodeState, DurationStats, medianMicrosRecent));
 
     nodeStateTiming.def(py::init<>())
         .def("__repr__", &NodeState::Timing::str)

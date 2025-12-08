@@ -105,7 +105,7 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger, bool 
                 } else {
                     std::ostringstream message;
                     message << "Failed to convert environment variable " << var << " from '" << value << "' to type " << typeid(T).name();
-                    message << ". Possible values are '1', 'true', 'TRUE', 'True', 'T', 'ON', '0', 'false', 'FALSE', 'False', 'F', 'OFF'";
+                    message << ". Possible values are '1', 'true', 't', 'on', '0', 'false', 'f', 'off'";
                     throw std::runtime_error(message.str());
                 }
             }

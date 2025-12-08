@@ -22,7 +22,7 @@ bool RemoteConnection::removeTopic(const std::string& topicName) {
     return impl->removeTopic(topicName);
 }
 
-void RemoteConnection::registerPipeline(Pipeline& pipeline) {
+void RemoteConnection::registerPipeline(const Pipeline& pipeline) {
     impl->registerPipeline(pipeline);
 }
 

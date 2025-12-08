@@ -149,13 +149,13 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
         if(pipelineEventDispatcher) {
             switch(state) {
                 case LockingQueueState::BLOCKED:
-                    pipelineEventDispatcher->pingInputEvent(name, -1, size);
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);
                     break;
                 case LockingQueueState::CANCELLED:
-                    pipelineEventDispatcher->pingInputEvent(name, -2, size);
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
                     break;
                 case LockingQueueState::OK:
-                    pipelineEventDispatcher->pingInputEvent(name, 0, size);
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::OK, size);
                     break;
             }
         }
@@ -173,12 +173,13 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
         if(pipelineEventDispatcher) {
             switch(state) {
                 case LockingQueueState::BLOCKED:
-                    pipelineEventDispatcher->pingInputEvent(name, -1, size);
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);
                     break;
                 case LockingQueueState::CANCELLED:
-                    pipelineEventDispatcher->pingInputEvent(name, -2, size);
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
                     break;
                 case LockingQueueState::OK:
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::OK, size);
                     break;
             }
         }
