@@ -97,6 +97,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<DeviceModelZoo> deviceModelZoo(m, "DeviceModelZoo", DOC(dai, DeviceModelZoo));
     py::class_<Keypoint> keypoint(m, "Keypoint", DOC(dai, Keypoint));
     py::class_<KeypointsList> keypointsList(m, "KeypointsList", DOC(dai, KeypointsList));
+    py::enum_<HousingCoordinateSystem> housingCoordinateSystem(m, "HousingCoordinateSystem", DOC(dai, HousingCoordinateSystem));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

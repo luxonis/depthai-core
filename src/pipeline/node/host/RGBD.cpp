@@ -23,6 +23,8 @@
     #include "kompute/Kompute.hpp"
 #endif
 #include "utility/PimplImpl.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/utility/TransformationUtils.hpp"
 
 namespace dai {
 namespace node {
@@ -30,6 +32,42 @@ namespace node {
 class RGBD::Impl {
    public:
     Impl() = default;
+    
+    void setHousingTransformation(HousingCoordinateSystem housingCS, bool useSpecTranslation) {
+        this->housingCS = housingCS;
+        this->useHousingTransform = true;
+        this->useSpecTranslation = useSpecTranslation;
+    }
+
+    void setCalibrationHandler(CalibrationHandler handler, CameraBoardSocket cameraSocket) {
+        calibHandler = handler;
+        cameraSoc = cameraSocket;
+        hasCalibration = true;
+    }
+
+    void applyHousingTransform(std::vector<Point3fRGBA>& points) {
+        if(!useHousingTransform || !hasCalibration) {
+            return;
+        }
+
+        // Get the transformation matrix from camera to housing coordinate system
+        auto T_cam_to_housing = calibHandler.getHousingCalibration(cameraSoc, housingCS, useSpecTranslation);
+
+        // Extract rotation matrix (3x3) and translation vector (3x1)
+        Mat3 R;
+        Vec3 t;
+        
+        for(int i = 0; i < 3; i++) {
+            for(int j = 0; j < 3; j++) {
+                R[i][j] = T_cam_to_housing[i][j];
+            }
+            t[i] = 10 * T_cam_to_housing[i][3]; // *10 to convert from cm to mm
+        }
+
+        // Transform all points
+        transformPointCloudRGBA(points, R, t);
+    }
+
     void computePointCloud(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points) {
         if(!intrinsicsSet) {
             throw std::runtime_error("Intrinsics not set");
@@ -242,6 +280,13 @@ class RGBD::Impl {
     int size;
     bool intrinsicsSet = false;
     int threadNum = 2;
+
+    bool useHousingTransform = false;
+    bool hasCalibration = false;
+    HousingCoordinateSystem housingCS = HousingCoordinateSystem::AUTO;
+    bool useSpecTranslation = true;
+    CalibrationHandler calibHandler;
+    CameraBoardSocket cameraSoc = CameraBoardSocket::CAM_A;
 };
 
 RGBD::RGBD() = default;
@@ -369,6 +414,16 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     float cx = intrinsics[0][2];
     float cy = intrinsics[1][2];
     pimpl->setIntrinsics(fx, fy, cx, cy, width, height);
+    
+    // Set calibration handler if available
+    auto pipeline = getParentPipeline();
+    auto device = pipeline.getDefaultDevice();
+    if(device) {
+        auto calibHandler = device->readCalibration();
+        auto cameraSocket = static_cast<CameraBoardSocket>(colorFrame->getInstanceNum());
+        pimpl->setCalibrationHandler(calibHandler, cameraSocket);
+    }
+    
     initialized = true;
 }
 
@@ -412,6 +467,9 @@ void RGBD::run() {
             auto* colorData = colorFrame->getData().data();
             // Use GPU to compute point cloud
             pimpl->computePointCloud(depthData, colorData, points);
+
+            // Apply housing transformation if enabled
+            pimpl->applyHousingTransform(points);
 
             float minX = 0.0;
             float minY = 0.0;
@@ -468,6 +526,9 @@ void RGBD::useGPU(uint32_t device) {
 }
 void RGBD::printDevices() {
     pimpl->printDevices();
+}
+void RGBD::setHousingTransformation(HousingCoordinateSystem housingCS, bool useSpecTranslation) {
+    pimpl->setHousingTransformation(housingCS, useSpecTranslation);
 }
 
 void RGBD::alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps) {

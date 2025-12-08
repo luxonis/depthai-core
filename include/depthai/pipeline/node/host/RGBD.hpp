@@ -8,6 +8,7 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/utility/Pimpl.hpp"
+#include "depthai/common/HousingCoordinateSystem.hpp"
 
 // depth map source nodes
 #include "depthai/pipeline/node/NeuralDepth.hpp"
@@ -93,6 +94,14 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
      */
     void printDevices();
     void buildInternal() override;
+
+    /**
+     * Enable housing coordinate system transformation
+     * 
+     * @param housingCS The housing coordinate system to transform the point cloud to
+     * @param useSpecTranslation If true, uses board-design (spec) translation values
+     */
+    void setHousingTransformation(HousingCoordinateSystem housingCS, bool useSpecTranslation = true);
 
    private:
     class Impl;

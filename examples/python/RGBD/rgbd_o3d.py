@@ -64,6 +64,10 @@ with dai.Pipeline() as p:
     color = p.create(dai.node.Camera)
     stereo = p.create(dai.node.StereoDepth)
     rgbd = p.create(dai.node.RGBD).build()
+
+    # Enable housing transformation
+    rgbd.setHousingTransformation(dai.HousingCoordinateSystem.VESA_A, useSpecTranslation=True)
+
     align = None
     color.build()
     o3dViewer = O3DNode()

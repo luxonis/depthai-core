@@ -1,4 +1,3 @@
-
 #include <pybind11/eval.h>
 
 #include "Common.hpp"
@@ -52,6 +51,7 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
              py::arg("fps") = std::nullopt,
              DOC(dai, node, RGBD, build, 3))
         .def("setDepthUnits", &RGBD::setDepthUnit, py::arg("units"), DOC(dai, node, RGBD, setDepthUnit))
+        .def("setHousingTransformation", &RGBD::setHousingTransformation, py::arg("housingCS"), py::arg("useSpecTranslation") = true, DOC(dai, node, RGBD, setHousingTransformation))
         .def("useCPU", &RGBD::useCPU, DOC(dai, node, RGBD, useCPU))
         .def("useCPUMT", &RGBD::useCPUMT, py::arg("numThreads") = 2, DOC(dai, node, RGBD, useCPUMT))
         .def("useGPU", &RGBD::useGPU, py::arg("device") = 0, DOC(dai, node, RGBD, useGPU))
