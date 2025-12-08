@@ -504,10 +504,9 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* m
     // Return the populated protobuf message
     return encodedFrame;
 }
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly) {
-    // create and populate ImgFrame protobuf message
-    auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
+
+// Helper function to populate an ImgFrame proto from an ImgFrame object
+static void populateImgFrameProto(proto::img_frame::ImgFrame* imgFrame, const ImgFrame* message, bool metadataOnly) {
     proto::common::Timestamp* ts = imgFrame->mutable_ts();
     ts->set_sec(message->ts.sec);
     ts->set_nsec(message->ts.nsec);
@@ -517,6 +516,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* messa
 
     imgFrame->set_sequencenum(message->sequenceNum);
 
+    // frame buffer info
     proto::img_frame::Specs* fb = imgFrame->mutable_fb();
     fb->set_type(static_cast<proto::img_frame::Type>(message->fb.type));
     fb->set_width(message->fb.width);
@@ -527,6 +527,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* messa
     fb->set_p2offset(message->fb.p2Offset);
     fb->set_p3offset(message->fb.p3Offset);
 
+    // source frame buffer info
     proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
     sourceFb->set_type(static_cast<proto::img_frame::Type>(message->sourceFb.type));
     sourceFb->set_width(message->sourceFb.width);
@@ -537,6 +538,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* messa
     sourceFb->set_p2offset(message->sourceFb.p2Offset);
     sourceFb->set_p3offset(message->sourceFb.p3Offset);
 
+    // camera settings
     proto::common::CameraSettings* cam = imgFrame->mutable_cam();
     cam->set_exposuretimeus(message->cam.exposureTimeUs);
     cam->set_sensitivityiso(message->cam.sensitivityIso);
@@ -544,8 +546,8 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* messa
     cam->set_wbcolortemp(message->cam.wbColorTemp);
     cam->set_lenspositionraw(message->cam.lensPositionRaw);
 
+    // instance number and category
     imgFrame->set_instancenum(message->instanceNum);
-
     imgFrame->set_category(message->category);
 
     proto::common::ImgTransformation* imgTransformation = imgFrame->mutable_transformation();
@@ -554,7 +556,12 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* messa
     if(!metadataOnly) {
         imgFrame->set_data(message->data->getData().data(), message->data->getData().size());
     }
+}
 
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly) {
+    auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
+    populateImgFrameProto(imgFrame.get(), message, metadataOnly);
     return imgFrame;
 }
 template <>
@@ -589,106 +596,6 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
     return pointCloudData;
 }
 
-// Helper function to populate an ImgFrame proto from an ImgFrame object
-static void populateImgFrameProto(proto::img_frame::ImgFrame* imgFrame, const ImgFrame* message, bool metadataOnly) {
-    proto::common::Timestamp* ts = imgFrame->mutable_ts();
-    ts->set_sec(message->ts.sec);
-    ts->set_nsec(message->ts.nsec);
-    proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
-    tsDevice->set_sec(message->tsDevice.sec);
-    tsDevice->set_nsec(message->tsDevice.nsec);
-
-    imgFrame->set_sequencenum(message->sequenceNum);
-
-    // frame buffer info
-    proto::img_frame::Specs* fb = imgFrame->mutable_fb();
-    fb->set_type(static_cast<proto::img_frame::Type>(message->fb.type));
-    fb->set_width(message->fb.width);
-    fb->set_height(message->fb.height);
-    fb->set_stride(message->getStride());
-    fb->set_bytespp(message->fb.bytesPP);
-    fb->set_p1offset(message->fb.p1Offset);
-    fb->set_p2offset(message->fb.p2Offset);
-    fb->set_p3offset(message->fb.p3Offset);
-
-    // source frame buffer info
-    proto::img_frame::Specs* sourceFb = imgFrame->mutable_sourcefb();
-    sourceFb->set_type(static_cast<proto::img_frame::Type>(message->sourceFb.type));
-    sourceFb->set_width(message->sourceFb.width);
-    sourceFb->set_height(message->sourceFb.height);
-    sourceFb->set_stride(message->sourceFb.stride);
-    sourceFb->set_bytespp(message->sourceFb.bytesPP);
-    sourceFb->set_p1offset(message->sourceFb.p1Offset);
-    sourceFb->set_p2offset(message->sourceFb.p2Offset);
-    sourceFb->set_p3offset(message->sourceFb.p3Offset);
-
-    // camera settings
-    proto::common::CameraSettings* cam = imgFrame->mutable_cam();
-    cam->set_exposuretimeus(message->cam.exposureTimeUs);
-    cam->set_sensitivityiso(message->cam.sensitivityIso);
-    cam->set_lensposition(message->cam.lensPosition);
-    cam->set_wbcolortemp(message->cam.wbColorTemp);
-    cam->set_lenspositionraw(message->cam.lensPositionRaw);
-
-    // instance number and category
-    imgFrame->set_instancenum(message->instanceNum);
-    imgFrame->set_category(message->category);
-
-    proto::common::ImgTransformation* imgTransformation = imgFrame->mutable_transformation();
-    utility::serializeImgTransformation(imgTransformation, message->transformation);
-
-    if(!metadataOnly) {
-        imgFrame->set_data(message->data->getData().data(), message->data->getData().size());
-    }
-}
-
-// Helper function to populate an ImgFrame object from an ImgFrame proto
-static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& imgFrame, bool metadataOnly) {
-    obj.setTimestamp(utility::fromProtoTimestamp(imgFrame.ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp(imgFrame.tsdevice()));
-
-    obj.setSequenceNum(imgFrame.sequencenum());
-
-    // frame buffer info
-    obj.fb.type = static_cast<dai::ImgFrame::Type>(imgFrame.fb().type());
-    obj.fb.width = imgFrame.fb().width();
-    obj.fb.height = imgFrame.fb().height();
-    obj.fb.stride = imgFrame.fb().stride();
-    obj.fb.bytesPP = imgFrame.fb().bytespp();
-    obj.fb.p1Offset = imgFrame.fb().p1offset();
-    obj.fb.p2Offset = imgFrame.fb().p2offset();
-    obj.fb.p3Offset = imgFrame.fb().p3offset();
-
-    // source frame buffer info
-    obj.sourceFb.type = static_cast<dai::ImgFrame::Type>(imgFrame.sourcefb().type());
-    obj.sourceFb.width = imgFrame.sourcefb().width();
-    obj.sourceFb.height = imgFrame.sourcefb().height();
-    obj.sourceFb.stride = imgFrame.sourcefb().stride();
-    obj.sourceFb.bytesPP = imgFrame.sourcefb().bytespp();
-    obj.sourceFb.p1Offset = imgFrame.sourcefb().p1offset();
-    obj.sourceFb.p2Offset = imgFrame.sourcefb().p2offset();
-    obj.sourceFb.p3Offset = imgFrame.sourcefb().p3offset();
-
-    // camera settings
-    obj.cam.exposureTimeUs = imgFrame.cam().exposuretimeus();
-    obj.cam.sensitivityIso = imgFrame.cam().sensitivityiso();
-    obj.cam.lensPosition = imgFrame.cam().lensposition();
-    obj.cam.wbColorTemp = imgFrame.cam().wbcolortemp();
-    obj.cam.lensPositionRaw = imgFrame.cam().lenspositionraw();
-
-    // instance number and category
-    obj.instanceNum = imgFrame.instancenum();
-    obj.category = imgFrame.category();
-
-    // transformation
-    obj.transformation = deserializeImgTransformation(imgFrame.transformation());
-
-    if(!metadataOnly) {
-        std::vector<uint8_t> data(imgFrame.data().begin(), imgFrame.data().end());
-        obj.setData(data);
-    }
-}
-
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* message, bool metadataOnly) {
     auto rgbdData = std::make_unique<dai::proto::rgbd_data::RGBDData>();
@@ -706,13 +613,13 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
     rgbdData->set_sequencenum(message->sequenceNum);
 
     // Serialize color frame if present
-    auto colorFrame = const_cast<RGBDData*>(message)->getRGBFrame();  // this is safe, we don't modify the object
+    auto colorFrame = const_cast<RGBDData*>(message)->getRGBFrame();  // this is safe, we don't modify the object, just copying from it
     if(colorFrame) {
         populateImgFrameProto(rgbdData->mutable_colorframe(), colorFrame.get(), metadataOnly);
     }
 
     // Serialize depth frame if present
-    auto depthFrame = const_cast<RGBDData*>(message)->getDepthFrame();  // this is safe, we don't modify the object
+    auto depthFrame = const_cast<RGBDData*>(message)->getDepthFrame();  // this is safe, we don't modify the object, just copying from it
     if(depthFrame) {
         populateImgFrameProto(rgbdData->mutable_depthframe(), depthFrame.get(), metadataOnly);
     }
@@ -919,6 +826,53 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
 
     if(!metadataOnly) {
         std::vector<uint8_t> data(pcl->data().begin(), pcl->data().end());
+        obj.setData(data);
+    }
+}
+
+// Helper function to populate an ImgFrame object from an ImgFrame proto
+static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::ImgFrame& imgFrame, bool metadataOnly) {
+    obj.setTimestamp(utility::fromProtoTimestamp(imgFrame.ts()));
+    obj.setTimestampDevice(utility::fromProtoTimestamp(imgFrame.tsdevice()));
+
+    obj.setSequenceNum(imgFrame.sequencenum());
+
+    // frame buffer info
+    obj.fb.type = static_cast<dai::ImgFrame::Type>(imgFrame.fb().type());
+    obj.fb.width = imgFrame.fb().width();
+    obj.fb.height = imgFrame.fb().height();
+    obj.fb.stride = imgFrame.fb().stride();
+    obj.fb.bytesPP = imgFrame.fb().bytespp();
+    obj.fb.p1Offset = imgFrame.fb().p1offset();
+    obj.fb.p2Offset = imgFrame.fb().p2offset();
+    obj.fb.p3Offset = imgFrame.fb().p3offset();
+
+    // source frame buffer info
+    obj.sourceFb.type = static_cast<dai::ImgFrame::Type>(imgFrame.sourcefb().type());
+    obj.sourceFb.width = imgFrame.sourcefb().width();
+    obj.sourceFb.height = imgFrame.sourcefb().height();
+    obj.sourceFb.stride = imgFrame.sourcefb().stride();
+    obj.sourceFb.bytesPP = imgFrame.sourcefb().bytespp();
+    obj.sourceFb.p1Offset = imgFrame.sourcefb().p1offset();
+    obj.sourceFb.p2Offset = imgFrame.sourcefb().p2offset();
+    obj.sourceFb.p3Offset = imgFrame.sourcefb().p3offset();
+
+    // camera settings
+    obj.cam.exposureTimeUs = imgFrame.cam().exposuretimeus();
+    obj.cam.sensitivityIso = imgFrame.cam().sensitivityiso();
+    obj.cam.lensPosition = imgFrame.cam().lensposition();
+    obj.cam.wbColorTemp = imgFrame.cam().wbcolortemp();
+    obj.cam.lensPositionRaw = imgFrame.cam().lenspositionraw();
+
+    // instance number and category
+    obj.instanceNum = imgFrame.instancenum();
+    obj.category = imgFrame.category();
+
+    // transformation
+    obj.transformation = deserializeImgTransformation(imgFrame.transformation());
+
+    if(!metadataOnly) {
+        std::vector<uint8_t> data(imgFrame.data().begin(), imgFrame.data().end());
         obj.setData(data);
     }
 }
