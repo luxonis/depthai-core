@@ -109,13 +109,8 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<NeuralDepth>&
 
 void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera) {
     (void)camera;  // make compiler happy
-    Subnode<ImageAlign>& align = *depthAlign;
-    tof->depth.link(align->input);
-    neuralNetwork->passthrough.link(align->inputAlignTo);
-    align->outputAligned.link(inputDepth);
-
-    // ImageAlign does not work on ToF cameras as they don't have sufficient memory
-    align->setRunOnHost(true);
+    (void)tof;     // make compiler happy
+    throw std::runtime_error("ToF with SpatialDetectionNetwork is not supported yet.");
 }
 
 // -------------------------------------------------------------------

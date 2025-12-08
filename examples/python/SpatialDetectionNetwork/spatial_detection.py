@@ -8,7 +8,7 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--depthSource", type=str, default="stereo", choices=["stereo", "neural", "tof"]
+    "--depthSource", type=str, default="stereo", choices=["stereo", "neural"]
 )
 args = parser.parse_args()
 
@@ -76,12 +76,12 @@ class SpatialVisualizer(dai.node.HostNode):
 # Creates the pipeline and a default device implicitly
 with dai.Pipeline() as p:
     # Define sources and outputs
-    camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     platform = p.getDefaultDevice().getPlatform()
 
+    camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+    monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
     if args.depthSource == "stereo":
-        monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-        monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
         depthSource = p.create(dai.node.StereoDepth)
         depthSource.setExtendedDisparity(True)
         if platform == dai.Platform.RVC2:
@@ -89,15 +89,11 @@ with dai.Pipeline() as p:
         monoLeft.requestOutput(size, fps=FPS).link(depthSource.left)
         monoRight.requestOutput(size, fps=FPS).link(depthSource.right)
     elif args.depthSource == "neural":
-        monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-        monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
         depthSource = p.create(dai.node.NeuralDepth).build(
             monoLeft.requestFullResolutionOutput(),
             monoRight.requestFullResolutionOutput(),
             dai.DeviceModelZoo.NEURAL_DEPTH_LARGE,
         )
-    elif args.depthSource == "tof":
-        depthSource = p.create(dai.node.ToF)
     else:
         raise ValueError(f"Invalid depth source: {args.depthSource}")
 

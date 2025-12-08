@@ -15,10 +15,10 @@ with dai.Pipeline() as p:
     )
 
     size = (640, 400)
-    fps = 30
+    fps = 10
 
-    color = p.create(dai.node.Camera).build(sensorFps=fps)
     if args.depthSource == "stereo":
+        color = p.create(dai.node.Camera).build(sensorFps=fps)
         left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
         right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
         depthSource = p.create(dai.node.StereoDepth)
@@ -28,11 +28,14 @@ with dai.Pipeline() as p:
         left.requestOutput(size, fps=fps).link(depthSource.left)
         right.requestOutput(size, fps=fps).link(depthSource.right)
     elif args.depthSource == "neural":
+        color = p.create(dai.node.Camera).build(sensorFps=fps)
         left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
         right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-        depthSource = p.create(dai.node.NeuralDepth).build(left.requestFullResolutionOutput(), right.requestFullResolutionOutput(), dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
+        depthSource = p.create(dai.node.NeuralDepth).build(left.requestOutput(size), right.requestOutput(size), dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
     elif args.depthSource == "tof":
-        depthSource = p.create(dai.node.ToF)
+        color = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
+        socket, preset_mode = dai.CameraBoardSocket.AUTO, dai.ImageFiltersPresetMode.TOF_MID_RANGE
+        depthSource = p.create(dai.node.ToF).build(socket, preset_mode)
     else:
         raise ValueError(f"Invalid depth source: {args.depthSource}")
 
