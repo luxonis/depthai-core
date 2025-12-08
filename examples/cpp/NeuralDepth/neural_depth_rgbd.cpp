@@ -19,7 +19,7 @@ void signalHandler(int signum) {
 int main(int argc, char** argv) {
     // Default port values
     int webSocketPort = 8765;
-    int httpPort = 8080;
+    int httpPort = 8082;
 
     // A simple argument parser
     for(int i = 1; i < argc; ++i) {
