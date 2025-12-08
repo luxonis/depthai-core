@@ -4,6 +4,8 @@ include(cmake/depthaiOptions.cmake)
 
 if(WIN32)
     add_compile_options(/MP)
+    add_compile_options(/Ob2) # perform more aggresive function inlining to reduce the number of exported symbols, adopted from https://github.com/tensorflow/tensorflow/pull/10962
+    set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Postfix for debug libraries" FORCE)
 endif()
 
 find_program(CCACHE_PROGRAM ccache)
@@ -35,6 +37,8 @@ else()
     message(STATUS "DEPTHAI_BOOTSTRAP_VCPKG is OFF")
 endif()
 
+# Minimal supported macOS SDK version for both arm64 and x86_64
+set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
@@ -62,12 +66,16 @@ endif()
 
 
 # Create depthai project
-project(depthai VERSION "3.0.0" LANGUAGES CXX C)
-set(DEPTHAI_PRE_RELEASE_TYPE "rc") # Valid options are "alpha", "beta", "rc", ""
-set(DEPTHAI_PRE_RELEASE_VERSION "2")
+project(depthai VERSION "3.1.0" LANGUAGES CXX C)
+set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
+set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
 # Set DEPTHAI_VERSION universally, not conditionally
-set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
+if(DEPTHAI_PRE_RELEASE_TYPE STREQUAL "")
+    set(DEPTHAI_VERSION ${PROJECT_VERSION})
+else()
+    set(DEPTHAI_VERSION ${PROJECT_VERSION}-${DEPTHAI_PRE_RELEASE_TYPE}.${DEPTHAI_PRE_RELEASE_VERSION})
+endif()
 
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
@@ -85,12 +93,6 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     # Set the possible values of build type for cmake-gui
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
-
-# Set default installation directory
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation Directory" FORCE)
-endif()
-
 
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -190,7 +192,7 @@ set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link Open
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio" "opencv_highgui" "opencv_calib3d")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -224,6 +226,40 @@ if(DEPTHAI_PCL_SUPPORT)
     endif()
 endif()
 
+########################
+# RTABMap Support 1
+########################
+set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libraries to link RTABMap support, e.g. TBB::tbb")
+set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
+set(TARGET_RTABMAP_ALIAS rtabmap)
+if(DEPTHAI_RTABMAP_SUPPORT)
+    if(${RTABMap_FOUND} AND DEPTHAI_HAVE_PCL_SUPPORT)
+        set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
+        message(STATUC "RTABMAP found. RTABMAP Support enabled")
+    else()
+        if(${RTABMap_FOUND})
+            message(WARNING "RTABMAP found but depthai does not have PCL support. RTABMAP Support disabled")
+        else()
+            message(WARNING "RTABMAP not found. RTABMAP Support disabled")
+        endif()
+    endif()
+endif()
+
+########################
+# Basalt Support 1
+########################
+set(THIRDPARTY_BASALT_LIBRARIES "basalt_sdk::basalt_sdk" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
+set(TARGET_BASALT_NAME ${PROJECT_NAME}-basalt)
+set(TARGET_BASALT_ALIAS basalt)
+if(DEPTHAI_BASALT_SUPPORT)
+    if(${basalt_sdk_FOUND})
+        set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
+        message(STATUC "Basalt found. Basalt Support enabled")
+    else()
+        message(WARNING "Basalt not found. Basalt Support disabled")
+    endif()
+endif()
+
 # Create core library
 set(TARGET_CORE_SOURCES
     # depthai-bootloader-shared sources
@@ -242,6 +278,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/Node.cpp
     src/pipeline/InputQueue.cpp
     src/pipeline/ThreadedNode.cpp
+    src/pipeline/ThreadedHostNode.cpp
     src/pipeline/DeviceNode.cpp
     src/pipeline/DeviceNodeGroup.cpp
     src/pipeline/node/internal/XLinkIn.cpp
@@ -274,6 +311,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/utilities/DetectionParser/DetectionParserUtils.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
@@ -282,15 +320,21 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
+    src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/node/NeuralDepth.cpp
+    src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
+    src/pipeline/datatype/ImageFiltersConfig.cpp
+    src/pipeline/datatype/ImageAlignConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
+    src/pipeline/datatype/ImgDetectionsT.cpp
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
@@ -303,6 +347,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/Tracklets.cpp
     src/pipeline/datatype/IMUData.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
+    src/pipeline/datatype/NeuralDepthConfig.cpp
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
@@ -313,12 +358,19 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/ThermalConfig.cpp
     src/pipeline/datatype/TransformData.cpp
+    src/properties/Properties.cpp
+    src/capabilities/Capabilities.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
+    src/utility/ObjectTrackerImpl.cpp
+    src/utility/Memory.cpp
+    src/utility/VectorMemory.cpp
+    src/utility/SharedMemory.cpp
+    src/utility/ProtoSerializable.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
-    src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/RecordReplay.cpp
     src/utility/McapImpl.cpp
@@ -363,17 +415,34 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     )
 endif()
 
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    list(APPEND TARGET_CORE_SOURCES
+        src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/datatype/DynamicCalibrationResults.cpp
+        src/pipeline/datatype/DynamicCalibrationControl.cpp
+    )
+endif()
+
 set(TARGET_OPENCV_SOURCES
     src/opencv/ImgFrame.cpp
     src/pipeline/node/host/Display.cpp
     src/pipeline/node/host/HostCamera.cpp
     src/pipeline/node/host/Record.cpp
     src/pipeline/node/host/Replay.cpp
+    src/pipeline/node/ImageFilters.cpp
     src/opencv/RecordReplay.cpp
     src/opencv/HolisticRecordReplay.cpp
 )
 
 set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
+
+set(TARGET_BASALT_SOURCES src/basalt/BasaltVIO.cpp)
+
+set(TARGET_RTABMAP_SOURCES
+    src/rtabmap/CalibrationHandler.cpp
+    src/rtabmap/TransformData.cpp
+    src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+)
 
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
     list(APPEND TARGET_CORE_SOURCES
@@ -383,6 +452,18 @@ endif()
 if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     list(APPEND TARGET_CORE_SOURCES
         ${TARGET_PCL_SOURCES}
+    )
+endif()
+
+if(DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    list(APPEND TARGET_CORE_SOURCES
+        ${TARGET_BASALT_SOURCES}
+    )
+endif()
+
+if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    list(APPEND TARGET_CORE_SOURCES
+        ${TARGET_RTABMAP_SOURCES}
     )
 endif()
 
@@ -399,12 +480,13 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
     # Add model_zoo helper binary
     find_package(fmt REQUIRED)
     find_package(yaml-cpp REQUIRED)
+    find_package(argparse REQUIRED)
     set(ZOO_HELPER_SOURCES
         src/modelzoo/zoo_helper.cpp
         src/modelzoo/Zoo.cpp
-        src/modelzoo/NNModelDescription.cpp
         src/utility/Environment.cpp
         src/utility/Logging.cpp
+        src/utility/Platform.cpp
     )
     set(ZOO_HELPER_LINK_LIBRARIES
         nlohmann_json::nlohmann_json
@@ -413,31 +495,26 @@ if(DEPTHAI_BUILD_ZOO_HELPER)
         CURL::libcurl
         cpr::cpr
     )
-    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_ENABLE_CURL)
     add_executable(zoo_helper ${ZOO_HELPER_SOURCES})
+    target_compile_definitions(zoo_helper PRIVATE DEPTHAI_ENABLE_CURL)
     target_compile_definitions(zoo_helper PRIVATE DEPTHAI_TARGET_CORE)
     target_link_libraries(zoo_helper PRIVATE ${ZOO_HELPER_LINK_LIBRARIES})
     target_include_directories(zoo_helper
         PRIVATE
-            # Relative path to include directories after installed
-            "$<INSTALL_INTERFACE:include>"
-            "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
-
-            # Build time path to include directories
+            # depthai-related include dirs - include and src (for src/utilities)
             "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
-            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
-            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
-
-            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
             "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
-            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
-            "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
+
+            # argparse
+            "$<BUILD_INTERFACE:${argparse_INCLUDE_DIRS}>"
     )
-    target_include_directories(zoo_helper SYSTEM
-        PRIVATE
-            "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
-    )
+
+    # Set C++17 standard for zoo_helper
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD 17)
+    set_property(TARGET zoo_helper PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET zoo_helper PROPERTY CXX_EXTENSIONS OFF)
 endif()
+
 if(DEPTHAI_ENABLE_KOMPUTE)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE shaders kompute::kompute)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_KOMPUTE)
@@ -466,8 +543,6 @@ if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
 else()
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_17)
 endif()
-# Minimal supported macOS SDK version for both arm64 and x86_64
-set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -492,12 +567,38 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
     )
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC ${PCL_DEFINITIONS})
 endif()
+
+if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET) 
+    # Link to rtabmap
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC rtabmap::core ${THIRDPARTY_RTABMAP_LIBRARIES})
+
+    # add compile defs
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    add_flag(${TARGET_CORE_NAME} -Wno-switch-enum)
+endif()
+
+if(DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_MERGED_TARGET)
+    # Link to Basalt
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES})
+
+    # add compile defs
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
+endif()
+
 if(DEPTHAI_MERGED_TARGET)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_MERGED_TARGET)
 endif()
 
 if(NOT BUILD_SHARED_LIBS)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC MCAP_STATIC)
+endif()
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    # Link the dynamic calibration target
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE dynamic_calibration_imported)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT)
 endif()
 
 # Set constant
@@ -653,12 +754,14 @@ target_include_directories(${TARGET_CORE_NAME}
         "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
 
         # Build time path to include directories
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
     #INTERFACE
     #    # ...
     PRIVATE
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/depthai>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
@@ -699,6 +802,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         magic_enum::magic_enum
         liblzma::liblzma
         lz4::lz4
+        Eigen3::Eigen
 )
 
 if(DEPTHAI_ENABLE_MP4V2)
@@ -792,19 +896,26 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
+if(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
+endif()
+
 # Helper function
 macro(add_runtime_dependencies depending_target dependency)
     if(TARGET ${dependency})
         get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
         set(dlls "")
+        message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency}. Imported configurations: ${imported_configs}")
         foreach(cfg ${imported_configs})
+            message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
             get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-            set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
+            message(STATUS "Retrieved dll for ${cfg}: '${dll}'")
+            list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
         endforeach()
+        message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
     endif()
-    set(depthai_dll_libraries "")
     # Create a list of required dll files
-    set(required_dll_files ${dlls} ${depthai_dll_libraries})
+    set(required_dll_files ${dlls})
     # Copy the required dlls
     if(WIN32)
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
@@ -817,6 +928,10 @@ macro(add_runtime_dependencies depending_target dependency)
 endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+# Add dynamic calibration dll in build time
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
+endif()
 
 ########################
 # OpenCV Support 2
@@ -891,121 +1006,87 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 endif()
 
 ########################
-# RTABMap Support
+# RTABMap Support 2
 ########################
-set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libraries to link RTABMap support, e.g. TBB::tbb")
-set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
-set(TARGET_RTABMAP_ALIAS rtabmap)
-if(DEPTHAI_RTABMAP_SUPPORT)
-    # Check if required libraries are available
-    set(RTABMAP_SUPPORT_AVAILABLE ${RTABMap_FOUND})
-
-    if(RTABMAP_SUPPORT_AVAILABLE)
-
-        if(NOT APPLE)
-            SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-        endif()
-        # Add depthai-rtabmap library and depthai::rtabmap alias
-        add_library(${TARGET_RTABMAP_NAME}
-        src/rtabmap/CalibrationHandler.cpp
-        src/rtabmap/TransformData.cpp
-        src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
-        )
-        add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
-        # Specifies name of generated IMPORTED target (set to alias)
-        set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
-
-        # Add default flags
-        add_default_flags(${TARGET_RTABMAP_NAME})
-        add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
-        # Link to RTABMap (publically)
-        if(DEPTHAI_MERGED_TARGET)
-            target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${THIRDPARTY_RTABMAP_LIBRARIES} PRIVATE spdlog::spdlog)
-        else()
-            target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} PRIVATE spdlog::spdlog)
-        endif()
-
-        target_include_directories(${TARGET_RTABMAP_NAME} PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>")
-        # Add public compile definition indicating that RTABMap support is available
-        set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
-
-        # Specify that we are building target rtabmap
-        target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
-        target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_HAVE_RTABMAP_SUPPORT)
-        # Add public dependency to depthai::core library
-        target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC ${TARGET_CORE_NAME})
-
-        # Add to clangformat target
-        if(COMMAND target_clangformat_setup)
-            target_clangformat_setup(${TARGET_RTABMAP_NAME} "")
-        endif()
-
-        # Add to list of targets to export and install
-        list(APPEND targets_to_export ${TARGET_RTABMAP_NAME})
-
-        message(STATUS "RTABMap and required libraries (${REQUIRED_RTABMAP_LIBRARIES}) found. RTABMap Support enabled")
-
-    else()
-        message(STATUS "RTABMap or required libraries (${REQUIRED_RTABMAP_LIBRARIES}) not found. RTABMap Support disabled")
+if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
+    if(NOT APPLE)
+        SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
     endif()
+    # Add depthai-rtabmap library and depthai::rtabmap alias
+    add_library(${TARGET_RTABMAP_NAME}
+    src/rtabmap/CalibrationHandler.cpp
+    src/rtabmap/TransformData.cpp
+    src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+    )
+    add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
+    # Specifies name of generated IMPORTED target (set to alias)
+    set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
+
+    # Add default flags
+    add_default_flags(${TARGET_RTABMAP_NAME})
+    add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
+    # Link to RTABMap (publically)
+    target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} PRIVATE spdlog::spdlog)
+
+    target_include_directories(${TARGET_RTABMAP_NAME} PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>")
+    # Add public compile definition indicating that RTABMap support is available
+    set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
+
+    # Specify that we are building target rtabmap
+    target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
+    target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    # Add public dependency to depthai::core library
+    target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+    # Add to clangformat target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${TARGET_RTABMAP_NAME} "")
+    endif()
+
+    # Add to list of targets to export and install
+    list(APPEND targets_to_export ${TARGET_RTABMAP_NAME})
+
+    message(STATUS "RTABMap and required libraries (${REQUIRED_RTABMAP_LIBRARIES}) found. RTABMap Support enabled")
 endif()
 
 
 ########################
-# Basalt Support
+# Basalt Support 2
 ########################
+if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 
-set(THIRDPARTY_BASALT_LIBRARIES "basalt_sdk::basalt_sdk" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
-set(TARGET_BASALT_NAME ${PROJECT_NAME}-basalt)
-set(TARGET_BASALT_ALIAS basalt)
+    # Add depthai-basalt library and depthai::basalt alias
+    add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
+    add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
 
-if(DEPTHAI_BASALT_SUPPORT)
-    # Check if required libraries are available
-    find_package(basalt_sdk CONFIG REQUIRED)
-    set(BASALT_SUPPORT_AVAILABLE ${basalt_sdk_FOUND})
+    # Specifies name of generated IMPORTED target (set to alias)
+    set_target_properties(${TARGET_BASALT_NAME} PROPERTIES EXPORT_NAME ${TARGET_BASALT_ALIAS})
 
-    if(BASALT_SUPPORT_AVAILABLE)
+    # Add default flags
+    add_default_flags(${TARGET_BASALT_NAME})
+    add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
 
-        # Add depthai-basalt library and depthai::basalt alias
-        add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
-        add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
+    # Link to Basalt (publically)
+    target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} PRIVATE spdlog::spdlog)
+    # Add public compile definition indicating that Basalt support is available
+    set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
 
-        # Specifies name of generated IMPORTED target (set to alias)
-        set_target_properties(${TARGET_BASALT_NAME} PROPERTIES EXPORT_NAME ${TARGET_BASALT_ALIAS})
+    # Specify that we are building target basalt
+    target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
+    target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
 
-        # Add default flags
-        add_default_flags(${TARGET_BASALT_NAME})
-        add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
+    # Add public dependency to depthai::core library
+    target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${TARGET_CORE_NAME})
 
-        # Link to Basalt (publically)
-        if(DEPTHAI_MERGED_TARGET)
-            target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES} PRIVATE spdlog::spdlog)
-        else()
-            target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} PRIVATE spdlog::spdlog)
-        endif()
-        # Add public compile definition indicating that Basalt support is available
-        set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
-
-        # Specify that we are building target basalt
-        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
-        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
-
-        # Add public dependency to depthai::core library
-        target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${TARGET_CORE_NAME})
-
-        # Add to clangformat target
-        if(COMMAND target_clangformat_setup)
-            target_clangformat_setup(${TARGET_BASALT_NAME} "")
-        endif()
-
-        # Add to list of targets to export and install
-        list(APPEND targets_to_export ${TARGET_BASALT_NAME})
-
-        message(STATUS "Basalt and required libraries (${REQUIRED_BASALT_LIBRARIES}) found. Basalt Support enabled")
-
-    else()
-        message(STATUS "Basalt or required libraries (${REQUIRED_BASALT_LIBRARIES}) not found. Basalt Support disabled")
+    # Add to clangformat target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${TARGET_BASALT_NAME} "")
     endif()
+
+    # Add to list of targets to export and install
+    list(APPEND targets_to_export ${TARGET_BASALT_NAME})
+
+    message(STATUS "Basalt and required libraries (${REQUIRED_BASALT_LIBRARIES}) found. Basalt Support enabled")
 endif()
 
 ########################
@@ -1137,7 +1218,12 @@ string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
 message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}, BUILD_COMMIT_DATETIME: ${BUILD_COMMIT_DATETIME}")
 
 # Configure build information (version, opencv, pcl support)
-configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
+set(DEPTHAI_VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build/version.hpp")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/depthai/build")
+configure_file(
+    "${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in"
+    "${DEPTHAI_VERSION_HEADER}"
+)
 
 ########################
 # Export and install
@@ -1198,6 +1284,7 @@ if(DEPTHAI_INSTALL)
 
     # Install depthai public headers
     install(DIRECTORY include/depthai DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(FILES "${DEPTHAI_VERSION_HEADER}" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai/build")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install resources if not RC'd

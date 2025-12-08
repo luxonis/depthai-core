@@ -25,6 +25,8 @@ struct BenchmarkInProperties : PropertiesSerializable<Properties, BenchmarkInPro
      * Send the reports also as logger warnings
      */
     bool logReportsAsWarnings = true;
+
+    ~BenchmarkInProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(BenchmarkInProperties, reportEveryNMessages, attachLatencies, logReportsAsWarnings);

@@ -51,7 +51,8 @@ void AssetManagerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("asset"),
              DOC(dai, AssetManager, set, 2))
         .def("set",
-             static_cast<std::shared_ptr<dai::Asset> (AssetManager::*)(const std::string& key, const dai::Path& path, int alignment)>(&AssetManager::set),
+             static_cast<std::shared_ptr<dai::Asset> (AssetManager::*)(const std::string& key, const std::filesystem::path& path, int alignment)>(
+                 &AssetManager::set),
              py::arg("key"),
              py::arg("path"),
              py::arg("alignment") = 64,

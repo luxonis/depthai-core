@@ -19,7 +19,7 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    private:
-    dai::Path scriptPath;
+    std::filesystem::path scriptPath;
 
    public:
     /**
@@ -38,7 +38,7 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
      * @param path Filesystem path to load the script
      * @param name Optionally set a name of this script, otherwise the name defaults to the path
      */
-    void setScriptPath(const dai::Path& path, const std::string& name = "");
+    void setScriptPath(const std::filesystem::path& path, const std::string& name = "");
 
     /**
      * Sets script data to be interpreted
@@ -57,9 +57,9 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
     /**
      * @brief Get filesystem path from where script was loaded.
      *
-     * @return dai::Path from where script was loaded, otherwise returns empty path
+     * @return std::filesystem::path from where script was loaded, otherwise returns empty path
      */
-    dai::Path getScriptPath() const;
+    std::filesystem::path getScriptPath() const;
 
     /**
      * @brief Get the script name in utf-8.

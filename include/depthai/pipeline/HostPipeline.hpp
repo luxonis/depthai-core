@@ -43,7 +43,7 @@
 //     std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const;
 //     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
 //     Device::Config getDeviceConfig() const;
-//     void setCameraTuningBlobPath(const dai::Path& path);
+//     void setCameraTuningBlobPath(const std::filesystem::path& path);
 //     void setXLinkChunkSize(int sizeBytes);
 
 //     // Access to nodes
@@ -263,7 +263,7 @@
 //     }
 
 //     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
-//     void setCameraTuningBlobPath(const dai::Path& path) {
+//     void setCameraTuningBlobPath(const std::filesystem::path& path) {
 //         impl()->setCameraTuningBlobPath(path);
 //     }
 

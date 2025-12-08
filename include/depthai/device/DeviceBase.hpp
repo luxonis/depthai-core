@@ -185,7 +185,7 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+    DeviceBase(const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
 
     /**
      * Connects to any available device with custom config.
@@ -237,7 +237,7 @@ class DeviceBase {
      * @param config Config with which the device will be booted with
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(Config config, const dai::Path& pathToCmd);
+    DeviceBase(Config config, const std::filesystem::path& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -254,7 +254,7 @@ class DeviceBase {
      * @param pathToCmd Path to custom device firmware
      * @param dumpOnly If true only the minimal connection is established to retrieve the crash dump
      */
-    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly = false);
+    DeviceBase(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly = false);
 
     /**
      * Device destructor
@@ -593,6 +593,13 @@ class DeviceBase {
     CpuUsage getLeonMssCpuUsage();
 
     /**
+     * Retrieves current Rss memory usage of the device process
+     *
+     * @returns Current Rss memory used
+     */
+    int64_t getProcessMemoryUsage();
+
+    /**
      * Check if EEPROM is available
      * @returns True if EEPROM is present on board, false otherwise
      */
@@ -605,7 +612,7 @@ class DeviceBase {
      *
      * @return true on successful flash, false on failure
      */
-    bool flashCalibration(CalibrationHandler calibrationDataHandler);
+    bool tryFlashCalibration(CalibrationHandler calibrationDataHandler);
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM
@@ -613,7 +620,7 @@ class DeviceBase {
      * @throws std::runtime_exception if failed to flash the calibration
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      */
-    void flashCalibration2(CalibrationHandler calibrationDataHandler);
+    void flashCalibration(CalibrationHandler calibrationDataHandler);
 
     /**
      * Sets the Calibration at runtime. This is not persistent and will be lost after device reset.
@@ -730,6 +737,13 @@ class DeviceBase {
     UsbSpeed getUsbSpeed();
 
     /**
+     * Checks if Neural Depth is supported on the device
+     *
+     * @returns True if supported, false otherwise
+     */
+    bool isNeuralDepthSupported();
+
+    /**
      * Configures Timesync service on device. It keeps host and device clocks in sync
      * First time timesync is started it waits until the initial sync is completed
      * Afterwards the function changes the following parameters
@@ -819,31 +833,31 @@ class DeviceBase {
    protected:
     // protected functions
     void init();
-    void init(const dai::Path& pathToCmd);
+    void init(const std::filesystem::path& pathToCmd);
     void init(UsbSpeed maxUsbSpeed);
-    void init(UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd);
     void init(const Pipeline& pipeline);
     void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
-    void init(const Pipeline& pipeline, const dai::Path& pathToCmd);
+    void init(const Pipeline& pipeline, const std::filesystem::path& pathToCmd);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
-    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
-    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
-    void init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd);
+    void init(Config config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd);
     void init(Config config, UsbSpeed maxUsbSpeed);
-    void init(Config config, const dai::Path& pathToCmd);
+    void init(Config config, const std::filesystem::path& pathToCmd);
     void init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
-    void init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+    void init(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd);
 
    private:
     // private functions
-    void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
+    void init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
     void tryGetDevice();
     struct PrevInfo {
         DeviceInfo deviceInfo;
         Config cfg;
-        dai::Path pathToMvcmd;
+        std::filesystem::path pathToMvcmd;
         bool hasPipeline;
     };
     void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
@@ -895,7 +909,7 @@ class DeviceBase {
     // Device config
     Config config;
 
-    dai::Path firmwarePath;
+    std::filesystem::path firmwarePath;
     bool dumpOnly = false;
 
     // Started pipeline

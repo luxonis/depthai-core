@@ -100,7 +100,7 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("fps") = std::nullopt,
              DOC(dai, node, NeuralNetwork, build, 5))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
-        .def("setBlob", py::overload_cast<const dai::Path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
+        .def("setBlob", py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))
         .def("setModelPath", &NeuralNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, NeuralNetwork, setModelPath))
         .def("setNumShavesPerInferenceThread",
              &NeuralNetwork::setNumShavesPerInferenceThread,
@@ -108,6 +108,8 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, NeuralNetwork, setNumShavesPerInferenceThread))
         .def("setBackend", &NeuralNetwork::setBackend, py::arg("setBackend"), DOC(dai, node, NeuralNetwork, setBackend))
         .def("setBackendProperties", &NeuralNetwork::setBackendProperties, py::arg("setBackendProperties"), DOC(dai, node, NeuralNetwork, setBackendProperties))
+        .def("getNNArchive", &NeuralNetwork::getNNArchive, DOC(dai, node, NeuralNetwork, getNNArchive))
+        .def("setModelFromDeviceZoo", &NeuralNetwork::setModelFromDeviceZoo, py::arg("model"), DOC(dai, node, NeuralNetwork, setModelFromDeviceZoo))
 
         .def_readonly("inputs", &NeuralNetwork::inputs, DOC(dai, node, NeuralNetwork, inputs))
         .def_readonly("passthroughs", &NeuralNetwork::passthroughs, DOC(dai, node, NeuralNetwork, passthroughs))

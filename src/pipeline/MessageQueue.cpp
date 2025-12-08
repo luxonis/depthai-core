@@ -143,4 +143,6 @@ void MessageQueue::callCallbacks(std::shared_ptr<ADatatype> message) {
     }
 }
 
+MessageQueue::QueueException::~QueueException() noexcept = default;
+
 }  // namespace dai

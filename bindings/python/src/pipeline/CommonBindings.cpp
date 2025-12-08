@@ -1,5 +1,7 @@
 #include "CommonBindings.hpp"
 
+#include <pybind11/pybind11.h>
+
 // Libraries
 #include "hedley/hedley.h"
 
@@ -14,11 +16,14 @@
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/ConnectionInterface.hpp"
 #include "depthai/common/CpuUsage.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "depthai/common/DetectionParserOptions.hpp"
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/Interpolation.hpp"
+#include "depthai/common/Keypoint.hpp"
 #include "depthai/common/MemoryInfo.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3d.hpp"
@@ -32,6 +37,7 @@
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
+#include "depthai/common/YoloDecodingFamily.hpp"
 
 // depthai
 #include "depthai/common/CameraExposureOffset.hpp"
@@ -67,6 +73,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
+    py::enum_<DepthUnit> depthUnitEnum(m, "DepthUnit", DOC(dai, DepthUnit));
+    depthUnitEnum.value("METER", DepthUnit::METER)
+        .value("CENTIMETER", DepthUnit::CENTIMETER)
+        .value("MILLIMETER", DepthUnit::MILLIMETER)
+        .value("INCH", DepthUnit::INCH)
+        .value("FOOT", DepthUnit::FOOT)
+        .value("CUSTOM", DepthUnit::CUSTOM);
+    py::enum_<YoloDecodingFamily> yoloDecodingFamily(m, "YoloDecodingFamily");
     py::enum_<SerializationType> serializationType(m, "SerializationType");
     py::class_<DetectionParserOptions> detectionParserOptions(m, "DetectionParserOptions", DOC(dai, DetectionParserOptions));
     py::class_<RotatedRect> rotatedRect(m, "RotatedRect", DOC(dai, RotatedRect));
@@ -78,6 +92,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
     py::class_<ProfilingData> profilingData(m, "ProfilingData", DOC(dai, ProfilingData));
     py::enum_<Interpolation> interpolation(m, "Interpolation", DOC(dai, Interpolation));
+    py::enum_<DeviceModelZoo> deviceModelZoo(m, "DeviceModelZoo", DOC(dai, DeviceModelZoo));
+    py::class_<Keypoint> keypoint(m, "Keypoint", DOC(dai, Keypoint));
+    py::class_<KeypointsList> keypointsList(m, "KeypointsList", DOC(dai, KeypointsList));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -92,6 +109,51 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    keypoint.def(py::init<>())
+        .def(py::init<Point3f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
+        .def(py::init<Point2f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
+        .def(py::init<float, float, float, float, uint32_t>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("confidence") = 0.f,
+             py::arg("label") = 0,
+             DOC(dai, Keypoint, Keypoint))
+        .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates, DOC(dai, Keypoint, imageCoordinates))
+        .def_readwrite("confidence", &Keypoint::confidence, DOC(dai, Keypoint, confidence))
+        .def_readwrite("label", &Keypoint::label, DOC(dai, Keypoint, label));
+
+    keypointsList.def(py::init<>())
+        .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))
+        .def(py::init<std::vector<Keypoint>>(), py::arg("keypoints"), DOC(dai, KeypointsListT, KeypointsListT))
+        .def(
+            "setKeypoints",
+            [](KeypointsList& self, const std::vector<Keypoint>& kps) { self.Base::setKeypoints(kps); },
+            py::arg("keypoints"),
+            DOC(dai, KeypointsListT, setKeypoints))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Point3f>>(&KeypointsList::setKeypoints),
+             py::arg("keypoints"),
+             DOC(dai, KeypointsListT, setKeypoints))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Point2f>>(&KeypointsList::setKeypoints),
+             py::arg("keypoints"),
+             DOC(dai, KeypointsListT, setKeypoints))
+        .def(
+            "setKeypoints",
+            [](KeypointsList& self, std::vector<Keypoint> keypoints, std::vector<Edge> edges) {
+                self.Base::setKeypoints(std::move(keypoints), std::move(edges));
+            },
+            py::arg("keypoints"),
+            py::arg("edges"),
+            DOC(dai, KeypointsListT, setKeypoints))
+        .def(
+            "setEdges", [](KeypointsList& self, const std::vector<Edge>& edges) { self.Base::setEdges(edges); }, py::arg("edges"))
+        .def("getKeypoints", &KeypointsList::getKeypoints, DOC(dai, KeypointsListT, getKeypoints))
+        .def("getEdges", &KeypointsList::getEdges, DOC(dai, KeypointsListT, getEdges))
+        .def("getPoints3f", &KeypointsList::getPoints3f, DOC(dai, KeypointsListT, getPoints3f))
+        .def("getPoints2f", &KeypointsList::getPoints2f, DOC(dai, KeypointsListT, getPoints2f));
+
     rotatedRect.def(py::init<>())
         .def(py::init<Point2f, Size2f, float>())
         .def(py::init<Rect, float>())
@@ -100,9 +162,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("angle", &RotatedRect::angle)
         .def("isNormalized", &RotatedRect::isNormalized, DOC(dai, RotatedRect, isNormalized))
         .def("normalize", &RotatedRect::normalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, normalize))
-        .def("denormalize", &RotatedRect::denormalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, denormalize))
+        .def("denormalize", &RotatedRect::denormalize, py::arg("width"), py::arg("height"), py::arg("force") = false, DOC(dai, RotatedRect, denormalize))
         .def("getPoints", &RotatedRect::getPoints, DOC(dai, RotatedRect, getPoints))
-        .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect));
+        .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect))
+        .def("getOuterXYWH", &RotatedRect::getOuterXYWH, DOC(dai, RotatedRect, getOuterXYWH))
+        .def("getOuterCXCYWH", &RotatedRect::getOuterCXCYWH, DOC(dai, RotatedRect, getOuterCXCYWH));
 
     rect.def(py::init<>())
         .def(py::init<float, float, float, float>())
@@ -360,6 +424,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     detectionNetworkType.value("YOLO", DetectionNetworkType::YOLO).value("MOBILENET", DetectionNetworkType::MOBILENET);
 
+    yoloDecodingFamily.value("TLBR", YoloDecodingFamily::TLBR)
+        .value("v5AB", YoloDecodingFamily::v5AB)
+        .value("v3AB", YoloDecodingFamily::v3AB)
+        .value("R1AF", YoloDecodingFamily::R1AF);
+
     serializationType.value("LIBNOP", SerializationType::LIBNOP).value("JSON", SerializationType::JSON).value("JSON_MSGPACK", SerializationType::JSON_MSGPACK);
 
     detectionParserOptions.def_readwrite("nnFamily", &DetectionParserOptions::nnFamily)
@@ -368,7 +437,13 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("coordinates", &DetectionParserOptions::coordinates)
         .def_readwrite("anchors", &DetectionParserOptions::anchors)
         .def_readwrite("anchorMasks", &DetectionParserOptions::anchorMasks)
-        .def_readwrite("iouThreshold", &DetectionParserOptions::iouThreshold);
+        .def_readwrite("iouThreshold", &DetectionParserOptions::iouThreshold)
+        .def_readwrite("decodingFamily", &DetectionParserOptions::decodingFamily)
+        .def_readwrite("keypointEdges", &DetectionParserOptions::keypointEdges)
+        .def_readwrite("anchorsV2", &DetectionParserOptions::anchorsV2)
+        .def_readwrite("decodeKeypoints", &DetectionParserOptions::decodeKeypoints)
+        .def_readwrite("numKeypoints", &DetectionParserOptions::nKeypoints)
+        .def_readwrite("outputNames", &DetectionParserOptions::outputNamesToUse);
 
     cameraExposureOffset.value("START", CameraExposureOffset::START).value("MIDDLE", CameraExposureOffset::MIDDLE).value("END", CameraExposureOffset::END);
 
@@ -419,4 +494,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     profilingData.def_readwrite("numBytesWritten", &ProfilingData::numBytesWritten, DOC(dai, ProfilingData, numBytesWritten))
         .def_readwrite("numBytesRead", &ProfilingData::numBytesRead, DOC(dai, ProfilingData, numBytesRead));
+
+    deviceModelZoo.value("NEURAL_DEPTH_LARGE", DeviceModelZoo::NEURAL_DEPTH_LARGE)
+        .value("NEURAL_DEPTH_MEDIUM", DeviceModelZoo::NEURAL_DEPTH_MEDIUM)
+        .value("NEURAL_DEPTH_SMALL", DeviceModelZoo::NEURAL_DEPTH_SMALL)
+        .value("NEURAL_DEPTH_NANO", DeviceModelZoo::NEURAL_DEPTH_NANO);
 }

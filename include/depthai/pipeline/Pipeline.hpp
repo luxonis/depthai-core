@@ -25,6 +25,8 @@
 
 namespace dai {
 
+namespace fs = std::filesystem;
+
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
@@ -52,7 +54,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     Device::Config getDeviceConfig() const;
-    void setCameraTuningBlobPath(const dai::Path& path);
+    void setCameraTuningBlobPath(const fs::path& path);
     void setXLinkChunkSize(int sizeBytes);
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(GlobalProperties globalProperties);
@@ -79,6 +81,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     CalibrationHandler getCalibrationData() const;
     void setEepromData(std::optional<EepromData> eepromData);
     std::optional<EepromData> getEepromData() const;
+    uint32_t getEepromId() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
 
@@ -108,7 +111,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Record and Replay
     RecordConfig recordConfig;
     bool enableHolisticRecordReplay = false;
-    std::unordered_map<std::string, std::string> recordReplayFilenames;
+    std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
     std::string defaultDeviceId;
 
@@ -126,6 +129,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Add a mutex for any state change
     std::mutex stateMtx;
+
+    // Calibration mutex
+    mutable std::mutex calibMtx;
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
@@ -224,8 +230,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
    private:
     // Resource
-    std::vector<uint8_t> loadResource(dai::Path uri);
-    std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd, bool moveAsset = false);
+    std::vector<uint8_t> loadResource(fs::path uri);
+    std::vector<uint8_t> loadResourceCwd(fs::path uri, fs::path cwd, bool moveAsset = false);
 };
 
 /**
@@ -400,8 +406,17 @@ class Pipeline {
         impl()->setEepromData(eepromData);
     }
 
+    /**
+     * Gets the eeprom id from the pipeline
+     *
+     * @return eeprom id from the pipeline
+     */
+    uint32_t getEepromId() const {
+        return impl()->getEepromId();
+    }
+
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
-    void setCameraTuningBlobPath(const dai::Path& path) {
+    void setCameraTuningBlobPath(const fs::path& path) {
         impl()->setCameraTuningBlobPath(path);
     }
 

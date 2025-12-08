@@ -26,7 +26,7 @@ int main() {
         dai::NNModelDescription modelDesc;
         modelDesc.model = "yolov6-nano";
         modelDesc.platform = "RVC2";
-        std::string archivePath = dai::getModelFromZoo(modelDesc, true);  // true to used cached if available, otherwise re-download
+        auto archivePath = dai::getModelFromZoo(modelDesc, true);  // true to use cached if available, otherwise re-download
 
         // Load NN archive
         dai::NNArchive archive(archivePath);
@@ -39,8 +39,6 @@ int main() {
         if(!archive.getSuperBlob()) {
             throw std::runtime_error("SuperBlob should not be null for superblob type");
         }
-
-        std::cout << "Superblob path: " << archive.getModelPath().value() << std::endl;
 
         if(archive.getBlob()) {
             throw std::runtime_error("Blob should be null for superblob type");

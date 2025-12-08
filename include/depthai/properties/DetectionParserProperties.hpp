@@ -20,6 +20,8 @@ struct DetectionParserProperties : PropertiesSerializable<Properties, DetectionP
 
     /// Options for parser
     DetectionParserOptions parser;
+
+    ~DetectionParserProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(DetectionParserProperties, numFramesPool, networkInputs, parser);

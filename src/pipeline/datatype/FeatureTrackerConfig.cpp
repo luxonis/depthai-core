@@ -2,6 +2,13 @@
 
 namespace dai {
 
+FeatureTrackerConfig::~FeatureTrackerConfig() = default;
+
+void FeatureTrackerConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::FeatureTrackerConfig;
+}
+
 FeatureTrackerConfig& FeatureTrackerConfig::setCornerDetector(FeatureTrackerConfig::CornerDetector::Type cornerDetector) {
     this->cornerDetector.type = cornerDetector;
     return *this;

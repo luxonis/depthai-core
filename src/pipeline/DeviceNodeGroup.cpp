@@ -2,6 +2,8 @@
 
 namespace dai {
 
+DeviceNodeGroup::~DeviceNodeGroup() = default;
+
 void DeviceNodeGroup::setLogLevel(dai::LogLevel level) {
     for(auto& node : nodeRefs) {
         // Try converting to ThreadedNode

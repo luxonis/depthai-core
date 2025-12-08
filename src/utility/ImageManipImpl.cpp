@@ -4,6 +4,10 @@
 
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/calib3d.hpp>
+#endif
+
 #if defined(WIN32) || defined(_WIN32)
     #define _RESTRICT
 #else
@@ -541,6 +545,11 @@ std::array<std::array<float, 2>, 4> dai::impl::getOuterRotatedRect(const std::ve
     for(size_t i = 1; i < hull.size(); ++i) {
         std::array<float, 2> vec = {hull[i][0] - hull[i - 1][0], hull[i][1] - hull[i - 1][1]};
         std::array<float, 2> vecOrth = {-vec[1], vec[0]};
+        float len = sqrtf(vec[0] * vec[0] + vec[1] * vec[1]);
+        vec[0] /= len;
+        vec[1] /= len;
+        vecOrth[0] /= len;
+        vecOrth[1] /= len;
         std::array<std::array<float, 2>, 2> mat = {{{vec[0], vecOrth[0]}, {vec[1], vecOrth[1]}}};
         std::array<std::array<float, 2>, 2> matInv = getInverse(mat);
 
@@ -915,3 +924,115 @@ dai::RotatedRect dai::impl::getRotatedRectFromPoints(const std::vector<std::arra
     rect.angle = std::atan2(rrCorners[1][1] - rrCorners[0][1], rrCorners[1][0] - rrCorners[0][0]) * 180.0f / (float)M_PI;
     return rect;
 }
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+bool dai::impl::UndistortOpenCvImpl::validMatrix(std::array<float, 9> matrix) const {
+    return !floatEq(matrix[0], 0) && floatEq(matrix[1], 0) && floatEq(matrix[3], 0) && !floatEq(matrix[4], 0) && floatEq(matrix[6], 0) && floatEq(matrix[7], 0)
+           && floatEq(matrix[8], 1);
+}
+void dai::impl::UndistortOpenCvImpl::initMaps(std::array<float, 9> cameraMatrix,
+                                              std::array<float, 9> newCameraMatrix,
+                                              std::vector<float> distCoeffs,
+                                              dai::ImgFrame::Type type,
+                                              uint32_t srcWidth,
+                                              uint32_t srcHeight,
+                                              uint32_t dstWidth,
+                                              uint32_t dstHeight) {
+    this->cameraMatrix = std::move(cameraMatrix);
+    this->newCameraMatrix = std::move(newCameraMatrix);
+    this->distCoeffs = std::move(distCoeffs);
+    this->type = type;
+    this->srcWidth = srcWidth;
+    this->srcHeight = srcHeight;
+    this->dstWidth = dstWidth;
+    this->dstHeight = dstHeight;
+    undistortMap1 = cv::Mat();
+    undistortMap2 = cv::Mat();
+    undistortMap1Half = cv::Mat();
+    undistortMap2Half = cv::Mat();
+
+    cv::Mat cvCameraMatrix(3, 3, CV_32F, this->cameraMatrix.data());
+    cv::Mat cvNewCameraMatrix(3, 3, CV_32F, this->newCameraMatrix.data());
+    cv::initUndistortRectifyMap(
+        cvCameraMatrix, this->distCoeffs, cv::Mat(), cvNewCameraMatrix, cv::Size(dstWidth, dstHeight), CV_16SC2, undistortMap1, undistortMap2);
+    if(type == dai::ImgFrame::Type::NV12 || type == dai::ImgFrame::Type::YUV420p) {
+        cv::Mat cvCameraMatrixHalf = cvCameraMatrix.clone();
+        cv::Mat cvNewCameraMatrixHalf = cvNewCameraMatrix.clone();
+        cvCameraMatrixHalf.at<float>(0, 0) /= 2;
+        cvCameraMatrixHalf.at<float>(1, 1) /= 2;
+        cvCameraMatrixHalf.at<float>(0, 2) /= 2;
+        cvCameraMatrixHalf.at<float>(1, 2) /= 2;
+        cvNewCameraMatrixHalf.at<float>(0, 0) /= 2;
+        cvNewCameraMatrixHalf.at<float>(1, 1) /= 2;
+        cvNewCameraMatrixHalf.at<float>(0, 2) /= 2;
+        cvNewCameraMatrixHalf.at<float>(1, 2) /= 2;
+        cv::initUndistortRectifyMap(cvCameraMatrixHalf,
+                                    this->distCoeffs,
+                                    cv::Mat(),
+                                    cvNewCameraMatrixHalf,
+                                    cv::Size(dstWidth / 2, dstHeight / 2),
+                                    CV_16SC2,
+                                    undistortMap1Half,
+                                    undistortMap2Half);
+    }
+}
+dai::impl::UndistortOpenCvImpl::BuildStatus dai::impl::UndistortOpenCvImpl::build(std::array<float, 9> cameraMatrix,
+                                                                                  std::array<float, 9> newCameraMatrix,
+                                                                                  std::vector<float> distCoeffs,
+                                                                                  dai::ImgFrame::Type type,
+                                                                                  uint32_t srcWidth,
+                                                                                  uint32_t srcHeight,
+                                                                                  uint32_t dstWidth,
+                                                                                  uint32_t dstHeight) {
+    if(!distCoeffs.empty()) {
+        if(!validMatrix(cameraMatrix)) {
+            logger->error("Invalid camera matrix provided for undistortion, will not be applied ({},{},{},{},{},{},{},{},{})",
+                          cameraMatrix[0],
+                          cameraMatrix[1],
+                          cameraMatrix[2],
+                          cameraMatrix[3],
+                          cameraMatrix[4],
+                          cameraMatrix[5],
+                          cameraMatrix[6],
+                          cameraMatrix[7],
+                          cameraMatrix[8]);
+            return BuildStatus::ERROR;
+        }
+        if(!validMatrix(newCameraMatrix)) {
+            if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || distCoeffs != this->distCoeffs
+               || cameraMatrix != this->cameraMatrix) {
+                initMaps(cameraMatrix, cameraMatrix, std::move(distCoeffs), type, srcWidth, srcHeight, srcWidth, srcHeight);
+                return BuildStatus::TWO_SHOT;
+            }
+            return BuildStatus::NOT_BUILT;
+        } else {
+            if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || dstWidth != this->dstWidth || dstHeight != this->dstHeight
+               || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix || newCameraMatrix != this->newCameraMatrix) {
+                initMaps(std::move(cameraMatrix), std::move(newCameraMatrix), std::move(distCoeffs), type, srcWidth, srcHeight, dstWidth, dstHeight);
+                return BuildStatus::ONE_SHOT;
+            }
+            return BuildStatus::NOT_BUILT;
+        }
+    }
+    return BuildStatus::NOT_USED;
+}
+void dai::impl::UndistortOpenCvImpl::undistort(cv::Mat& src, cv::Mat& dst) {
+    if(dst.size().width == (int)dstWidth && dst.size().height == (int)dstHeight) {
+        cv::remap(src, dst, undistortMap1, undistortMap2, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+    } else if(dst.size().width == (int)dstWidth / 2 && dst.size().height == (int)dstHeight / 2) {
+        if(undistortMap1Half.empty() || undistortMap2Half.empty()) {
+            throw std::runtime_error(
+                "UndistortImpl: Undistort maps for this type are not initialized");  // This should not happen, the maps are initialized for NV12 and YUV420p
+        }
+        cv::remap(src, dst, undistortMap1Half, undistortMap2Half, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(127, 127));
+    } else {
+        throw std::runtime_error(fmt::format("UndistortImpl: Output size does not match the expected size (got {}x{}, expected {}x{} or {}x{})",
+                                             dst.size().width,
+                                             dst.size().height,
+                                             dstWidth,
+                                             dstHeight,
+                                             dstWidth / 2,
+                                             dstHeight / 2));
+    }
+}
+#endif

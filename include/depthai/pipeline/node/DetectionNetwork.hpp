@@ -100,7 +100,7 @@ class DetectionNetwork : public DeviceNodeGroup {
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlobPath(const dai::Path& path);
+    void setBlobPath(const std::filesystem::path& path);
 
     /**
      * Load network blob into assets and use once pipeline is started.
@@ -115,13 +115,13 @@ class DetectionNetwork : public DeviceNodeGroup {
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlob(const dai::Path& path);
+    void setBlob(const std::filesystem::path& path);
 
     /**
      * Load network model into assets.
      * @param modelPath Path to the model file.
      */
-    void setModelPath(const dai::Path& modelPath);
+    void setModelPath(const std::filesystem::path& modelPath);
 
     /**
      * Specifies how many frames will be available in the pool

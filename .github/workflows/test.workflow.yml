@@ -4,12 +4,15 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - develop
     tags:
       - 'v*'
   pull_request:
     branches:
+      - main
       - develop
+    types: [opened, synchronize, reopened, labeled]
 
 # Only allow latest run on same branch to be tested
 concurrency:
@@ -17,97 +20,75 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Testing
-  linux_rvc2_test:
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-    strategy:
-      matrix:
-        arch: ['x64']
-        flavor: ['vanilla', 'asan-ubsan', 'tsan']
-      fail-fast: false
-    runs-on: ['self-hosted', 'testbed-runner']
 
+  # The precheck job determines whether a workflow should be run in full
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
-    - name: Export GitHub Actions cache environment variables
-      uses: actions/github-script@v7
-      with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-    - name: Prepare HIL Framework
-      run: source scripts/hil/prepare_hil_framework.sh
-
-    - name: Configure, Build and Test
+    - name: Evaluate trigger condition
+      id: check
       run: |
-        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ matrix.flavor }}"
-        exec hil --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --sync-workspace  --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc2'
+        EVENT_NAME="${{ github.event_name }}"
 
-  # Testing
-  linux_rvc4_test:
-      env:
-        VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-      strategy:
-        matrix:
-          arch: ['x64']
-          flavor: ['vanilla']
-          rvc4os: ['r851.1.2', 'debug-1.6.0', 'debug-1.11.0']
-        fail-fast: false
-      runs-on: ['self-hosted', 'testbed-runner']
+        RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
+        if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
+          LABELS="[]"
+        else
+          LABELS="$RAW_LABELS"
+        fi
 
-      steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: 'recursive'
+        SHOULD_RUN="true"
+        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
+          fi
+        fi
 
-      - name: Prepare HIL Framework
-        run: source scripts/hil/prepare_hil_framework.sh
+        echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
 
-      - name: Configure, Build and Test
-        run: |
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
-          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
+  run_vanilla_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/test_child.yml
+    with:
+      flavor: "vanilla"
+      luxonis_os_versions_to_test: "['1.14.1', '1.18.3', '1.20.5']"
+      luxonis_os_versions_to_test_rgb: "['1.20.5']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
-  linux_rvc4_sanitizer_test:
-      env:
-        VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-      strategy:
-        matrix:
-          arch: ['x64']
-          flavor: ['asan-ubsan', 'tsan']
-          rvc4os: ['debug-1.6.0']
-        fail-fast: false
-      runs-on: ['self-hosted', 'testbed-runner']
+  run_tsan_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/test_child.yml
+    with:
+      flavor: "tsan"
+      luxonis_os_versions_to_test: "['1.20.5']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
-      steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: 'recursive'
+  run_asan-ubsan_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/test_child.yml
+    with:
+      flavor: "asan-ubsan"
+      luxonis_os_versions_to_test: "['1.20.5']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
-      - name: Prepare HIL Framework
-        run: source scripts/hil/prepare_hil_framework.sh
+  run_windows_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/test_child_windows.yml
+    with:
+      luxonis_os_versions_to_test: "['1.20.5']"
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
 
-      - name: Configure, Build and Test
-        run: |
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ matrix.flavor }}"
-          exec hil --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --sync-workspace --rvc4-os-version ${{ matrix.rvc4os }} --commands 'cd /tmp/depthai-core|| exit' 'scripts/hil/run_hil_tests.sh ${{ matrix.flavor }} --rvc4'
-
-  windows_rvc2_rvc4_test:
-    runs-on: ['self-hosted', 'windows', 'hil-test']
-    env:
-      LOCALAPPDATA: "C:/actions-runner/vcpkg_cache"
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
-
-    - name: Configure, Build and Test
-      run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D'DEPTHAI_VCPKG_INTERNAL_ONLY=OFF' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_PYTHON=ON' -D'DEPTHAI_BUILD_TESTS=ON' -DDEPTHAI_PYTHON_ENABLE_TESTS=ON -DDEPTHAI_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_TEST_EXAMPLES=ON -DDEPTHAI_PYTHON_ENABLE_EXAMPLES=ON
-        cmake --build build --parallel 4 --config Release
-        cd tests
-        python run_tests.py

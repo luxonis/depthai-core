@@ -3,6 +3,9 @@
 namespace dai {
 namespace node {
 namespace internal {
+
+XLinkIn::~XLinkIn() = default;
+
 void XLinkIn::setStreamName(const std::string& name) {
     properties.streamName = name;
 }

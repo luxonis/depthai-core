@@ -5,6 +5,7 @@
 
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Rect.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 
@@ -64,20 +65,18 @@ class Tracklets : public Buffer {
      * Construct Tracklets message.
      */
     Tracklets() = default;
-    virtual ~Tracklets() = default;
+    virtual ~Tracklets();
 
     /**
      * Retrieve data for Tracklets.
      * @returns Vector of object tracker data, carrying tracking information.
      */
     std::vector<Tracklet> tracklets;
+    ImgTransformation transformation;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::Tracklets;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(Tracklets, tracklets, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
+    DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 
 }  // namespace dai

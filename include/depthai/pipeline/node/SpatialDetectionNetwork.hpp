@@ -24,10 +24,14 @@ namespace node {
 class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
-        : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device),
+        : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device)
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+          ,
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough} {
+          passthrough{neuralNetwork->passthrough}
+#endif
+    {
         if(device) {
             auto platform = device->getPlatform();
             if(platform == Platform::RVC4) {
@@ -36,7 +40,14 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         }
     };
     SpatialDetectionNetwork(std::unique_ptr<Properties> props)
-        : DeviceNodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {
+        : DeviceNodeCRTP(std::move(props))
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+          ,
+          input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough}
+#endif
+    {
         auto device = getDevice();
         if(device) {
             auto platform = device->getPlatform();
@@ -46,7 +57,14 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         }
     };
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
-        : DeviceNodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {
+        : DeviceNodeCRTP(std::move(props), confMode)
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+          ,
+          input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough}
+#endif
+    {
         auto device = getDevice();
         if(device) {
             auto platform = device->getPlatform();
@@ -56,10 +74,15 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
         }
     };
     SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
-        : DeviceNodeCRTP(device, std::move(props), confMode),
+        : DeviceNodeCRTP(device, std::move(props), confMode)
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+          ,
+
           input{neuralNetwork->input},
           outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough} {
+          passthrough{neuralNetwork->passthrough}
+#endif
+    {
         if(device) {
             auto platform = device->getPlatform();
             if(platform == Platform::RVC4) {
@@ -83,6 +106,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
     std::unique_ptr<Subnode<ImageAlign>> depthAlign;
 
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /**
      * Input message with data to be inferred upon
      * Default queue is blocking with size 5
@@ -100,6 +124,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output& passthrough;
+#endif
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object
@@ -173,7 +198,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlobPath(const dai::Path& path);
+    void setBlobPath(const std::filesystem::path& path);
 
     /**
      * Load network blob into assets and use once pipeline is started.
@@ -188,13 +213,13 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlob(const dai::Path& path);
+    void setBlob(const std::filesystem::path& path);
 
     /**
      * Load network file into assets.
      * @param modelPath Path to the model file.
      */
-    void setModelPath(const dai::Path& modelPath);
+    void setModelPath(const std::filesystem::path& modelPath);
 
     /**
      * Specifies how many frames will be available in the pool

@@ -10,6 +10,8 @@ namespace dai {
 struct MessageDemuxProperties : PropertiesSerializable<Properties, MessageDemuxProperties> {
     // Needed for serialization
     char dummy = 0;
+
+    ~MessageDemuxProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(MessageDemuxProperties, dummy);

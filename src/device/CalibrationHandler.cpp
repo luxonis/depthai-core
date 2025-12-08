@@ -49,7 +49,7 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 }
 }  // namespace
 
-CalibrationHandler::CalibrationHandler(dai::Path eepromDataPath) {
+CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath) {
     std::ifstream jsonStream(eepromDataPath);
     // TODO(sachin): Check if the file exists first.
     if(!jsonStream.is_open()) {
@@ -68,7 +68,7 @@ CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson) {
     return calib;
 }
 
-CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath) {
+CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath) {
     auto matrixConv = [](std::vector<float>& src, int startIdx) {
         std::vector<std::vector<float>> dest;
         int currIdx = startIdx;
@@ -388,7 +388,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     invertSe3Matrix4x4InPlace(dstOriginMatrix);
 
     // Get the matrix from src to dst camera
-    extrinsics = matMul(srcOriginMatrix, dstOriginMatrix);
+    extrinsics = matMul(dstOriginMatrix, srcOriginMatrix);
     return extrinsics;
 }
 
@@ -538,7 +538,7 @@ dai::CameraBoardSocket CalibrationHandler::getStereoRightCameraId() const {
     return eepromData.stereoRectificationData.rightCameraSocket;
 }
 
-bool CalibrationHandler::eepromToJsonFile(dai::Path destPath) const {
+bool CalibrationHandler::eepromToJsonFile(std::filesystem::path destPath) const {
     nlohmann::json j = eepromData;
     std::ofstream ob(destPath);
     ob << std::setw(4) << j << std::endl;

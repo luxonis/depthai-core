@@ -91,7 +91,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("blob"),
              DOC(dai, node, SpatialDetectionNetwork, setBlob))
         .def("setBlob",
-             py::overload_cast<const dai::Path&>(&SpatialDetectionNetwork::setBlob),
+             py::overload_cast<const std::filesystem::path&>(&SpatialDetectionNetwork::setBlob),
              py::arg("path"),
              DOC(dai, node, SpatialDetectionNetwork, setBlob, 2))
         .def("setModelPath", &SpatialDetectionNetwork::setModelPath, py::arg("modelPath"), DOC(dai, node, SpatialDetectionNetwork, setModelPath))
@@ -132,6 +132,16 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             [](const SpatialDetectionNetwork& n) { return &n.neuralNetwork->passthrough; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralNetwork, passthrough))
+        .def_property_readonly(
+            "detectionParser",
+            [](SpatialDetectionNetwork& n) { return &(*n.detectionParser); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, SpatialDetectionNetwork, detectionParser))
+        .def_property_readonly(
+            "neuralNetwork",
+            [](SpatialDetectionNetwork& n) { return &(*n.neuralNetwork); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, SpatialDetectionNetwork, neuralNetwork))
 
         .def_readonly("inputDepth", &SpatialDetectionNetwork::inputDepth, DOC(dai, node, SpatialDetectionNetwork, inputDepth))
         .def_readonly("out", &SpatialDetectionNetwork::out, DOC(dai, node, SpatialDetectionNetwork, out))

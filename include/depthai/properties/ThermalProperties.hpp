@@ -30,6 +30,8 @@ struct ThermalProperties : PropertiesSerializable<Properties, ThermalProperties>
      * Camera sensor FPS
      */
     float fps = 25.0;
+
+    ~ThermalProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(ThermalProperties, initialConfig, numFramesPool, boardSocket, fps);

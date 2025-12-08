@@ -250,6 +250,13 @@ int CameraControl::getLensPosition() const {
     return lensPosition;
 }
 
+CameraControl::~CameraControl() = default;
+
+void CameraControl::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::CameraControl;
+};
+
 float CameraControl::getLensPositionRaw() const {
     return lensPositionRaw;
 }

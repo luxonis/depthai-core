@@ -62,7 +62,7 @@ if requireOpenCv:
         DEPENDENCIES.append('opencv-python')
 
 if args.install_rerun:
-    DEPENDENCIES.append('rerun-sdk==0.16.0')
+    DEPENDENCIES.append('rerun-sdk')
 if args.install_open3d_cpu:
     DEPENDENCIES.append('open3d-cpu')
 # Constants

@@ -13,13 +13,13 @@ namespace node {
 /**
  * @brief ImageAlign node. Calculates spatial location data on a set of ROIs on depth map.
  */
-class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignProperties> {
+class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "ImageAlign";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
-    Properties& getProperties();
+    Properties& getProperties() override;
 
    public:
     /**
@@ -80,6 +80,22 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
      * Specify number of frames in the pool
      */
     ImageAlign& setNumFramesPool(int numFramesPool);
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
+
+   private:
+    bool runOnHostVar = false;
 };
 
 }  // namespace node

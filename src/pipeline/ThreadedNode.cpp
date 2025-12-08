@@ -20,6 +20,8 @@ ThreadedNode::ThreadedNode() {
     pimpl->logger->set_level(level);
 }
 
+ThreadedNode::~ThreadedNode() = default;
+
 void ThreadedNode::start() {
     // A node should not be started if it is already running
     // We would be creating multiple threads for the same node

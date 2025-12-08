@@ -26,6 +26,8 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
+    ~NeuralNetwork() override;
+
     /**
      * @brief Build NeuralNetwork node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
      *
@@ -70,6 +72,13 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     OutputMap passthroughs{*this, "passthroughs", {"", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
+     * @brief Get the archive owned by this Node.
+     *
+     * @returns constant reference to this Nodes archive
+     */
+    std::optional<std::reference_wrapper<const NNArchive>> getNNArchive() const;
+
+    /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
      *
      * @param nnArchive: NNArchive to set
@@ -99,7 +108,7 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlobPath(const dai::Path& path);
+    void setBlobPath(const std::filesystem::path& path);
 
     /**
      * Load network blob into assets and use once pipeline is started.
@@ -114,13 +123,28 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlob(const dai::Path& path);
+    void setBlob(const std::filesystem::path& path);
+
+    /**
+     * Load network model into assets and use once pipeline is started.
+     *
+     * @param model Network model
+     */
+    void setOtherModelFormat(std::vector<uint8_t> model);
+
+    /**
+     * Load network model into assets and use once pipeline is started.
+     *
+     * @throws Error if file doesn't exist or isn't a valid network model.
+     * @param path Path to the network model
+     */
+    void setOtherModelFormat(const std::filesystem::path& path);
 
     /**
      * Load network xml and bin files into assets.
      * @param xmlModelPath Path to the neural network model file.
      */
-    void setModelPath(const dai::Path& modelPath);
+    void setModelPath(const std::filesystem::path& modelPath);
 
     /**
      * Specifies how many frames will be available in the pool
@@ -163,7 +187,13 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
     int getNumInferenceThreads();
-    // TODO add getters for other API
+
+    /**
+     * Set model from Device Model Zoo
+     * @param model DeviceModelZoo model enum
+     * @note Only applicable for RVC4 devices with OS 1.20.5 or higher
+     */
+    void setModelFromDeviceZoo(DeviceModelZoo model);
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);

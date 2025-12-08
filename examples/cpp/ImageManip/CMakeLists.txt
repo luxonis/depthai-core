@@ -14,14 +14,14 @@ private_data(
 )
 
 dai_add_example(image_manip_resize image_manip_resize.cpp ON OFF)
-dai_set_example_test_labels(image_manip_resize ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(image_manip_resize ondevice rvc2_all rvc4 rvc4rgb ci)
 
 dai_add_example(image_manip_multi_ops image_manip_multi_ops.cpp ON OFF)
-dai_set_example_test_labels(image_manip_multi_ops ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(image_manip_multi_ops ondevice rvc2_all rvc4 rvc4rgb ci)
 
 dai_add_example(image_manip_all_ops image_manip_all_ops.cpp ON OFF)
 target_compile_definitions(image_manip_all_ops PRIVATE LENNA_PATH="${lenna}")
-dai_set_example_test_labels(image_manip_all_ops ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(image_manip_all_ops ondevice rvc2_all rvc4 rvc4rgb ci)
 
 dai_add_example(image_manip_remap image_manip_remap.cpp ON OFF)
-dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 rvc4rgb ci)

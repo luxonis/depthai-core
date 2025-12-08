@@ -16,12 +16,13 @@ class ImageAlignConfig : public Buffer {
     uint16_t staticDepthPlane = 0;
 
     ImageAlignConfig() = default;
-    virtual ~ImageAlignConfig() = default;
+    virtual ~ImageAlignConfig();
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::ImageAlignConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::ImageAlignConfig;
+    }
 
     DEPTHAI_SERIALIZE(ImageAlignConfig, staticDepthPlane);
 };

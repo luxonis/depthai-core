@@ -89,8 +89,15 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::ImageFiltersConfig:
+        case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+        case DatatypeEnum::DynamicCalibrationControl:
+        case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CoverageData:
+        case DatatypeEnum::NeuralDepthConfig:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -152,8 +159,15 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::ImageFiltersConfig:
+        case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+        case DatatypeEnum::DynamicCalibrationControl:
+        case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CoverageData:
+        case DatatypeEnum::NeuralDepthConfig:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};

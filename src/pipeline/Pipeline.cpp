@@ -56,6 +56,8 @@ struct hash<::dai::NodeConnectionSchema> {
 
 namespace dai {
 
+namespace fs = std::filesystem;
+
 Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
@@ -338,7 +340,7 @@ Device::Config PipelineImpl::getDeviceConfig() const {
     return config;
 }
 
-void PipelineImpl::setCameraTuningBlobPath(const dai::Path& path) {
+void PipelineImpl::setCameraTuningBlobPath(const fs::path& path) {
     std::string assetKey = "camTuning";
 
     auto asset = assetManager.set(assetKey, path);
@@ -423,10 +425,7 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
 }
 
 void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
-    /* if(!calibrationDataHandler.validateCameraArray()) {
-        throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    } */
-    globalProperties.calibData = calibrationDataHandler.getEepromData();
+    setEepromData(calibrationDataHandler.getEepromData());
 }
 
 bool PipelineImpl::isCalibrationDataAvailable() const {
@@ -442,11 +441,18 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
 }
 
 void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
+    std::unique_lock<std::mutex> lock(calibMtx);
     globalProperties.calibData = eepromData;
+    globalProperties.eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
 }
 
 std::optional<EepromData> PipelineImpl::getEepromData() const {
     return globalProperties.calibData;
+}
+
+uint32_t PipelineImpl::getEepromId() const {
+    std::unique_lock<std::mutex> lock(calibMtx);
+    return globalProperties.eepromId;
 }
 
 bool PipelineImpl::isHostOnly() const {
@@ -533,8 +539,8 @@ void PipelineImpl::build() {
     isBuild = true;
 
     if(defaultDevice) {
-        std::string recordPath = utility::getEnvAs<std::string>("DEPTHAI_RECORD", "");
-        std::string replayPath = utility::getEnvAs<std::string>("DEPTHAI_REPLAY", "");
+        auto recordPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_RECORD", ""));
+        auto replayPath = std::filesystem::path(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
 
         if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
            || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X
@@ -877,18 +883,18 @@ PipelineImpl::~PipelineImpl() {
     wait();
 
     if(recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
-        std::vector<std::string> filenames = {recordReplayFilenames["record_config"]};
+        std::vector<std::filesystem::path> filenames = {recordReplayFilenames["record_config"]};
         std::vector<std::string> outFiles = {"record_config.json"};
         filenames.reserve(recordReplayFilenames.size() * 2 + 1);
         outFiles.reserve(recordReplayFilenames.size() * 2 + 1);
         for(auto& rstr : recordReplayFilenames) {
             if(rstr.first != "record_config") {
                 std::string nodeName = rstr.first.substr(2);
-                std::string filePath = rstr.second;
-                filenames.push_back(filePath + ".mcap");
+                std::filesystem::path filePath = rstr.second;
+                filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
                 outFiles.push_back(nodeName + ".mcap");
                 if(rstr.first[0] == 'v') {
-                    filenames.push_back(filePath + ".mp4");
+                    filenames.push_back(std::filesystem::path(filePath).concat(".mp4"));
                     outFiles.push_back(nodeName + ".mp4");
                 }
             }
@@ -899,17 +905,18 @@ PipelineImpl::~PipelineImpl() {
         } catch(const std::exception& e) {
             Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
         }
-        std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
+        std::filesystem::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json"));
     }
 
     if(removeRecordReplayFiles && recordConfig.state != RecordConfig::RecordReplayState::NONE) {
         Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
             if(kv.first != "record_config") {
-                std::remove((kv.second + ".mcap").c_str());
-                std::remove((kv.second + ".mp4").c_str());
-            } else
-                std::remove(kv.second.c_str());
+                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
+                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mp4"));
+            } else {
+                std::filesystem::remove(kv.second);
+            }
         }
     }
 }
@@ -922,31 +929,31 @@ void PipelineImpl::run() {
     wait();
 }
 
-std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
+std::vector<uint8_t> PipelineImpl::loadResource(fs::path uri) {
     return loadResourceCwd(uri, "/pipeline");
 }
 
-static dai::Path getAbsUri(dai::Path& uri, dai::Path& cwd) {
+static fs::path getAbsUri(fs::path& uri, fs::path& cwd) {
     int colonLocation = uri.string().find(":");
     std::string resourceType = uri.string().substr(0, colonLocation + 1);
-    dai::Path absAssetUri;
+    fs::path absAssetUri;
     if(uri.string()[colonLocation + 1] == '/') {  // Absolute path
         absAssetUri = uri;
     } else {  // Relative path
-        absAssetUri = dai::Path{resourceType + cwd.string() + uri.string().substr(colonLocation + 1)};
+        absAssetUri = fs::path{resourceType + cwd.string() + uri.string().substr(colonLocation + 1)};
     }
     return absAssetUri;
 }
 
-std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd, bool moveAsset) {
+std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, bool moveAsset) {
     struct ProtocolHandler {
         const char* protocol = nullptr;
-        std::function<std::vector<uint8_t>(PipelineImpl&, const dai::Path&)> handle = nullptr;
+        std::function<std::vector<uint8_t>(PipelineImpl&, const fs::path&)> handle = nullptr;
     };
 
     const std::vector<ProtocolHandler> protocolHandlers = {
         {"asset",
-         [moveAsset](PipelineImpl& p, const dai::Path& uri) -> std::vector<uint8_t> {
+         [moveAsset](PipelineImpl& p, const fs::path& uri) -> std::vector<uint8_t> {
              // First check the pipeline asset manager
              auto asset = p.assetManager.get(uri.u8string());
              if(asset != nullptr) {
@@ -985,14 +992,14 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd,
             // return handler.handle(this, fullPath.string());
 
             // TODO(themarpe) - use above approach instead
-            dai::Path path;
+            fs::path path;
             if(protocolPrefix == "asset:") {
                 auto absUri = getAbsUri(uri, cwd);
-                path = static_cast<dai::Path>(absUri.u8string().substr(protocolPrefix.size()));
+                path = static_cast<fs::path>(absUri.u8string().substr(protocolPrefix.size()));
             } else {
-                path = static_cast<dai::Path>(uri.u8string().substr(protocolPrefix.size()));
+                path = static_cast<fs::path>(uri.u8string().substr(protocolPrefix.size()));
             }
-            return handler.handle(*this, path.u8string());
+            return handler.handle(*this, path);
         }
     }
 

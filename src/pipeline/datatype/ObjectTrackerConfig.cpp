@@ -2,6 +2,13 @@
 
 namespace dai {
 
+ObjectTrackerConfig::~ObjectTrackerConfig() = default;
+
+void ObjectTrackerConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::ObjectTrackerConfig;
+}
+
 ObjectTrackerConfig& ObjectTrackerConfig::forceRemoveID(int32_t id) {
     trackletIdsToRemove.push_back(id);
     return *this;

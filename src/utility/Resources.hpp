@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -11,11 +12,12 @@
 #include <depthai/device/Device.hpp>
 #include <depthai/device/DeviceBootloader.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
-#include <depthai/utility/Path.hpp>
 
 #include "archive.h"
 
 namespace dai {
+
+namespace fs = std::filesystem;
 
 class TarXzAccessor {
    public:
@@ -54,7 +56,7 @@ class Resources {
 
     // Available resources
     std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL) const;
-    std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd = {}) const;
+    std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, std::filesystem::path pathToMvcmd = std::filesystem::path()) const;
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
     std::vector<std::uint8_t> getDeviceRVC3Fwp() const;
     std::vector<std::uint8_t> getDeviceRVC4Fwp() const;

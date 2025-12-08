@@ -1,0 +1,473 @@
+diff --git a/modules/highgui/src/window_cocoa.mm b/modules/highgui/src/window_cocoa.mm
+index eccac9f468..2507b98be3 100644
+--- a/modules/highgui/src/window_cocoa.mm
++++ b/modules/highgui/src/window_cocoa.mm
+@@ -82,14 +82,14 @@ CV_IMPL void cvSetTrackbarMin(const char* trackbar_name, const char* window_name
+ static NSMutableDictionary *windows = nil;
+ static bool wasInitialized = false;
+ 
+-@interface CVView : NSView
++@interface CVViewDai : NSView
+ @property(retain) NSView *imageView;
+ @property(retain) NSImage *image;
+ @property int sliderHeight;
+ - (void)setImageData:(CvArr *)arr;
+ @end
+ 
+-@interface CVSlider : NSView {
++@interface CVSliderDai : NSView {
+     NSSlider *slider;
+     NSTextField *name;
+     NSString *initialName;
+@@ -107,7 +107,7 @@ @interface CVSlider : NSView {
+ @property(assign) CvTrackbarCallback2 callback2;
+ @end
+ 
+-@interface CVWindow : NSWindow {
++@interface CVWindowDai : NSWindow {
+     NSMutableDictionary *sliders;
+     NSMutableArray *slidersKeys;
+     CvMouseCallback mouseCallback;
+@@ -126,7 +126,7 @@ @interface CVWindow : NSWindow {
+ @property(retain) NSMutableDictionary *sliders;
+ @property(retain) NSMutableArray *slidersKeys;
+ @property(readwrite) int status;
+-- (CVView *)contentView;
++- (CVViewDai *)contentView;
+ - (void)cvSendMouseEvent:(NSEvent *)event type:(int)type flags:(int)flags;
+ - (void)cvMouseEvent:(NSEvent *)event;
+ - (void)createSliderWithName:(const char *)name maxValue:(int)max value:(int *)value callback:(CvTrackbarCallback)callback;
+@@ -169,11 +169,11 @@ CV_IMPL int cvInitSystem( int , char** )
+     return 0;
+ }
+ 
+-static CVWindow *cvGetWindow(const char *name) {
++static CVWindowDai *cvGetWindow(const char *name) {
+     //cout << "cvGetWindow" << endl;
+     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
+     NSString *cvname = [NSString stringWithFormat:@"%s", name];
+-    CVWindow* retval = (CVWindow*) [windows valueForKey:cvname] ;
++    CVWindowDai* retval = (CVWindowDai*) [windows valueForKey:cvname] ;
+     //cout << "retain count: " << [retval retainCount] << endl;
+     //retval = [retval retain];
+     //cout << "retain count: " << [retval retainCount] << endl;
+@@ -193,7 +193,7 @@ CV_IMPL void cvDestroyWindow( const char* name)
+ 
+     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
+     //cout << "cvDestroyWindow" << endl;
+-    CVWindow *window = cvGetWindow(name);
++    CVWindowDai *window = cvGetWindow(name);
+     if(window) {
+         if ([window styleMask] & NSFullScreenWindowMask) {
+             [window toggleFullScreen:nil];
+@@ -221,7 +221,7 @@ CV_IMPL void cvShowImage( const char* name, const CvArr* arr)
+ {
+     //cout << "cvShowImage" << endl;
+     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
+-    CVWindow *window = cvGetWindow(name);
++    CVWindowDai *window = cvGetWindow(name);
+     if(!window)
+     {
+         cvNamedWindow(name, CV_WINDOW_AUTOSIZE);
+@@ -284,7 +284,7 @@ CV_IMPL void cvResizeWindow( const char* name, int width, int height)
+ 
+     //cout << "cvResizeWindow" << endl;
+     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
+-    CVWindow *window = cvGetWindow(name);
++    CVWindowDai *window = cvGetWindow(name);
+     if(window && ![window autosize]) {
+         height += [window contentView].sliderHeight;
+         NSSize size = { (CGFloat)width, (CGFloat)height };
+@@ -299,7 +299,7 @@ CV_IMPL void cvMoveWindow( const char* name, int x, int y)
+     __BEGIN__;
+ 
+     NSAutoreleasePool* localpool1 = [[NSAutoreleasePool alloc] init];
+-    CVWindow *window = nil;
++    CVWindowDai *window = nil;
+ 
+     if(name == NULL)
+         CV_ERROR( CV_StsNullPtr, "NULL window name" );
+@@ -329,7 +329,7 @@ CV_IMPL int cvCreateTrackbar (const char* trackbar_name,
+ 
+ 
+     int result = 0;
+-    CVWindow *window = nil;
++    CVWindowDai *window = nil;
+     NSAutoreleasePool* localpool2 = nil;
+ 
+     __BEGIN__;
+@@ -364,9 +364,9 @@ CV_IMPL int cvCreateTrackbar2(const char* trackbar_name,
+     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
+     int res = cvCreateTrackbar(trackbar_name, window_name, val, count, NULL);
+     if(res) {
+-        CVWindow *window = cvGetWindow(window_name);
++        CVWindowDai *window = cvGetWindow(window_name);
+         if (window && [window respondsToSelector:@selector(sliders)]) {
+-            CVSlider *slider = [[window sliders] valueForKey:[NSString stringWithFormat:@"%s", trackbar_name]];
++            CVSliderDai *slider = [[window sliders] valueForKey:[NSString stringWithFormat:@"%s", trackbar_name]];
+             [slider setCallback2:on_notify2];
+             [slider setUserData:userdata];
+         }
+@@ -381,7 +381,7 @@ CV_IMPL int cvCreateTrackbar2(const char* trackbar_name,
+ {
+     CV_FUNCNAME("cvSetMouseCallback");
+ 
+-    CVWindow *window = nil;
++    CVWindowDai *window = nil;
+     NSAutoreleasePool* localpool3 = nil;
+     __BEGIN__;
+     //cout << "cvSetMouseCallback" << endl;
+@@ -406,7 +406,7 @@ CV_IMPL int cvGetTrackbarPos( const char* trackbar_name, const char* window_name
+ {
+     CV_FUNCNAME("cvGetTrackbarPos");
+ 
+-    CVWindow *window = nil;
++    CVWindowDai *window = nil;
+     int pos = -1;
+     NSAutoreleasePool* localpool4 = nil;
+     __BEGIN__;
+@@ -420,7 +420,7 @@ CV_IMPL int cvGetTrackbarPos( const char* trackbar_name, const char* window_name
+ 
+     window = cvGetWindow(window_name);
+     if(window && [window respondsToSelector:@selector(sliders)]) {
+-        CVSlider *slider = [[window sliders] valueForKey:[NSString stringWithFormat:@"%s", trackbar_name]];
++        CVSliderDai *slider = [[window sliders] valueForKey:[NSString stringWithFormat:@"%s", trackbar_name]];
+         if(slider) {
+             pos = [[slider slider] intValue];
+         }
+@@ -434,8 +434,8 @@ CV_IMPL void cvSetTrackbarPos(const char* trackbar_name, const char* window_name
+ {
+     CV_FUNCNAME("cvSetTrackbarPos");
+ 
+-    CVWindow *window = nil;
+-    CVSlider *slider = nil;
++    CVWindowDai *window = nil;
++    CVSliderDai *slider = nil;
+     NSAutoreleasePool* localpool5 = nil;
+ 
+     __BEGIN__;
+@@ -468,8 +468,8 @@ CV_IMPL void cvSetTrackbarMax(const char* trackbar_name, const char* window_name
+ {
+     CV_FUNCNAME("cvSetTrackbarMax");
+ 
+-    CVWindow *window = nil;
+-    CVSlider *slider = nil;
++    CVWindowDai *window = nil;
++    CVSliderDai *slider = nil;
+     NSAutoreleasePool* localpool5 = nil;
+ 
+     __BEGIN__;
+@@ -500,8 +500,8 @@ CV_IMPL void cvSetTrackbarMin(const char* trackbar_name, const char* window_name
+ {
+     CV_FUNCNAME("cvSetTrackbarMin");
+ 
+-    CVWindow *window = nil;
+-    CVSlider *slider = nil;
++    CVWindowDai *window = nil;
++    CVSliderDai *slider = nil;
+     NSAutoreleasePool* localpool5 = nil;
+ 
+     __BEGIN__;
+@@ -555,7 +555,7 @@ CV_IMPL int cvNamedWindow( const char* name, int flags )
+ 
+     //cout << "cvNamedWindow" << endl;
+     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
+-    CVWindow *window = cvGetWindow(name);
++    CVWindowDai *window = cvGetWindow(name);
+     if( window )
+     {
+         [window setAutosize:(flags == CV_WINDOW_AUTOSIZE)];
+@@ -576,7 +576,7 @@ CV_IMPL int cvNamedWindow( const char* name, int flags )
+     }
+ 
+ 
+-    window = [[CVWindow alloc] initWithContentRect:initContentRect
++    window = [[CVWindowDai alloc] initWithContentRect:initContentRect
+                                          styleMask:NSTitledWindowMask|NSMiniaturizableWindowMask|showResize
+                                            backing:NSBackingStoreBuffered
+                                              defer:YES
+@@ -588,7 +588,7 @@ CV_IMPL int cvNamedWindow( const char* name, int flags )
+     [window setX0:-1];
+     [window setY0:-1];
+ 
+-    [window setContentView:[[CVView alloc] init]];
++    [window setContentView:[[CVViewDai alloc] init]];
+ 
+     [NSApp activateIgnoringOtherApps:YES];
+ 
+@@ -647,7 +647,7 @@ CV_IMPL int cvWaitKey (int maxWait)
+ CvRect cvGetWindowRect_COCOA( const char* name )
+ {
+     CvRect result = cvRect(-1, -1, -1, -1);
+-    CVWindow *window = nil;
++    CVWindowDai *window = nil;
+ 
+     CV_FUNCNAME( "cvGetWindowRect_COCOA" );
+ 
+@@ -681,7 +681,7 @@ CvRect cvGetWindowRect_COCOA( const char* name )
+ double cvGetModeWindow_COCOA( const char* name )
+ {
+     double result = -1;
+-    CVWindow *window = nil;
++    CVWindowDai *window = nil;
+ 
+     CV_FUNCNAME( "cvGetModeWindow_COCOA" );
+ 
+@@ -705,7 +705,7 @@ CvRect cvGetWindowRect_COCOA( const char* name )
+ 
+ void cvSetModeWindow_COCOA( const char* name, double prop_value )
+ {
+-    CVWindow *window = nil;
++    CVWindowDai *window = nil;
+ 
+ #if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_7
+     NSDictionary *fullscreenOptions = nil;
+@@ -779,7 +779,7 @@ void cvSetModeWindow_COCOA( const char* name, double prop_value )
+ double cvGetPropVisible_COCOA(const char* name)
+ {
+     double    result = -1;
+-    CVWindow* window = nil;
++    CVWindowDai* window = nil;
+ 
+     CV_FUNCNAME("cvGetPropVisible_COCOA");
+ 
+@@ -804,7 +804,7 @@ void cvSetModeWindow_COCOA( const char* name, double prop_value )
+ double cvGetPropTopmost_COCOA(const char* name)
+ {
+     double    result = -1;
+-    CVWindow* window = nil;
++    CVWindowDai* window = nil;
+ 
+     CV_FUNCNAME("cvGetPropTopmost_COCOA");
+ 
+@@ -828,7 +828,7 @@ void cvSetModeWindow_COCOA( const char* name, double prop_value )
+ 
+ void cvSetPropTopmost_COCOA( const char* name, const bool topmost )
+ {
+-    CVWindow *window = nil;
++    CVWindowDai *window = nil;
+     NSAutoreleasePool* localpool = nil;
+     CV_FUNCNAME( "cvSetPropTopmost_COCOA" );
+ 
+@@ -865,7 +865,7 @@ void cvSetPropTopmost_COCOA( const char* name, const bool topmost )
+ 
+ void setWindowTitle_COCOA(const cv::String& winname, const cv::String& title)
+ {
+-    CVWindow *window = cvGetWindow(winname.c_str());
++    CVWindowDai *window = cvGetWindow(winname.c_str());
+ 
+     if (window == NULL)
+     {
+@@ -901,7 +901,7 @@ static NSSize constrainAspectRatio(NSSize base, NSSize constraint) {
+     }
+ }
+ 
+-@implementation CVWindow
++@implementation CVWindowDai
+ 
+ @synthesize mouseCallback;
+ @synthesize mouseParam;
+@@ -919,7 +919,7 @@ - (void)cvSendMouseEvent:(NSEvent *)event type:(int)type flags:(int)flags {
+     NSPoint mp = [NSEvent mouseLocation];
+     //NSRect visible = [[self contentView] frame];
+     mp = [self convertScreenToBase: mp];
+-    CVView *contentView = [self contentView];
++    CVViewDai *contentView = [self contentView];
+     NSSize viewSize = contentView.frame.size;
+     if (contentView.imageView) {
+         viewSize = contentView.imageView.frame.size;
+@@ -1031,7 +1031,7 @@ - (void)createSliderWithName:(const char *)name maxValue:(int)max value:(int *)v
+         return;
+ 
+     // Create slider
+-    CVSlider *slider = [[CVSlider alloc] init];
++    CVSliderDai *slider = [[CVSliderDai alloc] init];
+     [[slider name] setStringValue:cvname];
+     slider.initialName = [NSString stringWithFormat:@"%s", name];
+     [[slider slider] setMaxValue:max];
+@@ -1070,18 +1070,18 @@ - (void)createSliderWithName:(const char *)name maxValue:(int)max value:(int *)v
+     [self setContentSize: viewSize];
+ }
+ 
+-- (CVView *)contentView {
+-    return (CVView*)[super contentView];
++- (CVViewDai *)contentView {
++    return (CVViewDai*)[super contentView];
+ }
+ 
+ @end
+ 
+-@implementation CVView
++@implementation CVViewDai
+ 
+ @synthesize image;
+ 
+ - (id)init {
+-    //cout << "CVView init" << endl;
++    //cout << "CVViewDai init" << endl;
+     [super init];
+     return self;
+ }
+@@ -1186,10 +1186,10 @@ - (void)setFrameSize:(NSSize)size {
+     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
+     int height = size.height;
+ 
+-    CVWindow *cvwindow = (CVWindow *)[self window];
++    CVWindowDai *cvwindow = (CVWindowDai *)[self window];
+     if ([cvwindow respondsToSelector:@selector(sliders)]) {
+         for(NSString *key in [cvwindow slidersKeys]) {
+-            CVSlider *slider = [[cvwindow sliders] valueForKey:key];
++            CVSliderDai *slider = [[cvwindow sliders] valueForKey:key];
+             NSRect r = [slider frame];
+             r.origin.y = height - r.size.height;
+             r.size.width = [[cvwindow contentView] frame].size.width;
+@@ -1236,7 +1236,7 @@ - (void)drawRect:(NSRect)rect {
+ 
+ @end
+ 
+-@implementation CVSlider
++@implementation CVSliderDai
+ 
+ @synthesize slider;
+ @synthesize name;
+diff --git a/modules/videoio/misc/objc/ios/CvCamera2.h b/modules/videoio/misc/objc/ios/CvCamera2.h
+index e4ec03b3e0..c5100a84e6 100644
+--- a/modules/videoio/misc/objc/ios/CvCamera2.h
++++ b/modules/videoio/misc/objc/ios/CvCamera2.h
+@@ -79,7 +79,7 @@ CV_EXPORTS @interface CvVideoCamera2 : CvAbstractCamera2<AVCaptureVideoDataOutpu
+ - (void)photoCameraCancel:(CvPhotoCamera2*)photoCamera;
+ @end
+ 
+-CV_EXPORTS @interface CvPhotoCamera2 : CvAbstractCamera2<AVCapturePhotoCaptureDelegate>
++CV_EXPORTS @interface CvPhotoCamera2 : CvAbstractCamera2<AVCapturePhotoCaptureDelegateDai>
+ @property (nonatomic, weak) id<CvPhotoCameraDelegate2> delegate;
+ - (void)takePicture;
+ @end
+diff --git a/modules/videoio/src/cap_avfoundation.mm b/modules/videoio/src/cap_avfoundation.mm
+index 2bad9cc..8bd852f 100644
+--- a/modules/videoio/src/cap_avfoundation.mm
++++ b/modules/videoio/src/cap_avfoundation.mm
+@@ -50,9 +50,9 @@
+ 
+ /*****************************************************************************
+  *
+- * CaptureDelegate Declaration.
++ * CaptureDelegateDai Declaration.
+  *
+- * CaptureDelegate is notified on a separate thread by the OS whenever there
++ * CaptureDelegateDai is notified on a separate thread by the OS whenever there
+  *   is a new frame. When "updateImage" is called from the main thread, it
+  *   copies this new frame into an IplImage, but only if this frame has not
+  *   been copied before. When "getImage" is called from the main thread,
+@@ -64,7 +64,7 @@
+ 
+ #if !TARGET_OS_VISION
+ 
+-@interface CaptureDelegate : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
++@interface CaptureDelegateDai : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
+ {
+     int newFrame;
+     CVImageBufferRef  mCurrentImageBuffer;
+@@ -107,7 +107,7 @@ class CvCaptureCAM : public cv::IVideoCapture {
+         AVCaptureDeviceInput        *mCaptureDeviceInput;
+         AVCaptureVideoDataOutput    *mCaptureDecompressedVideoOutput;
+         AVCaptureDevice 						*mCaptureDevice;
+-        CaptureDelegate							*capture;
++        CaptureDelegateDai							*capture;
+ 
+         int startCaptureDevice(int cameraNum);
+         void stopCaptureDevice();
+@@ -323,7 +323,7 @@ void CvCaptureCAM::stopCaptureDevice() {
+ int CvCaptureCAM::startCaptureDevice(int cameraNum) {
+     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
+ 
+-    capture = [[CaptureDelegate alloc] init];
++    capture = [[CaptureDelegateDai alloc] init];
+ 
+     AVCaptureDevice *device;
+     NSArray* devices = [[AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo]
+@@ -625,9 +625,9 @@ bool CvCaptureCAM::setProperty(int property_id, double value) {
+ 
+ /*****************************************************************************
+  *
+- * CaptureDelegate Implementation.
++ * CaptureDelegateDai Implementation.
+  *
+- * CaptureDelegate is notified on a separate thread by the OS whenever there
++ * CaptureDelegateDai is notified on a separate thread by the OS whenever there
+  *   is a new frame. When "updateImage" is called from the main thread, it
+  *   copies this new frame into an IplImage, but only if this frame has not
+  *   been copied before. When "getImage" is called from the main thread,
+@@ -636,7 +636,7 @@ bool CvCaptureCAM::setProperty(int property_id, double value) {
+  *****************************************************************************/
+ 
+ 
+-@implementation CaptureDelegate
++@implementation CaptureDelegateDai
+ 
+ - (id)init {
+     [super init];
+diff --git a/modules/videoio/src/cap_avfoundation_mac.mm b/modules/videoio/src/cap_avfoundation_mac.mm
+index 5ba1c01..c4d1b6f 100644
+--- a/modules/videoio/src/cap_avfoundation_mac.mm
++++ b/modules/videoio/src/cap_avfoundation_mac.mm
+@@ -58,9 +58,9 @@
+ 
+ /*****************************************************************************
+  *
+- * CaptureDelegate Declaration.
++ * CaptureDelegateDai Declaration.
+  *
+- * CaptureDelegate is notified on a separate thread by the OS whenever there
++ * CaptureDelegateDai is notified on a separate thread by the OS whenever there
+  *   is a new frame. When "updateImage" is called from the main thread, it
+  *   copies this new frame into an IplImage, but only if this frame has not
+  *   been copied before.
+@@ -68,7 +68,7 @@
+  *****************************************************************************/
+ 
+ 
+-@interface CaptureDelegate : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
++@interface CaptureDelegateDai : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
+ {
+     NSCondition *mHasNewFrame;
+     CVPixelBufferRef mGrabbedPixels;
+@@ -111,7 +111,7 @@ private:
+     AVCaptureDeviceInput        *mCaptureDeviceInput;
+     AVCaptureVideoDataOutput    *mCaptureVideoDataOutput;
+     AVCaptureDevice             *mCaptureDevice;
+-    CaptureDelegate             *mCapture;
++    CaptureDelegateDai             *mCapture;
+ 
+     int startCaptureDevice(int cameraNum);
+     void stopCaptureDevice();
+@@ -403,7 +403,7 @@ int CvCaptureCAM::startCaptureDevice(int cameraNum) {
+     }
+ 
+     // create output
+-    mCapture = [[CaptureDelegate alloc] init];
++    mCapture = [[CaptureDelegateDai alloc] init];
+     mCaptureVideoDataOutput = [[AVCaptureVideoDataOutput alloc] init];
+     dispatch_queue_t queue = dispatch_queue_create("cameraQueue", DISPATCH_QUEUE_SERIAL);
+     [mCaptureVideoDataOutput setSampleBufferDelegate: mCapture queue: queue];
+@@ -557,9 +557,9 @@ bool CvCaptureCAM::setProperty(int property_id, double value) {
+ 
+ /*****************************************************************************
+  *
+- * CaptureDelegate Implementation.
++ * CaptureDelegateDai Implementation.
+  *
+- * CaptureDelegate is notified on a separate thread by the OS whenever there
++ * CaptureDelegateDai is notified on a separate thread by the OS whenever there
+  *   is a new frame. When "updateImage" is called from the main thread, it
+  *   copies this new frame into an IplImage, but only if this frame has not
+  *   been copied before.
+@@ -567,7 +567,7 @@ bool CvCaptureCAM::setProperty(int property_id, double value) {
+  *****************************************************************************/
+ 
+ 
+-@implementation CaptureDelegate
++@implementation CaptureDelegateDai
+ 
+ - (id)init {
+     [super init];

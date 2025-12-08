@@ -25,8 +25,8 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Bindings
     calibrationHandler.def(py::init<>(), DOC(dai, CalibrationHandler, CalibrationHandler))
-        .def(py::init<dai::Path>(), DOC(dai, CalibrationHandler, CalibrationHandler, 2))
-        .def(py::init<dai::Path, dai::Path>(), DOC(dai, CalibrationHandler, CalibrationHandler, 3))
+        .def(py::init<std::filesystem::path>(), DOC(dai, CalibrationHandler, CalibrationHandler, 2))
+        .def(py::init<std::filesystem::path, std::filesystem::path>(), DOC(dai, CalibrationHandler, CalibrationHandler, 3))
         .def(py::init<EepromData>(), DOC(dai, CalibrationHandler, CalibrationHandler, 4))
 
         .def_static("fromJson", &CalibrationHandler::fromJson, DOC(dai, CalibrationHandler, fromJson))

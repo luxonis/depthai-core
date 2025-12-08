@@ -15,6 +15,8 @@
 namespace dai {
 namespace node {
 
+NeuralNetwork::~NeuralNetwork() = default;
+
 std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
     setNNArchive(nnArchive);
     input.link(this->input);
@@ -121,6 +123,11 @@ NNArchive NeuralNetwork::createNNArchive(NNModelDescription& modelDesc) {
     return nnArchive;
 }
 
+std::optional<std::reference_wrapper<const NNArchive>> NeuralNetwork::getNNArchive() const {
+    if(nnArchive) return std::cref(*nnArchive);
+    return std::nullopt;
+}
+
 void NeuralNetwork::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
     this->nnArchive = nnArchive;
@@ -180,15 +187,17 @@ void NeuralNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numSha
 }
 
 void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    setModelPath(nnArchive.getModelPath().value());
+    DAI_CHECK_V(nnArchive.getModelType() == model::ModelType::DLC || nnArchive.getModelType() == model::ModelType::OTHER, "NNArchive type is not DLC or OTHER");
+    DAI_CHECK_V(nnArchive.getOtherModelFormat().has_value(), "Expected model format for DLC/OTHER type");
+    setOtherModelFormat(std::move(nnArchive.getOtherModelFormat().value()));
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
-void NeuralNetwork::setBlobPath(const Path& path) {
+void NeuralNetwork::setBlobPath(const std::filesystem::path& path) {
     setBlob(OpenVINO::Blob(path));
 }
 
-void NeuralNetwork::setBlob(const Path& path) {
+void NeuralNetwork::setBlob(const std::filesystem::path& path) {
     setBlobPath(path);
 }
 
@@ -207,23 +216,33 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     properties.modelSource = Properties::ModelSource::BLOB;
 }
 
-void NeuralNetwork::setModelPath(const Path& modelPath) {
-    switch(model::readModelType(modelPath.string())) {
+void NeuralNetwork::setOtherModelFormat(std::vector<uint8_t> otherModel) {
+    auto asset = assetManager.set("__model", std::move(otherModel));
+    properties.modelUri = asset->getRelativeUri();
+    properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
+}
+
+void NeuralNetwork::setOtherModelFormat(const std::filesystem::path& path) {
+    auto modelAsset = assetManager.set("__model", path);
+    properties.modelUri = modelAsset->getRelativeUri();
+    properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
+}
+
+void NeuralNetwork::setModelPath(const std::filesystem::path& modelPath) {
+    switch(model::readModelType(modelPath)) {
         case model::ModelType::BLOB:
-            setBlob(OpenVINO::Blob(modelPath.string()));
+            setBlob(OpenVINO::Blob(modelPath));
             break;
         case model::ModelType::SUPERBLOB:
-            setBlob(OpenVINO::SuperBlob(modelPath.string()).getBlobWithNumShaves(8));
+            setBlob(OpenVINO::SuperBlob(modelPath).getBlobWithNumShaves(8));
             break;
         case model::ModelType::NNARCHIVE:
-            setNNArchive(NNArchive(modelPath.string()));
+            setNNArchive(NNArchive(modelPath));
             break;
         case model::ModelType::DLC:
-        case model::ModelType::OTHER: {
-            auto modelAsset = assetManager.set("__model", modelPath);
-            properties.modelUri = modelAsset->getRelativeUri();
-            properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
-        } break;
+        case model::ModelType::OTHER:
+            setOtherModelFormat(modelPath);
+            break;
     }
 }
 
@@ -253,6 +272,10 @@ void NeuralNetwork::setBackendProperties(std::map<std::string, std::string> prop
 
 int NeuralNetwork::getNumInferenceThreads() {
     return properties.numThreads;
+}
+
+void NeuralNetwork::setModelFromDeviceZoo(DeviceModelZoo model) {
+    properties.deviceModel = model;
 }
 
 }  // namespace node

@@ -24,6 +24,8 @@ Pipeline Node::getParentPipeline() {
     return Pipeline(impl);
 }
 
+Node::Input::~Input() = default;
+
 Node::Connection::Connection(Output out, Input in) {
     outputId = out.getParent().id;
     outputName = out.getName();
@@ -50,6 +52,15 @@ Node::Connection::Connection(ConnectionInternal c) {
 bool Node::Connection::operator==(const Node::Connection& rhs) const {
     return (outputId == rhs.outputId && outputName == rhs.outputName && outputGroup == rhs.outputGroup && inputId == rhs.inputId && inputName == rhs.inputName
             && inputGroup == rhs.inputGroup);
+}
+
+std::string Node::createUniqueInputName() {
+    std::string name = fmt::format("_{}_input_{}", getName(), inputId++);
+    return name;
+}
+std::string Node::createUniqueOutputName() {
+    std::string name = fmt::format("_{}_output_{}", getName(), outputId++);
+    return name;
 }
 
 std::string Node::Output::toString() const {
@@ -283,12 +294,12 @@ AssetManager& Node::getAssetManager() {
     return assetManager;
 }
 
-std::vector<uint8_t> Node::loadResource(dai::Path uri) {
+std::vector<uint8_t> Node::loadResource(std::filesystem::path uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-std::vector<uint8_t> Node::moveResource(dai::Path uri) {
+std::vector<uint8_t> Node::moveResource(std::filesystem::path uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd, true);
 }

@@ -1,17 +1,11 @@
 #pragma once
 
 // Std
-#include <atomic>
 #include <chrono>
 #include <cstdint>
-#include <list>
 #include <memory>
-#include <mutex>
 #include <stdexcept>
 #include <string>
-#include <thread>
-#include <tuple>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -49,24 +43,11 @@ class StreamPacketMemory : public StreamPacketDesc, public Memory {
         size = length;
         return *this;
     }
-    span<std::uint8_t> getData() override {
-        return {data, size};
-    }
-    span<const std::uint8_t> getData() const override {
-        return {data, size};
-    }
-    std::size_t getMaxSize() const override {
-        return length;
-    }
-    std::size_t getOffset() const override {
-        return 0;
-    }
-    void setSize(size_t size) override {
-        if(size > getMaxSize()) {
-            throw std::invalid_argument("Cannot set size larger than max size");
-        }
-        this->size = size;
-    }
+    span<std::uint8_t> getData() override;
+    span<const std::uint8_t> getData() const override;
+    std::size_t getMaxSize() const override;
+    std::size_t getOffset() const override;
+    void setSize(size_t size) override;
 };
 
 class XLinkStream {
@@ -93,6 +74,7 @@ class XLinkStream {
     void write(long fd, span<const uint8_t> data);
     void write(const void* data, std::size_t size);
     std::vector<std::uint8_t> read();
+    std::vector<std::uint8_t> read(std::chrono::milliseconds timeout);
     std::vector<std::uint8_t> read(XLinkTimespec& timestampReceived);
     void read(std::vector<std::uint8_t>& data);
     void read(std::vector<std::uint8_t>& data, long& fd);
@@ -127,16 +109,19 @@ struct XLinkError : public std::runtime_error {
     const std::string streamName;
 
     using std::runtime_error::runtime_error;
+    ~XLinkError() override;
 
     XLinkError(XLinkError_t statusID, std::string stream, const std::string& message)
         : runtime_error(message), status(statusID), streamName(std::move(stream)) {}
 };
 struct XLinkReadError : public XLinkError {
     using XLinkError = XLinkError;
+    ~XLinkReadError() override;
     XLinkReadError(XLinkError_t status, const std::string& stream);
 };
 struct XLinkWriteError : public XLinkError {
     using XLinkError = XLinkError;
+    ~XLinkWriteError() override;
     XLinkWriteError(XLinkError_t status, const std::string& stream);
 };
 

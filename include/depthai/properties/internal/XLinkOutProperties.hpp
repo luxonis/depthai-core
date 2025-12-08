@@ -23,6 +23,8 @@ struct XLinkOutProperties : PropertiesSerializable<Properties, XLinkOutPropertie
      * Whether to transfer data or only object attributes
      */
     bool metadataOnly = false;
+
+    ~XLinkOutProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(XLinkOutProperties, maxFpsLimit, streamName, metadataOnly);

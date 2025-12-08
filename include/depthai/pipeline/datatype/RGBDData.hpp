@@ -18,7 +18,7 @@ class RGBDData : public Buffer {
      */
     RGBDData() = default;
 
-    virtual ~RGBDData() = default;
+    virtual ~RGBDData();
 
     std::map<std::string, std::shared_ptr<ADatatype>> frames;
     void setRGBFrame(const std::shared_ptr<ImgFrame>& frame);
@@ -26,10 +26,10 @@ class RGBDData : public Buffer {
     std::shared_ptr<ImgFrame> getRGBFrame();
     std::shared_ptr<ImgFrame> getDepthFrame();
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::RGBDData;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::RGBDData;
+    }
     DEPTHAI_SERIALIZE(RGBDData, frames, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 

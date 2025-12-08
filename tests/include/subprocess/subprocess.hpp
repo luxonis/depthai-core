@@ -65,12 +65,16 @@ extern "C" {
   #include <io.h>
   #include <cwchar>
 
-  #define close _close
-  #define open _open
-  #define fileno _fileno
+  #define file_close _close
+  #define file_open _open
+  #define file_fileno _fileno
 #else
   #include <sys/wait.h>
   #include <unistd.h>
+
+  #define file_close close
+  #define file_open open
+  #define file_fileno fileno
 #endif
   #include <csignal>
   #include <fcntl.h>
@@ -540,7 +544,7 @@ namespace util
 #ifdef __USING_WINDOWS__
     return (int)fread(buf, 1, read_upto, fp);
 #else
-    int fd = fileno(fp);
+    int fd = file_fileno(fp);
     int rbytes = 0;
     int eintr_cnter = 0;
 
@@ -780,10 +784,10 @@ struct input
   explicit input(int fd): rd_ch_(fd) {}
 
   // FILE pointer.
-  explicit input (FILE* fp):input(fileno(fp)) { assert(fp); }
+  explicit input (FILE* fp):input(file_fileno(fp)) { assert(fp); }
 
   explicit input(const char* filename) {
-    int fd = open(filename, O_RDONLY);
+    int fd = file_open(filename, O_RDONLY);
     if (fd == -1) throw OSError("File not found: ", errno);
     rd_ch_ = fd;
   }
@@ -813,10 +817,10 @@ struct output
 {
   explicit output(int fd): wr_ch_(fd) {}
 
-  explicit output (FILE* fp):output(fileno(fp)) { assert(fp); }
+  explicit output (FILE* fp):output(file_fileno(fp)) { assert(fp); }
 
   explicit output(const char* filename) {
-    int fd = open(filename, O_APPEND | O_CREAT | O_RDWR, 0640);
+    int fd = file_open(filename, O_APPEND | O_CREAT | O_RDWR, 0640);
     if (fd == -1) throw OSError("File not found: ", errno);
     wr_ch_ = fd;
   }
@@ -844,10 +848,10 @@ struct error
 {
   explicit error(int fd): wr_ch_(fd) {}
 
-  explicit error(FILE* fp):error(fileno(fp)) { assert(fp); }
+  explicit error(FILE* fp):error(file_fileno(fp)) { assert(fp); }
 
   explicit error(const char* filename) {
-    int fd = open(filename, O_APPEND | O_CREAT | O_RDWR, 0640);
+    int fd = file_open(filename, O_APPEND | O_CREAT | O_RDWR, 0640);
     if (fd == -1) throw OSError("File not found: ", errno);
     wr_ch_ = fd;
   }
@@ -885,7 +889,6 @@ public:
   template <typename Func>
   explicit preexec_func(Func f): holder_(new FuncHolder<Func>(std::move(f)))
   {}
-
   void operator()() {
     (*holder_)();
   }
@@ -1102,28 +1105,28 @@ public:
   void cleanup_fds()
   {
     if (write_to_child_ != -1 && read_from_parent_ != -1) {
-      close(write_to_child_);
+      file_close(write_to_child_);
     }
     if (write_to_parent_ != -1 && read_from_child_ != -1) {
-      close(read_from_child_);
+      file_close(read_from_child_);
     }
     if (err_write_ != -1 && err_read_ != -1) {
-      close(err_read_);
+      file_close(err_read_);
     }
   }
 
   void close_parent_fds()
   {
-    if (write_to_child_ != -1)  close(write_to_child_);
-    if (read_from_child_ != -1) close(read_from_child_);
-    if (err_read_ != -1)        close(err_read_);
+    if (write_to_child_ != -1)  file_close(write_to_child_);
+    if (read_from_child_ != -1) file_close(read_from_child_);
+    if (err_read_ != -1)        file_close(err_read_);
   }
 
   void close_child_fds()
   {
-    if (write_to_parent_ != -1)  close(write_to_parent_);
-    if (read_from_parent_ != -1) close(read_from_parent_);
-    if (err_write_ != -1)        close(err_write_);
+    if (write_to_parent_ != -1)  file_close(write_to_parent_);
+    if (read_from_parent_ != -1) file_close(read_from_parent_);
+    if (err_write_ != -1)        file_close(err_write_);
   }
 
   FILE* input()  { return input_.get(); }
@@ -1821,15 +1824,15 @@ namespace detail {
 #ifdef __USING_WINDOWS__
     util::configure_pipe(&this->g_hChildStd_IN_Rd, &this->g_hChildStd_IN_Wr, &this->g_hChildStd_IN_Wr);
     this->input(util::file_from_handle(this->g_hChildStd_IN_Wr, "w"));
-    this->write_to_child_ = _fileno(this->input());
+    this->write_to_child_ = file_fileno(this->input());
 
     util::configure_pipe(&this->g_hChildStd_OUT_Rd, &this->g_hChildStd_OUT_Wr, &this->g_hChildStd_OUT_Rd);
     this->output(util::file_from_handle(this->g_hChildStd_OUT_Rd, "r"));
-    this->read_from_child_ = _fileno(this->output());
+    this->read_from_child_ = file_fileno(this->output());
 
     util::configure_pipe(&this->g_hChildStd_ERR_Rd, &this->g_hChildStd_ERR_Wr, &this->g_hChildStd_ERR_Rd);
     this->error(util::file_from_handle(this->g_hChildStd_ERR_Rd, "r"));
-    this->err_read_ = _fileno(this->error());
+    this->err_read_ = file_fileno(this->error());
 #else
 
     if (write_to_child_ != -1)  input(fdopen(write_to_child_, "wb"));

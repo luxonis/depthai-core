@@ -22,6 +22,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     class QueueException : public std::runtime_error {
        public:
         explicit QueueException(const std::string& message) : std::runtime_error(message) {}
+        ~QueueException() noexcept override;
     };
 
    private:
