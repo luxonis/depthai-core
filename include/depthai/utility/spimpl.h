@@ -443,7 +443,7 @@ namespace spimpl {
                         && is_default_manageable::value,
                     dummy_t_
                  >::type = dummy_t_()) SPIMPL_NOEXCEPT
-        : base_type(u.release(), &details::default_delete<T>) {}
+        : base_type(u.release(), &details::default_delete<T>), copier_(&details::default_copy<T>) {}
 
         template<class U, class D, class C>
         impl_ptr(std::unique_ptr<U, D>&& u, C&& c,
