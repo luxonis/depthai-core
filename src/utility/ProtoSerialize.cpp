@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <queue>
+#include <variant>
 
 #include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/schemas/RGBDData.pb.h"
@@ -458,11 +459,8 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
     return imgDetections;
 }
 
-template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly) {
-    // Create a unique pointer to the protobuf EncodedFrame message
-    auto encodedFrame = std::make_unique<proto::encoded_frame::EncodedFrame>();
-
+// Helper function to populate an EncodedFrame proto from an EncodedFrame object
+static void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* encodedFrame, const EncodedFrame* message, bool metadataOnly) {
     // Populate the protobuf message fields with the EncodedFrame data
     encodedFrame->set_instancenum(message->instanceNum);  // instanceNum -> instancenum
     encodedFrame->set_width(message->width);
@@ -500,13 +498,17 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* m
 
     proto::common::ImgTransformation* imgTransformation = encodedFrame->mutable_transformation();
     utility::serializeImgTransformation(imgTransformation, message->transformation);
+}
 
-    // Return the populated protobuf message
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly) {
+    auto encodedFrame = std::make_unique<proto::encoded_frame::EncodedFrame>();
+    populateEncodedFrameToProto(encodedFrame.get(), message, metadataOnly);
     return encodedFrame;
 }
 
 // Helper function to populate an ImgFrame proto from an ImgFrame object
-static void populateImgFrameProto(proto::img_frame::ImgFrame* imgFrame, const ImgFrame* message, bool metadataOnly) {
+static void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const ImgFrame* message, bool metadataOnly) {
     proto::common::Timestamp* ts = imgFrame->mutable_ts();
     ts->set_sec(message->ts.sec);
     ts->set_nsec(message->ts.nsec);
@@ -561,7 +563,7 @@ static void populateImgFrameProto(proto::img_frame::ImgFrame* imgFrame, const Im
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly) {
     auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
-    populateImgFrameProto(imgFrame.get(), message, metadataOnly);
+    populateImgFrameToProto(imgFrame.get(), message, metadataOnly);
     return imgFrame;
 }
 template <>
@@ -612,16 +614,46 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
     // Set sequence number
     rgbdData->set_sequencenum(message->sequenceNum);
 
-    // Serialize color frame if present
-    auto colorFrame = const_cast<RGBDData*>(message)->getRGBFrame();  // this is safe, we don't modify the object, just copying from it
-    if(colorFrame) {
-        populateImgFrameProto(rgbdData->mutable_colorframe(), colorFrame.get(), metadataOnly);
+    // Serialize color frame if present (can be ImgFrame or EncodedFrame)
+    auto colorFrame = message->getRGBFrame();
+    if(colorFrame.has_value()) {
+        auto handler = [&](auto&& framePtr) {
+            using T = std::decay_t<decltype(framePtr)>;
+            if constexpr(std::is_same_v<T, std::shared_ptr<ImgFrame>>) {
+                if(framePtr) {
+                    populateImgFrameToProto(rgbdData->mutable_colorimgframe(), framePtr.get(), metadataOnly);
+                }
+            } else if constexpr(std::is_same_v<T, std::shared_ptr<EncodedFrame>>) {
+                if(framePtr) {
+                    populateEncodedFrameToProto(rgbdData->mutable_colorencodedframe(), framePtr.get(), metadataOnly);
+                }
+            } else {
+                static_assert([]() constexpr { return false; }(), "Unhandled frame type in RGBDData color frame variant");
+            }
+        };
+
+        std::visit(handler, colorFrame.value());
     }
 
-    // Serialize depth frame if present
-    auto depthFrame = const_cast<RGBDData*>(message)->getDepthFrame();  // this is safe, we don't modify the object, just copying from it
-    if(depthFrame) {
-        populateImgFrameProto(rgbdData->mutable_depthframe(), depthFrame.get(), metadataOnly);
+    // Serialize depth frame if present (can be ImgFrame or EncodedFrame)
+    auto depthFrame = message->getDepthFrame();
+    if(depthFrame.has_value()) {
+        auto handler = [&](auto&& framePtr) {
+            using T = std::decay_t<decltype(framePtr)>;
+            if constexpr(std::is_same_v<T, std::shared_ptr<ImgFrame>>) {
+                if(framePtr) {
+                    populateImgFrameToProto(rgbdData->mutable_depthimgframe(), framePtr.get(), metadataOnly);
+                }
+            } else if constexpr(std::is_same_v<T, std::shared_ptr<EncodedFrame>>) {
+                if(framePtr) {
+                    populateEncodedFrameToProto(rgbdData->mutable_depthencodedframe(), framePtr.get(), metadataOnly);
+                }
+            } else {
+                static_assert([]() constexpr { return false; }(), "Unhandled frame type in RGBDData depth frame variant");
+            }
+        };
+
+        std::visit(handler, depthFrame.value());
     }
 
     return rgbdData;
@@ -750,49 +782,55 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
         obj.setData(data);
     }
 }
+
+// Helper function to populate an EncodedFrame object from an EncodedFrame proto
+static void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encoded_frame::EncodedFrame& encFrame, bool metadataOnly) {
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
+        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+    };
+
+    obj.setTimestamp(safeTimestamp(encFrame.ts(), encFrame.has_ts()));
+    obj.setTimestampDevice(safeTimestamp(encFrame.tsdevice(), encFrame.has_tsdevice()));
+
+    obj.setSequenceNum(encFrame.sequencenum());
+
+    obj.width = encFrame.width();
+    obj.height = encFrame.height();
+
+    obj.instanceNum = encFrame.instancenum();
+
+    obj.quality = encFrame.quality();
+    obj.bitrate = encFrame.bitrate();
+    obj.profile = static_cast<EncodedFrame::Profile>(encFrame.profile());
+
+    obj.lossless = encFrame.lossless();
+    obj.type = static_cast<EncodedFrame::FrameType>(encFrame.type());
+
+    obj.frameOffset = encFrame.frameoffset();
+    obj.frameSize = encFrame.framesize();
+
+    obj.cam.exposureTimeUs = encFrame.cam().exposuretimeus();
+    obj.cam.sensitivityIso = encFrame.cam().sensitivityiso();
+    obj.cam.lensPosition = encFrame.cam().lensposition();
+    obj.cam.wbColorTemp = encFrame.cam().wbcolortemp();
+    obj.cam.lensPositionRaw = encFrame.cam().lenspositionraw();
+
+    obj.transformation = deserializeImgTransformation(encFrame.transformation());
+
+    if(!metadataOnly) {
+        std::vector<uint8_t> data(encFrame.data().begin(), encFrame.data().end());
+        obj.setData(data);
+    }
+}
+
 template <>
 void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bool metadataOnly) {
     auto encFrame = dynamic_cast<const proto::encoded_frame::EncodedFrame*>(msg);
     if(encFrame == nullptr) {
         throw std::runtime_error("Failed to cast protobuf message to EncodedFrame");
     }
-    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
-        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
-        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
-    };
-    // create and populate ImgFrame protobuf message
-    obj.setTimestamp(safeTimestamp(encFrame->ts(), encFrame->has_ts()));
-    obj.setTimestampDevice(safeTimestamp(encFrame->tsdevice(), encFrame->has_tsdevice()));
-
-    obj.setSequenceNum(encFrame->sequencenum());
-
-    obj.width = encFrame->width();
-    obj.height = encFrame->height();
-
-    obj.instanceNum = encFrame->instancenum();
-
-    obj.quality = encFrame->quality();
-    obj.bitrate = encFrame->bitrate();
-    obj.profile = static_cast<EncodedFrame::Profile>(encFrame->profile());
-
-    obj.lossless = encFrame->lossless();
-    obj.type = static_cast<EncodedFrame::FrameType>(encFrame->type());
-
-    obj.frameOffset = encFrame->frameoffset();
-    obj.frameSize = encFrame->framesize();
-
-    obj.cam.exposureTimeUs = encFrame->cam().exposuretimeus();
-    obj.cam.sensitivityIso = encFrame->cam().sensitivityiso();
-    obj.cam.lensPosition = encFrame->cam().lensposition();
-    obj.cam.wbColorTemp = encFrame->cam().wbcolortemp();
-    obj.cam.lensPositionRaw = encFrame->cam().lenspositionraw();
-
-    obj.transformation = deserializeImgTransformation(encFrame->transformation());
-
-    if(!metadataOnly) {
-        std::vector<uint8_t> data(encFrame->data().begin(), encFrame->data().end());
-        obj.setData(data);
-    }
+    populateEncodedFrameFromProto(obj, *encFrame, metadataOnly);
 }
 template <>
 void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, bool metadataOnly) {
@@ -885,18 +923,40 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
     obj.setTimestampDevice(utility::fromProtoTimestamp(rgbdData->tsdevice()));
     obj.setSequenceNum(rgbdData->sequencenum());
 
-    // Deserialize color frame if present
-    if(rgbdData->has_colorframe()) {
-        auto colorFrame = std::make_shared<ImgFrame>();
-        populateImgFrameFromProto(*colorFrame, rgbdData->colorframe(), metadataOnly);
-        obj.setRGBFrame(colorFrame);
+    // Deserialize color frame if present (can be ImgFrame or EncodedFrame)
+    switch(rgbdData->color_frame_case()) {
+        case proto::rgbd_data::RGBDData::kColorImgFrame: {
+            auto colorFrame = std::make_shared<ImgFrame>();
+            populateImgFrameFromProto(*colorFrame, rgbdData->colorimgframe(), metadataOnly);
+            obj.setRGBFrame(colorFrame);
+            break;
+        }
+        case proto::rgbd_data::RGBDData::kColorEncodedFrame: {
+            auto colorFrame = std::make_shared<EncodedFrame>();
+            populateEncodedFrameFromProto(*colorFrame, rgbdData->colorencodedframe(), metadataOnly);
+            obj.setRGBFrame(colorFrame);
+            break;
+        }
+        case proto::rgbd_data::RGBDData::COLOR_FRAME_NOT_SET:
+            break;
     }
 
-    // Deserialize depth frame if present
-    if(rgbdData->has_depthframe()) {
-        auto depthFrame = std::make_shared<ImgFrame>();
-        populateImgFrameFromProto(*depthFrame, rgbdData->depthframe(), metadataOnly);
-        obj.setDepthFrame(depthFrame);
+    // Deserialize depth frame if present (can be ImgFrame or EncodedFrame)
+    switch(rgbdData->depth_frame_case()) {
+        case proto::rgbd_data::RGBDData::kDepthImgFrame: {
+            auto depthFrame = std::make_shared<ImgFrame>();
+            populateImgFrameFromProto(*depthFrame, rgbdData->depthimgframe(), metadataOnly);
+            obj.setDepthFrame(depthFrame);
+            break;
+        }
+        case proto::rgbd_data::RGBDData::kDepthEncodedFrame: {
+            auto depthFrame = std::make_shared<EncodedFrame>();
+            populateEncodedFrameFromProto(*depthFrame, rgbdData->depthencodedframe(), metadataOnly);
+            obj.setDepthFrame(depthFrame);
+            break;
+        }
+        case proto::rgbd_data::RGBDData::DEPTH_FRAME_NOT_SET:
+            break;
     }
 }
 
