@@ -202,14 +202,6 @@ void PipelineImplHelper::setupPipelineDebuggingPost(std::unordered_map<dai::Node
         }
     }
 
-    // Initialize event dispatchers
-    for(const auto& node : pipeline->getAllNodes()) {
-        auto threadedNode = std::dynamic_pointer_cast<ThreadedNode>(node);
-        if(threadedNode) {
-            threadedNode->initPipelineEventDispatcher(threadedNode->id);
-        }
-    }
-
     // Disable event sending if no PipelineEventAggregation node is present
     {
         auto allNodes = pipeline->getAllNodes();

@@ -16,9 +16,6 @@ class ThreadedNode : public Node {
     JoiningThread thread;
     AtomicBool running{false};
 
-   protected:
-    void initPipelineEventDispatcher(int64_t nodeId);
-
    public:
     Output pipelineEventOutput{*this, {"pipelineEventOutput", DEFAULT_GROUP, {{{DatatypeEnum::PipelineEvent, false}}}}};
 

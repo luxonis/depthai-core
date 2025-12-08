@@ -57,7 +57,6 @@ class PipelineEventDispatcherInterface {
     bool sendEvents = true;
 
     virtual ~PipelineEventDispatcherInterface();
-    virtual void setNodeId(int64_t id) = 0;
     virtual void startEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) = 0;
     virtual void startInputEvent(const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) = 0;
     virtual void startOutputEvent(const std::string& source) = 0;

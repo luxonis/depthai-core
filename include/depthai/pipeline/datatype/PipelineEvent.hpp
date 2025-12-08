@@ -31,11 +31,11 @@ class PipelineEvent : public Buffer {
     virtual ~PipelineEvent();
 
     int64_t nodeId = -1;
-    Status status = Status::OK;
+    Status status = Status::OK;  // Used for input status reporting (if it is blocked)
     std::optional<uint32_t> queueSize;
     Interval interval = Interval::NONE;
     Type type = Type::CUSTOM;
-    std::string source;
+    std::string source;  // e.g., input/output/custom event name - used in conjunction with type to identify the event
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

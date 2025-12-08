@@ -18,10 +18,7 @@
 
 namespace dai {
 
-MessageQueue::MessageQueue(std::string name,
-                           unsigned int maxSize,
-                           bool blocking,
-                           std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher)
+MessageQueue::MessageQueue(std::string name, unsigned int maxSize, bool blocking, utility::PipelineEventDispatcherInterface* pipelineEventDispatcher)
     : queue(maxSize, blocking), name(std::move(name)), pipelineEventDispatcher(pipelineEventDispatcher) {}
 
 MessageQueue::MessageQueue(unsigned int maxSize, bool blocking) : queue(maxSize, blocking) {}

@@ -615,10 +615,16 @@ void PipelineEventAggregation::run() {
     std::chrono::time_point<std::chrono::steady_clock> lastSentTime;
     while(mainLoop()) {
         bool gotConfig = false;
-        // Wait for config if the node is not yet configured, if the current config has no repeat interval (wait for new request),
-        // or if a new config is available
-        if(!currentConfig.has_value() || (currentConfig.has_value() && !currentConfig->repeatIntervalSeconds.has_value()) || request.has()) {
-            auto req = request.get<PipelineEventAggregationConfig>();
+        {
+            std::shared_ptr<dai::PipelineEventAggregationConfig> req = nullptr;
+            bool timedOut = false;
+            if(!currentConfig.has_value() || !currentConfig->repeatIntervalSeconds.has_value()) {
+                req = request.get<PipelineEventAggregationConfig>();
+            } else {
+                auto now = std::chrono::steady_clock::now();
+                auto waitUntil = lastSentTime + std::chrono::seconds(currentConfig->repeatIntervalSeconds.value());
+                req = request.get<PipelineEventAggregationConfig>(waitUntil > now ? waitUntil - now : std::chrono::seconds(0), timedOut);
+            }
             if(req != nullptr) {
                 currentConfig = *req;
                 gotConfig = true;
@@ -654,7 +660,6 @@ void PipelineEventAggregation::run() {
                 out.send(outState);
             }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     traceOutputHandler.stop();
     handler.stop();

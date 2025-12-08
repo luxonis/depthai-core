@@ -46,7 +46,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
    private:
     void callCallbacks(std::shared_ptr<ADatatype> msg);
     void notifyCondVars();
-    std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
+    utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
 
    public:
     // DataOutputQueue constructor
@@ -54,7 +54,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     explicit MessageQueue(std::string name,
                           unsigned int maxSize = 16,
                           bool blocking = true,
-                          std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher = nullptr);
+                          utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr);
 
     MessageQueue(const MessageQueue& c)
         : enable_shared_from_this(c),

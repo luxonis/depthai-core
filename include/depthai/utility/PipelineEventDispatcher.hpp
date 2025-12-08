@@ -18,7 +18,7 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
         bool ongoing;
     };
 
-    int64_t nodeId = -1;
+    int64_t& nodeId;
     std::unordered_map<std::string, EventStatus> events;
     Node::Output* out = nullptr;
 
@@ -30,9 +30,7 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
 
    public:
     PipelineEventDispatcher() = delete;
-    PipelineEventDispatcher(Node::Output* output) : out(output) {}
-
-    void setNodeId(int64_t id) override;
+    PipelineEventDispatcher(int64_t& nodeId, Node::Output* output) : nodeId(nodeId), out(output) {}
 
     void startEvent(PipelineEvent::Type type, const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) override;
     void startInputEvent(const std::string& source, std::optional<uint32_t> queueSize = std::nullopt) override;

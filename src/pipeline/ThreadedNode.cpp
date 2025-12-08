@@ -21,11 +21,7 @@ ThreadedNode::ThreadedNode() {
         level = Logging::parseLevel(envLevel);
     }
     pimpl->logger->set_level(level);
-    pipelineEventDispatcher = std::make_shared<utility::PipelineEventDispatcher>(&pipelineEventOutput);
-}
-
-void ThreadedNode::initPipelineEventDispatcher(int64_t nodeId) {
-    pipelineEventDispatcher->setNodeId(nodeId);
+    pipelineEventDispatcher = std::make_unique<utility::PipelineEventDispatcher>(this->id, &pipelineEventOutput);
 }
 
 ThreadedNode::~ThreadedNode() = default;

@@ -90,7 +90,7 @@ class Node : public std::enable_shared_from_this<Node> {
     std::vector<InputMap*> inputMapRefs;
     std::vector<std::shared_ptr<Node>*> nodeRefs;
 
-    std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
+    std::unique_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
     // helpers for setting refs
     void setOutputRefs(std::initializer_list<Output*> l);
@@ -138,12 +138,12 @@ class Node : public std::enable_shared_from_this<Node> {
         std::vector<QueueConnection> queueConnections;
         Type type = Type::MSender;  // Slave sender not supported yet
         OutputDescription desc;
-        std::shared_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
+        utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
 
        public:
         // std::vector<Capability> possibleCapabilities;
 
-        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)), pipelineEventDispatcher(par.pipelineEventDispatcher) {
+        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)), pipelineEventDispatcher(par.pipelineEventDispatcher.get()) {
             // Place oneself to the parents references
             if(ref) {
                 par.setOutputRefs(this);
@@ -356,7 +356,7 @@ class Node : public std::enable_shared_from_this<Node> {
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;
         explicit Input(Node& par, InputDescription desc, bool ref = true)
-            : MessageQueue(desc.name.empty() ? par.createUniqueInputName() : desc.name, desc.queueSize, desc.blocking, par.pipelineEventDispatcher),
+            : MessageQueue(desc.name.empty() ? par.createUniqueInputName() : desc.name, desc.queueSize, desc.blocking, par.pipelineEventDispatcher.get()),
               parent(par),
               waitForMessage(desc.waitForMessage),
               group(desc.group),
