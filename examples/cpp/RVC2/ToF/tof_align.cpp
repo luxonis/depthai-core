@@ -148,7 +148,6 @@ int main() {
     tof->amplitude.link(confFilter->amplitude);
     confFilter->setRunOnHost(true);
 
-    auto confQ = confFilter->confidence.createOutputQueue();
     auto filteredDepthQ = confFilter->filteredDepth.createOutputQueue();
 
     // Start the pipeline
@@ -170,17 +169,10 @@ int main() {
 
         auto frameRgb = messageGroup->get<dai::ImgFrame>("rgb");
         auto frameDepth = messageGroup->get<dai::ImgFrame>("depth_aligned");
-
-        auto confMsg = confQ->get<dai::ImgFrame>();
         auto filteredDepthMsg = filteredDepthQ->get<dai::ImgFrame>();
 
-        if(confMsg && filteredDepthMsg) {
-            printf("conf tyoe: %d\n", static_cast<int>(confMsg->getType()));
-            cv::Mat confMat = confMsg->getCvFrame();
+        if(filteredDepthMsg) {
             cv::Mat filteredDepthMat = filteredDepthMsg->getCvFrame();
-
-            // Display confidence map
-            cv::imshow("ToF Confidence", confMat);
             // Display filtered depth map
             cv::imshow("Filtered Depth", colorizeDepth(filteredDepthMat));
         }
