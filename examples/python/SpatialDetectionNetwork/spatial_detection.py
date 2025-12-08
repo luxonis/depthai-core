@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 
+import argparse
 from pathlib import Path
-import sys
 import cv2
 import depthai as dai
 import numpy as np
-import time
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--depthSource", type=str, default="stereo", choices=["stereo", "neural", "tof"]
+)
+args = parser.parse_args()
 
 modelDescription = dai.NNModelDescription("yolov6-nano")
 FPS = 30
+size = (640, 400)
+
 
 class SpatialVisualizer(dai.node.HostNode):
     def __init__(self):
@@ -70,28 +77,46 @@ class SpatialVisualizer(dai.node.HostNode):
 with dai.Pipeline() as p:
     # Define sources and outputs
     camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-    stereo = p.create(dai.node.StereoDepth)
-    spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(camRgb, stereo, modelDescription, fps=FPS)
-    visualizer = p.create(SpatialVisualizer)
-
-    # setting node configs
-    stereo.setExtendedDisparity(True)
     platform = p.getDefaultDevice().getPlatform()
-    if platform == dai.Platform.RVC2:
-        # For RVC2, width must be divisible by 16
-        stereo.setOutputSize(640, 400)
+
+    if args.depthSource == "stereo":
+        monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+        monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+        depthSource = p.create(dai.node.StereoDepth)
+        depthSource.setExtendedDisparity(True)
+        if platform == dai.Platform.RVC2:
+            depthSource.setOutputSize(640, 400)
+        monoLeft.requestOutput(size, fps=FPS).link(depthSource.left)
+        monoRight.requestOutput(size, fps=FPS).link(depthSource.right)
+    elif args.depthSource == "neural":
+        monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+        monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+        depthSource = p.create(dai.node.NeuralDepth).build(
+            monoLeft.requestFullResolutionOutput(),
+            monoRight.requestFullResolutionOutput(),
+            dai.DeviceModelZoo.NEURAL_DEPTH_LARGE,
+        )
+    elif args.depthSource == "tof":
+        depthSource = p.create(dai.node.ToF)
+    else:
+        raise ValueError(f"Invalid depth source: {args.depthSource}")
+
+    spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
+        camRgb, depthSource, modelDescription, fps=FPS
+    )
+    visualizer = p.create(SpatialVisualizer)
 
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)
     spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
-    # Linking
-    monoLeft.requestOutput((640, 400)).link(stereo.left)
-    monoRight.requestOutput((640, 400)).link(stereo.right)
+    visualizer.build(
+        spatialDetectionNetwork.passthroughDepth,
+        spatialDetectionNetwork.out,
+        spatialDetectionNetwork.passthrough,
+    )
 
-    visualizer.build(spatialDetectionNetwork.passthroughDepth, spatialDetectionNetwork.out, spatialDetectionNetwork.passthrough)
+    print("Starting pipeline with depth source: ", args.depthSource)
 
     p.run()

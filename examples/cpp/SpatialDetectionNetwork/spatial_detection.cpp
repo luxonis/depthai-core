@@ -1,4 +1,4 @@
-#include <atomic>
+#include <argparse/argparse.hpp>
 #include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
@@ -125,31 +125,83 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
     }
 };
 
-int main() {
+int main(int argc, char** argv) {
+    // Initialize argument parser
+    argparse::ArgumentParser program("spatial_detection", "1.0.0");
+    program.add_description("Spatial detection network example with configurable depth source");
+    program.add_argument("--depthSource").default_value(std::string("stereo")).help("Depth source: stereo, neural, tof");
+
+    // Parse arguments
+    try {
+        program.parse_args(argc, argv);
+    } catch(const std::runtime_error& err) {
+        std::cerr << err.what() << std::endl;
+        std::cerr << program;
+        return EXIT_FAILURE;
+    }
+
+    // Get arguments
+    std::string depthSourceArg = program.get<std::string>("--depthSource");
+
+    // Validate depth source argument
+    if(depthSourceArg != "stereo" && depthSourceArg != "neural" && depthSourceArg != "tof") {
+        std::cerr << "Invalid depth source: " << depthSourceArg << std::endl;
+        std::cerr << "Valid options are: stereo, neural, tof" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     try {
         // Create pipeline
         dai::Pipeline pipeline;
+
+        constexpr float FPS = 30.0f;
+        const std::pair<int, int> size = {640, 400};
 
         // Define sources and outputs
         auto camRgb = pipeline.create<dai::node::Camera>();
         camRgb->build(dai::CameraBoardSocket::CAM_A);
 
-        auto monoLeft = pipeline.create<dai::node::Camera>();
-        monoLeft->build(dai::CameraBoardSocket::CAM_B);
+        auto platform = pipeline.getDefaultDevice()->getPlatform();
 
-        auto monoRight = pipeline.create<dai::node::Camera>();
-        monoRight->build(dai::CameraBoardSocket::CAM_C);
+        // Create depth source based on argument
+        dai::node::DepthSource depthSource;
 
-        auto stereo = pipeline.create<dai::node::StereoDepth>();
+        if(depthSourceArg == "stereo") {
+            auto monoLeft = pipeline.create<dai::node::Camera>();
+            auto monoRight = pipeline.create<dai::node::Camera>();
+            auto stereo = pipeline.create<dai::node::StereoDepth>();
+
+            monoLeft->build(dai::CameraBoardSocket::CAM_B);
+            monoRight->build(dai::CameraBoardSocket::CAM_C);
+
+            stereo->setExtendedDisparity(true);
+            if(platform == dai::Platform::RVC2) {
+                stereo->setOutputSize(640, 400);
+            }
+
+            monoLeft->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP, FPS)->link(stereo->left);
+            monoRight->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP, FPS)->link(stereo->right);
+
+            depthSource = stereo;
+        } else if(depthSourceArg == "neural") {
+            auto monoLeft = pipeline.create<dai::node::Camera>();
+            auto monoRight = pipeline.create<dai::node::Camera>();
+
+            monoLeft->build(dai::CameraBoardSocket::CAM_B);
+            monoRight->build(dai::CameraBoardSocket::CAM_C);
+
+            auto neuralDepth = pipeline.create<dai::node::NeuralDepth>();
+            neuralDepth->build(*monoLeft->requestFullResolutionOutput(), *monoRight->requestFullResolutionOutput(), dai::DeviceModelZoo::NEURAL_DEPTH_LARGE);
+
+            depthSource = neuralDepth;
+        } else if(depthSourceArg == "tof") {
+            auto tof = pipeline.create<dai::node::ToF>();
+            depthSource = tof;
+        }
+
+        // Create spatial detection network using the unified build method with DepthSource variant
         auto spatialDetectionNetwork = pipeline.create<dai::node::SpatialDetectionNetwork>();
         auto visualizer = pipeline.create<SpatialVisualizer>();
-
-        // Configure stereo node
-        stereo->setExtendedDisparity(true);
-        auto platform = pipeline.getDefaultDevice()->getPlatform();
-        if(platform == dai::Platform::RVC2) {
-            stereo->setOutputSize(640, 400);
-        }
 
         // Configure spatial detection network
         spatialDetectionNetwork->input.setBlocking(false);
@@ -157,18 +209,18 @@ int main() {
         spatialDetectionNetwork->setDepthLowerThreshold(100);
         spatialDetectionNetwork->setDepthUpperThreshold(5000);
 
-        // Set up model
+        // Set up model and build with DepthSource variant
         dai::NNModelDescription modelDesc;
         modelDesc.model = "yolov6-nano";
-        spatialDetectionNetwork->build(camRgb, stereo, modelDesc, 30);  // 30 FPS
+        spatialDetectionNetwork->build(camRgb, depthSource, modelDesc, FPS);
 
         // Set label map
         visualizer->labelMap = spatialDetectionNetwork->getClasses().value();
 
         // Linking
-        monoLeft->requestOutput(std::make_pair(640, 400))->link(stereo->left);
-        monoRight->requestOutput(std::make_pair(640, 400))->link(stereo->right);
         visualizer->build(spatialDetectionNetwork->passthroughDepth, spatialDetectionNetwork->out, spatialDetectionNetwork->passthrough);
+
+        std::cout << "Pipeline starting with depth source: " << depthSourceArg << std::endl;
 
         // Start pipeline
         pipeline.start();
@@ -176,8 +228,8 @@ int main() {
 
     } catch(const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }

@@ -43,30 +43,14 @@ void bind_rgbd(pybind11::module& m, void* pCallstack) {
              py::arg("frameSize") = std::make_pair(640, 400),
              py::arg("fps") = std::nullopt,
              DOC(dai, node, RGBD, build, 2))
+        // Build method with DepthSource variant
         .def("build",
-             static_cast<std::shared_ptr<RGBD> (RGBD::*)(
-                 const std::shared_ptr<Camera>&, const std::shared_ptr<StereoDepth>&, std::pair<int, int>, std::optional<float>)>(&RGBD::build),
+             py::overload_cast<const std::shared_ptr<Camera>&, const node::DepthSource&, std::pair<int, int>, std::optional<float>>(&RGBD::build),
              py::arg("camera"),
-             py::arg("stereo"),
+             py::arg("depthSource"),
              py::arg("frameSize") = std::make_pair(640, 400),
              py::arg("fps") = std::nullopt,
              DOC(dai, node, RGBD, build, 3))
-        .def("build",
-             static_cast<std::shared_ptr<RGBD> (RGBD::*)(
-                 const std::shared_ptr<Camera>&, const std::shared_ptr<NeuralDepth>&, std::pair<int, int>, std::optional<float>)>(&RGBD::build),
-             py::arg("camera"),
-             py::arg("neuralDepth"),
-             py::arg("frameSize") = std::make_pair(640, 400),
-             py::arg("fps") = std::nullopt,
-             DOC(dai, node, RGBD, build, 4))
-        .def("build",
-             static_cast<std::shared_ptr<RGBD> (RGBD::*)(
-                 const std::shared_ptr<Camera>&, const std::shared_ptr<ToF>&, std::pair<int, int>, std::optional<float>)>(&RGBD::build),
-             py::arg("camera"),
-             py::arg("tof"),
-             py::arg("frameSize") = std::make_pair(640, 400),
-             py::arg("fps") = std::nullopt,
-             DOC(dai, node, RGBD, build, 5))
         .def("setDepthUnits", &RGBD::setDepthUnit, py::arg("units"), DOC(dai, node, RGBD, setDepthUnit))
         .def("useCPU", &RGBD::useCPU, DOC(dai, node, RGBD, useCPU))
         .def("useCPUMT", &RGBD::useCPUMT, py::arg("numThreads") = 2, DOC(dai, node, RGBD, useCPUMT))

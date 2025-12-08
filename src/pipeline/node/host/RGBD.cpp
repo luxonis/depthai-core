@@ -331,26 +331,10 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
 }
 
 std::shared_ptr<RGBD> RGBD::build(const std::shared_ptr<Camera>& camera,
-                                  const std::shared_ptr<StereoDepth>& stereo,
+                                  const DepthSource& depthSource,
                                   std::pair<int, int> frameSize,
                                   std::optional<float> fps) {
-    alignDepth(stereo, camera, frameSize, fps);
-    return build();
-}
-
-std::shared_ptr<RGBD> RGBD::build(const std::shared_ptr<Camera>& camera,
-                                  const std::shared_ptr<NeuralDepth>& neuralDepth,
-                                  std::pair<int, int> frameSize,
-                                  std::optional<float> fps) {
-    alignDepth(neuralDepth, camera, frameSize, fps);
-    return build();
-}
-
-std::shared_ptr<RGBD> RGBD::build(const std::shared_ptr<Camera>& camera,
-                                  const std::shared_ptr<ToF>& tof,
-                                  std::pair<int, int> frameSize,
-                                  std::optional<float> fps) {
-    alignDepth(tof, camera, frameSize, fps);
+    alignDepth(depthSource, camera, frameSize, fps);
     return build();
 }
 
@@ -486,10 +470,14 @@ void RGBD::printDevices() {
     pimpl->printDevices();
 }
 
-void RGBD::alignDepth(const std::shared_ptr<StereoDepth>& stereo,
-                      const std::shared_ptr<Camera>& camera,
-                      std::pair<int, int> frameSize,
-                      std::optional<float> fps) {
+void RGBD::alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps) {
+    std::visit([this, &camera, &frameSize, &fps](const auto& source) { alignDepthImpl(source, camera, frameSize, fps); }, depthSource);
+}
+
+void RGBD::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo,
+                          const std::shared_ptr<Camera>& camera,
+                          std::pair<int, int> frameSize,
+                          std::optional<float> fps) {
     auto pipeline = getParentPipeline();
     auto device = pipeline.getDefaultDevice();
 
@@ -525,10 +513,10 @@ void RGBD::alignDepth(const std::shared_ptr<StereoDepth>& stereo,
     }
 }
 
-void RGBD::alignDepth(const std::shared_ptr<NeuralDepth>& neuralDepth,
-                      const std::shared_ptr<Camera>& camera,
-                      std::pair<int, int> frameSize,
-                      std::optional<float> fps) {
+void RGBD::alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth,
+                          const std::shared_ptr<Camera>& camera,
+                          std::pair<int, int> frameSize,
+                          std::optional<float> fps) {
     auto pipeline = getParentPipeline();
     auto device = pipeline.getDefaultDevice();
 
@@ -549,7 +537,7 @@ void RGBD::alignDepth(const std::shared_ptr<NeuralDepth>& neuralDepth,
     align->outputAligned.link(inDepth);
 }
 
-void RGBD::alignDepth(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps) {
+void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps) {
     auto pipeline = getParentPipeline();
     auto device = pipeline.getDefaultDevice();
 

@@ -6,47 +6,43 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--webSocketPort", type=int, default=8765)
 parser.add_argument("--httpPort", type=int, default=8082)
+parser.add_argument("--depthSource", type=str, default="stereo", choices=["stereo", "neural", "tof"])
 args = parser.parse_args()
 
 with dai.Pipeline() as p:
     remoteConnector = dai.RemoteConnection(
         webSocketPort=args.webSocketPort, httpPort=args.httpPort
     )
-    left = p.create(dai.node.Camera)
-    right = p.create(dai.node.Camera)
-    color = p.create(dai.node.Camera)
-    stereo = p.create(dai.node.StereoDepth)
-    rgbd = p.create(dai.node.RGBD).build()
-    align = None
 
-    color.build()
-    left.build(dai.CameraBoardSocket.CAM_B)
-    right.build(dai.CameraBoardSocket.CAM_C)
-    out = None
+    size = (640, 400)
+    fps = 30
 
-    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
-    stereo.setRectifyEdgeFillColor(0)
-    stereo.enableDistortionCorrection(True)
-
-    # Linking
-    left.requestOutput((640, 400)).link(stereo.left)
-    right.requestOutput((640, 400)).link(stereo.right)
-    platform = p.getDefaultDevice().getPlatform()
-    if platform == dai.Platform.RVC4:
-        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i)
-        align = p.create(dai.node.ImageAlign)
-        stereo.depth.link(align.input)
-        out.link(align.inputAlignTo)
-        align.outputAligned.link(rgbd.inDepth)
+    color = p.create(dai.node.Camera).build(sensorFps=fps)
+    if args.depthSource == "stereo":
+        left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+        right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
+        depthSource = p.create(dai.node.StereoDepth)
+        depthSource.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
+        depthSource.setRectifyEdgeFillColor(0)
+        depthSource.enableDistortionCorrection(True)
+        left.requestOutput(size, fps=fps).link(depthSource.left)
+        right.requestOutput(size, fps=fps).link(depthSource.right)
+    elif args.depthSource == "neural":
+        left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+        right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+        depthSource = p.create(dai.node.NeuralDepth).build(left.requestFullResolutionOutput(), right.requestFullResolutionOutput(), dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
+    elif args.depthSource == "tof":
+        depthSource = p.create(dai.node.ToF)
     else:
-        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i, dai.ImgResizeMode.CROP, 30, True)
-        stereo.depth.link(rgbd.inDepth)
-        out.link(stereo.inputAlignTo)
-    out.link(rgbd.inColor)
-    remoteConnector.addTopic("pcl", rgbd.pcl, "common")
+        raise ValueError(f"Invalid depth source: {args.depthSource}")
 
+    rgbd = p.create(dai.node.RGBD).build(color, depthSource, size, fps)
+
+    remoteConnector.addTopic("pcl", rgbd.pcl, "common")
     p.start()
     remoteConnector.registerPipeline(p)
+
+    print("Pipeline started with depth source: ", args.depthSource)
 
     while p.isRunning():
         key = remoteConnector.waitKey(1)

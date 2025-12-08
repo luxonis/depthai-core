@@ -1,4 +1,7 @@
 #pragma once
+
+#include <variant>
+
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -13,6 +16,12 @@
 
 namespace dai {
 namespace node {
+
+/**
+ * @brief Variant type representing different depth sources.
+ * Supported depth sources: StereoDepth, NeuralDepth, ToF
+ */
+using DepthSource = std::variant<std::shared_ptr<StereoDepth>, std::shared_ptr<NeuralDepth>, std::shared_ptr<ToF>>;
 
 /**
  * @brief RGBD node. Combines depth and color frames into a single point cloud.
@@ -53,38 +62,14 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
                                 std::optional<float> fps = std::nullopt);
 
     /**
-     * @brief Build RGBD node with camera and StereoDepth node
+     * @brief Build RGBD node with camera and depth source node
      * @param camera Camera node to use for color frames
-     * @param stereo StereoDepth node to use for depth frames
+     * @param depthSource Depth source node (StereoDepth, NeuralDepth, or ToF)
      * @param frameSize Size of the frames
      * @param fps FPS of the frames
      */
     std::shared_ptr<RGBD> build(const std::shared_ptr<Camera>& camera,
-                                const std::shared_ptr<StereoDepth>& stereo,
-                                std::pair<int, int> frameSize = std::make_pair(640, 400),
-                                std::optional<float> fps = std::nullopt);
-
-    /**
-     * @brief Build RGBD node with camera and NeuralDepth node
-     * @param camera Camera node to use for color frames
-     * @param neuralDepth NeuralDepth node to use for depth frames
-     * @param frameSize Size of the frames
-     * @param fps FPS of the frames
-     */
-    std::shared_ptr<RGBD> build(const std::shared_ptr<Camera>& camera,
-                                const std::shared_ptr<NeuralDepth>& neuralDepth,
-                                std::pair<int, int> frameSize = std::make_pair(640, 400),
-                                std::optional<float> fps = std::nullopt);
-
-    /**
-     * @brief Build RGBD node with camera and ToF node
-     * @param camera Camera node to use for color frames
-     * @param tof ToF node to use for depth frames
-     * @param frameSize Size of the frames
-     * @param fps FPS of the frames
-     */
-    std::shared_ptr<RGBD> build(const std::shared_ptr<Camera>& camera,
-                                const std::shared_ptr<ToF>& tof,
+                                const DepthSource& depthSource,
                                 std::pair<int, int> frameSize = std::make_pair(640, 400),
                                 std::optional<float> fps = std::nullopt);
 
@@ -115,13 +100,19 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
     void run() override;
     void initialize(std::shared_ptr<MessageGroup> frames);
 
-    // Helpers, same API, different depth map source nodes
-    void alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps);
-    void alignDepth(const std::shared_ptr<NeuralDepth>& neuralDepth,
-                    const std::shared_ptr<Camera>& camera,
-                    std::pair<int, int> frameSize,
-                    std::optional<float> fps);
-    void alignDepth(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps);
+    // Unified depth alignment helper
+    void alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps);
+
+    // Type-specific alignment implementations
+    void alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo,
+                        const std::shared_ptr<Camera>& camera,
+                        std::pair<int, int> frameSize,
+                        std::optional<float> fps);
+    void alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth,
+                        const std::shared_ptr<Camera>& camera,
+                        std::pair<int, int> frameSize,
+                        std::optional<float> fps);
+    void alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps);
 
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
     bool initialized = false;

@@ -32,62 +32,22 @@ void SpatialDetectionNetwork::buildInternal() {
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
-                                                                        const std::shared_ptr<StereoDepth>& stereo,
+                                                                        const DepthSource& depthSource,
                                                                         NNModelDescription modelDesc,
                                                                         std::optional<float> fps,
                                                                         std::optional<dai::ImgResizeMode> resizeMode) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(inputRgb, stereo, nnArchive, fps, resizeMode);
+    return build(inputRgb, depthSource, nnArchive, fps, resizeMode);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
-                                                                        const std::shared_ptr<StereoDepth>& stereo,
+                                                                        const DepthSource& depthSource,
                                                                         const NNArchive& nnArchive,
                                                                         std::optional<float> fps,
                                                                         std::optional<dai::ImgResizeMode> resizeMode) {
     neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
     detectionParser->setNNArchive(nnArchive);
-    alignDepth(stereo, inputRgb);
-    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
-}
-
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
-                                                                        const std::shared_ptr<NeuralDepth>& neuralDepth,
-                                                                        NNModelDescription modelDesc,
-                                                                        std::optional<float> fps,
-                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
-    auto nnArchive = createNNArchive(modelDesc);
-    return build(inputRgb, neuralDepth, nnArchive, fps, resizeMode);
-}
-
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
-                                                                        const std::shared_ptr<NeuralDepth>& neuralDepth,
-                                                                        const NNArchive& nnArchive,
-                                                                        std::optional<float> fps,
-                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
-    neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
-    detectionParser->setNNArchive(nnArchive);
-    alignDepth(neuralDepth, inputRgb);
-    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
-}
-
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
-                                                                        const std::shared_ptr<ToF>& tof,
-                                                                        NNModelDescription modelDesc,
-                                                                        std::optional<float> fps,
-                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
-    auto nnArchive = createNNArchive(modelDesc);
-    return build(inputRgb, tof, nnArchive, fps, resizeMode);
-}
-
-std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
-                                                                        const std::shared_ptr<ToF>& tof,
-                                                                        const NNArchive& nnArchive,
-                                                                        std::optional<float> fps,
-                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
-    neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
-    detectionParser->setNNArchive(nnArchive);
-    alignDepth(tof, inputRgb);
+    alignDepth(depthSource, inputRgb);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
@@ -105,7 +65,11 @@ NNArchive SpatialDetectionNetwork::createNNArchive(NNModelDescription& modelDesc
     return nnArchive;
 }
 
-void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera) {
+void SpatialDetectionNetwork::alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera) {
+    std::visit([this, &camera](const auto& source) { alignDepthImpl(source, camera); }, depthSource);
+}
+
+void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera) {
     auto device = getDevice();
     if(device) {
         auto platform = device->getPlatform();
@@ -132,7 +96,7 @@ void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<StereoDepth>& ste
     }
 }
 
-void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera) {
+void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera) {
     (void)camera;  // make compiler happy
     auto device = getDevice();
     DAI_CHECK_V(device, "Device is not set.");
@@ -143,7 +107,7 @@ void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<NeuralDepth>& neu
     align->outputAligned.link(inputDepth);
 }
 
-void SpatialDetectionNetwork::alignDepth(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera) {
+void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera) {
     (void)camera;  // make compiler happy
     Subnode<ImageAlign>& align = *depthAlign;
     tof->depth.link(align->input);
