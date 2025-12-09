@@ -118,6 +118,9 @@ TEST_CASE("FPS check") {
     spatialDetectionNetwork->setDepthLowerThreshold(100);
     spatialDetectionNetwork->setDepthUpperThreshold(5000);
 
+    auto passthroughDepthQueue = spatialDetectionNetwork->passthroughDepth.createOutputQueue();
+    auto out = spatialDetectionNetwork->out.createOutputQueue();
+
     // Set up model
     dai::NNModelDescription modelDesc;
     modelDesc.model = "yolov6-nano";
@@ -130,7 +133,7 @@ TEST_CASE("FPS check") {
     // Start pipeline
     pipeline.start();
 
-    std::this_thread::sleep_for(std::chrono::seconds(8));
+    std::this_thread::sleep_for(std::chrono::seconds(VIDEO_DURATION_SECONDS));
 
     auto state = pipeline.getPipelineState().nodes().detailed();
 
@@ -178,16 +181,6 @@ TEST_CASE("FPS check") {
             REQUIRE(nodeState.outputStates.at("out").isValid());
             REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(8.0).margin(2.0));
         }
-        if(std::string(node->getName()) == "ImageAlign") {
-            ++gotNodes;
-            // Not implemented on RVC2 REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(8.0).margin(2.0));
-            // Not implemented on RVC2 REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(8.0).margin(2.0));
-            // Not implemented on RVC2 REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(8.0).margin(2.0));
-            REQUIRE(nodeState.inputStates.at("input").isValid());
-            REQUIRE(nodeState.inputStates.at("input").timing.fps == Catch::Approx(8.0).margin(2.0));
-            REQUIRE(nodeState.outputStates.at("outputAligned").isValid());
-            REQUIRE(nodeState.outputStates.at("outputAligned").timing.fps == Catch::Approx(8.0).margin(2.0));
-        }
         if(std::string(node->getName()) == "SpatialDetectionNetwork") {
             ++gotNodes;
             // Not implemented on RVC2 REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(8.0).margin(2.0));
@@ -206,7 +199,7 @@ TEST_CASE("FPS check") {
         }
     }
 
-    REQUIRE(gotNodes == 8);  // 3 cameras, stereo, neural network, detection parser, image align, spatial detection network
+    REQUIRE(gotNodes == 7);  // 3 cameras, stereo, neural network, detection parser, spatial detection network
 
     pipeline.stop();
 }

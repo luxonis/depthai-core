@@ -41,7 +41,7 @@ void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
     pipelineEventInterval.value("NONE", PipelineEvent::Interval::NONE)
         .value("START", PipelineEvent::Interval::START)
         .value("END", PipelineEvent::Interval::END);
-    pipelineEventStatus.value("OK", PipelineEvent::Status::OK)
+    pipelineEventStatus.value("SUCCESS", PipelineEvent::Status::SUCCESS)
         .value("BLOCKED", PipelineEvent::Status::BLOCKED)
         .value("CANCELLED", PipelineEvent::Status::CANCELLED);
 

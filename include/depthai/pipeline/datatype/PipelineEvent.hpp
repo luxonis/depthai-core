@@ -22,7 +22,7 @@ class PipelineEvent : public Buffer {
     };
     enum class Interval : std::int32_t { NONE = 0, START = 1, END = 2 };
     enum class Status : std::int32_t {
-        OK = 0,
+        SUCCESS = 0,
         BLOCKED = -1,
         CANCELLED = -2,
     };
@@ -31,7 +31,7 @@ class PipelineEvent : public Buffer {
     virtual ~PipelineEvent();
 
     int64_t nodeId = -1;
-    Status status = Status::OK;  // Used for input status reporting (if it is blocked)
+    Status status = Status::SUCCESS;  // Used for input status reporting (if it is blocked)
     std::optional<uint32_t> queueSize;
     Interval interval = Interval::NONE;
     Type type = Type::CUSTOM;

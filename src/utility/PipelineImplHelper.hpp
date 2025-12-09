@@ -1,3 +1,5 @@
+#pragma once
+
 #include "depthai/pipeline/Pipeline.hpp"
 
 namespace dai {
