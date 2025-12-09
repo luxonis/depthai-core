@@ -374,7 +374,7 @@ class NodeEventAggregation {
                             updateTimingStats(state.inputStates[source].timing.durationStats, *inputTimingsBuffers[source]);
                             updateFpsStats(state.inputStates[source].timing, *inputFpsBuffers[source]);
                             // Update queue size stats
-                            if(inputQueueSizesBuffers.find(source) != inputQueueSizesBuffers.end()) {
+                            if(inputQueueSizesBuffers.find(source) != inputQueueSizesBuffers.end() && inputQueueSizesBuffers[source] != nullptr) {
                                 updateQueueStats(state.inputStates[source].queueStats, *inputQueueSizesBuffers[source]);
                             }
                         }
