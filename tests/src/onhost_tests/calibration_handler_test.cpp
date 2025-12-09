@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <vector>
+#include <Eigen/Dense>
 
 using namespace dai;
 
@@ -208,159 +209,6 @@ TEST_CASE("Crop + keep aspect ratio scales and shifts correctly", "[getCameraInt
     REQUIRE(intrinsicsCropped[1][2] == Catch::Approx(expectedCy).margin(1e-5)); // cy
 }
 */
-
-// Helper to create calibration data directly in code
-static CalibrationHandler loadHandlerWithHousing() {
-    nlohmann::json calibJson = {
-        {"cameraData",
-         {
-             {2,
-              {
-                  {"cameraType", 0},
-                  {"distortionCoeff",
-                   {
-                       6.34862756729126,
-                       2.103590965270996,
-                       8.430558227701113e-05,
-                       -0.0002120558056049049,
-                       0.03945624455809593,
-                       6.72260046005249,
-                       4.086187839508057,
-                       0.30895373225212097,
-                       0.0, 0.0, 0.0, 0.0,
-                       0.0013621413381770253,
-                       -0.004182244651019573
-                   }},
-                  {"extrinsics",
-                   {
-                       {"rotationMatrix",
-                        {
-                            {0.9999976754188538, 0.0006250183214433491, -0.0020535276271402836},
-                            {-0.0006279302178882062, 0.9999988079071045, -0.001417673658579588},
-                            {0.0020526391454041004, 0.001418959815055132, 0.9999969005584717}
-                        }},
-                       {"specTranslation", {{"x", 3.75}, {"y", 0.0}, {"z", 0.0}}},
-                       {"toCameraSocket", 0},
-                       {"translation",
-                        {{"x", 3.7645857334136963},
-                         {"y", -0.011269540525972843},
-                         {"z", 0.09522201865911484}}}
-                   }},
-                  {"height", 800},
-                  {"intrinsicMatrix",
-                   {
-                       {570.8067626953125, 0.0, 650.3073120117188},
-                       {0.0, 570.5846557617188, 393.687744140625},
-                       {0.0, 0.0, 1.0}
-                   }},
-                  {"lensPosition", 0},
-                  {"specHfovDeg", 127.0},
-                  {"width", 1280}
-              }},
-
-             {1,
-              {
-                  {"cameraType", 0},
-                  {"distortionCoeff",
-                   {
-                       7.14177942276001,
-                       2.5453057289123535,
-                       5.1145903853466734e-05,
-                       0.00017982401186600327,
-                       0.05679710954427719,
-                       7.515963554382324,
-                       4.785463809967041,
-                       0.3984997272491455,
-                       0.0, 0.0, 0.0, 0.0,
-                       0.0004366979992482811,
-                       0.004102611448615789
-                   }},
-                  {"extrinsics",
-                   {
-                       {"rotationMatrix",
-                        {
-                            {0.9998723864555359, 0.004012683872133493, -0.015462064184248447},
-                            {-0.004063256550580263, 0.999986469745636, -0.0032407266553491354},
-                            {0.015448851510882378, 0.0033031394705176353, 0.9998751878738403}
-                        }},
-                       {"specTranslation", {{"x", -7.5}, {"y", 0.0}, {"z", 0.0}}},
-                       {"toCameraSocket", 2},
-                       {"translation",
-                        {{"x", -7.5138840675354},
-                         {"y", 0.018578900024294853},
-                         {"z", -0.07284922152757645}}}
-                   }},
-                  {"height", 800},
-                  {"intrinsicMatrix",
-                   {
-                       {564.5559692382813, 0.0, 639.3757934570313},
-                       {0.0, 564.362548828125, 401.57763671875},
-                       {0.0, 0.0, 1.0}
-                   }},
-                  {"lensPosition", 0},
-                  {"specHfovDeg", 127.0},
-                  {"width", 1280}
-              }},
-
-             {0,
-              {
-                  {"cameraType", 0},
-                  {"distortionCoeff",
-                   {
-                       10.314332008361816,
-                       10.213000297546387,
-                       -0.00014065272989682853,
-                       -0.0005665126955136657,
-                       -2.088263750076294,
-                       10.307817459106445,
-                       13.523609161376953,
-                       -1.5032944679260254,
-                       0.0, 0.0, 0.0, 0.0,
-                       -0.0006428251508623362,
-                       -0.006185262929648161
-                   }},
-                  {"extrinsics",
-                   {
-                       {"rotationMatrix",
-                        {
-                            {0.0, 0.0, 0.0},
-                            {0.0, 0.0, 0.0},
-                            {0.0, 0.0, 0.0}
-                        }},
-                       {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
-                       {"toCameraSocket", -1},
-                       {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}
-                   }},
-                  {"height", 3000},
-                  {"intrinsicMatrix",
-                   {
-                       {2231.94677734375, 0.0, 1996.5556640625},
-                       {0.0, 2231.224365234375, 1530.1092529296875},
-                       {0.0, 0.0, 1.0}
-                   }},
-                  {"lensPosition", 0},
-                  {"specHfovDeg", 108.0},
-                  {"width", 4000}
-              }}
-         }},
-
-        // Added housing extrinsics
-        {"housingExtrinsics",
-         {
-             {"rotationMatrix",
-              {
-                  {1.0, 0.0, 0.0},
-                  {0.0, 1.0, 0.0},
-                  {0.0, 0.0, 1.0}
-              }},
-             {"specTranslation", {{"x", 1.0}, {"y", 2.0}, {"z", 3.0}}},
-             {"toCameraSocket", 2},
-             {"translation", {{"x", 5.0}, {"y", 6.0}, {"z", 7.0}}}
-         }}
-    };
-
-    return CalibrationHandler::fromJson(calibJson);
-}
 
 TEST_CASE("Invalid camera ID throws", "[getCameraExtrinsics]") {
     auto handler = loadHandler();
@@ -828,8 +676,236 @@ TEST_CASE("Stereo left and right rectification matrices are different when provi
     REQUIRE(handler.getStereoLeftRectificationRotation() != handler.getStereoRightRectificationRotation());
 }
 
-TEST_CASE("Housing extrinsics applied correctly in getHousingCalibration", "[getHousingCalibration]") {
-    auto handler = loadHandlerWithHousing();
-    auto housingTransformatiom = handler.getHousingCalibration(CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::VESA_RIGHT, true);
+// Helper to create calibration data directly in code
+static CalibrationHandler loadHandlerWithHousing() {
+    nlohmann::json calibJson = {
+        {"cameraData",
+         {
+             // ---------------------- Camera 2 ----------------------
+             {2,
+              {
+                  {"cameraType", 0},
+                  {"distortionCoeff", {0,0,0,0,0,0,0,0,0,0,0,0,0,0}},
+                  {"extrinsics",
+                   {
+                       // Rz(90°)
+                       {"rotationMatrix",
+                        {
+                            {0.0, -1.0,  0.0},
+                            {1.0,  0.0,  0.0},
+                            {0.0,  0.0,  1.0}
+                        }},
+                       {"specTranslation", {{"x", 1.0}, {"y", 0.0}, {"z", 0.0}}},
+                       {"toCameraSocket", 0},
+                       {"translation", {{"x", 1.0}, {"y", 0.0}, {"z", 0.0}}}
+                   }},
+                  {"height", 100},
+                  {"intrinsicMatrix",
+                   {
+                       {100.0, 0.0, 50.0},
+                       {0.0, 100.0, 50.0},
+                       {0.0, 0.0, 1.0}
+                   }},
+                  {"lensPosition", 0},
+                  {"specHfovDeg", 90.0},
+                  {"width", 100}
+              }},
 
+             // ---------------------- Camera 1 ----------------------
+             {1,
+              {
+                  {"cameraType", 0},
+                  {"distortionCoeff", {0,0,0,0,0,0,0,0,0,0,0,0,0,0}},
+                  {"extrinsics",
+                   {
+                       // Ry(90°)
+                       {"rotationMatrix",
+                        {
+                            { 0.0, 0.0, 1.0},
+                            { 0.0, 1.0, 0.0},
+                            {-1.0, 0.0, 0.0}
+                        }},
+                       {"specTranslation", {{"x", -1.0}, {"y", 0.0}, {"z", 0.0}}},
+                       {"toCameraSocket", 2},  // <-- fixed to match original
+                       {"translation", {{"x", -1.0}, {"y", 0.0}, {"z", 0.0}}}
+                   }},
+                  {"height", 100},
+                  {"intrinsicMatrix",
+                   {
+                       {100.0, 0.0, 50.0},
+                       {0.0, 100.0, 50.0},
+                       {0.0, 0.0, 1.0}
+                   }},
+                  {"lensPosition", 0},
+                  {"specHfovDeg", 90.0},
+                  {"width", 100}
+              }},
+
+             // ---------------------- Camera 0 ----------------------
+             {0,
+              {
+                  {"cameraType", 0},
+                  {"distortionCoeff", {0,0,0,0,0,0,0,0,0,0,0,0,0,0}},
+                  {"extrinsics",
+                   {
+                       // Rx(90°)
+                       {"rotationMatrix",
+                        {
+                            {1.0, 0.0,  0.0},
+                            {0.0, 1.0, 0.0},
+                            {0.0, 0.0,  1.0}
+                        }},
+                       {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
+                       {"toCameraSocket", -1},
+                       {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}
+                   }},
+                  {"height", 100},
+                  {"intrinsicMatrix",
+                   {
+                       {100.0, 0.0, 50.0},
+                       {0.0, 100.0, 50.0},
+                       {0.0, 0.0, 1.0}
+                   }},
+                  {"lensPosition", 0},
+                  {"specHfovDeg", 90.0},
+                  {"width", 100}
+              }}
+         }},
+
+        // ---------------------- Housing extrinsics ----------------------
+        {"housingExtrinsics",
+         {
+             // Rz(45°)
+             {"rotationMatrix",
+              {
+                  {0.70710678, -0.70710678, 0.0},
+                  {0.70710678,  0.70710678, 0.0},
+                  {0.0,         0.0,        1.0}
+              }},
+             {"specTranslation", {{"x", 1.0}, {"y", 2.0}, {"z", 3.0}}},
+             {"toCameraSocket", 2},  // same as original
+             {"translation", {{"x", 1.0}, {"y", 2.0}, {"z", 3.0}}}
+         }}
+    };
+
+    return CalibrationHandler::fromJson(calibJson);
+}
+
+TEST_CASE("getHousingCalibration - T_CAM_C_to_housing", "[getHousingCalibration I]") {
+    auto handler = loadHandlerWithHousing();
+
+    auto camToHousing = handler.getHousingCalibration(
+        CameraBoardSocket::CAM_C,
+        dai::HousingCoordinateSystem::VESA_RIGHT,
+        true
+    );
+
+    REQUIRE(camToHousing.size() == 4);
+
+    // The transformation stored in the housing extrinsics 
+    // T_housing_to_socket; in this case T_housing_to_CAM_C
+    Eigen::Matrix4f storedHousingTransformation;
+    storedHousingTransformation << 
+        0.70710678f, -0.70710678f, 0.0f, 1.0f,
+        0.70710678f,  0.70710678f, 0.0f, 2.0f,
+        0.0f,         0.0f,        1.0f, 3.0f,
+        0.0f,         0.0f,        0.0f, 1.0f;
+
+    // Compute inverse using Eigen; T_CAM_C_to_housing
+    Eigen::Matrix4f storedHousingTransformationInverse = storedHousingTransformation.inverse();
+
+    // Compare each element using Catch::Approx
+    for(int r = 0; r < 4; r++) {
+        REQUIRE(camToHousing[r].size() == 4);
+        for(int c = 0; c < 4; c++) {
+            REQUIRE(camToHousing[r][c] == Catch::Approx(storedHousingTransformationInverse(r,c)).margin(1e-6));
+        }
+    }
+}
+
+TEST_CASE("getHousingCalibration - T_CAM_B_to_housing", "[getHousingCalibration II]") {
+    auto handler = loadHandlerWithHousing();
+
+    auto camToHousing = handler.getHousingCalibration(
+        CameraBoardSocket::CAM_B,
+        dai::HousingCoordinateSystem::VESA_RIGHT,
+        true
+    );
+
+    REQUIRE(camToHousing.size() == 4);
+
+    // ---- Step 1: T_housing_to_CAM_C from JSON ----
+    Eigen::Matrix4f T_housing_to_CAM_C;
+    T_housing_to_CAM_C <<
+        0.70710678f, -0.70710678f, 0.0f, 1.0f,
+        0.70710678f,  0.70710678f, 0.0f, 2.0f,
+        0.0f,         0.0f,        1.0f, 3.0f,
+        0.0f,         0.0f,        0.0f, 1.0f;
+
+    // ---- Step 2: Compute T_CAM_C_to_housing ----
+    Eigen::Matrix4f T_CAM_C_to_housing = T_housing_to_CAM_C.inverse();
+
+    // ---- Step 3: T_CAM_B_to_CAM_C from Camera 1 extrinsics ----
+    Eigen::Matrix4f T_CAM_B_to_CAM_C;
+    T_CAM_B_to_CAM_C <<
+        0.0f, 0.0f, 1.0f, -1.0f,
+        0.0f, 1.0f, 0.0f,  0.0f,
+       -1.0f, 0.0f, 0.0f,  0.0f,
+        0.0f, 0.0f, 0.0f,  1.0f;
+
+    // ---- Step 4: Compute T_CAM_B_to_housing ----
+    Eigen::Matrix4f T_CAM_B_to_housing = T_CAM_C_to_housing * T_CAM_B_to_CAM_C;
+
+    // ---- Step 5: Compare each element using Catch::Approx ----
+    for(int r = 0; r < 4; r++) {
+        REQUIRE(camToHousing[r].size() == 4);
+        for(int c = 0; c < 4; c++) {
+            REQUIRE(camToHousing[r][c] == Catch::Approx(T_CAM_B_to_housing(r,c)).margin(1e-6));
+        }
+    }
+}
+
+TEST_CASE("getHousingCalibration - T_CAM_A_to_housing", "[getHousingCalibration III]") {
+    auto handler = loadHandlerWithHousing();
+
+    auto camToHousing = handler.getHousingCalibration(
+        CameraBoardSocket::CAM_A,
+        dai::HousingCoordinateSystem::VESA_RIGHT,
+        true
+    );
+
+    REQUIRE(camToHousing.size() == 4);
+
+    // ---- Step 1: T_housing_to_CAM_C from JSON ----
+    Eigen::Matrix4f T_housing_to_CAM_C;
+    T_housing_to_CAM_C <<
+        0.70710678f, -0.70710678f, 0.0f, 1.0f,
+        0.70710678f,  0.70710678f, 0.0f, 2.0f,
+        0.0f,         0.0f,        1.0f, 3.0f,
+        0.0f,         0.0f,        0.0f, 1.0f;
+
+    // ---- Step 2: Compute T_CAM_C_to_housing ----
+    Eigen::Matrix4f T_CAM_C_to_housing = T_housing_to_CAM_C.inverse();
+
+    // ---- Step 3: T_CAM_B_to_CAM_C from Camera 1 extrinsics ----
+    Eigen::Matrix4f T_CAM_C_to_CAM_A;
+    T_CAM_C_to_CAM_A <<
+        0.0f, -1.0f,  0.0f,  1.0f,
+        1.0f,  0.0f,  0.0f,  0.0f,
+        0.0f,  0.0f,  1.0f,  0.0f,
+        0.0f, 0.0f, 0.0f,  1.0f;
+
+    // ---- Step 4: Compute T_CAM_A_to_CAM_C ----
+    Eigen::Matrix4f T_CAM_A_to_CAM_C = T_CAM_C_to_CAM_A.inverse();
+
+    // ---- Step 5: Compute T_CAM_B_to_housing ----
+    Eigen::Matrix4f T_CAM_B_to_housing = T_CAM_C_to_housing * T_CAM_A_to_CAM_C;
+
+    // ---- Step 6: Compare each element using Catch::Approx ----
+    for(int r = 0; r < 4; r++) {
+        REQUIRE(camToHousing[r].size() == 4);
+        for(int c = 0; c < 4; c++) {
+            REQUIRE(camToHousing[r][c] == Catch::Approx(T_CAM_B_to_housing(r,c)).margin(1e-6));
+        }
+    }
 }
