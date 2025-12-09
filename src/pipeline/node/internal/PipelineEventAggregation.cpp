@@ -290,6 +290,7 @@ class NodeEventAggregation {
     }
     // Calculate and update queue size statistics
     inline void updateQueueStats(NodeState::QueueStats& queueStats, const utility::CircularBuffer<uint32_t>& buffer) {
+        if(buffer.size() == 0) return;
         auto qBufferData = buffer.getBuffer();
         std::sort(qBufferData.begin(), qBufferData.end());
         queueStats.maxQueued = std::max(queueStats.maxQueued, qBufferData.back());
