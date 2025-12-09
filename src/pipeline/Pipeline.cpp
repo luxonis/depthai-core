@@ -777,12 +777,6 @@ void PipelineImpl::build() {
     utility::PipelineImplHelper(this).setupPipelineDebuggingPost(bridgesOut, bridgesIn);
 
     isBuild = true;
-
-    // Build
-    if(!isHostOnly()) {
-        // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
-        defaultDevice->startPipeline(Pipeline(shared_from_this()));
-    }
 }
 
 void PipelineImpl::start() {
