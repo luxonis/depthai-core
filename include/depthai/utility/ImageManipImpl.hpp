@@ -2599,9 +2599,7 @@ std::array<std::array<float, 2>, 2> getInverse(const std::array<std::array<float
 
 std::array<std::array<float, 3>, 3> getInverse(const std::array<std::array<float, 3>, 3>& matrix);
 
-std::array<std::array<float, 2>, 4> getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
-
-dai::RotatedRect getRotatedRectFromPoints(const std::vector<std::array<float, 2>>& points);
+dai::RotatedRect getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
 
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
 
@@ -3047,7 +3045,7 @@ template <template <typename T> typename ImageManipBuffer,
 std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getSrcCrops() const {
     std::vector<RotatedRect> crops;
     for(const auto& corners : srcCorners) {
-        auto rect = getRotatedRectFromPoints({corners[0], corners[1], corners[2], corners[3]});
+        auto rect = getOuterRotatedRect({corners[0], corners[1], corners[2], corners[3]});
         crops.push_back(rect);
     }
     return crops;

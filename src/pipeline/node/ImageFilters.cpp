@@ -955,12 +955,21 @@ void ToFDepthConfidenceFilter::applyDepthConfidenceFilter(std::shared_ptr<ImgFra
 
 void ToFDepthConfidenceFilter::run() {
     auto confidenceThreshold = getProperties().initialConfig.confidenceThreshold;
+
     std::shared_ptr<dai::ImgFrame> depthFrame = nullptr;
     std::shared_ptr<dai::ImgFrame> amplitudeFrame = nullptr;
 
     while(mainLoop()) {
         {
             auto blockEvent = this->inputBlockEvent();
+
+            // Update threshold dynamically
+            while(inputConfig.has()) {
+                auto configMsg = inputConfig.get<ToFDepthConfidenceFilterConfig>();
+                if(configMsg) {
+                    confidenceThreshold = configMsg->confidenceThreshold;
+                }
+            }
 
             // Update threshold dynamically
             while(inputConfig.has()) {

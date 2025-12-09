@@ -19,7 +19,7 @@ class RemoteConnectionImpl;
 class RemoteConnection {
    public:
     static constexpr auto DEFAULT_WEBSOCKET_PORT = 8765;  ///< Default WebSocket port.
-    static constexpr auto DEFAULT_HTTP_PORT = 8080;       ///< Default HTTP port.
+    static constexpr auto DEFAULT_HTTP_PORT = 8082;       ///< Default HTTP port.
     static constexpr auto DEFAULT_ADDRESS = "0.0.0.0";    ///< Default address to bind.
 
     /**

@@ -657,8 +657,8 @@ void PipelineImpl::build() {
     //     connect them
 
     // Create a map of already visited nodes to only create one xlink bridge
-    std::unordered_map<dai::Node::Output*, utility::XLinkOutBridge> bridgesOut;
-    std::unordered_map<dai::Node::Input*, utility::XLinkInBridge> bridgesIn;
+    std::unordered_map<dai::Node::Output*, dai::node::internal::XLinkOutBridge> bridgesOut;
+    std::unordered_map<dai::Node::Input*, dai::node::internal::XLinkInBridge> bridgesIn;
     std::unordered_set<std::string> uniqueStreamNames;
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
@@ -671,7 +671,7 @@ void PipelineImpl::build() {
             // Check if the bridge already exists
             if(bridgesOut.count(connection.out) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
-                bridgesOut[connection.out] = utility::XLinkOutBridge{
+                bridgesOut[connection.out] = dai::node::internal::XLinkOutBridge{
                     create<node::internal::XLinkOut>(shared_from_this()),
                     create<node::internal::XLinkInHost>(shared_from_this()),
                 };
@@ -690,6 +690,8 @@ void PipelineImpl::build() {
 
                 // Note the created bridge for serialization (for visualization)
                 xlinkBridges.push_back({xLinkBridge.xLinkOut->id, xLinkBridge.xLinkInHost->id});
+                // Store the bridge in the Output object
+                connection.out->xLinkBridge = std::make_shared<dai::node::internal::XLinkOutBridge>(xLinkBridge);
             }
             auto xLinkBridge = bridgesOut[connection.out];
             connection.out->unlink(*connection.in);  // Unlink the connection
@@ -698,7 +700,7 @@ void PipelineImpl::build() {
             // Check if the bridge already exists
             if(bridgesIn.count(connection.in) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
-                bridgesIn[connection.in] = utility::XLinkInBridge{
+                bridgesIn[connection.in] = dai::node::internal::XLinkInBridge{
                     create<node::internal::XLinkOutHost>(shared_from_this()),
                     create<node::internal::XLinkIn>(shared_from_this()),
                 };
@@ -722,6 +724,8 @@ void PipelineImpl::build() {
 
                 // Note the created bridge for serialization (for visualization)
                 xlinkBridges.push_back({xLinkBridge.xLinkOutHost->id, xLinkBridge.xLinkIn->id});
+                // Store the bridge in the Input object
+                connection.in->xLinkBridge = std::make_shared<dai::node::internal::XLinkInBridge>(xLinkBridge);
             }
             auto xLinkBridge = bridgesIn[connection.in];
             connection.out->unlink(*connection.in);  // Unlink the original connection
@@ -741,7 +745,7 @@ void PipelineImpl::build() {
                 // For every queue connection, if it's connected to a device node, create a bridge, if it doesn't exist
                 if(bridgesOut.count(queueConnection.output) == 0) {
                     // // Create a new bridge
-                    bridgesOut[queueConnection.output] = utility::XLinkOutBridge{
+                    bridgesOut[queueConnection.output] = dai::node::internal::XLinkOutBridge{
                         create<node::internal::XLinkOut>(shared_from_this()),
                         create<node::internal::XLinkInHost>(shared_from_this()),
                     };
@@ -760,6 +764,8 @@ void PipelineImpl::build() {
 
                     // Note the created bridge for serialization (for visualization)
                     xlinkBridges.push_back({xLinkBridge.xLinkOut->id, xLinkBridge.xLinkInHost->id});
+                    // Store the bridge in the Output object
+                    queueConnection.output->xLinkBridge = std::make_shared<dai::node::internal::XLinkOutBridge>(xLinkBridge);
                 }
                 auto xLinkBridge = bridgesOut[queueConnection.output];
                 queueConnection.output->unlink(queueConnection.queue);  // Unlink the original connection
@@ -798,6 +804,12 @@ void PipelineImpl::start() {
     // Indicate that pipeline is running
     running = true;
 
+    // Start device pipeline if not host-only
+    if(!isHostOnly()) {
+        DAI_CHECK_V(defaultDevice, "Default device is null");
+        defaultDevice->startPipeline(Pipeline(shared_from_this()));
+    }
+
     // Starts pipeline, go through all nodes and start them
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
@@ -812,6 +824,7 @@ void PipelineImpl::start() {
         defaultDevice->pipelinePtr = weak;
     }
 
+    // Setup pipeline state trace logging if enabled
     if(buildingOnHost && utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
         if(pipelineStateTraceOut) {
             PipelineEventAggregationConfig cfg;

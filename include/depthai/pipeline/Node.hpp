@@ -36,6 +36,34 @@ class PipelineImplHelper;
 // fwd declare input queue class
 class InputQueue;
 
+// fwd declare XLink node classes
+namespace node {
+namespace internal {
+class XLinkIn;
+class XLinkOut;
+class XLinkInHost;
+class XLinkOutHost;
+
+/**
+ * @brief XLink bridge structure for host-to-device communication
+ * Contains pointers to XLinkOutHost and XLinkIn nodes
+ */
+struct XLinkInBridge {
+    std::shared_ptr<dai::node::internal::XLinkOutHost> xLinkOutHost;
+    std::shared_ptr<dai::node::internal::XLinkIn> xLinkIn;
+};
+
+/**
+ * @brief XLink bridge structure for device-to-host communication
+ * Contains pointers to XLinkOut and XLinkInHost nodes
+ */
+struct XLinkOutBridge {
+    std::shared_ptr<dai::node::internal::XLinkOut> xLinkOut;
+    std::shared_ptr<dai::node::internal::XLinkInHost> xLinkInHost;
+};
+}  // namespace internal
+}  // namespace node
+
 /**
  * @brief Abstract Node
  */
@@ -139,6 +167,7 @@ class Node : public std::enable_shared_from_this<Node> {
         Type type = Type::MSender;  // Slave sender not supported yet
         OutputDescription desc;
         utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
+        std::shared_ptr<dai::node::internal::XLinkOutBridge> xLinkBridge;
 
        public:
         // std::vector<Capability> possibleCapabilities;
@@ -298,6 +327,13 @@ class Node : public std::enable_shared_from_this<Node> {
          * @returns True if ALL connected inputs got the message, false otherwise
          */
         bool trySend(const std::shared_ptr<ADatatype>& msg);
+
+        /**
+         * @brief Get XLink bridge associated with this output (only valid for device outputs after pipeline build)
+         *
+         * @return std::shared_ptr<dai::node::internal::XLinkOutBridge>: pointer to the XLink bridge or nullptr if not applicable
+         */
+        std::shared_ptr<dai::node::internal::XLinkOutBridge> getXLinkBridge() const;
     };
 
     struct PairHash {
@@ -337,6 +373,7 @@ class Node : public std::enable_shared_from_this<Node> {
     class Input : public MessageQueue {
         friend class Output;
         friend class OutputMap;
+        friend class PipelineImpl;
 
        public:
         enum class Type { SReceiver, MReceiver };  // TODO(Morato) - refactor, make the MReceiver a separate class (shouldn't inherit from MessageQueue)
@@ -352,6 +389,7 @@ class Node : public std::enable_shared_from_this<Node> {
         bool waitForMessage{false};
         std::string group;
         Type type = Type::SReceiver;
+        std::shared_ptr<dai::node::internal::XLinkInBridge> xLinkBridge;
 
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;
@@ -455,6 +493,13 @@ class Node : public std::enable_shared_from_this<Node> {
          * @return std::shared_ptr<InputQueue>: shared pointer to an input queue
          */
         std::shared_ptr<InputQueue> createInputQueue(unsigned int maxSize = INPUT_QUEUE_DEFAULT_MAX_SIZE, bool blocking = INPUT_QUEUE_DEFAULT_BLOCKING);
+
+        /**
+         * @brief Get XLink bridge associated with this input (only valid for device inputs after pipeline build)
+         *
+         * @return std::shared_ptr<dai::node::internal::XLinkInBridge>: pointer to the XLink bridge or nullptr if not applicable
+         */
+        std::shared_ptr<dai::node::internal::XLinkInBridge> getXLinkBridge() const;
     };
 
     /**

@@ -1,6 +1,10 @@
 #include "PipelineImplHelper.hpp"
 #include "pipeline/node/internal/PipelineEventAggregation.hpp"
 #include "pipeline/node/internal/PipelineStateMerge.hpp"
+#include "pipeline/node/internal/XLinkIn.hpp"
+#include "pipeline/node/internal/XLinkInHost.hpp"
+#include "pipeline/node/internal/XLinkOut.hpp"
+#include "pipeline/node/internal/XLinkOutHost.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
@@ -166,8 +170,8 @@ void PipelineImplHelper::setupPipelineDebuggingPre() {
         }
     }
 }
-void PipelineImplHelper::setupPipelineDebuggingPost(std::unordered_map<dai::Node::Output*, XLinkOutBridge>& bridgesOut,
-                                                    std::unordered_map<dai::Node::Input*, XLinkInBridge>& bridgesIn) {
+void PipelineImplHelper::setupPipelineDebuggingPost(std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>& bridgesOut,
+                                                    std::unordered_map<dai::Node::Input*, node::internal::XLinkInBridge>& bridgesIn) {
     // Finish setting up pipeline debugging
     if(pipeline->buildingOnHost && pipeline->enablePipelineDebugging) {
         // Enable events on xlink bridges

@@ -427,6 +427,10 @@ dai_set_test_labels(nndata_test onhost ci)
 dai_add_test(imgdetections_test src/onhost_tests/pipeline/datatype/imgdetections_test.cpp)
 dai_set_test_labels(imgdetections_test onhost ci)
 
+#ImgFrame tests
+dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
+dai_set_test_labels(imgframe_test onhost ci)
+
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
@@ -665,8 +669,8 @@ dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4rgb ci)
 target_compile_definitions(video_encoder_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # XLinkIn test
-dai_add_test(xlink_test src/ondevice_tests/xlink_tests.cpp)
-dai_set_test_labels(xlink_test ondevice rvc2_all ci)
+dai_add_test(xlink_test src/ondevice_tests/xlink_test.cpp)
+dai_set_test_labels(xlink_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # runtime_calibration_test test
 dai_add_test(runtime_calibration_test src/ondevice_tests/runtime_calibration_test.cpp)
