@@ -695,7 +695,7 @@ static CalibrationHandler loadHandlerWithHousing() {
                             {1.0,  0.0,  0.0},
                             {0.0,  0.0,  1.0}
                         }},
-                       {"specTranslation", {{"x", 1.0}, {"y", 0.0}, {"z", 0.0}}},
+                       {"specTranslation", {{"x", 1.5}, {"y", 0.5}, {"z", 0.2}}},
                        {"toCameraSocket", 0},
                        {"translation", {{"x", 1.0}, {"y", 0.0}, {"z", 0.0}}}
                    }},
@@ -725,8 +725,8 @@ static CalibrationHandler loadHandlerWithHousing() {
                             { 0.0, 1.0, 0.0},
                             {-1.0, 0.0, 0.0}
                         }},
-                       {"specTranslation", {{"x", -1.0}, {"y", 0.0}, {"z", 0.0}}},
-                       {"toCameraSocket", 2},  // <-- fixed to match original
+                       {"specTranslation", {{"x", -1.2}, {"y", 0.3}, {"z", 0.1}}},
+                       {"toCameraSocket", 2},
                        {"translation", {{"x", -1.0}, {"y", 0.0}, {"z", 0.0}}}
                    }},
                   {"height", 100},
@@ -782,8 +782,8 @@ static CalibrationHandler loadHandlerWithHousing() {
                   {0.70710678,  0.70710678, 0.0},
                   {0.0,         0.0,        1.0}
               }},
-             {"specTranslation", {{"x", 1.0}, {"y", 2.0}, {"z", 3.0}}},
-             {"toCameraSocket", 2},  // same as original
+             {"specTranslation", {{"x", 1.5}, {"y", 2.5}, {"z", 3.5}}},
+             {"toCameraSocket", 2},
              {"translation", {{"x", 1.0}, {"y", 2.0}, {"z", 3.0}}}
          }}
     };
@@ -791,7 +791,7 @@ static CalibrationHandler loadHandlerWithHousing() {
     return CalibrationHandler::fromJson(calibJson);
 }
 
-TEST_CASE("getHousingCalibration - T_CAM_C_to_housing", "[getHousingCalibration I]") {
+TEST_CASE("getHousingCalibration - T_CAM_C_to_housing with specTranslation", "[getHousingCalibration I]") {
     auto handler = loadHandlerWithHousing();
 
     auto camToHousing = handler.getHousingCalibration(
@@ -802,7 +802,39 @@ TEST_CASE("getHousingCalibration - T_CAM_C_to_housing", "[getHousingCalibration 
 
     REQUIRE(camToHousing.size() == 4);
 
-    // The transformation stored in the housing extrinsics 
+    // The transformation stored in the housing extrinsics using specTranslation
+    // T_housing_to_socket; in this case T_housing_to_CAM_C
+    Eigen::Matrix4f storedHousingTransformation;
+    storedHousingTransformation << 
+        0.70710678f, -0.70710678f, 0.0f, 1.5f,
+        0.70710678f,  0.70710678f, 0.0f, 2.5f,
+        0.0f,         0.0f,        1.0f, 3.5f,
+        0.0f,         0.0f,        0.0f, 1.0f;
+
+    // Compute inverse using Eigen; T_CAM_C_to_housing
+    Eigen::Matrix4f storedHousingTransformationInverse = storedHousingTransformation.inverse();
+
+    // Compare each element using Catch::Approx
+    for(int r = 0; r < 4; r++) {
+        REQUIRE(camToHousing[r].size() == 4);
+        for(int c = 0; c < 4; c++) {
+            REQUIRE(camToHousing[r][c] == Catch::Approx(storedHousingTransformationInverse(r,c)).margin(1e-6));
+        }
+    }
+}
+
+TEST_CASE("getHousingCalibration - T_CAM_C_to_housing with regular translation", "[getHousingCalibration I-B]") {
+    auto handler = loadHandlerWithHousing();
+
+    auto camToHousing = handler.getHousingCalibration(
+        CameraBoardSocket::CAM_C,
+        dai::HousingCoordinateSystem::VESA_RIGHT,
+        false
+    );
+
+    REQUIRE(camToHousing.size() == 4);
+
+    // The transformation stored in the housing extrinsics using regular translation
     // T_housing_to_socket; in this case T_housing_to_CAM_C
     Eigen::Matrix4f storedHousingTransformation;
     storedHousingTransformation << 
@@ -823,7 +855,7 @@ TEST_CASE("getHousingCalibration - T_CAM_C_to_housing", "[getHousingCalibration 
     }
 }
 
-TEST_CASE("getHousingCalibration - T_CAM_B_to_housing", "[getHousingCalibration II]") {
+TEST_CASE("getHousingCalibration - T_CAM_B_to_housing with specTranslation", "[getHousingCalibration II]") {
     auto handler = loadHandlerWithHousing();
 
     auto camToHousing = handler.getHousingCalibration(
@@ -834,7 +866,49 @@ TEST_CASE("getHousingCalibration - T_CAM_B_to_housing", "[getHousingCalibration 
 
     REQUIRE(camToHousing.size() == 4);
 
-    // ---- Step 1: T_housing_to_CAM_C from JSON ----
+    // ---- Step 1: T_housing_to_CAM_C from JSON using specTranslation ----
+    Eigen::Matrix4f T_housing_to_CAM_C;
+    T_housing_to_CAM_C <<
+        0.70710678f, -0.70710678f, 0.0f, 1.5f,
+        0.70710678f,  0.70710678f, 0.0f, 2.5f,
+        0.0f,         0.0f,        1.0f, 3.5f,
+        0.0f,         0.0f,        0.0f, 1.0f;
+
+    // ---- Step 2: Compute T_CAM_C_to_housing ----
+    Eigen::Matrix4f T_CAM_C_to_housing = T_housing_to_CAM_C.inverse();
+
+    // ---- Step 3: T_CAM_B_to_CAM_C from Camera 1 extrinsics using specTranslation ----
+    Eigen::Matrix4f T_CAM_B_to_CAM_C;
+    T_CAM_B_to_CAM_C <<
+        0.0f, 0.0f, 1.0f, -1.2f,
+        0.0f, 1.0f, 0.0f,  0.3f,
+       -1.0f, 0.0f, 0.0f,  0.1f,
+        0.0f, 0.0f, 0.0f,  1.0f;
+
+    // ---- Step 4: Compute T_CAM_B_to_housing ----
+    Eigen::Matrix4f T_CAM_B_to_housing = T_CAM_C_to_housing * T_CAM_B_to_CAM_C;
+
+    // ---- Step 5: Compare each element using Catch::Approx ----
+    for(int r = 0; r < 4; r++) {
+        REQUIRE(camToHousing[r].size() == 4);
+        for(int c = 0; c < 4; c++) {
+            REQUIRE(camToHousing[r][c] == Catch::Approx(T_CAM_B_to_housing(r,c)).margin(1e-6));
+        }
+    }
+}
+
+TEST_CASE("getHousingCalibration - T_CAM_B_to_housing with regular translation", "[getHousingCalibration II-B]") {
+    auto handler = loadHandlerWithHousing();
+
+    auto camToHousing = handler.getHousingCalibration(
+        CameraBoardSocket::CAM_B,
+        dai::HousingCoordinateSystem::VESA_RIGHT,
+        false
+    );
+
+    REQUIRE(camToHousing.size() == 4);
+
+    // ---- Step 1: T_housing_to_CAM_C from JSON using regular translation ----
     Eigen::Matrix4f T_housing_to_CAM_C;
     T_housing_to_CAM_C <<
         0.70710678f, -0.70710678f, 0.0f, 1.0f,
@@ -845,7 +919,7 @@ TEST_CASE("getHousingCalibration - T_CAM_B_to_housing", "[getHousingCalibration 
     // ---- Step 2: Compute T_CAM_C_to_housing ----
     Eigen::Matrix4f T_CAM_C_to_housing = T_housing_to_CAM_C.inverse();
 
-    // ---- Step 3: T_CAM_B_to_CAM_C from Camera 1 extrinsics ----
+    // ---- Step 3: T_CAM_B_to_CAM_C from Camera 1 extrinsics using regular translation ----
     Eigen::Matrix4f T_CAM_B_to_CAM_C;
     T_CAM_B_to_CAM_C <<
         0.0f, 0.0f, 1.0f, -1.0f,
@@ -865,7 +939,7 @@ TEST_CASE("getHousingCalibration - T_CAM_B_to_housing", "[getHousingCalibration 
     }
 }
 
-TEST_CASE("getHousingCalibration - T_CAM_A_to_housing", "[getHousingCalibration III]") {
+TEST_CASE("getHousingCalibration - T_CAM_A_to_housing with specTranslation", "[getHousingCalibration III]") {
     auto handler = loadHandlerWithHousing();
 
     auto camToHousing = handler.getHousingCalibration(
@@ -876,7 +950,52 @@ TEST_CASE("getHousingCalibration - T_CAM_A_to_housing", "[getHousingCalibration 
 
     REQUIRE(camToHousing.size() == 4);
 
-    // ---- Step 1: T_housing_to_CAM_C from JSON ----
+    // ---- Step 1: T_housing_to_CAM_C from JSON using specTranslation ----
+    Eigen::Matrix4f T_housing_to_CAM_C;
+    T_housing_to_CAM_C <<
+        0.70710678f, -0.70710678f, 0.0f, 1.5f,
+        0.70710678f,  0.70710678f, 0.0f, 2.5f,
+        0.0f,         0.0f,        1.0f, 3.5f,
+        0.0f,         0.0f,        0.0f, 1.0f;
+
+    // ---- Step 2: Compute T_CAM_C_to_housing ----
+    Eigen::Matrix4f T_CAM_C_to_housing = T_housing_to_CAM_C.inverse();
+
+    // ---- Step 3: T_CAM_C_to_CAM_A from Camera 2 extrinsics using specTranslation ----
+    Eigen::Matrix4f T_CAM_C_to_CAM_A;
+    T_CAM_C_to_CAM_A <<
+        0.0f, -1.0f,  0.0f,  1.5f,
+        1.0f,  0.0f,  0.0f,  0.5f,
+        0.0f,  0.0f,  1.0f,  0.2f,
+        0.0f,  0.0f,  0.0f,  1.0f;
+
+    // ---- Step 4: Compute T_CAM_A_to_CAM_C ----
+    Eigen::Matrix4f T_CAM_A_to_CAM_C = T_CAM_C_to_CAM_A.inverse();
+
+    // ---- Step 5: Compute T_CAM_A_to_housing ----
+    Eigen::Matrix4f T_CAM_A_to_housing = T_CAM_C_to_housing * T_CAM_A_to_CAM_C;
+
+    // ---- Step 6: Compare each element using Catch::Approx ----
+    for(int r = 0; r < 4; r++) {
+        REQUIRE(camToHousing[r].size() == 4);
+        for(int c = 0; c < 4; c++) {
+            REQUIRE(camToHousing[r][c] == Catch::Approx(T_CAM_A_to_housing(r,c)).margin(1e-6));
+        }
+    }
+}
+
+TEST_CASE("getHousingCalibration - T_CAM_A_to_housing with regular translation", "[getHousingCalibration III-B]") {
+    auto handler = loadHandlerWithHousing();
+
+    auto camToHousing = handler.getHousingCalibration(
+        CameraBoardSocket::CAM_A,
+        dai::HousingCoordinateSystem::VESA_RIGHT,
+        false
+    );
+
+    REQUIRE(camToHousing.size() == 4);
+
+    // ---- Step 1: T_housing_to_CAM_C from JSON using regular translation ----
     Eigen::Matrix4f T_housing_to_CAM_C;
     T_housing_to_CAM_C <<
         0.70710678f, -0.70710678f, 0.0f, 1.0f,
@@ -887,25 +1006,25 @@ TEST_CASE("getHousingCalibration - T_CAM_A_to_housing", "[getHousingCalibration 
     // ---- Step 2: Compute T_CAM_C_to_housing ----
     Eigen::Matrix4f T_CAM_C_to_housing = T_housing_to_CAM_C.inverse();
 
-    // ---- Step 3: T_CAM_B_to_CAM_C from Camera 1 extrinsics ----
+    // ---- Step 3: T_CAM_C_to_CAM_A from Camera 2 extrinsics using regular translation ----
     Eigen::Matrix4f T_CAM_C_to_CAM_A;
     T_CAM_C_to_CAM_A <<
         0.0f, -1.0f,  0.0f,  1.0f,
         1.0f,  0.0f,  0.0f,  0.0f,
         0.0f,  0.0f,  1.0f,  0.0f,
-        0.0f, 0.0f, 0.0f,  1.0f;
+        0.0f,  0.0f,  0.0f,  1.0f;
 
     // ---- Step 4: Compute T_CAM_A_to_CAM_C ----
     Eigen::Matrix4f T_CAM_A_to_CAM_C = T_CAM_C_to_CAM_A.inverse();
 
-    // ---- Step 5: Compute T_CAM_B_to_housing ----
-    Eigen::Matrix4f T_CAM_B_to_housing = T_CAM_C_to_housing * T_CAM_A_to_CAM_C;
+    // ---- Step 5: Compute T_CAM_A_to_housing ----
+    Eigen::Matrix4f T_CAM_A_to_housing = T_CAM_C_to_housing * T_CAM_A_to_CAM_C;
 
     // ---- Step 6: Compare each element using Catch::Approx ----
     for(int r = 0; r < 4; r++) {
         REQUIRE(camToHousing[r].size() == 4);
         for(int c = 0; c < 4; c++) {
-            REQUIRE(camToHousing[r][c] == Catch::Approx(T_CAM_B_to_housing(r,c)).margin(1e-6));
+            REQUIRE(camToHousing[r][c] == Catch::Approx(T_CAM_A_to_housing(r,c)).margin(1e-6));
         }
     }
 }
