@@ -26,8 +26,8 @@ class LockingQueue {
         this->maxSize = maxSize;
         this->blocking = blocking;
     }
-    LockingQueue(const LockingQueue& obj) : maxSize(obj.maxSize), blocking(obj.blocking), queue(obj.queue), destructed(obj.destructed) {};
-    LockingQueue(LockingQueue&& obj) noexcept : maxSize(obj.maxSize), blocking(obj.blocking), queue(std::move(obj.queue)), destructed(obj.destructed) {};
+    LockingQueue(const LockingQueue& obj) : maxSize(obj.maxSize), blocking(obj.blocking), queue(obj.queue), destructed(obj.destructed){};
+    LockingQueue(LockingQueue&& obj) noexcept : maxSize(obj.maxSize), blocking(obj.blocking), queue(std::move(obj.queue)), destructed(obj.destructed){};
     LockingQueue& operator=(const LockingQueue& obj) {
         maxSize = obj.maxSize;
         blocking = obj.blocking;
