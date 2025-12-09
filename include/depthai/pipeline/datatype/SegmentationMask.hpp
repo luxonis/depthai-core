@@ -4,17 +4,10 @@
 #include <vector>
 
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
-
-#ifdef DEPTHAI_XTENSOR_SUPPORT
-    #include <xtensor/containers/xadapt.hpp>
-    #include <xtensor/containers/xbuffer_adaptor.hpp>
-    #include <xtensor/core/xlayout.hpp>
-    #include <xtensor/core/xmath.hpp>
-    #include <xtensor/core/xtensor_forward.hpp>
-#endif
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/mat.hpp>
@@ -27,12 +20,13 @@ namespace dai {
  * SegmentationMask message.
  *
  * Segmentation mask of an image is stored as a single-channel INT8 array, where each value represents a class or instance index.
- * The value 255 is treated as a background pixel (no class/instance).
+ * The value 255 is treated as background pixels (no class/instance).
  */
 class SegmentationMask : public Buffer, public ProtoSerializable {
    protected:
     size_t width = 0;
     size_t height = 0;
+    std::optional<std::vector<std::string>> labels;
 
    public:
     using Buffer::getSequenceNum;
@@ -82,10 +76,45 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
      */
     std::optional<std::vector<std::uint8_t>> getMaskData() const;
 
-    /*
+    /**
      * Returns the segmentation mask as an ImgFrame. If mask data is not set, returns std::nullopt.
      */
-    std::optional<dai::ImgFrame> getMask() const;
+    std::optional<dai::ImgFrame> getFrame() const;
+
+    /**
+     * Returns the area (number of pixels) of the specified instance/class index in the segmentation mask.
+     * @param index Instance/Class index
+     * @note If index is not present in the mask, returns 0.
+     */
+    int32_t getArea(uint8_t index) const;
+
+    /**
+     * Returns the normalized centroid (x,y) coordinates of the specified instance/class index in the segmentation mask.
+     * @param index Instance/Class index
+     * @note If index is not present in the mask, returns std::nullopt.
+     */
+    std::optional<dai::Point2f> getCentroid(uint8_t index) const;
+
+    /**
+     * Returns a list of sorted unique instance/class indices present in the segmentation mask.
+     */
+    std::vector<uint8_t> getUniqueIndices() const;
+
+    /**
+     * Returns the class labels associated with the segmentation mask. If no labels are set, returns std::nullopt.
+     */
+    std::optional<std::vector<std::string>> getLabels() const;
+
+    /**
+     * Sets the class labels associated with the segmentation mask.
+     * The label at index $i$ in the `labels` vector corresponds to the value $i$ in the segmentation mask data array.
+     * @param labels Vector of class labels
+     */
+    void setLabels(const std::vector<std::string>& labels);
+
+    std::optional<std::vector<std::uint8_t>> getMaskByIndex(uint8_t index) const;
+
+    std::optional<std::vector<std::uint8_t>> getMaskByLabel(const std::string& label) const;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
@@ -112,6 +141,22 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
      * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
      */
     std::optional<cv::Mat> getCvMaskByIndex(uint8_t index, cv::MatAllocator* allocator = nullptr);
+
+    /**
+     * Returns the contour of the specified instance/class index as a vector of vectors of non-normalized points. If mask data is not set, returns an empty
+     * vector.
+     * @param index Instance/Class index
+     * @param allocator Allows callers to supply a custom cv::MatAllocator for zero-copy/custom memory management; nullptr uses OpenCV’s default.
+     */
+    std::vector<std::vector<dai::Point2f>> getContour(uint8_t index);
+
+    /**
+     * Returns the bounding box of the specified instance/class index.
+     * @param index Instance/Class index
+     * @param useContour If true, the rotation of the bounding box is calculated using the contour, otherwise a fast calculation of the axis-aligned bounding
+     * box is returned.
+     */
+    std::optional<dai::RotatedRect> getBoundingBox(uint8_t index, bool useContour = false);
 
 #endif
 

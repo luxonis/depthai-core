@@ -1,6 +1,9 @@
 #pragma once
 #include <spdlog/async_logger.h>
 
+#include <cstddef>
+#include <vector>
+
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "fp16/fp16.h"
@@ -123,6 +126,40 @@ class NNDataViewer {
         return true;
     };
 
+    bool copyToChannelMajor(std::vector<float>& dst) {
+        int width = tensor.getWidth();
+        int height = tensor.getHeight();
+        int channels = tensor.getChannels();
+
+        if(width <= 0 || height <= 0 || channels <= 0) {
+            logger->error("Invalid tensor dimensions for channel-major copy. Channels: {}, height: {}, width: {}.", channels, height, width);
+            return false;
+        }
+
+        const size_t planeSize = static_cast<size_t>(width) * static_cast<size_t>(height);
+        const size_t totalSize = planeSize * static_cast<size_t>(channels);
+        dst.assign(totalSize, float{0});
+
+        const uint8_t* tensorBase = data->getData().data() + tensor.offset;
+
+        for(int c = 0; c < channels; ++c) {
+            float* destRow = dst.data() + static_cast<size_t>(c) * planeSize;
+            const uint8_t* channelPtr = tensorBase + factorsBefore.c * c;
+            for(int h = 0; h < height; ++h) {
+                const uint8_t* rowPtr = channelPtr + factorsBefore.h * h;
+                const size_t rowOffset = static_cast<size_t>(h) * static_cast<size_t>(width);
+                for(int w = 0; w < width; ++w) {
+                    const uint8_t* elementPtr = rowPtr + factorsBefore.w * w;
+                    float value = readRawValue(elementPtr);
+                    float dequantized = (value - tensor.qpZp) * tensor.qpScale;
+                    destRow[rowOffset + static_cast<size_t>(w)] = static_cast<float>(dequantized);
+                }
+            }
+        }
+
+        return true;
+    }
+
     inline float get(int c, int h, int w) {
         // If this turns out to be slow, use a function pointer instead and point to the right getter at build time
         int32_t index = tensor.offset + factorsBefore.h * h + factorsBefore.w * w + factorsBefore.c * c;
@@ -159,6 +196,25 @@ class NNDataViewer {
             default: {
                 return 0.0f;
             }
+        }
+    }
+
+   private:
+    inline float readRawValue(const uint8_t* dataPtr) const {
+        switch(tensor.dataType) {
+            case TensorInfo::DataType::U8F:
+                return static_cast<float>(*dataPtr);
+            case TensorInfo::DataType::I8:
+                return static_cast<float>(*reinterpret_cast<const int8_t*>(dataPtr));
+            case TensorInfo::DataType::INT:
+                return static_cast<float>(*reinterpret_cast<const int32_t*>(dataPtr));
+            case TensorInfo::DataType::FP16:
+                return fp16_ieee_to_fp32_value(*reinterpret_cast<const uint16_t*>(dataPtr));
+            case TensorInfo::DataType::FP32:
+                return *reinterpret_cast<const float*>(dataPtr);
+            case TensorInfo::DataType::FP64:
+            default:
+                return 0.0f;
         }
     }
 };

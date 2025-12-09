@@ -48,7 +48,7 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
              DOC(dai, SegmentationMask, setMask))
         .def("setMask", (void (SegmentationMask::*)(dai::ImgFrame&))&SegmentationMask::setMask, py::arg("frame"), DOC(dai, SegmentationMask, setMask, 2))
         .def("getMaskData", &SegmentationMask::getMaskData, DOC(dai, SegmentationMask, getMaskData))
-        .def("getMask", &SegmentationMask::getMask, DOC(dai, SegmentationMask, getMask))
+        .def("getFrame", &SegmentationMask::getFrame, DOC(dai, SegmentationMask, getFrame))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def("setCvMask", &SegmentationMask::setCvMask, py::arg("mask"), DOC(dai, SegmentationMask, setCvMask))
         .def(

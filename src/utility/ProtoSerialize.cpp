@@ -153,6 +153,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationS3:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::SegmentationParserConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
         case DatatypeEnum::AprilTagConfig:

@@ -65,7 +65,7 @@ std::optional<std::vector<std::uint8_t>> SegmentationMask::getMaskData() const {
     return vecMask;
 }
 
-std::optional<dai::ImgFrame> SegmentationMask::getMask() const {
+std::optional<dai::ImgFrame> SegmentationMask::getFrame() const {
     std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
     if(!maskData) {
         return std::nullopt;
@@ -84,6 +84,101 @@ std::optional<dai::ImgFrame> SegmentationMask::getMask() const {
     img.setData(*maskData);
 
     return img;
+}
+
+int32_t SegmentationMask::getArea(uint8_t index) const {
+    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
+    if(!maskData) {
+        return 0;
+    }
+    int32_t area = 0;
+    for(const auto& val : *maskData) {
+        if(val == index) {
+            area++;
+        }
+    }
+    return area;
+}
+
+std::optional<dai::Point2f> SegmentationMask::getCentroid(uint8_t index) const {
+    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
+    if(!maskData) {
+        return std::nullopt;
+    }
+
+    int32_t area = 0;
+    int32_t sumX = 0;
+    int32_t sumY = 0;
+    for(size_t y = 0; y < height; y++) {
+        for(size_t x = 0; x < width; x++) {
+            size_t idx = y * width + x;
+            if((*maskData)[idx] == index) {
+                area++;
+                sumX += static_cast<int32_t>(x);
+                sumY += static_cast<int32_t>(y);
+            }
+        }
+    }
+    if(area == 0) {
+        return std::nullopt;
+    }
+    float cx = static_cast<float>(sumX) / static_cast<float>(area) / static_cast<float>(width);
+    float cy = static_cast<float>(sumY) / static_cast<float>(area) / static_cast<float>(height);
+
+    return dai::Point2f(cx, cy, true);
+}
+
+std::vector<uint8_t> SegmentationMask::getUniqueIndices() const {
+    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
+    std::vector<uint8_t> uniqueIndices;
+    if(!maskData) {
+        return uniqueIndices;
+    }
+
+    std::vector<bool> indexPresent(256, false);
+    for(const auto& val : *maskData) {
+        if(!indexPresent[val] && val != 255) {
+            indexPresent[val] = true;
+            uniqueIndices.push_back(val);
+        }
+    }
+    std::sort(uniqueIndices.begin(), uniqueIndices.end());
+    return uniqueIndices;
+}
+
+std::optional<std::vector<std::string>> SegmentationMask::getLabels() const {
+    return labels;
+}
+
+void SegmentationMask::setLabels(const std::vector<std::string>& labels) {
+    this->labels = labels;
+}
+
+std::optional<std::vector<std::uint8_t>> SegmentationMask::getMaskByIndex(uint8_t index) const {
+    std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
+    if(!maskData) {
+        return std::nullopt;
+    }
+
+    std::vector<std::uint8_t> indexedMask(maskData->size(), 0);
+    for(size_t i = 0; i < maskData->size(); i++) {
+        if((*maskData)[i] == index) {
+            indexedMask[i] = 1;
+        }
+    }
+    return indexedMask;
+}
+
+std::optional<std::vector<std::uint8_t>> SegmentationMask::getMaskByLabel(const std::string& label) const {
+    if(!labels) {
+        return std::nullopt;
+    }
+
+    auto it = std::find(labels->begin(), labels->end(), label);
+    if(it == labels->end()) {
+        return std::nullopt;
+    }
+    return getMaskByIndex(static_cast<uint8_t>(std::distance(labels->begin(), it)));
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -144,6 +239,89 @@ std::optional<cv::Mat> SegmentationMask::getCvMaskByIndex(uint8_t index, cv::Mat
     cv::Mat indexedMask;
     cv::compare(*mask, index, indexedMask, cv::CmpTypes::CMP_EQ);
     return indexedMask;
+}
+
+std::vector<std::vector<dai::Point2f>> SegmentationMask::getContour(uint8_t index) {
+    std::optional<cv::Mat> mask = getCvMaskByIndex(index);
+    if(!mask.has_value()) {
+        return {};
+    }
+    cv::Mat maskCopy = mask->clone();
+
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<std::vector<dai::Point2f>> result;
+
+    cv::findContours(maskCopy, contours, cv::RetrievalModes::RETR_EXTERNAL, cv::ContourApproximationModes::CHAIN_APPROX_SIMPLE);
+    for(const auto& contour : contours) {
+        std::vector<dai::Point2f> daiContour;
+        for(const auto& point : contour) {
+            daiContour.emplace_back(static_cast<float>(point.x), static_cast<float>(point.y), false);
+        }
+        result.emplace_back(std::move(daiContour));
+    }
+
+    return result;
+}
+
+std::optional<dai::RotatedRect> SegmentationMask::getBoundingBox(uint8_t index, bool useContour) {
+    dai::RotatedRect box;
+    if(useContour) {  // use contours
+        std::optional<cv::Mat> mask = getCvMaskByIndex(index);
+        if(!mask.has_value()) {
+            return std::nullopt;
+        }
+
+        cv::Mat maskCopy = mask->clone();
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(maskCopy, contours, cv::RetrievalModes::RETR_EXTERNAL, cv::ContourApproximationModes::CHAIN_APPROX_SIMPLE);
+        if(contours.empty()) {
+            return std::nullopt;
+        }
+
+        // Find the largest contour
+        size_t largestContourIdx = 0;
+        double largestArea = 0.0;
+        for(size_t i = 0; i < contours.size(); i++) {
+            double area = cv::contourArea(contours[i]);
+            if(area > largestArea) {
+                largestArea = area;
+                largestContourIdx = i;
+            }
+        }
+        cv::RotatedRect cvBox = cv::minAreaRect(contours[largestContourIdx]);
+        box = dai::RotatedRect(dai::Point2f(cvBox.center.x / static_cast<float>(width), cvBox.center.y / static_cast<float>(height), true),
+                               dai::Size2f(cvBox.size.width / static_cast<float>(width), cvBox.size.height / static_cast<float>(height), true),
+                               cvBox.angle);
+    } else {
+        std::optional<std::vector<std::uint8_t>> maskData = getMaskData();
+        if(!maskData) {
+            return std::nullopt;
+        }
+
+        int minX = static_cast<int>(width);
+        int minY = static_cast<int>(height);
+        int maxX = -1;
+        int maxY = -1;
+        for(size_t y = 0; y < height; y++) {
+            for(size_t x = 0; x < width; x++) {
+                size_t idx = y * width + x;
+                if((*maskData)[idx] == index) {
+                    minX = std::min(static_cast<int>(x), minX);
+                    minY = std::min(static_cast<int>(y), minY);
+                    maxX = std::max(static_cast<int>(x), maxX);
+                    maxY = std::max(static_cast<int>(y), maxY);
+                }
+            }
+        }
+        if(maxX == -1 || maxY == -1) {
+            return std::nullopt;
+        }
+        dai::Point2f center((minX + maxX) / 2.0f / static_cast<float>(width), (minY + maxY) / 2.0f / static_cast<float>(height), true);
+        dai::Size2f size((maxX - minX) / static_cast<float>(width), (maxY - minY) / static_cast<float>(height), true);
+        box = dai::RotatedRect(center, size, 0.0f);
+    }
+
+    return box;
 }
 
 #endif

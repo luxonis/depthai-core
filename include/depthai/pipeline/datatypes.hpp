@@ -25,6 +25,7 @@
 #include "datatype/SegmentationMask.hpp"
 #include "datatype/SpatialImgDetections.hpp"
 #include "datatype/SpatialLocationCalculatorConfig.hpp"
+#include "datatype/SegmentationParserConfig.hpp"
 #include "datatype/SpatialLocationCalculatorData.hpp"
 #include "datatype/StereoDepthConfig.hpp"
 #include "datatype/SystemInformation.hpp"
