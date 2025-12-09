@@ -462,7 +462,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     pipeline.start()
 
     # Manual exposure/focus set step
-    EXP_STEP = 500  # us
+    EXP_STEP = 10  # us
     ISO_STEP = 50
     LENS_STEP = 1 / 1024
     DOT_STEP = 0.05
@@ -475,11 +475,11 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     lensMin = 0.0
     lensMax = 1.0
 
-    expTime = 20000
-    expMin = 1
+    expTime = 20
+    expMin = 10
     expMax = 33000
 
-    sensIso = 800
+    sensIso = 100
     sensMin = 100
     sensMax = 1600
 
@@ -511,6 +511,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     wb_manual = 5500
     control = 'none'
     show = args.show_meta
+    reg_patch = 1
 
     jet_custom = cv2.applyColorMap(
         np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
@@ -616,6 +617,13 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
         elif key == ord('c'):
             capture_list = streams.copy()
             capture_time = time.strftime('%Y%m%d_%H%M%S')
+        elif key == ord('x'):  # misc control write-registers=0x1234:0x56
+            reg_patch = 1 - reg_patch
+            data = '0x38b1:0x02' if reg_patch == 1 else '0x38b1:0x00'
+            print(f'Setting register {data}, patch {"applied" if reg_patch == 1 else "disabled"}')
+            ctrl = dai.CameraControl()
+            ctrl.setMisc('write-registers', data)
+            controlQueueSend(ctrl)
         # elif key == ord('g') and tof: # TODO
         #     f_mod = dai.RawToFConfig.DepthParams.TypeFMod.MAX if tofConfig.depthParams.freqModUsed == dai.RawToFConfig.DepthParams.TypeFMod.MIN else dai.RawToFConfig.DepthParams.TypeFMod.MIN
         #     print("ToF toggling f_mod value to:", f_mod)
