@@ -68,37 +68,37 @@ class XLinkStream {
     ~XLinkStream();
 
     // Blocking
-    void write(span<const uint8_t> data, span<const uint8_t> data2);
-    void write(span<const uint8_t> data);
-    void write(long fd);
-    void write(long fd, span<const uint8_t> data);
-    void write(const void* data, std::size_t size);
-    std::vector<std::uint8_t> read();
-    std::vector<std::uint8_t> read(std::chrono::milliseconds timeout);
-    std::vector<std::uint8_t> read(XLinkTimespec& timestampReceived);
-    void read(std::vector<std::uint8_t>& data);
-    void read(std::vector<std::uint8_t>& data, long& fd);
-    void read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived);
-    void read(std::vector<std::uint8_t>& data, long& fd, XLinkTimespec& timestampReceived);
+    void write(span<const uint8_t> data, span<const uint8_t> data2) const;
+    void write(span<const uint8_t> data) const;
+    void write(long fd) const;
+    void write(long fd, span<const uint8_t> data) const;
+    void write(const void* data, std::size_t size) const;
+    std::vector<std::uint8_t> read() const;
+    std::vector<std::uint8_t> read(std::chrono::milliseconds timeout) const;
+    std::vector<std::uint8_t> read(XLinkTimespec& timestampReceived) const;
+    void read(std::vector<std::uint8_t>& data) const;
+    void read(std::vector<std::uint8_t>& data, long& fd) const;
+    void read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived) const;
+    void read(std::vector<std::uint8_t>& data, long& fd, XLinkTimespec& timestampReceived) const;
     // split write helper
-    void writeSplit(const void* data, std::size_t size, std::size_t split);
-    void writeSplit(const std::vector<uint8_t>& data, std::size_t split);
-    StreamPacketDesc readMove();
+    void writeSplit(const void* data, std::size_t size, std::size_t split) const;
+    void writeSplit(const std::vector<uint8_t>& data, std::size_t split) const;
+    StreamPacketDesc readMove() const;
 
     // Timeout
-    bool write(const void* data, std::size_t size, std::chrono::milliseconds timeout);
-    bool write(const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout);
-    bool write(const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
-    bool read(std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
-    bool readMove(StreamPacketDesc& packet, const std::chrono::milliseconds timeout);
+    bool write(const void* data, std::size_t size, std::chrono::milliseconds timeout) const;
+    bool write(const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout) const;
+    bool write(const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) const;
+    bool read(std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) const;
+    bool readMove(StreamPacketDesc& packet, const std::chrono::milliseconds timeout) const;
     // TODO optional<StreamPacketDesc> readMove(timeout) -or- tuple<bool, StreamPacketDesc> readMove(timeout)
 
     // deprecated use readMove() instead; readRaw leads to memory violations and/or memory leaks
-    [[deprecated("use readMove()")]] streamPacketDesc_t* readRaw();
+    [[deprecated("use readMove()")]] streamPacketDesc_t* readRaw() const;
     // deprecated use readMove(packet, timeout) instead; readRaw leads to memory violations and/or memory leaks
-    [[deprecated("use readMove(packet, timeout)")]] bool readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout);
+    [[deprecated("use readMove(packet, timeout)")]] bool readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout) const;
     // deprecated; unsafe leads to memory violations and/or memory leaks
-    [[deprecated]] void readRawRelease();
+    [[deprecated]] void readRawRelease() const;
 
     streamId_t getStreamId() const;
     std::string getStreamName() const;
