@@ -162,6 +162,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ToFConfig:
         case DatatypeEnum::TrackedFeatures:
         case DatatypeEnum::BenchmarkReport:
+        case DatatypeEnum::MapData:
         case DatatypeEnum::MessageGroup:
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
