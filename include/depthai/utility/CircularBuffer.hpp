@@ -5,6 +5,12 @@
 namespace dai {
 namespace utility {
 
+/**
+* @brief A simple circular buffer implementation with forward and reverse iterators
+* @tparam T The type of elements stored in the buffer
+*
+* This implementation is not thread-safe.
+*/
 template <typename T>
 class CircularBuffer {
     std::vector<T> buffer;
@@ -19,6 +25,7 @@ class CircularBuffer {
     CircularBuffer(size_t size) : maxSize(size) {
         buffer.reserve(size);
     }
+    // Add a new element to the buffer after the last one or overwrite the oldest one
     T& add(T value) {
         if(buffer.size() < maxSize) {
             buffer.push_back(value);
@@ -29,6 +36,7 @@ class CircularBuffer {
             return buffer[(index + maxSize - 1) % maxSize];
         }
     }
+    // Get the current buffer contents from oldest to newest
     std::vector<T> getBuffer() const {
         std::vector<T> result;
         if(buffer.size() < maxSize) {
@@ -39,6 +47,7 @@ class CircularBuffer {
         }
         return result;
     }
+    // Get the oldest element
     T first() const {
         if(buffer.empty()) {
             throw std::runtime_error("CircularBuffer is empty");
@@ -49,6 +58,7 @@ class CircularBuffer {
             return buffer[index];
         }
     }
+    // Get the newest element
     T last() const {
         if(buffer.empty()) {
             throw std::runtime_error("CircularBuffer is empty");
@@ -59,6 +69,7 @@ class CircularBuffer {
             return buffer[(index + maxSize - 1) % maxSize];
         }
     }
+    // Get current size of the buffer. When full, size() == maxSize
     size_t size() const {
         return buffer.size();
     }
