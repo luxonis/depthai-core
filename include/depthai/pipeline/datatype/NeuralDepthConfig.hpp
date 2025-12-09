@@ -4,6 +4,7 @@
 #include <depthai/common/optional.hpp>
 #include <vector>
 
+#include "depthai/pipeline/FilterParams.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -36,7 +37,7 @@ class NeuralDepthConfig : public Buffer {
         DEPTHAI_SERIALIZE(AlgorithmControl, depthUnit, customDepthUnitMultiplier);
     };
 
-    struct Filtering {
+    struct PostProcessing {
         /**
          * Confidence threshold for disparity calculation,
          * Confidences above this value will be considered valid.
@@ -51,7 +52,14 @@ class NeuralDepthConfig : public Buffer {
          */
         uint8_t edgeThreshold = 10;
 
-        DEPTHAI_SERIALIZE(Filtering, confidenceThreshold, edgeThreshold);
+        using TemporalFilter = filters::params::TemporalFilter;
+
+        /**
+         * Temporal filtering with optional persistence.
+         */
+        TemporalFilter temporalFilter;
+
+        DEPTHAI_SERIALIZE(PostProcessing, confidenceThreshold, edgeThreshold, temporalFilter);
     };
 
     /**
@@ -104,7 +112,7 @@ class NeuralDepthConfig : public Buffer {
     /**
      * Controls the postprocessing of disparity and/or depth map.
      */
-    Filtering postProcessing;
+    PostProcessing postProcessing;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
     DEPTHAI_SERIALIZE(NeuralDepthConfig, algorithmControl, postProcessing);
