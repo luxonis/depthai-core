@@ -134,13 +134,15 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
 void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
     auto imuPackets = std::dynamic_pointer_cast<IMUData>(imuData);
 
+    std::cout << "######" << std::endl;
     for(auto& imuPacket : imuPackets->packets) {
         basalt::ImuData<double>::Ptr data;
         data = std::make_shared<basalt::ImuData<double>>();
         auto t = imuPacket.acceleroMeter.getTimestamp();
-        int64_t t_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(t).time_since_epoch().count();
+        int64_t tNS = std::chrono::time_point_cast<std::chrono::nanoseconds>(t).time_since_epoch().count();
 
-        data->t_ns = t_ns;
+        std::cout << "TS IMU: " << tNS << std::endl;
+        data->t_ns = tNS;
         data->accel = Eigen::Vector3d(imuPacket.acceleroMeter.x, imuPacket.acceleroMeter.y, imuPacket.acceleroMeter.z);
         data->gyro = Eigen::Vector3d(imuPacket.gyroscope.x, imuPacket.gyroscope.y, imuPacket.gyroscope.z);
         if(pimpl->imuDataQueue) pimpl->imuDataQueue->push(data);
@@ -197,6 +199,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     pimpl->calib = std::make_shared<basalt::Calibration<Scalar>>();
     pimpl->calib->imu_update_rate = imuUpdateRate;
 
+
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
 
     for(const auto& frame : frames) {
@@ -205,6 +208,10 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
         pimpl->calib->resolution.push_back(resolution);
         auto camID = static_cast<CameraBoardSocket>(frame->getInstanceNum());
         // imu extrinsics
+        auto platform = pipeline.getDefaultDevice()->getPlatform();
+        if(platform == dai::Platform::RVC4){
+            imuExtrinsics = std::make_shared<TransformData>(-0.0012263, 0.0019557, 0.0, 0.0, 0.0, 0.0);
+        }
         if(imuExtrinsics.has_value()) {
             Eigen::Vector3d trans(
                 imuExtrinsics.value()->getTranslation().x, imuExtrinsics.value()->getTranslation().y, imuExtrinsics.value()->getTranslation().z);
