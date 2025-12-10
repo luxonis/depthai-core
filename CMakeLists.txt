@@ -430,6 +430,7 @@ endif()
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     list(APPEND TARGET_CORE_SOURCES
         src/pipeline/node/DynamicCalibrationNode.cpp
+        src/pipeline/node/DynamicCalibrationWorker.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
         src/pipeline/datatype/DynamicCalibrationControl.cpp
     )

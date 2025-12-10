@@ -45,6 +45,7 @@
 
     #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         #include "depthai/properties/DynamicCalibrationProperties.hpp"
+        #include "depthai/properties/DynamicCalibrationWorkerProperties.hpp"
     #endif
 #endif
 
@@ -102,6 +103,7 @@ ToFDepthConfidenceFilterProperties::~ToFDepthConfidenceFilterProperties() = defa
 
     #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 DynamicCalibrationProperties::~DynamicCalibrationProperties() = default;
+DynamicCalibrationWorkerProperties::~DynamicCalibrationWorkerProperties() = default;
     #endif
 
 #endif

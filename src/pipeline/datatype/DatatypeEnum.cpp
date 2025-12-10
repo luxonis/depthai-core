@@ -51,6 +51,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::ObjectTrackerConfig,
          DatatypeEnum::DynamicCalibrationControl,
          DatatypeEnum::DynamicCalibrationResult,
+         DatatypeEnum::DynamicCalibrationWorkerConfig,
          DatatypeEnum::CoverageData,
          DatatypeEnum::CalibrationQuality,
 
@@ -96,6 +97,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::ObjectTrackerConfig,
          DatatypeEnum::DynamicCalibrationControl,
          DatatypeEnum::DynamicCalibrationResult,
+         DatatypeEnum::DynamicCalibrationWorkerConfig,
          DatatypeEnum::CoverageData,
          DatatypeEnum::CalibrationQuality,
      }},
@@ -138,6 +140,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::ObjectTrackerConfig, {}},
     {DatatypeEnum::DynamicCalibrationControl, {}},
     {DatatypeEnum::DynamicCalibrationResult, {}},
+    {DatatypeEnum::DynamicCalibrationWorkerConfig, {}},
     {DatatypeEnum::CoverageData, {}},
     {DatatypeEnum::CalibrationQuality, {}},
 };
