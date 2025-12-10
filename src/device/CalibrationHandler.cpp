@@ -458,6 +458,25 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
     auto housingTranslation     = eepromData.housingExtrinsics.translation;      // Point3f
     auto housingSpecTranslation = eepromData.housingExtrinsics.specTranslation;  // Point3f
 
+    // ------------------------------------------------------------
+    // If using spec translation, try to get it from the database
+    // ------------------------------------------------------------
+    if(useSpecTranslation) {
+        const auto& housingData = getHousingCoordinateSystems();
+        
+        if(!eepromData.productName.empty()) {
+            auto productIt = housingData.find(eepromData.productName);
+            if(productIt != housingData.end()) {
+                auto housingIt = productIt->second.find(static_cast<int32_t>(housingCS));
+                if(housingIt != productIt->second.end()) {
+                    // Get the translation from the database (in mm)
+                    const auto& dbTranslation = housingIt->second;
+                    housingSpecTranslation = Point3f(dbTranslation[0], dbTranslation[1], dbTranslation[2]);
+                }
+            }
+        }
+    }
+
     // Build 4x4 transform matrix
     std::vector<std::vector<float>> T(4, std::vector<float>(4, 0.0f));
 
