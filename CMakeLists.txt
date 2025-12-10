@@ -469,7 +469,6 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET)
     )
 endif()
 
-set(DEPTHAI_HAVE_HOUSING_COORDINATES ON)
 if(DEPTHAI_HAVE_HOUSING_COORDINATES)
     include(DepthaiGenerateHousingCoordinates)
     DepthaiGenerateHousingCoordinates(
@@ -479,7 +478,6 @@ if(DEPTHAI_HAVE_HOUSING_COORDINATES)
     list(APPEND TARGET_CORE_SOURCES
         ${CMAKE_CURRENT_BINARY_DIR}/src/HousingCoordinates.cpp
     )
-    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_HOUSING_COORDINATES)
 endif()
 
 
@@ -491,6 +489,10 @@ target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
+
+if(DEPTHAI_HAVE_HOUSING_COORDINATES)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_HOUSING_COORDINATES)
+endif()
 
 if(DEPTHAI_BUILD_ZOO_HELPER)
     # Add model_zoo helper binary

@@ -462,12 +462,12 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
     // If using spec translation, try to get it from the database
     // ------------------------------------------------------------
     if(useSpecTranslation) {
-        const auto& housingData = getHousingCoordinateSystems();
+        const auto& housingData = getHousingCoordinates();
         
         if(!eepromData.productName.empty()) {
             auto productIt = housingData.find(eepromData.productName);
             if(productIt != housingData.end()) {
-                auto housingIt = productIt->second.find(static_cast<int32_t>(housingCS));
+                auto housingIt = productIt->second.find(housingCS);
                 if(housingIt != productIt->second.end()) {
                     // Get the translation from the database (in mm)
                     const auto& dbTranslation = housingIt->second;
