@@ -20,11 +20,17 @@ bool DynamicCalibrationWorker::isNewCalibrationOK(std::shared_ptr<dai::DynamicCa
         return false;
     }
     // TODO IMPLEMENT THE LOGIC
+    // validate on a subsets? here or in DCL?
+    // check Sampson error ?
+    // check fillrate ?
     return true;
 }
 
+// Check the current calibration
 bool DynamicCalibrationWorker::checkCalibration() {
     // TODO IMPLEMENT THE LOGIC
+    // Sampson error OK?
+    // Fillrate OK?
     return false;
 }
 
@@ -49,6 +55,7 @@ void DynamicCalibrationWorker::runContinuousMode() {
         if(!isCalibrationOK) {
             updateCalibration();
         }
+        // trigger also by a low fillrate?
         std::this_thread::sleep_for(std::chrono::seconds(properties.sleepingTime));
     }
 }
@@ -67,6 +74,7 @@ void DynamicCalibrationWorker::run() {
             break;
         case DynamicCalibrationWorkerProperties::Mode::ON_START:
             runOnStartMode();
+            // properly destroy the Node ??
             break;
     }
 }
