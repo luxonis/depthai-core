@@ -28,10 +28,6 @@ void Vpp::buildInternal() {
             throw std::runtime_error("Vpp node is supported only on RVC4 devices.");
         }
     }
-    left = &sync->inputs[leftInputName];
-    right = &sync->inputs[rightInputName];
-    disparity = &sync->inputs[disparityName];
-    confidence = &sync->inputs[confidenceName];
     sync->out.link(syncedInputs);
 }
 

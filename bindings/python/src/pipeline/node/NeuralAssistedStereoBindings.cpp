@@ -71,10 +71,24 @@ void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack) {
             [](const NeuralAssistedStereo& n) { return &n.neuralDepth->confidence; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralAssistedStereo, neuralConfidence))
-        .def_readonly("inputVppConfig", &NeuralAssistedStereo::inputVppConfig, DOC(dai, node, NeuralAssistedStereo, inputVppConfig))
-        .def_readonly("inputStereoConfig", &NeuralAssistedStereo::inputStereoConfig, DOC(dai, node, NeuralAssistedStereo, inputStereoConfig))
+        .def_property_readonly(
+            "inputVppConfig",
+            [](const NeuralAssistedStereo& n) { return &n.inputVppConfig; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralAssistedStereo, inputVppConfig))
+        .def_property_readonly(
+            "inputStereoConfig",
+            [](const NeuralAssistedStereo& n) { return &n.inputStereoConfig; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralAssistedStereo, inputStereoConfig))
+        .def_property_readonly(
+            "inputNeuralConfig",
+            [](const NeuralAssistedStereo& n) { return &n.inputNeuralConfig; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, NeuralAssistedStereo, inputNeuralConfig))
         .def_readonly("vppConfig", &NeuralAssistedStereo::vppConfig, DOC(dai, node, NeuralAssistedStereo, vppConfig))
         .def_readonly("stereoConfig", &NeuralAssistedStereo::stereoConfig, DOC(dai, node, NeuralAssistedStereo, stereoConfig))
+        .def_readonly("neuralConfig", &NeuralAssistedStereo::neuralConfig, DOC(dai, node, NeuralAssistedStereo, neuralConfig))
         .def_property_readonly("depth", [](NeuralAssistedStereo& self) -> Node::Output& { return self.depth; }, DOC(dai, node, NeuralAssistedStereo, depth))
         .def_property_readonly("disparity", [](NeuralAssistedStereo& self) -> Node::Output& { return self.disparity; }, DOC(dai, node, NeuralAssistedStereo, disparity))
         .def("build",
@@ -83,15 +97,6 @@ void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack) {
              py::arg("rightInput"),
              py::arg("neuralModel") = DeviceModelZoo::NEURAL_DEPTH_NANO,
              DOC(dai, node, NeuralAssistedStereo, build))
-        .def("setStereoRectification",
-             &NeuralAssistedStereo::setStereoRectification,
-             py::arg("enable"),
-             DOC(dai, node, NeuralAssistedStereo, setStereoRectification))
-        .def("setExtendedDisparity",
-             &NeuralAssistedStereo::setExtendedDisparity,
-             py::arg("enable"),
-             DOC(dai, node, NeuralAssistedStereo, setExtendedDisparity))
-        .def("setSubpixel", &NeuralAssistedStereo::setSubpixel, py::arg("enable"), DOC(dai, node, NeuralAssistedStereo, setSubpixel))
         .def_property_readonly(
             "rectification",
             [](NeuralAssistedStereo& n) { return &(*n.rectification); },

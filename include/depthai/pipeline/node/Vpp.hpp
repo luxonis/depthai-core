@@ -45,11 +45,6 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     const std::string disparityName = "disparity";
     const std::string confidenceName = "confidence";
 
-    Input* left;
-    Input* right;
-    Input* disparity;
-    Input* confidence;
-
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::VppConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**

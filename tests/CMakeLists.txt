@@ -459,6 +459,10 @@ dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
 dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
 dai_set_test_labels(vpp_test ondevice rvc4 ci)
 
+# NeuralAssistedStereo node tests
+dai_add_test(neural_assisted_stereo_test src/ondevice_tests/neural_assisted_stereo_test.cpp)
+dai_set_test_labels(neural_assisted_stereo_test ondevice rvc4 ci)
+
 # Dynamic calibration tests
 dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
 dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)

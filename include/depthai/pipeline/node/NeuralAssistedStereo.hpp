@@ -34,13 +34,18 @@ namespace node {
 class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedStereo, NeuralAssistedStereoProperties> {
    public:
     constexpr static const char* NAME = "NeuralAssistedStereo";
+    
+    NeuralAssistedStereo() = default;
+    NeuralAssistedStereo(std::unique_ptr<Properties> props); 
+    
+
 
    protected:
     Properties& getProperties() override;
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    NeuralAssistedStereo() = default;
-    NeuralAssistedStereo(std::unique_ptr<Properties> props);
+    template <typename T>
+    friend class Subnode;
 
    public:
     /**
@@ -53,6 +58,14 @@ class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedSte
     std::shared_ptr<NeuralAssistedStereo> build(Output& left, Output& right, DeviceModelZoo neuralModel = DeviceModelZoo::NEURAL_DEPTH_NANO);
 
     /**
+     * Subnodes that compose this pipeline
+     */
+    Subnode<Rectification> rectification{*this, "rectification"};
+    Subnode<NeuralDepth> neuralDepth{*this, "neuralDepth"};
+    Subnode<Vpp> vpp{*this, "vpp"};
+    Subnode<StereoDepth> stereoDepth{*this, "stereoDepth"};
+
+    /**
      * Configure the VPP (Virtual Projection Pattern) parameters
      */
     std::shared_ptr<VppConfig> vppConfig = std::make_shared<VppConfig>();
@@ -63,12 +76,9 @@ class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedSte
     std::shared_ptr<StereoDepthConfig> stereoConfig = std::make_shared<StereoDepthConfig>();
 
     /**
-     * Subnodes that compose this pipeline
+     * Configure the NeuralDepth parameters
      */
-    Subnode<Rectification> rectification{*this, "rectification"};
-    Subnode<NeuralDepth> neuralDepth{*this, "neuralDepth"};
-    Subnode<Vpp> vpp{*this, "vpp"};
-    Subnode<StereoDepth> stereoDepth{*this, "stereoDepth"};
+    std::shared_ptr<NeuralDepthConfig> neuralConfig = std::make_shared<NeuralDepthConfig>();
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /**
@@ -113,14 +123,19 @@ class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedSte
 #endif
 
     /**
-     * Input config for VPP parameters
+     * VPP configuration input
      */
-    Input inputVppConfig{*this, {"inputVppConfig", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::VppConfig, false}}}}};
-
+    Input& inputVppConfig{vpp->inputConfig};
+    
     /**
-     * Input config for StereoDepth parameters
+     * StereoDepth configuration input
      */
-    Input inputStereoConfig{*this, {"inputStereoConfig", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::StereoDepthConfig, false}}}}};
+    Input& inputStereoConfig{stereoDepth->inputConfig};
+    
+    /**
+     * NeuralDepth configuration input
+     */
+    Input& inputNeuralConfig{neuralDepth->inputConfig};
 
     /**
      * Final depth output from StereoDepth
@@ -132,21 +147,7 @@ class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedSte
      */
     Output& disparity{stereoDepth->disparity};
 
-    /**
-     * Configure stereo depth to disable rectification (since we handle it internally)
-     */
-    NeuralAssistedStereo& setStereoRectification(bool enable);
-
-    /**
-     * Configure extended disparity mode
-     */
-    NeuralAssistedStereo& setExtendedDisparity(bool enable);
-
-    /**
-     * Configure subpixel mode
-     */
-    NeuralAssistedStereo& setSubpixel(bool enable);
-
+ 
     void buildInternal() override;
 };
 
