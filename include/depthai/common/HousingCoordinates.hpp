@@ -15,7 +15,7 @@ const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateS
 
 #else
 
-const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateSystem, std::array<float, 3>>> getHousingCoordinates() {
+static inline const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateSystem, std::array<float, 3>>> getHousingCoordinates() {
   return {};
 }
 
