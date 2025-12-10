@@ -180,6 +180,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/node/DynamicCalibrationBindings.cpp
         src/pipeline/datatype/DynamicCalibrationResultsBindings.cpp
         src/pipeline/datatype/DynamicCalibrationControlBindings.cpp
+        src/pipeline/node/DynamicCalibrationWorkerBindings.cpp
     )
 endif()
 
