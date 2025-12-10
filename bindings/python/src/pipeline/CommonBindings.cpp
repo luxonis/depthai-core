@@ -22,6 +22,7 @@
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/FrameEvent.hpp"
+#include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Interpolation.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/common/MemoryInfo.hpp"
@@ -56,6 +57,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Quaterniond> quaterniond(m, "Quaterniond", DOC(dai, Quaterniond));
     py::class_<Size2f> size2f(m, "Size2f", DOC(dai, Size2f));
     py::enum_<CameraBoardSocket> cameraBoardSocket(m, "CameraBoardSocket", DOC(dai, CameraBoardSocket));
+    py::enum_<HousingCoordinateSystem> housingCoordinateSystem(m, "HousingCoordinateSystem", DOC(dai, HousingCoordinateSystem));
     py::enum_<ConnectionInterface> connectionInterface(m, "connectionInterface", DOC(dai, ConnectionInterface));
     py::enum_<CameraSensorType> cameraSensorType(m, "CameraSensorType", DOC(dai, CameraSensorType));
     py::enum_<CameraImageOrientation> cameraImageOrientation(m, "CameraImageOrientation", DOC(dai, CameraImageOrientation));
@@ -284,6 +286,60 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
             return CameraBoardSocket::CAM_C;
         });
     HEDLEY_DIAGNOSTIC_POP
+
+    // HousingCoordinateSystem enum bindings
+    housingCoordinateSystem.value("FRONT_CAM_A", HousingCoordinateSystem::FRONT_CAM_A)
+        .value("FRONT_CAM_B", HousingCoordinateSystem::FRONT_CAM_B)
+        .value("FRONT_CAM_C", HousingCoordinateSystem::FRONT_CAM_C)
+        .value("FRONT_CAM_D", HousingCoordinateSystem::FRONT_CAM_D)
+        .value("FRONT_CAM_E", HousingCoordinateSystem::FRONT_CAM_E)
+        .value("FRONT_CAM_F", HousingCoordinateSystem::FRONT_CAM_F)
+        .value("FRONT_CAM_G", HousingCoordinateSystem::FRONT_CAM_G)
+        .value("FRONT_CAM_H", HousingCoordinateSystem::FRONT_CAM_H)
+        .value("FRONT_CAM_I", HousingCoordinateSystem::FRONT_CAM_I)
+        .value("FRONT_CAM_J", HousingCoordinateSystem::FRONT_CAM_J)
+        .value("FRONT_CAM_K", HousingCoordinateSystem::FRONT_CAM_K)
+        .value("FRONT_CAM_L", HousingCoordinateSystem::FRONT_CAM_L)
+        .value("FRONT_CAM_M", HousingCoordinateSystem::FRONT_CAM_M)
+        .value("FRONT_CAM_N", HousingCoordinateSystem::FRONT_CAM_N)
+        .value("FRONT_CAM_O", HousingCoordinateSystem::FRONT_CAM_O)
+        .value("FRONT_CAM_P", HousingCoordinateSystem::FRONT_CAM_P)
+        .value("FRONT_CAM_Q", HousingCoordinateSystem::FRONT_CAM_Q)
+        .value("FRONT_CAM_R", HousingCoordinateSystem::FRONT_CAM_R)
+        .value("FRONT_CAM_S", HousingCoordinateSystem::FRONT_CAM_S)
+        .value("FRONT_CAM_T", HousingCoordinateSystem::FRONT_CAM_T)
+        .value("FRONT_CAM_U", HousingCoordinateSystem::FRONT_CAM_U)
+        .value("FRONT_CAM_V", HousingCoordinateSystem::FRONT_CAM_V)
+        .value("FRONT_CAM_W", HousingCoordinateSystem::FRONT_CAM_W)
+        .value("FRONT_CAM_X", HousingCoordinateSystem::FRONT_CAM_X)
+        .value("FRONT_CAM_Y", HousingCoordinateSystem::FRONT_CAM_Y)
+        .value("FRONT_CAM_Z", HousingCoordinateSystem::FRONT_CAM_Z)
+        .value("VESA_A", HousingCoordinateSystem::VESA_A)
+        .value("VESA_B", HousingCoordinateSystem::VESA_B)
+        .value("VESA_C", HousingCoordinateSystem::VESA_C)
+        .value("VESA_D", HousingCoordinateSystem::VESA_D)
+        .value("VESA_E", HousingCoordinateSystem::VESA_E)
+        .value("VESA_F", HousingCoordinateSystem::VESA_F)
+        .value("VESA_G", HousingCoordinateSystem::VESA_G)
+        .value("VESA_H", HousingCoordinateSystem::VESA_H)
+        .value("VESA_I", HousingCoordinateSystem::VESA_I)
+        .value("VESA_J", HousingCoordinateSystem::VESA_J)
+        .value("VESA_K", HousingCoordinateSystem::VESA_K)
+        .value("VESA_L", HousingCoordinateSystem::VESA_L)
+        .value("VESA_M", HousingCoordinateSystem::VESA_M)
+        .value("VESA_N", HousingCoordinateSystem::VESA_N)
+        .value("VESA_O", HousingCoordinateSystem::VESA_O)
+        .value("VESA_P", HousingCoordinateSystem::VESA_P)
+        .value("VESA_Q", HousingCoordinateSystem::VESA_Q)
+        .value("VESA_R", HousingCoordinateSystem::VESA_R)
+        .value("VESA_S", HousingCoordinateSystem::VESA_S)
+        .value("VESA_T", HousingCoordinateSystem::VESA_T)
+        .value("VESA_U", HousingCoordinateSystem::VESA_U)
+        .value("VESA_V", HousingCoordinateSystem::VESA_V)
+        .value("VESA_W", HousingCoordinateSystem::VESA_W)
+        .value("VESA_X", HousingCoordinateSystem::VESA_X)
+        .value("VESA_Y", HousingCoordinateSystem::VESA_Y)
+        .value("VESA_Z", HousingCoordinateSystem::VESA_Z);
 
     // CameraSensorType enum bindings
     cameraSensorType.value("COLOR", CameraSensorType::COLOR)

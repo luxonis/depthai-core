@@ -406,7 +406,7 @@ void RGBD::run() {
 
             auto calibHandler = getParentPipeline().getCalibrationData();
             auto rgbCameraSocket = CameraBoardSocket::CAM_A;
-            auto T_rgb_to_housing = calibHandler.getHousingCalibration(rgbCameraSocket, dai::HousingCoordinateSystem::VESA_RIGHT, true);
+            auto T_rgb_to_housing = calibHandler.getHousingCalibration(rgbCameraSocket, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
 
             float R_rgb_to_housing[3][3];
 

@@ -796,7 +796,7 @@ TEST_CASE("getHousingCalibration - T_CAM_C_to_housing with specTranslation", "[g
 
     auto camToHousing = handler.getHousingCalibration(
         CameraBoardSocket::CAM_C,
-        dai::HousingCoordinateSystem::VESA_RIGHT,
+        dai::HousingCoordinateSystem::FRONT_CAM_A,
         true
     );
 
@@ -828,7 +828,7 @@ TEST_CASE("getHousingCalibration - T_CAM_C_to_housing with regular translation",
 
     auto camToHousing = handler.getHousingCalibration(
         CameraBoardSocket::CAM_C,
-        dai::HousingCoordinateSystem::VESA_RIGHT,
+        dai::HousingCoordinateSystem::FRONT_CAM_A,
         false
     );
 
@@ -860,7 +860,7 @@ TEST_CASE("getHousingCalibration - T_CAM_B_to_housing with specTranslation", "[g
 
     auto camToHousing = handler.getHousingCalibration(
         CameraBoardSocket::CAM_B,
-        dai::HousingCoordinateSystem::VESA_RIGHT,
+        dai::HousingCoordinateSystem::FRONT_CAM_A,
         true
     );
 
@@ -902,7 +902,7 @@ TEST_CASE("getHousingCalibration - T_CAM_B_to_housing with regular translation",
 
     auto camToHousing = handler.getHousingCalibration(
         CameraBoardSocket::CAM_B,
-        dai::HousingCoordinateSystem::VESA_RIGHT,
+        dai::HousingCoordinateSystem::FRONT_CAM_A,
         false
     );
 
@@ -944,7 +944,7 @@ TEST_CASE("getHousingCalibration - T_CAM_A_to_housing with specTranslation", "[g
 
     auto camToHousing = handler.getHousingCalibration(
         CameraBoardSocket::CAM_A,
-        dai::HousingCoordinateSystem::VESA_RIGHT,
+        dai::HousingCoordinateSystem::FRONT_CAM_A,
         true
     );
 
@@ -989,7 +989,7 @@ TEST_CASE("getHousingCalibration - T_CAM_A_to_housing with regular translation",
 
     auto camToHousing = handler.getHousingCalibration(
         CameraBoardSocket::CAM_A,
-        dai::HousingCoordinateSystem::VESA_RIGHT,
+        dai::HousingCoordinateSystem::FRONT_CAM_A,
         false
     );
 

@@ -5,6 +5,7 @@
 #include <tuple>
 
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Size2f.hpp"
@@ -29,14 +30,6 @@ namespace dai {
  *  - boardOptions
  *  - productName
  */
-
- enum class HousingCoordinateSystem : int32_t {
-    FRONT_COVER_LEFT,
-    FRONT_COVER_RIGHT,
-    FRONT_COVER_RGB,
-    OPTICAL_PLANE,
-    VESA_RIGHT
-};
 
 class CalibrationHandler {
    public:
