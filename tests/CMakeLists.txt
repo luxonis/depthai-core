@@ -638,6 +638,10 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
 dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci)
 
+# Fsync Multi-device test
+dai_add_test(fsync_multi_device_test src/onhost_tests/pipeline/fsync_multi_device.cpp)
+dai_set_test_labels(fsync_multi_device_test ondevice rvc4fsync ci)
+
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
 # Only test on RVC4, as RVC2 is not yet supported to auto-increase the max stream capacity

@@ -89,3 +89,19 @@ jobs:
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
           exec hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb"
+
+ linux_rvc4_fsync_test:
+      needs: [build_docker_container]
+      strategy:
+        matrix:
+          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
+        fail-fast: false
+      runs-on: ['self-hosted', 'testbed-runner']
+      steps:
+      - uses: actions/checkout@v3
+
+      - name: Run RVC4 Fsync tests
+        run: |
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
+          exec hil_runner --platforms=rvc4 --scope fsync --basic-sanity --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh fsync"
