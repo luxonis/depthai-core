@@ -1,4 +1,3 @@
-// filepath: /home/tomas/code/depthai-device-kb/external/depthai-core/include/depthai/common/Housings.hpp
 #pragma once
 
 #include <array>

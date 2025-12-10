@@ -57,6 +57,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Quaterniond> quaterniond(m, "Quaterniond", DOC(dai, Quaterniond));
     py::class_<Size2f> size2f(m, "Size2f", DOC(dai, Size2f));
     py::enum_<CameraBoardSocket> cameraBoardSocket(m, "CameraBoardSocket", DOC(dai, CameraBoardSocket));
+    py::enum_<HousingCoordinateSystem> housingCoordinateSystem(m, "HousingCoordinateSystem", DOC(dai, HousingCoordinateSystem));
     py::enum_<ConnectionInterface> connectionInterface(m, "connectionInterface", DOC(dai, ConnectionInterface));
     py::enum_<CameraSensorType> cameraSensorType(m, "CameraSensorType", DOC(dai, CameraSensorType));
     py::enum_<CameraImageOrientation> cameraImageOrientation(m, "CameraImageOrientation", DOC(dai, CameraImageOrientation));
@@ -96,7 +97,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<DeviceModelZoo> deviceModelZoo(m, "DeviceModelZoo", DOC(dai, DeviceModelZoo));
     py::class_<Keypoint> keypoint(m, "Keypoint", DOC(dai, Keypoint));
     py::class_<KeypointsList> keypointsList(m, "KeypointsList", DOC(dai, KeypointsList));
-    py::enum_<HousingCoordinateSystem> housingCoordinateSystem(m, "HousingCoordinateSystem", DOC(dai, HousingCoordinateSystem));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
