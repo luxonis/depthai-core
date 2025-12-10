@@ -469,6 +469,20 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET)
     )
 endif()
 
+set(DEPTHAI_HAVE_HOUSING_COORDINATES ON)
+if(DEPTHAI_HAVE_HOUSING_COORDINATES)
+    include(DepthaiGenerateHousingCoordinates)
+    DepthaiGenerateHousingCoordinates(
+        ${CMAKE_CURRENT_BINARY_DIR}/src/HousingCoordinates.cpp        # Output file
+        ${CMAKE_CURRENT_LIST_DIR}/shared/depthai_boards/batch/housing # Housing json directory
+    )
+    list(APPEND TARGET_CORE_SOURCES
+        ${CMAKE_CURRENT_BINARY_DIR}/src/HousingCoordinates.cpp
+    )
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_HOUSING_COORDINATES)
+endif()
+
+
 add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
