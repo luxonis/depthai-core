@@ -5,6 +5,9 @@
 
 #include "depthai/depthai.hpp"
 
+constexpr float NEURAL_FPS = 8.0f;
+constexpr float STEREO_DEFAULT_FPS = 30.0f;
+
 // Signal handling for clean shutdown
 static bool isRunning = true;
 void signalHandler(int signum) {
@@ -51,12 +54,16 @@ int main(int argc, char** argv) {
         // Create pipeline
         dai::Pipeline pipeline;
 
-        constexpr float FPS = 30.0f;
+        float fps = STEREO_DEFAULT_FPS;
+        if(depthSourceArg == "neural") {
+            fps = NEURAL_FPS;
+        }
+
         const std::pair<int, int> size = std::make_pair(640, 400);
 
         // Create color camera
         auto color = pipeline.create<dai::node::Camera>();
-        color->build();
+        color->build(dai::CameraBoardSocket::AUTO, std::nullopt, fps);
 
         // Create depth source based on argument
         dai::node::DepthSource depthSource;
@@ -66,8 +73,8 @@ int main(int argc, char** argv) {
             auto right = pipeline.create<dai::node::Camera>();
             auto stereo = pipeline.create<dai::node::StereoDepth>();
 
-            left->build(dai::CameraBoardSocket::CAM_B);
-            right->build(dai::CameraBoardSocket::CAM_C);
+            left->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
+            right->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
 
             stereo->setSubpixel(true);
             stereo->setExtendedDisparity(false);
@@ -77,16 +84,16 @@ int main(int argc, char** argv) {
             stereo->enableDistortionCorrection(true);
             stereo->initialConfig->setLeftRightCheckThreshold(10);
 
-            left->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP, FPS)->link(stereo->left);
-            right->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP, FPS)->link(stereo->right);
+            left->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->left);
+            right->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->right);
 
             depthSource = stereo;
         } else if(depthSourceArg == "neural") {
             auto left = pipeline.create<dai::node::Camera>();
             auto right = pipeline.create<dai::node::Camera>();
 
-            left->build(dai::CameraBoardSocket::CAM_B);
-            right->build(dai::CameraBoardSocket::CAM_C);
+            left->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
+            right->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
 
             auto neuralDepth = pipeline.create<dai::node::NeuralDepth>();
             neuralDepth->build(*left->requestFullResolutionOutput(), *right->requestFullResolutionOutput(), dai::DeviceModelZoo::NEURAL_DEPTH_LARGE);
@@ -99,7 +106,7 @@ int main(int argc, char** argv) {
 
         // Create RGBD node using the unified build method with DepthSource variant
         auto rgbd = pipeline.create<dai::node::RGBD>();
-        rgbd->build(color, depthSource, size, FPS);
+        rgbd->build(color, depthSource, size, fps);
 
         remoteConnector.addTopic("pcl", rgbd->pcl);
         pipeline.start();

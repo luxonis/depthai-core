@@ -6,6 +6,9 @@ import cv2
 import depthai as dai
 import numpy as np
 
+NEURAL_FPS = 8
+STEREO_DEFAULT_FPS = 30
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--depthSource", type=str, default="stereo", choices=["stereo", "neural"]
@@ -13,9 +16,12 @@ parser.add_argument(
 args = parser.parse_args()
 
 modelDescription = dai.NNModelDescription("yolov6-nano")
-FPS = 30
 size = (640, 400)
 
+if args.depthSource == "stereo":
+    fps = STEREO_DEFAULT_FPS
+else:
+    fps = NEURAL_FPS
 
 class SpatialVisualizer(dai.node.HostNode):
     def __init__(self):
@@ -78,16 +84,16 @@ with dai.Pipeline() as p:
     # Define sources and outputs
     platform = p.getDefaultDevice().getPlatform()
 
-    camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+    camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A, sensorFps=fps)
+    monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+    monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     if args.depthSource == "stereo":
         depthSource = p.create(dai.node.StereoDepth)
         depthSource.setExtendedDisparity(True)
         if platform == dai.Platform.RVC2:
             depthSource.setOutputSize(640, 400)
-        monoLeft.requestOutput(size, fps=FPS).link(depthSource.left)
-        monoRight.requestOutput(size, fps=FPS).link(depthSource.right)
+        monoLeft.requestOutput(size).link(depthSource.left)
+        monoRight.requestOutput(size).link(depthSource.right)
     elif args.depthSource == "neural":
         depthSource = p.create(dai.node.NeuralDepth).build(
             monoLeft.requestFullResolutionOutput(),
@@ -98,7 +104,7 @@ with dai.Pipeline() as p:
         raise ValueError(f"Invalid depth source: {args.depthSource}")
 
     spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
-        camRgb, depthSource, modelDescription, fps=FPS
+        camRgb, depthSource, modelDescription
     )
     visualizer = p.create(SpatialVisualizer)
 

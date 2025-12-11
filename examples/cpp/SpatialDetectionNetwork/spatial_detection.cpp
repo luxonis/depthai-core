@@ -6,6 +6,9 @@
 
 #include "depthai/depthai.hpp"
 
+constexpr float NEURAL_FPS = 8.0f;
+constexpr float STEREO_DEFAULT_FPS = 30.0f;
+
 // Custom host node for spatial visualization
 class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisualizer> {
    public:
@@ -151,15 +154,19 @@ int main(int argc, char** argv) {
     }
 
     try {
+        float fps = STEREO_DEFAULT_FPS;
+        if(depthSourceArg == "neural") {
+            fps = NEURAL_FPS;
+        }
+
         // Create pipeline
         dai::Pipeline pipeline;
 
-        constexpr float FPS = 30.0f;
         const std::pair<int, int> size = {640, 400};
 
         // Define sources and outputs
         auto camRgb = pipeline.create<dai::node::Camera>();
-        camRgb->build(dai::CameraBoardSocket::CAM_A);
+        camRgb->build(dai::CameraBoardSocket::CAM_A, std::nullopt, fps);
 
         auto platform = pipeline.getDefaultDevice()->getPlatform();
 
@@ -171,24 +178,24 @@ int main(int argc, char** argv) {
             auto monoRight = pipeline.create<dai::node::Camera>();
             auto stereo = pipeline.create<dai::node::StereoDepth>();
 
-            monoLeft->build(dai::CameraBoardSocket::CAM_B);
-            monoRight->build(dai::CameraBoardSocket::CAM_C);
+            monoLeft->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
+            monoRight->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
 
             stereo->setExtendedDisparity(true);
             if(platform == dai::Platform::RVC2) {
                 stereo->setOutputSize(640, 400);
             }
 
-            monoLeft->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP, FPS)->link(stereo->left);
-            monoRight->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP, FPS)->link(stereo->right);
+            monoLeft->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->left);
+            monoRight->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->right);
 
             depthSource = stereo;
         } else if(depthSourceArg == "neural") {
             auto monoLeft = pipeline.create<dai::node::Camera>();
             auto monoRight = pipeline.create<dai::node::Camera>();
 
-            monoLeft->build(dai::CameraBoardSocket::CAM_B);
-            monoRight->build(dai::CameraBoardSocket::CAM_C);
+            monoLeft->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
+            monoRight->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
 
             auto neuralDepth = pipeline.create<dai::node::NeuralDepth>();
             neuralDepth->build(*monoLeft->requestFullResolutionOutput(), *monoRight->requestFullResolutionOutput(), dai::DeviceModelZoo::NEURAL_DEPTH_LARGE);
@@ -212,7 +219,7 @@ int main(int argc, char** argv) {
         // Set up model and build with DepthSource variant
         dai::NNModelDescription modelDesc;
         modelDesc.model = "yolov6-nano";
-        spatialDetectionNetwork->build(camRgb, depthSource, modelDesc, FPS);
+        spatialDetectionNetwork->build(camRgb, depthSource, modelDesc);
 
         // Set label map
         visualizer->labelMap = spatialDetectionNetwork->getClasses().value();

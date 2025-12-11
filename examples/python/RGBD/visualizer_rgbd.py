@@ -3,6 +3,10 @@ import depthai as dai
 
 from argparse import ArgumentParser
 
+NEURAL_FPS = 8
+STEREO_DEFAULT_FPS = 30
+TOF_DEFAULT_FPS = 30
+
 parser = ArgumentParser()
 parser.add_argument("--webSocketPort", type=int, default=8765)
 parser.add_argument("--httpPort", type=int, default=8082)
@@ -15,7 +19,12 @@ with dai.Pipeline() as p:
     )
 
     size = (640, 400)
-    fps = 10
+    if args.depthSource == "neural":
+        fps = NEURAL_FPS
+    elif args.depthSource == "tof":
+        fps = TOF_DEFAULT_FPS
+    else:
+        fps = STEREO_DEFAULT_FPS
 
     if args.depthSource == "stereo":
         color = p.create(dai.node.Camera).build(sensorFps=fps)
@@ -25,12 +34,12 @@ with dai.Pipeline() as p:
         depthSource.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
         depthSource.setRectifyEdgeFillColor(0)
         depthSource.enableDistortionCorrection(True)
-        left.requestOutput(size, fps=fps).link(depthSource.left)
-        right.requestOutput(size, fps=fps).link(depthSource.right)
+        left.requestOutput(size).link(depthSource.left)
+        right.requestOutput(size).link(depthSource.right)
     elif args.depthSource == "neural":
         color = p.create(dai.node.Camera).build(sensorFps=fps)
-        left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-        right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+        left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+        right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
         depthSource = p.create(dai.node.NeuralDepth).build(left.requestOutput(size), right.requestOutput(size), dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
     elif args.depthSource == "tof":
         color = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
