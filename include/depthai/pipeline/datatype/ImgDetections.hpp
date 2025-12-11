@@ -173,6 +173,8 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
      */
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
+
+    #ifndef DEPTHAI_MESSAGES_RVC2
     DEPTHAI_SERIALIZE(ImgDetections,
                       Base::Buffer::sequenceNum,
                       Base::Buffer::ts,
@@ -181,8 +183,17 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
                       transformation,
                       segmentationMaskWidth,
                       segmentationMaskHeight,
-                      Base::Buffer::tsSystem,
-                      Base::Buffer::hasTsSystem);
+                      Base::Buffer::tsSystem);
+    #else
+    DEPTHAI_SERIALIZE(ImgDetections,
+                      Base::Buffer::sequenceNum,
+                      Base::Buffer::ts,
+                      Base::Buffer::tsDevice,
+                      detections,
+                      transformation,
+                      segmentationMaskWidth,
+                      segmentationMaskHeight);
+    #endif
 };
 
 }  // namespace dai

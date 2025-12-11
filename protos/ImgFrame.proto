@@ -16,8 +16,7 @@ message ImgFrame {
     common.ImgTransformation transformation = 9;
     uint32 category = 10;
     bytes data = 11;
-    common.Timestamp tsSystem = 12;
-    bool hasTsSystem = 13;
+    optional common.Timestamp tsSystem = 12;
 }
 
 message Specs {
