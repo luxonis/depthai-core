@@ -358,7 +358,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
     if(!metadataOnly) {
         std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
         if(segMaskData) {
-            spatialImgDetections->set_data((*segMaskData).data(), (*segMaskData).size());
+            spatialImgDetections->set_maskdata((*segMaskData).data(), (*segMaskData).size());
         }
     }
     return spatialImgDetections;
@@ -495,7 +495,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
     if(!metadataOnly) {
         std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
         if(segMaskData) {
-            imgDetections->set_data((*segMaskData).data(), (*segMaskData).size());
+            imgDetections->set_maskdata((*segMaskData).data(), (*segMaskData).size());
         }
     }
     return imgDetections;

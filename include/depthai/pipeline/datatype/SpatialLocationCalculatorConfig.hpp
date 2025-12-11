@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai/common/Point3f.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {

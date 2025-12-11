@@ -2,11 +2,10 @@
 #include <spdlog/async_logger.h>
 
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
+#include <depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp>
 #include <depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp>
 
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
-#include "depthai/pipeline/node/SpatialLocationCalculator.hpp"
-#include "depthai/properties/SpatialLocationCalculatorProperties.hpp"
 
 namespace dai {
 namespace utilities {

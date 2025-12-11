@@ -16,9 +16,6 @@ void SpatialLocationCalculator::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-/**
- * Check if the node is set to run on host
- */
 bool SpatialLocationCalculator::runOnHost() const {
     return runOnHostVar;
 }

@@ -3,7 +3,10 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <opencv2/opencv.hpp>
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/opencv.hpp>
+#endif
 #include <optional>
 #include <stdexcept>
 #include <vector>
@@ -99,7 +102,7 @@ float calculateDepth(
     return z;
 }
 
-dai::Point3f calculateSpatialCoordinates(float z, std::array<std::array<float, 3>, 3> intrinsicMatrix, dai::Point2f center) {
+dai::Point3f calculateSpatialCoordinates(float z, const std::array<std::array<float, 3>, 3>& intrinsicMatrix, dai::Point2f center) {
     float fx = intrinsicMatrix[0][0];
     float fy = intrinsicMatrix[1][1];
     float cx = intrinsicMatrix[0][2];
@@ -115,21 +118,20 @@ void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
                         const std::vector<dai::SpatialLocationCalculatorConfigData>& configDataVec,
                         std::vector<dai::SpatialLocations>& spatialLocations,
                         std::shared_ptr<spdlog::async_logger> logger) {
-    logger->info("Compute spatial data!");
-    if(configDataVec.size() == 0) {
-        logger->info("Empty config vector!");
+    logger->debug("Compute spatial data!");
+    if(configDataVec.empty()) {
+        logger->debug("Empty config vector!");
         return;
     }
 
     if(!depthFrame->transformation.isValid()) {
-        logger->error("DepthFrame has invalid Image Transformations. Cannot get intrinsic matrix, skipping computation of spatial coordinates.");
-        return;
+        throw std::runtime_error("DepthFrame has invalid Image Transformations. Cannot get intrinsic matrix.");
     }
 
     spatialLocations.resize(configDataVec.size());
     std::int32_t depthWidth = depthFrame->getWidth();
     std::int32_t depthHeight = depthFrame->getHeight();
-    for(int i = 0; i < static_cast<int>(configDataVec.size()); i++) {
+    for(size_t i = 0; i < configDataVec.size(); i++) {
         const auto& cfg = configDataVec[i];
         const auto& roi = cfg.roi;
         float maxWidthSize = 1;
@@ -267,27 +269,47 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
     }
     const int32_t keypointRadius = config->globalKeypointRadius;
     const bool calculateSpatialKeypoints = config->calculateSpatialKeypoints;
+    logger->info("Calculating spatial keypoints is set to {}", calculateSpatialKeypoints ? "true" : "false");
     const bool useSegmentation = config->useSegmentation && optMaskData.has_value();
 
     std::int32_t depthWidth = depthFrame->getWidth();
     std::int32_t depthHeight = depthFrame->getHeight();
-    uint8_t* maskPtr = nullptr;
+    const std::size_t depthSize = static_cast<std::size_t>(depthWidth) * depthHeight;
+    static thread_local std::vector<uint8_t> maskData;  // reusable buffer for segmentation mask
+    const uint8_t* maskPtr = nullptr;
+
     if(useSegmentation) {
         logger->debug("Using segmentation for spatial image calculations.");
+
+        maskData.reserve(depthSize);
+
         std::size_t segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
         std::size_t segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
-        std::optional<cv::Mat> optSeg = imgDetections.getCvSegmentationMask();
-        if(!optSeg.has_value()) {
-            logger->error("Segmentation mask expected but not available in ImgDetections.");
-            throw;
+        if(segmentationMaskHeight * segmentationMaskWidth != depthSize) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            logger->debug("Segmentation mask size {}x{} does not match depth frame size {}x{}. Resizing to depth frame size.",
+                          segmentationMaskWidth,
+                          segmentationMaskHeight,
+                          depthWidth,
+                          depthHeight);
+            maskData.resize(depthSize);
+
+            std::optional<cv::Mat> optSeg = imgDetections.getCvSegmentationMask();
+            if(!optSeg.has_value()) {
+                throw std::runtime_error("Segmentation mask expected but not available in ImgDetections.");  // should never trigger
+            }
+            cv::Mat seg{depthWidth, depthHeight, CV_8UC1, maskData.data()};
+            cv::resize(optSeg.value(), seg, cv::Size(depthWidth, depthHeight), 0, 0, cv::INTER_NEAREST);
+            maskPtr = maskData.data();
+#else
+            throw std::runtime_error("Segmentation mask size does not match depth frame size, and OpenCV support is not available for resizing.");
+#endif
+        } else {
+            if(!optMaskData) {
+                throw std::runtime_error("Segmentation enabled but mask data missing");  // should never trigger
+            }
+            maskPtr = optMaskData->data();
         }
-        // add if opencv support here
-        cv::Mat seg = optSeg.value();
-        if(static_cast<int>(segmentationMaskHeight) != depthHeight || static_cast<int>(segmentationMaskWidth) != depthWidth) {
-            logger->debug("Segmentation mask size {}x{} does not match depth frame size {}x{}. Resizing to depth frame size.", segmentationMaskWidth, segmentationMaskHeight, depthWidth, depthHeight);
-            cv::resize(seg, seg, cv::Size(depthWidth, depthHeight), 0, 0, cv::INTER_NEAREST);
-        }
-        maskPtr = seg.data;
     }
 
     const uint16_t* plane = (uint16_t*)depthFrame->data->getData().data();
@@ -329,7 +351,6 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
         }
         dai::SpatialImgDetection spatialDetection;
         if(calculateSpatialKeypoints) {
-            logger->info("Calculating spatial keypoints for detection {}", i);
             std::vector<dai::SpatialKeypoint> spatialKeypoints;
             for(auto kp : detection.getKeypoints()) {
                 int kpx = static_cast<int>(kp.imageCoordinates.x * depthWidth);
@@ -341,7 +362,7 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
                 int kpyend = std::min(depthHeight - 1, kpy + keypointRadius);
 
                 std::uint32_t kpSum = 0;
-                std::uint16_t kpMin = 65535, max = 0;
+                std::uint16_t kpMin = std::numeric_limits<uint16_t>::max(), kpMax = std::numeric_limits<uint16_t>::min();
                 std::uint32_t kpCounter = 0;
                 std::vector<uint16_t> kpValidPixels;
                 for(int ky = kpystart; ky < kpyend; ky++) {
@@ -358,7 +379,7 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
                             kpSum += px;
                             ++kpCounter;
                             if(px < kpMin) kpMin = px;
-                            if(px > max) max = px;
+                            if(px > kpMax) kpMax = px;
                         }
                     }
                 }
@@ -397,9 +418,8 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
         spatialDetections.detections[i] = spatialDetection;
     }
 
-    std::optional<std::vector<std::uint8_t>> maskData = imgDetections.getMaskData();
-    if(maskData) {
-        spatialDetections.setSegmentationMask(*maskData, imgDetections.getSegmentationMaskWidth(), imgDetections.getSegmentationMaskHeight());
+    if(optMaskData) {
+        spatialDetections.setSegmentationMask(*optMaskData, imgDetections.getSegmentationMaskWidth(), imgDetections.getSegmentationMaskHeight());
     }
 }
 

@@ -14,16 +14,14 @@ except ImportError:
 
 device = dai.Device()
 fps = 30
-platform = "RVC4"
 frame_type = dai.ImgFrame.Type.BGR888i
 model_name = "luxonis/yolov8-large-pose-estimation:coco-640x352"
 if device.getPlatform() == dai.Platform.RVC2:
     model_name = "luxonis/yolov8-nano-pose-estimation:coco-512x288"
     fps = 10
-    platform = "RVC2"
     frame_type = dai.ImgFrame.Type.BGR888p
 
-nnArchive = dai.NNArchive(dai.getModelFromZoo(dai.NNModelDescription(model_name, platform)))
+nnArchive = dai.NNArchive(dai.getModelFromZoo(dai.NNModelDescription(model_name,  device.getPlatformAsString())))
 assert nnArchive is not None
 w = nnArchive.getInputWidth()
 h = nnArchive.getInputHeight()
@@ -99,7 +97,7 @@ with dai.Pipeline(device) as pipeline:
         image = passthrough.getCvFrame()
 
         filter_keypoints = [0, 3, 4, 7, 8, 13, 14, 15, 16] # filter out nose, ears, elbows, knees, ankles
-        connected_keypoints = [[0, 1], [2, 3], [2, 4], [3, 5], [2, 6], [3, 7]] # indecies of keypoints that are connected with lines.
+        connected_keypoints = [[0, 1], [2, 3], [2, 4], [3, 5], [2, 6], [3, 7]] # indices of keypoints that are connected with lines.
 
         for (i, det) in enumerate(spatialData.detections):
             bbox = det.getBoundingBox().denormalize(image.shape[1], image.shape[0])

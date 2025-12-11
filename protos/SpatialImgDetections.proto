@@ -11,7 +11,7 @@ message SpatialImgDetections {
     common.ImgTransformation transformation = 5;
     int64 segmentationMaskWidth = 6;
     int64 segmentationMaskHeight = 7;
-    bytes data = 8;
+    bytes maskData = 8;
 }
 
 message SpatialImgDetection {

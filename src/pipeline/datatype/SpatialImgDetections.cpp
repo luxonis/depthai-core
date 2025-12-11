@@ -122,10 +122,12 @@ std::vector<SpatialKeypoint> SpatialImgDetection::getKeypoints() const {
 }
 
 std::vector<dai::Point3f> SpatialImgDetection::getKeypointSpatialCoordinates() const {
-    if(!this->keypoints.has_value()) {
+    if(keypoints.has_value()) {
+        return keypoints->getSpatialCoordinates();
+        ;
+    } else {
         return {};
     }
-    return this->keypoints->getSpatialCoordinates();
 }
 
 std::vector<Edge> SpatialImgDetection::getEdges() const {
@@ -143,23 +145,23 @@ void SpatialImgDetection::setEdges(const std::vector<Edge> edges) {
     keypoints->setEdges(edges);
 }
 
-float SpatialImgDetection::getCenterX() const noexcept {
+float SpatialImgDetection::getCenterX() const {
     return getBoundingBox().center.x;
 }
 
-float SpatialImgDetection::getCenterY() const noexcept {
+float SpatialImgDetection::getCenterY() const {
     return getBoundingBox().center.y;
 }
 
-float SpatialImgDetection::getWidth() const noexcept {
+float SpatialImgDetection::getWidth() const {
     return getBoundingBox().size.width;
 }
 
-float SpatialImgDetection::getHeight() const noexcept {
+float SpatialImgDetection::getHeight() const {
     return getBoundingBox().size.height;
 }
 
-float SpatialImgDetection::getAngle() const noexcept {
+float SpatialImgDetection::getAngle() const {
     return getBoundingBox().angle;
 }
 
