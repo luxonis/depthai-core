@@ -46,7 +46,11 @@ class TransformData : public Buffer {
     Point3d getRotationEuler() const;
     Quaterniond getQuaternion() const;
 
-    DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform, Buffer::tsSystem, Buffer::hasTsSystem);
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform, Buffer::tsSystem);
+    #else
+    DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform);
+    #endif
 };
 
 }  // namespace dai
