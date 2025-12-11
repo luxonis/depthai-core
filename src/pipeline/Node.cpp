@@ -759,4 +759,12 @@ std::vector<Node::DatatypeHierarchy> Node::Input::getPossibleDatatypes() const {
     return possibleDatatypes;
 }
 
+std::shared_ptr<dai::node::internal::XLinkInBridge> Node::Input::getXLinkBridge() const {
+    return xLinkBridge;
+}
+
+std::shared_ptr<dai::node::internal::XLinkOutBridge> Node::Output::getXLinkBridge() const {
+    return xLinkBridge;
+}
+
 }  // namespace dai

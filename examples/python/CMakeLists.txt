@@ -175,6 +175,9 @@ dai_set_example_test_labels(camera_max_resolution ondevice rvc2_all rvc4 rvc4rgb
 add_python_example(camera_undistortion Camera/camera_undistortion.py)
 dai_set_example_test_labels(camera_undistortion ondevice rvc2_all rvc4 ci)
 
+add_python_example(camera_hdr Camera/camera_hdr.py)
+dai_set_example_test_labels(camera_hdr ondevice rvc4 rvc4rgb ci)
+
 ## AprilTags
 add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
 dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 rvc4rgb ci nowindows)
@@ -282,10 +285,10 @@ dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
 
 # Split into two examples for RVC2 and RVC4 since the tests are run concurrently, to avoid port conflicts
 # Skip windows, since it asks for user input for the firewall
-add_python_example(visualizer_rvc4 Visualizer/visualizer_yolo.py --webSocketPort 8765 --httpPort 8080)
+add_python_example(visualizer_rvc4 Visualizer/visualizer_yolo.py --webSocketPort 8765 --httpPort 8082)
 dai_set_example_test_labels(visualizer_rvc4 ondevice rvc4 rvc4rgb ci nowindows)
 
-add_python_example(visualizer_encoded_rvc4 Visualizer/visualizer_encoded.py --webSocketPort 8765 --httpPort 8080)
+add_python_example(visualizer_encoded_rvc4 Visualizer/visualizer_encoded.py --webSocketPort 8765 --httpPort 8082)
 dai_set_example_test_labels(visualizer_encoded_rvc4 ondevice rvc4 rvc4rgb ci nowindows)
 
 add_python_example(visualizer_rvc2 Visualizer/visualizer_yolo.py --webSocketPort 8766 --httpPort 8081)

@@ -66,7 +66,7 @@ endif()
 
 
 # Create depthai project
-project(depthai VERSION "3.1.0" LANGUAGES CXX C)
+project(depthai VERSION "3.2.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -384,6 +384,7 @@ set(TARGET_CORE_SOURCES
     src/utility/LogCollection.cpp
     src/utility/MemoryWrappers.cpp
     src/utility/Serialization.cpp
+    src/utility/OCVPorts.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp

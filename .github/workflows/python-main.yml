@@ -189,7 +189,7 @@ jobs:
 
       - name: Install pytest
         run: |
-          python -m pip install pytest numpy opencv-python jinja2
+          python -m pip install pytest numpy opencv-python jinja2 websockets
 
       - name: Compile
         run: |
@@ -386,7 +386,7 @@ jobs:
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -415,8 +415,8 @@ jobs:
 
           EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -484,7 +484,7 @@ jobs:
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Audit wheels
-        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -506,11 +506,14 @@ jobs:
           pattern: audited-wheels-linux-x86_64-*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
+      - name: Install llvm-strip
+        run: |
+          yum install -y llvm # for llvm-strip, strip leads to "ELF load command address/offset not page-aligned" errors 
       - name: Combine wheels
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -542,8 +545,8 @@ jobs:
           # Smoke test: fail hard on any exception or version mismatch
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -614,7 +617,7 @@ jobs:
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Auditing wheels
-        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
+        run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -637,11 +640,14 @@ jobs:
           pattern: audited-wheels-linux-arm64-*
           path: bindings/python/wheelhouse/audited/
           merge-multiple: true
+      - name: Install llvm-strip
+        run: |
+          yum install -y llvm # for llvm-strip, strip leads to "ELF load command address/offset not page-aligned" errors
       - name: Combine wheels
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -673,8 +679,8 @@ jobs:
 
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -702,7 +708,7 @@ jobs:
           mv wheelhouse/audited wheelhouse/audited_pre
           mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --log_level=debug
+          python ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:
@@ -735,12 +741,58 @@ jobs:
           $env:EXPECTED_VERSION = $ver
           python bindings/python/ci/smoke_depthai.py
       - name: Upload combined wheels to artifactory
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+
+  notify-slack:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Send Slack notification
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_BOT_CHANNEL_ID: ${{ secrets.SLACK_BOT_CHANNEL_ID }}
+        run: |
+          # Branch or tag name
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH="${{ github.head_ref }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
+
+          # Determine the version and the install command
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_version())")
+            INSTALL_COMMAND="\`python3 -m pip install depthai==$VERSION\`"
+          else
+            VERSION=$(cd bindings/python && python3.8 -c "import find_version as v; print(v.get_package_dev_version('${{github.sha}}'))")
+            INSTALL_COMMAND="\`python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai==$VERSION\`"
+          fi
+
+          MESSAGE="*A new DepthAI build is ready!*
+          Source Branch or Tag: $BRANCH
+          
+          It can be installed using:
+          $INSTALL_COMMAND"
+          
+          jq -n --arg user_id "$SLACK_BOT_CHANNEL_ID" --arg message "$MESSAGE" \
+            '{"channel": $user_id, "text": $message}' > payload.json
+          
+          curl -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-type: application/json" \
+            --data @payload.json
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -779,13 +831,13 @@ jobs:
         run: ls -lah
       - name: Run deploy to PyPi
         run: cd bindings/python && bash ./ci/upload-pypi.sh
-        if: ${{!contains(github.ref, 'alpha') && !contains(github.ref, 'beta')}}
+        if: ${{!contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')}}
         env:
           PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
           PYPI_USER: ${{ secrets.PYPI_USER }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       - name: Run deploy to Artifactory
-        run: cd bindings/python && bash ./ci/upload-artifactory-release.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh --release
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}

@@ -33,16 +33,18 @@ void SpatialDetectionNetwork::buildInternal() {
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         NNModelDescription modelDesc,
-                                                                        std::optional<float> fps) {
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(camera, stereo, nnArchive, fps);
+    return build(camera, stereo, nnArchive, fps, resizeMode);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& camera,
                                                                         const std::shared_ptr<StereoDepth>& stereo,
                                                                         const NNArchive& nnArchive,
-                                                                        std::optional<float> fps) {
-    neuralNetwork->build(camera, nnArchive, fps);
+                                                                        std::optional<float> fps,
+                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
+    neuralNetwork->build(camera, nnArchive, fps, resizeMode);
     detectionParser->setNNArchive(nnArchive);
     alignDepth(stereo, camera);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
@@ -151,7 +153,7 @@ void SpatialDetectionNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, 
 }
 
 void SpatialDetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    DAI_CHECK_V(nnArchive.getModelType() == dai::model::ModelType::OTHER, "NNArchive type is not OTHER");
+    DAI_CHECK_V(nnArchive.getModelType() == model::ModelType::DLC || nnArchive.getModelType() == model::ModelType::OTHER, "NNArchive type is not DLC or OTHER");
     detectionParser->setNNArchive(nnArchive);
     neuralNetwork->setNNArchive(nnArchive);
 }
