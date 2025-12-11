@@ -23,6 +23,17 @@ float SegmentationParserConfig::getConfidenceThreshold() const {
     return confidenceThreshold;
 }
 
+void SegmentationParserConfig::setStepSize(int stepSize) {
+    if(stepSize <= 0) {
+        throw std::invalid_argument("Step size must be a positive integer");
+    }
+    this->stepSize = stepSize;
+}
+
+int SegmentationParserConfig::getStepSize() const {
+    return stepSize;
+}
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 void SegmentationParserConfig::setOutputSize(size_t width, size_t height) {
     outputWidth = width;

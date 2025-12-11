@@ -11,6 +11,7 @@
 #include "pipeline/datatype/NNData.hpp"
 #include "pipeline/datatype/SegmentationMask.hpp"
 #include "pipeline/utilities/NNDataViewer.hpp"
+#include "pipeline/utilities/SegmentationParser/SegmentationParserUtils.hpp"
 #include "properties/Properties.hpp"
 #include "utility/ErrorMacros.hpp"
 
@@ -111,10 +112,19 @@ void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
     properties.classesInOneLayer =
         head.metadata.extraParams.contains("classes_in_one_layer") ? head.metadata.extraParams.at("classes_in_one_layer").get<bool>() : false;
 
-    properties.parserConfig = SegmentationParserConfig();  // Reset to default
+    *initialConfig = properties.parserConfig;  // optional if you set properties first
     if(head.metadata.confThreshold) {
-        properties.parserConfig.setConfidenceThreshold(static_cast<float>(*head.metadata.confThreshold));
+        initialConfig->setConfidenceThreshold(static_cast<float>(*head.metadata.confThreshold));
     }
+
+    if(head.metadata.classes) {
+        initialConfig->setLabels(*head.metadata.classes);
+    } else {
+        printf("SegmentationParser: No class labels defined in the head metadata.\n");
+    }
+    properties.parserConfig = *initialConfig;
+    inConfig = std::make_shared<SegmentationParserConfig>(*initialConfig);
+    printf("SegmentationParser: Loaded %zu class labels from head metadata.\n", initialConfig->getLabels().size());
 }
 
 void SegmentationParser::setRunOnHost(bool runOnHost) {
@@ -135,6 +145,7 @@ uint8_t clampClassIndex(int idx) {
 void SegmentationParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     using namespace std::chrono;
+    logger->warn("Start SegmentationParser");
 
     const bool inputConfigSync = inputConfig.getWaitForMessage();
     // if(!inConfig) {  //  not needed ?
@@ -142,10 +153,19 @@ void SegmentationParser::run() {
     // }
     const bool classesInSingleLayer = properties.classesInOneLayer;
     std::string networkOutputName = properties.networkOutputName;  // move to a resolveNetworkOutputName function alongside the layerNames etc. part of the code
+    if(!inConfig) {
+        throw std::runtime_error("SegmentationParser config is not initialized. Make sure the build function is called before running the node.");
+    }
 
     while(isRunning()) {
         logger->debug("Running");
+        logger->warn("Running");
         auto tAbsoluteBeginning = steady_clock::now();
+
+        // // Start with the current config (default to the initial parser config)
+        // if(!inConfig) {
+        //     inConfig = std::make_shared<SegmentationParserConfig>(properties.parserConfig);
+        // }
 
         if(inputConfigSync) {
             auto cfg = inputConfig.get<dai::SegmentationParserConfig>();
@@ -160,7 +180,9 @@ void SegmentationParser::run() {
                 inConfig = cfg;
             }
         }
-        const float confidenceThr = inConfig ? inConfig->getConfidenceThreshold() : properties.parserConfig.confidenceThreshold;
+
+        // auto config = inConfig ? inConfig : std::make_shared<SegmentationParserConfig>(properties.parserConfig);
+        // const float confidenceThr = config->getConfidenceThreshold();
 
         std::shared_ptr<dai::NNData> sharedInputData = input.get<dai::NNData>();
         if(!sharedInputData) {
@@ -197,46 +219,64 @@ void SegmentationParser::run() {
 
         const size_t planeSize = maskWidth * maskHeight;
         maskData.assign(planeSize, BACKGROUND_INDEX);
-
+        auto tNNviewerStart = steady_clock::now();
         NNDataViewer viewer(*tensorInfo, sharedInputData->data, logger);
         if(!viewer.build()) {
             logger->error("Failed to build NNDataViewer for tensor {}. Skipping processing.", tensorInfo->name);
             continue;
         }
+        // // TODO: optimize the copyToChannelMajor function and possibly combine it with the parsing logic loop to avoid double iteration over the data
+        // logger->warn("NNDataViewer build took {}ms", duration_cast<microseconds>(steady_clock::now() - tNNviewerStart).count() / 1000);  // 0ms
 
-        std::vector<float> logitsBuffer;
-        if(!viewer.copyToChannelMajor(logitsBuffer)) {
-            logger->error("Failed to populate logits buffer for tensor {}.", tensorInfo->name);
-            continue;
-        }
-        if(logitsBuffer.size() != static_cast<size_t>(channels) * planeSize) {
-            logger->error("Unexpected logits buffer size for tensor {}.", tensorInfo->name);
-            continue;
-        }
+        // auto tLogitsStart = steady_clock::now();
+        // std::vector<float> logitsBuffer;
+        // if(!viewer.copyToChannelMajor(logitsBuffer)) {
+        //     logger->error("Failed to populate logits buffer for tensor {}.", tensorInfo->name);
+        //     continue;
+        // }
+        // if(logitsBuffer.size() != static_cast<size_t>(channels) * planeSize) {
+        //     logger->error("Unexpected logits buffer size for tensor {}.", tensorInfo->name);
+        //     continue;
+        // }
+        // solutions:
+        // add step size eg step size 2 or 4
 
+        // logger->warn("Logits buffer copy took {}ms",
+        //              duration_cast<microseconds>(steady_clock::now() - tLogitsStart).count() / 1000);  // 15ms out of 22. Slow as fuck
+
+        auto tParsingStart = steady_clock::now();
         if(classesInSingleLayer) {  // assume data is stored as INT in shape N x H x W  with N = 1
-            logger->debug("Parsing segmentation mask with classes in single layer. Assuming INT data.");
-            for(size_t idx = 0; idx < planeSize; ++idx) {
-                maskData[idx] = clampClassIndex(static_cast<int>(std::lround(logitsBuffer[idx])));
-            }
+            // logger->debug("Parsing segmentation mask with classes in single layer. Assuming INT data.");
+            // for(size_t idx = 0; idx < planeSize; ++idx) {
+            //     maskData[idx] = clampClassIndex(static_cast<int>(std::lround(logitsBuffer[idx])));
+            // }
         } else {  // move to an argmax callable function
-            const float* logitsPtr = logitsBuffer.data();
-            for(size_t idx = 0; idx < planeSize; ++idx) {
-                int bestClassIdx = -1;
-                float bestVal = -1.0f;
-                const float* pixelPtr = logitsPtr + idx;
-                for(int ch = 0; ch < channels; ++ch) {
-                    float val = pixelPtr[static_cast<size_t>(ch) * planeSize];
-                    if(val > bestVal) {
-                        bestVal = val;
-                        bestClassIdx = ch;
-                    }
-                }
-                if(bestClassIdx >= 0 && bestVal >= confidenceThr) {
-                    maskData[idx] = clampClassIndex(bestClassIdx);
-                }
-            }
+            utilities::SegmentationParserUtils::parseSegmentationMask(*sharedInputData, *tensorInfo, maskData, *inConfig, logger);
+            // std::vector<float> bestVals(planeSize, -1.0f);
+            // const float* logitsPtr = logitsBuffer.data();
+
+            // // 2. Iterate Channels FIRST (Outer loop), then Pixels (Inner Loop)
+            // for(int ch = 0; ch < channels; ++ch) {
+            //     // Pointer to the start of this channel plane
+            //     const float* channelPtr = logitsPtr + (static_cast<size_t>(ch) * planeSize);
+
+            //     // Linear scan over the plane
+            //     for(size_t idx = 0; idx < planeSize; ++idx) {
+            //         float val = channelPtr[idx];
+
+            //         // Update max if this channel is better
+            //         if(val > bestVals[idx]) {
+            //             bestVals[idx] = val;
+            //             // Only update class if confidence threshold met
+            //             // Note: You can also apply threshold at the very end to save checks
+            //             if(val >= confidenceThr) {
+            //                 maskData[idx] = clampClassIndex(ch);
+            //             }
+            //         }
+            //     }
         }
+        // }
+        logger->warn("Segmentation mask parsing took {}ms", duration_cast<microseconds>(steady_clock::now() - tParsingStart).count() / 1000);  // 7ms
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         size_t targetWidth = maskWidth;
@@ -277,14 +317,15 @@ void SegmentationParser::run() {
         outMask->setTimestamp(sharedInputData->getTimestamp());
         outMask->setTimestampDevice(sharedInputData->getTimestampDevice());
         outMask->transformation = sharedInputData->transformation;
+
         out.send(outMask);
 
         auto tAbsoluteEnd = steady_clock::now();
-        logger->debug("Detection parser total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
-                      duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
-                      duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
+        logger->warn("Detection parser total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
+                     duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
+                     duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
+                     duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,
+                     duration_cast<microseconds>(tAbsoluteEnd - tBeforeSend).count() / 1000);
     }
 }
 

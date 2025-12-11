@@ -12,6 +12,7 @@ class SegmentationParserConfig : public Buffer {
    public:
     float confidenceThreshold = 0.5f;
     std::vector<std::string> labels = {};
+    int stepSize = 1;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT  // used for resizing
     enum class ResizeMode : int { INTER_NEAREST = 0, INTER_LINEAR = 1 };
@@ -58,13 +59,27 @@ class SegmentationParserConfig : public Buffer {
      */
     std::vector<std::string> getLabels() const;
 
+    /**
+     * Sets the step size for segmentation parsing.
+     * A step size of 1 means every pixel is processed, a step size of 2 means every second pixel is processed, and so on.
+     * This can be used to speed up processing at the cost of lower resolution masks.
+     * @param stepSize Step size for segmentation parsing
+     */
+    void setStepSize(int stepSize);
+
+    /**
+     * Gets the step size for segmentation parsing.
+     */
+    int getStepSize() const;
+
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::SegmentationParserConfig;
     }
 
     DEPTHAI_SERIALIZE(SegmentationParserConfig,
                       confidenceThreshold,
-                      labels
+                      labels,
+                      stepSize
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
                       ,
                       outputWidth,

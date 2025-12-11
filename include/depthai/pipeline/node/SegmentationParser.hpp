@@ -53,7 +53,7 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
     /**
      * Input SegmentationParserConfig message with ability to modify parameters in runtime.
      */
-    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::SegmentationParserConfig, false}}}, false}};
+    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::SegmentationParserConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Outputs segmentation mask
