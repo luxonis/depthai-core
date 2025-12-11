@@ -1,8 +1,11 @@
 // filepath: /home/tomas/code/depthai-device-kb/external/depthai-core/include/depthai/common/Housings.hpp
 #pragma once
+
+#include <unordered_map>
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <array>
 
 namespace dai {
 /**
@@ -115,6 +118,18 @@ inline std::string toString(HousingCoordinateSystem housing) {
             return "UNKNOWN";
     }
 }
+
+#ifdef DEPTHAI_HAVE_HOUSING_COORDINATES
+
+const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateSystem, std::array<float, 3>>>& getHousingCoordinates();
+
+#else
+
+const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateSystem, std::array<float, 3>>>& getHousingCoordinates() {
+  return {};
+}
+
+#endif
 
 }  // namespace dai
 

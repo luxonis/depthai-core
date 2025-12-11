@@ -49,15 +49,16 @@ function(DepthaiGenerateHousingCoordinates)
     # Write the final file contents
     file(WRITE ${OUTPUT_FILE}
 "// depthai
-#include \"depthai/common/DetectionParserOptions.hpp\"
-#include \"depthai/common/HousingCoordinates.hpp\"
+#include \"depthai/common/HousingCoordinateSystem.hpp\"
 
 namespace dai {
 
-static const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateSystem, std::array<float, 3>>> dataMap = {
+static const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateSystem, std::array<float, 3>>> HOUSING_COORDINATES = {
 ${MAP_INIT}};
 
-const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateSystem, std::array<float, 3>>> getHousingCoordinateSystems();
+const std::unordered_map<std::string, std::unordered_map<dai::HousingCoordinateSystem, std::array<float, 3>>>& getHousingCoordinates() {
+    return HOUSING_COORDINATES;
+}
 
 } // namespace dai
 ")
