@@ -12,6 +12,8 @@
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/span.hpp"
 
+#include "depthai/common/optional.hpp"
+
 namespace dai {
 class ImgAnnotations;
 class ImgFrame;
@@ -104,9 +106,13 @@ class Buffer : public ADatatype {
     int64_t sequenceNum = 0;  // increments for each message
     Timestamp ts = {};        // generation timestamp, synced to host time
     Timestamp tsDevice = {};  // generation timestamp, direct device monotonic clock
-    Timestamp tsSystem = {};  // generation timestamp, direct device system clock
-    bool hasTsSystem = false;
-    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem, hasTsSystem);
+
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    std::optional<Timestamp> tsSystem;  // generation timestamp, direct device system clock
+    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem);
+    #else
+    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice);
+    #endif
 };
 
 }  // namespace dai

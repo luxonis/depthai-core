@@ -728,8 +728,13 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     ImgTransformation transformation;
 
    public:
+    #ifndef DEPTHAI_MESSAGES_RVC2
     DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam,
-        category, instanceNum, transformation, Buffer::tsSystem, Buffer::hasTsSystem);
+        category, instanceNum, transformation, Buffer::tsSystem);
+    #else
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam,
+        category, instanceNum, transformation);
+    #endif
 };
 
 }  // namespace dai

@@ -1,6 +1,8 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include <chrono>
+#include <optional>
 
+#include "depthai/common/Timestamp.hpp"
 #include "depthai/utility/SharedMemory.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 
@@ -72,14 +74,18 @@ std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::du
 }
 
 std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> Buffer::getTimestampSystem() const {
-    if(!hasTsSystem) {
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if(!tsSystem.has_value()) {
         return std::nullopt;
     }
 
     using namespace std::chrono;
-    auto total = seconds(tsSystem.sec) + nanoseconds(tsSystem.nsec);
+    auto total = seconds(tsSystem->sec) + nanoseconds(tsSystem->nsec);
     auto dur = duration_cast<system_clock::duration>(total);
     return time_point<system_clock, system_clock::duration>(dur);
+    #else
+    return std::nullopt;
+    #endif
 }
 
 void Buffer::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
@@ -97,17 +103,20 @@ void Buffer::setTimestampDevice(std::chrono::time_point<std::chrono::steady_cloc
     tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
 }
 void Buffer::setTimestampSystem(std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> tp) {
+    #ifndef DEPTHAI_MESSAGES_RVC2
     // Set timestamp from timepoint
     if (!tp.has_value()) {
-        hasTsSystem = false;
-        tsSystem = {0, 0};
+        tsSystem = std::nullopt;
         return;
     }
     using namespace std::chrono;
     auto ts = tp->time_since_epoch();
-    hasTsSystem = true;
-    tsSystem.sec = duration_cast<seconds>(ts).count();
-    tsSystem.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+
+    Timestamp tmp;
+    tmp.sec = duration_cast<seconds>(ts).count();
+    tmp.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    tsSystem = tmp;
+    #endif
 }
 
 int64_t Buffer::getSequenceNum() const {
