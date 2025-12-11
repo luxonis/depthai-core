@@ -20,6 +20,5 @@ message PointCloudData {
     bool sparse = 13;
     bool color = 14;
     bytes data = 15;
-    common.Timestamp tsSystem = 16;
-    bool hasTsSystem = 17;
+    optional common.Timestamp tsSystem = 16;
 }

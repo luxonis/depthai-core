@@ -58,7 +58,11 @@ class PointCloudConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(PointCloudConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, sparse, transformationMatrix, Buffer::tsSystem, Buffer::hasTsSystem);
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(PointCloudConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, sparse, transformationMatrix, Buffer::tsSystem);
+    #else
+    DEPTHAI_SERIALIZE(PointCloudConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, sparse, transformationMatrix);
+    #endif
 };
 
 }  // namespace dai
