@@ -34,20 +34,17 @@ std::shared_ptr<ImgFrame> createTestFrame(const cv::Mat& mat, ImgFrame::Type typ
 TEST_CASE("NeuralAssistedStereo basic pipeline") {
     Pipeline pipeline;
     
-    // Create camera nodes as input sources
-    auto monoLeft = pipeline.create<node::MonoCamera>();
-    auto monoRight = pipeline.create<node::MonoCamera>();
-    
-    monoLeft->setResolution(MonoCameraProperties::SensorResolution::THE_800_P);
-    monoRight->setResolution(MonoCameraProperties::SensorResolution::THE_800_P);
-    monoLeft->setBoardSocket(CameraBoardSocket::CAM_B);
-    monoRight->setBoardSocket(CameraBoardSocket::CAM_C);
+    // Create camera nodes as input sources (Camera is supported on RVC4; MonoCamera is deprecated)
+    auto camLeft = pipeline.create<node::Camera>();
+    auto camRight = pipeline.create<node::Camera>();
+    camLeft->build(CameraBoardSocket::CAM_B, std::make_pair(1280u, 800u));
+    camRight->build(CameraBoardSocket::CAM_C, std::make_pair(1280u, 800u));
     
     // Create and build NeuralAssistedStereo node
     auto nas = pipeline.create<node::NeuralAssistedStereo>();
     
     // Build the composite node with camera outputs
-    nas->build(monoLeft->out, monoRight->out, DeviceModelZoo::NEURAL_DEPTH_NANO);
+    nas->build(camLeft->raw, camRight->raw, DeviceModelZoo::NEURAL_DEPTH_NANO);
     
     // Configure VPP
     nas->vppConfig->maxPatchSize = 20;
@@ -83,17 +80,14 @@ TEST_CASE("NeuralAssistedStereo with MonoCamera") {
     Pipeline pipeline;
     
     // Create camera nodes
-    auto monoLeft = pipeline.create<node::MonoCamera>();
-    auto monoRight = pipeline.create<node::MonoCamera>();
-    
-    monoLeft->setResolution(MonoCameraProperties::SensorResolution::THE_400_P);
-    monoRight->setResolution(MonoCameraProperties::SensorResolution::THE_400_P);
-    monoLeft->setBoardSocket(CameraBoardSocket::CAM_B);
-    monoRight->setBoardSocket(CameraBoardSocket::CAM_C);
+    auto camLeft = pipeline.create<node::Camera>();
+    auto camRight = pipeline.create<node::Camera>();
+    camLeft->build(CameraBoardSocket::CAM_B, std::make_pair(640u, 400u));
+    camRight->build(CameraBoardSocket::CAM_C, std::make_pair(640u, 400u));
     
     // Create NeuralAssistedStereo
     auto nas = pipeline.create<node::NeuralAssistedStereo>();
-    nas->build(monoLeft->out, monoRight->out);
+    nas->build(camLeft->raw, camRight->raw);
     
     // Configure with minimal settings
     nas->vppConfig->maxPatchSize = 20;
@@ -120,17 +114,14 @@ TEST_CASE("NeuralAssistedStereo multiple configs") {
     Pipeline pipeline;
     
     // Create camera nodes
-    auto monoLeft = pipeline.create<node::MonoCamera>();
-    auto monoRight = pipeline.create<node::MonoCamera>();
-    
-    monoLeft->setResolution(MonoCameraProperties::SensorResolution::THE_400_P);
-    monoRight->setResolution(MonoCameraProperties::SensorResolution::THE_400_P);
-    monoLeft->setBoardSocket(CameraBoardSocket::CAM_B);
-    monoRight->setBoardSocket(CameraBoardSocket::CAM_C);
+    auto camLeft = pipeline.create<node::Camera>();
+    auto camRight = pipeline.create<node::Camera>();
+    camLeft->build(CameraBoardSocket::CAM_B, std::make_pair(640u, 400u));
+    camRight->build(CameraBoardSocket::CAM_C, std::make_pair(640u, 400u));
     
     // Create NeuralAssistedStereo
     auto nas = pipeline.create<node::NeuralAssistedStereo>();
-    nas->build(monoLeft->out, monoRight->out);
+    nas->build(camLeft->raw, camRight->raw);
     
     // Configure VPP
     nas->vppConfig->maxPatchSize = 30;
@@ -161,17 +152,14 @@ TEST_CASE("NeuralAssistedStereo intermediate outputs") {
     Pipeline pipeline;
     
     // Create camera nodes
-    auto monoLeft = pipeline.create<node::MonoCamera>();
-    auto monoRight = pipeline.create<node::MonoCamera>();
-    
-    monoLeft->setResolution(MonoCameraProperties::SensorResolution::THE_400_P);
-    monoRight->setResolution(MonoCameraProperties::SensorResolution::THE_400_P);
-    monoLeft->setBoardSocket(CameraBoardSocket::CAM_B);
-    monoRight->setBoardSocket(CameraBoardSocket::CAM_C);
+    auto camLeft = pipeline.create<node::Camera>();
+    auto camRight = pipeline.create<node::Camera>();
+    camLeft->build(CameraBoardSocket::CAM_B, std::make_pair(640u, 400u));
+    camRight->build(CameraBoardSocket::CAM_C, std::make_pair(640u, 400u));
     
     // Create NeuralAssistedStereo
     auto nas = pipeline.create<node::NeuralAssistedStereo>();
-    nas->build(monoLeft->out, monoRight->out);
+    nas->build(camLeft->raw, camRight->raw);
     
     // Access intermediate outputs
     auto rectifiedLeftQueue = nas->rectifiedLeft.createOutputQueue();

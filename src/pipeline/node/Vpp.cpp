@@ -9,12 +9,12 @@ namespace node {
 Vpp::~Vpp() = default;
 
 Vpp::Vpp(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, Vpp, VppProperties>(std::move(props)),
-      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+        : DeviceNodeCRTP<DeviceNode, Vpp, VppProperties>(std::move(props), false),
+            initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 Vpp::Vpp()
-    : DeviceNodeCRTP<DeviceNode, Vpp, VppProperties>(std::make_unique<Properties>()),
-      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+        : DeviceNodeCRTP<DeviceNode, Vpp, VppProperties>(std::make_unique<Properties>(), false),
+            initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 Vpp::Properties& Vpp::getProperties() {
     properties.initialConfig = *initialConfig;
@@ -28,6 +28,10 @@ void Vpp::buildInternal() {
             throw std::runtime_error("Vpp node is supported only on RVC4 devices.");
         }
     }
+    left = &sync->inputs[leftInputName];
+    right = &sync->inputs[rightInputName];
+    disparity = &sync->inputs[disparityName];
+    confidence = &sync->inputs[confidenceName];
     sync->out.link(syncedInputs);
 }
 
