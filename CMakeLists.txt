@@ -385,6 +385,7 @@ set(TARGET_CORE_SOURCES
     src/utility/LogCollection.cpp
     src/utility/MemoryWrappers.cpp
     src/utility/Serialization.cpp
+    src/utility/OCVPorts.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp

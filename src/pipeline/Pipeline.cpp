@@ -663,18 +663,8 @@ void PipelineImpl::build() {
     //     connect them
 
     // Create a map of already visited nodes to only create one xlink bridge
-    struct XLinkOutBridge {
-        std::shared_ptr<node::internal::XLinkOut> xLinkOut;
-        std::shared_ptr<node::internal::XLinkInHost> xLinkInHost;
-    };
-
-    struct XLinkInBridge {
-        std::shared_ptr<node::internal::XLinkOutHost> xLinkOutHost;
-        std::shared_ptr<node::internal::XLinkIn> xLinkIn;
-    };
-
-    std::unordered_map<dai::Node::Output*, XLinkOutBridge> bridgesOut;
-    std::unordered_map<dai::Node::Input*, XLinkInBridge> bridgesIn;
+    std::unordered_map<dai::Node::Output*, dai::node::internal::XLinkOutBridge> bridgesOut;
+    std::unordered_map<dai::Node::Input*, dai::node::internal::XLinkInBridge> bridgesIn;
     std::unordered_set<std::string> uniqueStreamNames;
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
@@ -687,7 +677,7 @@ void PipelineImpl::build() {
             // Check if the bridge already exists
             if(bridgesOut.count(connection.out) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
-                bridgesOut[connection.out] = XLinkOutBridge{
+                bridgesOut[connection.out] = dai::node::internal::XLinkOutBridge{
                     create<node::internal::XLinkOut>(shared_from_this()),
                     create<node::internal::XLinkInHost>(shared_from_this()),
                 };
@@ -703,6 +693,8 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkInHost->setStreamName(streamName);
                 xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
                 connection.out->link(xLinkBridge.xLinkOut->input);
+                // Store the bridge in the Output object
+                connection.out->xLinkBridge = std::make_shared<dai::node::internal::XLinkOutBridge>(xLinkBridge);
             }
             auto xLinkBridge = bridgesOut[connection.out];
             connection.out->unlink(*connection.in);  // Unlink the connection
@@ -711,7 +703,7 @@ void PipelineImpl::build() {
             // Check if the bridge already exists
             if(bridgesIn.count(connection.in) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
-                bridgesIn[connection.in] = XLinkInBridge{
+                bridgesIn[connection.in] = dai::node::internal::XLinkInBridge{
                     create<node::internal::XLinkOutHost>(shared_from_this()),
                     create<node::internal::XLinkIn>(shared_from_this()),
                 };
@@ -732,6 +724,8 @@ void PipelineImpl::build() {
                 } else {
                     xLinkBridge.xLinkOutHost->allowStreamResize(false);
                 }
+                // Store the bridge in the Input object
+                connection.in->xLinkBridge = std::make_shared<dai::node::internal::XLinkInBridge>(xLinkBridge);
             }
             auto xLinkBridge = bridgesIn[connection.in];
             connection.out->unlink(*connection.in);  // Unlink the original connection
@@ -751,7 +745,7 @@ void PipelineImpl::build() {
                 // For every queue connection, if it's connected to a device node, create a bridge, if it doesn't exist
                 if(bridgesOut.count(queueConnection.output) == 0) {
                     // // Create a new bridge
-                    bridgesOut[queueConnection.output] = XLinkOutBridge{
+                    bridgesOut[queueConnection.output] = dai::node::internal::XLinkOutBridge{
                         create<node::internal::XLinkOut>(shared_from_this()),
                         create<node::internal::XLinkInHost>(shared_from_this()),
                     };
@@ -767,17 +761,14 @@ void PipelineImpl::build() {
                     xLinkBridge.xLinkInHost->setStreamName(streamName);
                     xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
                     queueConnection.output->link(xLinkBridge.xLinkOut->input);
+                    // Store the bridge in the Output object
+                    queueConnection.output->xLinkBridge = std::make_shared<dai::node::internal::XLinkOutBridge>(xLinkBridge);
                 }
                 auto xLinkBridge = bridgesOut[queueConnection.output];
                 queueConnection.output->unlink(queueConnection.queue);  // Unlink the original connection
                 xLinkBridge.xLinkInHost->out.link(queueConnection.queue);
             }
         }
-    }
-    // Build
-    if(!isHostOnly()) {
-        // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
-        defaultDevice->startPipeline(Pipeline(shared_from_this()));
     }
 }
 
@@ -797,6 +788,12 @@ void PipelineImpl::start() {
 
     // Indicate that pipeline is running
     running = true;
+
+    // Start device pipeline if not host-only
+    if(!isHostOnly()) {
+        DAI_CHECK_V(defaultDevice, "Default device is null");
+        defaultDevice->startPipeline(Pipeline(shared_from_this()));
+    }
 
     // Starts pipeline, go through all nodes and start them
     for(const auto& node : getAllNodes()) {

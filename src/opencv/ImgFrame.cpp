@@ -280,8 +280,12 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
         case Type::RGB888i: {
             CV_Assert(mat.channels() == 3);
             fb.stride = mat.cols * 3;
-            mat.convertTo(output, CV_8UC3);
-            cv::cvtColor(output, output, cv::ColorConversionCodes::COLOR_BGR2RGB);
+            if(mat.type() != CV_8UC3) {
+                mat.convertTo(output, CV_8UC3);
+                cv::cvtColor(output, output, cv::ColorConversionCodes::COLOR_BGR2RGB);
+            } else {
+                cv::cvtColor(mat, output, cv::ColorConversionCodes::COLOR_BGR2RGB);
+            }
             setFrame(output);
         } break;
 
