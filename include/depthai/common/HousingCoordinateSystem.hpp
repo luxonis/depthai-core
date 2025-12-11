@@ -1,11 +1,11 @@
 // filepath: /home/tomas/code/depthai-device-kb/external/depthai-core/include/depthai/common/Housings.hpp
 #pragma once
 
-#include <unordered_map>
+#include <array>
 #include <cstdint>
 #include <iostream>
 #include <string>
-#include <array>
+#include <unordered_map>
 
 namespace dai {
 /**
