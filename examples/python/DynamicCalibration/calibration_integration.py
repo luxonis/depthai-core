@@ -2,6 +2,32 @@ import depthai as dai
 import numpy as np
 import time
 import cv2
+import argparse
+from datetime import datetime
+
+    # Helper for logging
+def log_quality(tag, rx, ry, rz, norm, sam_new, sam_cur):
+    timestamp = datetime.now().isoformat()
+
+    if args.log:
+        # TXT
+        txt_log.write(
+            f"[{timestamp}] {tag}: XYZ=({rx:.6f},{ry:.6f},{rz:.6f}), "
+            f"‖ΔR‖={norm:.6f}, sampson_new={sam_new:.6f}, sampson_current={sam_cur:.6f}\n"
+        )
+        txt_log.flush()
+
+        # CSV
+        csv_log.write(
+            f"{timestamp},{tag},{rx:.6f},{ry:.6f},{rz:.6f},{norm:.6f},{sam_new:.6f},{sam_cur:.6f}\n"
+        )
+        csv_log.flush()
+
+# ---------------- ARGPARSE ----------------
+parser = argparse.ArgumentParser()
+parser.add_argument("--log", action="store_true",
+                    help="Enable logging to TXT and CSV")
+args = parser.parse_args()
 
 # ---------- Pipeline definition ----------
 
@@ -48,7 +74,14 @@ with dai.Pipeline() as pipeline:
     pipeline.start()
     time.sleep(1)  # wait for auto exposure to settle
     start = time.time()
+    # Optional loggers
+    if args.log:
+        txt_log = open(f"dynamic_calibration_log_{device.getDeviceId()}_{datetime.now().isoformat()}.txt", "a")
+        csv_log = open(f"dynamic_calibration_log_{device.getDeviceId()}_{datetime.now().isoformat()}.csv", "a")
 
+        # CSV header if empty
+        if csv_log.tell() == 0:
+            csv_log.write("timestamp,type,rx_deg,ry_deg,rz_deg,rot_norm,sampson_new,sampson_current\n")
     while pipeline.isRunning():
 
         leftSynced = syncedLeftQueue.get()
@@ -73,9 +106,9 @@ with dai.Pipeline() as pipeline:
             print(f"Data Acquired = {coverage.dataAcquired}% / 100 [%]")"""
 
         # Run quality check command every 3 seconds
-        if np.abs(time.time() - start) > 3:
+        if np.abs(time.time() - start) > 2:
             dynCalibInputControl.send(dai.DynamicCalibrationControl.loadImage())
-            dynCalibInputControl.send(dai.DynamicCalibrationControl.calibrationQuality(True))
+            dynCalibInputControl.send(dai.DynamicCalibrationControl.calibrationQuality(False))
             start = time.time()
 
         # Wait for the calibration result
@@ -86,7 +119,11 @@ with dai.Pipeline() as pipeline:
         # If the calibration is successfully returned apply it to the device
         if dynQualityResult is not None and dynQualityResult.qualityData:
             calibrationData = dynQualityResult.qualityData
+            rx, ry, rz = calibrationData.rotationChange
+            rot_norm = np.sqrt(rx*rx + ry*ry + rz*rz)
             print("Successfully evaluated Quality")
+            print(f"Rotation XYZ: X={rx:.4f}°, Y={ry:.4f}°, Z={rz:.4f}°")
+            print(f"‖ΔR‖ = {rot_norm:.4f}°")
             quality = calibrationData
             """
             print(
@@ -99,6 +136,7 @@ with dai.Pipeline() as pipeline:
             )
             print(f"Theoretical Depth Error Difference @1m:{quality.depthErrorDifference[0]:.2f}%, 2m:{quality.depthErrorDifference[1]:.2f}%, 5m:{quality.depthErrorDifference[2]:.2f}%, 10m:{quality.depthErrorDifference[3]:.2f}%")
             """
+            log_quality("QUALITY", rx, ry, rz, rot_norm, calibrationData.sampsonErrorNew, calibrationData.sampsonErrorCurrent)
             dynCalibInputControl.send(dai.DynamicCalibrationControl.resetData())
 
             # example of usage of sampson error as main information for when calibration is needed (higher than 0.05px difference)
@@ -132,7 +170,12 @@ with dai.Pipeline() as pipeline:
             )
             print(f"Theoretical Depth Error Difference @1m:{quality.depthErrorDifference[0]:.2f}%, 2m:{quality.depthErrorDifference[1]:.2f}%, 5m:{quality.depthErrorDifference[2]:.2f}%, 10m:{quality.depthErrorDifference[3]:.2f}%")
             """
+            rx, ry, rz = quality.rotationChange
+            rot_norm = np.sqrt(rx*rx + ry*ry + rz*rz)
+            print(f"Rotation XYZ: X={rx:.4f}°, Y={ry:.4f}°, Z={rz:.4f}°")
+            print(f"‖ΔR‖ = {rot_norm:.4f}°")
 
+            log_quality("CALIBRATION", rx, ry, rz, rot_norm, quality.sampsonErrorNew, quality.sampsonErrorCurrent)
             dynCalibInputControl.send(dai.DynamicCalibrationControl.resetData())
 
         cv2.imshow("disparity", colorizedDisparity)
@@ -140,3 +183,7 @@ with dai.Pipeline() as pipeline:
         if key == ord("q"):
             pipeline.stop()
             break
+# Close files on exit
+if args.log:
+    txt_log.close()
+    csv_log.close()
