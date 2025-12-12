@@ -57,6 +57,9 @@ class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedSte
      */
     std::shared_ptr<NeuralAssistedStereo> build(Output& left, Output& right, DeviceModelZoo neuralModel = DeviceModelZoo::NEURAL_DEPTH_NANO);
 
+    // Host-only wrapper; only subnodes get serialized to the device
+    bool runOnHost() const override;
+
     /**
      * Subnodes that compose this pipeline
      */
