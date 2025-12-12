@@ -16,7 +16,7 @@ namespace node {
 class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
    public:
     constexpr static const char* NAME = "StereoDepth";
-    using DeviceNodeCRTP::DeviceNodeCRTP;
+    StereoDepth() = default;
 
     /**
      * Preset modes for stereo depth.
@@ -56,9 +56,9 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
                                        std::optional<float> fps = std::nullopt);
 
    protected:
-    Properties& getProperties();
-    StereoDepth() = default;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     StereoDepth(std::unique_ptr<Properties> props);
+    Properties& getProperties();
 
    private:
     PresetMode presetMode = PresetMode::DEFAULT;
