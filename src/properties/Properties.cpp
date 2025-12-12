@@ -16,6 +16,7 @@
 #include "depthai/properties/ImageManipProperties.hpp"
 #include "depthai/properties/MessageDemuxProperties.hpp"
 #include "depthai/properties/MonoCameraProperties.hpp"
+#include "depthai/properties/NeuralAssistedStereoProperties.hpp"
 #include "depthai/properties/NeuralDepthProperties.hpp"
 #include "depthai/properties/NeuralNetworkProperties.hpp"
 #include "depthai/properties/ObjectTrackerProperties.hpp"
@@ -65,6 +66,7 @@ DetectionParserProperties::~DetectionParserProperties() = default;
 EdgeDetectorProperties::~EdgeDetectorProperties() = default;
 RectificationProperties::~RectificationProperties() = default;
 NeuralDepthProperties::~NeuralDepthProperties() = default;
+NeuralAssistedStereoProperties::~NeuralAssistedStereoProperties() = default;
 FeatureTrackerProperties::~FeatureTrackerProperties() = default;
 IMUProperties::~IMUProperties() = default;
 ImageAlignProperties::~ImageAlignProperties() = default;
