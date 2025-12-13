@@ -36,7 +36,6 @@
         "DEPTHAI_BUILD_ZOO_HELPER": "OFF",
         "DEPTHAI_NEW_FIND_PYTHON": "OFF",
         "DEPTHAI_INSTALL": "ON",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/minimal/install",
         "DEPTHAI_ENABLE_BACKWARD": "OFF",
         "DEPTHAI_ENABLE_REMOTE_CONNECTION": "OFF",
         "DEPTHAI_ENABLE_EVENTS_MANAGER": "OFF",
