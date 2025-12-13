@@ -198,6 +198,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [precheck]
     if: needs.precheck.outputs.should_run == 'true'
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
     steps:
     - uses: actions/checkout@v4
