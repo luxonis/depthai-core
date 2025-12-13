@@ -383,10 +383,14 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
         // Read the file and return its contents
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     } else {
-        // Load from resources
+#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
+        // Load from embedded resources
         auto fs = cmrc::depthai::get_filesystem();
         auto tarXz = fs.open(fwPath);
         return {tarXz.begin(), tarXz.end()};
+#else
+        throw std::runtime_error("Embedded firmware resources are not available (DEPTHAI_BINARIES_RESOURCE_COMPILE=OFF)");
+#endif
     }
 }
 
@@ -397,6 +401,7 @@ Resources& Resources::getInstance() {
 
 template <typename CV, typename BOOL, typename MTX, typename PATH, typename LIST, typename MAP>
 std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH cmrcPath, LIST& resourceList, MAP& resourceMap) {
+#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
     return [&mtx, &cv, &ready, cmrcPath, &resourceList, &resourceMap] {
         using namespace std::chrono;
 
@@ -451,6 +456,17 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         }
         cv.notify_all();
     };
+#else
+    (void)mtx;
+    (void)cv;
+    (void)ready;
+    (void)cmrcPath;
+    (void)resourceList;
+    (void)resourceMap;
+    return [] {
+        throw std::runtime_error("Embedded resources are not available (DEPTHAI_BINARIES_RESOURCE_COMPILE=OFF)");
+    };
+#endif
 }
 
 Resources::Resources() {

@@ -8,6 +8,53 @@
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_INSTALL_OPTIONS": "--clean-buildtrees-after-build;--clean-packages-after-build"
       }
+    },
+    {
+      "name": "minimal",
+      "displayName": "Minimal feature build",
+      "description": "Disables all optional DepthAI features to build the leanest configuration.",
+      "binaryDir": "${sourceDir}/build/minimal",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "DEPTHAI_ENABLE_LIBUSB": "OFF",
+        "DEPTHAI_ENABLE_APRIL_TAG": "OFF",
+        "DEPTHAI_ENABLE_PROTOBUF": "OFF",
+        "DEPTHAI_ENABLE_CURL": "OFF",
+        "DEPTHAI_ENABLE_KOMPUTE": "OFF",
+        "DEPTHAI_ENABLE_MP4V2": "OFF",
+        "DEPTHAI_OPENCV_SUPPORT": "OFF",
+        "DEPTHAI_XTENSOR_SUPPORT": "ON",
+        "DEPTHAI_PCL_SUPPORT": "OFF",
+        "DEPTHAI_RTABMAP_SUPPORT": "OFF",
+        "DEPTHAI_BASALT_SUPPORT": "OFF",
+        "DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT": "OFF",
+        "DEPTHAI_MERGED_TARGET": "OFF",
+        "DEPTHAI_BUILD_PYTHON": "OFF",
+        "DEPTHAI_BUILD_TESTS": "OFF",
+        "DEPTHAI_BUILD_EXAMPLES": "OFF",
+        "DEPTHAI_BUILD_DOCS": "OFF",
+        "DEPTHAI_BUILD_ZOO_HELPER": "OFF",
+        "DEPTHAI_NEW_FIND_PYTHON": "OFF",
+        "DEPTHAI_INSTALL": "OFF",
+        "DEPTHAI_ENABLE_BACKWARD": "OFF",
+        "DEPTHAI_ENABLE_REMOTE_CONNECTION": "OFF",
+        "DEPTHAI_ENABLE_EVENTS_MANAGER": "OFF",
+        "DEPTHAI_EMBED_FRONTEND": "OFF",
+        "DEPTHAI_ENABLE_DEVICE_FW": "OFF",
+        "DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW": "OFF",
+        "DEPTHAI_ENABLE_DEVICE_RVC3_FW": "OFF",
+        "DEPTHAI_ENABLE_DEVICE_RVC4_FW": "OFF",
+        "DEPTHAI_BINARIES_RESOURCE_COMPILE": "OFF",
+        "DEPTHAI_CLANG_FORMAT": "OFF",
+        "DEPTHAI_CLANG_TIDY": "OFF",
+        "DEPTHAI_SANITIZE": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "minimal",
+      "configurePreset": "minimal"
     }
   ]
 }

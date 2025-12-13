@@ -193,6 +193,22 @@ jobs:
       with:
         name: windows-prebuilt-win64-${{ matrix.build-type }}
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
+
+  minimal-preset:
+    runs-on: ubuntu-24.04
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Configure minimal preset
+      run: cmake --preset minimal
+
+    - name: Build minimal preset
+      run: cmake --build --preset minimal --parallel 4
     # TODO(Morato) - add back Win32 and shared builds to CI
     # - name: Upload Win32 shared library
     #   if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'

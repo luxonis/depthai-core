@@ -187,6 +187,19 @@ One common option when building the library tests and examples is `DEPTHAI_VCPKG
 
 For a full list of options, see `cmake/depthaiOptions.cmake` file.
 
+### Minimal CMake preset
+
+The `minimal` preset in `CMakePresets.json` configures a lean build that disables optional components such as libusb interaction, AprilTag, Protobuf, CURL, OpenCV, tests/examples/docs, remote connection support, and embedded firmware resources. xtensor support remains enabled because it is required by the detection parser APIs.
+
+To configure and build this minimal setup:
+
+```
+cmake --preset minimal
+cmake --build --preset minimal --parallel
+```
+
+Dependencies are resolved through vcpkg automatically during configuration.
+
 ## Environment variables
 
 The following environment variables can be set to alter default behavior of the library without having to recompile
