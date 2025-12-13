@@ -191,14 +191,15 @@ For a full list of options, see `cmake/depthaiOptions.cmake` file.
 
 The `minimal` preset in `CMakePresets.json` configures a lean build that disables optional components such as libusb interaction, AprilTag, Protobuf, CURL, OpenCV, tests/examples/docs, remote connection support, and embedded firmware resources. xtensor support remains enabled because it is required by the detection parser APIs.
 
-To configure and build this minimal setup:
+To configure and build this minimal setup (installing into `build/minimal/install` by default):
 
 ```
 cmake --preset minimal
 cmake --build --preset minimal --parallel
+cmake --install build/minimal
 ```
 
-Dependencies are resolved through vcpkg automatically during configuration.
+Dependencies are resolved through vcpkg automatically during configuration. The install step generates the `depthaiConfig.cmake` that can be consumed from `${CMAKE_INSTALL_PREFIX}` (for example by setting `CMAKE_PREFIX_PATH=build/minimal/install`).
 
 ## Environment variables
 

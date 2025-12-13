@@ -205,10 +205,13 @@ jobs:
         submodules: 'recursive'
 
     - name: Configure minimal preset
-      run: cmake --preset minimal
+      run: cmake --preset minimal -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install
 
     - name: Build minimal preset
       run: cmake --build --preset minimal --parallel 4
+
+    - name: Install minimal preset
+      run: cmake --install build/minimal --config Release
     # TODO(Morato) - add back Win32 and shared builds to CI
     # - name: Upload Win32 shared library
     #   if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
@@ -227,9 +230,9 @@ jobs:
     - name: Build and test find_package (installed)
       run: |
         cmake -S tests/integration/ -B tests/integration/build_find_package -D TEST_FIND_PACKAGE=ON -D CMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/depthai_install/ ${{ env.CMAKE_ARGS }}
-        cmake --build tests/integration/build_find_package --config ${{ matrix.build-type }} --parallel 4
+        cmake --build tests/integration/build_find_package --parallel 4
         cd tests/integration/build_find_package
-        ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
+        ctest --output-on-failure --no-tests=error
 
     # - name: Build and test find_package (build directory)
     #   run: |
