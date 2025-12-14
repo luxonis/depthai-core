@@ -446,6 +446,10 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
     _logger.info("Combining wheels for MacOS!")
     _logger.info(f"Stripping unneeded debug symbols: {strip}")
 
+    if strip:
+        _logger.warning("Stripping debug symbols is not supported on MacOS") # wheels do not work on some users' machines
+        strip = False
+
     # Find all wheel infos in the input folder
     infos = find_all_wheels(input_folder)
     assert len(infos) > 0, "Expected at least one wheel info"
