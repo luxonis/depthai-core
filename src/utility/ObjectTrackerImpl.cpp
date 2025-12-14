@@ -1127,6 +1127,9 @@ void OCSTracker::State::KalmanFilterNew::unfreeze() {
         }
 
         double time_gap = lastNotNullIndex - secondLastNotNullIndex;
+        if(lastNotNullIndex == -1 || secondLastNotNullIndex == -1 || time_gap <= 0) {
+            return;
+        }
 
         double x1 = (double)box1[0];
         double x2 = (double)box2[0];
@@ -1137,6 +1140,7 @@ void OCSTracker::State::KalmanFilterNew::unfreeze() {
         double w2 = (double)std::sqrt(box2[2] * box2[3]);
         double h2 = (double)std::sqrt(box2[2] / box2[3]);
 
+        // Ensure we have two valid history entries and avoid division by zero
         double dx = (x2 - x1) / time_gap;
         double dy = (y1 - y2) / time_gap;
         double dw = (w2 - w1) / time_gap;

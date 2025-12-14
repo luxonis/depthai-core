@@ -189,7 +189,7 @@ jobs:
 
       - name: Install pytest
         run: |
-          python -m pip install pytest numpy opencv-python jinja2
+          python -m pip install pytest numpy opencv-python jinja2 websockets
 
       - name: Compile
         run: |

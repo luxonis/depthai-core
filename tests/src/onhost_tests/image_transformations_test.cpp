@@ -192,15 +192,15 @@ TEST_CASE("testFlip") {
 // -----------------------------------------------------------------------------
 TEST_CASE("imageSizeConsistency") {
     dai::ImgFrame f;
-    f.setSize(1920,1080);
-    f.setSourceSize(1920,1080);
+    f.setSize(1920, 1080);
+    f.setSourceSize(1920, 1080);
 
     REQUIRE(f.getWidth() == 1920);
     REQUIRE(f.getHeight() == 1080);
     REQUIRE(f.getSourceWidth() == 1920);
     REQUIRE(f.getSourceHeight() == 1080);
 
-    f.setSize(1280,720);
+    f.setSize(1280, 720);
     REQUIRE(f.getWidth() == 1280);
     REQUIRE(f.getHeight() == 720);
 }
@@ -214,11 +214,11 @@ TEST_CASE("imageSizeConsistency") {
 // -----------------------------------------------------------------------------
 TEST_CASE("identityTransformation") {
     dai::ImgFrame f;
-    f.setSize(1920,1080);
-    f.setSourceSize(1920,1080);
-    f.transformation = dai::ImgTransformation(1920,1080);
+    f.setSize(1920, 1080);
+    f.setSourceSize(1920, 1080);
+    f.transformation = dai::ImgTransformation(1920, 1080);
 
-    dai::Rect r{100,200,300,400};
+    dai::Rect r{100, 200, 300, 400};
 
     auto toSrc = f.remapRectToSource(r);
     auto back = f.remapRectFromSource(toSrc);
@@ -238,11 +238,11 @@ TEST_CASE("identityTransformation") {
 // -----------------------------------------------------------------------------
 TEST_CASE("invalidTransformations") {
     dai::ImgFrame f;
-    f.setSize(1920,1080);
-    f.setSourceSize(1920,1080);
+    f.setSize(1920, 1080);
+    f.setSourceSize(1920, 1080);
 
-    f.transformation = dai::ImgTransformation(1920,1080);
-    f.transformation.addCrop(2000,2000,100,100); // outside frame
+    f.transformation = dai::ImgTransformation(1920, 1080);
+    f.transformation.addCrop(2000, 2000, 100, 100);  // outside frame
     REQUIRE(!f.validateTransformations());
 }
 
@@ -255,7 +255,7 @@ TEST_CASE("invalidTransformations") {
 // -----------------------------------------------------------------------------
 TEST_CASE("strideAndPlaneHeight") {
     dai::ImgFrame f;
-    f.setSize(1920,1080);
+    f.setSize(1920, 1080);
     f.setType(dai::ImgFrame::Type::YUV420p);
 
     REQUIRE(f.getPlaneHeight() == 1080);
@@ -273,10 +273,10 @@ TEST_CASE("strideAndPlaneHeight") {
 // -----------------------------------------------------------------------------
 TEST_CASE("cloneFrame") {
     dai::ImgFrame f1;
-    f1.setSourceSize(1920,1080);
-    f1.setSize(1920,1080);
+    f1.setSourceSize(1920, 1080);
+    f1.setSize(1920, 1080);
 
-    f1.transformation = dai::ImgTransformation(1920,1080);
+    f1.transformation = dai::ImgTransformation(1920, 1080);
     f1.transformation.addScale(1.25f, 0.75f);
 
     // YOU MUST UPDATE OUTPUT SIZE!
@@ -290,11 +290,10 @@ TEST_CASE("cloneFrame") {
     REQUIRE(f2->validateTransformations());
     REQUIRE(f2->getWidth() == f1.getWidth());
 
-    REQUIRE(f2->remapPointToSource({10,10}).x ==
-            f1.remapPointToSource({10,10}).x);
+    REQUIRE(f2->remapPointToSource({10, 10}).x == f1.remapPointToSource({10, 10}).x);
 
     // Deep copy check:
-    f1.setSize(100,100);
+    f1.setSize(100, 100);
     REQUIRE(f2->getWidth() != 100);
 }
 
@@ -404,15 +403,15 @@ TEST_CASE("interFrameRemap") {
 // -----------------------------------------------------------------------------
 TEST_CASE("transformationCompositionOrder") {
     dai::ImgFrame f;
-    f.setSize(1920,1080);
-    f.setSourceSize(1920,1080);
-    f.transformation = dai::ImgTransformation(1920,1080);
+    f.setSize(1920, 1080);
+    f.setSourceSize(1920, 1080);
+    f.transformation = dai::ImgTransformation(1920, 1080);
 
     // Apply in this order:
-    f.transformation.addCrop(100,200,1000,500);
+    f.transformation.addCrop(100, 200, 1000, 500);
     f.transformation.addFlipHorizontal();
-    f.transformation.addPadding(10,20,30,40);
-    f.transformation.addRotation(17, dai::Point2f(600,300));
+    f.transformation.addPadding(10, 20, 30, 40);
+    f.transformation.addRotation(17, dai::Point2f(600, 300));
     f.transformation.addScale(1.25f, 0.75f);
 
     // 🔹 Sync ImgFrame size with transformation size
@@ -423,7 +422,7 @@ TEST_CASE("transformationCompositionOrder") {
 
     REQUIRE(f.validateTransformations());
 
-    dai::Point2f p{300,400};
+    dai::Point2f p{300, 400};
     auto p1 = f.remapPointToSource(p);
     auto p2 = f.remapPointFromSource(p1);
 
@@ -441,16 +440,16 @@ TEST_CASE("transformationCompositionOrder") {
 // -----------------------------------------------------------------------------
 TEST_CASE("doubleRotation") {
     dai::ImgFrame f;
-    f.setSourceSize(1920,1080);
-    f.setSize(1920,1080);                    
-    f.transformation = dai::ImgTransformation(1920,1080);
+    f.setSourceSize(1920, 1080);
+    f.setSize(1920, 1080);
+    f.transformation = dai::ImgTransformation(1920, 1080);
 
-    f.transformation.addRotation(30, {960,540});
-    f.transformation.addRotation(-30, {960,540});
+    f.transformation.addRotation(30, {960, 540});
+    f.transformation.addRotation(-30, {960, 540});
 
     REQUIRE(f.validateTransformations());
 
-    dai::Point2f p{100,200};
+    dai::Point2f p{100, 200};
     auto back = f.remapPointFromSource(f.remapPointToSource(p));
 
     REQUIRE_THAT(back.x, Catch::Matchers::WithinAbs(p.x, 0.1));
@@ -467,20 +466,54 @@ TEST_CASE("doubleRotation") {
 // -----------------------------------------------------------------------------
 TEST_CASE("flipRotateFlip") {
     dai::ImgFrame f;
-    f.setSourceSize(1920,1080);
-    f.setSize(1920,1080);
-    f.transformation = dai::ImgTransformation(1920,1080);
+    f.setSourceSize(1920, 1080);
+    f.setSize(1920, 1080);
+    f.transformation = dai::ImgTransformation(1920, 1080);
 
     f.transformation.addFlipHorizontal();
-    f.transformation.addRotation(90, {960,540});
+    f.transformation.addRotation(90, {960, 540});
     f.transformation.addFlipHorizontal();
 
     REQUIRE(f.validateTransformations());
 
-    dai::Point2f p{300,400};
+    dai::Point2f p{300, 400};
     auto p1 = f.remapPointToSource(p);
     auto p2 = f.remapPointFromSource(p1);
 
     REQUIRE_THAT(p2.x, Catch::Matchers::WithinAbs(p.x, 0.01));
     REQUIRE_THAT(p2.y, Catch::Matchers::WithinAbs(p.y, 0.01));
+}
+
+// -----------------------------------------------------------------------------
+// Purpose:
+//  Compares the custom getOuterRotatedRect implementation against OpenCV's
+//  minAreaRect to ensure they produce similar results.
+// -----------------------------------------------------------------------------
+TEST_CASE("Get outer rect opencv comparison") {
+    for(auto i = 0u; i < 10000u; ++i) {
+        // Generate random rect
+        float x = static_cast<float>(rand() % 1000);
+        float y = static_cast<float>(rand() % 1000);
+        float w = static_cast<float>(rand() % 500 + 1);
+        float h = static_cast<float>(rand() % 500 + 1);
+        float angle = static_cast<float>(rand() % 360);
+        std::vector<std::array<float, 2>> pointsArr;
+        std::vector<cv::Point2f> cvPointsArr;
+        dai::RotatedRect rr{dai::Point2f{x + w / 2.0f, y + h / 2.0f}, dai::Size2f{w, h}, angle};
+        for(const auto& p : rr.getPoints()) {
+            pointsArr.push_back({p.x, p.y});
+            cvPointsArr.emplace_back(p.x, p.y);
+        }
+        auto rrImpl = dai::impl::getOuterRotatedRect(pointsArr);
+        auto rrCv = cv::minAreaRect(cvPointsArr);
+        while(rrCv.angle >= 90.f) {
+            rrCv.angle -= 90.f;
+            std::swap(rrCv.size.width, rrCv.size.height);
+        }
+        REQUIRE_THAT(rrImpl.center.x, Catch::Matchers::WithinAbs(rrCv.center.x, 0.01));
+        REQUIRE_THAT(rrImpl.center.y, Catch::Matchers::WithinAbs(rrCv.center.y, 0.01));
+        REQUIRE_THAT(rrImpl.size.width, Catch::Matchers::WithinAbs(rrCv.size.width, 0.01));
+        REQUIRE_THAT(rrImpl.size.height, Catch::Matchers::WithinAbs(rrCv.size.height, 0.01));
+        REQUIRE_THAT(rrImpl.angle, Catch::Matchers::WithinAbs(rrCv.angle, 0.01));
+    }
 }

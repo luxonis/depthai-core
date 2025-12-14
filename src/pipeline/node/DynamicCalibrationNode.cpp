@@ -1,6 +1,8 @@
 #include "depthai/pipeline/node/DynamicCalibrationNode.hpp"
 
-#include <opencv2/opencv.hpp>
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/opencv.hpp>
+#endif
 #include <pipeline/ThreadedNodeImpl.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -222,7 +224,7 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
     auto specTranslation = calibHandler.getCameraTranslationVector(socketSrc, socketDest, true);
     calibHandler.setCameraExtrinsics(socketSrc, socketDest, rotationMatrix, translation, specTranslation);
 }
-
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
     if(mat.empty()) {
         throw std::runtime_error("cv::Mat is empty");
@@ -247,6 +249,7 @@ dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
 
     return img;
 }
+#endif
 
 dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& src) {
     dai::CalibrationQuality quality;
@@ -336,6 +339,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     return DynamicCalibration::ErrorCode::OK;
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocking) {
     std::shared_ptr<dai::MessageGroup> inSyncGroup;
     logger->info("Attempting to load stereo image pair (blocking={})", blocking);
@@ -357,8 +361,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     }
 
     dcl::timestamp_t timestamp = leftFrame->getTimestamp().time_since_epoch().count();
-    auto leftCvFrame = leftFrame->getCvFrame();
-    auto rightCvFrame = rightFrame->getCvFrame();
+    cv::Mat leftCvFrame = leftFrame->getCvFrame();
+    cv::Mat rightCvFrame = rightFrame->getCvFrame();
 
     logger->info("Loaded stereo image pair: {}x{} and {}x{} @ timestamp={}",
                  leftFrame->getWidth(),
@@ -372,6 +376,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
 
     return DynamicCalibration::ErrorCode::OK;
 }
+#endif
 
 DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     auto resultCoverage =
@@ -479,9 +484,13 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     // Load a single image
     else if(std::holds_alternative<DC::Commands::LoadImage>(cmd)) {
         logger->info("Received LoadImage Command: blocking load with coverage computation");
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         auto error = runLoadImage(true);
         computeCoverage();
         return error;
+#else
+        throw std::runtime_error("DynamicCalibrationNode was built without OpenCV support, cannot load images.");
+#endif
     }
     // Apply calibration
     else if(std::holds_alternative<DC::Commands::ApplyCalibration>(cmd)) {
@@ -534,7 +543,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     bool loadingAndCalibrationRequired = elapsed.count() > loadImagePeriod;
     if(loadingAndCalibrationRequired) {
         logger->info("doWork() called. CalibrationRunning={}, elapsed={}s", calibrationShouldRun, elapsed.count());
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         error = runLoadImage(true);
+#else
+        throw std::runtime_error("DynamicCalibrationNode was built without OpenCV support, cannot load images.");
+#endif
     }
 
     if(error != ErrorCode::OK) {  // test progress so far

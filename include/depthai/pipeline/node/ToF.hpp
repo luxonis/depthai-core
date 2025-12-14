@@ -80,15 +80,12 @@ class ToF : public DeviceNodeGroup {
         : DeviceNodeGroup(device),
           rawDepth{tofBase->depth},
           depth{imageFilters->output},
-          confidence{tofDepthConfidenceFilter->confidence},
           amplitude{tofBase->amplitude},
           intensity{tofBase->intensity},
           phase{tofBase->phase},
           tofBaseInputConfig{tofBase->inputConfig},
-          tofDepthConfidenceFilterInputConfig{tofDepthConfidenceFilter->inputConfig},
           imageFiltersInputConfig{imageFilters->inputConfig},
           tofBaseNode{*tofBase},
-          tofDepthConfidenceFilterNode{*tofDepthConfidenceFilter},
           imageFiltersNode{*imageFilters} {}
 
     ~ToF() override;
@@ -102,32 +99,21 @@ class ToF : public DeviceNodeGroup {
     void buildInternal() override {
         // Build all subnodes, call their internal build functions
         tofBase->buildInternal();
-        // tofDepthConfidenceFilter->buildInternal();
         imageFilters->buildInternal();
 
         // Link subnodes together
         tofBase->depth.link(imageFilters->input);
-        // tofBase->amplitude.link(tofDepthConfidenceFilter->amplitude);
-
-        // tofDepthConfidenceFilter->filteredDepth.link(imageFilters->input);
-
-        // Important note:
-        // imageFilters->output and depth are implicitly linked via the reference
-        // tofDepthConfidenceFilter->confidence and confidence are implicitly linked via the reference
-        // the same goes for the input configs: tofBaseInputConfig, tofDepthConfidenceFilterInputConfig, imageFiltersInputConfig
     }
 
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::TOF_MID_RANGE,
                                std::optional<float> fps = std::nullopt) {
         tofBase->build(boardSocket, presetMode, fps);
-        // tofDepthConfidenceFilter->build(presetMode);
         imageFilters->build(presetMode);
         return std::static_pointer_cast<ToF>(shared_from_this());
     }
 
     Subnode<ToFBase> tofBase{*this, "tofBase"};
-    Subnode<ToFDepthConfidenceFilter> tofDepthConfidenceFilter{*this, "tofDepthConfidenceFilter"};
     Subnode<ImageFilters> imageFilters{*this, "imageFilters"};
 
     /**
@@ -139,11 +125,6 @@ class ToF : public DeviceNodeGroup {
      * Filtered depth output
      */
     Output& depth;
-
-    /**
-     * Confidence output
-     */
-    Output& confidence;
 
     /**
      * Amplitude output
@@ -166,11 +147,6 @@ class ToF : public DeviceNodeGroup {
     Input& tofBaseInputConfig;
 
     /**
-     * Input config for ToF depth confidence filter
-     */
-    Input& tofDepthConfidenceFilterInputConfig;
-
-    /**
      * Input config for image filters
      */
     Input& imageFiltersInputConfig;
@@ -179,11 +155,6 @@ class ToF : public DeviceNodeGroup {
      * ToF base node
      */
     ToFBase& tofBaseNode;
-
-    /**
-     * ToF depth confidence filter node
-     */
-    ToFDepthConfidenceFilter& tofDepthConfidenceFilterNode;
 
     /**
      * Image filters node

@@ -87,6 +87,8 @@ struct Encoding<std::optional<T>> : EncodingIO<std::optional<T>> {
             value->reset();
         } else {
             T temp;
+            // T temp {} would be better but seems to trigger a bug in libnop or GCC when reading
+            // std::optional<class enum>
             auto status = Encoding<T>::ReadPayload(prefix, &temp, reader);
             if(!status) return status;
 
