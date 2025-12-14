@@ -448,7 +448,10 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
 
     if strip:
         _logger.warning("Stripping debug symbols is not supported on MacOS")
-        strip = False # wheels do not work on some users' machines, TODO: figure out why
+        # wheels do not work on some users' machines, TODO: figure out why
+        # >>> import depthai
+        # >>> [1]    26437 killed     python3
+        strip = False
 
     # Find all wheel infos in the input folder
     infos = find_all_wheels(input_folder)
