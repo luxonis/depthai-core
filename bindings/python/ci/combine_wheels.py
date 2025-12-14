@@ -447,8 +447,8 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
     _logger.info(f"Stripping unneeded debug symbols: {strip}")
 
     if strip:
-        _logger.warning("Stripping debug symbols is not supported on MacOS") # wheels do not work on some users' machines
-        strip = False
+        _logger.warning("Stripping debug symbols is not supported on MacOS")
+        strip = False # wheels do not work on some users' machines, TODO: figure out why
 
     # Find all wheel infos in the input folder
     infos = find_all_wheels(input_folder)
@@ -521,9 +521,9 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
                     lib_path = os.path.join(wheel_extract_dir, palace_dylibs, lib)
                     subprocess.run(["strip", "-S", lib_path], check=True)
 
-            # Strip debug symbols for the cpython library
-            # TODO: Invalid signature error, fix this
-            _logger.debug(f"Found cpython lib: {cpython_lib}, but not stripping debug symbols for it")
+                # Strip debug symbols for the cpython library
+                # TODO: Invalid signature error, fix this, figure out why
+                _logger.warning(f"Found cpython lib: {cpython_lib}, but not stripping debug symbols for it")
 
         # Step: Prepare staging directory's .dist-info
         _logger.info("Step: Preparing .dist-info directory in staging area")
