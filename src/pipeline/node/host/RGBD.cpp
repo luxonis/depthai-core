@@ -556,8 +556,11 @@ void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr
     colorCamOutput->link(align->inputAlignTo);
     align->outputAligned.link(inDepth);
 
-    // ImageAlign does not work on ToF cameras as they don't have sufficient memory
+    // ImageAlign and Sync do not work well on ToF cameras - run on host for better performance
     align->setRunOnHost(true);
+    constexpr float DEFAULT_TOF_FPS = 30.0f;
+    sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(500 / fps.value_or(DEFAULT_TOF_FPS))));
+    sync->setRunOnHost(true);
 }
 
 }  // namespace node
