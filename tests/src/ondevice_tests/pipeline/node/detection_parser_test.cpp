@@ -280,6 +280,28 @@ TEST_CASE("DetectionParser can set properties") {
         REQUIRE(properties.anchorsV2.empty());
         REQUIRE(properties.nKeypoints.has_value());
     }
+
+    SECTION("Mobilenet SSD") {
+        auto description = dai::NNModelDescription{"luxonis/mobilenet-ssd:300x300", "RVC2"};
+        auto archivePath = dai::getModelFromZoo(description);
+        dai::NNArchive nnArchive{archivePath};
+        REQUIRE_NOTHROW(parser.setNNArchive(nnArchive));
+
+        dai::DetectionParserOptions properties = parser.properties.parser;
+
+        REQUIRE(properties.nnFamily == DetectionNetworkType::MOBILENET);
+        REQUIRE_FALSE(properties.decodeSegmentation);
+        REQUIRE_FALSE(properties.decodeKeypoints);
+        REQUIRE_FALSE(properties.nKeypoints.has_value());
+    }
+
+    SECTION("Unsupported non-detection archive") {
+        auto description = dai::NNModelDescription{"luxonis/paddle-text-recognition:320x48", "RVC4"};
+        auto archivePath = dai::getModelFromZoo(description);
+        dai::NNArchive nnArchive{archivePath};
+
+        REQUIRE_THROWS(parser.setNNArchive(nnArchive));
+    }
 }
 
 TEST_CASE("DetectionParser replay test") {
