@@ -101,16 +101,12 @@ CalibrationHandler Rectification::getCalibrationData() const {
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
-    if(runOnHost()) {
-        auto device = getParentPipeline().getDefaultDevice();
-        if(device && device->getPlatform() != Platform::RVC4) {
-            throw std::runtime_error("Rectification node is only supported on RVC4 platform");
-        }
-    }
 
     bool initialized = false;
     cv::Mat cv_rectificationMap1X, cv_rectificationMap1Y;
     cv::Mat cv_rectificationMap2X, cv_rectificationMap2Y;
+
+    uint32_t latestEepromId = getParentPipeline().getEepromId();
 
     cv::Mat cv_targetCameraMatrix1, cv_targetCameraMatrix2;
     std::array<std::array<float, 3>, 3> targetM1, targetM2;
@@ -134,6 +130,13 @@ void Rectification::run() {
             output1FrameHeight = input1Frame->getHeight();
             output2FrameWidth = input2Frame->getWidth();
             output2FrameHeight = input2Frame->getHeight();
+        }
+
+        // If the EEPROM identifier has changed, we need to re-initialize the rectification matrices
+        uint32_t currentEepromId = getParentPipeline().getEepromId();
+        if(latestEepromId != currentEepromId) {
+            latestEepromId = currentEepromId;
+            initialized = false;
         }
 
         if(!initialized) {
