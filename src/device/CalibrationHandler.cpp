@@ -467,7 +467,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
         if(!eepromData.productName.empty()) {
             auto productIt = housingData.find(eepromData.productName);
             if(productIt != housingData.end()) {
-                auto housingIt = productIt->second.find(housingCS);
+                auto housingIt = productIt->second.find(HousingCoordinateSystem::VESA_A);  // Hardcoded to VESA_A
                 if(housingIt != productIt->second.end()) {
                     // Get the translation from the database (in mm)
                     const auto& dbTranslation = housingIt->second;
@@ -477,13 +477,13 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
         }
     }
 
-    // Build 4x4 transform matrix
-    std::vector<std::vector<float>> T(4, std::vector<float>(4, 0.0f));
+    // Build 4x4 transform matrix from HousingOrigin to Housing
+    std::vector<std::vector<float>> T_HousingOriginToHousing(4, std::vector<float>(4, 0.0f));
 
     for(int r = 0; r < 3; ++r) {
         // Copy rotation row
         for(int c = 0; c < 3; ++c) {
-            T[r][c] = housingRotation[r][c];
+            T_HousingOriginToHousing[r][c] = housingRotation[r][c];
         }
 
         // Pick translation vector
@@ -491,13 +491,36 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
 
         // Map row index -> x/y/z
         float tval = (r == 0 ? t.x : (r == 1 ? t.y : t.z));
-        T[r][3] = tval;
+        T_HousingOriginToHousing[r][3] = tval;
     }
 
     // Last row = [0 0 0 1]
-    T[3][3] = 1.0f;
+    T_HousingOriginToHousing[3][3] = 1.0f;
 
-    return T;
+    // ------------------------------------------------------------
+    // Get the requested housing coordinate system translation and subtract it
+    // ------------------------------------------------------------
+    if(useSpecTranslation && housingCS != HousingCoordinateSystem::AUTO) {
+        const auto& housingData = getHousingCoordinates();
+        
+        if(!eepromData.productName.empty()) {
+            auto productIt = housingData.find(eepromData.productName);
+            if(productIt != housingData.end()) {
+                auto requestedHousingIt = productIt->second.find(housingCS);
+                if(requestedHousingIt != productIt->second.end()) {
+                    // Get the translation from the database (in mm)
+                    const auto& requestedDbTranslation = requestedHousingIt->second;
+                    
+                    // Subtract the requested housing translation from T_HousingOriginToHousing
+                    T_HousingOriginToHousing[0][3] -= requestedDbTranslation[0];
+                    T_HousingOriginToHousing[1][3] -= requestedDbTranslation[1];
+                    T_HousingOriginToHousing[2][3] -= requestedDbTranslation[2];
+                }
+            }
+        }
+    }
+
+    return T_HousingOriginToHousing;
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(
