@@ -32,6 +32,7 @@ void bind_vpp(pybind11::module& m, void* pCallstack) {
 
     // Node
     vpp.def_readonly("inputConfig", &Vpp::inputConfig, DOC(dai, node, Vpp, inputConfig))
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
         .def_property_readonly(
             "left", [](Vpp& node) { return node.left; }, py::return_value_policy::reference_internal, "Rectified left input in full resolution.")
         .def_property_readonly(
@@ -46,6 +47,8 @@ void bind_vpp(pybind11::module& m, void* pCallstack) {
             [](Vpp& node) { return node.confidence; },
             py::return_value_policy::reference_internal,
             "Confidence of the dispatiry (in integers - 16 times bigger).")
+        .def("build", &Vpp::build, py::arg("leftInput"), py::arg("rightInput"), py::arg("disparity"), py::arg("confidence"), DOC(dai, node, Vpp, build))
+#endif
         .def_readonly("syncedInputs", &Vpp::syncedInputs, DOC(dai, node, Vpp, syncedInputs), "Synchronised Left Img, Right Img, Dispatiy and confidence input.")
         .def_readonly("leftOut", &Vpp::leftOut, DOC(dai, node, Vpp, leftOut), "Left output with same resolution as input.")
         .def_readonly("rightOut", &Vpp::rightOut, DOC(dai, node, Vpp, rightOut), "Right output with same resolution as input.")
