@@ -1,4 +1,5 @@
 #include "PipelineImplHelper.hpp"
+
 #include "pipeline/node/internal/PipelineEventAggregation.hpp"
 #include "pipeline/node/internal/PipelineStateMerge.hpp"
 #include "pipeline/node/internal/XLinkIn.hpp"
@@ -6,9 +7,9 @@
 #include "pipeline/node/internal/XLinkOut.hpp"
 #include "pipeline/node/internal/XLinkOutHost.hpp"
 #include "utility/Environment.hpp"
+#include "utility/HolisticRecordReplay.hpp"
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
-#include "utility/HolisticRecordReplay.hpp"
 
 namespace dai {
 namespace utility {

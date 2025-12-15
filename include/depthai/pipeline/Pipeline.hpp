@@ -50,7 +50,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl& operator=(PipelineImpl&&) = delete;
     ~PipelineImpl();
 
-protected:
+   protected:
     // Record and Replay
     RecordConfig recordConfig;
     bool enableHolisticRecordReplay = false;

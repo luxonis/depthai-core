@@ -12,7 +12,8 @@ class PipelineImplHelper {
     PipelineImplHelper(PipelineImpl* pipeline) : pipeline(pipeline) {};
     void setupHolisticRecordAndReplay();
     void setupPipelineDebuggingPre();
-    void setupPipelineDebuggingPost(std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>&, std::unordered_map<dai::Node::Input*, node::internal::XLinkInBridge>&);
+    void setupPipelineDebuggingPost(std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>&,
+                                    std::unordered_map<dai::Node::Input*, node::internal::XLinkInBridge>&);
 };
 
 }  // namespace utility

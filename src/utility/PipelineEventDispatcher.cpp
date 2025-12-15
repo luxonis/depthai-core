@@ -64,7 +64,8 @@ void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::st
             out->send(std::make_shared<dai::PipelineEvent>(event.event));
         } catch(const MessageQueue::QueueException&) {
         }
-    else throw std::runtime_error("PipelineEventDispatcher output is null");
+    else
+        throw std::runtime_error("PipelineEventDispatcher output is null");
 }
 void PipelineEventDispatcher::startInputEvent(const std::string& source, std::optional<uint32_t> queueSize) {
     startEvent(PipelineEvent::Type::INPUT, source, std::move(queueSize));
@@ -102,7 +103,8 @@ void PipelineEventDispatcher::endEvent(PipelineEvent::Type type, const std::stri
             out->send(std::make_shared<dai::PipelineEvent>(event.event));
         } catch(const MessageQueue::QueueException&) {
         }
-    else throw std::runtime_error("PipelineEventDispatcher output is null");
+    else
+        throw std::runtime_error("PipelineEventDispatcher output is null");
 
     event.event.queueSize = std::nullopt;
 }
@@ -134,7 +136,8 @@ void PipelineEventDispatcher::startTrackedEvent(PipelineEvent event, std::option
             out->send(std::make_shared<dai::PipelineEvent>(event));
         } catch(const MessageQueue::QueueException&) {
         }
-    else throw std::runtime_error("PipelineEventDispatcher output is null");
+    else
+        throw std::runtime_error("PipelineEventDispatcher output is null");
 }
 void PipelineEventDispatcher::startTrackedEvent(PipelineEvent::Type type,
                                                 const std::string& source,
@@ -165,7 +168,8 @@ void PipelineEventDispatcher::endTrackedEvent(PipelineEvent event, std::optional
             out->send(std::make_shared<dai::PipelineEvent>(event));
         } catch(const MessageQueue::QueueException&) {
         }
-    else throw std::runtime_error("PipelineEventDispatcher output is null");
+    else
+        throw std::runtime_error("PipelineEventDispatcher output is null");
 }
 void PipelineEventDispatcher::endTrackedEvent(PipelineEvent::Type type,
                                               const std::string& source,
@@ -202,7 +206,8 @@ void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::str
             out->send(std::make_shared<dai::PipelineEvent>(event.event));
         } catch(const MessageQueue::QueueException&) {
         }
-    else throw std::runtime_error("PipelineEventDispatcher output is null");
+    else
+        throw std::runtime_error("PipelineEventDispatcher output is null");
 }
 void PipelineEventDispatcher::pingMainLoopEvent() {
     pingEvent(PipelineEvent::Type::LOOP, "_mainLoop");
@@ -234,7 +239,8 @@ void PipelineEventDispatcher::pingInputEvent(const std::string& source, Pipeline
             out->send(std::make_shared<dai::PipelineEvent>(eventCopy));
         } catch(const MessageQueue::QueueException&) {
         }
-    else throw std::runtime_error("PipelineEventDispatcher output is null");
+    else
+        throw std::runtime_error("PipelineEventDispatcher output is null");
 }
 PipelineEventDispatcher::BlockPipelineEvent PipelineEventDispatcher::blockEvent(PipelineEvent::Type type,
                                                                                 const std::string& source,

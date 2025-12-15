@@ -6,11 +6,11 @@ namespace dai {
 namespace utility {
 
 /**
-* @brief A simple circular buffer implementation with forward and reverse iterators
-* @tparam T The type of elements stored in the buffer
-*
-* This implementation is not thread-safe.
-*/
+ * @brief A simple circular buffer implementation with forward and reverse iterators
+ * @tparam T The type of elements stored in the buffer
+ *
+ * This implementation is not thread-safe.
+ */
 template <typename T>
 class CircularBuffer {
     std::vector<T> buffer;

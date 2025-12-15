@@ -38,8 +38,8 @@ class PipelineStateMerge : public CustomThreadedNode<PipelineStateMerge> {
     std::shared_ptr<PipelineStateMerge> build(bool hasDeviceNodes, bool hasHostNodes);
 
     /**
-    * True by default. Set to false when the node should only wait for states and not for configuration inputs. Used for merging trace outputs.
-    */
+     * True by default. Set to false when the node should only wait for states and not for configuration inputs. Used for merging trace outputs.
+     */
     PipelineStateMerge& setAllowConfiguration(bool allow);
 
     void run() override;

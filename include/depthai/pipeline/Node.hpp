@@ -172,7 +172,8 @@ class Node : public std::enable_shared_from_this<Node> {
        public:
         // std::vector<Capability> possibleCapabilities;
 
-        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)), pipelineEventDispatcher(par.pipelineEventDispatcher.get()) {
+        Output(Node& par, OutputDescription desc, bool ref = true)
+            : parent(par), desc(std::move(desc)), pipelineEventDispatcher(par.pipelineEventDispatcher.get()) {
             // Place oneself to the parents references
             if(ref) {
                 par.setOutputRefs(this);
