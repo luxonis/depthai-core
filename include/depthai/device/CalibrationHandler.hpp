@@ -602,6 +602,18 @@ class CalibrationHandler {
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkSrcLinks(CameraBoardSocket headSocket) const;
+    void validateExtrinsicGraphOrThrow() const;
+    enum class ExtrinsicGraphError {
+        None,
+        CycleDetected,
+        DanglingReference
+    };
+    struct ExtrinsicGraphValidationResult {
+        ExtrinsicGraphError error = ExtrinsicGraphError::None;
+        CameraBoardSocket at = CameraBoardSocket::AUTO;
+        CameraBoardSocket to = CameraBoardSocket::AUTO;
+    };
+    ExtrinsicGraphValidationResult validateExtrinsicGraph() const;
 
     /**
      * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics

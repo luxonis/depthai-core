@@ -49,6 +49,74 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 }
 }  // namespace
 
+
+CalibrationHandler::ExtrinsicGraphValidationResult
+CalibrationHandler::validateExtrinsicGraph() const {
+    std::unordered_set<CameraBoardSocket> globalVisited;
+
+    for(const auto& kv : eepromData.cameraData) {
+        CameraBoardSocket start = kv.first;
+
+        std::unordered_set<CameraBoardSocket> localVisited;
+        CameraBoardSocket current = start;
+
+        while(true) {
+            if(localVisited.count(current)) {
+                return {
+                    CalibrationHandler::ExtrinsicGraphError::CycleDetected,
+                    current,
+                    eepromData.cameraData.at(current).extrinsics.toCameraSocket
+                };
+            }
+
+            localVisited.insert(current);
+            globalVisited.insert(current);
+
+            const auto& info = eepromData.cameraData.at(current);
+
+            if(info.extrinsics.toCameraSocket == CameraBoardSocket::AUTO)
+                break;
+
+            if(eepromData.cameraData.count(info.extrinsics.toCameraSocket) == 0) {
+                return {
+                    CalibrationHandler::ExtrinsicGraphError::DanglingReference,
+                    current,
+                    info.extrinsics.toCameraSocket
+                };
+            }
+
+            current = info.extrinsics.toCameraSocket;
+        }
+    }
+
+    return {};
+}
+
+void CalibrationHandler::validateExtrinsicGraphOrThrow() const {
+    auto result = validateExtrinsicGraph();
+
+    switch(result.error) {
+        case ExtrinsicGraphError::None:
+            return;
+
+        case ExtrinsicGraphError::CycleDetected:
+            throw std::runtime_error(
+                "Extrinsic cycle detected: " +
+                toString(result.at) + " → " + toString(result.to)
+            );
+
+        case ExtrinsicGraphError::DanglingReference:
+            throw std::runtime_error(
+                "Dangling extrinsic reference: " +
+                toString(result.at) + " → " + toString(result.to)
+            );
+    }
+
+    // Defensive: unreachable, but keeps -Werror happy
+    throw std::runtime_error("Unknown extrinsic graph error");
+}
+
+
 CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath) {
     std::ifstream jsonStream(eepromDataPath);
     // TODO(sachin): Check if the file exists first.
@@ -60,11 +128,13 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath) {
     }
     nlohmann::json jsonData = nlohmann::json::parse(jsonStream);
     eepromData = jsonData;
+    validateExtrinsicGraphOrThrow();
 }
 
 CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson) {
     CalibrationHandler calib;
     calib.eepromData = eepromDataJson;
+    calib.validateExtrinsicGraphOrThrow();
     return calib;
 }
 
@@ -191,10 +261,12 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath
     temp = camera.extrinsics.rotationMatrix[1][2];
     camera.extrinsics.rotationMatrix[1][2] = camera.extrinsics.rotationMatrix[2][1];
     camera.extrinsics.rotationMatrix[2][1] = temp;
+    validateExtrinsicGraphOrThrow();
 }
 
 CalibrationHandler::CalibrationHandler(EepromData newEepromData) {
     eepromData = newEepromData;
+    validateExtrinsicGraphOrThrow();
 }
 
 dai::EepromData CalibrationHandler::getEepromData() const {
@@ -807,6 +879,7 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
     } else {
         eepromData.cameraData[srcCameraId].extrinsics = extrinsics;
     }
+    validateExtrinsicGraphOrThrow();
     return;
 }
 

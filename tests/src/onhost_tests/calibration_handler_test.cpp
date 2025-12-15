@@ -3,11 +3,12 @@
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <vector>
+#include <fstream>
 
 using namespace dai;
 
 // Helper to create calibration data directly in code
-static CalibrationHandler loadHandler() {
+static nlohmann::json loadCalibJson() {
     nlohmann::json calibJson = {
         {"cameraData",
          {{0,
@@ -66,7 +67,11 @@ static CalibrationHandler loadHandler() {
             {"specHfovDeg", 0.0},
             {"width", 1920}}}}}};
 
-    return CalibrationHandler::fromJson(calibJson);
+    return calibJson;
+}
+
+static CalibrationHandler loadHandler() {
+    return CalibrationHandler::fromJson(loadCalibJson());
 }
 
 TEST_CASE("Invalid camera ID throws", "[getCameraIntrinsics]") {
@@ -245,32 +250,76 @@ TEST_CASE("Multiple independent origins detected", "[getCameraExtrinsics]") {
 }
 
 TEST_CASE("Cyclic connection throws", "[getCameraExtrinsics]") {
-    auto handler = loadHandler();
-    auto R3 = std::vector<std::vector<float>>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    dai::EepromData data;
+
+    // Predeclare nodes
+    data.cameraData[CameraBoardSocket::CAM_A];
+    data.cameraData[CameraBoardSocket::CAM_B];
+    data.cameraData[CameraBoardSocket::CAM_C];
+
+    dai::CalibrationHandler handler(data);
+
+    auto R3 = std::vector<std::vector<float>>{
+        {1, 0, 0},
+        {0, 1, 0},
+        {0, 0, 1}
+    };
     auto zeros3 = std::vector<float>{0, 0, 0};
-    // A→B, B→C, C→A forms a cycle
+
+    // A → B → C
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, R3, zeros3, zeros3);
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C, R3, zeros3, zeros3);
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_A, R3, zeros3, zeros3);
-    REQUIRE_THROWS_AS(handler.getCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, false), std::runtime_error);
+
+    // Closing the cycle must throw
+    REQUIRE_THROWS_WITH(
+        handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_A, R3, zeros3, zeros3),
+        Catch::Matchers::ContainsSubstring("Extrinsic cycle detected")
+    );
+
 }
 
-TEST_CASE("Long chain extrinsics composition", "[getCameraExtrinsics]") {
-    auto handler = loadHandler();
-    auto R3 = std::vector<std::vector<float>>{{0.4, 0, 0}, {0, 0.3, 0}, {0, 0, 1.1}};
-    auto zeros3 = std::vector<float>{0, 0, 0};
 
-    // A→D, D→C, C→B, B→AUTO (origin)
+TEST_CASE("Long chain extrinsics composition", "[getCameraExtrinsics]") {
+    dai::EepromData data;
+
+    // Pre-create camera nodes (no extrinsics yet)
+    data.cameraData[CameraBoardSocket::CAM_A];
+    data.cameraData[CameraBoardSocket::CAM_B];
+    data.cameraData[CameraBoardSocket::CAM_C];
+    data.cameraData[CameraBoardSocket::CAM_D];
+
+    dai::CalibrationHandler handler(data);
+
+    auto R3 = std::vector<std::vector<float>>{
+        {0.4f, 0.0f, 0.0f},
+        {0.0f, 0.3f, 0.0f},
+        {0.0f, 0.0f, 1.1f}
+    };
+
+    auto zeros3 = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    // A → D → C → B → AUTO
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_D, R3, {0, 2, 0}, zeros3);
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_C, R3, {1, -1, 0}, zeros3);
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_B, R3, {0, 5, 3}, zeros3);
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::AUTO, R3, zeros3, zeros3);
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::AUTO,  R3, zeros3, zeros3);
 
-    auto M = handler.getCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_A, false);
+    auto M = handler.getCameraExtrinsics(
+        CameraBoardSocket::CAM_C,
+        CameraBoardSocket::CAM_A,
+        false
+    );
+
     std::vector<std::vector<float>> expected = {
-        {0.025600001f, 0.0f, 0.0f, -0.025600001f}, {0.0f, 0.008100001f, 0.0f, 0.003240019f}, {0.0f, 0.0f, 1.464100122f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+        {0.025600001f, 0.0f, 0.0f, -0.025600001f},
+        {0.0f, 0.008100001f, 0.0f,  0.003240019f},
+        {0.0f, 0.0f, 1.464100122f,  0.0f},
+        {0.0f, 0.0f, 0.0f,          1.0f}
+    };
+
     REQUIRE(M == expected);
 }
+
 
 TEST_CASE("Invalid camera ID throws", "[getCameraTranslationVector]") {
     auto handler = loadHandler();
@@ -310,33 +359,71 @@ TEST_CASE("Directly linked cameras translation", "[getCameraTranslationVector]")
 }
 
 TEST_CASE("Cyclic connection throws", "[getCameraTranslationVector]") {
-    auto handler = loadHandler();
-    auto R = std::vector<std::vector<float>>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    dai::EepromData data;
+
+    // Predeclare nodes
+    data.cameraData[CameraBoardSocket::CAM_A];
+    data.cameraData[CameraBoardSocket::CAM_B];
+    data.cameraData[CameraBoardSocket::CAM_C];
+
+    dai::CalibrationHandler handler(data);
+
+    auto R = std::vector<std::vector<float>>{
+        {1, 0, 0},
+        {0, 1, 0},
+        {0, 0, 1}
+    };
     auto zeros = std::vector<float>{0, 0, 0};
 
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, R, zeros, zeros);
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C, R, zeros, zeros);
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_A, R, zeros, zeros);
 
-    REQUIRE_THROWS_AS(handler.getCameraTranslationVector(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, false), std::runtime_error);
+    // Closing the cycle must throw
+    REQUIRE_THROWS_WITH(
+        handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_A, R, zeros, zeros),
+        Catch::Matchers::ContainsSubstring("Extrinsic cycle detected")
+    );
+
 }
 
-TEST_CASE("Long chain translation composition", "[getCameraTranslationVector]") {
-    auto handler = loadHandler();
-    std::vector<std::vector<float>> R = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    auto zeros3 = std::vector<float>{0, 0, 0};
 
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_D, R, {1.0f, 0.0f, 0.0f}, {0, 0, 0});
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_C, R, {0.0f, 2.0f, 0.0f}, {0, 0, 0});
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_B, R, {0.0f, 0.0f, 3.0f}, {0, 0, 0});
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::AUTO, R, zeros3, zeros3);
-    // Translation from A → D should be sum of all
-    auto t = handler.getCameraTranslationVector(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, false);
+TEST_CASE("Long chain translation composition", "[getCameraTranslationVector]") {
+    dai::EepromData data;
+
+    // Pre-create camera nodes (no extrinsics yet)
+    data.cameraData[CameraBoardSocket::CAM_A];
+    data.cameraData[CameraBoardSocket::CAM_B];
+    data.cameraData[CameraBoardSocket::CAM_C];
+    data.cameraData[CameraBoardSocket::CAM_D];
+
+    dai::CalibrationHandler handler(data);
+
+    std::vector<std::vector<float>> R = {
+        {1.0f, 0.0f, 0.0f},
+        {0.0f, 1.0f, 0.0f},
+        {0.0f, 0.0f, 1.0f}
+    };
+
+    auto zeros3 = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    // A → D → C → B → AUTO
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_D, R, {1.0f, 0.0f, 0.0f}, zeros3);
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_C, R, {0.0f, 2.0f, 0.0f}, zeros3);
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_B, R, {0.0f, 0.0f, 3.0f}, zeros3);
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::AUTO,  R, zeros3, zeros3);
+
+    auto t = handler.getCameraTranslationVector(
+        CameraBoardSocket::CAM_A,
+        CameraBoardSocket::CAM_B,
+        false
+    );
+
     REQUIRE(t.size() == 3);
     REQUIRE(t[0] == Catch::Approx(1.0f).margin(1e-6));
     REQUIRE(t[1] == Catch::Approx(2.0f).margin(1e-6));
     REQUIRE(t[2] == Catch::Approx(3.0f).margin(1e-6));
 }
+
 
 TEST_CASE("Spec vs calibration translation distinction", "[getCameraTranslationVector]") {
     auto handler = loadHandler();
@@ -432,36 +519,93 @@ TEST_CASE("Directly linked cameras rotation", "[getCameraRotationMatrix]") {
 }
 
 TEST_CASE("Cyclic connection throws", "[getCameraRotationMatrix]") {
-    auto handler = loadHandler();
-    std::vector<std::vector<float>> R = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    dai::EepromData data;
+
+    // Predeclare nodes
+    data.cameraData[CameraBoardSocket::CAM_A];
+    data.cameraData[CameraBoardSocket::CAM_B];
+    data.cameraData[CameraBoardSocket::CAM_C];
+
+    dai::CalibrationHandler handler(data);
+
+    std::vector<std::vector<float>> R = {
+        {1, 0, 0},
+        {0, 1, 0},
+        {0, 0, 1}
+    };
     std::vector<float> zeros = {0, 0, 0};
 
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, R, zeros, zeros);
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C, R, zeros, zeros);
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_A, R, zeros, zeros);
 
-    REQUIRE_THROWS_AS(handler.getCameraRotationMatrix(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B), std::runtime_error);
+    // Closing the cycle must throw
+    REQUIRE_THROWS_WITH(
+        handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_A, R, zeros, zeros),
+        Catch::Matchers::ContainsSubstring("Extrinsic cycle detected")
+    );
+}
+
+TEST_CASE("Dangling extrinsic reference throws", "[getCameraRotationMatrix]") {
+    dai::EepromData data;
+
+    // Only CAM_A exists
+    data.cameraData[CameraBoardSocket::CAM_A];
+
+    dai::CalibrationHandler handler(data);
+
+    std::vector<std::vector<float>> R = {
+        {1, 0, 0},
+        {0, 1, 0},
+        {0, 0, 1}
+    };
+    std::vector<float> zeros = {0, 0, 0};
+
+    // CAM_A → CAM_B (CAM_B does NOT exist)
+    REQUIRE_THROWS_WITH(
+        handler.setCameraExtrinsics(
+            CameraBoardSocket::CAM_A,
+            CameraBoardSocket::CAM_B,
+            R, zeros, zeros
+        ),
+        Catch::Matchers::ContainsSubstring("Dangling extrinsic reference")
+    );
 }
 
 TEST_CASE("Long chain rotation composition", "[getCameraRotationMatrix]") {
-    auto handler = loadHandler();
+    dai::EepromData data;
 
-    // Rotate 90° around Z at each step
-    std::vector<std::vector<float>> Rz90 = {{0, -1, 0}, {1, 0, 0}, {0, 0, 1}};
+    // Pre-create camera nodes (no extrinsics yet)
+    data.cameraData[CameraBoardSocket::CAM_A];
+    data.cameraData[CameraBoardSocket::CAM_B];
+    data.cameraData[CameraBoardSocket::CAM_C];
+    data.cameraData[CameraBoardSocket::CAM_D];
+
+    dai::CalibrationHandler handler(data);
+
+    std::vector<std::vector<float>> Rz90 = {
+        {0, -1, 0},
+        {1,  0, 0},
+        {0,  0, 1}
+    };
+
     auto zeros3 = std::vector<float>{0, 0, 0};
-    std::vector<float> t = {0, 0, 0};
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_D, Rz90, {1.0f, 0.0f, 0.0f}, {0, 0, 0});
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_C, Rz90, {0.0f, 2.0f, 0.0f}, {0, 0, 0});
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_B, Rz90, {0.0f, 0.0f, 3.0f}, {0, 0, 0});
+
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_D, Rz90, {1, 0, 0}, zeros3);
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_C, Rz90, {0, 2, 0}, zeros3);
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_B, Rz90, {0, 0, 3}, zeros3);
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::AUTO, Rz90, zeros3, zeros3);
 
-    auto R = handler.getCameraRotationMatrix(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B);
+    auto R = handler.getCameraRotationMatrix(CameraBoardSocket::CAM_A,CameraBoardSocket::CAM_B);
 
-    // 3 × 90° rotations around Z should yield 270° (i.e. -90°)
-    std::vector<std::vector<float>> expected = {{0, 1, 0}, {-1, 0, 0}, {0, 0, 1}};
+    std::vector<std::vector<float>> expected = {
+        {0,  1, 0},
+        {-1, 0, 0},
+        {0,  0, 1}
+    };
 
     for(int i = 0; i < 3; ++i)
-        for(int j = 0; j < 3; ++j) REQUIRE(R[i][j] == Catch::Approx(expected[i][j]).margin(1e-6));
+        for(int j = 0; j < 3; ++j)
+            REQUIRE(R[i][j] == Catch::Approx(expected[i][j]).margin(1e-6));
 }
 
 TEST_CASE("Rotation matrix matches getCameraExtrinsics", "[getCameraRotationMatrix][getCameraExtrinsics]") {
@@ -673,4 +817,38 @@ TEST_CASE("Stereo left and right rectification matrices are different when provi
     dai::CalibrationHandler handler(data);
 
     REQUIRE(handler.getStereoLeftRectificationRotation() != handler.getStereoRightRectificationRotation());
+}
+
+
+TEST_CASE("EepromData constructor throws on cyclic extrinsic graph", "[CalibrationHandler][EepromData]") {
+    dai::EepromData data;
+    data.cameraData[CameraBoardSocket::CAM_A];
+    data.cameraData[CameraBoardSocket::CAM_B];
+
+    auto R = std::vector<std::vector<float>>{{1,0,0},{0,1,0},{0,0,1}};
+    auto z = std::vector<float>{0,0,0};
+
+    data.cameraData[CameraBoardSocket::CAM_A].extrinsics.rotationMatrix = R;
+    data.cameraData[CameraBoardSocket::CAM_B].extrinsics.rotationMatrix = R;
+
+    data.cameraData[CameraBoardSocket::CAM_A].extrinsics.toCameraSocket = CameraBoardSocket::CAM_B;
+    data.cameraData[CameraBoardSocket::CAM_B].extrinsics.toCameraSocket = CameraBoardSocket::CAM_A;
+
+    REQUIRE_THROWS_WITH(
+        dai::CalibrationHandler(data),
+        Catch::Matchers::ContainsSubstring("Extrinsic cycle detected")
+    );
+}
+
+TEST_CASE("EepromData constructor throws on dangling extrinsic reference", "[CalibrationHandler][EepromData]") {
+    dai::EepromData data;
+    data.cameraData[CameraBoardSocket::CAM_A]; // only A exists
+
+    // A points to B, but B is missing => dangling
+    data.cameraData[CameraBoardSocket::CAM_A].extrinsics.toCameraSocket = CameraBoardSocket::CAM_B;
+
+    REQUIRE_THROWS_WITH(
+        dai::CalibrationHandler(data),
+        Catch::Matchers::ContainsSubstring("Dangling extrinsic reference")
+    );
 }
