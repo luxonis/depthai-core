@@ -25,11 +25,19 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Bindings
     calibrationHandler.def(py::init<>(), DOC(dai, CalibrationHandler, CalibrationHandler))
-        .def(py::init<std::filesystem::path>(), DOC(dai, CalibrationHandler, CalibrationHandler, 2))
-        .def(py::init<std::filesystem::path, std::filesystem::path>(), DOC(dai, CalibrationHandler, CalibrationHandler, 3))
-        .def(py::init<EepromData>(), DOC(dai, CalibrationHandler, CalibrationHandler, 4))
+        .def(py::init<std::filesystem::path, bool>(),
+             py::arg("eepromDataPath"),
+             py::arg("validateExtrinsics") = false,
+             DOC(dai, CalibrationHandler, CalibrationHandler, 2))
+        .def(py::init<std::filesystem::path, std::filesystem::path, bool>(),
+             py::arg("calibrationDataPath"),
+             py::arg("boardConfigPath"),
+             py::arg("validateExtrinsics") = false,
+             DOC(dai, CalibrationHandler, CalibrationHandler, 3))
+        .def(py::init<EepromData, bool>(), py::arg("eepromData"), py::arg("validateExtrinsics") = false, DOC(dai, CalibrationHandler, CalibrationHandler, 4))
 
-        .def_static("fromJson", &CalibrationHandler::fromJson, DOC(dai, CalibrationHandler, fromJson))
+        .def_static(
+            "fromJson", &CalibrationHandler::fromJson, py::arg("eepromDataJson"), py::arg("validateExtrinsics") = false, DOC(dai, CalibrationHandler, fromJson))
 
         .def("getEepromData", &CalibrationHandler::getEepromData, DOC(dai, CalibrationHandler, getEepromData))
 

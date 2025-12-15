@@ -38,8 +38,9 @@ class CalibrationHandler {
      * eeprom json file created from calibration procedure.
      *
      * @param eepromDataPath takes the full path to the json file containing the calibration and device info.
+     * @param boardConfigPath Enable internal check for extrinsics cycling links or dangling references.
      */
-    explicit CalibrationHandler(std::filesystem::path eepromDataPath);
+    explicit CalibrationHandler(std::filesystem::path eepromDataPath, bool validateExtrinsics = false);
 
     /**
      * Construct a new Calibration Handler object using the board
@@ -47,22 +48,25 @@ class CalibrationHandler {
      *
      * @param calibrationDataPath Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
      * @param boardConfigPath Full Path to the board config json file containing device information.
+     * @param boardConfigPath Enable internal check for extrinsics cycling links or dangling references.
      */
-    CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath);
+    CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath, bool validateExtrinsics = false);
 
     /**
      * Construct a new Calibration Handler object from EepromData object.
      *
      * @param eepromData EepromData data structure containing the calibration data.
+     * @param boardConfigPath Enable internal check for extrinsics cycling links or dangling references.
      */
-    explicit CalibrationHandler(EepromData eepromData);
+    explicit CalibrationHandler(EepromData eepromData, bool validateExtrinsics = false);
 
     /**
      * Construct a new Calibration Handler object from JSON EepromData.
      *
      * @param eepromDataJson EepromData as JSON
+     * @param boardConfigPath Enable internal check for extrinsics cycling links or dangling references.
      */
-    static CalibrationHandler fromJson(nlohmann::json eepromDataJson);
+    static CalibrationHandler fromJson(nlohmann::json eepromDataJson, bool validateExtrinsics = false);
 
     /**
      * Get the Eeprom Data object
@@ -603,11 +607,7 @@ class CalibrationHandler {
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkSrcLinks(CameraBoardSocket headSocket) const;
     void validateExtrinsicGraphOrThrow() const;
-    enum class ExtrinsicGraphError {
-        None,
-        CycleDetected,
-        DanglingReference
-    };
+    enum class ExtrinsicGraphError { None, CycleDetected, DanglingReference };
     struct ExtrinsicGraphValidationResult {
         ExtrinsicGraphError error = ExtrinsicGraphError::None;
         CameraBoardSocket at = CameraBoardSocket::AUTO;
