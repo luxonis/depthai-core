@@ -675,3 +675,7 @@ target_compile_definitions(neural_depth_node_test PRIVATE
     NEURAL_REPLAY_PATH="${test_recording}"
     NEURAL_CALIBRATION_PATH="${test_calib}"
 )
+
+# NeuralAssistedStereo test
+dai_add_test(neural_assisted_stereo_node_test src/ondevice_tests/pipeline/node/neural_assisted_stereo_node_test.cpp)
+dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
