@@ -24,11 +24,13 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
 
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    Vpp();
+    Vpp() = default;
 
     Vpp(std::unique_ptr<Properties> props);
 
     virtual ~Vpp();
+
+    std::shared_ptr<Vpp> build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput);
 
     void buildInternal() override;
 
@@ -45,10 +47,27 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     const std::string disparityName = "disparity";
     const std::string confidenceName = "confidence";
 
-    Input* left;
-    Input* right;
-    Input* disparity;
-    Input* confidence;
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+
+    /**
+     * Input for left ImgFrame of left-right pair
+     */
+    Input& left{sync->inputs["left"]};
+    /**
+     * Input for right ImgFrame of left-right pair
+     */
+    Input& right{sync->inputs["right"]};
+
+    /**
+     * Output for rectified left ImgFrame
+     */
+    Input& disparity{sync->inputs["disparity"]};
+
+    /**
+     * Output for rectified left ImgFrame
+     */
+    Input& confidence{sync->inputs["confidence"]};
+#endif
 
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::VppConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 

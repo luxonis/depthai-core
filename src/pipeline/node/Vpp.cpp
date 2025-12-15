@@ -8,12 +8,18 @@ namespace node {
 
 Vpp::~Vpp() = default;
 
+std::shared_ptr<Vpp> Vpp::build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput) {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    leftInput.link(left);
+    rightInput.link(right);
+    disparityInput.link(disparity);
+    confidenceInput.link(confidence);
+#endif
+    return std::static_pointer_cast<Vpp>(shared_from_this());
+}
+
 Vpp::Vpp(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, Vpp, VppProperties>(std::move(props)),
-      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
-
-Vpp::Vpp()
-    : DeviceNodeCRTP<DeviceNode, Vpp, VppProperties>(std::make_unique<Properties>()),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 Vpp::Properties& Vpp::getProperties() {
@@ -28,10 +34,6 @@ void Vpp::buildInternal() {
             throw std::runtime_error("Vpp node is supported only on RVC4 devices.");
         }
     }
-    left = &sync->inputs[leftInputName];
-    right = &sync->inputs[rightInputName];
-    disparity = &sync->inputs[disparityName];
-    confidence = &sync->inputs[confidenceName];
     sync->out.link(syncedInputs);
 }
 

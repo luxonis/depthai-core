@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "spdlog/spdlog.h"
+
 namespace dai {
 
 const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
