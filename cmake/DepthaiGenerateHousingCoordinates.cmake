@@ -48,7 +48,11 @@ function(DepthaiGenerateHousingCoordinates)
 
     # Write the final file contents
     file(WRITE ${OUTPUT_FILE}
-"// depthai
+"#include <unordered_map>
+#include <string>
+#include <array>
+
+// depthai
 #include \"depthai/common/HousingCoordinateSystem.hpp\"
 
 namespace dai {
