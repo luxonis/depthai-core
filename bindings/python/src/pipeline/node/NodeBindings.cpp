@@ -342,11 +342,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getFpsLimit", &node::internal::XLinkOut::getFpsLimit, DOC(dai, node, internal, XLinkOut, getFpsLimit))
         .def("setPacketSize", &node::internal::XLinkOut::setPacketSize, py::arg("packetSize"), DOC(dai, node, internal, XLinkOut, setPacketSize))
         .def("getPacketSize", &node::internal::XLinkOut::getPacketSize, DOC(dai, node, internal, XLinkOut, getPacketSize))
-        .def("setPacketFrequency",
-             &node::internal::XLinkOut::setPacketFrequency,
-             py::arg("packetFrequency"),
-             DOC(dai, node, internal, XLinkOut, setPacketFrequency))
-        .def("getPacketFrequency", &node::internal::XLinkOut::getPacketFrequency, DOC(dai, node, internal, XLinkOut, getPacketFrequency))
+        .def("setBytesPerSecondLimit",
+             &node::internal::XLinkOut::setBytesPerSecondLimit,
+             py::arg("bytesPerSecondLimit"),
+             DOC(dai, node, internal, XLinkOut, setBytesPerSecondLimit))
+        .def("getBytesPerSecondLimit", &node::internal::XLinkOut::getBytesPerSecondLimit, DOC(dai, node, internal, XLinkOut, getBytesPerSecondLimit))
         .def("setMetadataOnly", &node::internal::XLinkOut::setMetadataOnly, py::arg("metadataOnly"), DOC(dai, node, internal, XLinkOut, setMetadataOnly))
         .def("getMetadataOnly", &node::internal::XLinkOut::getMetadataOnly, DOC(dai, node, internal, XLinkOut, getMetadataOnly))
         .def_readonly("input", &node::internal::XLinkOut::input, DOC(dai, node, internal, XLinkOut, input));
