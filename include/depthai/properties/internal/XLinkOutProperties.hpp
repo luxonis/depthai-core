@@ -26,12 +26,12 @@ struct XLinkOutProperties : PropertiesSerializable<Properties, XLinkOutPropertie
     /**
      * Max bytes per packet (-1 = unlimited)
      */
-    int packetSize = -1;  //
+    int packetSize = -1;
 
     /**
      * Maximal bytes per second (-1 = unlimited)
      */
-    int bytesPerSecondLimit = -1;  //
+    int bytesPerSecondLimit = -1;
 
     ~XLinkOutProperties() override;
 };
