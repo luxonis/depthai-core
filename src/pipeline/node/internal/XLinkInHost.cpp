@@ -70,7 +70,7 @@ std::shared_ptr<ADatatype> XLinkInHost::parsePacketizedData(const std::shared_pt
     packet.data = payload.data();
     packet.length = static_cast<uint32_t>(payload.size());
 
-    return StreamMessageParser::parseMessage(std::move(&packet));
+    return StreamMessageParser::parseMessage(&packet);
 }
 
 void XLinkInHost::parseMessageGroup(const std::shared_ptr<MessageGroup>& messageGroup, const XLinkStream& stream) const {
