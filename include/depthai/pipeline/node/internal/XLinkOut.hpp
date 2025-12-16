@@ -51,7 +51,7 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
 
     void setPacketSize(int packetSize);
 
-    void setPacketFrequency(int packetFrequency);
+    void setBytesPerSecondLimit(int bytesPerSecondLimit);
 
     /// Get stream name
     std::string getStreamName() const;
@@ -62,7 +62,7 @@ class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>
 
     int getPacketSize() const;
 
-    int getPacketFrequency() const;
+    int getBytesPerSecondLimit() const;
 
     void buildInternal() override;
 };

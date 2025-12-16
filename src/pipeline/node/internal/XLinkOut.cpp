@@ -25,8 +25,8 @@ void XLinkOut::setPacketSize(int packetSize) {
     properties.packetSize = packetSize;
 }
 
-void XLinkOut::setPacketFrequency(int packetFrequency) {
-    properties.packetFrequency = packetFrequency;
+void XLinkOut::setBytesPerSecondLimit(int bytesPerSecondLimit) {
+    properties.bytesPerSecondLimit = bytesPerSecondLimit;
 }
 // Getters
 
@@ -46,8 +46,8 @@ int XLinkOut::getPacketSize() const {
     return properties.packetSize;
 }
 
-int XLinkOut::getPacketFrequency() const {
-    return properties.packetFrequency;
+int XLinkOut::getBytesPerSecondLimit() const {
+    return properties.bytesPerSecondLimit;
 }
 
 }  // namespace internal
