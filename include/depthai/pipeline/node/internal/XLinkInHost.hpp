@@ -3,11 +3,11 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
-#include "depthai/pipeline/datatype/PacketizedData.hpp"
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
+struct PacketizedData;
 namespace node {
 namespace internal {
 
