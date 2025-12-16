@@ -93,7 +93,7 @@ TEST_CASE("Sync node packet transfer timing and data integrity with varying dela
     pipeline.build();
     auto xlinkBridge = syncNode->out.getXLinkBridge();
     xlinkBridge->xLinkOut->setPacketSize(packetSize);
-    xlinkBridge->xLinkOut->setPacketFrequency(1000. / sendingDistanceMs);
+    xlinkBridge->xLinkOut->setBytesPerSecondLimit(packetSize * (1000 / sendingDistanceMs));
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -155,7 +155,7 @@ TEST_CASE("Sync node packet transfer data integrity with more frames in MessageG
     pipeline.build();
     auto xlinkBridge = syncNode->out.getXLinkBridge();
     xlinkBridge->xLinkOut->setPacketSize(packetSize);
-    xlinkBridge->xLinkOut->setPacketFrequency(1000. / sendingDistanceMs);
+    xlinkBridge->xLinkOut->setBytesPerSecondLimit(packetSize * (1000 / sendingDistanceMs));
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 

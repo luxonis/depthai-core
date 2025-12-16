@@ -29,14 +29,14 @@ struct XLinkOutProperties : PropertiesSerializable<Properties, XLinkOutPropertie
     int packetSize = -1;  //
 
     /**
-     * Maximal frequency beteen of packets (-1 = unlimited)
+     * Maximal bytes per second (-1 = unlimited)
      */
-    int packetFrequency = -1;  //
+    int bytesPerSecondLimit = -1;  //
 
     ~XLinkOutProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(XLinkOutProperties, maxFpsLimit, streamName, metadataOnly, packetSize, packetFrequency);
+DEPTHAI_SERIALIZE_EXT(XLinkOutProperties, maxFpsLimit, streamName, metadataOnly, packetSize, bytesPerSecondLimit);
 
 }  // namespace internal
 }  // namespace dai
