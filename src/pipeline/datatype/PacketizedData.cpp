@@ -1,4 +1,4 @@
-#include "depthai/pipeline/datatype/PacketizedData.hpp"
+#include "PacketizedData.hpp"
 
 namespace dai {
 PacketizedData::~PacketizedData() = default;
