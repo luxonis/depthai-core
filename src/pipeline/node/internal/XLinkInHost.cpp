@@ -1,6 +1,6 @@
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 
-#include "depthai/pipeline/datatype/PacketizedData.hpp"
+#include "../../datatype/PacketizedData.hpp"
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
