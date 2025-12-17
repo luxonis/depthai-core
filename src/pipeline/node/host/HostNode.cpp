@@ -19,7 +19,11 @@ void HostNode::buildStage1() {
 void HostNode::run() {
     while(mainLoop()) {
         // Get input
-        auto in = input.get<dai::MessageGroup>();
+        std::shared_ptr<dai::MessageGroup> in;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            in = input.get<dai::MessageGroup>();
+        }
         // Create a lambda that captures the class as a shared pointer and the message
         // TODO(Morato) - optimize this for performance
         auto processAndSendGroup = [self = std::static_pointer_cast<HostNode>(shared_from_this()), in]() {
@@ -28,6 +32,7 @@ void HostNode::run() {
 
             // Send the output, if there is any
             if(out) {
+                auto blockEvent = self->outputBlockEvent();
                 self->out.send(out);
             }
         };
