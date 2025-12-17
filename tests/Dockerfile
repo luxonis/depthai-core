@@ -105,6 +105,11 @@ RUN python3 -m venv venv && \
 
 ENV PATH="/workspace/venv/bin:$PATH"
 
+RUN --mount=type=cache,target=/opt/vcpkg-downloads \
+    curl -fL --retry 5 --retry-delay 2 \
+      https://mirrors.kernel.org/gnu/gperf/gperf-3.1.tar.gz \
+      -o /opt/vcpkg-downloads/gperf-3.1.tar.gz
+
 # Set toolchain path only if flavor != vanilla
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
