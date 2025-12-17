@@ -648,14 +648,32 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
     // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), try finding it first
     if(deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) {
+        auto timeout = getDefaultSearchTime();
+        auto startSearchTime = std::chrono::steady_clock::now();
+        constexpr auto SEARCH_INTERVAL = std::chrono::milliseconds(100);
+
         deviceDesc_t foundDesc;
-        auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+        XLinkError_t ret = X_LINK_DEVICE_NOT_FOUND;
+        do {
+            ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+            if(ret == X_LINK_SUCCESS) {
+                pimpl->logger.warn("Found device by given DeviceInfo: {}", deviceInfo.toString());
+                break;
+            }
+            if(timeout < SEARCH_INTERVAL) {
+                std::this_thread::sleep_for(timeout);
+                break;
+            } else {
+                std::this_thread::sleep_for(SEARCH_INTERVAL);
+            }
+        } while(std::chrono::steady_clock::now() - startSearchTime < timeout);
+
         if(ret == X_LINK_SUCCESS) {
             deviceInfo = DeviceInfo(foundDesc);
             pimpl->logger.debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
         } else {
             deviceInfo.state = X_LINK_ANY_STATE;
-            pimpl->logger.debug("Searched, but no actual device found by given DeviceInfo");
+            pimpl->logger.error("Searched, but no actual device found by given DeviceInfo: {}", deviceInfo.toString());
         }
     }
 

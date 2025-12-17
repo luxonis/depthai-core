@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <chrono>
+#include <thread>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -11,6 +12,7 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 TEST_CASE("Test raw camera output") {
     // Create pipeline
@@ -171,6 +173,8 @@ TEST_CASE("Camera sensor configs configurations") {
     // For RVC4 there are currently some limitations:
     // Max 240 FPS and it has to be rounded down
     // Minimum FPS is incorrectly advertised, so this test sets the minimum to 5 FPS.
+    using std::chrono::steady_clock;
+    const auto RESET_REMOTE_TIMEOUT_MS = std::chrono::milliseconds(2000);
 
     constexpr float MINIMUM_FPS_RVC4 = 8.0f;  // TODO(Jakob) - remove this when fixed on device side
     dai::DeviceInfo connectedDeviceInfo;
@@ -201,6 +205,21 @@ TEST_CASE("Camera sensor configs configurations") {
                 std::cout << "Testing camera " << cameraFeatures.socket << " with resolution " << config.width << "x" << config.height << " at fps "
                           << fpsVariant << " on device " << connectedDeviceInfo.getDeviceId() << "\n"
                           << std::flush;
+
+                auto disappearStart = steady_clock::now();
+                while(steady_clock::now() - disappearStart < RESET_REMOTE_TIMEOUT_MS) {
+                    std::vector<dai::DeviceInfo> devices = dai::XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, true, 50);
+                    bool found = false;
+                    for(const auto& dev : devices) {
+                        if(dev.deviceId == connectedDeviceInfo.deviceId) {
+                            found = true;
+                        }
+                    }
+                    if(!found) {
+                        break;  // Device disappeared and went into reset
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
                 dai::Pipeline pipeline{std::make_shared<dai::Device>(connectedDeviceInfo)};
                 auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
                 benchmarkIn->sendReportEveryNMessages(static_cast<uint32_t>(std::round(fpsVariant)));
