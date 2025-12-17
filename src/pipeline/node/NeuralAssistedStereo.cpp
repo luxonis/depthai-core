@@ -15,6 +15,61 @@ NeuralAssistedStereo::NeuralAssistedStereo(std::unique_ptr<Properties> props)
 NeuralAssistedStereo::NeuralAssistedStereo()
     : DeviceNodeCRTP<DeviceNode, NeuralAssistedStereo, NeuralAssistedStereoProperties>(std::make_unique<Properties>()) {}
 
+void NeuralAssistedStereo::setInitialValues() {
+    // vpp parameters
+    vpp->initialConfig->blending = 0.3;
+    vpp->initialConfig->maxPatchSize = 4;
+    vpp->initialConfig->uniformPatch = false;
+    vpp->initialConfig->injectionParameters.textureThreshold = 13493.682329122857;
+    vpp->initialConfig->injectionParameters.kernelSize = 9;
+    vpp->initialConfig->injectionParameters.useInjection = true;
+    vpp->initialConfig->maxNumThreads = 8;
+
+    neuralDepth->initialConfig->setConfidenceThreshold(static_cast<int>(0.14 * 255));
+
+    // // Stereo node (fixed config for now)
+    stereoDepth->setRectification(false);
+    stereoDepth->setExtendedDisparity(true);
+    stereoDepth->setLeftRightCheck(true);
+    stereoDepth->setSubpixel(true);
+
+    stereoDepth->initialConfig->setConfidenceThreshold(250);
+    stereoDepth->initialConfig->setLeftRightCheckThreshold(3);
+    stereoDepth->initialConfig->setMedianFilter(dai::filters::params::MedianFilter::MEDIAN_OFF);
+
+    stereoDepth->initialConfig->algorithmControl.enableSwLeftRightCheck = false;
+    stereoDepth->initialConfig->algorithmControl.numInvalidateEdgePixels = 100;
+
+    stereoDepth->initialConfig->censusTransform.noiseThresholdOffset = 0;
+    stereoDepth->initialConfig->censusTransform.noiseThresholdScale = -96;
+
+    stereoDepth->initialConfig->confidenceMetrics.flatnessConfidenceThreshold = 4;
+    stereoDepth->initialConfig->confidenceMetrics.flatnessConfidenceWeight = 2;
+    stereoDepth->initialConfig->confidenceMetrics.motionVectorConfidenceWeight = 16;
+    stereoDepth->initialConfig->confidenceMetrics.occlusionConfidenceWeight = 14;
+
+    stereoDepth->initialConfig->costAggregation.p1Config.defaultValue = 16;
+    stereoDepth->initialConfig->costAggregation.p1Config.enableAdaptive = false;
+
+    stereoDepth->initialConfig->costAggregation.p2Config.defaultValue = 65;
+    stereoDepth->initialConfig->costAggregation.p2Config.enableAdaptive = false;
+
+    stereoDepth->initialConfig->costMatching.enableSwConfidenceThresholding = false;
+
+    stereoDepth->initialConfig->postProcessing.adaptiveMedianFilter.enable = true;
+    stereoDepth->initialConfig->postProcessing.brightnessFilter.maxBrightness = 255;
+    stereoDepth->initialConfig->postProcessing.brightnessFilter.minBrightness = 0;
+    stereoDepth->initialConfig->postProcessing.decimationFilter.decimationFactor = 1;
+    stereoDepth->initialConfig->postProcessing.decimationFilter.decimationMode =
+        dai::StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
+    stereoDepth->initialConfig->postProcessing.holeFilling.enable = true;
+    stereoDepth->initialConfig->postProcessing.holeFilling.fillConfidenceThreshold = 245;
+    stereoDepth->initialConfig->postProcessing.holeFilling.highConfidenceThreshold = 235;
+    stereoDepth->initialConfig->postProcessing.holeFilling.minValidDisparity = 1;
+    stereoDepth->initialConfig->postProcessing.spatialFilter.enable = false;
+    stereoDepth->initialConfig->postProcessing.speckleFilter.enable = true;
+}
+
 void NeuralAssistedStereo::buildInternal() {
     if(device) {
         auto platform = device->getPlatform();
@@ -22,6 +77,7 @@ void NeuralAssistedStereo::buildInternal() {
             throw std::runtime_error("NeuralAssistedStereo node is not supported on RVC2 devices.");
         }
     }
+    setInitialValues();
 }
 
 std::shared_ptr<NeuralAssistedStereo> NeuralAssistedStereo::build(Output& leftInput, Output& rightInput, DeviceModelZoo neuralModel, bool rectifyImages) {

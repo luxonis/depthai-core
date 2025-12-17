@@ -48,6 +48,8 @@ class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedSte
 
     void buildInternal() override;
 
+    void setInitialValues();
+
    public:
     /**
      * Build the composite node by connecting left and right camera outputs
