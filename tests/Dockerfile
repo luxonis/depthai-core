@@ -9,6 +9,10 @@ ENV FLAVOR=${FLAVOR}
 ARG PARALLEL_JOBS=8
 ARG PULL_REQUEST="false"
 
+ENV VCPKG_DOWNLOADS=/opt/vcpkg-downloads
+ENV VCPKG_DEFAULT_BINARY_CACHE=/opt/vcpkg-bincache
+ENV VCPKG_BINARY_SOURCES="clear;files,/opt/vcpkg-bincache,readwrite"
+
 # Update and install all required packages in one go
 RUN apt-get update && \
     apt-get install -y \
@@ -108,6 +112,8 @@ RUN if [ "$FLAVOR" != "vanilla" ]; then \
     else \
         echo "Using vanilla flavor (no toolchain)"; \
     fi && \
+    --mount=type=cache,target=/opt/vcpkg-downloads \
+    --mount=type=cache,target=/opt/vcpkg-bincache \
     cmake -S . -B build \
         -D CMAKE_BUILD_TYPE=Release \
         -D DEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
@@ -120,4 +126,6 @@ RUN if [ "$FLAVOR" != "vanilla" ]; then \
         -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON"; fi)
 
 
-RUN cmake --build build --parallel $PARALLEL_JOBS --config Release
+RUN --mount=type=cache,target=/opt/vcpkg-downloads \
+    --mount=type=cache,target=/opt/vcpkg-bincache \
+    cmake --build build --parallel $PARALLEL_JOBS --config Release
