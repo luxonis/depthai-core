@@ -684,7 +684,10 @@ bool EventsManager::sendSnap(const std::string& name,
     }
     for(const auto& file : fileGroup->fileData) {
         if(file->size >= maxFileSizeBytes) {
-            logger::error("Failed to send snap, file: {} is bigger then the configured maximum size: {}", file->fileName, maxFileSizeBytes);
+            logger::error(
+                "Failed to send snap, file: {} is bigger than the current maximum file size limit: {} kB. To increase your maximum file size, contact support.",
+                file->fileName,
+                maxFileSizeBytes / 1024);
             return false;
         }
     }
