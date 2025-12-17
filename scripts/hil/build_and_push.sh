@@ -73,7 +73,7 @@ else
   --build-arg GIT_COMMIT="${COMMIT_ID}" \
   --build-arg PARALLEL_JOBS="${PARALLEL_JOBS}" \
   --build-arg PULL_REQUEST="${PULL_REQUEST}" \
-  -- push
+  --push
 fi
 
 echo "✅ Done."
