@@ -74,11 +74,11 @@ RUN locale-gen en_US.UTF-8
 # Set workdir to your project directory
 WORKDIR /workspace
 
-ENV VCPKG_DOWNLOADS=/opt/vcpkg-downloads
-#Bootleg solution for ftp.gnu.org not working - will try caching downloads later
-RUN mkdir -p /opt/vcpkg-downloads && \
-    curl -fL https://mirrors.kernel.org/gnu/gperf/gperf-3.1.tar.gz \
-      -o /opt/vcpkg-downloads/gperf-3.1.tar.gz
+# ENV VCPKG_DOWNLOADS=/opt/vcpkg-downloads
+# #Bootleg solution for ftp.gnu.org not working - will try caching downloads later
+# RUN mkdir -p /opt/vcpkg-downloads && \
+#     curl -fL https://mirrors.kernel.org/gnu/gperf/gperf-3.1.tar.gz \
+#       -o /opt/vcpkg-downloads/gperf-3.1.tar.gz
 
 
 # Copy project files
@@ -106,14 +106,14 @@ RUN python3 -m venv venv && \
 ENV PATH="/workspace/venv/bin:$PATH"
 
 # Set toolchain path only if flavor != vanilla
-RUN if [ "$FLAVOR" != "vanilla" ]; then \
+RUN --mount=type=cache,target=/opt/vcpkg-downloads \
+    --mount=type=cache,target=/opt/vcpkg-bincache \
+    if [ "$FLAVOR" != "vanilla" ]; then \
         export CMAKE_TOOLCHAIN_PATH=/workspace/cmake/toolchain/${FLAVOR}.cmake && \
         echo "Using toolchain: $CMAKE_TOOLCHAIN_PATH"; \
     else \
         echo "Using vanilla flavor (no toolchain)"; \
     fi && \
-    --mount=type=cache,target=/opt/vcpkg-downloads \
-    --mount=type=cache,target=/opt/vcpkg-bincache \
     cmake -S . -B build \
         -D CMAKE_BUILD_TYPE=Release \
         -D DEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
