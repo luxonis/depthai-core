@@ -59,9 +59,6 @@ else
   CACHE_DIR="${CACHE_ROOT}/${CACHE_SCOPE}"
 fi
 
-sudo mkdir -p "${CACHE_DIR}"
-sudo chown -R "$(id -u):$(id -g)" "${CACHE_ROOT}" || true
-
 echo "🔨 Building + pushing with buildx. Cache dir: ${CACHE_DIR}"
 
 # Check if image exists locally
