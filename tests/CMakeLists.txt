@@ -415,6 +415,10 @@ dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
 
+# Circular buffer test
+dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
+dai_set_test_labels(circular_buffer_test onhost ci)
+
 # Pipeline debugging tests
 dai_add_test(pipeline_debugging_host_test src/onhost_tests/pipeline_debugging_host_test.cpp)
 dai_set_test_labels(pipeline_debugging_host_test onhost ci)
