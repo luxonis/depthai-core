@@ -34,24 +34,18 @@ void bind_vpp(pybind11::module& m, void* pCallstack) {
     vpp.def_readonly("inputConfig", &Vpp::inputConfig, DOC(dai, node, Vpp, inputConfig))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
         .def_property_readonly(
-            "left", [](Vpp& node) { return node.left; }, py::return_value_policy::reference_internal, "Rectified left input in full resolution.")
+            "left", [](Vpp& node) { return node.left; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
-            "right", [](Vpp& node) { return node.right; }, py::return_value_policy::reference_internal, "Rectified right input in full resolution.")
+            "right", [](Vpp& node) { return node.right; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
-            "disparity",
-            [](Vpp& node) { return node.disparity; },
-            py::return_value_policy::reference_internal,
-            "Low resolution disparity input in pixels (in integers - 16 times bigger).")
+            "disparity", [](Vpp& node) { return node.disparity; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
-            "confidence",
-            [](Vpp& node) { return node.confidence; },
-            py::return_value_policy::reference_internal,
-            "Confidence of the dispatiry (in integers - 16 times bigger).")
+            "confidence", [](Vpp& node) { return node.confidence; }, py::return_value_policy::reference_internal)
         .def("build", &Vpp::build, py::arg("leftInput"), py::arg("rightInput"), py::arg("disparity"), py::arg("confidence"), DOC(dai, node, Vpp, build))
 #endif
-        .def_readonly("syncedInputs", &Vpp::syncedInputs, DOC(dai, node, Vpp, syncedInputs), "Synchronised Left Img, Right Img, Dispatiy and confidence input.")
-        .def_readonly("leftOut", &Vpp::leftOut, DOC(dai, node, Vpp, leftOut), "Left output with same resolution as input.")
-        .def_readonly("rightOut", &Vpp::rightOut, DOC(dai, node, Vpp, rightOut), "Right output with same resolution as input.")
+        .def_readonly("syncedInputs", &Vpp::syncedInputs, DOC(dai, node, Vpp, syncedInputs))
+        .def_readonly("leftOut", &Vpp::leftOut, DOC(dai, node, Vpp, leftOut))
+        .def_readonly("rightOut", &Vpp::rightOut, DOC(dai, node, Vpp, rightOut))
         .def_property(
             "initialConfig",
             [](Vpp& self) { return self.initialConfig; },
