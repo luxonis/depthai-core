@@ -24,7 +24,7 @@ class VppConfig : public Buffer {
         // Getters and setters with docstrings
         /**
          * @brief Check if injection is enabled
-         * False: all passible pixels will be used.
+         * False: all possible pixels will be used.
          * @return True if injection is used
          */
         bool getUseInjection() const {
