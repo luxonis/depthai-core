@@ -51,7 +51,7 @@ if [ "${PULL_REQUEST}" = "true" ]; then
 fi
 
 # If you want to "refresh", write into a new cache directory
-CACHE_ROOT="/var/cache/buildkit/depthai-core-hil"
+CACHE_ROOT="/tmp/buildkit-cache/depthai-core-hil"
 if [ "${REFRESH_CACHE}" = "true" ]; then
   CACHE_DIR="${CACHE_ROOT}/${CACHE_SCOPE}-$(date +%Y%m%d%H%M%S)"
   echo "♻️ Refresh cache requested. Using new cache dir: ${CACHE_DIR}"
