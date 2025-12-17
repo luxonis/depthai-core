@@ -66,17 +66,14 @@ if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"
   echo "✅ Local image ${IMAGE_NAME} already exists. Skipping build."
 else
   # Build the image
-    echo "🔨 Building image ${IMAGE_NAME}..."
+    echo "🔨 Building image ${FULL_IMAGE_NAME}"
     docker buildx build -t "${IMAGE_NAME}" -f tests/Dockerfile . \
   --build-arg FLAVOR="${FLAVOR}" \
   --build-arg BRANCH="${BRANCH}" \
   --build-arg GIT_COMMIT="${COMMIT_ID}" \
   --build-arg PARALLEL_JOBS="${PARALLEL_JOBS}" \
-  --build-arg PULL_REQUEST="${PULL_REQUEST}"
+  --build-arg PULL_REQUEST="${PULL_REQUEST}" \
+  -- push
 fi
 
-# Push the image
-echo "🚀 Tagging and pushing image to ${REGISTRY}..."
-docker tag "${IMAGE_NAME}" "${FULL_IMAGE_NAME}"
-docker push "${FULL_IMAGE_NAME}"
 echo "✅ Done."
