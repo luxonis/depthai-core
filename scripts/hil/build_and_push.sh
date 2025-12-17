@@ -8,7 +8,6 @@ COMMIT_ID=$4
 PARALLEL_JOBS=$5
 PULL_REQUEST=$6
 TAG=$7
-REFRESH_CACHE=${8:-true}   # optional
 
 : "${PARALLEL_JOBS:=8}"  # Fallback to 8 if not set or passed
 : "${PULL_REQUEST:="false"}"  # Fallback to false if not set or passed
@@ -52,7 +51,7 @@ CACHE_FROM=(--cache-from "type=local,src=${CACHE_DIR}")
 # Only update/refresh cache on non-PR builds
 CACHE_TO=()
 if [ "${PULL_REQUEST}" = "false" ]; then
-  CACHE_TO=(--cache-to "type=local,dest=${CACHE_DIR},mode=max")
+  CACHE_TO=(--cache-to "type=local,dest=${CACHE_DIR}")
 fi
 
 # Check if image exists locally
