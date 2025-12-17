@@ -99,7 +99,7 @@ void CalibrationHandler::validateExtrinsicGraphOrThrow() const {
     throw std::runtime_error("Unknown extrinsic graph error");
 }
 
-CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, bool validateExtrinsics) {
+CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, std::optional<bool> validateCalibration) {
     std::ifstream jsonStream(eepromDataPath);
     // TODO(sachin): Check if the file exists first.
     if(!jsonStream.is_open()) {
@@ -110,21 +110,23 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, boo
     }
     nlohmann::json jsonData = nlohmann::json::parse(jsonStream);
     eepromData = jsonData;
-    if(validateExtrinsics) {
+    if(validateCalibration) {
         validateExtrinsicGraphOrThrow();
     }
 }
 
-CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson, bool validateExtrinsics) {
+CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson, std::optional<bool> validateCalibration) {
     CalibrationHandler calib;
     calib.eepromData = eepromDataJson;
-    if(validateExtrinsics) {
+    if(validateCalibration) {
         calib.validateExtrinsicGraphOrThrow();
     }
     return calib;
 }
 
-CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath, bool validateExtrinsics) {
+CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath,
+                                       std::filesystem::path boardConfigPath,
+                                       std::optional<bool> validateCalibration) {
     auto matrixConv = [](std::vector<float>& src, int startIdx) {
         std::vector<std::vector<float>> dest;
         int currIdx = startIdx;
@@ -247,14 +249,14 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath
     temp = camera.extrinsics.rotationMatrix[1][2];
     camera.extrinsics.rotationMatrix[1][2] = camera.extrinsics.rotationMatrix[2][1];
     camera.extrinsics.rotationMatrix[2][1] = temp;
-    if(validateExtrinsics) {
+    if(validateCalibration) {
         validateExtrinsicGraphOrThrow();
     }
 }
 
-CalibrationHandler::CalibrationHandler(EepromData newEepromData, bool validateExtrinsics) {
+CalibrationHandler::CalibrationHandler(EepromData newEepromData, std::optional<bool> validateCalibration) {
     eepromData = newEepromData;
-    if(validateExtrinsics) {
+    if(validateCalibration) {
         validateExtrinsicGraphOrThrow();
     }
 }

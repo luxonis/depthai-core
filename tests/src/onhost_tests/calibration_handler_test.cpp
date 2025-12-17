@@ -1,6 +1,5 @@
 #include <catch2/catch_all.hpp>
 #include <depthai/device/CalibrationHandler.hpp>
-#include <fstream>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <vector>
@@ -271,6 +270,22 @@ TEST_CASE("Cyclic connection throws", "[getCameraExtrinsics]") {
                         Catch::Matchers::ContainsSubstring("Extrinsic cycle detected"));
 }
 
+TEST_CASE("Dangling extrinsic reference throws", "[setCameraExtrinsics]") {
+    dai::EepromData data;
+
+    // Only CAM_A exists
+    data.cameraData[CameraBoardSocket::CAM_A];
+
+    dai::CalibrationHandler handler(data);
+
+    std::vector<std::vector<float>> R = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    std::vector<float> zeros = {0, 0, 0};
+
+    // CAM_A → CAM_B (CAM_B does NOT exist)
+    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, R, zeros, zeros),
+                        Catch::Matchers::ContainsSubstring("Dangling extrinsic reference"));
+}
+
 TEST_CASE("Long chain extrinsics composition", "[getCameraExtrinsics]") {
     dai::EepromData data;
 
@@ -335,27 +350,6 @@ TEST_CASE("Directly linked cameras translation", "[getCameraTranslationVector]")
     REQUIRE(t[0] == Catch::Approx(tAB[0]).margin(1e-6));
     REQUIRE(t[1] == Catch::Approx(tAB[1]).margin(1e-6));
     REQUIRE(t[2] == Catch::Approx(tAB[2]).margin(1e-6));
-}
-
-TEST_CASE("Cyclic connection throws", "[getCameraTranslationVector]") {
-    dai::EepromData data;
-
-    // Predeclare nodes
-    data.cameraData[CameraBoardSocket::CAM_A];
-    data.cameraData[CameraBoardSocket::CAM_B];
-    data.cameraData[CameraBoardSocket::CAM_C];
-
-    dai::CalibrationHandler handler(data);
-
-    auto R = std::vector<std::vector<float>>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    auto zeros = std::vector<float>{0, 0, 0};
-
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, R, zeros, zeros);
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C, R, zeros, zeros);
-
-    // Closing the cycle must throw
-    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_A, R, zeros, zeros),
-                        Catch::Matchers::ContainsSubstring("Extrinsic cycle detected"));
 }
 
 TEST_CASE("Long chain translation composition", "[getCameraTranslationVector]") {
@@ -478,43 +472,6 @@ TEST_CASE("Directly linked cameras rotation", "[getCameraRotationMatrix]") {
 
     for(int i = 0; i < 3; ++i)
         for(int j = 0; j < 3; ++j) REQUIRE(R[i][j] == Catch::Approx(Rset[i][j]).margin(1e-6));
-}
-
-TEST_CASE("Cyclic connection throws", "[getCameraRotationMatrix]") {
-    dai::EepromData data;
-
-    // Predeclare nodes
-    data.cameraData[CameraBoardSocket::CAM_A];
-    data.cameraData[CameraBoardSocket::CAM_B];
-    data.cameraData[CameraBoardSocket::CAM_C];
-
-    dai::CalibrationHandler handler(data);
-
-    std::vector<std::vector<float>> R = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    std::vector<float> zeros = {0, 0, 0};
-
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, R, zeros, zeros);
-    handler.setCameraExtrinsics(CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C, R, zeros, zeros);
-
-    // Closing the cycle must throw
-    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_A, R, zeros, zeros),
-                        Catch::Matchers::ContainsSubstring("Extrinsic cycle detected"));
-}
-
-TEST_CASE("Dangling extrinsic reference throws", "[getCameraRotationMatrix]") {
-    dai::EepromData data;
-
-    // Only CAM_A exists
-    data.cameraData[CameraBoardSocket::CAM_A];
-
-    dai::CalibrationHandler handler(data);
-
-    std::vector<std::vector<float>> R = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-    std::vector<float> zeros = {0, 0, 0};
-
-    // CAM_A → CAM_B (CAM_B does NOT exist)
-    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, R, zeros, zeros),
-                        Catch::Matchers::ContainsSubstring("Dangling extrinsic reference"));
 }
 
 TEST_CASE("Long chain rotation composition", "[getCameraRotationMatrix]") {

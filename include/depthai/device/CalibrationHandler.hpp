@@ -38,9 +38,9 @@ class CalibrationHandler {
      * eeprom json file created from calibration procedure.
      *
      * @param eepromDataPath takes the full path to the json file containing the calibration and device info.
-     * @param boardConfigPath Enable internal check for extrinsics cycling links or dangling references.
+     * @param validateCalibration Enable internal check for extrinsics cycling links or dangling references.
      */
-    explicit CalibrationHandler(std::filesystem::path eepromDataPath, bool validateExtrinsics = false);
+    explicit CalibrationHandler(std::filesystem::path eepromDataPath, std::optional<bool> validateCalibration = std::nullopt);
 
     /**
      * Construct a new Calibration Handler object using the board
@@ -48,25 +48,27 @@ class CalibrationHandler {
      *
      * @param calibrationDataPath Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
      * @param boardConfigPath Full Path to the board config json file containing device information.
-     * @param boardConfigPath Enable internal check for extrinsics cycling links or dangling references.
+     * @param validateCalibration Enable internal check for extrinsics cycling links or dangling references.
      */
-    CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath, bool validateExtrinsics = false);
+    CalibrationHandler(std::filesystem::path calibrationDataPath,
+                       std::filesystem::path boardConfigPath,
+                       std::optional<bool> validateCalibration = std::nullopt);
 
     /**
      * Construct a new Calibration Handler object from EepromData object.
      *
      * @param eepromData EepromData data structure containing the calibration data.
-     * @param boardConfigPath Enable internal check for extrinsics cycling links or dangling references.
+     * @param validateCalibration Enable internal check for extrinsics cycling links or dangling references.
      */
-    explicit CalibrationHandler(EepromData eepromData, bool validateExtrinsics = false);
+    explicit CalibrationHandler(EepromData eepromData, std::optional<bool> validateCalibration = std::nullopt);
 
     /**
      * Construct a new Calibration Handler object from JSON EepromData.
      *
      * @param eepromDataJson EepromData as JSON
-     * @param boardConfigPath Enable internal check for extrinsics cycling links or dangling references.
+     * @param validateCalibration Enable internal check for extrinsics cycling links or dangling references.
      */
-    static CalibrationHandler fromJson(nlohmann::json eepromDataJson, bool validateExtrinsics = false);
+    static CalibrationHandler fromJson(nlohmann::json eepromDataJson, std::optional<bool> validateCalibration = std::nullopt);
 
     /**
      * Get the Eeprom Data object
