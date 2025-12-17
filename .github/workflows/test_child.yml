@@ -31,6 +31,7 @@ jobs:
         CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       run: |
         BRANCH_NAME="${{ github.ref_name }}"
+        PULL_REQUEST="false"
         if [[ -n "${{ github.head_ref }}" ]]; then
          BRANCH_NAME="${{ github.ref }}"
          PULL_REQUEST="true"

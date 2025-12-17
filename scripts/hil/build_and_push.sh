@@ -37,29 +37,23 @@ fi
 export DOCKER_BUILDKIT=1
 
 BUILDER_NAME="hil-builder"
-if ! docker buildx inspect "${BUILDER_NAME}" >/dev/null 2>&1; then
-  echo "Creating buildx builder: ${BUILDER_NAME}"
-  docker buildx create --name "${BUILDER_NAME}" --driver docker-container --use
-else
-  docker buildx use "${BUILDER_NAME}"
-fi
-
-# Cache scope: tie it to things that affect dependencies
-CACHE_SCOPE="flavor-${FLAVOR}"
-if [ "${PULL_REQUEST}" = "true" ]; then
-  CACHE_SCOPE="${CACHE_SCOPE}_pr"
-fi
-
-# If you want to "refresh", write into a new cache directory
 CACHE_ROOT="/tmp/buildkit-cache/depthai-core-hil"
-if [ "${REFRESH_CACHE}" = "true" ]; then
-  CACHE_DIR="${CACHE_ROOT}/${CACHE_SCOPE}-$(date +%Y%m%d%H%M%S)"
-  echo "♻️ Refresh cache requested. Using new cache dir: ${CACHE_DIR}"
-else
-  CACHE_DIR="${CACHE_ROOT}/${CACHE_SCOPE}"
-fi
+CACHE_SCOPE="flavor-${FLAVOR}"
+CACHE_DIR="${CACHE_ROOT}/${CACHE_SCOPE}"
+
+mkdir -p "${CACHE_DIR}"
+
+echo "Using cache dir: ${CACHE_DIR}"
 
 echo "🔨 Building + pushing with buildx. Cache dir: ${CACHE_DIR}"
+
+CACHE_FROM=(--cache-from "type=local,src=${CACHE_DIR}")
+
+# Only update/refresh cache on non-PR builds
+CACHE_TO=()
+if [ "${PULL_REQUEST}" = "false" ]; then
+  CACHE_TO=(--cache-to "type=local,dest=${CACHE_DIR},mode=max")
+fi
 
 # Check if image exists locally
 if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"; then
@@ -73,7 +67,13 @@ else
   --build-arg GIT_COMMIT="${COMMIT_ID}" \
   --build-arg PARALLEL_JOBS="${PARALLEL_JOBS}" \
   --build-arg PULL_REQUEST="${PULL_REQUEST}" \
-  --push
+  "${CACHE_FROM[@]}" \
+  "${CACHE_TO[@]}" \
+  --load
 fi
 
+# Push the image
+echo "🚀 Tagging and pushing image to ${REGISTRY}..."
+docker tag "${IMAGE_NAME}" "${FULL_IMAGE_NAME}"
+docker push "${FULL_IMAGE_NAME}"
 echo "✅ Done."
