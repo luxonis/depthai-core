@@ -5,6 +5,7 @@
 #include <depthai/pipeline/datatype/ADatatype.hpp>
 #include <memory>
 #include <thread>
+#include <unordered_map>
 
 using namespace dai;
 
@@ -394,4 +395,44 @@ TEST_CASE("Multi callbacks", "[MessageQueue]") {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     REQUIRE(callbackCount1 == 1);
     REQUIRE(callbackCount2 == 1);
+}
+
+TEST_CASE("Get any sync", "[MessageQueue]") {
+    MessageQueue queue1(10);
+    MessageQueue queue2(10);
+    MessageQueue queue3(10);
+
+    std::unordered_map<std::string, MessageQueue&> queues;
+    queues.insert_or_assign("queue1", queue1);
+    queues.insert_or_assign("queue2", queue2);
+    queues.insert_or_assign("queue3", queue3);
+
+    auto msg = std::make_shared<ADatatype>();
+    queue2.send(msg);
+
+    auto out = getAny(queues);
+    REQUIRE(out.size() == 1);
+    REQUIRE(out.find("queue2") != out.end());
+}
+
+TEST_CASE("Get any async", "[MessageQueue]") {
+    MessageQueue queue1(10);
+    MessageQueue queue2(10);
+    MessageQueue queue3(10);
+
+    std::unordered_map<std::string, MessageQueue&> queues;
+    queues.insert_or_assign("queue1", queue1);
+    queues.insert_or_assign("queue2", queue2);
+    queues.insert_or_assign("queue3", queue3);
+
+    auto thread = std::thread([&]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        auto msg = std::make_shared<ADatatype>();
+        queue2.send(msg);
+    });
+
+    auto out = getAny(queues);
+    REQUIRE(out.size() == 1);
+    REQUIRE(out.find("queue2") != out.end());
+    thread.join();
 }
