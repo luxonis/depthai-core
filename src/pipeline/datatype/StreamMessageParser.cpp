@@ -84,6 +84,9 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
 }
 
 static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* const packet) {
+    if(packet == nullptr || packet->data == nullptr) {
+        throw std::runtime_error("Bad packet, couldn't parse (null packet or data)");
+    }
     if(packet->length < 24) {
         throw std::runtime_error(fmt::format("Bad packet, couldn't parse (not enough data), total size {}", packet->length));
     }
@@ -132,7 +135,13 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
     auto* const metadataStart = packet->data + bufferLength;
 
     // copy data part
-    std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
+    if(packet->data == nullptr && bufferLength > 0) {
+        throw std::runtime_error("Bad packet, couldn't parse (null data buffer)");
+    }
+    std::vector<uint8_t> data;
+    if(bufferLength > 0) {
+        data.assign(packet->data, packet->data + bufferLength);
+    }
 
     fd = packet->fd;
 

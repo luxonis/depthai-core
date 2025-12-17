@@ -133,6 +133,9 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
 
 void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
     auto imuPackets = std::dynamic_pointer_cast<IMUData>(imuData);
+    if(!imuPackets) {
+        return;
+    }
 
     for(auto& imuPacket : imuPackets->packets) {
         basalt::ImuData<double>::Ptr data;

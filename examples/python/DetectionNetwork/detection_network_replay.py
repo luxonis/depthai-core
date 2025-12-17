@@ -11,7 +11,7 @@ videoPath = models / 'construction_vest.mp4'
 
 parser = ArgumentParser()
 parser.add_argument("--webSocketPort", type=int, default=8765)
-parser.add_argument("--httpPort", type=int, default=8080)
+parser.add_argument("--httpPort", type=int, default=8082)
 parser.add_argument("-i", "--inputVideo", default=videoPath, help="Input video name")
 args = parser.parse_args()
 

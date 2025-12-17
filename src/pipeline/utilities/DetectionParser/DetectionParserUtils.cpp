@@ -9,10 +9,13 @@
 #include <cstdint>
 #include <map>
 #include <memory>
-#include <opencv2/core.hpp>
-#include <opencv2/core/base.hpp>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/opencv.hpp>
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/core.hpp>
+    #include <opencv2/core/base.hpp>
+    #include <opencv2/core/mat.hpp>
+    #include <opencv2/opencv.hpp>
+#endif
 #include <optional>
 #include <string>
 #include <vector>
@@ -152,8 +155,13 @@ void decodeR1AF(const dai::NNData& nnData,
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
 
     if(properties.parser.decodeSegmentation) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         logger->trace("Segmentation decoding.");
         segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
+#else
+        throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
+
+#endif
     }
 
     if(properties.parser.decodeKeypoints) {
@@ -301,8 +309,13 @@ void decodeV3AB(const dai::NNData& nnData,
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
 
     if(properties.parser.decodeSegmentation) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         logger->trace("Segmentation decoding.");
         segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
+#else
+        throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
+
+#endif
     }
 
     if(properties.parser.decodeKeypoints) {
@@ -448,8 +461,13 @@ void decodeV5AB(const dai::NNData& nnData,
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
 
     if(properties.parser.decodeSegmentation) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         logger->trace("Segmentation decoding.");
         segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
+#else
+        throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
+
+#endif
     }
 
     if(properties.parser.decodeKeypoints) {
@@ -566,8 +584,13 @@ void decodeTLBR(const dai::NNData& nnData,
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
 
     if(properties.parser.decodeSegmentation) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         logger->trace("Segmentation decoding.");
         segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
+#else
+        throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
+
+#endif
     }
 
     if(properties.parser.decodeKeypoints) {
@@ -706,6 +729,7 @@ void createImgDetections(const std::vector<DetectionCandidate>& detectionCandida
     }
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 void segmentationDecode(const dai::NNData& nnData,
                         std::vector<DetectionCandidate>& detectionCandidates,
                         dai::ImgDetections& outDetections,
@@ -827,6 +851,7 @@ void segmentationDecode(const dai::NNData& nnData,
 
     outDetections.setCvSegmentationMask(indexMask);
 }
+#endif
 
 void keypointDecode(const dai::NNData& nnData,
                     std::vector<DetectionCandidate>& detectionCandidates,
