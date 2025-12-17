@@ -61,7 +61,7 @@ if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"
 else
   # Build the image
     echo "🔨 Building image ${IMAGE_NAME}..."
-    docker buildx build -t "${FULL_IMAGE_NAME}" -f tests/Dockerfile . \
+    docker buildx build -t "${IMAGE_NAME}" -f tests/Dockerfile . \
   --build-arg FLAVOR="${FLAVOR}" \
   --build-arg BRANCH="${BRANCH}" \
   --build-arg GIT_COMMIT="${COMMIT_ID}" \
