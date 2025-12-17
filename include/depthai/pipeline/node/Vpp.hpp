@@ -40,6 +40,10 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     std::shared_ptr<VppConfig> initialConfig = std::make_shared<VppConfig>();
 
     Subnode<node::Sync> sync{*this, "sync"};
+
+    /**
+     *"Synchronised Left Img, Right Img, Dispatiy and confidence input."
+     */
     Input syncedInputs{*this, {"syncedInputs", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::MessageGroup, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     const std::string leftInputName = "left";
@@ -50,21 +54,21 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
 
     /**
-     * Input for left ImgFrame of left-right pair
+     * Input for left rectified ImgFrame
      */
     Input& left{sync->inputs["left"]};
     /**
-     * Input for right ImgFrame of left-right pair
+     * Input for right rectified ImgFrame
      */
     Input& right{sync->inputs["right"]};
 
     /**
-     * Output for rectified left ImgFrame
+     * Low resolution disparity in pixels (in integers - 16 times bigger)
      */
     Input& disparity{sync->inputs["disparity"]};
 
     /**
-     * Output for rectified left ImgFrame
+     * Confidence of the dispatiry (in integers - 16 times bigger).
      */
     Input& confidence{sync->inputs["confidence"]};
 #endif
