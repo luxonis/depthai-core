@@ -25,6 +25,15 @@ jobs:
       VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
       VCPKG_BINARY_SOURCES: clear;files,C:\vcpkg_binaries,readwrite
     steps:
+    - name: Decide kind of test (long/short)
+      id: kind
+      shell: pwsh
+      run: |
+        if ("${{ github.event_name }}" -eq "pull_request") {
+          "test_kind=short" >> $env:GITHUB_OUTPUT
+        } else {
+          "test_kind=long" >> $env:GITHUB_OUTPUT
+        }
 
     - name: Try reusing existing artifact for this commit (repo-wide)
       id: reuse
@@ -32,7 +41,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         REPO: ${{ github.repository }}
-        ARTIFACT_NAME: depthai-core-win-64a894ce917ddaf975677703a265bb6500eaf8d6
+        ARTIFACT_NAME: depthai-core-win-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
       run: |
         $ErrorActionPreference = "Stop"
 
@@ -151,7 +160,7 @@ jobs:
       id: artifact-upload-step
       uses: actions/upload-artifact@v4
       with:
-        name: depthai-core-win-${{ github.sha }}
+        name: depthai-core-win-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
         path: C:\depthai-core
         retention-days: 1
 
