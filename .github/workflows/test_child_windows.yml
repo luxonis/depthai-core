@@ -35,12 +35,7 @@ jobs:
         RUN_ID: ${{ github.run_id }}
         ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
       run: |
-        echo VCPKG_FEATURE_FLAGS=%VCPKG_FEATURE_FLAGS%
-        echo VCPKG_DEFAULT_TRIPLET=%VCPKG_DEFAULT_TRIPLET%
-        echo VCPKG_DOWNLOADS=%VCPKG_DOWNLOADS%
-        echo VCPKG_DEFAULT_BINARY_CACHE=%VCPKG_DEFAULT_BINARY_CACHE%
-        echo VCPKG_BINARY_SOURCES=%VCPKG_BINARY_SOURCES%
-
+        
         Write-Host "REPO=$env:REPO  RUN_ID=$env:RUN_ID  NAME=$env:ARTIFACT_NAME"
         $id = gh api "repos/$env:REPO/actions/runs/$env:RUN_ID/artifacts" `
           --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"" and .expired==false) | .id"
@@ -82,6 +77,12 @@ jobs:
       if: steps.reuse.outputs.skip_build != 'true'
       run: |
         cd C:\depthai-core
+        echo VCPKG_FEATURE_FLAGS=%VCPKG_FEATURE_FLAGS%
+        echo VCPKG_DEFAULT_TRIPLET=%VCPKG_DEFAULT_TRIPLET%
+        echo VCPKG_DOWNLOADS=%VCPKG_DOWNLOADS%
+        echo VCPKG_DEFAULT_BINARY_CACHE=%VCPKG_DEFAULT_BINARY_CACHE%
+        echo VCPKG_BINARY_SOURCES=%VCPKG_BINARY_SOURCES%
+
         Invoke-WebRequest `
           -Uri "https://github.com/winpython/winpython/releases/download/17.2.20250920/WinPython64-3.13.7.0dotrc.zip" `
           -OutFile "winpython.zip"
