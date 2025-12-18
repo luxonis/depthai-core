@@ -102,6 +102,10 @@ class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedSte
     //  * Output VPP-enhanced right
     //  */
     Output& vppRight{vpp->rightOut};
+    // /**
+    //  * Neural disparity output
+    //  */
+    Output& neuralDisparity{neuralDepth->disparity};
 
     // /**
     //  * Neural depth confidence output
