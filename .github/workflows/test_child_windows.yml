@@ -82,6 +82,7 @@ jobs:
         Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
 
     - name: Restore vcpkg cache
+      if: steps.reuse.outputs.skip_build != 'true'
       uses: actions/cache/restore@v4
       id: vcpkg-restore
       with:
@@ -139,7 +140,7 @@ jobs:
         Invoke-Expression $cmakeBuildCommand
 
     - name: Save vcpkg cache (refresh)
-      if: github.event_name != 'pull_request'
+      if: ${{ github.event_name != 'pull_request' && steps.reuse.outputs.skip_build != 'true' }}
       uses: actions/cache/save@v4
       with:
         path: C:\vcpkg_binaries
