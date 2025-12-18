@@ -2,10 +2,14 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <depthai/pipeline/MessageQueue.hpp>
+#include <depthai/pipeline/ThreadedHostNode.hpp>
 #include <depthai/pipeline/datatype/ADatatype.hpp>
+#include <depthai/utility/PipelineEventDispatcher.hpp>
 #include <memory>
 #include <thread>
 #include <unordered_map>
+
+#include "depthai/depthai.hpp"
 
 using namespace dai;
 
@@ -435,4 +439,114 @@ TEST_CASE("Get any async", "[MessageQueue]") {
     REQUIRE(out.size() == 1);
     REQUIRE(out.find("queue2") != out.end());
     thread.join();
+}
+
+TEST_CASE("Pipeline event dispatcher tests", "[MessageQueue]") {
+    class TestNode : public dai::node::CustomThreadedNode<TestNode> {
+       public:
+        void run() override {
+            while(isRunning()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
+
+        utility::PipelineEventDispatcherInterface* getPipelineEventDispatcher() {
+            return pipelineEventDispatcher.get();
+        }
+    };
+    class EventNode : public dai::node::CustomThreadedNode<EventNode> {
+       public:
+        Input input{*this, {"input", DEFAULT_GROUP, false, 32, {{{DatatypeEnum::PipelineEvent, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+        Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::PipelineEvent, false}}}}};
+
+        void run() override {
+            while(isRunning()) {
+                output.send(input.get<dai::PipelineEvent>());
+            }
+        }
+    };
+
+    // Create pipeline
+    dai::Pipeline pipeline(false);
+
+    auto testNode = pipeline.create<TestNode>();
+    auto eventNode = pipeline.create<EventNode>();
+
+    testNode->pipelineEventOutput.link(eventNode->input);
+
+    auto outputQueue = eventNode->output.createOutputQueue(10);
+
+    MessageQueue queue("test", 3, true, testNode->getPipelineEventDispatcher());
+
+    pipeline.start();
+
+    testNode->getPipelineEventDispatcher()->sendEvents = true;
+
+    queue.send(std::make_shared<dai::Buffer>());
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    {
+        auto events = outputQueue->getAll();
+        REQUIRE(events.size() == 1);
+        auto event = std::dynamic_pointer_cast<dai::PipelineEvent>(events[0]);
+        REQUIRE(event != nullptr);
+        REQUIRE(event->nodeId == testNode->id);
+        REQUIRE(event->queueSize == 1);
+        REQUIRE(event->source == "test");
+        REQUIRE(event->status == dai::PipelineEvent::Status::SUCCESS);
+        REQUIRE(event->type == dai::PipelineEvent::Type::INPUT);
+        REQUIRE(event->interval == dai::PipelineEvent::Interval::NONE);
+    }
+
+    queue.send(std::make_shared<dai::Buffer>());
+    queue.send(std::make_shared<dai::Buffer>());
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    {
+        auto events = outputQueue->getAll();
+        REQUIRE(events.size() == 2);
+        auto event = std::dynamic_pointer_cast<dai::PipelineEvent>(events[1]);
+        REQUIRE(event != nullptr);
+        REQUIRE(event->queueSize == 3);
+    }
+
+    queue.trySend(std::make_shared<dai::Buffer>());
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    {
+        auto events = outputQueue->getAll();
+        REQUIRE(events.size() == 2);
+        auto event1 = std::dynamic_pointer_cast<dai::PipelineEvent>(events[0]);
+        REQUIRE(event1 != nullptr);
+        REQUIRE(event1->queueSize == 3);
+        REQUIRE(event1->source == "test");
+        REQUIRE(event1->status == dai::PipelineEvent::Status::BLOCKED);
+        REQUIRE(event1->type == dai::PipelineEvent::Type::INPUT);
+        REQUIRE(event1->interval == dai::PipelineEvent::Interval::NONE);
+        auto event2 = std::dynamic_pointer_cast<dai::PipelineEvent>(events[1]);
+        REQUIRE(event2 != nullptr);
+        REQUIRE(event2->queueSize == 3);
+        REQUIRE(event2->source == "test");
+        REQUIRE(event2->status == dai::PipelineEvent::Status::CANCELLED);
+        REQUIRE(event2->type == dai::PipelineEvent::Type::INPUT);
+        REQUIRE(event2->interval == dai::PipelineEvent::Interval::NONE);
+    }
+
+    auto _ = queue.get();
+
+    {
+        auto events = outputQueue->getAll();
+        REQUIRE(events.size() == 2);
+        auto event1 = std::dynamic_pointer_cast<dai::PipelineEvent>(events[0]);
+        REQUIRE(event1 != nullptr);
+        REQUIRE(event1->source == "test");
+        REQUIRE(event1->type == dai::PipelineEvent::Type::INPUT);
+        REQUIRE(event1->interval == dai::PipelineEvent::Interval::START);
+        auto event2 = std::dynamic_pointer_cast<dai::PipelineEvent>(events[1]);
+        REQUIRE(event2 != nullptr);
+        REQUIRE(event2->queueSize.value() == 2);
+        REQUIRE(event2->source == "test");
+        REQUIRE(event2->type == dai::PipelineEvent::Type::INPUT);
+        REQUIRE(event2->interval == dai::PipelineEvent::Interval::END);
+    }
 }

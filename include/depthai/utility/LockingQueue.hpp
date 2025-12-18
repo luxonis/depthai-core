@@ -18,7 +18,7 @@ namespace dai {
 //     Mutex& operator=(Mutex&&) = delete;
 // };
 
-enum class LockingQueueState { OK, BLOCKED, CANCELLED };
+enum class LockingQueueState { SUCCESS, BLOCKED, CANCELLED };
 
 template <typename T>
 class LockingQueue {
@@ -177,7 +177,7 @@ class LockingQueue {
 
             queue.push(data);
 
-            callback(LockingQueueState::OK, queue.size());
+            callback(LockingQueueState::SUCCESS, queue.size());
         }
         signalPush.notify_all();
         return true;
@@ -209,7 +209,7 @@ class LockingQueue {
 
             queue.push(std::move(data));
 
-            callback(LockingQueueState::OK, queue.size());
+            callback(LockingQueueState::SUCCESS, queue.size());
         }
         signalPush.notify_all();
         return true;
@@ -248,7 +248,7 @@ class LockingQueue {
 
             queue.push(data);
 
-            callback(LockingQueueState::OK, queue.size());
+            callback(LockingQueueState::SUCCESS, queue.size());
         }
         signalPush.notify_all();
         return true;
@@ -287,7 +287,7 @@ class LockingQueue {
 
             queue.push(std::move(data));
 
-            callback(LockingQueueState::OK, queue.size());
+            callback(LockingQueueState::SUCCESS, queue.size());
         }
         signalPush.notify_all();
         return true;

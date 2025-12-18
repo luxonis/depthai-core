@@ -233,8 +233,8 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         };
         if(pipelineEventDispatcher) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
-            blockEvent.setQueueSize(getSize());
             auto result = getInput();
+            blockEvent.setQueueSize(getSize());
             if(!result) {
                 blockEvent.cancel();
             }
@@ -268,8 +268,8 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         };
         if(pipelineEventDispatcher) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
-            blockEvent.setQueueSize(getSize());
             getInput();
+            blockEvent.setQueueSize(getSize());
         } else {
             getInput();
         }

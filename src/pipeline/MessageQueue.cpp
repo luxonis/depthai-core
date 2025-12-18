@@ -151,7 +151,7 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
                 case LockingQueueState::CANCELLED:
                     pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
                     break;
-                case LockingQueueState::OK:
+                case LockingQueueState::SUCCESS:
                     pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::SUCCESS, size);
                     break;
             }
@@ -175,7 +175,7 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
                 case LockingQueueState::CANCELLED:
                     pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
                     break;
-                case LockingQueueState::OK:
+                case LockingQueueState::SUCCESS:
                     pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::SUCCESS, size);
                     break;
             }
