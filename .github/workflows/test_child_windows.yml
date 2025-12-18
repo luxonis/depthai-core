@@ -32,21 +32,25 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         REPO: ${{ github.repository }}
-        RUN_ID: ${{ github.run_id }}
-        ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
+        SHA:  ${{ github.sha }}
       run: |
-        Write-Host "REPO=$env:REPO  RUN_ID=$env:RUN_ID  NAME=$env:ARTIFACT_NAME"
-        $id = gh api "repos/$env:REPO/actions/runs/$env:RUN_ID/artifacts" `
-          --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"" and .expired==false) | .id"
+        $artifactName = "depthai-core-win-$env:SHA"
+        Write-Host "Searching repo artifacts for name=$artifactName"
+
+        # Repo-wide artifacts list (newest first). Name includes SHA so it's unique enough.
+        $id = gh api "repos/$env:REPO/actions/artifacts?per_page=100" `
+          --jq ".artifacts[]
+                | select(.name==""$artifactName"" and .expired==false)
+                | .id" | Select-Object -First 1
+
         if ($id) {
           "skip_build=true"  >> $env:GITHUB_OUTPUT
           "artifact_id=$id"  >> $env:GITHUB_OUTPUT
-          Write-Host "Found artifact id=$id on this run; skipping build."
+          Write-Host "Found existing artifact id=$id; skipping build."
         } else {
           "skip_build=false" >> $env:GITHUB_OUTPUT
-          Write-Host "No artifact named $env:ARTIFACT_NAME on this run."
+          Write-Host "No existing artifact named $artifactName found."
         }
-
 
     - name: Checkout depthai
       uses: actions/checkout@v4
