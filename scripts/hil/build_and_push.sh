@@ -12,7 +12,6 @@ TAG=$7
 : "${PARALLEL_JOBS:=8}"  # Fallback to 8 if not set or passed
 : "${PULL_REQUEST:="false"}"  # Fallback to false if not set or passed
 
-
 if [ -z "$FLAVOR" ] || [ -z "$BRANCH" ] || [ -z "$REGISTRY" ] || [ -z "$COMMIT_ID" ] || [ -z "$PARALLEL_JOBS" ] || [ -z "$PULL_REQUEST" ] || [ -z "$TAG" ]; then
   echo "Usage: $0 <flavor> <branch> <registry> <commit_id> <number_of_cores> <is_pipeline_pull_request> <tag>"
   exit 1

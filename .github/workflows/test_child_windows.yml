@@ -26,30 +26,44 @@ jobs:
       VCPKG_BINARY_SOURCES: clear;files,C:\vcpkg_binaries,readwrite
     steps:
 
-    - name: Try reusing existing artifact for this commit
+    - name: Try reusing existing artifact for this commit (repo-wide)
       id: reuse
       shell: pwsh
       env:
         GH_TOKEN: ${{ github.token }}
         REPO: ${{ github.repository }}
-        SHA:  ${{ github.sha }}
+        ARTIFACT_NAME: depthai-core-win-64a894ce917ddaf975677703a265bb6500eaf8d6
       run: |
-        $artifactName = "depthai-core-win-$env:SHA"
-        Write-Host "Searching repo artifacts for name=$artifactName"
+        $ErrorActionPreference = "Stop"
 
-        # Repo-wide artifacts list (newest first). Name includes SHA so it's unique enough.
-        $id = gh api "repos/$env:REPO/actions/artifacts?per_page=100" `
-          --jq ".artifacts[]
-                | select(.name==""$artifactName"" and .expired==false)
-                | .id" | Select-Object -First 1
+        Write-Host "Repo:         $env:REPO"
+        Write-Host "ArtifactName: $env:ARTIFACT_NAME"
+        Write-Host ""
 
-        if ($id) {
+        $jsonLines = gh api --paginate "repos/$env:REPO/actions/artifacts?per_page=100" `
+          --jq '.artifacts[] | @json' |
+          Select-Object -First 2500
+
+        $match = $null
+        foreach ($line in $jsonLines) {
+          $a = $line | ConvertFrom-Json
+
+          # Optional micro-filter to reduce comparisons
+          if ($a.name -notlike "depthai-core-win-*") { continue }
+
+          if ($a.name -eq $env:ARTIFACT_NAME -and $a.expired -eq $false) {
+            $match = $a
+            break
+          }
+        }
+
+        if ($match) {
+          Write-Host "Found artifact id=$($match.id); skipping build."
           "skip_build=true"  >> $env:GITHUB_OUTPUT
-          "artifact_id=$id"  >> $env:GITHUB_OUTPUT
-          Write-Host "Found existing artifact id=$id; skipping build."
+          "artifact_id=$($match.id)" >> $env:GITHUB_OUTPUT
         } else {
+          Write-Host "No existing non-expired artifact named $env:ARTIFACT_NAME found in newest 500 artifacts."
           "skip_build=false" >> $env:GITHUB_OUTPUT
-          Write-Host "No existing artifact named $artifactName found."
         }
 
     - name: Checkout depthai
@@ -131,7 +145,6 @@ jobs:
         path: C:\vcpkg_binaries
         key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
-
     - name: Upload artifact
       if: steps.reuse.outputs.skip_build != 'true'
       id: artifact-upload-step
@@ -149,7 +162,6 @@ jobs:
         fail-fast: false
     runs-on: ['self-hosted', 'testbed-runner']
     steps:
-
       - name: Run RVC4 tests
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}

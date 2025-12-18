@@ -122,7 +122,6 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
         -D DEPTHAI_PYTHON_TEST_EXAMPLES=ON \
         -D DEPTHAI_PYTHON_ENABLE_EXAMPLES=ON"; fi)
 
-
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
     cmake --build build --parallel $PARALLEL_JOBS --config Release
