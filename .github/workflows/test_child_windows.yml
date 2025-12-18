@@ -63,14 +63,12 @@ jobs:
         Write-Host "Copying source from $env:GITHUB_WORKSPACE to C:\depthai-core ..."
         Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
 
-    - name: Cache vcpkg binary cache
-      uses: actions/cache@v4
-      if: steps.reuse.outputs.skip_build != 'true'
+    - name: Restore vcpkg cache
+      uses: actions/cache/restore@v4
+      id: vcpkg-restore
       with:
         path: C:\vcpkg_binaries
         key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
-        restore-keys: |
-          vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
       if: steps.reuse.outputs.skip_build != 'true'
@@ -91,7 +89,6 @@ jobs:
         $overlay  = 'C:/depthai-core/cmake/triplets/release'  # make it absolute
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
-        $env:VCPKG_DEBUG="1"
 
         # Base args
         $cmakeArgs = @(
@@ -122,6 +119,14 @@ jobs:
         $cmakeBuildCommand = "cmake --build C:/depthai-core/build --parallel 2 --config Release"
         Write-Host "Running: $cmakeBuildCommand"
         Invoke-Expression $cmakeBuildCommand
+
+    - name: Save vcpkg cache (refresh)
+      if: github.event_name != 'pull_request'
+      uses: actions/cache/save@v4
+      with:
+        path: C:\vcpkg_binaries
+        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+
 
     - name: Upload artifact
       if: steps.reuse.outputs.skip_build != 'true'
