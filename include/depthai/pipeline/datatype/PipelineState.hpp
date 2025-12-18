@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
@@ -111,6 +113,10 @@ class PipelineState : public Buffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::PipelineState;
     };
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::PipelineState;
+    }
 
     nlohmann::json toJson() const;
 

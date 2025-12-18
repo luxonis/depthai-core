@@ -552,7 +552,7 @@ std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHa
     outState->tsDevice = outState->ts;
 
     // Filter state based on current configuration
-    if(!currentConfig->nodes.empty()) {
+    if(currentConfig.has_value() && !currentConfig->nodes.empty()) {
         for(auto it = outState->nodeStates.begin(); it != outState->nodeStates.end();) {
             auto nodeConfig = std::find_if(
                 currentConfig->nodes.begin(), currentConfig->nodes.end(), [&](const NodeEventAggregationConfig& cfg) { return cfg.nodeId == it->first; });

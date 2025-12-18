@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -23,8 +24,6 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
     Node::Output* out = nullptr;
 
     void checkNodeId();
-
-    uint32_t sequenceNum = 0;
 
     std::mutex mutex;
 

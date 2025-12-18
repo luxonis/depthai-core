@@ -37,7 +37,9 @@ void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
     pipelineEventType.value("CUSTOM", PipelineEvent::Type::CUSTOM)
         .value("LOOP", PipelineEvent::Type::LOOP)
         .value("INPUT", PipelineEvent::Type::INPUT)
-        .value("OUTPUT", PipelineEvent::Type::OUTPUT);
+        .value("OUTPUT", PipelineEvent::Type::OUTPUT)
+        .value("INPUT_BLOCK", PipelineEvent::Type::INPUT_BLOCK)
+        .value("OUTPUT_BLOCK", PipelineEvent::Type::OUTPUT_BLOCK);
     pipelineEventInterval.value("NONE", PipelineEvent::Interval::NONE)
         .value("START", PipelineEvent::Interval::START)
         .value("END", PipelineEvent::Interval::END);

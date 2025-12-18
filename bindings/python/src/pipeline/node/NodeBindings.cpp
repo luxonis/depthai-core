@@ -274,6 +274,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<ThreadedNode, Node, std::shared_ptr<ThreadedNode>> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
     py::class_<DeviceNode, ThreadedNode, std::shared_ptr<DeviceNode>> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
 
+    using BlockPipelineEvent = dai::utility::PipelineEventDispatcherInterface::BlockPipelineEvent;
+
+    py::class_<BlockPipelineEvent, std::shared_ptr<BlockPipelineEvent>> pyBlockEvent(m, "BlockEvent", DOC(dai, PipelineEventDispatcherInterface, BlockEvent));
+
     // Device Nodegroup
     py::class_<DeviceNodeGroup, DeviceNode, std::shared_ptr<DeviceNodeGroup>> pyDeviceNodeGroup(m, "DeviceNodeGroup", DOC(dai, DeviceNodeGroup));
 
@@ -503,5 +507,15 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("mainLoop", &ThreadedNode::mainLoop, DOC(dai, ThreadedNode, mainLoop))
         .def("setLogLevel", &ThreadedNode::setLogLevel, DOC(dai, ThreadedNode, setLogLevel))
         .def("getLogLevel", &ThreadedNode::getLogLevel, DOC(dai, ThreadedNode, getLogLevel))
-        .def_readonly("pipelineEventOutput", &ThreadedNode::pipelineEventOutput, DOC(dai, ThreadedNode, pipelineEventOutput));
+        .def_readonly("pipelineEventOutput", &ThreadedNode::pipelineEventOutput, DOC(dai, ThreadedNode, pipelineEventOutput))
+        .def("inputBlockEvent", &ThreadedNode::inputBlockEvent, DOC(dai, ThreadedNode, inputBlockEvent))
+        .def("outputBlockEvent", &ThreadedNode::outputBlockEvent, DOC(dai, ThreadedNode, outputBlockEvent))
+        .def("blockEvent", &ThreadedNode::blockEvent, py::arg("type"), py::arg("source"), DOC(dai, ThreadedNode, blockEvent));
+
+    pyBlockEvent.def("cancel", &BlockPipelineEvent::cancel, DOC(dai, PipelineEventDispatcherInterface, BlockEvent, cancel))
+        .def("setQueueSize", &BlockPipelineEvent::setQueueSize, py::arg("size"), DOC(dai, PipelineEventDispatcherInterface, BlockEvent, setQueueSize))
+        .def("setEndTimestamp",
+             &BlockPipelineEvent::setEndTimestamp,
+             py::arg("timestamp"),
+             DOC(dai, PipelineEventDispatcherInterface, BlockEvent, setEndTimestamp));
 }

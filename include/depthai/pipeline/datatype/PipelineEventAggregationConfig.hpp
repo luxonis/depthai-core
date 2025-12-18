@@ -30,6 +30,10 @@ class PipelineEventAggregationConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::PipelineEventAggregationConfig;
+    }
+
     DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodes, repeatIntervalSeconds);
 };
 

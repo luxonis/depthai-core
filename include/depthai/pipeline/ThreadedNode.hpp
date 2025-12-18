@@ -67,8 +67,19 @@ class ThreadedNode : public Node {
      */
     virtual dai::LogLevel getLogLevel() const;
 
+    /**
+     * @brief Creates a scoped event that sends start and end events for the getting inputs state
+     */
     utility::PipelineEventDispatcherInterface::BlockPipelineEvent inputBlockEvent();
+    /**
+     * @brief Creates a scoped event that sends start and end events for the sending outputs state
+     */
     utility::PipelineEventDispatcherInterface::BlockPipelineEvent outputBlockEvent();
+    /**
+     * @brief Creates a scoped event that sends start and end events for a custom block event
+     * @param type Type of the event
+     * @param source Source name of the event
+     */
     utility::PipelineEventDispatcherInterface::BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source);
 
     class Impl;

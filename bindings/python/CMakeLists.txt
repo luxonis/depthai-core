@@ -153,7 +153,6 @@ set(SOURCE_LIST
 
     src/remote_connection/RemoteConnectionBindings.cpp
     src/utility/EventsManagerBindings.cpp
-    src/utility/PipelineEventDispatcherBindings.cpp
 )
 if(DEPTHAI_MERGED_TARGET)
     list(APPEND SOURCE_LIST

@@ -42,6 +42,10 @@ class PipelineEvent : public Buffer {
         datatype = DatatypeEnum::PipelineEvent;
     };
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::PipelineEvent;
+    }
+
     DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, status, queueSize, interval, type, source);
 };
 

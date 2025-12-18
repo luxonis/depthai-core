@@ -29,6 +29,10 @@ Specifying a single node ID to the `nodes()` method allows further filtering of 
 - `inputs() -> map(str, InputQueueState)`: returns states of all or specific inputs of the node. If only one input name is provided, the return type is `InputQueueState`.
 - `otherTimings() -> map(str, Timing)`: returns other timing statistics of the node. If only one timing name is provided, the return type is `Timing`.
 
+## Visualization
+
+The pipeline state can be visualized using the [depthai pipeline graph tool](https://github.com/luxonis/depthai_pipeline_graph).
+
 ## Pipeline Events
 
 ### Class

@@ -190,6 +190,12 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     CallbackId addCallback(const std::function<void()>& callback);
 
+    /**
+     * Adds a condition variable to be notified on message queue destruction
+     *
+     * @param cv Condition variable to be notified
+     * @returns Condition variable id
+     */
     CallbackId addCondVar(std::shared_ptr<std::condition_variable> cv);
 
     /**
@@ -200,6 +206,12 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     bool removeCallback(CallbackId callbackId);
 
+    /**
+     * Removes a condition variable
+     *
+     * @param condVarId Id of condition variable to be removed
+     * @returns True if condition variable was removed, false otherwise
+     */
     bool removeCondVar(CallbackId condVarId);
 
     /**
