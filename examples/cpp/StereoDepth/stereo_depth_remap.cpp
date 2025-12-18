@@ -29,12 +29,12 @@ cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
 
     double min_depth = 0;
     if(!cv::countNonZero(depth_downscaled == 0)) {
-        std::vector<float> nonZeroDepth;
+        std::vector<uint16_t> nonZeroDepth;
         nonZeroDepth.reserve(depth_downscaled.rows * depth_downscaled.cols);
 
         for(int i = 0; i < depth_downscaled.rows; i++) {
             for(int j = 0; j < depth_downscaled.cols; j++) {
-                float depth = depth_downscaled.at<float>(i, j);
+                uint16_t depth = depth_downscaled.at<uint16_t>(i, j);
                 if(depth > 0) nonZeroDepth.push_back(depth);
             }
         }
@@ -45,11 +45,11 @@ cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
         }
     }
 
-    std::vector<float> allDepth;
+    std::vector<uint16_t> allDepth;
     allDepth.reserve(depth_downscaled.rows * depth_downscaled.cols);
     for(int i = 0; i < depth_downscaled.rows; i++) {
         for(int j = 0; j < depth_downscaled.cols; j++) {
-            allDepth.push_back(depth_downscaled.at<float>(i, j));
+            allDepth.push_back(depth_downscaled.at<uint16_t>(i, j));
         }
     }
     std::sort(allDepth.begin(), allDepth.end());
