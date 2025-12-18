@@ -12,6 +12,34 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
     return cv::Rect(cv::Point(topLeft.x * width, topLeft.y * height), cv::Point(bottomRight.x * width, bottomRight.y * height));
 }
 
+// Callback functions
+void uploadSuccessCallback(dai::utility::SendSnapCallbackResult sendSnapResult) {
+    std::cout << "Snap: " << sendSnapResult.snapName << " with a timestamp: " << sendSnapResult.snapTimestamp << " has been successfully uploaded to the hub"
+              << std::endl;
+}
+
+void uploadFailureCallback(dai::utility::SendSnapCallbackResult sendSnapResult) {
+    std::cout << "Snap: " << sendSnapResult.snapName << " with a timestamp: " << sendSnapResult.snapTimestamp << " could not have been uploaded to the hub"
+              << std::endl;
+
+    switch(sendSnapResult.status) {
+        case dai::utility::SendSnapCallbackStatus::FILE_BATCH_PREPARATION_FAILED:
+            std::cout << "File batch preparation failed!" << std::endl;
+            break;
+        case dai::utility::SendSnapCallbackStatus::GROUP_CONTAINS_REJECTED_FILES:
+            std::cout << "Snap's file group contains rejected files!" << std::endl;
+            break;
+        case dai::utility::SendSnapCallbackStatus::FILE_UPLOAD_FAILED:
+            std::cout << "File upload was unsuccessful!" << std::endl;
+            break;
+        case dai::utility::SendSnapCallbackStatus::SEND_EVENT_FAILED:
+            std::cout << "Snap could not been sent to the hub, following successful file upload!" << std::endl;
+            break;
+        default:
+            break;
+    }
+}
+
 int main() {
     dai::Pipeline pipeline(true);
 
@@ -72,7 +100,14 @@ int main() {
 
         // Trigger sendSnap()
         if(cv::waitKey(1) == 's') {
-            eventsManager->sendSnap("ImageDetection", std::nullopt, inRgb, inDet, {"EventsExample", "C++"}, {{"key_0", "value_0"}, {"key_1", "value_1"}});
+            eventsManager->sendSnap("ImageDetection",
+                                    std::nullopt,
+                                    inRgb,
+                                    inDet,
+                                    {"EventsExample", "C++"},
+                                    {{"key_0", "value_0"}, {"key_1", "value_1"}},
+                                    uploadSuccessCallback,
+                                    uploadFailureCallback);
         }
     }
 

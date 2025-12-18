@@ -7,6 +7,10 @@
 
 void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
+
+    // Type definitions
+    py::enum_<dai::utility::SendSnapCallbackStatus> sendSnapCallbackStatus(m, "SendSnapCallbackStatus", DOC(dai, SendSnapCallbackStatus));
+
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -82,6 +86,18 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     //    py::arg("nnData"),
     //    DOC(dai, utility, FileGroup, addImageNNDataPair));
 
+    sendSnapCallbackStatus.value("SUCCESS", SendSnapCallbackStatus::SUCCESS)
+        .value("FILE_BATCH_PREPARATION_FAILED", SendSnapCallbackStatus::FILE_BATCH_PREPARATION_FAILED)
+        .value("GROUP_CONTAINS_REJECTED_FILES", SendSnapCallbackStatus::GROUP_CONTAINS_REJECTED_FILES)
+        .value("FILE_UPLOAD_FAILED", SendSnapCallbackStatus::FILE_UPLOAD_FAILED)
+        .value("SEND_EVENT_FAILED", SendSnapCallbackStatus::SEND_EVENT_FAILED);
+
+    py::class_<SendSnapCallbackResult>(m, "SendSnapCallbackResult")
+        .def(py::init<>())
+        .def_readonly("snapName", &SendSnapCallbackResult::snapName)
+        .def_readonly("snapTimestamp", &SendSnapCallbackResult::snapTimestamp)
+        .def_readonly("status", &SendSnapCallbackResult::status);
+
     py::class_<EventsManager>(m, "EventsManager")
         .def(py::init<>())
         .def(py::init<bool>(), py::arg("uploadCachedOnStart") = false)
@@ -98,7 +114,6 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("name"),
              py::arg("tags") = std::vector<std::string>(),
              py::arg("extras") = std::unordered_map<std::string, std::string>(),
-             py::arg("deviceSerialNo") = "",
              py::arg("associateFiles") = std::vector<std::string>(),
              DOC(dai, utility, EventsManager, sendEvent))
         .def("sendSnap",
@@ -106,12 +121,14 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
                                                  const std::shared_ptr<FileGroup>,
                                                  const std::vector<std::string>&,
                                                  const std::unordered_map<std::string, std::string>&,
-                                                 const std::string&)>(&EventsManager::sendSnap),
+                                                 const std::function<void(SendSnapCallbackResult)> successCallback,
+                                                 const std::function<void(SendSnapCallbackResult)> failureCallback)>(&EventsManager::sendSnap),
              py::arg("name"),
              py::arg("fileGroup") = std::shared_ptr<FileGroup>(),
              py::arg("tags") = std::vector<std::string>(),
              py::arg("extras") = std::unordered_map<std::string, std::string>(),
-             py::arg("deviceSerialNo") = "",
+             py::arg("successCallback") = py::none(),
+             py::arg("failureCallback") = py::none(),
              DOC(dai, utility, EventsManager, sendSnap))
         .def("sendSnap",
              static_cast<bool (EventsManager::*)(const std::string&,
@@ -120,14 +137,16 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
                                                  const std::optional<std::shared_ptr<ImgDetections>>&,
                                                  const std::vector<std::string>&,
                                                  const std::unordered_map<std::string, std::string>&,
-                                                 const std::string&)>(&EventsManager::sendSnap),
+                                                 const std::function<void(SendSnapCallbackResult)> successCallback,
+                                                 const std::function<void(SendSnapCallbackResult)> failureCallback)>(&EventsManager::sendSnap),
              py::arg("name"),
              py::arg("fileName"),
              py::arg("imgFrame"),
              py::arg("imgDetections"),
              py::arg("tags") = std::vector<std::string>(),
              py::arg("extras") = std::unordered_map<std::string, std::string>(),
-             py::arg("deviceSerialNo") = "",
+             py::arg("successCallback") = py::none(),
+             py::arg("failureCallback") = py::none(),
              DOC(dai, utility, EventsManager, sendSnap));
 #endif
 }
