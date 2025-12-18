@@ -8,6 +8,7 @@ class Display : public dai::NodeCRTP<dai::node::HostNode, Display> {
 
     std::shared_ptr<Display> build(Output& out) {
         out.link(input);
+        sendProcessingToPipeline(true);
         return std::static_pointer_cast<Display>(this->shared_from_this());
     }
     std::shared_ptr<dai::Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
@@ -68,7 +69,6 @@ int main() {
         pipeline.create<StreamMerger>()->build(*camRgb->requestOutput(std::make_pair(640, 480)), *camMono->requestOutput(std::make_pair(640, 480)));
     auto display = pipeline.create<Display>()->build(streamMerger->out);
 
-    pipeline.start();
-    pipeline.wait();
+    pipeline.run();
     return 0;
 }

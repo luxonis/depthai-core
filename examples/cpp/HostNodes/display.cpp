@@ -9,7 +9,7 @@
 class HostDisplay : public dai::node::CustomNode<HostDisplay> {
    public:
     HostDisplay() {
-        sendProcessingToPipeline(false);
+        sendProcessingToPipeline(true);
     }
 
     std::shared_ptr<dai::Buffer> processGroup(std::shared_ptr<dai::MessageGroup> message) override {
@@ -45,11 +45,7 @@ int main() {
     output->link(display->inputs["frame"]);
 
     // Start pipeline
-    pipeline.start();
-    std::cout << "Display window opened. Press 'q' to quit." << std::endl;
-
-    // Wait for pipeline to finish
-    pipeline.wait();
+    pipeline.run();
 
     return 0;
 }

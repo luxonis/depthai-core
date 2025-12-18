@@ -15,7 +15,6 @@ int main(int argc, char** argv) {
     dai::Pipeline pipeline(false);
 
     auto replay = pipeline.create<dai::node::ReplayVideo>();
-    auto display = pipeline.create<dai::node::Display>();
     auto manip = pipeline.create<dai::node::ImageManip>();
     manip->setRunOnHost();
     // After doing the rest of the operations, resize the frame to 1270x710 and keep the aspect ratio by cropping from the center
@@ -33,9 +32,16 @@ int main(int argc, char** argv) {
     replay->setSize(1280, 720);
 
     replay->out.link(manip->inputImage);
-    manip->out.link(display->input);
+    auto outputQueue = manip->out.createOutputQueue();
+
 
     pipeline.start();
-
-    pipeline.wait();
+    while(pipeline.isRunning()) {
+        auto imgFrame = outputQueue->get<dai::ImgFrame>();
+        cv::imshow("Manipulated Frame", imgFrame->getCvFrame());
+        int key = cv::waitKey(1);
+        if(key == 'q') {
+            break;
+        }
+    }
 }
