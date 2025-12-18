@@ -69,12 +69,20 @@ class FileGroup {
     friend class EventsManager;
 };
 
-enum class SendSnapCallbackStatus { SUCCESS, FILE_BATCH_PREPARATION_FAILED, GROUP_CONTAINS_REJECTED_FILES, FILE_UPLOAD_FAILED, SEND_EVENT_FAILED };
+enum class SendSnapCallbackStatus {
+    SUCCESS,
+    FILE_BATCH_PREPARATION_FAILED,
+    GROUP_CONTAINS_REJECTED_FILES,
+    FILE_UPLOAD_FAILED,
+    SEND_EVENT_FAILED,
+    EVENT_REJECTED
+};
 
 struct SendSnapCallbackResult {
    public:
     std::string snapName;
     int64_t snapTimestamp;
+    std::optional<std::string> snapID;
     std::string snapPayload;
     SendSnapCallbackStatus uploadStatus;
 };

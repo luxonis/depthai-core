@@ -7,12 +7,12 @@ import numpy as np
 
 # Callback functions
 def upload_success_callback(send_snap_result):
-    print(f"Snap: {send_snap_result.snapName} with a timestamp: {send_snap_result.snapTimestamp} has been successfully uploaded to the hub")
+    print(f"Successfully uploaded Snap: ({send_snap_result.snapName}, {send_snap_result.snapTimestamp}, {send_snap_result.snapID}) to the hub.")
 
 def upload_failure_callback(send_snap_result):
-    status = send_snap_result.uploadStatus
-    print(f"Snap: {send_snap_result.snapName} with a timestamp: {send_snap_result.snapTimestamp} could not have been uploaded to the hub")
+    print(f"Upload of Snap: ({send_snap_result.snapName}, {send_snap_result.snapTimestamp}) to the hub has failed.")
 
+    status = send_snap_result.uploadStatus
     if status == dai.SendSnapCallbackStatus.FILE_BATCH_PREPARATION_FAILED:
         print("File batch preparation failed!")
     elif status == dai.SendSnapCallbackStatus.GROUP_CONTAINS_REJECTED_FILES:

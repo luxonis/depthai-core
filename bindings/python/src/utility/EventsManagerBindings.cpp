@@ -90,12 +90,14 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("FILE_BATCH_PREPARATION_FAILED", SendSnapCallbackStatus::FILE_BATCH_PREPARATION_FAILED)
         .value("GROUP_CONTAINS_REJECTED_FILES", SendSnapCallbackStatus::GROUP_CONTAINS_REJECTED_FILES)
         .value("FILE_UPLOAD_FAILED", SendSnapCallbackStatus::FILE_UPLOAD_FAILED)
-        .value("SEND_EVENT_FAILED", SendSnapCallbackStatus::SEND_EVENT_FAILED);
+        .value("SEND_EVENT_FAILED", SendSnapCallbackStatus::SEND_EVENT_FAILED)
+        .value("EVENT_REJECTED", SendSnapCallbackStatus::EVENT_REJECTED);
 
     py::class_<SendSnapCallbackResult>(m, "SendSnapCallbackResult")
         .def(py::init<>())
         .def_readonly("snapName", &SendSnapCallbackResult::snapName)
         .def_readonly("snapTimestamp", &SendSnapCallbackResult::snapTimestamp)
+        .def_readonly("snapID", &SendSnapCallbackResult::snapID)
         .def_readonly("snapPayload", &SendSnapCallbackResult::snapPayload)
         .def_readonly("uploadStatus", &SendSnapCallbackResult::uploadStatus);
 
