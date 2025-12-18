@@ -85,6 +85,7 @@ jobs:
         $bytes = (Get-ChildItem -Force -Recurse C:\vcpkg_binaries -ErrorAction SilentlyContinue |
           Measure-Object -Property Length -Sum).Sum
         "{0:N2} MB" -f ($bytes / 1MB)
+        Get-ChildItem -Recurse C:\vcpkg_binaries -Filter *.zip | Select-Object -First 20 FullName,Length
 
         Invoke-WebRequest `
           -Uri "https://github.com/winpython/winpython/releases/download/17.2.20250920/WinPython64-3.13.7.0dotrc.zip" `
