@@ -102,10 +102,11 @@ jobs:
         $overlay  = 'C:/depthai-core/cmake/triplets/release'
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
+        $env:VCPKG_INSTALL_OPTIONS="--debug"
 
         # Base args
         $cmakeArgs = @(
-          '-S','.','--debug',
+          '-S','.',
           '-B', $buildDir,
           '-DCMAKE_BUILD_TYPE=Release',
           '-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF',
