@@ -35,7 +35,7 @@ fi
 # Ensure BuildKit + buildx are used
 export DOCKER_BUILDKIT=1
 
-BUILDER_NAME="hil-builder"
+BUILDER_NAME="hil-builder-${FLAVOR}"
 CACHE_ROOT="/tmp/buildkit-cache/depthai-core-hil"
 CACHE_SCOPE="flavor-${FLAVOR}"
 CACHE_DIR="${CACHE_ROOT}/${CACHE_SCOPE}"
