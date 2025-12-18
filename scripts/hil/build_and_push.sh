@@ -40,6 +40,14 @@ CACHE_ROOT="/tmp/buildkit-cache/depthai-core-hil"
 CACHE_SCOPE="flavor-${FLAVOR}"
 CACHE_DIR="${CACHE_ROOT}/${CACHE_SCOPE}"
 
+# Create (or reuse) a dedicated builder per flavor
+if ! docker buildx inspect "${BUILDER_NAME}" >/dev/null 2>&1; then
+  docker buildx create --name "${BUILDER_NAME}" --driver docker-container --use >/dev/null
+else
+  docker buildx use "${BUILDER_NAME}"
+fi
+docker buildx inspect --bootstrap >/dev/null
+
 mkdir -p "${CACHE_DIR}"
 
 echo "Using cache dir: ${CACHE_DIR}"
@@ -60,7 +68,7 @@ if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"
 else
   # Build the image
     echo "🔨 Building image ${IMAGE_NAME}..."
-    docker buildx build -t "${IMAGE_NAME}" -f tests/Dockerfile . \
+    docker buildx build --builder "${BUILDER_NAME}" -t "${IMAGE_NAME}" -f tests/Dockerfile . \
   --build-arg FLAVOR="${FLAVOR}" \
   --build-arg BRANCH="${BRANCH}" \
   --build-arg GIT_COMMIT="${COMMIT_ID}" \
