@@ -71,7 +71,7 @@ jobs:
           "skip_build=true"  >> $env:GITHUB_OUTPUT
           "artifact_id=$($match.id)" >> $env:GITHUB_OUTPUT
         } else {
-          Write-Host "No existing non-expired artifact named $env:ARTIFACT_NAME found in newest 500 artifacts."
+          Write-Host "No existing non-expired artifact named $env:ARTIFACT_NAME found in newest 2500 artifacts."
           "skip_build=false" >> $env:GITHUB_OUTPUT
         }
 
