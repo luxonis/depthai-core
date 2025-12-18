@@ -45,9 +45,14 @@ class PipelineEvent : public Buffer {
         OUTPUT_BLOCK = 5,
     };
     enum class Interval : std::int32_t { NONE = 0, START = 1, END = 2 };
+    enum class Status : std::int32_t {
+        SUCCESS = 0,
+        BLOCKED = -1,
+        CANCELLED = -2,
+    };
 
     int64_t nodeId = -1;
-    int32_t status = 0;
+    Status status = 0;
     std::optional<uint32_t> queueSize;
     Interval interval = Interval::NONE;
     Type type = Type::CUSTOM;
@@ -83,7 +88,7 @@ class NodeState {
         PipelineEvent startEvent;
         uint64_t durationUs;
     };
-    struct TimingStats {
+    struct DurationStats {
         uint64_t minMicros = -1;
         uint64_t maxMicros = 0;
         uint64_t averageMicrosRecent = 0;
@@ -94,7 +99,7 @@ class NodeState {
     };
     struct Timing {
         float fps = 0.0f;
-        TimingStats durationStats;
+        DurationStats durationStats;
     };
     struct QueueStats {
         uint32_t maxQueued = 0;

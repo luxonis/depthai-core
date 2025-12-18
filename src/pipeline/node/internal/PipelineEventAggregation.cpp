@@ -436,7 +436,7 @@ class PipelineEventHandler {
             std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
             try {
                 // Wait for any events
-                auto msgs = getAny<PipelineEvent>(inputMap);
+                auto msgs = MessageQueue::getAny<PipelineEvent>(inputMap);
                 for(auto& [k, v] : msgs) {
                     if(v != nullptr) {
                         events[k] = v;

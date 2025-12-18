@@ -414,7 +414,7 @@ TEST_CASE("Get any sync", "[MessageQueue]") {
     auto msg = std::make_shared<ADatatype>();
     queue2.send(msg);
 
-    auto out = getAny(queues);
+    auto out = MessageQueue::getAny(queues);
     REQUIRE(out.size() == 1);
     REQUIRE(out.find("queue2") != out.end());
 }
@@ -435,7 +435,7 @@ TEST_CASE("Get any async", "[MessageQueue]") {
         queue2.send(msg);
     });
 
-    auto out = getAny(queues);
+    auto out = MessageQueue::getAny(queues);
     REQUIRE(out.size() == 1);
     REQUIRE(out.find("queue2") != out.end());
     thread.join();

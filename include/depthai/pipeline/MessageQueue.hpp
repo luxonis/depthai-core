@@ -17,8 +17,6 @@ namespace dai {
  * Thread safe queue to send messages between nodes
  */
 class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
-    friend std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues);
-
    public:
     /// Alias for callback id
     using CallbackId = int;
@@ -87,6 +85,20 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         uniqueCallbackId = m.uniqueCallbackId;
         pipelineEventDispatcher = m.pipelineEventDispatcher;
         return *this;
+    }
+
+    static std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues);
+    template <typename T>
+    static std::unordered_map<std::string, std::shared_ptr<T>> getAny(std::unordered_map<std::string, MessageQueue&> queues) {
+        auto resultADatatype = getAny(queues);
+        std::unordered_map<std::string, std::shared_ptr<T>> result;
+        for(auto& [k, v] : resultADatatype) {
+            auto casted = std::dynamic_pointer_cast<T>(v);
+            if(casted) {
+                result[k] = casted;
+            }
+        }
+        return result;
     }
 
     virtual ~MessageQueue();
@@ -472,19 +484,5 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     bool trySend(const std::shared_ptr<ADatatype>& msg);
 };
-
-std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues);
-template <typename T>
-std::unordered_map<std::string, std::shared_ptr<T>> getAny(std::unordered_map<std::string, MessageQueue&> queues) {
-    auto resultADatatype = getAny(queues);
-    std::unordered_map<std::string, std::shared_ptr<T>> result;
-    for(auto& [k, v] : resultADatatype) {
-        auto casted = std::dynamic_pointer_cast<T>(v);
-        if(casted) {
-            result[k] = casted;
-        }
-    }
-    return result;
-}
 
 }  // namespace dai

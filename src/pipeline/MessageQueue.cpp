@@ -213,7 +213,7 @@ void MessageQueue::notifyCondVars() {
 
 MessageQueue::QueueException::~QueueException() noexcept = default;
 
-std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues) {
+std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(std::unordered_map<std::string, MessageQueue&> queues) {
     std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> callbackIds;
     std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> condVarIds;
     callbackIds.reserve(queues.size());
@@ -224,62 +224,73 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordere
     auto inputsWaitCv = std::make_shared<std::condition_variable>();
     bool receivedMessage = false;
 
-    // Register callbacks
-    for(auto& kv : queues) {
-        auto& input = kv.second;
-        auto callbackId = input.addCallback([&]() {
-            {
-                std::lock_guard<std::mutex> lock(inputsWaitMutex);
-                receivedMessage = true;
-            }
-            inputsWaitCv->notify_all();
-        });
-
-        callbackIds.push_back({input, callbackId});
-        // Also add condition variable to be notified on close
-        auto condVarId = input.addCondVar(inputsWaitCv);
-        condVarIds.push_back({input, condVarId});
-    }
-
-    // Check if any messages already present
-    bool hasAnyMessages = false;
-    for(auto& kv : queues) {
-        if(kv.second.has()) {
-            hasAnyMessages = true;
-            break;
-        }
-    }
-
-    if(!hasAnyMessages) {
-        // Wait for any message to arrive
-        std::unique_lock<std::mutex> lock(inputsWaitMutex);
-        inputsWaitCv->wait(lock, [&]() {
-            for(auto& kv : queues) {
-                if(kv.second.isClosed()) {
-                    return true;
+    try {
+        // Register callbacks
+        for(auto& kv : queues) {
+            auto& input = kv.second;
+            auto callbackId = input.addCallback([&]() {
+                {
+                    std::lock_guard<std::mutex> lock(inputsWaitMutex);
+                    receivedMessage = true;
                 }
-            }
-            return receivedMessage;
-        });
-    }
+                inputsWaitCv->notify_all();
+            });
 
-    // Remove callbacks
-    for(auto& [input, callbackId] : callbackIds) {
-        input.removeCallback(callbackId);
-    }
-    // Remove condition variables
-    for(auto& [input, condVarId] : condVarIds) {
-        input.removeCondVar(condVarId);
-    }
-
-    // Collect all available messages
-    for(auto& kv : queues) {
-        auto& input = kv.second;
-        if(input.has()) {
-            inputs[kv.first] = input.get<ADatatype>();
+            callbackIds.push_back({input, callbackId});
+            // Also add condition variable to be notified on close
+            auto condVarId = input.addCondVar(inputsWaitCv);
+            condVarIds.push_back({input, condVarId});
         }
-    }
 
+        // Check if any messages already present
+        bool hasAnyMessages = false;
+        for(auto& kv : queues) {
+            if(kv.second.has()) {
+                hasAnyMessages = true;
+                break;
+            }
+        }
+
+        if(!hasAnyMessages) {
+            // Wait for any message to arrive
+            std::unique_lock<std::mutex> lock(inputsWaitMutex);
+            inputsWaitCv->wait(lock, [&]() {
+                for(auto& kv : queues) {
+                    if(kv.second.isClosed()) {
+                        return true;
+                    }
+                }
+                return receivedMessage;
+            });
+        }
+
+        // Remove callbacks
+        for(auto& [input, callbackId] : callbackIds) {
+            input.removeCallback(callbackId);
+        }
+        // Remove condition variables
+        for(auto& [input, condVarId] : condVarIds) {
+            input.removeCondVar(condVarId);
+        }
+
+        // Collect all available messages
+        for(auto& kv : queues) {
+            auto& input = kv.second;
+            if(input.has()) {
+                inputs[kv.first] = input.get<ADatatype>();
+            }
+        }
+    } catch(...) {
+        // Remove callbacks in case of exception
+        for(auto& [input, callbackId] : callbackIds) {
+            input.removeCallback(callbackId);
+        }
+        // Remove condition variables
+        for(auto& [input, condVarId] : condVarIds) {
+            input.removeCondVar(condVarId);
+        }
+        throw;
+    }
     return inputs;
 }
 
