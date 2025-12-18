@@ -96,7 +96,8 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(py::init<>())
         .def_readonly("snapName", &SendSnapCallbackResult::snapName)
         .def_readonly("snapTimestamp", &SendSnapCallbackResult::snapTimestamp)
-        .def_readonly("status", &SendSnapCallbackResult::status);
+        .def_readonly("snapPayload", &SendSnapCallbackResult::snapPayload)
+        .def_readonly("uploadStatus", &SendSnapCallbackResult::uploadStatus);
 
     py::class_<EventsManager>(m, "EventsManager")
         .def(py::init<>())

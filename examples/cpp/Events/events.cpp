@@ -22,7 +22,7 @@ void uploadFailureCallback(dai::utility::SendSnapCallbackResult sendSnapResult) 
     std::cout << "Snap: " << sendSnapResult.snapName << " with a timestamp: " << sendSnapResult.snapTimestamp << " could not have been uploaded to the hub"
               << std::endl;
 
-    switch(sendSnapResult.status) {
+    switch(sendSnapResult.uploadStatus) {
         case dai::utility::SendSnapCallbackStatus::FILE_BATCH_PREPARATION_FAILED:
             std::cout << "File batch preparation failed!" << std::endl;
             break;

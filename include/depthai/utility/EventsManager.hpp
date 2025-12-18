@@ -75,7 +75,8 @@ struct SendSnapCallbackResult {
    public:
     std::string snapName;
     int64_t snapTimestamp;
-    SendSnapCallbackStatus status;
+    std::string snapPayload;
+    SendSnapCallbackStatus uploadStatus;
 };
 
 class EventsManager {
