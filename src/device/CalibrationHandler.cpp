@@ -95,7 +95,7 @@ CalibrationHandler::ExtrinsicGraphValidationResult CalibrationHandler::validateE
     return {};
 }
 
-void CalibrationHandler::validateExtrinsicGraphOrThrow(bool throwOnError) const {
+void CalibrationHandler::validateCalibrationHandler(bool throwOnError) const {
     auto result = validateExtrinsicGraph();
 
     if(result.error == ExtrinsicGraphError::None) return;
@@ -136,7 +136,7 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, std
     nlohmann::json jsonData = nlohmann::json::parse(jsonStream);
     eepromData = jsonData;
     if(validateCalibration) {
-        validateExtrinsicGraphOrThrow();
+        validateCalibrationHandler();
     }
 }
 
@@ -144,7 +144,7 @@ CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson, s
     CalibrationHandler calib;
     calib.eepromData = eepromDataJson;
     if(validateCalibration) {
-        calib.validateExtrinsicGraphOrThrow();
+        calib.validateCalibrationHandler();
     }
     return calib;
 }
@@ -275,14 +275,14 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath
     camera.extrinsics.rotationMatrix[1][2] = camera.extrinsics.rotationMatrix[2][1];
     camera.extrinsics.rotationMatrix[2][1] = temp;
     if(validateCalibration) {
-        validateExtrinsicGraphOrThrow();
+        validateCalibrationHandler();
     }
 }
 
 CalibrationHandler::CalibrationHandler(EepromData newEepromData, std::optional<bool> validateCalibration) {
     eepromData = newEepromData;
     if(validateCalibration) {
-        validateExtrinsicGraphOrThrow();
+        validateCalibrationHandler();
     }
 }
 
@@ -896,7 +896,11 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
     } else {
         eepromData.cameraData[srcCameraId].extrinsics = extrinsics;
     }
-    validateExtrinsicGraphOrThrow();
+    auto result = validateExtrinsicGraph();
+    if(result.error == ExtrinsicGraphError::CycleDetected) {
+        auto message = "Extrinsic cycle detected: " + toString(result.at) + " → " + toString(result.to);
+        throw std::runtime_error(message);
+    }
     return;
 }
 

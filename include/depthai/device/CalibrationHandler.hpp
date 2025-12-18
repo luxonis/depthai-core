@@ -563,6 +563,16 @@ class CalibrationHandler {
      * @return true on proper connection with no loops.
      */
     bool validateCameraArray() const;
+    /**
+     * Validate Calibration handler properties and how they are set, so there is no:
+     *  - Cycling links
+     *  - Missing links
+     *  - Dangling connections
+     *
+     * @param throwOnError Throw runtime error on failture.
+     *
+     */
+    void validateCalibrationHandler(bool throwOnError = true) const;
 
 // Optional - RTABMap support
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
@@ -608,7 +618,6 @@ class CalibrationHandler {
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkSrcLinks(CameraBoardSocket headSocket) const;
-    void validateExtrinsicGraphOrThrow(bool throwOnError = true) const;
     enum class ExtrinsicGraphError { None, CycleDetected, DanglingReference, DisconnectedGraph };
     struct ExtrinsicGraphValidationResult {
         ExtrinsicGraphError error = ExtrinsicGraphError::None;

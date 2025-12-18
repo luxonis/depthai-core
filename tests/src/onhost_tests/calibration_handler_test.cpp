@@ -310,8 +310,8 @@ TEST_CASE("Multiple independent origins detected", "[getCameraExtrinsics]") {
     // Create two separate trees: A→(root), B→A and D→C (root)
     auto R3 = std::vector<std::vector<float>>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     auto zeros3 = std::vector<float>{0, 0, 0};
-    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_B, R3, zeros3, zeros3),
-                        Catch::Matchers::ContainsSubstring("Missing extrinsic link somewhere in the calibration chain."));
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_B, R3, zeros3, zeros3);
+    REQUIRE_THROWS_WITH(handler.validateCalibrationHandler(), Catch::Matchers::ContainsSubstring("Missing extrinsic link"));
 }
 
 TEST_CASE("Cyclic connection throws", "[getCameraExtrinsics]") {
@@ -341,8 +341,8 @@ TEST_CASE("Dangling extrinsic reference throws", "[setCameraExtrinsics]") {
     std::vector<float> zeros = {0, 0, 0};
 
     // CAM_A → CAM_B (CAM_B does NOT exist)
-    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, R, zeros, zeros),
-                        Catch::Matchers::ContainsSubstring("Dangling extrinsic reference"));
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, R, zeros, zeros);
+    REQUIRE_THROWS_WITH(handler.validateCalibrationHandler(), Catch::Matchers::ContainsSubstring("Dangling extrinsic reference"));
 }
 
 TEST_CASE("Long chain extrinsics composition", "[getCameraExtrinsics]") {
@@ -774,4 +774,23 @@ TEST_CASE("EepromData constructor throws on dangling extrinsic reference", "[Cal
     data.cameraData[CameraBoardSocket::CAM_A].extrinsics.toCameraSocket = CameraBoardSocket::CAM_B;
 
     REQUIRE_THROWS_WITH(dai::CalibrationHandler(data, true), Catch::Matchers::ContainsSubstring("Dangling extrinsic reference"));
+}
+
+TEST_CASE("EepromData constructor throws with missing graph", "[CalibrationHandler][EepromData]") {
+    dai::EepromData data;
+    data.cameraData[CameraBoardSocket::CAM_A];
+    data.cameraData[CameraBoardSocket::CAM_B];
+    data.cameraData[CameraBoardSocket::CAM_C];
+    data.cameraData[CameraBoardSocket::CAM_D];
+
+    // A points to B, C to D but C to D is missing =>  not full link!
+    auto R = std::vector<std::vector<float>>{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    auto z = std::vector<float>{0, 0, 0};
+
+    data.cameraData[CameraBoardSocket::CAM_A].extrinsics.rotationMatrix = R;
+    data.cameraData[CameraBoardSocket::CAM_C].extrinsics.rotationMatrix = R;
+    data.cameraData[CameraBoardSocket::CAM_A].extrinsics.toCameraSocket = CameraBoardSocket::CAM_B;
+    data.cameraData[CameraBoardSocket::CAM_C].extrinsics.toCameraSocket = CameraBoardSocket::CAM_D;
+
+    REQUIRE_THROWS_WITH(dai::CalibrationHandler(data, true), Catch::Matchers::ContainsSubstring("Missing extrinsic link in calibration chain"));
 }
