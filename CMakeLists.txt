@@ -528,6 +528,10 @@ if(DEPTHAI_VCPKG_INTERNAL_ONLY)
     exclude_archive_libs_symbols(${TARGET_CORE_NAME})
 endif()
 
+if(DEFINED ENV{VCPKG_DEBUG})
+  list(APPEND VCPKG_INSTALL_ARGS "--debug=all" "--verbose")
+endif()
+
 # And clang-tidy and format
 if(DEPTHAI_CLANG_TIDY)
     include(ClangTidy)

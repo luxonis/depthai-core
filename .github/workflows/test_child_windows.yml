@@ -18,11 +18,12 @@ jobs:
         artifact_id: ${{ steps.reuse.outputs.artifact_id || steps.artifact-upload-step.outputs.artifact-id }}
     env:
       BUILD_TYPE: Release
+      VCPKG_ROOT: C:\vcpkg
       VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
       VCPKG_DEFAULT_TRIPLET: x64-windows
       VCPKG_DOWNLOADS: C:\vcpkg_downloads
       VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
-      VCPKG_BINARY_SOURCES: clear;files,C:\vcpkg_binaries,readwrite
+      VCPKG_BINARY_SOURCES: "clear;files,C:\vcpkg_binaries,readwrite"
     steps:
 
     - name: Try reusing existing artifact for this commit
@@ -34,7 +35,6 @@ jobs:
         RUN_ID: ${{ github.run_id }}
         ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
       run: |
-        
         Write-Host "REPO=$env:REPO  RUN_ID=$env:RUN_ID  NAME=$env:ARTIFACT_NAME"
         $id = gh api "repos/$env:REPO/actions/runs/$env:RUN_ID/artifacts" `
           --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"" and .expired==false) | .id"
@@ -76,17 +76,6 @@ jobs:
       if: steps.reuse.outputs.skip_build != 'true'
       run: |
         cd C:\depthai-core
-        Write-Host "VCPKG_FEATURE_FLAGS=$env:VCPKG_FEATURE_FLAGS"
-        Write-Host "VCPKG_DEFAULT_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET"
-        Write-Host "VCPKG_DOWNLOADS=$env:VCPKG_DOWNLOADS"
-        Write-Host "VCPKG_DEFAULT_BINARY_CACHE=$env:VCPKG_DEFAULT_BINARY_CACHE"
-        Write-Host "VCPKG_BINARY_SOURCES=$env:VCPKG_BINARY_SOURCES"
-        Get-ChildItem -Force C:\vcpkg_binaries
-        $bytes = (Get-ChildItem -Force -Recurse C:\vcpkg_binaries -ErrorAction SilentlyContinue |
-          Measure-Object -Property Length -Sum).Sum
-        "{0:N2} MB" -f ($bytes / 1MB)
-        Get-ChildItem -Recurse C:\vcpkg_binaries -Filter *.zip | Select-Object -First 20 FullName,Length
-
         Invoke-WebRequest `
           -Uri "https://github.com/winpython/winpython/releases/download/17.2.20250920/WinPython64-3.13.7.0dotrc.zip" `
           -OutFile "winpython.zip"
@@ -99,10 +88,10 @@ jobs:
         pip install --upgrade pip
         pip install numpy pytest pytest-html
         $buildDir = 'C:/depthai-core/build'
-        $overlay  = 'C:/depthai-core/cmake/triplets/release'
+        $overlay  = 'C:/depthai-core/cmake/triplets/release'  # make it absolute
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
-        $env:VCPKG_INSTALL_OPTIONS="--debug"
+        $env:VCPKG_DEBUG="1"
 
         # Base args
         $cmakeArgs = @(
@@ -110,7 +99,6 @@ jobs:
           '-B', $buildDir,
           '-DCMAKE_BUILD_TYPE=Release',
           '-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF',
-          '-DVCPKG_MANIFEST_DIR=C:/depthai-core',
           "-DVCPKG_OVERLAY_TRIPLETS=$overlay",
           '-DDEPTHAI_BUILD_TESTS=ON'
         )

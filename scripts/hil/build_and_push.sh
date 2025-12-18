@@ -83,4 +83,5 @@ fi
 echo "🚀 Tagging and pushing image to ${REGISTRY}..."
 docker tag "${IMAGE_NAME}" "${FULL_IMAGE_NAME}"
 docker push "${FULL_IMAGE_NAME}"
+docker buildx prune --builder "${BUILDER_NAME}" -f --filter "until=12h"
 echo "✅ Done."
