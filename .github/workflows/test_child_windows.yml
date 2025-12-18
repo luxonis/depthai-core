@@ -18,7 +18,6 @@ jobs:
         artifact_id: ${{ steps.reuse.outputs.artifact_id || steps.artifact-upload-step.outputs.artifact-id }}
     env:
       BUILD_TYPE: Release
-      VCPKG_ROOT: C:\vcpkg
       VCPKG_FEATURE_FLAGS: manifests,registries,binarycaching
       VCPKG_DEFAULT_TRIPLET: x64-windows
       VCPKG_DOWNLOADS: C:\vcpkg_downloads
@@ -77,11 +76,15 @@ jobs:
       if: steps.reuse.outputs.skip_build != 'true'
       run: |
         cd C:\depthai-core
-        echo VCPKG_FEATURE_FLAGS=%VCPKG_FEATURE_FLAGS%
-        echo VCPKG_DEFAULT_TRIPLET=%VCPKG_DEFAULT_TRIPLET%
-        echo VCPKG_DOWNLOADS=%VCPKG_DOWNLOADS%
-        echo VCPKG_DEFAULT_BINARY_CACHE=%VCPKG_DEFAULT_BINARY_CACHE%
-        echo VCPKG_BINARY_SOURCES=%VCPKG_BINARY_SOURCES%
+        Write-Host "VCPKG_FEATURE_FLAGS=$env:VCPKG_FEATURE_FLAGS"
+        Write-Host "VCPKG_DEFAULT_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET"
+        Write-Host "VCPKG_DOWNLOADS=$env:VCPKG_DOWNLOADS"
+        Write-Host "VCPKG_DEFAULT_BINARY_CACHE=$env:VCPKG_DEFAULT_BINARY_CACHE"
+        Write-Host "VCPKG_BINARY_SOURCES=$env:VCPKG_BINARY_SOURCES"
+        Get-ChildItem -Force C:\vcpkg_binaries
+        $bytes = (Get-ChildItem -Force -Recurse C:\vcpkg_binaries -ErrorAction SilentlyContinue |
+          Measure-Object -Property Length -Sum).Sum
+        "{0:N2} MB" -f ($bytes / 1MB)
 
         Invoke-WebRequest `
           -Uri "https://github.com/winpython/winpython/releases/download/17.2.20250920/WinPython64-3.13.7.0dotrc.zip" `
