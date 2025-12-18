@@ -217,5 +217,9 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              &CalibrationHandler::setStereoRight,
              py::arg("cameraId"),
              py::arg("rectifiedRotation"),
-             DOC(dai, CalibrationHandler, setStereoRight));
+             DOC(dai, CalibrationHandler, setStereoRight))
+        .def("validateCalibrationHandler",
+             &CalibrationHandler::validateCalibrationHandler,
+             py::arg("throwOnError") = true,
+             DOC(dai, CalibrationHandler, validateCalibrationHandler));
 }
