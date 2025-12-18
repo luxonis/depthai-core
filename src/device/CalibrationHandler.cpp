@@ -50,7 +50,6 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 }  // namespace
 
 CalibrationHandler::ExtrinsicGraphValidationResult CalibrationHandler::validateExtrinsicGraph() const {
-    std::unordered_set<CameraBoardSocket> globalVisited;
     std::unordered_map<CameraBoardSocket, CameraBoardSocket> originMap;
     for(const auto& kv : eepromData.cameraData) {
         CameraBoardSocket start = kv.first;
@@ -64,7 +63,6 @@ CalibrationHandler::ExtrinsicGraphValidationResult CalibrationHandler::validateE
             }
 
             localVisited.insert(current);
-            globalVisited.insert(current);
 
             const auto& info = eepromData.cameraData.at(current);
 
@@ -135,7 +133,7 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, std
     }
     nlohmann::json jsonData = nlohmann::json::parse(jsonStream);
     eepromData = jsonData;
-    if(validateCalibration) {
+    if(validateCalibration.value_or(false)) {
         validateCalibrationHandler();
     }
 }
@@ -143,7 +141,7 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, std
 CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson, std::optional<bool> validateCalibration) {
     CalibrationHandler calib;
     calib.eepromData = eepromDataJson;
-    if(validateCalibration) {
+    if(validateCalibration.value_or(false)) {
         calib.validateCalibrationHandler();
     }
     return calib;
@@ -274,14 +272,14 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath
     temp = camera.extrinsics.rotationMatrix[1][2];
     camera.extrinsics.rotationMatrix[1][2] = camera.extrinsics.rotationMatrix[2][1];
     camera.extrinsics.rotationMatrix[2][1] = temp;
-    if(validateCalibration) {
+    if(validateCalibration.value_or(false)) {
         validateCalibrationHandler();
     }
 }
 
 CalibrationHandler::CalibrationHandler(EepromData newEepromData, std::optional<bool> validateCalibration) {
     eepromData = newEepromData;
-    if(validateCalibration) {
+    if(validateCalibration.value_or(false)) {
         validateCalibrationHandler();
     }
 }
