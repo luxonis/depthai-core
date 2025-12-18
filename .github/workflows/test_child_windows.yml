@@ -23,6 +23,7 @@ jobs:
       VCPKG_DEFAULT_TRIPLET: x64-windows
       VCPKG_DOWNLOADS: C:\vcpkg_downloads
       VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
+      VCPKG_BINARY_SOURCES: clear;files,C:\vcpkg_binaries,readwrite
     steps:
 
     - name: Try reusing existing artifact for this commit
