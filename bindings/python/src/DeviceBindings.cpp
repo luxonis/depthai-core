@@ -387,6 +387,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.isClosed();
             },
             DOC(dai, DeviceBase, isClosed))
+        .def("hasCrashed", &DeviceBase::hasCrashed, DOC(dai, DeviceBase, hasCrashed))
         .def("setMaxReconnectionAttempts",
              &DeviceBase::setMaxReconnectionAttempts,
              py::arg("maxAttempts"),

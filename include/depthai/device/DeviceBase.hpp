@@ -778,6 +778,13 @@ class DeviceBase {
     bool isClosed() const;
 
     /**
+     * Check if the device has crashed
+     *
+     * @returns True if the device has crashed (watchdog timeout detected), false otherwise
+     */
+    bool hasCrashed();
+
+    /**
      * Crashes the device
      * @warning ONLY FOR TESTING PURPOSES, it causes an unrecoverable crash on the device
      */
@@ -872,6 +879,7 @@ class DeviceBase {
     // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
+    std::atomic<bool> crashed{false};
     std::condition_variable watchdogCondVar;
     std::mutex watchdogMtx;
 

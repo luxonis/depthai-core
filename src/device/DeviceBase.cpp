@@ -461,7 +461,8 @@ void DeviceBase::closeImpl() {
     if(!dumpOnly && isRvc2) {
         pimpl->logger.debug("Device about to be closed...");
         try {
-            if(hasCrashDump()) {
+            crashed = hasCrashDump();
+            if(crashed) {
                 connection->setRebootOnDestruction(true);
                 auto dump = getCrashDump();
                 logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
@@ -546,7 +547,8 @@ void DeviceBase::closeImpl() {
                 if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
                     pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
-                    if(rebootingDevice.hasCrashDump()) {
+                    crashed = rebootingDevice.hasCrashDump();
+                    if(crashed) {
                         auto dump = rebootingDevice.getCrashDump();
                         logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
                     } else {
@@ -578,6 +580,10 @@ void DeviceBase::setMaxReconnectionAttempts(int maxAttempts, std::function<void(
 bool DeviceBase::isClosed() const {
     std::unique_lock<std::mutex> lock(closedMtx);
     return closed || !watchdogRunning;
+}
+
+bool DeviceBase::hasCrashed() {
+    return crashed;  // buffered value
 }
 
 DeviceBase::~DeviceBase() {
@@ -1086,7 +1092,8 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
                 if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))) {
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
-                    if(hasCrashDump()) {
+                    crashed = hasCrashDump();
+                    if(crashed) {
                         auto dump = getCrashDump();
                         logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
                     }
@@ -1105,6 +1112,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             }
             if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
             pimpl->logger.warn("Reconnection successful\n");
+            crashed = hasCrashDump();
         }
     } catch(const std::exception& ex) {
         pimpl->logger.info("Monitor thread exception caught: {}", ex.what());
