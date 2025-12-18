@@ -608,8 +608,8 @@ class CalibrationHandler {
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkSrcLinks(CameraBoardSocket headSocket) const;
-    void validateExtrinsicGraphOrThrow() const;
-    enum class ExtrinsicGraphError { None, CycleDetected, DanglingReference };
+    void validateExtrinsicGraphOrThrow(bool throwOnError = true) const;
+    enum class ExtrinsicGraphError { None, CycleDetected, DanglingReference, DisconnectedGraph };
     struct ExtrinsicGraphValidationResult {
         ExtrinsicGraphError error = ExtrinsicGraphError::None;
         CameraBoardSocket at = CameraBoardSocket::AUTO;

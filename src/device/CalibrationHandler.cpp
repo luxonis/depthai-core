@@ -51,10 +51,10 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 
 CalibrationHandler::ExtrinsicGraphValidationResult CalibrationHandler::validateExtrinsicGraph() const {
     std::unordered_set<CameraBoardSocket> globalVisited;
-
+    std::unordered_map<CameraBoardSocket, CameraBoardSocket> originMap;
     for(const auto& kv : eepromData.cameraData) {
         CameraBoardSocket start = kv.first;
-
+        CameraBoardSocket originCamera;
         std::unordered_set<CameraBoardSocket> localVisited;
         CameraBoardSocket current = start;
 
@@ -76,27 +76,52 @@ CalibrationHandler::ExtrinsicGraphValidationResult CalibrationHandler::validateE
 
             current = info.extrinsics.toCameraSocket;
         }
+        std::vector<std::vector<float>> srcOriginMatrix = getExtrinsicsToOrigin(start, false, originCamera);
+        originMap[start] = originCamera;
+    }
+    // Now, check that all cameras have the same origin
+    if(!originMap.empty()) {
+        CameraBoardSocket expectedOrigin = originMap.begin()->second;
+
+        for(const auto& kv : originMap) {
+            CameraBoardSocket camOrigin = kv.second;
+
+            if(camOrigin != expectedOrigin) {
+                return {CalibrationHandler::ExtrinsicGraphError::DisconnectedGraph, camOrigin, expectedOrigin};
+            }
+        }
     }
 
     return {};
 }
 
-void CalibrationHandler::validateExtrinsicGraphOrThrow() const {
+void CalibrationHandler::validateExtrinsicGraphOrThrow(bool throwOnError) const {
     auto result = validateExtrinsicGraph();
 
+    if(result.error == ExtrinsicGraphError::None) return;
+
+    std::string message;
     switch(result.error) {
         case ExtrinsicGraphError::None:
             return;
-
         case ExtrinsicGraphError::CycleDetected:
-            throw std::runtime_error("Extrinsic cycle detected: " + toString(result.at) + " → " + toString(result.to));
+            message = "Extrinsic cycle detected: " + toString(result.at) + " → " + toString(result.to);
+            break;
 
         case ExtrinsicGraphError::DanglingReference:
-            throw std::runtime_error("Dangling extrinsic reference: " + toString(result.at) + " → " + toString(result.to));
+            message = "Dangling extrinsic reference: " + toString(result.at) + " → " + toString(result.to);
+            break;
+
+        case ExtrinsicGraphError::DisconnectedGraph:
+            message = "Missing extrinsic link in calibration chain: " + toString(result.at) + " → " + toString(result.to);
+            break;
     }
 
-    // Defensive: unreachable, but keeps -Werror happy
-    throw std::runtime_error("Unknown extrinsic graph error");
+    if(throwOnError) {
+        throw std::runtime_error(message);
+    } else {
+        std::cout << "Warning: " << message << std::endl;
+    }
 }
 
 CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, std::optional<bool> validateCalibration) {
