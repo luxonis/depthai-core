@@ -105,7 +105,7 @@ jobs:
 
         # Base args
         $cmakeArgs = @(
-          '-S','.',
+          '-S','.','--debug',
           '-B', $buildDir,
           '-DCMAKE_BUILD_TYPE=Release',
           '-DDEPTHAI_VCPKG_INTERNAL_ONLY=OFF',
