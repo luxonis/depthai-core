@@ -296,8 +296,10 @@ bool setupHolisticReplay(Pipeline& pipeline,
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
             DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
-            if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
-               || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
+            auto cameraNode = std::dynamic_pointer_cast<node::Camera>(node);
+            auto colorCameraNode = std::dynamic_pointer_cast<node::ColorCamera>(node);
+            auto monoCameraNode = std::dynamic_pointer_cast<node::MonoCamera>(node);
+            if(cameraNode || colorCameraNode || monoCameraNode) {
                 auto replay = pipeline.create<dai::node::ReplayVideo>();
                 // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
                 replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
@@ -308,16 +310,13 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
                 if(videoSize.has_value()) {
                     auto [width, height] = videoSize.value();
-                    if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                        auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
-                        cam->properties.mockIspWidth = width;
-                        cam->properties.mockIspHeight = height;
-                    } else if(std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr) {
-                        auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
-                        cam->setMockIspSize(width, height);
-                    } else if(std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
-                        auto cam = std::dynamic_pointer_cast<dai::node::MonoCamera>(node);
-                        cam->setMockIspSize(width, height);
+                    if(cameraNode) {
+                        cameraNode->properties.mockIspWidth = width;
+                        cameraNode->properties.mockIspHeight = height;
+                    } else if(colorCameraNode) {
+                        colorCameraNode->setMockIspSize(width, height);
+                    } else if(monoCameraNode) {
+                        monoCameraNode->setMockIspSize(width, height);
                     }
                 }
                 DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING

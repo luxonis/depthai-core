@@ -67,11 +67,13 @@ void createImgDetections(const std::vector<DetectionCandidate>& detectionCandida
                          unsigned int width,
                          unsigned int height);
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 void segmentationDecode(const dai::NNData& nnData,
                         std::vector<DetectionCandidate>& detectionCandidates,
                         dai::ImgDetections& outDetections,
                         DetectionParserProperties properties,
                         std::shared_ptr<spdlog::async_logger>& logger);
+#endif
 
 void keypointDecode(const dai::NNData& nnData,
                     std::vector<DetectionCandidate>& detectionCandidates,

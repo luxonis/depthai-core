@@ -1,8 +1,10 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
 #include <magic_enum/magic_enum.hpp>
+#include <optional>
 #include <stdexcept>
 
+#include "capabilities/ImgFrameCapability.hpp"
 #include "common/ModelType.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
@@ -23,7 +25,10 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const N
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input,
+                                                    NNModelDescription modelDesc,
+                                                    std::optional<float> fps,
+                                                    std::optional<dai::ImgResizeMode> resizeMode) {
     // Download model from zoo
     if(modelDesc.platform.empty()) {
         DAI_CHECK(getDevice() != nullptr, "Device is not set.");
@@ -34,12 +39,15 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
     DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE,
               "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
     auto nnArchive = dai::NNArchive(path);
-    return build(input, nnArchive, fps);
+    return build(input, nnArchive, fps, resizeMode);
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, std::optional<float> fps) {
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input,
+                                                    NNArchive nnArchive,
+                                                    std::optional<float> fps,
+                                                    std::optional<dai::ImgResizeMode> resizeMode) {
     setNNArchive(nnArchive);
-    auto cap = getFrameCapability(nnArchive, fps);
+    auto cap = getFrameCapability(nnArchive, fps, resizeMode);
     auto* camInput = input->requestOutput(cap, false);
     DAI_CHECK_V(camInput != nullptr, "Camera does not have output with requested capabilities");
     camInput->link(this->input);
@@ -54,7 +62,7 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Replay
 
 std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
     setNNArchive(nnArchive);
-    auto cap = getFrameCapability(nnArchive, fps);
+    auto cap = getFrameCapability(nnArchive, fps, std::nullopt);
     input->setOutFrameType(cap.type.value());
     if(fps.has_value()) {
         input->setFps(*fps);
@@ -65,7 +73,7 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Replay
 }
 #endif
 
-ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps) {
+ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps, std::optional<dai::ImgResizeMode> resizeMode) {
     const auto& nnArchiveCfg = nnArchive.getVersionedConfig();
 
     DAI_CHECK_V(nnArchiveCfg.getVersion() == NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
@@ -105,6 +113,9 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
     cap.size.value = std::pair(*inputWidth, *inputHeight);
     cap.type = type;
     cap.fps.value = fps;
+    if(resizeMode.has_value()) {
+        cap.resizeMode = resizeMode.value();
+    }
     return cap;
 }
 

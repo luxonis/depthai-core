@@ -4,6 +4,7 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/util/time_util.h>
 
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <queue>
@@ -659,9 +660,16 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
 template <>
 void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool metadataOnly) {
     auto imgFrame = dynamic_cast<const proto::img_frame::ImgFrame*>(msg);
+    if(imgFrame == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to ImgFrame");
+    }
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
+        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+    };
     // create and populate ImgFrame protobuf message
-    obj.setTimestamp(utility::fromProtoTimestamp(imgFrame->ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp(imgFrame->tsdevice()));
+    obj.setTimestamp(safeTimestamp(imgFrame->ts(), imgFrame->has_ts()));
+    obj.setTimestampDevice(safeTimestamp(imgFrame->tsdevice(), imgFrame->has_tsdevice()));
 
     obj.setSequenceNum(imgFrame->sequencenum());
 
@@ -703,9 +711,16 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
 template <>
 void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bool metadataOnly) {
     auto encFrame = dynamic_cast<const proto::encoded_frame::EncodedFrame*>(msg);
+    if(encFrame == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to EncodedFrame");
+    }
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
+        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+    };
     // create and populate ImgFrame protobuf message
-    obj.setTimestamp(utility::fromProtoTimestamp(encFrame->ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp(encFrame->tsdevice()));
+    obj.setTimestamp(safeTimestamp(encFrame->ts(), encFrame->has_ts()));
+    obj.setTimestampDevice(safeTimestamp(encFrame->tsdevice(), encFrame->has_tsdevice()));
 
     obj.setSequenceNum(encFrame->sequencenum());
 
@@ -740,9 +755,16 @@ void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bo
 template <>
 void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, bool metadataOnly) {
     auto pcl = dynamic_cast<const proto::point_cloud_data::PointCloudData*>(msg);
+    if(pcl == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to PointCloudData");
+    }
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
+        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+    };
     // create and populate ImgFrame protobuf message
-    obj.setTimestamp(utility::fromProtoTimestamp(pcl->ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp(pcl->tsdevice()));
+    obj.setTimestamp(safeTimestamp(pcl->ts(), pcl->has_ts()));
+    obj.setTimestampDevice(safeTimestamp(pcl->tsdevice(), pcl->has_tsdevice()));
 
     obj.setSequenceNum(pcl->sequencenum());
 

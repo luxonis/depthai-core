@@ -30,6 +30,7 @@ with dai.Pipeline() as pipeline:
     print(" - 's': Decrease confidence threshold")
     print(" - 'd': Increase edge threshold")
     print(" - 'a': Decrease edge threshold")
+    print(" - 't': Toggle temporal filtering")
     while pipeline.isRunning():
         confidenceData = confidenceQueue.get()
         assert isinstance(confidenceData, dai.ImgFrame)
@@ -74,6 +75,10 @@ with dai.Pipeline() as pipeline:
             currentThreshold = currentConfig.getEdgeThreshold()
             currentConfig.setEdgeThreshold((currentThreshold - 1) % 255)
             print("Setting edge threshold to:", currentConfig.getEdgeThreshold())
+            inputConfigQueue.send(currentConfig)
+        if key == ord('t'):
+            currentConfig.postProcessing.temporalFilter.enable = not currentConfig.postProcessing.temporalFilter.enable
+            print("Temporal filtering:", "on" if currentConfig.postProcessing.temporalFilter.enable else "off")
             inputConfigQueue.send(currentConfig)
 
         if cv2.waitKey(1) == ord('q'):

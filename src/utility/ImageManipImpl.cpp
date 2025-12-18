@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include "OCVPorts.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -537,45 +538,8 @@ std::array<std::array<float, 3>, 3> dai::impl::getInverse(const std::array<std::
     return inv;
 }
 
-std::array<std::array<float, 2>, 4> dai::impl::getOuterRotatedRect(const std::vector<std::array<float, 2>>& points) {
-    auto hull = getHull(points);
-    float minArea = std::numeric_limits<float>::max();
-    std::array<std::array<float, 2>, 4> minAreaPoints;
-
-    for(size_t i = 1; i < hull.size(); ++i) {
-        std::array<float, 2> vec = {hull[i][0] - hull[i - 1][0], hull[i][1] - hull[i - 1][1]};
-        std::array<float, 2> vecOrth = {-vec[1], vec[0]};
-        float len = sqrtf(vec[0] * vec[0] + vec[1] * vec[1]);
-        vec[0] /= len;
-        vec[1] /= len;
-        vecOrth[0] /= len;
-        vecOrth[1] /= len;
-        std::array<std::array<float, 2>, 2> mat = {{{vec[0], vecOrth[0]}, {vec[1], vecOrth[1]}}};
-        std::array<std::array<float, 2>, 2> matInv = getInverse(mat);
-
-        std::vector<std::array<float, 2>> rotatedHull;
-        for(const auto& pt : hull) {
-            float newX = matInv[0][0] * pt[0] + matInv[0][1] * pt[1];
-            float newY = matInv[1][0] * pt[0] + matInv[1][1] * pt[1];
-            rotatedHull.push_back({newX, newY});
-        }
-
-        const auto [minx, maxx, miny, maxy] = getOuterRect(rotatedHull);
-        float area = (maxx - minx) * (maxy - miny);
-
-        if(area < minArea) {
-            minArea = area;
-            std::array<std::array<float, 2>, 4> rectPoints = {{{minx, miny}, {maxx, miny}, {maxx, maxy}, {minx, maxy}}};
-            for(auto i = 0U; i < rectPoints.size(); ++i) {
-                auto& pt = rectPoints[i];
-                float origX = mat[0][0] * pt[0] + mat[0][1] * pt[1];
-                float origY = mat[1][0] * pt[0] + mat[1][1] * pt[1];
-                minAreaPoints[i] = {origX, origY};
-            }
-        }
-    }
-
-    return minAreaPoints;
+dai::RotatedRect dai::impl::getOuterRotatedRect(const std::vector<std::array<float, 2>>& points) {
+    return utility::getOuterRotatedRect(points);
 }
 
 std::array<std::array<float, 3>, 3> dai::impl::getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight) {
@@ -803,8 +767,13 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                                              matvecmul(transformInv, imageCorners[3])});
                    }},
         op.op);
-    imageCorners = getOuterRotatedRect(
-        {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])});
+    auto outerRectPoints =
+        getOuterRotatedRect(
+            {matvecmul(mat, imageCorners[0]), matvecmul(mat, imageCorners[1]), matvecmul(mat, imageCorners[2]), matvecmul(mat, imageCorners[3])})
+            .getPoints();
+    for(auto i = 0; i < 4; ++i) {
+        imageCorners[i] = {outerRectPoints[i].x, outerRectPoints[i].y};
+    }
     transform = matmul(mat, transform);
 }
 
@@ -913,16 +882,6 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
             break;
     }
     return 0;
-}
-dai::RotatedRect dai::impl::getRotatedRectFromPoints(const std::vector<std::array<float, 2>>& points) {
-    auto rrCorners = impl::getOuterRotatedRect(points);
-    dai::RotatedRect rect;
-    rect.size.width = std::sqrt(std::pow(rrCorners[1][0] - rrCorners[0][0], 2) + std::pow(rrCorners[1][1] - rrCorners[0][1], 2));
-    rect.size.height = std::sqrt(std::pow(rrCorners[2][0] - rrCorners[1][0], 2) + std::pow(rrCorners[2][1] - rrCorners[1][1], 2));
-    rect.center.x = (rrCorners[0][0] + rrCorners[1][0] + rrCorners[2][0] + rrCorners[3][0]) / 4.0f;
-    rect.center.y = (rrCorners[0][1] + rrCorners[1][1] + rrCorners[2][1] + rrCorners[3][1]) / 4.0f;
-    rect.angle = std::atan2(rrCorners[1][1] - rrCorners[0][1], rrCorners[1][0] - rrCorners[0][0]) * 180.0f / (float)M_PI;
-    return rect;
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

@@ -14,6 +14,7 @@
 #include "pipeline/datatype/ImgAnnotations.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"
+#include "utility/Platform.hpp"
 #include "utility/ProtoSerializable.hpp"
 #include "utility/Resources.hpp"
 
@@ -122,6 +123,7 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
 
     // Server options
     foxglove::ServerOptions serverOptions;
+    serverOptions.numCallbackThreads = 1;                              // one thread handles all service callbacks
     serverOptions.sendBufferPriorityLimitMessages = {{0, 3}, {1, 5}};  // 3 messages for low priority, 5 messages for high priority
     serverOptions.messageDropPolicy = foxglove::MessageDropPolicy::MAX_MESSAGE_COUNT;
     serverOptions.capabilities.emplace_back("services");
@@ -331,8 +333,19 @@ bool RemoteConnectionImpl::initHttpServer(const std::string& address, uint16_t p
         return false;
     }
 
-    std::cout << "To connect to the DepthAI visualizer, open http://localhost:" << port << " in your browser" << std::endl;
-    std::cout << "In case of a different client, replace 'localhost' with the correct hostname" << std::endl;
+    // Get the external ip address
+    std::string externalAddress = address == "0.0.0.0" ? platform::getLocalIpAddress() : address;
+    std::cout << "To connect to the OAK visualizer use the following:\n";
+    std::cout << "If you are opening the visualizer locally, open http://localhost:" << port << " in your browser\n";
+    if(port == 8082) {
+        std::cout << "If you are using peripheral mode and viewing from another machine, open http://" << externalAddress << ":" << port
+                  << " in your browser\n";
+        std::cout << "If you are using oakapp base image, open https://" << externalAddress << ":" << "9000" << " in your browser" << std::endl;
+    } else {
+        std::cout << "If you are using peripheral mode and viewing from another machine, set the http port to 8082. Your current port setting is: " << port
+                  << "\n";
+        std::cout << "If you are using oakapp base image, set the http port to 8082. Your current port setting is: " << port << std::endl;
+    }
     httpServerThread = std::make_unique<std::thread>([this]() { httpServer->listen_after_bind(); });
     return true;
 }

@@ -53,3 +53,9 @@
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     #include "depthai/basalt/BasaltVIO.hpp"
 #endif
+
+// Internal nodes
+#include "node/internal/XLinkIn.hpp"
+#include "node/internal/XLinkInHost.hpp"
+#include "node/internal/XLinkOut.hpp"
+#include "node/internal/XLinkOutHost.hpp"

@@ -84,15 +84,27 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     std::vector<nn_archive::v1::Head> modelHeads = *model.heads;
     int yoloHeadIndex = 0;
     int numYoloHeads = 0;
+    int numMobilenetHeads = 0;
+    int mobilenetHeadIndex = 0;
     for(size_t i = 0; i < modelHeads.size(); i++) {
         if(modelHeads[i].parser == "YOLO" || modelHeads[i].parser == "YOLOExtendedParser") {
             yoloHeadIndex = static_cast<int>(i);
             numYoloHeads++;
+        } else if(modelHeads[i].parser == "SSD" || modelHeads[i].parser == "MOBILENET") {
+            numMobilenetHeads++;
+            mobilenetHeadIndex = static_cast<int>(i);
         }
     }
 
-    DAI_CHECK_V(numYoloHeads == 1, "NNArchive should contain exactly one YOLO head. Found {} YOLO heads.", numYoloHeads);  // no support for multi-head YOLO
-    const auto head = (*model.heads)[yoloHeadIndex];
+    DAI_CHECK_V(numYoloHeads > 0 || numMobilenetHeads > 0, "NNArchive should contain at least one detection head (YOLO or Mobilenet-SSD).");
+    DAI_CHECK_V(!(numYoloHeads > 0 && numMobilenetHeads > 0),
+                "NNArchive should contain only one type of detection head (YOLO or Mobilenet-SSD). Found {} YOLO heads and {} Mobilenet-SSD heads.",
+                numYoloHeads,
+                numMobilenetHeads);
+
+    int headIndex = (numYoloHeads > 0) ? yoloHeadIndex : mobilenetHeadIndex;
+
+    const auto head = (*model.heads)[headIndex];
 
     if(head.parser == "YOLO" || head.parser == "YOLOExtendedParser") {
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
@@ -116,6 +128,16 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         }
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
+        properties.parser.subtype.clear();
+        properties.parser.decodingFamily = YoloDecodingFamily::TLBR;
+        properties.parser.decodeSegmentation = false;
+        properties.parser.decodeKeypoints = false;
+        properties.parser.nKeypoints.reset();
+        properties.parser.outputNamesToUse.clear();
+        properties.parser.anchors.clear();
+        properties.parser.anchorsV2.clear();
+        properties.parser.anchorMasks.clear();
+        properties.parser.keypointEdges.clear();
     } else {
         DAI_CHECK_V(false, "Unsupported parser: {}", head.parser);
     }

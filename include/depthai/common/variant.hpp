@@ -61,7 +61,7 @@ struct VariantReadNop {
         if(index == N) {
             // using Element = typename std::decay<std::variant_alternative_t<N, Variant>>::type;
             using Element = typename std::variant_alternative_t<N, Variant>;
-            Element element;
+            Element element{};
             const auto status = nop::Encoding<Element>::Read(&element, reader);
             if(!status) {
                 throw std::runtime_error("converting libnop object to variant failed: nop::Encoding::Read failed");
@@ -80,7 +80,7 @@ struct VariantReadNop<0> {
         if(index == 0) {
             // using Element = typename std::decay<std::variant_alternative_t<0, Variant>>::type;
             using Element = typename std::variant_alternative_t<0, Variant>;
-            Element element;
+            Element element{};
             const auto status = nop::Encoding<Element>::Read(&element, reader);
             if(!status) {
                 throw std::runtime_error("converting libnop object to variant failed: nop::Encoding::Read failed");

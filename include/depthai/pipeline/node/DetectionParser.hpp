@@ -19,8 +19,8 @@ namespace dai {
 namespace node {
 
 /**
- * @brief DetectionParser node. Parses detection results from different neural networks and is being used internally by MobileNetDetectionNetwork and
- * YoloDetectionNetwork.
+ * @brief DetectionParser node. Parses detection results from Mobilenet-SSD or YOLO neural networks.
+ * @note If multiple detection heads are present in the NNArchive, only one type is supported (either YOLO or Mobilenet-SSD) and the last one will be used.
  */
 class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties>, public HostRunnable {
    public:

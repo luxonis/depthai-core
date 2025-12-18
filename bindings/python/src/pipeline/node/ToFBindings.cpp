@@ -1,7 +1,5 @@
 #include "Common.hpp"
-#include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
 
 void bind_tof(pybind11::module& m, void* pCallstack) {
@@ -54,8 +52,6 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "depth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.depth; }, DOC(dai, node, ToF, depth))
         .def_property_readonly(
-            "confidence", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.confidence; }, DOC(dai, node, ToF, confidence))
-        .def_property_readonly(
             "amplitude", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.amplitude; }, DOC(dai, node, ToF, amplitude))
         .def_property_readonly(
             "intensity", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.intensity; }, DOC(dai, node, ToF, intensity))
@@ -66,19 +62,11 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
             [](const ToF& self) -> const dai::DeviceNode::Input& { return self.tofBaseInputConfig; },
             DOC(dai, node, ToF, tofBaseInputConfig))
         .def_property_readonly(
-            "tofDepthConfidenceFilterInputConfig",
-            [](const ToF& self) -> const dai::DeviceNode::Input& { return self.tofDepthConfidenceFilterInputConfig; },
-            DOC(dai, node, ToF, tofDepthConfidenceFilterInputConfig))
-        .def_property_readonly(
             "imageFiltersInputConfig",
             [](const ToF& self) -> const dai::DeviceNode::Input& { return self.imageFiltersInputConfig; },
             DOC(dai, node, ToF, imageFiltersInputConfig))
         .def_property_readonly(
             "tofBaseNode", [](const ToF& self) -> const dai::node::ToFBase& { return self.tofBaseNode; }, DOC(dai, node, ToF, tofBaseNode))
-        .def_property_readonly(
-            "tofDepthConfidenceFilterNode",
-            [](const ToF& self) -> const dai::node::ToFDepthConfidenceFilter& { return self.tofDepthConfidenceFilterNode; },
-            DOC(dai, node, ToF, tofDepthConfidenceFilterNode))
         .def_property_readonly(
             "imageFiltersNode", [](const ToF& self) -> const dai::node::ImageFilters& { return self.imageFiltersNode; }, DOC(dai, node, ToF, imageFiltersNode))
         .def_static("create", &ToF::create, "device"_a, DOC(dai, node, ToF, create))
