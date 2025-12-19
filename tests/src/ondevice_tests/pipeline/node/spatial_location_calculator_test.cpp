@@ -526,8 +526,7 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     const float bboxHeightNorm = 0.5F;
     const float bboxCenterXNorm = 0.75F;
     const float bboxCenterYNorm = 0.5F;
-    detection.setBoundingBox(
-        dai::RotatedRect(dai::Point2f(bboxCenterXNorm, bboxCenterYNorm, true), dai::Size2f(bboxWidthNorm, bboxHeightNorm, true), 0.0F));
+    detection.setBoundingBox(dai::RotatedRect(dai::Point2f(bboxCenterXNorm, bboxCenterYNorm, true), dai::Size2f(bboxWidthNorm, bboxHeightNorm, true), 0.0F));
     detection.confidence = 0.9F;
     detection.label = 7;
 
