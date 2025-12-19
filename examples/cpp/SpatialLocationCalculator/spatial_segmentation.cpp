@@ -57,10 +57,10 @@ int main() {
         auto spatialCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();
         spatialCalculator->initialConfig->setUseSegmentation(true);
         align->outputAligned.link(spatialCalculator->inputDepth);
-        detectionNetwork->out.link(spatialCalculator->input);
+        detectionNetwork->out.link(spatialCalculator->inputDetections);
 
         auto camQueue = detectionNetwork->passthrough.createOutputQueue();
-        auto spatialOutputQueue = spatialCalculator->spatialOutput.createOutputQueue();
+        auto outputDetectionsQueue = spatialCalculator->outputDetections.createOutputQueue();
         auto depthQueue = spatialCalculator->passthroughDepth.createOutputQueue();
         auto inputConfigQueue = spatialCalculator->inputConfig.createInputQueue();
         auto calculatorConfig = spatialCalculator->initialConfig;
@@ -68,7 +68,7 @@ int main() {
         pipeline.start();
 
         while(pipeline.isRunning()) {
-            auto inSpatialDet = spatialOutputQueue->get<dai::SpatialImgDetections>();
+            auto inSpatialDet = outputDetectionsQueue->get<dai::SpatialImgDetections>();
             auto rgbFrame = camQueue->get<dai::ImgFrame>();
             auto depthFrame = depthQueue->get<dai::ImgFrame>();
 

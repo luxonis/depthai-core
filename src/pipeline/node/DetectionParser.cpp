@@ -3,14 +3,12 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
-#include <iostream>
 #include <memory>
 #include <vector>
 
 #include "common/DetectionNetworkType.hpp"
 #include "common/ModelType.hpp"
 #include "common/YoloDecodingFamily.hpp"
-#include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "nn_archive/v1/Head.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -93,6 +91,7 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
 
     DAI_CHECK_V(numYoloHeads == 1, "NNArchive should contain exactly one YOLO head. Found {} YOLO heads.", numYoloHeads);  // no support for multi-head YOLO
     const auto head = (*model.heads)[yoloHeadIndex];
+
     if(head.parser == "YOLO" || head.parser == "YOLOExtendedParser") {
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
         if(head.metadata.subtype) {

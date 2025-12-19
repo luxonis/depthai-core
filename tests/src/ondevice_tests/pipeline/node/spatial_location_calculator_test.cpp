@@ -63,7 +63,7 @@ std::tuple<dai::SpatialLocationCalculatorData, dai::ImgFrame, dai::SpatialImgDet
 
     std::shared_ptr<dai::MessageQueue> outputQueue = nullptr;
     if(detectionMsg != nullptr) {
-        outputQueue = spatial->spatialOutput.createOutputQueue();
+        outputQueue = spatial->outputDetections.createOutputQueue();
     }
     auto passthroughQueue = spatial->passthroughDepth.createOutputQueue();
     std::shared_ptr<dai::MessageQueue> legacyOutputQueue = nullptr;

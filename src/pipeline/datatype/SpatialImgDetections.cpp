@@ -124,7 +124,6 @@ std::vector<SpatialKeypoint> SpatialImgDetection::getKeypoints() const {
 std::vector<dai::Point3f> SpatialImgDetection::getKeypointSpatialCoordinates() const {
     if(keypoints.has_value()) {
         return keypoints->getSpatialCoordinates();
-        ;
     } else {
         return {};
     }

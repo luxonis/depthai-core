@@ -2,7 +2,7 @@
 
 namespace dai {
 
-int MAX_STEP_SIZE = 4000;
+constexpr int MAX_STEP_SIZE = 4000;
 SpatialLocationCalculatorConfig::~SpatialLocationCalculatorConfig() = default;
 
 void SpatialLocationCalculatorConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
@@ -56,6 +56,10 @@ void SpatialLocationCalculatorConfig::setUseSegmentation(bool useSegmentation) {
     this->useSegmentation = useSegmentation;
 }
 
+void SpatialLocationCalculatorConfig::setSegmentationPassthrough(bool passthroughSegmentation) {
+    this->segmentationPassthrough = passthroughSegmentation;
+}
+
 std::pair<int32_t, int32_t> SpatialLocationCalculatorConfig::getDepthThresholds() const {
     return {globalLowerThreshold, globalUpperThreshold};
 }
@@ -78,6 +82,10 @@ bool SpatialLocationCalculatorConfig::getCalculateSpatialKeypoints() const {
 
 bool SpatialLocationCalculatorConfig::getUseSegmentation() const {
     return useSegmentation;
+}
+
+bool SpatialLocationCalculatorConfig::getSegmentationPassthrough() const {
+    return segmentationPassthrough;
 }
 
 }  // namespace dai

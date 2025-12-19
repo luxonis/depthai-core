@@ -53,10 +53,10 @@ with dai.Pipeline(device) as pipeline:
     spatial_calculator = pipeline.create(dai.node.SpatialLocationCalculator)
     spatial_calculator.initialConfig.setCalculateSpatialKeypoints(True)
     align.outputAligned.link(spatial_calculator.inputDepth)
-    det_nn.out.link(spatial_calculator.input)
+    det_nn.out.link(spatial_calculator.inputDetections)
 
     cam_queue = det_nn.passthrough.createOutputQueue()
-    spatial_output_queue = spatial_calculator.spatialOutput.createOutputQueue()
+    spatial_output_queue = spatial_calculator.outputDetections.createOutputQueue()
     depth_queue = spatial_calculator.passthroughDepth.createOutputQueue()
 
     pipeline.start()

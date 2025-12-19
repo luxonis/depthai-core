@@ -53,7 +53,7 @@ struct SpatialLocations {
     /**
      *  Spatial coordinates - x,y,z; x,y are the relative positions of the center of ROI to the center of depth map
      */
-    Point3f spatialCoordinates;
+    dai::Point3f spatialCoordinates;
 };
 DEPTHAI_SERIALIZE_EXT(SpatialLocations, config, depthAverage, depthMode, depthMedian, depthMin, depthMax, depthAveragePixelCount, spatialCoordinates);
 
