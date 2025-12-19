@@ -651,6 +651,9 @@ target_compile_definitions(replay_test PRIVATE RECORDING_PATH="${recording_path}
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
 
+dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
+dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci)
+
 # VideoEncoder test
 dai_add_test(video_encoder_test src/ondevice_tests/video_encoder_test.cpp)
 dai_set_test_labels(video_encoder_test ondevice rvc2 usb rvc4 rvc4rgb ci)
