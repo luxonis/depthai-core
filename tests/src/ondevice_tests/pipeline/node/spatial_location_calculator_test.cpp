@@ -553,10 +553,11 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     const float bboxHeightNorm = 0.5F;
     const float bboxCenterXNorm = 0.75F;
     const float bboxCenterYNorm = 0.5F;
-    detection.setBoundingBox(dai::RotatedRect(dai::Point2f(bboxCenterXNorm, bboxCenterYNorm, true), dai::Size2f(bboxWidthNorm, bboxHeightNorm, true), 0.0F));
+    const dai::RotatedRect gtBbox{dai::Point2f(bboxCenterXNorm, bboxCenterYNorm, true), dai::Size2f(bboxWidthNorm, bboxHeightNorm, true), 0.0F};
+    const dai::RotatedRect denormGtBbox = gtBbox.denormalize(width, height);
+    detection.setBoundingBox(gtBbox);
     detection.confidence = 0.9F;
     detection.label = 7;
-
     auto manipulatedDetectionFrame = createDetectionFrameWithManipulation(depthFrame, width, height);
     detectionMsg->transformation = manipulatedDetectionFrame->transformation;
     detectionMsg->setTimestamp(manipulatedDetectionFrame->getTimestamp());
@@ -600,18 +601,18 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     const dai::RotatedRect denormalizedBBox = detection.getBoundingBox().denormalize(width, height);
 
     const float expectedDepth = static_cast<float>(nearDepth);
-    const float expectedX = (denormalizedBBox.center.x - cx) * expectedDepth / fx;
-    const float expectedY = (denormalizedBBox.center.y - cy) * expectedDepth / fy;
-
-    // Check spatial coordinates
-    CHECK(spatialDetection.spatialCoordinates.z == Approx(expectedDepth).margin(1.0F));
-    CHECK(spatialDetection.spatialCoordinates.x == Approx(expectedX).margin(1.0F));
-    CHECK(spatialDetection.spatialCoordinates.y == Approx(expectedY).margin(1.0F));
+    const float expectedX = (denormGtBbox.center.x - cx) * expectedDepth / fx;
+    const float expectedY = (denormGtBbox.center.y - cy) * expectedDepth / fy;
 
     // Check bounding box mapping
     const auto outputBox = spatialDetection.getBoundingBox();
     CHECK(outputBox.center.x == Approx(bboxCenterXNorm).margin(1e-6F));
     CHECK(outputBox.center.y == Approx(bboxCenterYNorm).margin(1e-6F));
+
+    // Check spatial coordinates
+    CHECK(spatialDetection.spatialCoordinates.z == Approx(expectedDepth).margin(1.0F));
+    CHECK(spatialDetection.spatialCoordinates.x == Approx(expectedX).margin(1.0F));
+    CHECK(spatialDetection.spatialCoordinates.y == Approx(expectedY).margin(1.0F));
 }
 
 TEST_CASE("Spatial detections return zero depth when depth frame is empty") {

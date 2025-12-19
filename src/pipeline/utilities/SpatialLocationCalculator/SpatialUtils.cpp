@@ -253,7 +253,9 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     const bool areAligned = detectionsTransformation->isAlignedTo(*depthTransformation);
 
     if(!areAligned) {
-        logger->warn("DepthFrame and ImgDetections transformations are not aligned. Consider using ImageAlign node beforehand.");
+        logger->warn(
+            "DepthFrame and ImgDetections transformations are not aligned and processing may be slowed down due to need for remapping points. Consider using "
+            "ImageAlign node beforehand.");
     }
 
     std::vector<dai::ImgDetection> imgDetectionsVector = imgDetections.detections;
@@ -387,9 +389,9 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
         spatialDetection.confidence = detection.confidence;
         spatialDetection.labelName = detection.labelName;
 
-        if(!areAligned) {  // Remap back to original detection coordinates
-            denormalizedRect = depthTransformation->remapRectTo(*detectionsTransformation, denormalizedRect);
-        }
+        // Remap back to original detection coordinates
+        if(!areAligned) denormalizedRect = depthTransformation->remapRectTo(*detectionsTransformation, denormalizedRect);
+
         dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, depthFrame.transformation.getIntrinsicMatrix(), denormalizedRect.center);
         logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
