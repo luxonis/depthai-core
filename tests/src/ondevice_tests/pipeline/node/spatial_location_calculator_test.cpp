@@ -58,7 +58,7 @@ std::tuple<dai::SpatialLocationCalculatorData, dai::ImgFrame, dai::SpatialImgDet
     auto depthQueue = spatial->inputDepth.createInputQueue();
     std::shared_ptr<dai::InputQueue> detectionsQueue = nullptr;
     if(detectionMsg != nullptr) {
-        detectionsQueue = spatial->input.createInputQueue();
+        detectionsQueue = spatial->inputDetections.createInputQueue();
     }
 
     std::shared_ptr<dai::MessageQueue> outputQueue = nullptr;
@@ -496,6 +496,76 @@ TEST_CASE("Segmentation usage can be toggled") {
         const float expectedDepth = ((segArea * 1400.0F) + ((bboxArea - segArea) * 2600.0F)) / bboxArea;  // mask ignored, so full bbox average applies
         CHECK(detection.spatialCoordinates.z == Approx(expectedDepth).margin(1.0F));
     }
+}
+
+TEST_CASE("Spatial detections remap depth to detection transformations") {
+    constexpr unsigned width = 320;
+    constexpr unsigned height = 240;
+    const std::array<std::array<float, 3>, 3> intrinsics = {{
+        {{5.5F, 0.0F, 2.5F}},
+        {{0.0F, 5.5F, 2.0F}},
+        {{0.0F, 0.0F, 1.0F}},
+    }};
+
+    constexpr std::uint16_t farDepth = 4200;
+    constexpr std::uint16_t nearDepth = 1400;
+    cv::Mat depthMat(height, width, CV_16UC1, cv::Scalar(farDepth));
+    setDepthValue(depthMat, 0, 0, static_cast<int>(width / 2), static_cast<int>(height), nearDepth);
+    auto depthFrame = createDepthFrame(depthMat, intrinsics);
+
+    dai::SpatialLocationCalculatorConfig initialConfig;
+    initialConfig.setCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm::AVERAGE);
+    initialConfig.setDepthThresholds(0, 10000);
+    initialConfig.setUseSegmentation(false);
+    initialConfig.setCalculateSpatialKeypoints(false);
+
+    auto detectionMsg = std::make_shared<dai::ImgDetections>();
+    detectionMsg->detections.resize(1);
+    auto& detection = detectionMsg->detections.front();
+    const float bboxWidthNorm = 0.2F;
+    const float bboxHeightNorm = 0.5F;
+    const float bboxCenterXNorm = 0.75F;
+    const float bboxCenterYNorm = 0.5F;
+    detection.setBoundingBox(
+        dai::RotatedRect(dai::Point2f(bboxCenterXNorm, bboxCenterYNorm, true), dai::Size2f(bboxWidthNorm, bboxHeightNorm, true), 0.0F));
+    detection.confidence = 0.9F;
+    detection.label = 7;
+
+    dai::ImgTransformation rgbTransformation = depthFrame->transformation;
+    rgbTransformation.addFlipHorizontal();
+    detectionMsg->transformation = rgbTransformation;
+    detectionMsg->setTimestamp(depthFrame->getTimestamp());
+    detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
+
+    const auto detectionBoundingBox = detection.getBoundingBox();
+    auto remappedRect = rgbTransformation.remapRectTo(depthFrame->transformation, detectionBoundingBox);
+    auto remappedRectPx = remappedRect.denormalize(width, height);
+    const float remappedCenterX = remappedRectPx.center.x;
+    const float remappedCenterY = remappedRectPx.center.y;
+    REQUIRE(remappedCenterX < static_cast<float>(width) / 2.0F);  // should land on the near-depth side
+
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+    static_cast<void>(unusedLegacy);
+    static_cast<void>(unusedPassthrough);
+    REQUIRE(spatialDetections.detections.size() == 1);
+
+    const auto& spatialDetection = spatialDetections.detections.front();
+    const auto intrinsicMatrix = depthFrame->transformation.getIntrinsicMatrix();
+    const float fx = intrinsicMatrix[0][0];
+    const float fy = intrinsicMatrix[1][1];
+    const float cx = intrinsicMatrix[0][2];
+    const float cy = intrinsicMatrix[1][2];
+    const float expectedDepth = static_cast<float>(nearDepth);
+    const float expectedX = (remappedCenterX - cx) * expectedDepth / fx;
+    const float expectedY = (remappedCenterY - cy) * expectedDepth / fy;
+
+    CHECK(spatialDetection.spatialCoordinates.z == Approx(expectedDepth).margin(1.0F));
+    CHECK(spatialDetection.spatialCoordinates.x == Approx(expectedX).margin(1.0F));
+    CHECK(spatialDetection.spatialCoordinates.y == Approx(expectedY).margin(1.0F));
+
+    const auto outputBox = spatialDetection.getBoundingBox();
+    CHECK(outputBox.center.x == Approx(bboxCenterXNorm).margin(1e-6F));
+    CHECK(outputBox.center.y == Approx(bboxCenterYNorm).margin(1e-6F));
 }
 
 TEST_CASE("Spatial detections return zero depth when depth frame is empty") {

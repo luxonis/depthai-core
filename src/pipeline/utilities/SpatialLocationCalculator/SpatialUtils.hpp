@@ -36,7 +36,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                               const SpatialLocationCalculatorConfig& config,
                               const dai::ImgDetections& imgDetections,
                               dai::SpatialImgDetections& spatialDetections,
-                              const spdlog::async_logger& logger);
+                              spdlog::async_logger& logger);
 }  // namespace SpatialUtils
 }  // namespace utilities
 }  // namespace dai

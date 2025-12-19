@@ -24,7 +24,7 @@ void bind_spatiallocationcalculator(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    spatialLocationCalculatorProperties.def_readwrite("calculationConfig", &dai::node::SpatialLocationCalculator::calculationConfig);
+    spatialLocationCalculatorProperties.def_readwrite("roiConfig", &SpatialLocationCalculatorProperties::roiConfig);
 
     // Node
     spatialLocationCalculator.def_readonly("inputConfig", &SpatialLocationCalculator::inputConfig, DOC(dai, node, SpatialLocationCalculator, inputConfig))
