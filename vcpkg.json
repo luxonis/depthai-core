@@ -18,6 +18,7 @@
         "neargye-semver",
         "magic-enum",
         "eigen3",
+        "argparse",
         {
             "name": "libarchive",
             "default-features": false

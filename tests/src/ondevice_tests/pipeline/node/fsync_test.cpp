@@ -78,10 +78,7 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
         }
         REQUIRE(reportData != nullptr);
         REQUIRE(reportData->numMessagesReceived > 1);
-#ifndef _WIN32
-        // FIXME(Morato) - add back Windows once throughput is stabilized on RVC4
         REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.1));
-#endif
     }
 }
 
