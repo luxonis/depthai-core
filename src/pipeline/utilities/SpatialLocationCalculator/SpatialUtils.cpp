@@ -387,7 +387,10 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
         spatialDetection.confidence = detection.confidence;
         spatialDetection.labelName = detection.labelName;
 
-        dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, depthFrame.transformation.getIntrinsicMatrix(), detectionBoundingBox.center);
+        if(!areAligned) {  // Remap back to original detection coordinates
+            denormalizedRect = depthTransformation->remapRectTo(*detectionsTransformation, denormalizedRect);
+        }
+        dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, depthFrame.transformation.getIntrinsicMatrix(), denormalizedRect.center);
         logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
         spatialDetection.spatialCoordinates = spatialCoordinates;
