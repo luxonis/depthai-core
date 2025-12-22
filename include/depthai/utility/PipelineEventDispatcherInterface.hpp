@@ -23,18 +23,22 @@ class PipelineEventDispatcherInterface {
         std::optional<std::chrono::time_point<std::chrono::steady_clock>> endTs = std::nullopt;
 
        public:
-        BlockPipelineEvent(PipelineEventDispatcherInterface& dispatcher,
-                           PipelineEvent::Type type,
-                           const std::string& source,
-                           std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt)
-            : dispatcher(dispatcher), type(type), source(source), sequence(dispatcher.sequence++) {
+        void start(std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) {
             PipelineEvent event;
             event.type = type;
             event.source = source;
             event.sequenceNum = sequence;
             dispatcher.startTrackedEvent(event, ts);
         }
-        void destroy() {
+        BlockPipelineEvent(PipelineEventDispatcherInterface& dispatcher,
+                           PipelineEvent::Type type,
+                           const std::string& source,
+                           std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt,
+                           bool startNow = true)
+            : dispatcher(dispatcher), type(type), source(source), sequence(dispatcher.sequence++) {
+            if(startNow) start(ts);
+        }
+        void end() {
             if(canceled || std::uncaught_exceptions() > 0) return;
             PipelineEvent event;
             event.type = type;
@@ -42,6 +46,7 @@ class PipelineEventDispatcherInterface {
             event.sequenceNum = sequence;
             event.queueSize = queueSize;
             dispatcher.endTrackedEvent(event, endTs);
+            canceled = true;
         }
         void cancel() {
             canceled = true;
@@ -53,7 +58,7 @@ class PipelineEventDispatcherInterface {
             endTs = ts;
         }
         ~BlockPipelineEvent() {
-            destroy();
+            end();
         }
     };
 
@@ -84,10 +89,11 @@ class PipelineEventDispatcherInterface {
     virtual void pingInputEvent(const std::string& source, PipelineEvent::Status status, std::optional<uint32_t> queueSize = std::nullopt) = 0;
     virtual BlockPipelineEvent blockEvent(PipelineEvent::Type type,
                                           const std::string& source,
-                                          std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) = 0;
-    virtual BlockPipelineEvent inputBlockEvent() = 0;
-    virtual BlockPipelineEvent outputBlockEvent() = 0;
-    virtual BlockPipelineEvent customBlockEvent(const std::string& source) = 0;
+                                          std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt,
+                                          bool startNow = true) = 0;
+    virtual BlockPipelineEvent inputBlockEvent(bool startNow = true) = 0;
+    virtual BlockPipelineEvent outputBlockEvent(bool startNow = true) = 0;
+    virtual BlockPipelineEvent customBlockEvent(const std::string& source, bool startNow = true) = 0;
 };
 
 }  // namespace utility

@@ -70,17 +70,17 @@ class ThreadedNode : public Node {
     /**
      * @brief Creates a scoped event that sends start and end events for the getting inputs state
      */
-    utility::PipelineEventDispatcherInterface::BlockPipelineEvent inputBlockEvent();
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent inputBlockEvent(bool startNow = true);
     /**
      * @brief Creates a scoped event that sends start and end events for the sending outputs state
      */
-    utility::PipelineEventDispatcherInterface::BlockPipelineEvent outputBlockEvent();
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent outputBlockEvent(bool startNow = true);
     /**
      * @brief Creates a scoped event that sends start and end events for a custom block event
      * @param type Type of the event
      * @param source Source name of the event
      */
-    utility::PipelineEventDispatcherInterface::BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source);
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source, bool startNow = true);
 
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;

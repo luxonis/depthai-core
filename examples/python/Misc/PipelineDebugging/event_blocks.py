@@ -31,7 +31,7 @@ with dai.Pipeline() as pipeline:
     # Note: Using event blocks in the script node is only supported on RVC4
     script.setScript(
         """
-        while True:
+        while node.mainLoop():
             with node.inputBlockEvent():
                 message1 = node.inputs["in1"].get()
                 message2 = node.inputs["in2"].get()

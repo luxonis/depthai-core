@@ -11,9 +11,9 @@ PipelineState NodesStateApi::summary() {
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = id;
         nodeCfg.events = false;
-        nodeCfg.inputs = {};   // Do not send any
-        nodeCfg.outputs = {};  // Do not send any
-        nodeCfg.others = {};   // Do not send any
+        nodeCfg.inputs.emplace();   // Do not send any
+        nodeCfg.outputs.emplace();  // Do not send any
+        nodeCfg.others.emplace();   // Do not send any
         cfg.nodes.push_back(nodeCfg);
     }
 
@@ -43,8 +43,8 @@ std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::OutputQu
     for(auto id : nodeIds) {
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = id;
-        nodeCfg.inputs = {};  // Do not send any
-        nodeCfg.others = {};  // Do not send any
+        nodeCfg.inputs.emplace();  // Do not send any
+        nodeCfg.others.emplace();  // Do not send any
         nodeCfg.events = false;
         cfg.nodes.push_back(nodeCfg);
     }
@@ -64,8 +64,8 @@ std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::InputQue
     for(auto id : nodeIds) {
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = id;
-        nodeCfg.outputs = {};  // Do not send any
-        nodeCfg.others = {};   // Do not send any
+        nodeCfg.outputs.emplace();  // Do not send any
+        nodeCfg.others.emplace();   // Do not send any
         nodeCfg.events = false;
         cfg.nodes.push_back(nodeCfg);
     }
@@ -85,8 +85,8 @@ std::unordered_map<Node::Id, std::unordered_map<std::string, NodeState::Timing>>
     for(auto id : nodeIds) {
         NodeEventAggregationConfig nodeCfg;
         nodeCfg.nodeId = id;
-        nodeCfg.inputs = {};   // Do not send any
-        nodeCfg.outputs = {};  // Do not send any
+        nodeCfg.inputs.emplace();   // Do not send any
+        nodeCfg.outputs.emplace();  // Do not send any
         nodeCfg.events = false;
         cfg.nodes.push_back(nodeCfg);
     }
@@ -107,8 +107,8 @@ std::unordered_map<std::string, NodeState::OutputQueueState> NodeStateApi::outpu
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
     nodeCfg.outputs = outputNames;
-    nodeCfg.inputs = {};  // Do not send any
-    nodeCfg.others = {};  // Do not send any
+    nodeCfg.inputs.emplace();  // Do not send any
+    nodeCfg.others.emplace();  // Do not send any
     nodeCfg.events = false;
     cfg.nodes.push_back(nodeCfg);
 
@@ -130,8 +130,8 @@ NodeState::OutputQueueState NodeStateApi::outputs(const std::string& outputName)
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
     nodeCfg.outputs = {outputName};
-    nodeCfg.inputs = {};  // Do not send any
-    nodeCfg.others = {};  // Do not send any
+    nodeCfg.inputs.emplace();  // Do not send any
+    nodeCfg.others.emplace();  // Do not send any
     nodeCfg.events = false;
     cfg.nodes.push_back(nodeCfg);
 
@@ -151,9 +151,9 @@ std::vector<NodeState::DurationEvent> NodeStateApi::events() {
     cfg.setTimestamp(std::chrono::steady_clock::now());
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
-    nodeCfg.outputs = {};  // Do not send any
-    nodeCfg.inputs = {};   // Do not send any
-    nodeCfg.others = {};   // Do not send any
+    nodeCfg.outputs.emplace();  // Do not send any
+    nodeCfg.inputs.emplace();   // Do not send any
+    nodeCfg.others.emplace();   // Do not send any
     nodeCfg.events = true;
     cfg.nodes.push_back(nodeCfg);
 
@@ -171,8 +171,8 @@ std::unordered_map<std::string, NodeState::InputQueueState> NodeStateApi::inputs
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
     nodeCfg.inputs = inputNames;
-    nodeCfg.outputs = {};  // Do not send any
-    nodeCfg.others = {};   // Do not send any
+    nodeCfg.outputs.emplace();  // Do not send any
+    nodeCfg.others.emplace();   // Do not send any
     nodeCfg.events = false;
     cfg.nodes.push_back(nodeCfg);
 
@@ -194,8 +194,8 @@ NodeState::InputQueueState NodeStateApi::inputs(const std::string& inputName) {
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
     nodeCfg.inputs = {inputName};
-    nodeCfg.outputs = {};  // Do not send any
-    nodeCfg.others = {};   // Do not send any
+    nodeCfg.outputs.emplace();  // Do not send any
+    nodeCfg.others.emplace();   // Do not send any
     nodeCfg.events = false;
     cfg.nodes.push_back(nodeCfg);
 
@@ -216,8 +216,8 @@ std::unordered_map<std::string, NodeState::Timing> NodeStateApi::otherTimings(co
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
     nodeCfg.others = statNames;
-    nodeCfg.outputs = {};  // Do not send any
-    nodeCfg.inputs = {};   // Do not send any
+    nodeCfg.outputs.emplace();  // Do not send any
+    nodeCfg.inputs.emplace();   // Do not send any
     nodeCfg.events = false;
     cfg.nodes.push_back(nodeCfg);
 
@@ -239,8 +239,8 @@ NodeState::Timing NodeStateApi::otherTimings(const std::string& statName) {
     NodeEventAggregationConfig nodeCfg;
     nodeCfg.nodeId = nodeId;
     nodeCfg.others = {statName};
-    nodeCfg.outputs = {};  // Do not send any
-    nodeCfg.inputs = {};   // Do not send any
+    nodeCfg.outputs.emplace();  // Do not send any
+    nodeCfg.inputs.emplace();   // Do not send any
     nodeCfg.events = false;
     cfg.nodes.push_back(nodeCfg);
 

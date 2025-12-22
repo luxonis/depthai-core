@@ -57,10 +57,11 @@ class PipelineEventDispatcher : public PipelineEventDispatcherInterface {
     void pingInputEvent(const std::string& source, PipelineEvent::Status status, std::optional<uint32_t> queueSize = std::nullopt) override;
     BlockPipelineEvent blockEvent(PipelineEvent::Type type,
                                   const std::string& source,
-                                  std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt) override;
-    BlockPipelineEvent inputBlockEvent() override;
-    BlockPipelineEvent outputBlockEvent() override;
-    BlockPipelineEvent customBlockEvent(const std::string& source) override;
+                                  std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt,
+                                  bool startNow = true) override;
+    BlockPipelineEvent inputBlockEvent(bool startNow = true) override;
+    BlockPipelineEvent outputBlockEvent(bool startNow = true) override;
+    BlockPipelineEvent customBlockEvent(const std::string& source, bool startNow = true) override;
 };
 
 }  // namespace utility

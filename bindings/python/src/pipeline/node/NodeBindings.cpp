@@ -508,9 +508,16 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setLogLevel", &ThreadedNode::setLogLevel, DOC(dai, ThreadedNode, setLogLevel))
         .def("getLogLevel", &ThreadedNode::getLogLevel, DOC(dai, ThreadedNode, getLogLevel))
         .def_readonly("pipelineEventOutput", &ThreadedNode::pipelineEventOutput, DOC(dai, ThreadedNode, pipelineEventOutput))
-        .def("inputBlockEvent", &ThreadedNode::inputBlockEvent, DOC(dai, ThreadedNode, inputBlockEvent))
-        .def("outputBlockEvent", &ThreadedNode::outputBlockEvent, DOC(dai, ThreadedNode, outputBlockEvent))
-        .def("blockEvent", &ThreadedNode::blockEvent, py::arg("type"), py::arg("source"), DOC(dai, ThreadedNode, blockEvent));
+        .def(
+            "inputBlockEvent", [](ThreadedNode& node) { return node.inputBlockEvent(false); }, DOC(dai, ThreadedNode, inputBlockEvent))
+        .def(
+            "outputBlockEvent", [](ThreadedNode& node) { return node.outputBlockEvent(false); }, DOC(dai, ThreadedNode, outputBlockEvent))
+        .def(
+            "blockEvent",
+            [](ThreadedNode& node, PipelineEvent::Type type, std::string source) { return node.blockEvent(type, source, false); },
+            py::arg("type"),
+            py::arg("source"),
+            DOC(dai, ThreadedNode, blockEvent));
 
     pyBlockEvent.def("cancel", &BlockPipelineEvent::cancel, DOC(dai, PipelineEventDispatcherInterface, BlockEvent, cancel))
         .def("setQueueSize", &BlockPipelineEvent::setQueueSize, py::arg("size"), DOC(dai, PipelineEventDispatcherInterface, BlockEvent, setQueueSize))
@@ -520,10 +527,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, PipelineEventDispatcherInterface, BlockEvent, setEndTimestamp))
         .def("__enter__",
              [](BlockPipelineEvent& b) -> BlockPipelineEvent& {
+                 b.start();
                  return b;
              })
         .def("__exit__", [](BlockPipelineEvent& b, py::object, py::object, py::object) {
             py::gil_scoped_release release;
-            b.destroy();
+            b.end();
         });
 }
