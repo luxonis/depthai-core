@@ -18,6 +18,7 @@
 #include "utility/Platform.hpp"
 #include "utility/ProtoSerializable.hpp"
 #include "utility/Resources.hpp"
+#include "utility/Serialization.hpp"
 
 namespace dai {
 
@@ -463,11 +464,16 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
     auto ids = server->addServices(services);
     assert(ids.size() == 3);
     {
-        // Pipeline Schema
+        // Device pipeline Schema
 
         auto id = ids[0];
 
-        auto serializedPipeline = pipeline.serializeToJson(false);
+        auto devicePipelineSchema = pipeline.getDevicePipelineSchema(SerializationType::JSON, false);
+        nlohmann::json serializedPipeline;
+        serializedPipeline["pipeline"] = devicePipelineSchema;
+        for(auto& node : serializedPipeline["pipeline"]["nodes"]) {
+            node[1]["properties"] = nlohmann::json::parse(node[1]["properties"].get<std::vector<uint8_t>>());
+        }
         auto serializedPipelineStr = serializedPipeline.dump();
         serviceMap[id] = [serializedPipelineStr](foxglove::ServiceResponse request) {
             (void)request;

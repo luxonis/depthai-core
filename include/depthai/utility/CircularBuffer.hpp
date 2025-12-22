@@ -21,16 +21,22 @@ class CircularBuffer {
         return (buffer.size() < maxSize) ? 0 : index;
     }
 
+    virtual void onSwap(T&, T&) {}
+    virtual void onAdd(T&) {}
+
    public:
     CircularBuffer(size_t size) : maxSize(size) {
         buffer.reserve(size);
     }
+    virtual ~CircularBuffer() = default;
     // Add a new element to the buffer after the last one or overwrite the oldest one
     T& add(T value) {
         if(buffer.size() < maxSize) {
+            onAdd(value);
             buffer.push_back(value);
             return buffer.back();
         } else {
+            onSwap(buffer[index], value);
             buffer[index] = value;
             index = (index + 1) % maxSize;
             return buffer[(index + maxSize - 1) % maxSize];
@@ -72,6 +78,22 @@ class CircularBuffer {
     // Get current size of the buffer. When full, size() == maxSize
     size_t size() const {
         return buffer.size();
+    }
+    void clear() {
+        buffer.clear();
+        index = 0;
+    }
+    T& at(size_t pos) {
+        if(pos >= buffer.size()) {
+            throw std::out_of_range("CircularBuffer index out of range");
+        }
+        return buffer[(start() + pos) % buffer.size()];
+    }
+    const T& at(size_t pos) const {
+        if(pos >= buffer.size()) {
+            throw std::out_of_range("CircularBuffer index out of range");
+        }
+        return buffer[(start() + pos) % buffer.size()];
     }
 
     // ===========================================================
@@ -172,6 +194,33 @@ class CircularBuffer {
     }
     reverse_iterator rend() {
         return reverse_iterator(this, buffer.size());
+    }
+};
+
+/**
+ * @brief A circular buffer that maintains a running average of its elements
+ * @tparam T The type of elements stored in the buffer (must support addition and division)
+ */
+template <typename T>
+class WindowedAverageBuffer : public CircularBuffer<T> {
+    T sum{};
+
+   public:
+    // Initialize with buffer size and optional initial sum value
+    WindowedAverageBuffer(size_t size, T initialValue = T()) : CircularBuffer<T>(size), sum(initialValue) {}
+
+    void onSwap(T& oldValue, T& newValue) override {
+        sum -= oldValue;
+        sum += newValue;
+    }
+    void onAdd(T& newValue) override {
+        sum += newValue;
+    }
+    T getAverage() const {
+        if(this->size() == 0) {
+            throw std::runtime_error("WindowedAverageBuffer is empty");
+        }
+        return sum / this->size();
     }
 };
 

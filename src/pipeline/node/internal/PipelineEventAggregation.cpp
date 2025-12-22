@@ -29,7 +29,12 @@ class NodeEventAggregation {
 
    public:
     NodeEventAggregation(uint32_t windowSize, uint32_t statsUpdateIntervalMs, uint32_t eventWaitWindow, std::shared_ptr<spdlog::async_logger> logger)
-        : logger(logger), windowSize(windowSize), statsUpdateIntervalMs(statsUpdateIntervalMs), eventWaitWindow(eventWaitWindow), eventsBuffer(windowSize) {
+        : logger(logger),
+          windowSize(windowSize),
+          statsUpdateIntervalMs(statsUpdateIntervalMs),
+          eventWaitWindow(eventWaitWindow),
+          eventOffsetBuffer(10),
+          eventsBuffer(windowSize) {
         inputsGetTimingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
         outputsSendTimingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
         mainLoopTimingsBuffer = std::make_unique<utility::CircularBuffer<uint64_t>>(windowSize);
@@ -39,6 +44,7 @@ class NodeEventAggregation {
     }
 
     NodeState state;
+    utility::WindowedAverageBuffer<std::chrono::milliseconds> eventOffsetBuffer;
     utility::CircularBuffer<NodeState::DurationEvent> eventsBuffer;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> inputTimingsBuffers;
     std::unordered_map<std::string, std::unique_ptr<utility::CircularBuffer<uint64_t>>> outputTimingsBuffers;
@@ -280,13 +286,32 @@ class NodeEventAggregation {
         }
     }
     // Calculate and update FPS statistics from the given buffer
-    inline void updateFpsStats(NodeState::Timing& timing, const utility::CircularBuffer<FpsMeasurement>& buffer) {
+    inline void updateFpsStats(NodeState::Timing& timing, utility::CircularBuffer<FpsMeasurement>& buffer) {
+        using namespace std::chrono;
+        const size_t delta = 2;
+        const float alpha = 0.1f;
+        const float expectedTimeFactor = 1.5f;
+        const float decayA = 2;
+        const float decayB = 10;
+
         if(buffer.size() < 2) return;
-        auto timeDiff = std::chrono::duration_cast<std::chrono::microseconds>(buffer.last().time - buffer.first().time).count();
-        auto numFrames = buffer.size() - 1;
-        if(timeDiff > 0) {
-            timing.fps = numFrames * (1e6f / (float)timeDiff);
+        // Consume fps entries, update state with exponential smoothing with a gaussian-ish decay
+        for(auto i = buffer.size() - 1; i >= delta; --i) {
+            auto& last1 = buffer.at(i);
+            auto& last2 = buffer.at(i - delta);
+            auto timeDiff = duration_cast<microseconds>(last1.time - last2.time).count() / delta;
+            auto newFps = 1e6f / (float)timeDiff;
+            timing.fps = timing.fps + alpha * (newFps - timing.fps);
+            auto nextExpectedTime = buffer.last().time + microseconds((long)(1e6 * expectedTimeFactor / (double)timing.fps));
+            auto offsetNow = steady_clock::now() - eventOffsetBuffer.getAverage();
+            if(nextExpectedTime < offsetNow) {
+                // Decay fps towards 0 if we're late
+                float delay = (float)duration_cast<milliseconds>(offsetNow - nextExpectedTime).count() / 1000.0f;
+                float decayFactor = exp(-powf(delay / decayA, 2) / decayB);
+                timing.fps *= decayFactor;
+            }
         }
+        buffer.clear();
     }
     // Calculate and update queue size statistics
     inline void updateQueueStats(NodeState::QueueStats& queueStats, const utility::CircularBuffer<uint32_t>& buffer) {
@@ -305,6 +330,8 @@ class NodeEventAggregation {
    public:
     void add(PipelineEvent& event) {
         using namespace std::chrono;
+        // For event ts offset calculation (to determine if fps is late)
+        eventOffsetBuffer.add(duration_cast<milliseconds>(steady_clock::now() - event.getTimestamp()));
         // Update states and queue sizes
         switch(event.type) {
             case PipelineEvent::Type::CUSTOM:
@@ -362,18 +389,18 @@ class NodeEventAggregation {
                 switch((PipelineEvent::Type)i) {
                     case PipelineEvent::Type::CUSTOM:
                         for(auto& [source, _] : otherTimingsBuffers) {
-                            updateTimingStats(state.otherTimings[source].durationStats, *otherTimingsBuffers[source]);
                             updateFpsStats(state.otherTimings[source], *otherFpsBuffers[source]);
+                            updateTimingStats(state.otherTimings[source].durationStats, *otherTimingsBuffers[source]);
                         }
                         break;
                     case PipelineEvent::Type::LOOP:
-                        updateTimingStats(state.mainLoopTiming.durationStats, *mainLoopTimingsBuffer);
                         updateFpsStats(state.mainLoopTiming, *mainLoopFpsBuffer);
+                        updateTimingStats(state.mainLoopTiming.durationStats, *mainLoopTimingsBuffer);
                         break;
                     case PipelineEvent::Type::INPUT:
                         for(auto& [source, _] : inputTimingsBuffers) {
-                            updateTimingStats(state.inputStates[source].timing.durationStats, *inputTimingsBuffers[source]);
                             updateFpsStats(state.inputStates[source].timing, *inputFpsBuffers[source]);
+                            updateTimingStats(state.inputStates[source].timing.durationStats, *inputTimingsBuffers[source]);
                             // Update queue size stats
                             if(inputQueueSizesBuffers.find(source) != inputQueueSizesBuffers.end() && inputQueueSizesBuffers[source] != nullptr) {
                                 updateQueueStats(state.inputStates[source].queueStats, *inputQueueSizesBuffers[source]);
@@ -382,17 +409,17 @@ class NodeEventAggregation {
                         break;
                     case PipelineEvent::Type::OUTPUT:
                         for(auto& [source, _] : outputTimingsBuffers) {
-                            updateTimingStats(state.outputStates[source].timing.durationStats, *outputTimingsBuffers[source]);
                             updateFpsStats(state.outputStates[source].timing, *outputFpsBuffers[source]);
+                            updateTimingStats(state.outputStates[source].timing.durationStats, *outputTimingsBuffers[source]);
                         }
                         break;
                     case PipelineEvent::Type::INPUT_BLOCK:
-                        updateTimingStats(state.inputsGetTiming.durationStats, *inputsGetTimingsBuffer);
                         updateFpsStats(state.inputsGetTiming, *inputsGetFpsBuffer);
+                        updateTimingStats(state.inputsGetTiming.durationStats, *inputsGetTimingsBuffer);
                         break;
                     case PipelineEvent::Type::OUTPUT_BLOCK:
-                        updateTimingStats(state.outputsSendTiming.durationStats, *outputsSendTimingsBuffer);
                         updateFpsStats(state.outputsSendTiming, *outputsSendFpsBuffer);
+                        updateTimingStats(state.outputsSendTiming.durationStats, *outputsSendTimingsBuffer);
                         break;
                 }
             }
