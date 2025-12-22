@@ -250,7 +250,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         }
         auto getInput = [this]() -> std::shared_ptr<T> {
             std::shared_ptr<ADatatype> val = nullptr;
-            if(!queue.tryPop(val)) {
+            if(!this->queue.tryPop(val)) {
                 return nullptr;
             }
             return std::dynamic_pointer_cast<T>(val);
@@ -286,7 +286,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     std::shared_ptr<T> get() {
         std::shared_ptr<ADatatype> val = nullptr;
         auto getInput = [this, &val]() {
-            if(!queue.waitAndPop(val)) {
+            if(!this->queue.waitAndPop(val)) {
                 throw QueueException(CLOSED_QUEUE_MESSAGE);
             }
         };
@@ -347,10 +347,10 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         }
         auto getInput = [&, this]() -> std::shared_ptr<T> {
             std::shared_ptr<ADatatype> val = nullptr;
-            if(!queue.tryWaitAndPop(val, timeout)) {
+            if(!this->queue.tryWaitAndPop(val, timeout)) {
                 hasTimedout = true;
                 // Check again after the timeout
-                if(queue.isDestroyed()) {
+                if(this->queue.isDestroyed()) {
                     throw QueueException(CLOSED_QUEUE_MESSAGE);
                 }
                 return nullptr;
@@ -395,7 +395,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         }
         auto getInput = [this]() -> std::vector<std::shared_ptr<T>> {
             std::vector<std::shared_ptr<T>> messages;
-            queue.consumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
+            this->queue.consumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
                 // dynamic pointer cast may return nullptr
                 // in which case that message in vector will be nullptr
                 messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
@@ -434,7 +434,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     std::vector<std::shared_ptr<T>> getAll() {
         std::vector<std::shared_ptr<T>> messages;
         auto getInput = [this, &messages]() {
-            bool notDestructed = queue.waitAndConsumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
+            bool notDestructed = this->queue.waitAndConsumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
                 // dynamic pointer cast may return nullptr
                 // in which case that message in vector will be nullptr
                 messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
@@ -477,7 +477,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         }
         auto getInput = [&, this]() -> std::vector<std::shared_ptr<T>> {
             std::vector<std::shared_ptr<T>> messages;
-            hasTimedout = !queue.waitAndConsumeAll(
+            hasTimedout = !this->queue.waitAndConsumeAll(
                 [&messages](std::shared_ptr<ADatatype>& msg) {
                     // dynamic pointer cast may return nullptr
                     // in which case that message in vector will be nullptr

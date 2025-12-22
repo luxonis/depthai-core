@@ -34,7 +34,7 @@ class PipelineEventDispatcherInterface {
             event.sequenceNum = sequence;
             dispatcher.startTrackedEvent(event, ts);
         }
-        ~BlockPipelineEvent() {
+        void destroy() {
             if(canceled || std::uncaught_exceptions() > 0) return;
             PipelineEvent event;
             event.type = type;
@@ -51,6 +51,9 @@ class PipelineEventDispatcherInterface {
         }
         void setEndTimestamp(std::chrono::time_point<std::chrono::steady_clock> ts) {
             endTs = ts;
+        }
+        ~BlockPipelineEvent() {
+            destroy();
         }
     };
 

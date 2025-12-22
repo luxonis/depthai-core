@@ -142,6 +142,7 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     callCallbacks(msg);
+    notifyCondVars();
     auto queueNotClosed = queue.push(msg, [&](LockingQueueState state, size_t size) {
         if(pipelineEventDispatcher) {
             switch(state) {
@@ -163,6 +164,7 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     callCallbacks(msg);
+    notifyCondVars();
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
@@ -214,30 +216,17 @@ void MessageQueue::notifyCondVars() {
 MessageQueue::QueueException::~QueueException() noexcept = default;
 
 std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(std::unordered_map<std::string, MessageQueue&> queues) {
-    std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> callbackIds;
     std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> condVarIds;
-    callbackIds.reserve(queues.size());
     condVarIds.reserve(queues.size());
     std::unordered_map<std::string, std::shared_ptr<ADatatype>> inputs;
 
     std::mutex inputsWaitMutex;
     auto inputsWaitCv = std::make_shared<std::condition_variable>();
-    bool receivedMessage = false;
 
     try {
         // Register callbacks
         for(auto& kv : queues) {
             auto& input = kv.second;
-            auto callbackId = input.addCallback([&]() {
-                {
-                    std::lock_guard<std::mutex> lock(inputsWaitMutex);
-                    receivedMessage = true;
-                }
-                inputsWaitCv->notify_all();
-            });
-
-            callbackIds.push_back({input, callbackId});
-            // Also add condition variable to be notified on close
             auto condVarId = input.addCondVar(inputsWaitCv);
             condVarIds.push_back({input, condVarId});
         }
@@ -260,14 +249,15 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
                         return true;
                     }
                 }
-                return receivedMessage;
+                for(auto& kv : queues) {
+                    if(kv.second.has()) {
+                        return true;
+                    }
+                }
+                return false;
             });
         }
 
-        // Remove callbacks
-        for(auto& [input, callbackId] : callbackIds) {
-            input.removeCallback(callbackId);
-        }
         // Remove condition variables
         for(auto& [input, condVarId] : condVarIds) {
             input.removeCondVar(condVarId);
@@ -281,10 +271,6 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
             }
         }
     } catch(...) {
-        // Remove callbacks in case of exception
-        for(auto& [input, callbackId] : callbackIds) {
-            input.removeCallback(callbackId);
-        }
         // Remove condition variables
         for(auto& [input, condVarId] : condVarIds) {
             input.removeCondVar(condVarId);

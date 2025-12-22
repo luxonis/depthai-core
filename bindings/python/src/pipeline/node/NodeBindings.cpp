@@ -517,5 +517,13 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setEndTimestamp",
              &BlockPipelineEvent::setEndTimestamp,
              py::arg("timestamp"),
-             DOC(dai, PipelineEventDispatcherInterface, BlockEvent, setEndTimestamp));
+             DOC(dai, PipelineEventDispatcherInterface, BlockEvent, setEndTimestamp))
+        .def("__enter__",
+             [](BlockPipelineEvent& b) -> BlockPipelineEvent& {
+                 return b;
+             })
+        .def("__exit__", [](BlockPipelineEvent& b, py::object, py::object, py::object) {
+            py::gil_scoped_release release;
+            b.destroy();
+        });
 }
