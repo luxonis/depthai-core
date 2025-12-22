@@ -178,12 +178,14 @@ TEST_CASE("Object Tracker matching sequence num") {
     pipeline.start();
 
     auto start = std::chrono::steady_clock::now();
-    std::vector<uint32_t> existingTrackletIds;
+    int counter = 0;
     while(pipeline.isRunning() && std::chrono::steady_clock::now() - start < std::chrono::seconds(VIDEO_DURATION_SECONDS)) {
         auto track = tracklets->get<dai::Tracklets>();
         auto detections = passthrough->get<dai::ImgDetections>();
         REQUIRE(track != nullptr);
         REQUIRE(detections != nullptr);
         REQUIRE(track->sequenceNum == detections->sequenceNum);
+        counter++;
     }
+    REQUIRE(counter > 0);  // Ensure that at least some tracklets were processed
 }

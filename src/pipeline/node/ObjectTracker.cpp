@@ -123,7 +123,7 @@ void ObjectTracker::run() {
                 logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
                 inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
             }
-        } else if(!inputImgDetections && !inputSpatialImgDetections) {
+        } else {
             logger->error("Input detections is not of type ImgDetections or SpatialImgDetections, skipping tracking");
         }
         if(inputConfig.getWaitForMessage()) {
