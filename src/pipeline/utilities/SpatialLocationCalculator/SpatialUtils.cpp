@@ -235,7 +235,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                               const SpatialLocationCalculatorConfig& config,
                               const dai::ImgDetections& imgDetections,
                               dai::SpatialImgDetections& spatialDetections,
-                              spdlog::async_logger& logger) {
+                              std::shared_ptr<spdlog::async_logger> logger) {
     if(!imgDetections.transformation.has_value()) {
         throw std::runtime_error("No transformation set on ImgDetections. Cannot compute spatial coordinates.");
     }
@@ -251,8 +251,9 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     const dai::ImgTransformation* depthTransformation = &depthFrame.transformation;
     const dai::ImgTransformation* detectionsTransformation = &imgDetections.transformation.value();
     const bool areAligned = detectionsTransformation->isAlignedTo(*depthTransformation);
+
     if(!areAligned) {
-        logger.warn("DepthFrame and ImgDetections transformations are not aligned. Consider using ImageAlign node beforehand.");
+        logger->warn("DepthFrame and ImgDetections transformations are not aligned. Consider using ImageAlign node beforehand.");
     }
 
     std::vector<dai::ImgDetection> imgDetectionsVector = imgDetections.detections;
@@ -382,7 +383,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
         spatialDetection.labelName = detection.labelName;
 
         dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, depthFrame.transformation.getIntrinsicMatrix(), denormalizedRect.center);
-        logger.trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
+        logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
         spatialDetection.spatialCoordinates = spatialCoordinates;
 

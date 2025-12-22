@@ -7,6 +7,7 @@
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <tuple>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
+#include "depthai/pipeline/node/ImageManip.hpp"
 
 using Catch::Approx;
 
@@ -40,6 +42,30 @@ std::shared_ptr<dai::ImgFrame> createDepthFrame(const cv::Mat& depthMat, const s
     depthFrame->transformation.setIntrinsicMatrix(intrinsics);
     REQUIRE(depthFrame->validateTransformations());
     return depthFrame;
+}
+
+std::shared_ptr<dai::ImgFrame> createDetectionFrameWithManipulation(const std::shared_ptr<dai::ImgFrame>& depthFrame, unsigned width, unsigned height) {
+    constexpr float rotationDegrees = 180.0F;
+    constexpr std::array<float, 4> shearMatrix = {1.0F, 0.08F, 0.12F, 1.0F};
+
+    dai::Pipeline pipeline;
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->initialConfig->setFrameType(depthFrame->getType());
+    manip->initialConfig->setOutputSize(width, height);
+    manip->initialConfig->addRotateDeg(rotationDegrees);
+    manip->initialConfig->addTransformAffine(shearMatrix);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    pipeline.start();
+    inputQueue->send(depthFrame);
+    auto transformedFrame = outputQueue->get<dai::ImgFrame>();
+    REQUIRE(transformedFrame != nullptr);
+    pipeline.stop();
+    pipeline.wait();
+
+    return transformedFrame;
 }
 
 std::tuple<dai::SpatialLocationCalculatorData, dai::ImgFrame, dai::SpatialImgDetections> processDepthFrame(
@@ -530,14 +556,15 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     detection.confidence = 0.9F;
     detection.label = 7;
 
-    dai::ImgTransformation rgbTransformation = depthFrame->transformation;
-    rgbTransformation.addFlipHorizontal();
-    detectionMsg->transformation = rgbTransformation;
-    detectionMsg->setTimestamp(depthFrame->getTimestamp());
-    detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
+    auto manipulatedDetectionFrame = createDetectionFrameWithManipulation(depthFrame, width, height);
+    detectionMsg->transformation = manipulatedDetectionFrame->transformation;
+    detectionMsg->setTimestamp(manipulatedDetectionFrame->getTimestamp());
+    detectionMsg->setSequenceNum(manipulatedDetectionFrame->getSequenceNum());
 
     const auto detectionBoundingBox = detection.getBoundingBox();
-    auto remappedRect = rgbTransformation.remapRectTo(depthFrame->transformation, detectionBoundingBox);
+    REQUIRE(detectionMsg->transformation.has_value());
+    const auto& detectionTransformation = detectionMsg->transformation.value();
+    auto remappedRect = detectionTransformation.remapRectTo(depthFrame->transformation, detectionBoundingBox);
     auto remappedRectPx = remappedRect.denormalize(width, height);
     const float remappedCenterX = remappedRectPx.center.x;
     const float remappedCenterY = remappedRectPx.center.y;
@@ -547,6 +574,21 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     static_cast<void>(unusedLegacy);
     static_cast<void>(unusedPassthrough);
     REQUIRE(spatialDetections.detections.size() == 1);
+
+    const auto formatMatrix = [](const std::array<std::array<float, 3>, 3>& matrix) {
+        std::ostringstream oss;
+        oss << '[';
+        for(size_t row = 0; row < matrix.size(); ++row) {
+            if(row > 0) {
+                oss << ", ";
+            }
+            oss << '[' << matrix[row][0] << ", " << matrix[row][1] << ", " << matrix[row][2] << ']';
+        }
+        oss << ']';
+        return oss.str();
+    };
+    INFO("Depth transformation matrix: " << formatMatrix(depthFrame->transformation.getMatrix()));
+    INFO("RGB transformation matrix: " << formatMatrix(detectionTransformation.getMatrix()));
 
     const auto& spatialDetection = spatialDetections.detections.front();
     const auto intrinsicMatrix = depthFrame->transformation.getIntrinsicMatrix();
