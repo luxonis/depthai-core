@@ -12,7 +12,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         SHA1 "6818a531e71948bd28e1f0ab3e76b18aff6150fb"
         LOCATION april_tags
     )
-endif
+endif()
 
 dai_add_example(april_tags april_tags.cpp ON OFF)
 dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 rvc4rgb ci)
