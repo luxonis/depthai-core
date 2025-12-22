@@ -153,7 +153,6 @@ TEST_CASE("Object Tracker matching sequence num") {
 
     // Define sources and outputs
     auto cam = pipeline.create<dai::node::Camera>()->build();
-    auto* camOut = cam->requestOutput({1240, 720});
 
     // Create spatial detection network
     dai::NNModelDescription modelDescription{"yolov6-nano"};
