@@ -302,7 +302,7 @@ class NodeEventAggregation {
             auto timeDiff = duration_cast<microseconds>(last1.time - last2.time).count() / delta;
             auto newFps = 1e6f / (float)timeDiff;
             timing.fps = timing.fps + alpha * (newFps - timing.fps);
-            auto nextExpectedTime = buffer.last().time + microseconds((long)(1e6 * expectedTimeFactor / (double)timing.fps));
+            auto nextExpectedTime = buffer.last().time + microseconds((long)(1e6 * (double)expectedTimeFactor / (double)timing.fps));
             auto offsetNow = steady_clock::now() - eventOffsetBuffer.getAverage();
             if(nextExpectedTime < offsetNow) {
                 // Decay fps towards 0 if we're late
