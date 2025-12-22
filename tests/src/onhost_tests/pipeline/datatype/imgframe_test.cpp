@@ -181,6 +181,11 @@ TEST_CASE("ImgFrame metadata copy, clone, and data handling", "[ImgFrame][Copy]"
     source.cam.lensPosition = 33;
     source.cam.lensPositionRaw = 0.25F;
     source.fb.stride = 12;
+
+    auto now = std::chrono::steady_clock::now();
+    source.setTimestamp(now);
+    source.setTimestampDevice(now + 5ms);
+
     auto srcData = makeSequential(8, 5);
     source.setData(srcData);
 
@@ -192,6 +197,8 @@ TEST_CASE("ImgFrame metadata copy, clone, and data handling", "[ImgFrame][Copy]"
     REQUIRE(target.getCategory() == source.getCategory());
     REQUIRE(target.getWidth() == source.getWidth());
     REQUIRE(target.cam.exposureTimeUs == source.cam.exposureTimeUs);
+    REQUIRE(target.getTimestamp() == source.getTimestamp());
+    REQUIRE(target.getTimestampDevice() == source.getTimestampDevice());
 
     REQUIRE_NOTHROW(target.setMetadata(std::make_shared<ImgFrame>(source)));
     REQUIRE_THROWS_AS(target.setMetadata(std::shared_ptr<ImgFrame>{}), std::invalid_argument);
