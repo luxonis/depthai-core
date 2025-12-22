@@ -89,7 +89,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
 
    public:
     int32_t globalStepSize = AUTO;
-    uint32_t globalLowerThreshold = 0;
+    uint32_t globalLowerThreshold = 100;  // less than 100mm is considered too close
     uint32_t globalUpperThreshold = 65535;
     SpatialLocationCalculatorAlgorithm globalCalculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
     int32_t globalKeypointRadius = 10;

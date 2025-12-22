@@ -26,10 +26,10 @@ DepthStats::DepthStats(std::uint32_t lowerThreshold, std::uint32_t upperThreshol
 void DepthStats::addPixel(uint16_t px) {
     if(px > lowerThreshold && px < upperThreshold) {
         validPixels.push_back(px);
-        sum += px;
+        sum += static_cast<std::double_t>(px);
         ++counter;
-        if(px < min) min = px;
-        if(px > max) max = px;
+        if(px < min) min = static_cast<std::uint32_t>(px);
+        if(px > max) max = static_cast<std::uint32_t>(px);
     }
 }
 
@@ -363,7 +363,11 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                 }
 
                 float kpZ = kpDepthStats.calculateDepth(calculationAlgorithm);
-                dai::Point3f spatialCoordinates = calculateSpatialCoordinates(kpZ, depthFrame.transformation.getIntrinsicMatrix(), dai::Point2f(kpx, kpy));
+                dai::Point2f kpPointCoordinates{kpx, kpy};
+                if(!areAligned) {
+                    kpPointCoordinates = depthTransformation->remapPointFrom(*detectionsTransformation, kpPointCoordinates);
+                }
+                dai::Point3f spatialCoordinates = calculateSpatialCoordinates(kpZ, depthFrame.transformation.getIntrinsicMatrix(), kpPointCoordinates);
 
                 dai::SpatialKeypoint spatialKp;
                 spatialKp.imageCoordinates = kp.imageCoordinates;

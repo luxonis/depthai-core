@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "depthai/depthai.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
+#include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 
 int main() {
@@ -23,14 +25,18 @@ int main() {
 
         auto cameraNode = pipeline.create<dai::node::Camera>();
         cameraNode->build(dai::CameraBoardSocket::CAM_A);
+        auto camOutput = cameraNode->requestOutput(std::make_pair(640, 480), dai::ImgFrame::Type::BGR888i, dai::ImgResizeMode::CROP, fps, true);
 
         auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
         dai::NNModelDescription modelDescription;
         modelDescription.model = modelName;
-        detectionNetwork->build(cameraNode, modelDescription, fps);
+        modelDescription.platform = device->getPlatformAsString();
+        dai::NNArchive nnArchive = dai::NNArchive(dai::getModelFromZoo(modelDescription));
+
+        detectionNetwork->build(*camOutput, nnArchive);
         detectionNetwork->detectionParser->setRunOnHost(setRunOnHost);
 
-        dai::NNArchive nnArchive = *detectionNetwork->neuralNetwork->getNNArchive();
+        // dai::NNArchive nnArchive = *detectionNetwork->neuralNetwork->getNNArchive();
         auto inputWidth = nnArchive.getInputWidth();
         auto inputHeight = nnArchive.getInputHeight();
         if(!inputWidth || !inputHeight) {
