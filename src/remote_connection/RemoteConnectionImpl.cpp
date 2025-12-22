@@ -128,6 +128,7 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
     serverOptions.messageDropPolicy = foxglove::MessageDropPolicy::MAX_MESSAGE_COUNT;
     serverOptions.capabilities.emplace_back("services");
     serverOptions.supportedEncodings.emplace_back("json");
+    serverOptions.supportedEncodings.emplace_back("binary");
 
     // Priority assignment function - based on their datatype (see server options above)
     getMessagePriority = [](DatatypeEnum dtype) -> uint8_t {
@@ -500,6 +501,34 @@ void RemoteConnectionImpl::registerService(const std::string& serviceName, std::
         auto responseStr = response.dump();
         foxglove::ServiceResponse ret;
         ret.data = std::vector<uint8_t>(responseStr.begin(), responseStr.end());
+        ret.callId = request.callId;
+        ret.serviceId = request.serviceId;
+        return ret;
+    };
+}
+
+void RemoteConnectionImpl::registerBinaryService(const std::string& serviceName, std::function<std::vector<uint8_t>(const std::vector<uint8_t>&)> callback) {
+    foxglove::ServiceWithoutId service;
+    service.name = serviceName;
+    service.type = "binary";
+
+    foxglove::ServiceRequestDefinition requestDef;
+    requestDef.schemaName = serviceName + "Request";
+    requestDef.encoding = "binary";
+    service.request = requestDef;
+
+    foxglove::ServiceRequestDefinition responseDef;
+    responseDef.schemaName = serviceName + "Response";
+    responseDef.encoding = "binary";
+    service.response = responseDef;
+
+    auto ids = server->addServices({service});
+    assert(ids.size() == 1);
+    auto id = ids[0];
+    serviceMap[id] = [callback](foxglove::ServiceResponse request) {
+        auto response = callback(request.data);
+        foxglove::ServiceResponse ret;
+        ret.data = std::vector<uint8_t>(response.begin(), response.end());
         ret.callId = request.callId;
         ret.serviceId = request.serviceId;
         return ret;
