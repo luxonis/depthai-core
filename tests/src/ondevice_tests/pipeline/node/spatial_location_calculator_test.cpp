@@ -11,6 +11,7 @@
 #include <tuple>
 #include <vector>
 
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
@@ -596,14 +597,18 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     const float fy = intrinsicMatrix[1][1];
     const float cx = intrinsicMatrix[0][2];
     const float cy = intrinsicMatrix[1][2];
-    const float expectedDepth = static_cast<float>(nearDepth);
-    const float expectedX = (remappedCenterX - cx) * expectedDepth / fx;
-    const float expectedY = (remappedCenterY - cy) * expectedDepth / fy;
+    const dai::RotatedRect denormalizedBBox = detection.getBoundingBox().denormalize(width, height);
 
+    const float expectedDepth = static_cast<float>(nearDepth);
+    const float expectedX = (denormalizedBBox.center.x - cx) * expectedDepth / fx;
+    const float expectedY = (denormalizedBBox.center.y - cy) * expectedDepth / fy;
+
+    // Check spatial coordinates
     CHECK(spatialDetection.spatialCoordinates.z == Approx(expectedDepth).margin(1.0F));
     CHECK(spatialDetection.spatialCoordinates.x == Approx(expectedX).margin(1.0F));
     CHECK(spatialDetection.spatialCoordinates.y == Approx(expectedY).margin(1.0F));
 
+    // Check bounding box mapping
     const auto outputBox = spatialDetection.getBoundingBox();
     CHECK(outputBox.center.x == Approx(bboxCenterXNorm).margin(1e-6F));
     CHECK(outputBox.center.y == Approx(bboxCenterYNorm).margin(1e-6F));

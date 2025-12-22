@@ -292,10 +292,11 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
 
     for(int i = 0; i < static_cast<int>(imgDetectionsVector.size()); i++) {
         const dai::ImgDetection& detection = imgDetectionsVector[i];
-        dai::RotatedRect rotatedRect = detection.getBoundingBox();
-        if(!areAligned) rotatedRect = detectionsTransformation->remapRectTo(*depthTransformation, rotatedRect);
+        const dai::RotatedRect detectionBoundingBox = detection.getBoundingBox();
+        dai::RotatedRect depthAlignedRect = detectionBoundingBox;
+        if(!areAligned) depthAlignedRect = detectionsTransformation->remapRectTo(*depthTransformation, depthAlignedRect);
 
-        dai::RotatedRect denormalizedRect = rotatedRect.denormalize(depthWidth, depthHeight);
+        dai::RotatedRect denormalizedRect = depthAlignedRect.denormalize(depthWidth, depthHeight);
 
         const auto& outerPoints = denormalizedRect.getOuterRect();
         auto [xstart, ystart, xend, yend] =
@@ -381,12 +382,12 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
         }
 
         float z = depthStats.calculateDepth(calculationAlgorithm);
-        spatialDetection.setBoundingBox(rotatedRect);
+        spatialDetection.setBoundingBox(detectionBoundingBox);
         spatialDetection.label = detection.label;
         spatialDetection.confidence = detection.confidence;
         spatialDetection.labelName = detection.labelName;
 
-        dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, depthFrame.transformation.getIntrinsicMatrix(), denormalizedRect.center);
+        dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, depthFrame.transformation.getIntrinsicMatrix(), detectionBoundingBox.center);
         logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
         spatialDetection.spatialCoordinates = spatialCoordinates;
