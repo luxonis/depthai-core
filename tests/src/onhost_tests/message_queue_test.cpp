@@ -533,6 +533,7 @@ TEST_CASE("Pipeline event dispatcher tests", "[MessageQueue]") {
     }
 
     auto _ = queue.get();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     {
         auto events = outputQueue->getAll();
