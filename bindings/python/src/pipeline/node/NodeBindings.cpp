@@ -276,7 +276,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     using BlockPipelineEvent = dai::utility::PipelineEventDispatcherInterface::BlockPipelineEvent;
 
-    py::class_<BlockPipelineEvent, std::shared_ptr<BlockPipelineEvent>> pyBlockEvent(m, "BlockPipelineEvent", DOC(dai, PipelineEventDispatcherInterface, BlockPipelineEvent));
+    py::class_<BlockPipelineEvent, std::shared_ptr<BlockPipelineEvent>> pyBlockEvent(
+        m, "BlockPipelineEvent", DOC(dai, PipelineEventDispatcherInterface, BlockPipelineEvent));
 
     // Device Nodegroup
     py::class_<DeviceNodeGroup, DeviceNode, std::shared_ptr<DeviceNodeGroup>> pyDeviceNodeGroup(m, "DeviceNodeGroup", DOC(dai, DeviceNodeGroup));
