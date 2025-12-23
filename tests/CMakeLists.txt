@@ -77,11 +77,13 @@ function(dai_add_test test_name test_src)
         else()
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${test_name}>")
         endif()
-        add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
-            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${test_name}>>"
-            COMMAND_EXPAND_LISTS
-            VERBATIM
-        )
+        foreach(dll_path IN LISTS depthai_dll_libraries)
+            add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
+                ${CMAKE_COMMAND} -DDLLS=${dll_path} -DDEST_DIR=$<TARGET_FILE_DIR:${test_name}>
+                -P "${CMAKE_SOURCE_DIR}/cmake/CreateSymlinks.cmake"
+                VERBATIM
+            )
+        endforeach()
     endif()
 endfunction()
 
