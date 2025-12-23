@@ -536,7 +536,7 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     }};
 
     dai::Device device = dai::Device();
-    if (device.getPlatform() == dai::Platform::RVC2) { // skipping test on RVC2
+    if(device.getPlatform() == dai::Platform::RVC2) {  // skipping test on RVC2
         return;
     }
 
