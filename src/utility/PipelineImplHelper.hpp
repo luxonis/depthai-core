@@ -9,7 +9,7 @@ class PipelineImplHelper {
     PipelineImpl* pipeline;
 
    public:
-    PipelineImplHelper(PipelineImpl* pipeline) : pipeline(pipeline) {};
+    PipelineImplHelper(PipelineImpl* pipeline) : pipeline(pipeline){};
     void setupHolisticRecordAndReplay();
     void setupPipelineDebuggingPre();
     void setupPipelineDebuggingPost(std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>&,
