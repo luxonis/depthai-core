@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <catch2/catch_all.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -533,6 +534,11 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
         {{0.0F, 5.5F, 2.0F}},
         {{0.0F, 0.0F, 1.0F}},
     }};
+
+    dai::Device device = dai::Device();
+    if (device.getPlatform() == dai::Platform::RVC2) { // skipping test on RVC2
+        return;
+    }
 
     constexpr std::uint16_t farDepth = 4200;
     constexpr std::uint16_t nearDepth = 1400;
