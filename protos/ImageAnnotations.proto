@@ -9,6 +9,7 @@ message ImageAnnotations {
     common.Timestamp ts = 2;
     common.Timestamp tsDevice = 3;
     repeated ImageAnnotation annotations = 4;
+    optional common.Timestamp tsSystem = 5;
 }
 
 message ImageAnnotation {

@@ -16,7 +16,7 @@ class ADatatype {
     friend class StreamMessageParser;
 
    public:
-#ifdef DEPTHAI_MESSAGES_NO_HEAP
+#ifdef DEPTHAI_MESSAGES_RVC2
     explicit ADatatype() = default;
 #else
     explicit ADatatype() : data{std::make_shared<VectorMemory>(std::vector<uint8_t>())} {};

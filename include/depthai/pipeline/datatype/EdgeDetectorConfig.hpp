@@ -53,7 +53,11 @@ class EdgeDetectorConfig : public Buffer {
         return DatatypeEnum::EdgeDetectorConfig;
     }
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config, Buffer::tsSystem);
+    #else
     DEPTHAI_SERIALIZE(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config);
+    #endif
 };
 
 }  // namespace dai
