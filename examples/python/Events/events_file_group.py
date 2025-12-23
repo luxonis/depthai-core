@@ -5,6 +5,23 @@ import depthai as dai
 import numpy as np
 
 
+# Callback functions
+def upload_success_callback(send_snap_result):
+    print(f"Successfully uploaded Snap: ({send_snap_result.snapName}, {send_snap_result.snapTimestamp}, {send_snap_result.snapHubID}) to the hub.")
+
+def upload_failure_callback(send_snap_result):
+    print(f"Upload of Snap: ({send_snap_result.snapName}, {send_snap_result.snapTimestamp}, {send_snap_result.snapLocalID}) to the hub has failed.")
+
+    status = send_snap_result.uploadStatus
+    if status == dai.SendSnapCallbackStatus.FILE_BATCH_PREPARATION_FAILED:
+        print("File batch preparation failed!")
+    elif status == dai.SendSnapCallbackStatus.GROUP_CONTAINS_REJECTED_FILES:
+        print("Snap's file group contains rejected files!")
+    elif status == dai.SendSnapCallbackStatus.FILE_UPLOAD_FAILED:
+        print("File upload was unsuccessful!")
+    elif status == dai.SendSnapCallbackStatus.SEND_EVENT_FAILED:
+        print("Snap could not been sent to the hub, following successful file upload!")
+
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or use the EventsManager setToken() method.
@@ -82,6 +99,7 @@ with dai.Pipeline() as pipeline:
 
             fileGroup = dai.FileGroup()
             fileGroup.addImageDetectionsPair(fileName, inRgb, borderDetections)
-            eventMan.sendSnap("LowConfidenceDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"})
+            eventMan.sendSnap("LowConfidenceDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"}, 
+                              upload_success_callback, upload_failure_callback)
 
             counter += 1
