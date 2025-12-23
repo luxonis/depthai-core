@@ -1,4 +1,3 @@
-#include <chrono>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <string>
@@ -15,11 +14,12 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
 // Callback functions
 void uploadSuccessCallback(dai::utility::SendSnapCallbackResult sendSnapResult) {
     std::cout << "Successfully uploaded Snap: (" << sendSnapResult.snapName << ", " << sendSnapResult.snapTimestamp << ", "
-              << sendSnapResult.snapID.value_or("") << ") to the hub." << std::endl;
+              << sendSnapResult.snapHubID.value_or("") << ") to the hub." << std::endl;
 }
 
 void uploadFailureCallback(dai::utility::SendSnapCallbackResult sendSnapResult) {
-    std::cout << "Upload of Snap: (" << sendSnapResult.snapName << ", " << sendSnapResult.snapTimestamp << ") to the hub has failed." << std::endl;
+    std::cout << "Upload of Snap: (" << sendSnapResult.snapName << ", " << sendSnapResult.snapTimestamp << ", " << sendSnapResult.snapLocalID
+              << ") to the hub has failed." << std::endl;
 
     switch(sendSnapResult.uploadStatus) {
         case dai::utility::SendSnapCallbackStatus::FILE_BATCH_PREPARATION_FAILED:
