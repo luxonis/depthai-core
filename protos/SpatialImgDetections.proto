@@ -2,6 +2,7 @@ syntax = "proto3";
 
 import "common.proto";
 package dai.proto.spatial_img_detections;
+import "ImgDetections.proto";
 
 message SpatialImgDetections {
     int64 sequenceNum = 1;
@@ -15,17 +16,10 @@ message SpatialImgDetections {
 }
 
 message SpatialImgDetection {
-    uint32 label = 1;
-    float confidence = 2;
-    float xmin = 3;
-    float ymin = 4;
-    float xmax = 5;
-    float ymax = 6;
-    string labelName = 7;
-    common.RotatedRect boundingBox = 8;
-    common.SpatialKeypointsList keypoints = 9;
-    Point3f spatialCoordinates = 10;
-    SpatialLocationCalculatorConfigData boundingBoxMapping = 11;
+    img_detections.ImgDetection detection = 1;
+    Point3f spatialCoordinates = 2;
+    SpatialLocationCalculatorConfigData boundingBoxMapping = 3;
+    common.SpatialKeypointsList keypoints = 4;
 }
 
 message SpatialLocationCalculatorConfigData {

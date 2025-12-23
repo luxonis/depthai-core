@@ -6,10 +6,12 @@ model_name = "luxonis/yolov8-instance-segmentation-large:coco-640x480"
 setRunOnHost = False
 device = dai.Device()
 fps = 30
+depth_size = (640, 400)
 if device.getPlatform() == dai.Platform.RVC2:
     model_name = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
     setRunOnHost = True
     fps = 10
+    depth_size = (512, 288)
 
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
@@ -19,19 +21,12 @@ with dai.Pipeline(device) as pipeline:
     det_nn = pipeline.create(dai.node.DetectionNetwork).build(camera_node, dai.NNModelDescription(model_name), fps=fps)
     det_nn.detectionParser.setRunOnHost(setRunOnHost)
 
-    nnArchive = det_nn.neuralNetwork.getNNArchive()
-    assert nnArchive is not None
-    w = nnArchive.getInputWidth()
-    h = nnArchive.getInputHeight()
-    assert w is not None
-    assert h is not None
-
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     stereo = pipeline.create(dai.node.StereoDepth)
 
-    monoLeftOut = monoLeft.requestOutput((w, h))
-    monoRightOut = monoRight.requestOutput((w, h))
+    monoLeftOut = monoLeft.requestOutput(depth_size)
+    monoRightOut = monoRight.requestOutput(depth_size)
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
     stereo.setRectification(True)
