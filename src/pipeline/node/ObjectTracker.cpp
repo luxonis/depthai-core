@@ -105,28 +105,26 @@ void ObjectTracker::run() {
         std::shared_ptr<SpatialImgDetections> inputSpatialImgDetections;
         std::shared_ptr<ObjectTrackerConfig> inputCfg;
 
-        bool gotDetections = false;
-
         inputTrackerImg = inputTrackerFrame.get<ImgFrame>();
-        if(inputDetections.has()) {
-            auto detectionsBuffer = inputDetections.get<Buffer>();
-            inputImgDetections = std::dynamic_pointer_cast<ImgDetections>(detectionsBuffer);
-            inputSpatialImgDetections = std::dynamic_pointer_cast<SpatialImgDetections>(detectionsBuffer);
-            if(inputImgDetections) {
-                gotDetections = true;
-                if(!inputImgDetections->transformation.has_value()) {
-                    logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
-                    inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
-                }
-            } else if(inputSpatialImgDetections) {
-                gotDetections = true;
-                if(!inputSpatialImgDetections->transformation.has_value()) {
-                    logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
-                    inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
-                }
-            } else if(!inputImgDetections && !inputSpatialImgDetections) {
-                logger->error("Input detections is not of type ImgDetections or SpatialImgDetections, skipping tracking");
+
+        bool gotDetections = false;
+        auto detectionsBuffer = inputDetections.get<Buffer>();
+        inputImgDetections = std::dynamic_pointer_cast<ImgDetections>(detectionsBuffer);
+        inputSpatialImgDetections = std::dynamic_pointer_cast<SpatialImgDetections>(detectionsBuffer);
+        if(inputImgDetections) {
+            gotDetections = true;
+            if(!inputImgDetections->transformation.has_value()) {
+                logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
+                inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
             }
+        } else if(inputSpatialImgDetections) {
+            gotDetections = true;
+            if(!inputSpatialImgDetections->transformation.has_value()) {
+                logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
+                inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
+            }
+        } else {
+            logger->error("Input detections is not of type ImgDetections or SpatialImgDetections, skipping tracking");
         }
         if(inputConfig.getWaitForMessage()) {
             inputCfg = inputConfig.get<ObjectTrackerConfig>();
