@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <string>
 #include <tuple>
+#include <optional>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/EepromData.hpp"
