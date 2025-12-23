@@ -459,4 +459,29 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
     return transformed;
 }
 
+bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
+    if(width != to.width || height != to.height) return false;
+    if(this->distortionModel != to.distortionModel) return false;
+
+    auto approxEqual = [](float a, float b, float absTol = ROUND_UP_EPS, float relTol = 2 * ROUND_UP_EPS) {
+        return std::abs(a - b) <= (absTol + relTol * std::max(std::abs(a), std::abs(b)));
+    };
+
+    std::array<std::array<float, 3>, 3> relativeTransform = matmul(to.transformationMatrixInv, this->transformationMatrix);
+    float scale = relativeTransform[2][2];
+    if(std::abs(relativeTransform[0][0]) > std::abs(scale)) scale = relativeTransform[0][0];
+    if(std::abs(relativeTransform[1][1]) > std::abs(scale)) scale = relativeTransform[1][1];
+    if(std::abs(scale) < 1e-6f) return false;
+
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            float expectedValue = (i == j) ? 1.0f : 0.0f;
+            if(!approxEqual(relativeTransform[i][j] / scale, expectedValue)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 };  // namespace dai

@@ -241,6 +241,12 @@ struct ImgTransformation {
     dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
 
     /**
+     * Check if the transformations are aligned
+     * @param to Transformation to compare with
+     */
+    bool isAlignedTo(const ImgTransformation& to) const;
+
+    /**
      * Check if the transformations are valid. The transformations are valid if the source frame size and the current frame size are set.
      */
     bool isValid() const;

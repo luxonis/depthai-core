@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai/common/Point3f.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {
@@ -66,10 +65,39 @@ struct SpatialLocationCalculatorConfigData {
 DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds, calculationAlgorithm, stepSize);
 
 /**
- * SpatialLocationCalculatorConfig message. Carries ROI (region of interest) and threshold for depth calculation
+ * Configuration for SpatialLocationCalculator.
+ *
+ * Holds global parameters and optional per-ROI entries used to compute 3D
+ * spatial locations from a depth map.
+ *
+ * Global parameters (defaults):
+ * - Lower depth threshold [mm]: 0
+ * - Upper depth threshold [mm]: 65535
+ * - Calculation algorithm: MEDIAN
+ * - Step size: AUTO
+ * - Keypoint radius [px]: 10
+ * - Calculate spatial keypoints: true
+ * - Use segmentation for ImgDetections: true
+ * - Segmentation passthrough: true
+ *
+ * An optional list of per-ROI configurations is available via `config`. ROI
+ * settings override the corresponding global values where specified.
+ *
  */
 class SpatialLocationCalculatorConfig : public Buffer {
+    static constexpr std::int32_t AUTO = -1;
+
    public:
+    int32_t globalStepSize = AUTO;
+    uint32_t globalLowerThreshold = 100;  // less than 100mm is considered too close
+    uint32_t globalUpperThreshold = 65535;
+    SpatialLocationCalculatorAlgorithm globalCalculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
+    int32_t globalKeypointRadius = 10;
+    bool calculateSpatialKeypoints = true;
+    bool useSegmentation = true;
+    bool segmentationPassthrough = true;
+    std::vector<SpatialLocationCalculatorConfigData> config;
+
     /**
      * Construct SpatialLocationCalculatorConfig message.
      */
@@ -77,27 +105,131 @@ class SpatialLocationCalculatorConfig : public Buffer {
     virtual ~SpatialLocationCalculatorConfig();
 
     /**
-     * Set a vector of ROIs as configuration data.
+     * Specify additional regions of interest (ROI) to calculate their spatial coordinates. Results of ROI coordinates are available on
+     SpatialLocationCalculatorData output.
      * @param ROIs Vector of configuration parameters for ROIs (region of interests)
      */
     void setROIs(std::vector<SpatialLocationCalculatorConfigData> ROIs);
+
     /**
-     * Add a new ROI to configuration data.
-     * @param roi Configuration parameters for ROI (region of interest)
+     * Add a new region of interest (ROI) to configuration data.
+     * @param roi Configuration parameters for ROI
      */
     void addROI(SpatialLocationCalculatorConfigData& ROI);
+
+    /**
+     * Set the lower and upper depth value thresholds to be used in the spatial calculations.
+     * @param lowerThreshold Lower threshold in depth units (millimeter by default).
+     * @param upperThreshold Upper threshold in depth units (millimeter by default).
+     */
+    void setDepthThresholds(uint32_t lowerThreshold = 0, uint32_t upperThreshold = 30000);
+
+    /**
+     * Set spatial location calculation algorithm. Possible values:
+     *
+     * - MEDIAN: Median of all depth values in the ROI
+     * - AVERAGE: Average of all depth values in the ROI
+     * - MIN: Minimum depth value in the ROI
+     * - MAX: Maximum depth value in the ROI
+     * - MODE: Most frequent depth value in the ROI
+     */
+    void setCalculationAlgorithm(SpatialLocationCalculatorAlgorithm calculationAlgorithm);
+
+    /**
+     * Set step size for spatial location calculation.
+     * Step size 1 means that every pixel is taken into calculation, size 2 means every second etc.
+     * for AVERAGE, MIN, MAX step size is 1; for MODE/MEDIAN it's 2.
+     */
+    void setStepSize(int32_t stepSize);
+
+    /**
+     * Set radius around keypoints to calculate spatial coordinates.
+     * @param radius Radius in pixels.
+     * @warning Only applicable to Keypoints or ImgDetections with keypoints.
+     */
+    void setKeypointRadius(int32_t radius);
+
+    /**
+     * If false, spatial coordinates of keypoints will not be calculated.
+     * @param calculateSpatialKeypoints
+     * @warning Only applicable to ImgDetections with keypoints.
+     */
+    void setCalculateSpatialKeypoints(bool calculateSpatialKeypoints);
+
+    /**
+     * Specify whether to consider only segmented pixels within a detection bounding box for spatial calculations.
+     * @param useSegmentation
+     * @warning Only applicable to ImgDetections with segmentation masks.
+     */
+    void setUseSegmentation(bool useSegmentation);
+
+    /**
+     * Specify whether to passthrough segmentation mask along with spatial detections.
+     * @param passthroughSegmentation
+     * @warning Only applicable to ImgDetections with segmentation masks.
+     */
+    void setSegmentationPassthrough(bool passthroughSegmentation);
 
     /**
      * Retrieve configuration data for SpatialLocationCalculator
      * @returns Vector of configuration parameters for ROIs (region of interests)
      */
     std::vector<SpatialLocationCalculatorConfigData> getConfigData() const;
-    std::vector<SpatialLocationCalculatorConfigData> config;
+
+    /*
+     * Retrieve the lower and upper depth value thresholds used in the spatial calculations.
+     * @returns Pair of lower and upper thresholds in depth units (millimeter by default).
+     */
+    std::pair<int32_t, int32_t> getDepthThresholds() const;
+
+    /*
+     * Retrieve spatial location calculation algorithm.
+     */
+    SpatialLocationCalculatorAlgorithm getCalculationAlgorithm() const;
+
+    /*
+     * Retrieve step size for spatial location calculation.
+     */
+    int32_t getStepSize() const;
+
+    /**
+     * Retrieve radius around keypoints used to calculate spatial coordinates.
+     */
+    int32_t getKeypointRadius() const;
+
+    /**
+     * Retrieve whether keypoints are used for spatial location calculation.
+     * @warning Only applicable to ImgDetections with keypoints.
+     */
+    bool getCalculateSpatialKeypoints() const;
+
+    /**
+     * Retrieve whether segmentation is used for spatial location calculation.
+     * @warning Only applicable to ImgDetections with segmentation masks.
+     */
+    bool getUseSegmentation() const;
+
+    /**
+     * Retrieve whether segmentation is passed through along with spatial detections.
+     * @warning Only applicable to ImgDetections with segmentation masks.
+     */
+    bool getSegmentationPassthrough() const;
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::SpatialLocationCalculatorConfig;
     }
-    DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config);
+
+    DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig,
+                      globalStepSize,
+                      globalLowerThreshold,
+                      globalUpperThreshold,
+                      globalCalculationAlgorithm,
+                      globalKeypointRadius,
+                      calculateSpatialKeypoints,
+                      useSegmentation,
+                      config);
 };
 
 }  // namespace dai

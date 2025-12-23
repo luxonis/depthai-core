@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/Point3f.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 
@@ -52,7 +53,7 @@ struct SpatialLocations {
     /**
      *  Spatial coordinates - x,y,z; x,y are the relative positions of the center of ROI to the center of depth map
      */
-    Point3f spatialCoordinates;
+    dai::Point3f spatialCoordinates;
 };
 DEPTHAI_SERIALIZE_EXT(SpatialLocations, config, depthAverage, depthMode, depthMedian, depthMin, depthMax, depthAveragePixelCount, spatialCoordinates);
 
