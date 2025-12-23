@@ -38,7 +38,9 @@ class PipelineEventDispatcherInterface {
             : dispatcher(dispatcher), type(type), source(source), sequence(dispatcher.sequence++) {
             if(!dispatcher.sendEvents) {
                 canceled = true;
-            } else if(startNow) start(ts);
+            } else if(startNow) {
+                start(ts);
+            }
         }
         void end() {
             if(canceled || std::uncaught_exceptions() > 0) return;
