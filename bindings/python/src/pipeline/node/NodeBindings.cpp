@@ -277,7 +277,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     using BlockPipelineEvent = dai::utility::PipelineEventDispatcherInterface::BlockPipelineEvent;
 
     py::class_<BlockPipelineEvent, std::shared_ptr<BlockPipelineEvent>> pyBlockEvent(
-        m, "BlockPipelineEvent", DOC(dai, PipelineEventDispatcherInterface, BlockPipelineEvent));
+        m, "BlockPipelineEvent", DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent));
 
     // Device Nodegroup
     py::class_<DeviceNodeGroup, DeviceNode, std::shared_ptr<DeviceNodeGroup>> pyDeviceNodeGroup(m, "DeviceNodeGroup", DOC(dai, DeviceNodeGroup));
@@ -520,12 +520,12 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("source"),
             DOC(dai, ThreadedNode, blockEvent));
 
-    pyBlockEvent.def("cancel", &BlockPipelineEvent::cancel, DOC(dai, PipelineEventDispatcherInterface, BlockPipelineEvent, cancel))
-        .def("setQueueSize", &BlockPipelineEvent::setQueueSize, py::arg("size"), DOC(dai, PipelineEventDispatcherInterface, BlockPipelineEvent, setQueueSize))
+    pyBlockEvent.def("cancel", &BlockPipelineEvent::cancel, DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent, cancel))
+        .def("setQueueSize", &BlockPipelineEvent::setQueueSize, py::arg("size"), DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent, setQueueSize))
         .def("setEndTimestamp",
              &BlockPipelineEvent::setEndTimestamp,
              py::arg("timestamp"),
-             DOC(dai, PipelineEventDispatcherInterface, BlockPipelineEvent, setEndTimestamp))
+             DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent, setEndTimestamp))
         .def("__enter__",
              [](BlockPipelineEvent& b) -> BlockPipelineEvent& {
                  b.start();
