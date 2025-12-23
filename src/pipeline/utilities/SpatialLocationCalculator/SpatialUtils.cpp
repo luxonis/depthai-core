@@ -254,8 +254,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
 
     if(!areAligned) {
         logger->warn(
-            "DepthFrame and ImgDetections transformations are not aligned and processing may be slowed down due to need for remapping points. Consider using "
-            "ImageAlign node beforehand.");
+            "DepthFrame and ImgDetections transformations are not aligned and processing may be slowed down due to need for remapping points. Consider using ImageAlign node beforehand.");
     }
 
     std::vector<dai::ImgDetection> imgDetectionsVector = imgDetections.detections;
@@ -370,7 +369,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                 if(!areAligned) {
                     kpPointCoordinates = depthTransformation->remapPointFrom(*detectionsTransformation, kpPointCoordinates);
                 }
-                dai::Point3f spatialCoordinates = calculateSpatialCoordinates(kpZ, depthFrame.transformation.getIntrinsicMatrix(), kpPointCoordinates);
+                dai::Point3f spatialCoordinates = calculateSpatialCoordinates(kpZ, detectionsTransformation->getIntrinsicMatrix(), kpPointCoordinates);
 
                 dai::SpatialKeypoint spatialKp;
                 spatialKp.imageCoordinates = kp.imageCoordinates;
@@ -392,7 +391,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
         // Remap back to original detection coordinates
         if(!areAligned) denormalizedRect = depthTransformation->remapRectTo(*detectionsTransformation, denormalizedRect);
 
-        dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, depthFrame.transformation.getIntrinsicMatrix(), denormalizedRect.center);
+        dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, detectionsTransformation->getIntrinsicMatrix(), denormalizedRect.center);
         logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
         spatialDetection.spatialCoordinates = spatialCoordinates;

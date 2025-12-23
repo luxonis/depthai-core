@@ -1,11 +1,12 @@
 #include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
+#include <optional>
+#include <utility>
 #include <vector>
 
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
-#include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 
 int main() {
@@ -14,35 +15,25 @@ int main() {
         bool setRunOnHost = false;
         float fps = 30.0f;
         auto device = std::make_shared<dai::Device>();
+        std::pair<int, int> depthSize = {640, 400};
 
         if(device->getPlatform() == dai::Platform::RVC2) {
             modelName = "luxonis/yolov8-instance-segmentation-nano:coco-512x288";
             setRunOnHost = true;
             fps = 10.0f;
+            depthSize = {512, 288};
         }
 
         dai::Pipeline pipeline{device};
 
         auto cameraNode = pipeline.create<dai::node::Camera>();
         cameraNode->build(dai::CameraBoardSocket::CAM_A);
-        auto camOutput = cameraNode->requestOutput(std::make_pair(640, 480), dai::ImgFrame::Type::BGR888i, dai::ImgResizeMode::CROP, fps, true);
 
         auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
         dai::NNModelDescription modelDescription;
         modelDescription.model = modelName;
-        modelDescription.platform = device->getPlatformAsString();
-        dai::NNArchive nnArchive = dai::NNArchive(dai::getModelFromZoo(modelDescription));
-
-        detectionNetwork->build(*camOutput, nnArchive);
+        detectionNetwork->build(cameraNode, modelDescription, fps);
         detectionNetwork->detectionParser->setRunOnHost(setRunOnHost);
-
-        // dai::NNArchive nnArchive = *detectionNetwork->neuralNetwork->getNNArchive();
-        auto inputWidth = nnArchive.getInputWidth();
-        auto inputHeight = nnArchive.getInputHeight();
-        if(!inputWidth || !inputHeight) {
-            std::cerr << "Failed to read NN input size" << std::endl;
-            return 1;
-        }
 
         auto monoLeft = pipeline.create<dai::node::Camera>();
         monoLeft->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
@@ -50,11 +41,12 @@ int main() {
         monoRight->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
 
         auto stereo = pipeline.create<dai::node::StereoDepth>();
+        stereo->setSubpixel(false);
         stereo->setRectification(true);
         stereo->setExtendedDisparity(true);
         stereo->setLeftRightCheck(true);
-        monoLeft->requestOutput(std::make_pair(*inputWidth, *inputHeight))->link(stereo->left);
-        monoRight->requestOutput(std::make_pair(*inputWidth, *inputHeight))->link(stereo->right);
+        monoLeft->requestOutput(depthSize)->link(stereo->left);
+        monoRight->requestOutput(depthSize)->link(stereo->right);
 
         auto align = pipeline.create<dai::node::ImageAlign>();
         stereo->depth.link(align->input);
@@ -119,7 +111,7 @@ int main() {
                     std::string text = "X: " + std::to_string(static_cast<int>(depthCoord.x / 10))
                                        + " cm, Y: " + std::to_string(static_cast<int>(depthCoord.y / 10))
                                        + " cm, Z: " + std::to_string(static_cast<int>(depthCoord.z / 10)) + " cm";
-                    cv::putText(image, text, contour.front(), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(232, 36, 87), 2);
+                    cv::putText(image, text, contour.front(), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(232, 36, 87), 2);
                 }
             }
 

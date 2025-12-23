@@ -25,9 +25,8 @@ void SpatialLocationCalculator::run() {
     logger->debug("Start SpatialLocationCalculator");
 
     bool inputConfigSync = inputConfig.getWaitForMessage();
-    auto eepromData = getParentPipeline().getEepromData();
-    if(!eepromData) {
-        logger->warn("No calibration data, using default FOV!");
+    if(!calculationConfig) {
+        calculationConfig = initialConfig;
     }
 
     using namespace std::chrono;
