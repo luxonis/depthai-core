@@ -144,7 +144,7 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     callCallbacks(msg);
     notifyCondVars();
     auto queueNotClosed = queue.push(msg, [&](LockingQueueState state, size_t size) {
-        if(pipelineEventDispatcher) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             switch(state) {
                 case LockingQueueState::BLOCKED:
                     pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);
@@ -169,7 +169,7 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     return queue.tryWaitAndPush(msg, timeout, [&](LockingQueueState state, size_t size) {
-        if(pipelineEventDispatcher) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             switch(state) {
                 case LockingQueueState::BLOCKED:
                     pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);

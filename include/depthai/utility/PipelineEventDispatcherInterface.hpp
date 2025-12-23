@@ -36,7 +36,9 @@ class PipelineEventDispatcherInterface {
                            std::optional<std::chrono::time_point<std::chrono::steady_clock>> ts = std::nullopt,
                            bool startNow = true)
             : dispatcher(dispatcher), type(type), source(source), sequence(dispatcher.sequence++) {
-            if(startNow) start(ts);
+            if(!dispatcher.sendEvents) {
+                canceled = true;
+            } else if(startNow) start(ts);
         }
         void end() {
             if(canceled || std::uncaught_exceptions() > 0) return;

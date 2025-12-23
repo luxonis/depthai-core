@@ -246,7 +246,7 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
             messageQueue->send(msg);
         }
     };
-    if(pipelineEventDispatcher) {
+    if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
         auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::OUTPUT, getName());
         sendToInputs();
     } else {
@@ -276,7 +276,7 @@ bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
             success &= messageQueue->trySend(msg);
         }
     };
-    if(pipelineEventDispatcher) {
+    if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
         auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::OUTPUT, getName());
         sendToInputs();
         if(!success) {

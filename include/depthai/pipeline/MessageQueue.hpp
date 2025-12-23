@@ -255,7 +255,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
             }
             return std::dynamic_pointer_cast<T>(val);
         };
-        if(pipelineEventDispatcher) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
             auto result = getInput();
             blockEvent.setQueueSize(getSize());
@@ -290,7 +290,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
                 throw QueueException(CLOSED_QUEUE_MESSAGE);
             }
         };
-        if(pipelineEventDispatcher) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
             getInput();
             blockEvent.setQueueSize(getSize());
@@ -358,7 +358,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
             hasTimedout = false;
             return std::dynamic_pointer_cast<T>(val);
         };
-        if(pipelineEventDispatcher) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
             auto result = getInput();
             blockEvent.setQueueSize(getSize());
@@ -402,7 +402,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
             });
             return messages;
         };
-        if(pipelineEventDispatcher) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
             auto result = getInput();
             blockEvent.setQueueSize(getSize());
@@ -443,7 +443,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
                 throw QueueException(CLOSED_QUEUE_MESSAGE);
             }
         };
-        if(pipelineEventDispatcher) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
             getInput();
             blockEvent.setQueueSize(getSize());
@@ -487,7 +487,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
 
             return messages;
         };
-        if(pipelineEventDispatcher) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::INPUT, name);
             auto result = getInput();
             blockEvent.setQueueSize(getSize());
