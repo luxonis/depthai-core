@@ -34,6 +34,7 @@
 #include "depthai/properties/UVCProperties.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/properties/WarpProperties.hpp"
+#include "depthai/properties/internal/PipelineEventAggregationProperties.hpp"
 #include "depthai/properties/internal/XLinkInProperties.hpp"
 #include "depthai/properties/internal/XLinkOutProperties.hpp"
 
@@ -73,6 +74,7 @@ MessageDemuxProperties::~MessageDemuxProperties() = default;
 MonoCameraProperties::~MonoCameraProperties() = default;
 NeuralNetworkProperties::~NeuralNetworkProperties() = default;
 ObjectTrackerProperties::~ObjectTrackerProperties() = default;
+PipelineEventAggregationProperties::~PipelineEventAggregationProperties() = default;
 PointCloudProperties::~PointCloudProperties() = default;
 SPIInProperties::~SPIInProperties() = default;
 SPIOutProperties::~SPIOutProperties() = default;

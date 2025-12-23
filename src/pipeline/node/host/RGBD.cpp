@@ -373,10 +373,14 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
 }
 
 void RGBD::run() {
-    while(isRunning()) {
+    while(mainLoop()) {
         if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty() || !rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
-            // Get the color and depth frames
-            auto group = inSync.get<MessageGroup>();
+            std::shared_ptr<MessageGroup> group = nullptr;
+            {
+                auto blockEvent = this->inputBlockEvent();
+                // Get the color and depth frames
+                group = inSync.get<MessageGroup>();
+            }
             if(group == nullptr) continue;
             if(!initialized) {
                 initialize(group);
@@ -439,17 +443,22 @@ void RGBD::run() {
             pc->setTimestampDevice(colorFrame->getTimestampDevice());
             pc->setSequenceNum(colorFrame->getSequenceNum());
             pc->setInstanceNum(colorFrame->getInstanceNum());
-            if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty()) {
-                pcl.send(pc);
-            }
-            if(!rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
-                auto rgbdData = std::make_shared<RGBDData>();
-                rgbdData->setTimestamp(colorFrame->getTimestamp());
-                rgbdData->setTimestampDevice(colorFrame->getTimestampDevice());
-                rgbdData->setSequenceNum(colorFrame->getSequenceNum());
-                rgbdData->setDepthFrame(depthFrame);
-                rgbdData->setRGBFrame(colorFrame);
-                rgbd.send(rgbdData);
+            {
+                auto blockEvent = this->outputBlockEvent();
+                if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty()) {
+                    {
+                        pcl.send(pc);
+                    }
+                }
+                if(!rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
+                    auto rgbdData = std::make_shared<RGBDData>();
+                    rgbdData->setTimestamp(colorFrame->getTimestamp());
+                    rgbdData->setTimestampDevice(colorFrame->getTimestampDevice());
+                    rgbdData->setSequenceNum(colorFrame->getSequenceNum());
+                    rgbdData->setDepthFrame(depthFrame);
+                    rgbdData->setRGBFrame(colorFrame);
+                    rgbd.send(rgbdData);
+                }
             }
         }
     }
