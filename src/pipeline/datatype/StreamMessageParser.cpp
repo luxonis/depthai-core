@@ -19,6 +19,7 @@
     #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+#include "PacketizedData.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
@@ -274,6 +275,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::ObjectTrackerConfig:
             return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::PacketizedData: {
+            return parseDatatype<PacketizedData>(metadataStart, serializedObjectSize, data, fd);
+        } break;
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);

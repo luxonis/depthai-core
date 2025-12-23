@@ -176,6 +176,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CoverageData:
+        case DatatypeEnum::PacketizedData:
             return false;
     }
     return false;
