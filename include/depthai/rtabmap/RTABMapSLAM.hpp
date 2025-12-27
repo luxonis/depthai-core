@@ -1,24 +1,18 @@
 #pragma once
 
-#include <depthai/pipeline/Subnode.hpp>
-
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/MapData.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
-#include "rtabmap/core/CameraModel.h"
-#include "rtabmap/core/LocalGrid.h"
-#include "rtabmap/core/Rtabmap.h"
-#include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/Transform.h"
-#include "rtabmap/core/global_map/CloudMap.h"
-#include "rtabmap/core/global_map/OccupancyGrid.h"
+#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {
@@ -31,6 +25,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
    public:
     constexpr static const char* NAME = "RTABMapSLAM";
 
+    RTABMapSLAM();
     ~RTABMapSLAM() override;
     Subnode<node::Sync> sync{*this, "sync"};
     InputMap& inputs = sync->inputs;
@@ -74,7 +69,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     /**
      * Output occupancy grid map.
      */
-    Output occupancyGridMap{*this, {"occupancyGridMap", DEFAULT_GROUP, {{{dai::DatatypeEnum::ImgFrame, true}}}}};
+    Output occupancyGridMap{*this, {"occupancyGridMap", DEFAULT_GROUP, {{{dai::DatatypeEnum::MapData, true}}}}};
 
     /**
      * Output passthrough rectified image.
@@ -135,21 +130,15 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     /**
      * Whether to publish the obstacle point cloud. True by default.
      */
-    void setPublishObstacleCloud(bool publish) {
-        publishObstacleCloud = publish;
-    }
+    void setPublishObstacleCloud(bool publish);
     /**
      * Whether to publish the ground point cloud. True by default.
      */
-    void setPublishGroundCloud(bool publish) {
-        publishGroundCloud = publish;
-    }
+    void setPublishGroundCloud(bool publish);
     /**
      * Whether to publish the ground point cloud. True by default.
      */
-    void setPublishGrid(bool publish) {
-        publishGrid = publish;
-    }
+    void setPublishGrid(bool publish);
     /**
      * Set the frequency at which the node processes data. 1Hz by default.
      */
@@ -166,12 +155,8 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      * Whether to use input features for SLAM. False by default.
      */
     void setUseFeatures(bool use);
-    void setLocalTransform(std::shared_ptr<TransformData> transform) {
-        localTransform = transform->getRTABMapTransform();
-    }
-    std::shared_ptr<TransformData> getLocalTransform() {
-        return std::make_shared<TransformData>(localTransform);
-    }
+    void setLocalTransform(std::shared_ptr<TransformData> transform);
+    std::shared_ptr<TransformData> getLocalTransform();
     /**
      * Trigger a new map.
      */
@@ -180,26 +165,15 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void buildInternal() override;
 
    private:
+    // pimpl
+    class Impl;
+    Pimpl<Impl> pimplRtabmap;
     void run() override;
     Input inSync{*this, {"inSync", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{dai::DatatypeEnum::MessageGroup, true}}}}};
     void syncCB(std::shared_ptr<dai::ADatatype> data);
     void odomPoseCB(std::shared_ptr<dai::ADatatype> data);
     void imuCB(std::shared_ptr<dai::ADatatype> msg);
     void initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height);
-    void publishGridMap(const std::map<int, rtabmap::Transform>& optimizedPoses);
-    void publishPointClouds(const std::map<int, rtabmap::Transform>& optimizedPoses);
-
-    rtabmap::StereoCameraModel model;
-    rtabmap::Rtabmap rtabmap;
-    rtabmap::Transform currPose, odomCorr;
-    std::chrono::steady_clock::time_point lastProcessTime;
-    std::chrono::steady_clock::time_point startTime;
-    rtabmap::Transform imuLocalTransform;
-    rtabmap::Transform localTransform;
-    std::shared_ptr<rtabmap::LocalGridCache> localMaps;
-    std::unique_ptr<rtabmap::OccupancyGrid> occupancyGrid;
-    std::unique_ptr<rtabmap::CloudMap> cloudMap;
-    rtabmap::SensorData sensorData;
     float alphaScaling = -1.0;
     bool useFeatures = false;
     bool initialized = false;
