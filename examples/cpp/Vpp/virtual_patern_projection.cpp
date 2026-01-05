@@ -41,8 +41,6 @@ int main() {
     int fps = 20;
     dai::Pipeline pipeline;
 
-    // --- Using the Builder API to match your Python code ---
-
     // Left Right cameras
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
     auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
