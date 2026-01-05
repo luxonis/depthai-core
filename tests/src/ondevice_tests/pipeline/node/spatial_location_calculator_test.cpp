@@ -537,8 +537,10 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
 
     dai::Device device = dai::Device();
     if(device.getPlatform() == dai::Platform::RVC2) {  // skipping test on RVC2
+        device.close();
         return;
     }
+    device.close();
 
     constexpr std::uint16_t farDepth = 4200;
     constexpr std::uint16_t nearDepth = 1400;
@@ -599,7 +601,7 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     INFO("RGB transformation matrix: " << formatMatrix(detectionTransformation.getMatrix()));
 
     const auto& spatialDetection = spatialDetections.detections.front();
-    const auto intrinsicMatrix = depthFrame->transformation.getIntrinsicMatrix();
+    const auto intrinsicMatrix = detectionTransformation.getIntrinsicMatrix();
     const float fx = intrinsicMatrix[0][0];
     const float fy = intrinsicMatrix[1][1];
     const float cx = intrinsicMatrix[0][2];
