@@ -137,7 +137,7 @@ class VppConfig : public Buffer {
     PatchColoringType patchColoringType = PatchColoringType::RANDOM;
     bool uniformPatch = true;
     InjectionParameters injectionParameters;
-    int maxNumThreads = 8;
+    int maxNumThreads = 1;
     int maxFPS = 0;
 
     VppConfig() = default;
