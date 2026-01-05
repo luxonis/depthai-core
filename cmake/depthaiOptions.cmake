@@ -37,6 +37,7 @@ option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_BUILD_ZOO_HELPER "Build the Zoo helper" OFF)
+option(DEPTHAI_BUILD_EXT_HOST_NODES "Build the contrib host nodes lib" OFF)
 option(DEPTHAI_NEW_FIND_PYTHON "Use new FindPython module" ON)
 option(DEPTHAI_INSTALL "Enable install target for depthai-core targets" ON)
 

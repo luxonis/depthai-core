@@ -1091,6 +1091,54 @@ if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
 endif()
 
 ########################
+# Extra host nodes
+########################
+set(TARGET_EXTRA_ALIAS hostNodesExt)
+set(TARGET_EXTRA_NAME ${PROJECT_NAME}-${TARGET_EXTRA_ALIAS})
+if (DEPTHAI_BUILD_EXT_HOST_NODES)
+    set(TARGET_EXT_NODES_SOURCES
+            ParserGenerator.cpp
+            host_nodes_ext/ParsingNeuralNetwork.cpp
+            host_nodes_ext/parsers/BaseParser.cpp
+            host_nodes_ext/parsers/SimCCKeypointParser.cpp
+            host_nodes_ext/parsers/KeypointParser.cpp
+            host_nodes_ext/messages/Keypoints.cpp
+    )
+    list(TRANSFORM TARGET_EXT_NODES_SOURCES PREPEND "src/pipeline/node/host/contrib/")
+#
+
+    # Add depthai-extraHostNodes library and importable target/alias depthai::extraHostNodes
+    add_library(${TARGET_EXTRA_NAME} ${TARGET_EXT_NODES_SOURCES})
+    add_library("${PROJECT_NAME}::${TARGET_EXTRA_ALIAS}" ALIAS ${TARGET_EXTRA_NAME})
+    set_target_properties(${TARGET_EXTRA_NAME} PROPERTIES EXPORT_NAME ${TARGET_EXTRA_ALIAS})
+
+
+    target_include_directories(${TARGET_EXTRA_NAME}
+            PUBLIC
+            "$<INSTALL_INTERFACE:include/depthai/pipeline/node/host/contrib/host_nodes_ext>"
+
+#            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/${INC_DIR}>"
+#            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/${INC_DIR}host/>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai/pipeline/node/host/contrib/host_nodes_ext>"
+            PRIVATE
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src/pipeline/node/host/contrib/host_nodes_ext>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src/pipeline/node/host/contrib>"
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
+    )
+
+    target_link_libraries(${TARGET_EXTRA_NAME}
+            PRIVATE
+            spdlog::spdlog
+            xtensor
+            PUBLIC
+            depthai::core
+    )
+
+    list(APPEND targets_to_export ${TARGET_EXTRA_NAME})
+endif ()
+
+########################
 # Combined target
 ########################
 set(TARGET_ALL_ALIAS all)

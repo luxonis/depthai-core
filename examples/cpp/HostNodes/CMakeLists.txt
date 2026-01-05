@@ -33,3 +33,7 @@ dai_add_example(host_pipeline_synced_node host_pipeline_synced_node.cpp ON OFF)
 dai_set_example_test_labels(host_pipeline_synced_node ondevice rvc2_all rvc4 ci)
 
 dai_add_example(host_only_camera host_only_camera.cpp OFF OFF)
+
+if(DEPTHAI_BUILD_EXT_HOST_NODES)
+    add_subdirectory(HostNodesExtended)
+endif ()
