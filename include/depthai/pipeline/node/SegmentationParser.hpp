@@ -36,14 +36,14 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
     ~SegmentationParser() override;
     SegmentationParser() = default;
     SegmentationParser(std::unique_ptr<Properties> props)
-        : DeviceNodeCRTP(std::move(props)), inConfig(std::make_shared<SegmentationParserConfig>(properties.parserConfig)) {}
-
-    std::shared_ptr<SegmentationParserConfig> inConfig;
+        : DeviceNodeCRTP(std::move(props)), initialConfig(std::make_shared<SegmentationParserConfig>(properties.parserConfig)), inConfig(initialConfig) {}
 
     /**
      * Initial config to use when parsing segmentation masks.
      */
     std::shared_ptr<SegmentationParserConfig> initialConfig = std::make_shared<SegmentationParserConfig>();
+
+    std::shared_ptr<SegmentationParserConfig> inConfig;
 
     /**
      * Input NN results with segmentation data to parser
@@ -68,11 +68,11 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
     std::shared_ptr<SegmentationParser> build(Node::Output& nnInput, const NNArchive& nnArchive);
 
     /**
-     * @brief Build SegmentationParser node with the specific head from NNArchive. Useful when multiple same heads are present.
+     * @brief Build SegmentationParser node with the specific head from NNArchive. Useful when model outputs multiple segmentation heads.
      * @param nnInput: Output to link
      * @param head: Specific head from NNArchive to use for this parser
      */
-    std::shared_ptr<SegmentationParser> build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head);
+    std::shared_ptr<SegmentationParser> build(Node::Output& nnInput, const std::optional<dai::nn_archive::v1::Head>& head);
 
     /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.

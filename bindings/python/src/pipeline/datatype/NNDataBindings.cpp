@@ -83,7 +83,14 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         .def_readwrite("offset", &TensorInfo::offset)
         .def_readwrite("quantization", &TensorInfo::quantization)
         .def_readwrite("qpScale", &TensorInfo::qpScale)
-        .def_readwrite("qpZp", &TensorInfo::qpZp);
+        .def_readwrite("qpZp", &TensorInfo::qpZp)
+        .def("getDataTypeSize", &TensorInfo::getDataTypeSize)
+        .def("getWidth", &TensorInfo::getWidth)
+        .def("getHeight", &TensorInfo::getHeight)
+        .def("getChannels", &TensorInfo::getChannels)
+        .def("getChannelStride", &TensorInfo::getChannelStride)
+        .def("getHeightStride", &TensorInfo::getHeightStride)
+        .def("getWidthStride", &TensorInfo::getWidthStride);
 
     tensorInfoDataType.value("FP16", TensorInfo::DataType::FP16)
         .value("U8F", TensorInfo::DataType::U8F)

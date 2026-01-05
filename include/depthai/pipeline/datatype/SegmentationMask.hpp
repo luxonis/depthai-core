@@ -27,6 +27,7 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     size_t width = 0;
     size_t height = 0;
     std::optional<std::vector<std::string>> labels;
+    std::vector<std::uint8_t> containedIndices;
 
    public:
     using Buffer::getSequenceNum;
@@ -72,6 +73,13 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     void setMask(dai::ImgFrame& frame);
 
     /**
+     * Sets the class labels associated with the segmentation mask.
+     * The label at index `i` in the `labels` vector corresponds to the value `i` in the segmentation mask data array.
+     * @param labels Vector of class labels
+     */
+    void setLabels(const std::vector<std::string>& labels);
+
+    /**
      * Returns a copy of the segmentation mask data as a vector of bytes. If mask data is not set, returns std::nullopt.
      */
     std::optional<std::vector<std::uint8_t>> getMaskData() const;
@@ -104,13 +112,6 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
      * Returns the class labels associated with the segmentation mask. If no labels are set, returns std::nullopt.
      */
     std::optional<std::vector<std::string>> getLabels() const;
-
-    /**
-     * Sets the class labels associated with the segmentation mask.
-     * The label at index $i$ in the `labels` vector corresponds to the value $i$ in the segmentation mask data array.
-     * @param labels Vector of class labels
-     */
-    void setLabels(const std::vector<std::string>& labels);
 
     std::optional<std::vector<std::uint8_t>> getMaskByIndex(uint8_t index) const;
 
@@ -176,7 +177,7 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(SegmentationMask, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, transformation, width, height);
+    DEPTHAI_SERIALIZE(SegmentationMask, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, transformation, width, height, labels);
 };
 
 }  // namespace dai

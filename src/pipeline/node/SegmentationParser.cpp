@@ -88,15 +88,22 @@ void SegmentationParser::setConfig(const dai::NNArchiveVersionedConfig& config) 
         }
     }
 
-    DAI_CHECK_V(segmentationHeads != 1,
-                "NNArchive should contain at most one segmentation head. Found {} segmentation heads. If multiple heads are expected, build with ",
-                segmentationHeads);
+    DAI_CHECK_V(segmentationHeads > 0, "NNArchive does not contain a segmentation head. Found {} segmentation heads.", segmentationHeads);
+
+    if(segmentationHeads > 1) {
+        auto& logger = ThreadedNode::pimpl->logger;
+        logger->warn("NNArchive contains multiple ({}) segmentation heads. Using the last one found. If multiple heads are expected, build with specific head.",
+                     segmentationHeads);
+    }
 
     setConfig(seghead);
 }
 
-std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
-    setConfig(head);
+std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const std::optional<dai::nn_archive::v1::Head>& head) {
+    if(!head) {
+        throw std::runtime_error("Head is null when building SegmentationParser with specific head.");
+    }
+    setConfig(*head);
     nnInput.link(input);
     return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
@@ -112,7 +119,6 @@ void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
     properties.classesInOneLayer =
         head.metadata.extraParams.contains("classes_in_one_layer") ? head.metadata.extraParams.at("classes_in_one_layer").get<bool>() : false;
 
-    *initialConfig = properties.parserConfig;  // optional if you set properties first
     if(head.metadata.confThreshold) {
         initialConfig->setConfidenceThreshold(static_cast<float>(*head.metadata.confThreshold));
     }
@@ -122,9 +128,6 @@ void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
     } else {
         printf("SegmentationParser: No class labels defined in the head metadata.\n");
     }
-    properties.parserConfig = *initialConfig;
-    inConfig = std::make_shared<SegmentationParserConfig>(*initialConfig);
-    printf("SegmentationParser: Loaded %zu class labels from head metadata.\n", initialConfig->getLabels().size());
 }
 
 void SegmentationParser::setRunOnHost(bool runOnHost) {
@@ -148,18 +151,15 @@ void SegmentationParser::run() {
     logger->warn("Start SegmentationParser");
 
     const bool inputConfigSync = inputConfig.getWaitForMessage();
-    // if(!inConfig) {  //  not needed ?
-    //     inConfig = std::make_shared<SegmentationParserConfig>(properties.parserConfig);
-    // }
     const bool classesInSingleLayer = properties.classesInOneLayer;
     std::string networkOutputName = properties.networkOutputName;  // move to a resolveNetworkOutputName function alongside the layerNames etc. part of the code
+    inConfig = initialConfig;
     if(!inConfig) {
-        throw std::runtime_error("SegmentationParser config is not initialized. Make sure the build function is called before running the node.");
+        throw std::runtime_error("SegmentationParser config is not initialized.");
     }
 
     while(isRunning()) {
         logger->debug("Running");
-        logger->warn("Running");
         auto tAbsoluteBeginning = steady_clock::now();
 
         // // Start with the current config (default to the initial parser config)
@@ -197,7 +197,7 @@ void SegmentationParser::run() {
             continue;
         }
         if(networkOutputName == "") {
-            logger->info("No network outputs specified, using first output only.");
+            logger->debug("No network outputs specified, using first output only.");
             networkOutputName = layerNames.front();
         }
         auto tensorInfo = sharedInputData->getTensorInfo(networkOutputName);
@@ -225,24 +225,6 @@ void SegmentationParser::run() {
             logger->error("Failed to build NNDataViewer for tensor {}. Skipping processing.", tensorInfo->name);
             continue;
         }
-        // // TODO: optimize the copyToChannelMajor function and possibly combine it with the parsing logic loop to avoid double iteration over the data
-        // logger->warn("NNDataViewer build took {}ms", duration_cast<microseconds>(steady_clock::now() - tNNviewerStart).count() / 1000);  // 0ms
-
-        // auto tLogitsStart = steady_clock::now();
-        // std::vector<float> logitsBuffer;
-        // if(!viewer.copyToChannelMajor(logitsBuffer)) {
-        //     logger->error("Failed to populate logits buffer for tensor {}.", tensorInfo->name);
-        //     continue;
-        // }
-        // if(logitsBuffer.size() != static_cast<size_t>(channels) * planeSize) {
-        //     logger->error("Unexpected logits buffer size for tensor {}.", tensorInfo->name);
-        //     continue;
-        // }
-        // solutions:
-        // add step size eg step size 2 or 4
-
-        // logger->warn("Logits buffer copy took {}ms",
-        //              duration_cast<microseconds>(steady_clock::now() - tLogitsStart).count() / 1000);  // 15ms out of 22. Slow as fuck
 
         auto tParsingStart = steady_clock::now();
         if(classesInSingleLayer) {  // assume data is stored as INT in shape N x H x W  with N = 1
@@ -321,7 +303,7 @@ void SegmentationParser::run() {
         out.send(outMask);
 
         auto tAbsoluteEnd = steady_clock::now();
-        logger->warn("Detection parser total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
+        logger->warn("Seg parser {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
                      duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
                      duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
                      duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,

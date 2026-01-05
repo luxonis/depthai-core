@@ -216,6 +216,104 @@ struct TensorInfo {
         }
     }
 
+    int getChannelStride() {
+        validateStorageOrder();
+        switch(order) {
+            case StorageOrder::NHWC:
+                return strides[3];
+            case StorageOrder::NHCW:
+                return strides[2];
+            case StorageOrder::NCHW:
+                return strides[1];
+            case StorageOrder::HWC:
+                return strides[2];
+            case StorageOrder::CHW:
+                return strides[0];
+            case StorageOrder::WHC:
+                return strides[0];
+            case StorageOrder::HCW:
+                return strides[1];
+            case StorageOrder::WCH:
+                return strides[1];
+            case StorageOrder::CWH:
+                return strides[0];
+            case StorageOrder::C:
+                return strides[0];
+            case StorageOrder::NC:
+                return strides[1];
+            case StorageOrder::CN:
+                return strides[0];
+            case StorageOrder::H:
+            case StorageOrder::W:
+            default:
+                return 0;
+        }
+    }
+
+    int getWidthStride() {
+        validateStorageOrder();
+        switch(order) {
+            case StorageOrder::NHWC:
+                return strides[2];
+            case StorageOrder::NHCW:
+                return strides[3];
+            case StorageOrder::NCHW:
+                return strides[3];
+            case StorageOrder::HWC:
+                return strides[1];
+            case StorageOrder::CHW:
+                return strides[2];
+            case StorageOrder::WHC:
+                return strides[0];
+            case StorageOrder::HCW:
+                return strides[1];
+            case StorageOrder::WCH:
+                return strides[0];
+            case StorageOrder::CWH:
+                return strides[1];
+            case StorageOrder::W:
+                return strides[0];
+            case StorageOrder::NC:
+            case StorageOrder::CN:
+            case StorageOrder::H:
+            case StorageOrder::C:
+            default:
+                return 0;
+        }
+    }
+
+    int getHeightStride() {
+        validateStorageOrder();
+        switch(order) {
+            case StorageOrder::NHWC:
+                return strides[1];
+            case StorageOrder::NHCW:
+                return strides[1];
+            case StorageOrder::NCHW:
+                return strides[2];
+            case StorageOrder::HWC:
+                return strides[0];
+            case StorageOrder::CHW:
+                return strides[1];
+            case StorageOrder::WHC:
+                return strides[1];
+            case StorageOrder::HCW:
+                return strides[0];
+            case StorageOrder::WCH:
+                return strides[1];
+            case StorageOrder::CWH:
+                return strides[1];
+            case StorageOrder::H:
+                return strides[0];
+            case StorageOrder::C:
+            case StorageOrder::NC:
+            case StorageOrder::CN:
+            case StorageOrder::W:
+            default:
+                return 0;
+        }
+    }
+
     StorageOrder order = StorageOrder::NCHW;
     DataType dataType = DataType::FP16;
     unsigned int numDimensions = 0;

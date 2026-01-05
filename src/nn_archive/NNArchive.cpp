@@ -196,4 +196,15 @@ std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
     }
 }
 
+std::optional<dai::nn_archive::v1::Head> NNArchive::getHeadConfig(uint32_t headIndex) const {
+    const auto& configV1 = getConfig<dai::nn_archive::v1::Config>();
+    if(!configV1.model.heads) {
+        return std::nullopt;
+    }
+    if(headIndex >= configV1.model.heads->size()) {
+        return std::nullopt;
+    }
+    return configV1.model.heads->at(headIndex);
+}
+
 }  // namespace dai

@@ -8,6 +8,7 @@
 #include "depthai/device/Device.hpp"  // For platform enum
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
+#include "depthai/nn_archive/v1/Head.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/arg.hpp"
 
@@ -103,6 +104,13 @@ class NNArchive {
     const T& getConfig() const {
         return getVersionedConfig().getConfig<T>();
     }
+
+    /**
+     * @brief Get specific head configuration from NNArchive.
+     * @param headIndex: Index of the head to retrieve
+     * @return std::optional<dai::nn_archive::v1::Head>: Head configuration if found, std::nullopt otherwise
+     */
+    std::optional<dai::nn_archive::v1::Head> getHeadConfig(uint32_t index = 0) const;
 
     /**
      * @brief Get type of model contained in NNArchive

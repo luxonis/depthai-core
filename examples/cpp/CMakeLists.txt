@@ -3,6 +3,7 @@ option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of 
 
 # Dependencies
 find_package(OpenCV REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 find_package(Sanitizers)
 find_package(argparse REQUIRED)
 
@@ -11,7 +12,7 @@ add_library(utility utility/utility.cpp)
 target_compile_features(utility PUBLIC cxx_std_17)
 target_include_directories(utility PUBLIC "utility" "$<BUILD_INTERFACE:${FP16_INCLUDE_DIR}>")
 add_default_flags(utility LEAN)
-target_link_libraries(utility ${OpenCV_LIBS})
+target_link_libraries(utility PUBLIC fmt::fmt ${OpenCV_LIBS})
 
 set(test_env
     # Misc

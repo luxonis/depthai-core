@@ -1,8 +1,6 @@
 #pragma once
 #include <spdlog/async_logger.h>
 
-#include <optional>
-
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
 #include "pipeline/utilities/NNDataViewer.hpp"
@@ -11,7 +9,7 @@ namespace dai {
 namespace utilities {
 namespace SegmentationParserUtils {
 
-void parseSegmentationMask(const dai::NNData& nnData,
+void parseSegmentationMask(dai::NNData& nnData,
                            dai::TensorInfo& tensorInfo,
                            std::vector<uint8_t>& outputMask,
                            dai::SegmentationParserConfig& config,
