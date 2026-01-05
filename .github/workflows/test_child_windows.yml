@@ -23,29 +23,57 @@ jobs:
       VCPKG_DEFAULT_TRIPLET: x64-windows
       VCPKG_DOWNLOADS: C:\vcpkg_downloads
       VCPKG_DEFAULT_BINARY_CACHE: C:\vcpkg_binaries
+      VCPKG_BINARY_SOURCES: clear;files,C:\vcpkg_binaries,readwrite
     steps:
+    - name: Decide kind of test (long/short)
+      id: kind
+      shell: pwsh
+      run: |
+        if ("${{ github.event_name }}" -eq "pull_request") {
+          "test_kind=short" >> $env:GITHUB_OUTPUT
+        } else {
+          "test_kind=long" >> $env:GITHUB_OUTPUT
+        }
 
-    - name: Try reusing existing artifact for this commit
+    - name: Try reusing existing artifact for this commit (repo-wide)
       id: reuse
       shell: pwsh
       env:
         GH_TOKEN: ${{ github.token }}
         REPO: ${{ github.repository }}
-        RUN_ID: ${{ github.run_id }}
-        ARTIFACT_NAME: depthai-core-win-${{ github.sha }}
+        ARTIFACT_NAME: depthai-core-win-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
       run: |
-        Write-Host "REPO=$env:REPO  RUN_ID=$env:RUN_ID  NAME=$env:ARTIFACT_NAME"
-        $id = gh api "repos/$env:REPO/actions/runs/$env:RUN_ID/artifacts" `
-          --jq ".artifacts[] | select(.name==""$env:ARTIFACT_NAME"" and .expired==false) | .id"
-        if ($id) {
-          "skip_build=true"  >> $env:GITHUB_OUTPUT
-          "artifact_id=$id"  >> $env:GITHUB_OUTPUT
-          Write-Host "Found artifact id=$id on this run; skipping build."
-        } else {
-          "skip_build=false" >> $env:GITHUB_OUTPUT
-          Write-Host "No artifact named $env:ARTIFACT_NAME on this run."
+        $ErrorActionPreference = "Stop"
+
+        Write-Host "Repo:         $env:REPO"
+        Write-Host "ArtifactName: $env:ARTIFACT_NAME"
+        Write-Host ""
+
+        $jsonLines = gh api --paginate "repos/$env:REPO/actions/artifacts?per_page=100" `
+          --jq '.artifacts[] | @json' |
+          Select-Object -First 2500
+
+        $match = $null
+        foreach ($line in $jsonLines) {
+          $a = $line | ConvertFrom-Json
+
+          # Optional micro-filter to reduce comparisons
+          if ($a.name -notlike "depthai-core-win-*") { continue }
+
+          if ($a.name -eq $env:ARTIFACT_NAME -and $a.expired -eq $false) {
+            $match = $a
+            break
+          }
         }
 
+        if ($match) {
+          Write-Host "Found artifact id=$($match.id); skipping build."
+          "skip_build=true"  >> $env:GITHUB_OUTPUT
+          "artifact_id=$($match.id)" >> $env:GITHUB_OUTPUT
+        } else {
+          Write-Host "No existing non-expired artifact named $env:ARTIFACT_NAME found in newest 2500 artifacts."
+          "skip_build=false" >> $env:GITHUB_OUTPUT
+        }
 
     - name: Checkout depthai
       uses: actions/checkout@v4
@@ -62,14 +90,13 @@ jobs:
         Write-Host "Copying source from $env:GITHUB_WORKSPACE to C:\depthai-core ..."
         Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination "C:\depthai-core" -Recurse -Force
 
-    - name: Cache vcpkg binary cache
-      uses: actions/cache@v4
+    - name: Restore vcpkg cache
       if: steps.reuse.outputs.skip_build != 'true'
+      uses: actions/cache/restore@v4
+      id: vcpkg-restore
       with:
         path: C:\vcpkg_binaries
         key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
-        restore-keys: |
-          vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
 
     - name: Configure and Build
       if: steps.reuse.outputs.skip_build != 'true'
@@ -121,12 +148,19 @@ jobs:
         Write-Host "Running: $cmakeBuildCommand"
         Invoke-Expression $cmakeBuildCommand
 
+    - name: Save vcpkg cache (refresh)
+      if: ${{ github.event_name != 'pull_request' && steps.reuse.outputs.skip_build != 'true' }}
+      uses: actions/cache/save@v4
+      with:
+        path: C:\vcpkg_binaries
+        key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ env.VCPKG_DEFAULT_TRIPLET }}
+
     - name: Upload artifact
       if: steps.reuse.outputs.skip_build != 'true'
       id: artifact-upload-step
       uses: actions/upload-artifact@v4
       with:
-        name: depthai-core-win-${{ github.sha }}
+        name: depthai-core-win-${{ github.sha }}-${{ steps.kind.outputs.test_kind }}
         path: C:\depthai-core
         retention-days: 1
 
@@ -138,7 +172,6 @@ jobs:
         fail-fast: false
     runs-on: ['self-hosted', 'testbed-runner']
     steps:
-
       - name: Run RVC4 tests
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}

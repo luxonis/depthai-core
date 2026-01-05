@@ -49,7 +49,80 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 }
 }  // namespace
 
-CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath) {
+CalibrationHandler::ExtrinsicGraphValidationResult CalibrationHandler::validateExtrinsicGraph() const {
+    std::unordered_map<CameraBoardSocket, CameraBoardSocket> originMap;
+    for(const auto& kv : eepromData.cameraData) {
+        CameraBoardSocket start = kv.first;
+        CameraBoardSocket originCamera;
+        std::unordered_set<CameraBoardSocket> localVisited;
+        CameraBoardSocket current = start;
+
+        while(true) {
+            if(localVisited.count(current)) {
+                return {CalibrationHandler::ExtrinsicGraphError::CycleDetected, current, eepromData.cameraData.at(current).extrinsics.toCameraSocket};
+            }
+
+            localVisited.insert(current);
+
+            const auto& info = eepromData.cameraData.at(current);
+
+            if(info.extrinsics.toCameraSocket == CameraBoardSocket::AUTO) break;
+
+            if(eepromData.cameraData.count(info.extrinsics.toCameraSocket) == 0) {
+                return {CalibrationHandler::ExtrinsicGraphError::DanglingReference, current, info.extrinsics.toCameraSocket};
+            }
+
+            current = info.extrinsics.toCameraSocket;
+        }
+        std::vector<std::vector<float>> srcOriginMatrix = getExtrinsicsToOrigin(start, false, originCamera);
+        originMap[start] = originCamera;
+    }
+    // Now, check that all cameras have the same origin
+    if(!originMap.empty()) {
+        CameraBoardSocket expectedOrigin = originMap.begin()->second;
+
+        for(const auto& kv : originMap) {
+            CameraBoardSocket camOrigin = kv.second;
+
+            if(camOrigin != expectedOrigin) {
+                return {CalibrationHandler::ExtrinsicGraphError::DisconnectedGraph, camOrigin, expectedOrigin};
+            }
+        }
+    }
+
+    return {};
+}
+
+void CalibrationHandler::validateCalibrationHandler(bool throwOnError) const {
+    auto result = validateExtrinsicGraph();
+
+    if(result.error == ExtrinsicGraphError::None) return;
+
+    std::string message;
+    switch(result.error) {
+        case ExtrinsicGraphError::None:
+            return;
+        case ExtrinsicGraphError::CycleDetected:
+            message = "Extrinsic cycle detected: " + toString(result.at) + " → " + toString(result.to);
+            break;
+
+        case ExtrinsicGraphError::DanglingReference:
+            message = "Dangling extrinsic reference: " + toString(result.at) + " → " + toString(result.to);
+            break;
+
+        case ExtrinsicGraphError::DisconnectedGraph:
+            message = "Missing extrinsic link in calibration chain: " + toString(result.at) + " → " + toString(result.to);
+            break;
+    }
+
+    if(throwOnError) {
+        throw std::runtime_error(message);
+    } else {
+        std::cout << "Warning: " << message << std::endl;
+    }
+}
+
+CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, std::optional<bool> validateCalibration) {
     std::ifstream jsonStream(eepromDataPath);
     // TODO(sachin): Check if the file exists first.
     if(!jsonStream.is_open()) {
@@ -60,15 +133,23 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath) {
     }
     nlohmann::json jsonData = nlohmann::json::parse(jsonStream);
     eepromData = jsonData;
+    if(validateCalibration.value_or(false)) {
+        validateCalibrationHandler();
+    }
 }
 
-CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson) {
+CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson, std::optional<bool> validateCalibration) {
     CalibrationHandler calib;
     calib.eepromData = eepromDataJson;
+    if(validateCalibration.value_or(false)) {
+        calib.validateCalibrationHandler();
+    }
     return calib;
 }
 
-CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath) {
+CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath,
+                                       std::filesystem::path boardConfigPath,
+                                       std::optional<bool> validateCalibration) {
     auto matrixConv = [](std::vector<float>& src, int startIdx) {
         std::vector<std::vector<float>> dest;
         int currIdx = startIdx;
@@ -191,10 +272,16 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath
     temp = camera.extrinsics.rotationMatrix[1][2];
     camera.extrinsics.rotationMatrix[1][2] = camera.extrinsics.rotationMatrix[2][1];
     camera.extrinsics.rotationMatrix[2][1] = temp;
+    if(validateCalibration.value_or(false)) {
+        validateCalibrationHandler();
+    }
 }
 
-CalibrationHandler::CalibrationHandler(EepromData newEepromData) {
+CalibrationHandler::CalibrationHandler(EepromData newEepromData, std::optional<bool> validateCalibration) {
     eepromData = newEepromData;
+    if(validateCalibration.value_or(false)) {
+        validateCalibrationHandler();
+    }
 }
 
 dai::EepromData CalibrationHandler::getEepromData() const {
@@ -806,6 +893,11 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
         eepromData.cameraData.emplace(srcCameraId, camera_info);
     } else {
         eepromData.cameraData[srcCameraId].extrinsics = extrinsics;
+    }
+    auto result = validateExtrinsicGraph();
+    if(result.error == ExtrinsicGraphError::CycleDetected) {
+        auto message = "Extrinsic cycle detected: " + toString(result.at) + " → " + toString(result.to);
+        throw std::runtime_error(message);
     }
     return;
 }

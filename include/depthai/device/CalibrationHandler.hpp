@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <string>
 #include <tuple>
+#include <optional>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/EepromData.hpp"
@@ -38,8 +39,9 @@ class CalibrationHandler {
      * eeprom json file created from calibration procedure.
      *
      * @param eepromDataPath takes the full path to the json file containing the calibration and device info.
+     * @param validateCalibration Enable internal check for extrinsics cycling links or dangling references.
      */
-    explicit CalibrationHandler(std::filesystem::path eepromDataPath);
+    explicit CalibrationHandler(std::filesystem::path eepromDataPath, std::optional<bool> validateCalibration = std::nullopt);
 
     /**
      * Construct a new Calibration Handler object using the board
@@ -47,22 +49,27 @@ class CalibrationHandler {
      *
      * @param calibrationDataPath Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
      * @param boardConfigPath Full Path to the board config json file containing device information.
+     * @param validateCalibration Enable internal check for extrinsics cycling links or dangling references.
      */
-    CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath);
+    CalibrationHandler(std::filesystem::path calibrationDataPath,
+                       std::filesystem::path boardConfigPath,
+                       std::optional<bool> validateCalibration = std::nullopt);
 
     /**
      * Construct a new Calibration Handler object from EepromData object.
      *
      * @param eepromData EepromData data structure containing the calibration data.
+     * @param validateCalibration Enable internal check for extrinsics cycling links or dangling references.
      */
-    explicit CalibrationHandler(EepromData eepromData);
+    explicit CalibrationHandler(EepromData eepromData, std::optional<bool> validateCalibration = std::nullopt);
 
     /**
      * Construct a new Calibration Handler object from JSON EepromData.
      *
      * @param eepromDataJson EepromData as JSON
+     * @param validateCalibration Enable internal check for extrinsics cycling links or dangling references.
      */
-    static CalibrationHandler fromJson(nlohmann::json eepromDataJson);
+    static CalibrationHandler fromJson(nlohmann::json eepromDataJson, std::optional<bool> validateCalibration = std::nullopt);
 
     /**
      * Get the Eeprom Data object
@@ -557,6 +564,16 @@ class CalibrationHandler {
      * @return true on proper connection with no loops.
      */
     bool validateCameraArray() const;
+    /**
+     * Validate Calibration handler properties and how they are set, so there is no:
+     *  - Cycling links
+     *  - Missing links
+     *  - Dangling connections
+     *
+     * @param throwOnError Throw runtime error on failture.
+     *
+     */
+    void validateCalibrationHandler(bool throwOnError = true) const;
 
 // Optional - RTABMap support
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
@@ -602,6 +619,13 @@ class CalibrationHandler {
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkSrcLinks(CameraBoardSocket headSocket) const;
+    enum class ExtrinsicGraphError { None, CycleDetected, DanglingReference, DisconnectedGraph };
+    struct ExtrinsicGraphValidationResult {
+        ExtrinsicGraphError error = ExtrinsicGraphError::None;
+        CameraBoardSocket at = CameraBoardSocket::AUTO;
+        CameraBoardSocket to = CameraBoardSocket::AUTO;
+    };
+    ExtrinsicGraphValidationResult validateExtrinsicGraph() const;
 
     /**
      * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
