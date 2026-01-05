@@ -154,7 +154,7 @@ class VppConfig : public Buffer {
 
     /**
      * @brief Set blending factor between 0 and 1:
-     *      resulting fixel: patchColor * blending + (1 - blending) * imgFrame
+     *      resulting pixel: patchColor * blending + (1 - blending) * imgFrame
      * @param value Blending value to set
      */
     void setBlending(float value) {
