@@ -229,6 +229,10 @@ dai_set_example_test_labels(system_logger ondevice rvc2_all ci)
 add_python_example(edge_detector RVC2/EdgeDetector/edge_detector.py)
 dai_set_example_test_labels(edge_detector ondevice rvc2_all ci)
 
+## Vpp
+add_python_example(virtual_patern_projection Vpp/virtual_patern_projection.py)
+dai_set_example_test_labels(virtual_patern_projection ondevice rvc4 ci)
+
 ## RGBD
 add_python_example(rgbd RGBD/rgbd.py)
 dai_set_example_test_labels(rgbd ondevice rvc2_all rvc4 ci nowindows)
