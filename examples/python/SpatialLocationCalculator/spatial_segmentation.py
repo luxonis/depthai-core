@@ -6,12 +6,10 @@ model_name = "luxonis/yolov8-instance-segmentation-large:coco-640x480"
 setRunOnHost = False
 device = dai.Device()
 fps = 30
-depth_size = (640, 400)
 if device.getPlatform() == dai.Platform.RVC2:
     model_name = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
     setRunOnHost = True
     fps = 10
-    depth_size = (512, 288)
 
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
@@ -25,8 +23,8 @@ with dai.Pipeline(device) as pipeline:
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     stereo = pipeline.create(dai.node.StereoDepth)
 
-    monoLeftOut = monoLeft.requestOutput(depth_size)
-    monoRightOut = monoRight.requestOutput(depth_size)
+    monoLeftOut = monoLeft.requestFullResolutionOutput()
+    monoRightOut = monoRight.requestFullResolutionOutput()
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
     stereo.setRectification(True)

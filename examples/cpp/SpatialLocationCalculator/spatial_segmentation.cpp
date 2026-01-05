@@ -2,7 +2,6 @@
 #include <memory>
 #include <opencv2/opencv.hpp>
 #include <optional>
-#include <utility>
 #include <vector>
 
 #include "depthai/depthai.hpp"
@@ -15,13 +14,11 @@ int main() {
         bool setRunOnHost = false;
         float fps = 30.0f;
         auto device = std::make_shared<dai::Device>();
-        std::pair<int, int> depthSize = {640, 400};
 
         if(device->getPlatform() == dai::Platform::RVC2) {
             modelName = "luxonis/yolov8-instance-segmentation-nano:coco-512x288";
             setRunOnHost = true;
             fps = 10.0f;
-            depthSize = {512, 288};
         }
 
         dai::Pipeline pipeline{device};
@@ -45,8 +42,8 @@ int main() {
         stereo->setRectification(true);
         stereo->setExtendedDisparity(true);
         stereo->setLeftRightCheck(true);
-        monoLeft->requestOutput(depthSize)->link(stereo->left);
-        monoRight->requestOutput(depthSize)->link(stereo->right);
+        monoLeft->requestFullResolutionOutput()->link(stereo->left);
+        monoRight->requestFullResolutionOutput()->link(stereo->right);
 
         auto align = pipeline.create<dai::node::ImageAlign>();
         stereo->depth.link(align->input);
