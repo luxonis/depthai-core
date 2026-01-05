@@ -41,7 +41,7 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
-#include "depthai/pipeline/datatype/SystemInformationS3.hpp"
+#include "depthai/pipeline/datatype/SystemInformationRVC4.hpp"
 #include "depthai/pipeline/datatype/ThermalConfig.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
@@ -191,8 +191,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<SystemInformation>(metadataStart, serializedObjectSize, data, fd);
             break;
 
-        case DatatypeEnum::SystemInformationS3:
-            return parseDatatype<SystemInformationS3>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::SystemInformationRVC4:
+            return parseDatatype<SystemInformationRVC4>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorData:

@@ -9,7 +9,7 @@ namespace dai {
  *
  * Multiple temperature measurement points and their average
  */
-struct ChipTemperatureS3 {
+struct ChipTemperatureRVC4 {
     /**
      *  CPU Subsystem
      */
@@ -32,6 +32,6 @@ struct ChipTemperatureS3 {
     float average;
 };
 
-DEPTHAI_SERIALIZE_EXT(ChipTemperatureS3, css, mss, nce, soc, average);
+DEPTHAI_SERIALIZE_EXT(ChipTemperatureRVC4, css, mss, nce, soc, average);
 
 }  // namespace dai

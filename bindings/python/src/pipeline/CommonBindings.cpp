@@ -11,7 +11,7 @@
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/common/ChipTemperature.hpp"
-#include "depthai/common/ChipTemperatureS3.hpp"
+#include "depthai/common/ChipTemperatureRVC4.hpp"
 #include "depthai/common/Color.hpp"
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/ConnectionInterface.hpp"
@@ -63,7 +63,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<CameraFeatures> cameraFeatures(m, "CameraFeatures", DOC(dai, CameraFeatures));
     py::class_<MemoryInfo> memoryInfo(m, "MemoryInfo", DOC(dai, MemoryInfo));
     py::class_<ChipTemperature> chipTemperature(m, "ChipTemperature", DOC(dai, ChipTemperature));
-    py::class_<ChipTemperatureS3> chipTemperatureS3(m, "ChipTemperatureS3", DOC(dai, ChipTemperatureS3));
+    py::class_<ChipTemperatureRVC4> chipTemperatureRVC4(m, "ChipTemperatureRVC4", DOC(dai, ChipTemperatureRVC4));
     py::class_<CpuUsage> cpuUsage(m, "CpuUsage", DOC(dai, CpuUsage));
     py::enum_<CameraModel> cameraModel(m, "CameraModel", DOC(dai, CameraModel));
     py::class_<StereoRectification> stereoRectification(m, "StereoRectification", DOC(dai, StereoRectification));
@@ -347,13 +347,13 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("dss", &ChipTemperature::dss)
         .def_readwrite("average", &ChipTemperature::average);
 
-    // ChipTemperatureS3
-    chipTemperatureS3.def(py::init<>())
-        .def_readwrite("css", &ChipTemperatureS3::css)
-        .def_readwrite("mss", &ChipTemperatureS3::mss)
-        .def_readwrite("nce", &ChipTemperatureS3::nce)
-        .def_readwrite("soc", &ChipTemperatureS3::soc)
-        .def_readwrite("average", &ChipTemperatureS3::average);
+    // ChipTemperatureRVC4
+    chipTemperatureRVC4.def(py::init<>())
+        .def_readwrite("css", &ChipTemperatureRVC4::css)
+        .def_readwrite("mss", &ChipTemperatureRVC4::mss)
+        .def_readwrite("nce", &ChipTemperatureRVC4::nce)
+        .def_readwrite("soc", &ChipTemperatureRVC4::soc)
+        .def_readwrite("average", &ChipTemperatureRVC4::average);
 
     // CpuUsage
     cpuUsage.def(py::init<>()).def_readwrite("average", &CpuUsage::average).def_readwrite("msTime", &CpuUsage::msTime);

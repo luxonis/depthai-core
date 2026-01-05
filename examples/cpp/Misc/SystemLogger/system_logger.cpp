@@ -26,6 +26,17 @@ void printSystemInformation(const dai::SystemInformation& info) {
     std::cout << "----------------------------------------" << std::endl;
 }
 
+void printSystemInformation(const dai::SystemInformationRVC4& info) {
+    const float m = 1024.0f * 1024.0f;  // MiB
+    std::cout << "Ddr used / total - " << info.ddrMemoryUsage.used / m << " / " << info.ddrMemoryUsage.total / m << " MiB" << std::endl;
+    std::cout << "Average Cpu usage: " << info.cpuAvgUsage.average * 100.0f << "%" << std::endl;
+
+    const auto& t = info.chipTemperature;
+    std::cout << "Chip temperature - average: " << t.average << ", css: " << t.css << ", mss: " << t.mss << ", nce: " << t.nce << ", soc: " << t.soc
+              << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+}
+
 int main() {
     signal(SIGTERM, signalHandler);
     signal(SIGINT, signalHandler);
@@ -44,11 +55,17 @@ int main() {
     pipeline.start();
     std::cout << "System logger started. Press Ctrl+C to quit." << std::endl;
 
+    auto platform = pipeline.getDefaultDevice()->getPlatform();
     while(pipeline.isRunning() && !quitEvent) {
-        auto sysInfo = sysLogQueue->get<dai::SystemInformation>();
-        if(sysInfo == nullptr) continue;
-
-        printSystemInformation(*sysInfo);
+        if(platform == dai::Platform::RVC2) {
+            auto sysInfo = sysLogQueue->get<dai::SystemInformation>();
+            if(sysInfo == nullptr) continue;
+            printSystemInformation(*sysInfo);
+        } else {
+            auto sysInfo = sysLogQueue->get<dai::SystemInformationRVC4>();
+            if(sysInfo == nullptr) continue;
+            printSystemInformation(*sysInfo);
+        }
     }
 
     // Cleanup

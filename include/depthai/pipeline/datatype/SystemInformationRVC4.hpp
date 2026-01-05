@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "depthai/common/ChipTemperatureS3.hpp"
+#include "depthai/common/ChipTemperatureRVC4.hpp"
 #include "depthai/common/CpuUsage.hpp"
 #include "depthai/common/MemoryInfo.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
@@ -11,28 +11,28 @@
 namespace dai {
 
 /**
- * SystemInformation message for series 3 devices.
+ * SystemInformation message
  * Carries memory usage, cpu usage and chip temperatures.
  */
-class SystemInformationS3 : public Buffer {
+class SystemInformationRVC4 : public Buffer {
    public:
     /**
      * Construct SystemInformation message.
      */
-    SystemInformationS3() = default;
-    virtual ~SystemInformationS3();
+    SystemInformationRVC4() = default;
+    virtual ~SystemInformationRVC4();
 
     MemoryInfo ddrMemoryUsage;
     CpuUsage cpuAvgUsage;
     std::vector<CpuUsage> cpuUsages;
-    ChipTemperatureS3 chipTemperature;
+    ChipTemperatureRVC4 chipTemperature;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
     DatatypeEnum getDatatype() const override {
-        return DatatypeEnum::SystemInformationS3;
+        return DatatypeEnum::SystemInformationRVC4;
     }
 
-    DEPTHAI_SERIALIZE(SystemInformationS3, ddrMemoryUsage, cpuAvgUsage, cpuUsages, chipTemperature);
+    DEPTHAI_SERIALIZE(SystemInformationRVC4, ddrMemoryUsage, cpuAvgUsage, cpuUsages, chipTemperature);
 };
 
 }  // namespace dai
