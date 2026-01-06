@@ -14,7 +14,7 @@ on:
     branches:
       - main
       - develop
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, reopened, labeled]
 
 ###################################
 ###################################
