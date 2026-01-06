@@ -19,7 +19,7 @@ def printSystemInformationRVC4(info: dai.SystemInformationRVC4):
     print(f"Average Cpu usage: {info.cpuAvgUsage.average * 100:.2f}%")
 
     t = info.chipTemperature
-    print(f"Chip temperature - average: {t.average:.2f}, css: {t.css:.2f}, mss: {t.mss:.2f}, nce: {t.nce:.2f}, soc: {t.soc:.2f}")
+    print(f"Chip temperature - average: {t.average:.2f}, cpuss: {t.cpuss:.2f}, gpuss: {t.gpuss:.2f}, mdmss: {t.mdmss:.2f}, video: {t.video:.2f}, ddr: {t.ddr:.2f}, camera: {t.camera:.2f}")
     print("----------------------------------------")
 
 # Create pipeline

@@ -32,8 +32,8 @@ void printSystemInformation(const dai::SystemInformationRVC4& info) {
     std::cout << "Average Cpu usage: " << info.cpuAvgUsage.average * 100.0f << "%" << std::endl;
 
     const auto& t = info.chipTemperature;
-    std::cout << "Chip temperature - average: " << t.average << ", css: " << t.css << ", mss: " << t.mss << ", nce: " << t.nce << ", soc: " << t.soc
-              << std::endl;
+    std::cout << "Chip temperature - average: " << t.average << ", cpuss: " << t.cpuss << ", gpuss: " << t.gpuss << ", mdmss: " << t.mdmss
+              << ", video: " << t.video << ", ddr: " << t.ddr << ", camera: " << t.camera << std::endl;
     std::cout << "----------------------------------------" << std::endl;
 }
 

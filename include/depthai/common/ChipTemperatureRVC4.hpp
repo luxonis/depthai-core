@@ -13,25 +13,33 @@ struct ChipTemperatureRVC4 {
     /**
      *  CPU Subsystem
      */
-    float css;
+    float cpuss;
     /**
-     *  Media Subsystem
+     *  GPU Subsystem
      */
-    float mss;
+    float gpuss;
     /**
-     *  TODO: What does nce stand for?
+     *  Modem Subsystem
      */
-    float nce;
+    float mdmss;
     /**
-     *  SoC
+     *  Video
      */
-    float soc;
+    float video;
+    /**
+     *  DDR Memory
+     */
+    float ddr;
+    /**
+     *  Camera
+     */
+    float camera;
     /**
      *  Average of measurements
      */
     float average;
 };
 
-DEPTHAI_SERIALIZE_EXT(ChipTemperatureRVC4, css, mss, nce, soc, average);
+DEPTHAI_SERIALIZE_EXT(ChipTemperatureRVC4, cpuss, gpuss, mdmss, video, ddr, camera, average);
 
 }  // namespace dai

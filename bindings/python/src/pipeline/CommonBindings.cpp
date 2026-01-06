@@ -349,10 +349,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // ChipTemperatureRVC4
     chipTemperatureRVC4.def(py::init<>())
-        .def_readwrite("css", &ChipTemperatureRVC4::css)
-        .def_readwrite("mss", &ChipTemperatureRVC4::mss)
-        .def_readwrite("nce", &ChipTemperatureRVC4::nce)
-        .def_readwrite("soc", &ChipTemperatureRVC4::soc)
+        .def_readwrite("cpuss", &ChipTemperatureRVC4::cpuss)
+        .def_readwrite("gpuss", &ChipTemperatureRVC4::gpuss)
+        .def_readwrite("mdmss", &ChipTemperatureRVC4::mdmss)
+        .def_readwrite("video", &ChipTemperatureRVC4::video)
+        .def_readwrite("ddr", &ChipTemperatureRVC4::ddr)
+        .def_readwrite("camera", &ChipTemperatureRVC4::camera)
         .def_readwrite("average", &ChipTemperatureRVC4::average);
 
     // CpuUsage
