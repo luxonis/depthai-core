@@ -468,7 +468,7 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET)
     )
 endif()
 
-if(DEPTHAI_HAVE_HOUSING_COORDINATES)
+if(DEPTHAI_GENERATE_HOUSING_COORDS)
     include(DepthaiGenerateHousingCoordinates)
     DepthaiGenerateHousingCoordinates(
         ${CMAKE_CURRENT_BINARY_DIR}/src/HousingCoordinates.cpp        # Output file
@@ -489,7 +489,7 @@ set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_A
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
-if(DEPTHAI_HAVE_HOUSING_COORDINATES)
+if(DEPTHAI_GENERATE_HOUSING_COORDS)
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_HOUSING_COORDINATES)
 endif()
 
