@@ -1,9 +1,9 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <tuple>
-#include <optional>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/EepromData.hpp"
