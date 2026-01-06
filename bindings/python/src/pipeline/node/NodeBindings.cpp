@@ -521,7 +521,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, ThreadedNode, blockEvent));
 
     pyBlockEvent.def("cancel", &BlockPipelineEvent::cancel, DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent, cancel))
-        .def("setQueueSize", &BlockPipelineEvent::setQueueSize, py::arg("size"), DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent, setQueueSize))
+        .def("setQueueSize",
+             &BlockPipelineEvent::setQueueSize,
+             py::arg("size"),
+             DOC(dai, utility, PipelineEventDispatcherInterface, BlockPipelineEvent, setQueueSize))
         .def("setEndTimestamp",
              &BlockPipelineEvent::setEndTimestamp,
              py::arg("timestamp"),
