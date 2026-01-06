@@ -288,28 +288,41 @@ class NodeEventAggregation {
     // Calculate and update FPS statistics from the given buffer
     inline void updateFpsStats(NodeState::Timing& timing, utility::CircularBuffer<FpsMeasurement>& buffer) {
         using namespace std::chrono;
-        const size_t delta = 2;
-        const float alpha = 0.1f;
-        const float expectedTimeFactor = 1.5f;
-        const float decayA = 2;
-        const float decayB = 10;
+        constexpr auto WINDOW_DURATION = seconds(10);
+        const auto windowStart = steady_clock::now() - WINDOW_DURATION;
 
         if(buffer.size() < 2) return;
-        // Consume fps entries, update state with exponential smoothing with a gaussian-ish decay
-        for(auto i = buffer.size() - 1; i >= delta; --i) {
-            auto& last1 = buffer.at(i);
-            auto& last2 = buffer.at(i - delta);
-            auto timeDiff = duration_cast<microseconds>(last1.time - last2.time).count() / delta;
-            auto newFps = 1e6f / (float)timeDiff;
-            timing.fps = timing.fps + alpha * (newFps - timing.fps);
-            auto nextExpectedTime = buffer.last().time + microseconds((long)(1e6 * (double)expectedTimeFactor / (double)timing.fps));
-            auto offsetNow = steady_clock::now() - eventOffsetBuffer.getAverage();
-            if(nextExpectedTime < offsetNow) {
-                // Decay fps towards 0 if we're late
-                float delay = (float)duration_cast<milliseconds>(offsetNow - nextExpectedTime).count() / 1000.0f;
-                float decayFactor = exp(-powf(delay / decayA, 2) / decayB);
-                timing.fps *= decayFactor;
+
+        size_t startIndex = 0;
+        if(buffer.at(0).time < windowStart) {
+            bool found = false;
+            for(size_t i = 0; i < buffer.size(); ++i) {
+                if(buffer.at(i).time >= windowStart) {
+                    startIndex = i;
+                    found = true;
+                    break;
+                }
             }
+            if(!found) {
+                timing.fps = 0;
+                buffer.clear();
+                return;
+            }
+        }
+
+        double sumMicros = 0.0;
+        size_t intervals = 0;
+        for(size_t i = startIndex + 1; i < buffer.size(); ++i) {
+            auto timeDiff = duration_cast<microseconds>(buffer.at(i).time - buffer.at(i - 1).time).count();
+            if(timeDiff > 0) {
+                sumMicros += static_cast<double>(timeDiff);
+                ++intervals;
+            }
+        }
+        if(intervals > 0) {
+            timing.fps = static_cast<float>(1e6 / (sumMicros / static_cast<double>(intervals)));
+        } else {
+            timing.fps = 0;
         }
         buffer.clear();
     }
