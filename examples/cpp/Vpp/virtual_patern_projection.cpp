@@ -13,43 +13,44 @@
 **/
 
 // Nicely visualize a depth map.
-void showDepth(const cv::Mat& depth_frame_in,
-               const std::string& window_name = "Depth",
-               int min_distance = 500,
-               int max_distance = 5000,
-               int colormap = cv::COLORMAP_TURBO,
-               bool use_log = false) {
-    cv::Mat depth_frame = depth_frame_in.clone();
+// The input depthFrameIn is assumed to be the raw disparity (CV_16UC1 or similar)
+// received from the DepthAI pipeline.
+void showDepth(const cv::Mat& depthFrameIn,
+               const std::string& windowName = "Depth",
+               int minDistance = 500,
+               int maxDistance = 5000,
+               int colorMap = cv::COLORMAP_TURBO,
+               bool useLog = false) {
+    cv::Mat depthFrame = depthFrameIn.clone();
 
-    cv::Mat float_frame;
-    depth_frame.convertTo(float_frame, CV_32FC1);
+    cv::Mat floatFrame;
+    depthFrame.convertTo(floatFrame, CV_32FC1);
 
-    // # Optionally apply log scaling
-    if(use_log) {
-        // depth_frame = np.log(depth_frame + 1)
-        cv::log(float_frame + 1, float_frame);
+    // Optionally apply log scaling
+    if(useLog) {
+        cv::log(floatFrame + 1, floatFrame);
     }
 
-    cv::Mat upper_clamped;
-    cv::min(float_frame, max_distance, upper_clamped);
+    cv::Mat upperClamped;
+    cv::min(floatFrame, maxDistance, upperClamped);
 
-    cv::Mat clipped_frame;
-    cv::max(upper_clamped, min_distance, clipped_frame);
+    cv::Mat clippedFrame;
+    cv::max(upperClamped, minDistance, clippedFrame);
 
-    double alpha = 255.0 / max_distance;
-    clipped_frame.convertTo(clipped_frame, CV_8U, alpha);
+    double alpha = 255.0 / maxDistance;
+    clippedFrame.convertTo(clippedFrame, CV_8U, alpha);
 
-    cv::Mat depth_color;
-    cv::applyColorMap(clipped_frame, depth_color, colormap);
+    cv::Mat depthColor;
+    cv::applyColorMap(clippedFrame, depthColor, colorMap);
 
-    cv::imshow(window_name, depth_color);
+    cv::imshow(windowName, depthColor);
 }
 
 int main() {
     int fps = 20;
     dai::Pipeline pipeline;
 
-    // Left Right cameras
+    // Left / Right cameras
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
     auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
 
@@ -61,10 +62,10 @@ int main() {
     monoLeftOut->link(rectification->input1);
     monoRightOut->link(rectification->input2);
 
-    // Neural Depth Builder
+    // Neural Depth builder
     auto neuralDepth = pipeline.create<dai::node::NeuralDepth>()->build(*monoLeftOut, *monoRightOut, dai::DeviceModelZoo::NEURAL_DEPTH_NANO);
 
-    // Vpp node Builder
+    // VPP node builder
     auto vpp = pipeline.create<dai::node::Vpp>()->build(rectification->output1, rectification->output2, neuralDepth->disparity, neuralDepth->confidence);
 
     // Set initial parameters
@@ -72,37 +73,41 @@ int main() {
     vpp->initialConfig->maxPatchSize = 2;
     vpp->initialConfig->patchColoringType = dai::VppConfig::PatchColoringType::RANDOM;
     vpp->initialConfig->uniformPatch = true;
-    vpp->initialConfig->maxFPS = (float)fps;
+    vpp->initialConfig->maxFPS = static_cast<float>(fps);
 
-    auto& injectionParams = vpp->initialConfig->injectionParameters;
-    injectionParams.textureThreshold = 3.0f;
-    injectionParams.useInjection = true;
+    auto& injectionParameters = vpp->initialConfig->injectionParameters;
+    injectionParameters.textureThreshold = 3.0f;
+    injectionParameters.useInjection = true;
 
-    // Stereo node
+    // Stereo depth node
     auto stereoNode = pipeline.create<dai::node::StereoDepth>();
     stereoNode->setRectification(false);
+
     vpp->leftOut.link(stereoNode->left);
     vpp->rightOut.link(stereoNode->right);
 
-    // Create output queues
-    auto vppOutputLeft = vpp->leftOut.createOutputQueue();
-    auto vppOutputRight = vpp->rightOut.createOutputQueue();
+    // Output queues
+    auto vppLeftQueue = vpp->leftOut.createOutputQueue();
+    auto vppRightQueue = vpp->rightOut.createOutputQueue();
     auto depthQueue = stereoNode->depth.createOutputQueue();
 
     std::cout << "Pipeline started successfully" << std::endl;
 
     pipeline.start();
+
     while(true) {
-        auto vppOutLeft = vppOutputLeft->get<dai::ImgFrame>();
-        auto vppOutRight = vppOutputRight->get<dai::ImgFrame>();
-        auto depth = depthQueue->get<dai::ImgFrame>();
+        auto vppLeftFrame = vppLeftQueue->get<dai::ImgFrame>();
+        auto vppRightFrame = vppRightQueue->get<dai::ImgFrame>();
+        auto depthFrame = depthQueue->get<dai::ImgFrame>();
 
-        cv::imshow("vpp_left", vppOutLeft->getCvFrame());
-        cv::imshow("vpp_right", vppOutRight->getCvFrame());
+        cv::imshow("vppLeft", vppLeftFrame->getCvFrame());
+        cv::imshow("vppRight", vppRightFrame->getCvFrame());
 
-        showDepth(depth->getCvFrame());
+        showDepth(depthFrame->getCvFrame());
 
-        if(cv::waitKey(1) == 'q') break;
+        if(cv::waitKey(1) == 'q') {
+            break;
+        }
     }
 
     return 0;

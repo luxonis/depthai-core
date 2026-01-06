@@ -6,7 +6,7 @@ import depthai as dai
   ┌──────┐       ┌───────────────┐ ----------------left------------------------------> ┌─────┐
   | Left | ----> |               |                                                     |     |
   └──────┘       |               | ----------------right-----------------------------> |     | -left--> ┌────────┐
-                 | Rectification |                                                     | Vpp |          | Stereo | --depth-> 
+                 | Rectification |                                                     | Vpp |          | Stereo | --depth->
   ┌───────┐      |               | --left_low_res---> ┌──────────────┐ --disparity---> |     |          |        |
   | Right | ---> |               |                    | NeuralStereo |                 |     | -right-> └────────┘
   └───────┘      └───────────────┘ --right_low_res--> └──────────────┘ --confidence--> └─────┘
@@ -53,8 +53,8 @@ if __name__ == "__main__":
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     monoLeftOut = monoLeft.requestFullResolutionOutput()
     monoRightOut = monoRight.requestFullResolutionOutput()
-    
-    # Rectification node 
+
+    # Rectification node
     rectification = pipeline.create(dai.node.Rectification)
     monoLeftOut.link(rectification.input1)
     monoRightOut.link(rectification.input2)
@@ -75,13 +75,13 @@ if __name__ == "__main__":
     )
     # set initial parameters
     vpp.initialConfig.blending = 0.5
-    vpp.initialConfig.maxPatchSize = 2 
+    vpp.initialConfig.maxPatchSize = 2
     vpp.initialConfig.patchColoringType = dai.VppConfig.PatchColoringType.RANDOM
-    vpp.initialConfig.uniformPatch = True 
-    vpp.initialConfig.maxFPS = fps 
+    vpp.initialConfig.uniformPatch = True
+    vpp.initialConfig.maxFPS = fps
     injection_params = vpp.initialConfig.injectionParameters
     injection_params.textureThreshold = 3.0
-    injection_params.useInjection = True 
+    injection_params.useInjection = True
 
     # for runtime parameter control use vpp.inputConfig queue
     # config_queue = vpp.inputConfig.createInputQueue()
