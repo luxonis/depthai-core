@@ -7,7 +7,7 @@
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/NeuralAssistedStereo.hpp"
 
-TEST_CASE("[NeuralAssistedStereo] Check that I am getting output from the subdondes") {
+TEST_CASE("[NeuralAssistedStereo] Check that I am getting output from the subnodes") {
     // Create pipeline
     dai::Pipeline p;
     auto cameraLeft = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
