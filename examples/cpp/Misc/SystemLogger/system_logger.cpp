@@ -29,6 +29,7 @@ void printSystemInformation(const dai::SystemInformation& info) {
 void printSystemInformation(const dai::SystemInformationRVC4& info) {
     const float m = 1024.0f * 1024.0f;  // MiB
     std::cout << "Ddr used / total - " << info.ddrMemoryUsage.used / m << " / " << info.ddrMemoryUsage.total / m << " MiB" << std::endl;
+    std::cout << "Device process memory usage: " << info.processMemoryUsage / 1024.0f << " MiB" << std::endl;
     std::cout << "Average Cpu usage: " << info.cpuAvgUsage.average * 100.0f << "%" << std::endl;
 
     const auto& t = info.chipTemperature;

@@ -23,6 +23,7 @@ class SystemInformationRVC4 : public Buffer {
     virtual ~SystemInformationRVC4();
 
     MemoryInfo ddrMemoryUsage;
+    int64_t processMemoryUsage;
     CpuUsage cpuAvgUsage;
     std::vector<CpuUsage> cpuUsages;
     ChipTemperatureRVC4 chipTemperature;
@@ -32,7 +33,7 @@ class SystemInformationRVC4 : public Buffer {
         return DatatypeEnum::SystemInformationRVC4;
     }
 
-    DEPTHAI_SERIALIZE(SystemInformationRVC4, ddrMemoryUsage, cpuAvgUsage, cpuUsages, chipTemperature);
+    DEPTHAI_SERIALIZE(SystemInformationRVC4, ddrMemoryUsage, processMemoryUsage, cpuAvgUsage, cpuUsages, chipTemperature);
 };
 
 }  // namespace dai

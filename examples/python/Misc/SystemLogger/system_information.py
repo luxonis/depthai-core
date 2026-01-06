@@ -16,6 +16,7 @@ def printSystemInformation(info: dai.SystemInformation):
 def printSystemInformationRVC4(info: dai.SystemInformationRVC4):
     m = 1024 * 1024 # MiB
     print(f"Ddr used / total - {info.ddrMemoryUsage.used / m:.2f} / {info.ddrMemoryUsage.total / m:.2f} MiB")
+    print(f"Device process memory usage: {info.processMemoryUsage / 1024:.2f} MiB")
     print(f"Average Cpu usage: {info.cpuAvgUsage.average * 100:.2f}%")
 
     t = info.chipTemperature
