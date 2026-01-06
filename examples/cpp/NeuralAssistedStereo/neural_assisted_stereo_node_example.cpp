@@ -6,38 +6,38 @@
 #include <opencv2/opencv.hpp>
 
 // Nicely visualize a depth map.
-// The input depth_frame is assumed to be the raw disparity (CV_16UC1 or similar)
+// The input depthFrame is assumed to be the raw disparity (CV_16UC1 or similar)
 // received from the DepthAI pipeline.
-void showDepth(const cv::Mat& depth_frame_in,
-               const std::string& window_name = "Depth",
-               int min_distance = 500,
-               int max_distance = 5000,
+void showDepth(const cv::Mat& depthFrame_in,
+               const std::string& windowName = "Depth",
+               int minDistance = 500,
+               int maxDistance = 5000,
                int colormap = cv::COLORMAP_TURBO,
-               bool use_log = false) {
-    cv::Mat depth_frame = depth_frame_in.clone();
+               bool useLog = false) {
+    cv::Mat depthFrame = depthFrame_in.clone();
 
     cv::Mat float_frame;
-    depth_frame.convertTo(float_frame, CV_32FC1);
+    depthFrame.convertTo(float_frame, CV_32FC1);
 
     // # Optionally apply log scaling
-    if(use_log) {
-        // depth_frame = np.log(depth_frame + 1)
+    if(useLog) {
+        // depthFrame = np.log(depthFrame + 1)
         cv::log(float_frame + 1, float_frame);
     }
 
     cv::Mat upper_clamped;
-    cv::min(float_frame, max_distance, upper_clamped);
+    cv::min(float_frame, maxDistance, upper_clamped);
 
     cv::Mat clipped_frame;
-    cv::max(upper_clamped, min_distance, clipped_frame);
+    cv::max(upper_clamped, minDistance, clipped_frame);
 
-    double alpha = 255.0 / max_distance;
+    double alpha = 255.0 / maxDistance;
     clipped_frame.convertTo(clipped_frame, CV_8U, alpha);
 
     cv::Mat depth_color;
     cv::applyColorMap(clipped_frame, depth_color, colormap);
 
-    cv::imshow(window_name, depth_color);
+    cv::imshow(windowName, depth_color);
 }
 
 int main() {

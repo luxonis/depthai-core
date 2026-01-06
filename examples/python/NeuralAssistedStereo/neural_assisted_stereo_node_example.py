@@ -3,38 +3,38 @@ import cv2 as cv
 import depthai as dai
 
 
-def showDepth(depth_frame, window_name="Depth", min_distance=500, max_distance=5000,
-               colormap=cv.COLORMAP_TURBO, use_log=False):
+def showDepth(depthFrame, windowName="Depth", minDistance=500, maxDistance=5000,
+               colormap=cv.COLORMAP_TURBO, useLog=False):
     """
     Nicely visualize a depth map.
 
     Args:
-        depth_frame (np.ndarray): Depth frame (in millimeters).
-        window_name (str): OpenCV window name.
-        min_distance (int): Minimum depth to display (in mm).
-        max_distance (int): Maximum depth to display (in mm).
+        depthFrame (np.ndarray): Depth frame (in millimeters).
+        windowName (str): OpenCV window name.
+        minDistance (int): Minimum depth to display (in mm).
+        maxDistance (int): Maximum depth to display (in mm).
         colormap (int): OpenCV colormap (e.g., cv.COLORMAP_JET, COLORMAP_TURBO, etc.).
-        use_log (bool): Apply logarithmic scaling for better visual contrast.
+        useLog (bool): Apply logarithmic scaling for better visual contrast.
 
     Example:
         frame = depth.getCvFrame()
         showDepth(frame)
     """
     # Convert to float for processing
-    depth_frame = depth_frame.astype(np.float32)
+    depthFrame = depthFrame.astype(np.float32)
 
     # Optionally apply log scaling
-    if use_log:
-        depth_frame = np.log(depth_frame + 1)
+    if useLog:
+        depthFrame = np.log(depthFrame + 1)
 
     # Clip to defined range (avoid far-out values)
-    depth_frame = np.uint8(np.clip(depth_frame, min_distance, max_distance) / max_distance * 255)
+    depthFrame = np.uint8(np.clip(depthFrame, minDistance, maxDistance) / maxDistance * 255)
 
     # Apply color map
-    depth_color = cv.applyColorMap(depth_frame, colormap)
+    depth_color = cv.applyColorMap(depthFrame, colormap)
 
     # Show in a window
-    cv.imshow(window_name, depth_color)
+    cv.imshow(windowName, depth_color)
 
 
 if __name__ == "__main__":
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         pipeline.start()
         while pipeline.isRunning():
             disparity = disparityQueue.get()
-            showDepth(disparity.getCvFrame(), min_distance=100, max_distance=6000, use_log=False)
+            showDepth(disparity.getCvFrame(), minDistance=100, maxDistance=6000, useLog=False)
 
             key = cv.waitKey(1)
             if key == ord('q'):
