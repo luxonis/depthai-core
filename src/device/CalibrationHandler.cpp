@@ -12,8 +12,8 @@
 
 #include "depthai/common/CameraInfo.hpp"
 #include "depthai/common/Extrinsics.hpp"
-#include "depthai/common/Point3f.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
+#include "depthai/common/Point3f.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
@@ -535,25 +535,21 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
     return extrinsics;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
-        const HousingCoordinateSystem housingCS,
-        bool useSpecTranslation,
-        CameraBoardSocket& originSocket) const 
-{
+std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
+                                                                              bool useSpecTranslation,
+                                                                              CameraBoardSocket& originSocket) const {
     // Define scale parameter for mm to cm conversion
     constexpr float MM_TO_CM_SCALE = 10.0f;
-    
+
     const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
-    
+
     originSocket = housingExtrinsics.toCameraSocket;
 
     // Convert CameraBoardSocket to HousingCoordinateSystem (they have the same enum order)
-    HousingCoordinateSystem housingOrigin = static_cast<HousingCoordinateSystem>(
-        static_cast<int32_t>(housingExtrinsics.toCameraSocket)
-    );
+    HousingCoordinateSystem housingOrigin = static_cast<HousingCoordinateSystem>(static_cast<int32_t>(housingExtrinsics.toCameraSocket));
 
-    auto housingRotation        = housingExtrinsics.rotationMatrix;
-    auto housingTranslation     = housingExtrinsics.translation;      // Point3f
+    auto housingRotation = housingExtrinsics.rotationMatrix;
+    auto housingTranslation = housingExtrinsics.translation;          // Point3f
     auto housingSpecTranslation = housingExtrinsics.specTranslation;  // Point3f
 
     // ------------------------------------------------------------
@@ -561,7 +557,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
     // ------------------------------------------------------------
     if(useSpecTranslation) {
         const auto& housingData = getHousingCoordinates();
-        
+
         if(!eepromData.productName.empty()) {
             auto productIt = housingData.find(eepromData.productName);
             if(productIt != housingData.end()) {
@@ -569,9 +565,8 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
                 if(housingIt != productIt->second.end()) {
                     // Get the translation from the database (in mm) and convert to cm
                     const auto& dbTranslation = housingIt->second;
-                    housingSpecTranslation = Point3f(-dbTranslation[0] / MM_TO_CM_SCALE, 
-                                                    -dbTranslation[1] / MM_TO_CM_SCALE, 
-                                                    -dbTranslation[2] / MM_TO_CM_SCALE);
+                    housingSpecTranslation =
+                        Point3f(-dbTranslation[0] / MM_TO_CM_SCALE, -dbTranslation[1] / MM_TO_CM_SCALE, -dbTranslation[2] / MM_TO_CM_SCALE);
                 }
             }
         }
@@ -602,7 +597,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
     // ------------------------------------------------------------
     if(useSpecTranslation && housingCS != HousingCoordinateSystem::AUTO) {
         const auto& housingData = getHousingCoordinates();
-        
+
         if(!eepromData.productName.empty()) {
             auto productIt = housingData.find(eepromData.productName);
             if(productIt != housingData.end()) {
@@ -610,7 +605,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
                 if(requestedHousingIt != productIt->second.end()) {
                     // Get the translation from the database (in mm) and convert to cm
                     const auto& requestedDbTranslation = requestedHousingIt->second;
-                    
+
                     // Subtract the requested housing translation (converting from mm to cm)
                     T_HousingToHousingOrigin[0][3] += requestedDbTranslation[0] / MM_TO_CM_SCALE;
                     T_HousingToHousingOrigin[1][3] += requestedDbTranslation[1] / MM_TO_CM_SCALE;
@@ -623,15 +618,12 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(
     return T_HousingToHousingOrigin;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(
-        CameraBoardSocket srcCamera,
-        const HousingCoordinateSystem housingCS,
-        bool useSpecTranslation) const 
-{
+std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(CameraBoardSocket srcCamera,
+                                                                          const HousingCoordinateSystem housingCS,
+                                                                          bool useSpecTranslation) const {
     // Ensure we have calibration data for the requested source camera
     if(eepromData.cameraData.find(srcCamera) == eepromData.cameraData.end()) {
-        throw std::runtime_error(
-            "There is no Camera data available corresponding to the requested source cameraId");
+        throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
     }
 
     std::vector<std::vector<float>> camToHousing;
@@ -648,14 +640,11 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(
     // These are provided by the calibration data.
     // ------------------------------------------------------------
 
-    std::vector<std::vector<float>> HousingToHousingOrigin =
-        getHousingToHousingOrigin(housingCS, useSpecTranslation, housingOriginCamera);
+    std::vector<std::vector<float>> HousingToHousingOrigin = getHousingToHousingOrigin(housingCS, useSpecTranslation, housingOriginCamera);
 
-    std::vector<std::vector<float>> HousingOriginToOrigin =
-        getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
+    std::vector<std::vector<float>> HousingOriginToOrigin = getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
 
-    std::vector<std::vector<float>> camToOrigin =
-        getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera2);
+    std::vector<std::vector<float>> camToOrigin = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera2);
 
     // The "origin" for both lookups must be the same camera
     if(originCamera1 != originCamera2) {
@@ -666,8 +655,8 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(
     // 2. To combine cam_src → origin with origin → housing_origin,
     //    we need the matrices:
     //         origin → housing_origin
-    //         housing_origin → housing  
-    //    But what we have: 
+    //         housing_origin → housing
+    //    But what we have:
     //         housing_origin → origin
     //         housing → housing_origin
     //    So we invert that SE3 transform first.
