@@ -2,9 +2,17 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
+/**
+  ┌──────┐       ┌───────────────┐ ----------------left------------------------------> ┌─────┐
+  | Left | ----> |               |                                                     |     |
+  └──────┘       |               | ----------------right-----------------------------> |     | -left--> ┌────────┐
+                 | Rectification |                                                     | Vpp |          | Stereo | --depth->
+  ┌───────┐      |               | --left_low_res---> ┌──────────────┐ --disparity---> |     |          |        |
+  | Right | ---> |               |                    | NeuralStereo |                 |     | -right-> └────────┘
+  └───────┘      └───────────────┘ --right_low_res--> └──────────────┘ --confidence--> └─────┘
+**/
+
 // Nicely visualize a depth map.
-// The input depth_frame is assumed to be the raw disparity (CV_16UC1 or similar)
-// received from the DepthAI pipeline.
 void showDepth(const cv::Mat& depth_frame_in,
                const std::string& window_name = "Depth",
                int min_distance = 500,
