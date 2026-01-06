@@ -1,5 +1,9 @@
 name: DepthAI Core CI/CD
 
+concurrency:
+  group: depthai-core-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
