@@ -50,8 +50,6 @@ if __name__ == "__main__":
 
     neuralAssistedStereo = pipeline.create(dai.node.NeuralAssistedStereo).build(monoLeftOut, monoRightOut)
 
-    neuralAssistedStereo.vpp.initialConfig.blending = 0.5
-
     disparityQueue = neuralAssistedStereo.disparity.createOutputQueue()
 
     with pipeline:
