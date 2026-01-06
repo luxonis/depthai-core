@@ -172,6 +172,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+        case DatatypeEnum::VppConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:

@@ -33,6 +33,7 @@
 #include "depthai/properties/ToFProperties.hpp"
 #include "depthai/properties/UVCProperties.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
+#include "depthai/properties/VppProperties.hpp"
 #include "depthai/properties/WarpProperties.hpp"
 #include "depthai/properties/internal/PipelineEventAggregationProperties.hpp"
 #include "depthai/properties/internal/XLinkInProperties.hpp"
@@ -91,6 +92,7 @@ VideoEncoderProperties::~VideoEncoderProperties() = default;
 WarpProperties::~WarpProperties() = default;
 GlobalProperties::~GlobalProperties() = default;
 CastProperties::~CastProperties() = default;
+VppProperties::~VppProperties() = default;
 
 // RVC2_FW does not need these properties
 #ifndef RVC2_FW
