@@ -295,6 +295,13 @@ class NodeEventAggregation {
         const float decayB = 10;
 
         if(buffer.size() < delta) return;
+        // If fps is zero, initialize it with the average fps over the buffer
+        if(timing.fps == 0.0f) {
+            const auto& first = buffer.first();
+            const auto& last = buffer.last();
+            auto timeDiff = duration_cast<microseconds>(last.time - first.time).count() / (buffer.size() - 1);
+            timing.fps = 1e6f / (float)timeDiff;
+        }
         // Consume fps entries, update state with exponential smoothing with a gaussian-ish decay
         for(auto i = 0U; i < buffer.size() - delta; --i) {
             auto& last1 = buffer.at(i + delta);
