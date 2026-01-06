@@ -288,30 +288,38 @@ class NodeEventAggregation {
     // Calculate and update FPS statistics from the given buffer
     inline void updateFpsStats(NodeState::Timing& timing, utility::CircularBuffer<FpsMeasurement>& buffer) {
         using namespace std::chrono;
-        const size_t delta = 2;
+        const size_t delta = 9;
         const float alpha = 0.1f;
         const float expectedTimeFactor = 1.5f;
         const float decayA = 2;
         const float decayB = 10;
 
-        if(buffer.size() < 2) return;
+        if(buffer.size() < delta) return;
         // Consume fps entries, update state with exponential smoothing with a gaussian-ish decay
-        for(auto i = buffer.size() - 1; i >= delta; --i) {
-            auto& last1 = buffer.at(i);
-            auto& last2 = buffer.at(i - delta);
+        for(auto i = 0U; i < buffer.size() - delta; --i) {
+            auto& last1 = buffer.at(i + delta);
+            auto& last2 = buffer.at(i);
             auto timeDiff = duration_cast<microseconds>(last1.time - last2.time).count() / delta;
             auto newFps = 1e6f / (float)timeDiff;
             timing.fps = timing.fps + alpha * (newFps - timing.fps);
-            auto nextExpectedTime = buffer.last().time + microseconds((long)(1e6 * (double)expectedTimeFactor / (double)timing.fps));
-            auto offsetNow = steady_clock::now() - eventOffsetBuffer.getAverage();
-            if(nextExpectedTime < offsetNow) {
-                // Decay fps towards 0 if we're late
-                float delay = (float)duration_cast<milliseconds>(offsetNow - nextExpectedTime).count() / 1000.0f;
-                float decayFactor = exp(-powf(delay / decayA, 2) / decayB);
-                timing.fps *= decayFactor;
-            }
+        }
+        auto nextExpectedTime = buffer.last().time + microseconds((long)(1e6 * (double)expectedTimeFactor / (double)timing.fps));
+        auto offsetNow = steady_clock::now() - eventOffsetBuffer.getAverage();
+        if(nextExpectedTime < offsetNow) {
+            // Decay fps towards 0 if we're late
+            float delay = (float)duration_cast<milliseconds>(offsetNow - nextExpectedTime).count() / 1000.0f;
+            float decayFactor = exp(-powf(delay / decayA, 2) / decayB);
+            timing.fps *= decayFactor;
+        }
+        // Keep only the last delta-1 entries in the buffer
+        std::vector<FpsMeasurement> tail(delta - 1);
+        for(auto i = 0U; i < delta - 1; ++i) {
+            tail[i] = buffer.at(buffer.size() - delta + 1 + i);
         }
         buffer.clear();
+        for(auto& v : tail) {
+            buffer.add(v);
+        }
     }
     // Calculate and update queue size statistics
     inline void updateQueueStats(NodeState::QueueStats& queueStats, const utility::CircularBuffer<uint32_t>& buffer) {
@@ -376,9 +384,10 @@ class NodeEventAggregation {
                 break;
         }
         bool addedEvent = false;
-        if(event.interval == PipelineEvent::Interval::NONE && event.type != PipelineEvent::Type::INPUT && event.type != PipelineEvent::Type::OUTPUT) {
+        if(event.interval == PipelineEvent::Interval::NONE && event.type != PipelineEvent::Type::INPUT && event.type != PipelineEvent::Type::OUTPUT
+           && event.status == PipelineEvent::Status::SUCCESS) {
             addedEvent = updatePingBuffers(event);
-        } else if(event.interval != PipelineEvent::Interval::NONE) {
+        } else if(event.interval != PipelineEvent::Interval::NONE && event.status == PipelineEvent::Status::SUCCESS) {
             addedEvent = updateIntervalBuffers(event);
         }
         if(addedEvent && std::chrono::steady_clock::now() - lastUpdated >= std::chrono::milliseconds(statsUpdateIntervalMs)) {
