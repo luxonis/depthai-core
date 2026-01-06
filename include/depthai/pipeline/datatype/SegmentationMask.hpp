@@ -7,6 +7,7 @@
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/utility/span.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -27,7 +28,6 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     size_t width = 0;
     size_t height = 0;
     std::optional<std::vector<std::string>> labels;
-    std::vector<std::uint8_t> containedIndices;
 
    public:
     using Buffer::getSequenceNum;
@@ -46,10 +46,6 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::SegmentationMask;
     }
-    /**
-     * Common API
-     */
-
     /**
      * Returns the width of the segmentation mask.
      */
@@ -71,6 +67,18 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
      * @param frame Frame must be of type GRAY8
      */
     void setMask(dai::ImgFrame& frame);
+
+    /**
+     * Sets the segmentation mask from a byte span without an extra temporary vector.
+     * The span size must be equal to width * height.
+     */
+    void setMask(span<const std::uint8_t> mask, size_t width, size_t height);
+
+    /**
+     * Prepares internal storage for writing and returns a mutable view to it.
+     * The caller must fill exactly width * height bytes.
+     */
+    span<std::uint8_t> prepareMask(size_t width, size_t height);
 
     /**
      * Sets the class labels associated with the segmentation mask.
@@ -109,12 +117,21 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     std::vector<uint8_t> getUniqueIndices() const;
 
     /**
-     * Returns the class labels associated with the segmentation mask. If no labels are set, returns std::nullopt.
+     * Returns all class labels associated with the segmentation mask. If no labels are set, returns std::nullopt.
      */
     std::optional<std::vector<std::string>> getLabels() const;
 
+    /**
+     * Returns a binary mask where pixels belonging to the specified instance/class index are set to 1, others to 0. If mask data is not set, returns
+     * std::nullopt.
+     */
+
     std::optional<std::vector<std::uint8_t>> getMaskByIndex(uint8_t index) const;
 
+    /**
+     * Returns a binary mask where pixels belonging to the specified class label are set to 1, others to 0. If labels are not set or label not found, returns
+     * std::nullopt.
+     */
     std::optional<std::vector<std::uint8_t>> getMaskByLabel(const std::string& label) const;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

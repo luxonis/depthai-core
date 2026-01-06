@@ -2,8 +2,8 @@
 #include <spdlog/async_logger.h>
 
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
-#include "pipeline/utilities/NNDataViewer.hpp"
 
 namespace dai {
 namespace utilities {
@@ -15,13 +15,14 @@ void parseSegmentationMask(dai::NNData& nnData,
                            dai::SegmentationParserConfig& config,
                            std::shared_ptr<spdlog::async_logger>& logger);
 
-// void parseSingleChannelSegmentationMask(const dai::NNData& nnData,
-//                                         dai::SegmentationMask& outSegmentationMask,
-//                                         dai::SegmentationParserConfig& config,
-//                                         std::shared_ptr<spdlog::async_logger>& logger);
-
 template <typename T>
-void thresholdAndArgmaxTensor(std::vector<uint8_t>& dst, dai::NNDataViewer&, float threshold, int stepSize = 1);
+void thresholdAndArgmaxTensor(dai::SegmentationMask& dst,
+                              dai::NNData& nnData,
+                              dai::TensorInfo& tensorInfo,
+                              dai::SegmentationParserConfig& config,
+                              std::shared_ptr<spdlog::async_logger>& logger);
+
+void thresholdAndArgmaxFp16Tensor(dai::SegmentationMask& dst, dai::NNData& nnData, dai::TensorInfo& tensorInfo, dai::SegmentationParserConfig& config);
 
 }  // namespace SegmentationParserUtils
 }  // namespace utilities

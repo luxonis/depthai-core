@@ -3,6 +3,8 @@
 #include <fp16/fp16.h>
 #include <spdlog/async_logger.h>
 
+#include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <vector>
@@ -14,6 +16,9 @@ namespace dai {
 namespace utilities {
 namespace SegmentationParserUtils {
 
+constexpr uint8_t BACKGROUND_INDEX = 255;
+constexpr int MAX_CLASS_INDEX = 254;
+
 template <typename T>
 inline T loadT(const uint8_t* p) noexcept {
     static_assert(std::is_trivially_copyable_v<T>, "Segmentation type must be trivially copyable");
@@ -23,34 +28,20 @@ inline T loadT(const uint8_t* p) noexcept {
 }
 
 template <typename T>
-void parseNHWCMask(std::vector<uint8_t>& dst, dai::NNData& nnData, dai::TensorInfo& tensorInfo, dai::SegmentationParserConfig& config) {
-    const uint8_t* tensorBase = nnData.data->getData().data() + tensorInfo.offset;
+void parseNHWCMask(span<uint8_t> dst, const uint8_t* tensorBase, dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config, const bool typed) {
     const int channels = tensorInfo.getChannels();
     const int width = tensorInfo.getWidth();
     const int height = tensorInfo.getHeight();
-    const float qpZp = tensorInfo.qpZp;
-    const float qpScale = tensorInfo.qpScale;
 
     const int strideC = tensorInfo.getChannelStride();
     const int strideH = tensorInfo.getHeightStride();
     const int strideW = tensorInfo.getWidthStride();
 
-    const T quantizedThreshold = static_cast<T>(config.confidenceThreshold / qpScale + qpZp);
+    const T quantizedThreshold = static_cast<T>(config.confidenceThreshold / tensorInfo.qpScale + tensorInfo.qpZp);
+
     const int step = config.stepSize;
-
-    int dstWidth = width / step;
-    int dstHeight = height / step;
-    dst.resize(dstWidth * dstHeight);
-    uint8_t* dstPtr = dst.data();
-
-    const auto addr = reinterpret_cast<std::uintptr_t>(tensorBase);
-    const bool aligned = (addr % alignof(T)) == 0;
-    const bool stridesOk = (strideC % (int)sizeof(T) == 0) && (strideH % (int)sizeof(T) == 0) && (strideW % (int)sizeof(T) == 0);
-    const bool typed = aligned && stridesOk;
-
-    if(typed) {  // typed pointer access
-        printf("typed parseNHWC\n");
-
+    const int dstWidth = width / step;
+    if(typed) {
         const T* baseT = reinterpret_cast<const T*>(tensorBase);
         const int strideC_T = strideC / (int)sizeof(T);
         const int strideH_T = strideH / (int)sizeof(T);
@@ -75,16 +66,16 @@ void parseNHWCMask(std::vector<uint8_t>& dst, dai::NNData& nnData, dai::TensorIn
                         bestClass = c;
                     }
                 }
-                dstPtr[rowOffset + outX] = bestClass;
+                dst[rowOffset + outX] = bestClass;
             }
         }
-    } else {
+    } else {  // memory safe per element loading (slower)
         int outY = 0;
         for(int h = 0; h < height; h += step, ++outY) {
             const uint8_t* rowBase = tensorBase + strideH * h;
 
-            int outX = 0;
             int rowOffset = outY * dstWidth;
+            int outX = 0;
             for(int w = 0; w < width; w += step, ++outX) {
                 const uint8_t* pixelBase = rowBase + strideW * w;
 
@@ -99,42 +90,30 @@ void parseNHWCMask(std::vector<uint8_t>& dst, dai::NNData& nnData, dai::TensorIn
                         bestClass = c;
                     }
                 }
-                dstPtr[rowOffset + outX] = bestClass;
+                dst[rowOffset + outX] = bestClass;
             }
         }
     }
 }
 
 template <typename T>
-void parseNCHWMask(std::vector<uint8_t>& dst, dai::NNData& nnData, dai::TensorInfo& tensorInfo, dai::SegmentationParserConfig& config) {
-    const uint8_t* tensorBase = nnData.data->getData().data() + tensorInfo.offset;
+void parseNCHWMask(span<uint8_t> dst, const uint8_t* tensorBase, dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config, const bool typed) {
     const int channels = tensorInfo.getChannels();
     const int width = tensorInfo.getWidth();
     const int height = tensorInfo.getHeight();
-    const float qpZp = tensorInfo.qpZp;
-    const float qpScale = tensorInfo.qpScale;
 
     const int strideC = tensorInfo.getChannelStride();
     const int strideH = tensorInfo.getHeightStride();
     const int strideW = tensorInfo.getWidthStride();
 
-    const T quantizedThreshold = static_cast<T>(config.confidenceThreshold / qpScale + qpZp);
+    const T quantizedThreshold = static_cast<T>(config.confidenceThreshold / tensorInfo.qpScale + tensorInfo.qpZp);
+    static thread_local std::vector<T> bestValues;
+    bestValues.resize(dst.size());
+    std::fill(bestValues.begin(), bestValues.end(), quantizedThreshold);
+
     const int step = config.stepSize;
-
-    int dstWidth = width / step;
-    int dstHeight = height / step;
-    dst.resize(dstWidth * dstHeight, 255);
-    uint8_t* dstPtr = dst.data();
-
-    const auto addr = reinterpret_cast<std::uintptr_t>(tensorBase);
-    const bool aligned = (addr % alignof(T)) == 0;
-    const bool stridesOk = (strideC % (int)sizeof(T) == 0) && (strideH % (int)sizeof(T) == 0) && (strideW % (int)sizeof(T) == 0);
-    const bool typed = aligned && stridesOk;
-
-    std::vector<T> bestVals(dstWidth * dstHeight, quantizedThreshold);
-
-    if(typed) {  // typed pointer access
-        printf("typed parseNCHW\n");
+    const int dstWidth = width / step;
+    if(typed) {
         const T* baseT = reinterpret_cast<const T*>(tensorBase);
         const int strideC_T = strideC / (int)sizeof(T);
         const int strideH_T = strideH / (int)sizeof(T);
@@ -146,21 +125,21 @@ void parseNCHWMask(std::vector<uint8_t>& dst, dai::NNData& nnData, dai::TensorIn
             int outY = 0;
             for(int h = 0; h < height; h += step, ++outY) {
                 const T* rowBase = channelBase + strideH_T * h;
-                int outX = 0;
                 int rowOffset = outY * dstWidth;
 
+                int outX = 0;
                 for(int w = 0; w < width; w += step, ++outX) {
                     T v = *(rowBase + strideW_T * w);
                     int coordinateIndex = rowOffset + outX;
-                    if(v > bestVals[coordinateIndex]) {
-                        bestVals[coordinateIndex] = v;
-                        dstPtr[coordinateIndex] = c;
+                    if(v > bestValues[coordinateIndex]) {
+                        bestValues[coordinateIndex] = v;
+                        dst[coordinateIndex] = c;
                     }
                 }
             }
         }
 
-    } else {
+    } else {  // memory safe per element loading (slower)
         for(int c = 0; c < channels; c++) {
             const uint8_t* channelBase = tensorBase + strideC * c;
 
@@ -173,9 +152,9 @@ void parseNCHWMask(std::vector<uint8_t>& dst, dai::NNData& nnData, dai::TensorIn
                     T v = loadT<T>(p);
                     int coordinateIndex = outY * dstWidth + outX;
 
-                    if(v > bestVals[coordinateIndex]) {
-                        bestVals[coordinateIndex] = v;
-                        dstPtr[coordinateIndex] = c;
+                    if(v > bestValues[coordinateIndex]) {
+                        bestValues[coordinateIndex] = v;
+                        dst[coordinateIndex] = c;
                     }
                 }
             }
@@ -184,48 +163,64 @@ void parseNCHWMask(std::vector<uint8_t>& dst, dai::NNData& nnData, dai::TensorIn
 }
 
 template <typename T>
-void thresholdAndArgmaxTensor(std::vector<uint8_t>& dst,
+void thresholdAndArgmaxTensor(dai::SegmentationMask& dstMask,
                               dai::NNData& nnData,
                               dai::TensorInfo& tensorInfo,
                               dai::SegmentationParserConfig& config,
                               std::shared_ptr<spdlog::async_logger>& logger) {
+    const uint8_t* tensorBase = nnData.data->getData().data() + tensorInfo.offset;
+    const int strideC = tensorInfo.getChannelStride();
+    const int strideH = tensorInfo.getHeightStride();
+    const int strideW = tensorInfo.getWidthStride();
+
+    const auto addr = reinterpret_cast<std::uintptr_t>(tensorBase);
+    const bool aligned = (addr % alignof(T)) == 0;
+    const bool stridesOk = (strideC % (int)sizeof(T) == 0) && (strideH % (int)sizeof(T) == 0) && (strideW % (int)sizeof(T) == 0);
+    const bool useTypedPointer = aligned && stridesOk;
+
+    const int width = tensorInfo.getWidth();
+    const int height = tensorInfo.getHeight();
+    const int dstWidth = width / config.stepSize;
+    const int dstHeight = height / config.stepSize;
+    auto dstData = dstMask.prepareMask(static_cast<size_t>(dstWidth), static_cast<size_t>(dstHeight));
+    std::fill(dstData.begin(), dstData.end(), BACKGROUND_INDEX);
+
     if(tensorInfo.order == dai::TensorInfo::StorageOrder::NCHW || tensorInfo.order == dai::TensorInfo::StorageOrder::CHW) {
-        parseNCHWMask<T>(dst, nnData, tensorInfo, config);
+        logger->trace("Parsing NCHW/CHW segmentation mask");
+        parseNCHWMask<T>(dstData, tensorBase, tensorInfo, config, useTypedPointer);
     } else if(tensorInfo.order == dai::TensorInfo::StorageOrder::NHWC || tensorInfo.order == dai::TensorInfo::StorageOrder::HWC) {
-        parseNHWCMask<T>(dst, nnData, tensorInfo, config);
+        logger->trace("Parsing NHWC/HWC segmentation mask");
+        parseNHWCMask<T>(dstData, tensorBase, tensorInfo, config, useTypedPointer);
     } else {
         logger->error("Unsupported storage order for segmentation parsing: {}", static_cast<int>(tensorInfo.order));
         return;
     }
 }
 
-void thresholdAndArgmaxFp16Tensor(std::vector<uint8_t>& dst,
-                                  dai::NNData& nnData,
-                                  dai::TensorInfo& tensorInfo,
-                                  dai::SegmentationParserConfig& config) {  // RVC2 path
+void thresholdAndArgmaxFp16Tensor(dai::SegmentationMask& dst, dai::NNData& nnData, dai::TensorInfo& tensorInfo, dai::SegmentationParserConfig& config) {
     const uint8_t* tensorBase = nnData.data->getData().data() + tensorInfo.offset;
     const int channels = tensorInfo.getChannels();
     const int width = tensorInfo.getWidth();
     const int height = tensorInfo.getHeight();
-    const float qpZp = tensorInfo.qpZp;
-    const float qpScale = tensorInfo.qpScale;
+
+    const float quantizedThreshold = float(config.confidenceThreshold / tensorInfo.qpScale + tensorInfo.qpZp);
 
     const int strideC = tensorInfo.getChannelStride();
     const int strideH = tensorInfo.getHeightStride();
     const int strideW = tensorInfo.getWidthStride();
 
-    const float quantizedThreshold = float(config.confidenceThreshold / qpScale + qpZp);
     const int step = config.stepSize;
+    const int dstWidth = width / step;
+    const int dstHeight = height / step;
 
-    int dstWidth = width / step;
-    int dstHeight = height / step;
-    dst.resize(dstWidth * dstHeight, 255);
-    uint8_t* dstPtr = dst.data();
+    static thread_local std::vector<float> bestVals;
+    bestVals.resize(static_cast<size_t>(dstWidth * dstHeight));
+    std::fill(bestVals.begin(), bestVals.end(), quantizedThreshold);
 
-    std::vector<float> bestVals(dstWidth * dstHeight, quantizedThreshold);
+    auto dstData = dst.prepareMask(static_cast<size_t>(dstWidth), static_cast<size_t>(dstHeight));
+    std::fill(dstData.begin(), dstData.end(), BACKGROUND_INDEX);
 
-    printf("rvc2 path, assumes NCHW\n");
-    for(int c = 0; c < channels; c++) {
+    for(int c = 0; c < channels; c++) {  // Optimized for NCHW since FP16 is asociated with RVC2
         const uint8_t* channelBase = tensorBase + strideC * c;
 
         int outY = 0;
@@ -239,42 +234,21 @@ void thresholdAndArgmaxFp16Tensor(std::vector<uint8_t>& dst,
 
                 if(v > bestVals[coordinateIndex]) {
                     bestVals[coordinateIndex] = v;
-                    dstPtr[coordinateIndex] = c;
+                    dstData[coordinateIndex] = c;
                 }
             }
         }
     }
 }
 
-void parseSegmentationMask(dai::NNData& nnData,
-                           dai::TensorInfo& tensorInfo,
-                           std::vector<uint8_t>& outputMask,
-                           dai::SegmentationParserConfig& config,
-                           std::shared_ptr<spdlog::async_logger>& logger) {
-    using namespace std::chrono;
-
-    switch(tensorInfo.dataType) {
-        case dai::TensorInfo::DataType::I8:
-            thresholdAndArgmaxTensor<int8_t>(outputMask, nnData, tensorInfo, config, logger);
-            break;
-        case dai::TensorInfo::DataType::U8F:
-            thresholdAndArgmaxTensor<uint8_t>(outputMask, nnData, tensorInfo, config, logger);
-            break;
-        case dai::TensorInfo::DataType::INT:
-            thresholdAndArgmaxTensor<int32_t>(outputMask, nnData, tensorInfo, config, logger);
-            break;
-        case dai::TensorInfo::DataType::FP32:
-            thresholdAndArgmaxTensor<float>(outputMask, nnData, tensorInfo, config, logger);
-            break;
-        case dai::TensorInfo::DataType::FP16:
-            thresholdAndArgmaxFp16Tensor(outputMask, nnData, tensorInfo, config);
-            break;
-        case dai::TensorInfo::DataType::FP64:
-        default:
-            logger->error("Unsupported data type for segmentation parsing: {}", static_cast<int>(tensorInfo.dataType));
-            return;
-    }
-}
+template void thresholdAndArgmaxTensor<int8_t>(
+    dai::SegmentationMask&, dai::NNData&, dai::TensorInfo&, dai::SegmentationParserConfig&, std::shared_ptr<spdlog::async_logger>&);
+template void thresholdAndArgmaxTensor<uint8_t>(
+    dai::SegmentationMask&, dai::NNData&, dai::TensorInfo&, dai::SegmentationParserConfig&, std::shared_ptr<spdlog::async_logger>&);
+template void thresholdAndArgmaxTensor<int32_t>(
+    dai::SegmentationMask&, dai::NNData&, dai::TensorInfo&, dai::SegmentationParserConfig&, std::shared_ptr<spdlog::async_logger>&);
+template void thresholdAndArgmaxTensor<float>(
+    dai::SegmentationMask&, dai::NNData&, dai::TensorInfo&, dai::SegmentationParserConfig&, std::shared_ptr<spdlog::async_logger>&);
 
 }  // namespace SegmentationParserUtils
 }  // namespace utilities

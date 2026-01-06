@@ -13,8 +13,6 @@
 namespace dai {
 namespace node {
 
-constexpr uint8_t BACKGROUND_INDEX = 255;
-constexpr int MAX_CLASS_INDEX = 254;
 class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser, SegmentationParserProperties>, public HostRunnable {
    private:
     bool runOnHostVar = false;

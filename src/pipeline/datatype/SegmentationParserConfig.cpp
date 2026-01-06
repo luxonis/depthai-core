@@ -34,15 +34,4 @@ int SegmentationParserConfig::getStepSize() const {
     return stepSize;
 }
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-void SegmentationParserConfig::setOutputSize(size_t width, size_t height) {
-    outputWidth = width;
-    outputHeight = height;
-}
-
-void SegmentationParserConfig::setResizeMode(ResizeMode mode) {
-    resizeMode = mode;
-}
-#endif
-
 }  // namespace dai

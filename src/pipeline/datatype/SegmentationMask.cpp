@@ -41,6 +41,24 @@ void SegmentationMask::setMask(const std::vector<std::uint8_t>& mask, size_t wid
     this->height = height;
 }
 
+void SegmentationMask::setMask(span<const std::uint8_t> mask, size_t width, size_t height) {
+    if(mask.size() != width * height) {
+        throw std::runtime_error("SegmentationMask: data size does not match width*height");
+    }
+    data->setSize(mask.size());
+    std::memcpy(data->getData().data(), mask.data(), mask.size());
+    this->width = width;
+    this->height = height;
+}
+
+span<std::uint8_t> SegmentationMask::prepareMask(size_t width, size_t height) {
+    const size_t size = width * height;
+    data->setSize(size);
+    this->width = width;
+    this->height = height;
+    return data->getData();
+}
+
 void SegmentationMask::setMask(dai::ImgFrame& frame) {
     if(frame.getType() != dai::ImgFrame::Type::GRAY8) {
         throw std::runtime_error("SegmentationMask: ImgFrame type must be GRAY8");

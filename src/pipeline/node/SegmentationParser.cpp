@@ -1,5 +1,8 @@
 #include "depthai/pipeline/node/SegmentationParser.hpp"
 
+#include <fmt/format.h>
+
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
@@ -88,7 +91,7 @@ void SegmentationParser::setConfig(const dai::NNArchiveVersionedConfig& config) 
         }
     }
 
-    DAI_CHECK_V(segmentationHeads > 0, "NNArchive does not contain a segmentation head. Found {} segmentation heads.", segmentationHeads);
+    DAI_CHECK_V(segmentationHeads > 0, "NNArchive does not contain a segmentation head.");
 
     if(segmentationHeads > 1) {
         auto& logger = ThreadedNode::pimpl->logger;
@@ -125,8 +128,6 @@ void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
 
     if(head.metadata.classes) {
         initialConfig->setLabels(*head.metadata.classes);
-    } else {
-        printf("SegmentationParser: No class labels defined in the head metadata.\n");
     }
 }
 
@@ -138,21 +139,32 @@ bool SegmentationParser::runOnHost() const {
     return runOnHostVar;
 }
 
-uint8_t clampClassIndex(int idx) {
-    if(idx < 0 || idx > MAX_CLASS_INDEX) {
-        return BACKGROUND_INDEX;
+std::string checkTensorName(const dai::NNData& nnData, const std::string& preferredName, std::shared_ptr<spdlog::async_logger>& logger) {
+    const auto layerNames = nnData.getAllLayerNames();
+    if(layerNames.empty()) {
+        throw std::runtime_error("No tensors available in NNData.");
     }
-    return idx;
+    if(preferredName != "") {
+        auto it = std::find(layerNames.begin(), layerNames.end(), preferredName);
+        if(it != layerNames.end()) {
+            return preferredName;
+        } else {
+            throw std::runtime_error("Preferred Segmentation tensor name '" + preferredName + "' not found in NNData outputs.");
+        }
+    }
+
+    logger->debug("No network outputs specified, using first output only.");
+    return layerNames.front();
 }
 
 void SegmentationParser::run() {
     auto& logger = ThreadedNode::pimpl->logger;
     using namespace std::chrono;
-    logger->warn("Start SegmentationParser");
+    // logger->trace("Start SegmentationParser");
 
     const bool inputConfigSync = inputConfig.getWaitForMessage();
     const bool classesInSingleLayer = properties.classesInOneLayer;
-    std::string networkOutputName = properties.networkOutputName;  // move to a resolveNetworkOutputName function alongside the layerNames etc. part of the code
+    std::string preferredTensorName = properties.networkOutputName;
     inConfig = initialConfig;
     if(!inConfig) {
         throw std::runtime_error("SegmentationParser config is not initialized.");
@@ -184,121 +196,73 @@ void SegmentationParser::run() {
         // auto config = inConfig ? inConfig : std::make_shared<SegmentationParserConfig>(properties.parserConfig);
         // const float confidenceThr = config->getConfidenceThreshold();
 
-        std::shared_ptr<dai::NNData> sharedInputData = input.get<dai::NNData>();
-        if(!sharedInputData) {
+        std::shared_ptr<dai::NNData> sharedNNData = input.get<dai::NNData>();
+        if(!sharedNNData) {
             logger->error("NN Data is empty. Skipping processing.");
             continue;
         }
         auto tAfterMessageBeginning = steady_clock::now();
 
-        const auto layerNames = sharedInputData->getAllLayerNames();
-        if(layerNames.empty()) {
-            logger->error("No tensors available in NNData. Skipping processing.");
-            continue;
-        }
-        if(networkOutputName == "") {
-            logger->debug("No network outputs specified, using first output only.");
-            networkOutputName = layerNames.front();
-        }
-        auto tensorInfo = sharedInputData->getTensorInfo(networkOutputName);
+        std::string networkOutputName = checkTensorName(*sharedNNData, preferredTensorName, logger);
+        auto tensorInfo = sharedNNData->getTensorInfo(networkOutputName);
         if(!tensorInfo) {
-            logger->error("Tensor info for specified output layer {} is null. Skipping processing.", networkOutputName);
-            continue;
+            throw std::runtime_error("Tensor info for output layer " + networkOutputName + " is null.");
         }
 
         size_t maskWidth = static_cast<size_t>(tensorInfo->getWidth());
         size_t maskHeight = static_cast<size_t>(tensorInfo->getHeight());
-        std::vector<uint8_t> maskData;
         int channels = tensorInfo->getChannels();
-
         if(maskWidth <= 0 || maskHeight <= 0 || channels <= 0) {
-            std::string errorMsg = "Invalid tensor dimensions retrieved for segmentation parsing. Channels: " + std::to_string(channels)
+            std::string errorMsg = "Invalid tensor dimensions retrieved for segmentation. Channels: " + std::to_string(channels)
                                    + ", height: " + std::to_string(maskHeight) + ", width: " + std::to_string(maskWidth) + ".";
             throw std::runtime_error(errorMsg);
         }
 
-        const size_t planeSize = maskWidth * maskHeight;
-        maskData.assign(planeSize, BACKGROUND_INDEX);
-        auto tNNviewerStart = steady_clock::now();
-        NNDataViewer viewer(*tensorInfo, sharedInputData->data, logger);
-        if(!viewer.build()) {
-            logger->error("Failed to build NNDataViewer for tensor {}. Skipping processing.", tensorInfo->name);
-            continue;
-        }
+        auto outMask = std::make_shared<dai::SegmentationMask>();
 
         auto tParsingStart = steady_clock::now();
-        if(classesInSingleLayer) {  // assume data is stored as INT in shape N x H x W  with N = 1
-            // logger->debug("Parsing segmentation mask with classes in single layer. Assuming INT data.");
-            // for(size_t idx = 0; idx < planeSize; ++idx) {
-            //     maskData[idx] = clampClassIndex(static_cast<int>(std::lround(logitsBuffer[idx])));
-            // }
-        } else {  // move to an argmax callable function
-            utilities::SegmentationParserUtils::parseSegmentationMask(*sharedInputData, *tensorInfo, maskData, *inConfig, logger);
-            // std::vector<float> bestVals(planeSize, -1.0f);
-            // const float* logitsPtr = logitsBuffer.data();
 
-            // // 2. Iterate Channels FIRST (Outer loop), then Pixels (Inner Loop)
-            // for(int ch = 0; ch < channels; ++ch) {
-            //     // Pointer to the start of this channel plane
-            //     const float* channelPtr = logitsPtr + (static_cast<size_t>(ch) * planeSize);
-
-            //     // Linear scan over the plane
-            //     for(size_t idx = 0; idx < planeSize; ++idx) {
-            //         float val = channelPtr[idx];
-
-            //         // Update max if this channel is better
-            //         if(val > bestVals[idx]) {
-            //             bestVals[idx] = val;
-            //             // Only update class if confidence threshold met
-            //             // Note: You can also apply threshold at the very end to save checks
-            //             if(val >= confidenceThr) {
-            //                 maskData[idx] = clampClassIndex(ch);
-            //             }
-            //         }
-            //     }
-        }
-        // }
-        logger->warn("Segmentation mask parsing took {}ms", duration_cast<microseconds>(steady_clock::now() - tParsingStart).count() / 1000);  // 7ms
-
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        size_t targetWidth = maskWidth;
-        size_t targetHeight = maskHeight;
-        if(inConfig && inConfig->outputWidth > 0 && inConfig->outputHeight > 0) {
-            targetWidth = inConfig->outputWidth;
-            targetHeight = inConfig->outputHeight;
-        }
-
-        if(targetWidth != maskWidth || targetHeight != maskHeight) {
-            logger->debug("Resizing segmentation mask from {}x{} to {}x{}", maskWidth, maskHeight, targetWidth, targetHeight);
-            cv::Mat maskMat(static_cast<int>(maskHeight), static_cast<int>(maskWidth), CV_8UC1, maskData.data());
-            cv::Mat resized;
-            int interpolation = cv::INTER_NEAREST;
-            if(inConfig && inConfig->resizeMode == SegmentationParserConfig::ResizeMode::INTER_LINEAR) {
-                interpolation = cv::INTER_LINEAR;
+        if(!classesInSingleLayer) {  // standard case
+            switch((*tensorInfo).dataType) {
+                case dai::TensorInfo::DataType::I8:
+                    utilities::SegmentationParserUtils::thresholdAndArgmaxTensor<int8_t>(*outMask, *sharedNNData, *tensorInfo, *inConfig, logger);
+                    break;
+                case dai::TensorInfo::DataType::U8F:
+                    utilities::SegmentationParserUtils::thresholdAndArgmaxTensor<uint8_t>(*outMask, *sharedNNData, *tensorInfo, *inConfig, logger);
+                    break;
+                case dai::TensorInfo::DataType::INT:
+                    utilities::SegmentationParserUtils::thresholdAndArgmaxTensor<int32_t>(*outMask, *sharedNNData, *tensorInfo, *inConfig, logger);
+                    break;
+                case dai::TensorInfo::DataType::FP32:
+                    utilities::SegmentationParserUtils::thresholdAndArgmaxTensor<float>(*outMask, *sharedNNData, *tensorInfo, *inConfig, logger);
+                    break;
+                case dai::TensorInfo::DataType::FP16:
+                    logger->trace("Parsing FP16 segmentation mask");
+                    utilities::SegmentationParserUtils::thresholdAndArgmaxFp16Tensor(*outMask, *sharedNNData, *tensorInfo, *inConfig);
+                    break;
+                case dai::TensorInfo::DataType::FP64:
+                default:
+                    logger->error("Unsupported data type for segmentation parsing: {}", static_cast<int>(tensorInfo->dataType));
+                    return;
             }
-            cv::resize(maskMat, resized, cv::Size(static_cast<int>(targetWidth), static_cast<int>(targetHeight)), 0, 0, interpolation);
-            maskData.assign(resized.data, resized.data + resized.total());
-            maskWidth = targetWidth;
-            maskHeight = targetHeight;
+        } else {  // assume data is stored as INT in shape N x H x W  with N = 1
+            DAI_CHECK_V(tensorInfo->dataType == dai::TensorInfo::DataType::INT, "When classes_in_one_layer is true, only INT data type is supported.");
+            const auto src = sharedNNData->data->getData();
+            const size_t bytes = maskWidth * maskHeight;
+            outMask->setMask(src.subspan(tensorInfo->offset, bytes), maskWidth, maskHeight);
         }
-#endif
+
+        logger->warn("Segmentation mask parsing took {}ms", duration_cast<microseconds>(steady_clock::now() - tParsingStart).count() / 1000);
 
         auto tBeforeSend = steady_clock::now();
-
-        auto outMask = std::make_shared<dai::SegmentationMask>();
-        try {
-            outMask->setMask(maskData, maskWidth, maskHeight);
-        } catch(const std::exception& exc) {
-            logger->error("Failed to set segmentation mask: {}", exc.what());
-            continue;
-        }
         if(inConfig && inConfig->getLabels().size() > 0) {
             outMask->setLabels(inConfig->getLabels());
         }
-        outMask->setSequenceNum(sharedInputData->getSequenceNum());
-        outMask->setTimestamp(sharedInputData->getTimestamp());
-        outMask->setTimestampDevice(sharedInputData->getTimestampDevice());
-        outMask->transformation = sharedInputData->transformation;
+        outMask->setSequenceNum(sharedNNData->getSequenceNum());
+        outMask->setTimestamp(sharedNNData->getTimestamp());
+        outMask->setTimestampDevice(sharedNNData->getTimestampDevice());
+        outMask->transformation = sharedNNData->transformation;
+        outMask->transformation->setSize(outMask->getWidth(), outMask->getHeight());  // need to readjust size due to possible downsampling in parsing
 
         out.send(outMask);
 
