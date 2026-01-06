@@ -34,4 +34,8 @@ void RemoteConnection::registerService(const std::string& serviceName, std::func
     impl->registerService(serviceName, std::move(callback));
 }
 
+void RemoteConnection::registerBinaryService(const std::string& serviceName, std::function<std::vector<uint8_t>(const std::vector<uint8_t>&)> callback) {
+    impl->registerBinaryService(serviceName, std::move(callback));
+}
+
 }  // namespace dai
