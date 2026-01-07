@@ -129,7 +129,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             DOC(dai, node, NeuralNetwork, input))
         .def_property_readonly(
             "out",
-            [](const SpatialDetectionNetwork& n) { return &n.detectionParser->out; },
+            [](const SpatialDetectionNetwork& n) { return &n.spatialLocationCalculator->outputDetections; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, out))
         .def_property_readonly(
@@ -153,13 +153,21 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, neuralNetwork))
 
-        .def_readonly("inputDepth", &SpatialDetectionNetwork::inputDepth, DOC(dai, node, SpatialDetectionNetwork, inputDepth))
-        .def_readonly("out", &SpatialDetectionNetwork::out, DOC(dai, node, SpatialDetectionNetwork, out))
-        .def_readonly("boundingBoxMapping", &SpatialDetectionNetwork::boundingBoxMapping, DOC(dai, node, SpatialDetectionNetwork, boundingBoxMapping))
-        .def_readonly("passthroughDepth", &SpatialDetectionNetwork::passthroughDepth, DOC(dai, node, SpatialDetectionNetwork, passthroughDepth))
-        .def_readonly("spatialLocationCalculatorOutput",
-                      &SpatialDetectionNetwork::spatialLocationCalculatorOutput,
-                      DOC(dai, node, SpatialDetectionNetwork, spatialLocationCalculatorOutput))
+        .def_property_readonly(
+            "inputDepth",
+            [](SpatialDetectionNetwork& n) { return &n.inputDepth; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, SpatialDetectionNetwork, inputDepth))
+        .def_property_readonly(
+            "inputConfig",
+            [](SpatialDetectionNetwork& n) { return &n.inputConfig; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, SpatialDetectionNetwork, inputConfig))
+        .def_property_readonly(
+            "passthroughDepth",
+            [](SpatialDetectionNetwork& n) { return &n.passthroughDepth; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, SpatialDetectionNetwork, passthroughDepth))
 
         .def("setDepthLowerThreshold",
              &SpatialDetectionNetwork::setDepthLowerThreshold,

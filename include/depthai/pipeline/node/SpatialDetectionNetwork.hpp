@@ -5,6 +5,7 @@
 #include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 #include <depthai/pipeline/node/ImageAlign.hpp>
+#include <depthai/pipeline/node/SpatialLocationCalculator.hpp>
 #include <variant>
 
 // depth map source nodes
@@ -135,6 +136,8 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
+    Subnode<SpatialLocationCalculator> spatialLocationCalculator{*this, "spatialLocationCalculator"};
+
     std::unique_ptr<Subnode<ImageAlign>> depthAlign;
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -155,48 +158,26 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output& passthrough;
-#endif
 
+#endif
     /**
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{*this, {"inputDepth", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
+    Input& inputDepth = spatialLocationCalculator->inputDepth;  // move to the constructor above
 
-    /**
-     * Input message with image data used to retrieve image transformation from detected object
-     * Default queue is blocking with size 1
-     */
-    Input inputImg{*this, {"inputImg", DEFAULT_GROUP, true, 2, {{{DatatypeEnum::ImgFrame, false}}}, true}};
-
-    /**
-     * Input message with input detections object
-     * Default queue is blocking with size 1
-     */
-    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::ImgDetections, false}}}, true}};
+    Input& inputConfig = spatialLocationCalculator->inputConfig;
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialImgDetections, false}}}}};
-
-    /**
-     * Outputs mapping of detected bounding boxes relative to depth map
-     * Suitable for when displaying remapped bounding boxes on depth frame
-     */
-    Output boundingBoxMapping{*this, {"boundingBoxMapping", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}}};
+    Output& out = spatialLocationCalculator->outputDetections;
 
     /**
      * Passthrough message for depth frame on which the spatial location calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-
-    /**
-     * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
-     * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
-     */
-    Output spatialLocationCalculatorOutput{*this, {"spatialLocationCalculatorOutput", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
+    Output& passthroughDepth = spatialLocationCalculator->passthroughDepth;
 
     /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.

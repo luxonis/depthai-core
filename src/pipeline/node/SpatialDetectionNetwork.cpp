@@ -7,7 +7,6 @@
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "nn_archive/NNArchive.hpp"
-#include "openvino/BlobReader.hpp"
 #include "openvino/OpenVINO.hpp"
 
 namespace dai {
@@ -20,15 +19,13 @@ namespace node {
 void SpatialDetectionNetwork::buildInternal() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
+
     neuralNetwork->out.link(detectionParser->input);
-    neuralNetwork->passthrough.link(inputImg);
-    detectionParser->out.link(inputDetections);
+    detectionParser->out.link(spatialLocationCalculator->inputDetections);
 
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
     detectionParser->input.setMaxSize(1);
-    inputDetections.setMaxSize(1);
-    inputDetections.setBlocking(true);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
@@ -46,7 +43,7 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
                                                                         std::optional<float> fps,
                                                                         std::optional<dai::ImgResizeMode> resizeMode) {
     neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
-    detectionParser->setNNArchive(nnArchive);
+    detectionParser->build(neuralNetwork->out, nnArchive);
     alignDepth(depthSource, inputRgb);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
@@ -78,10 +75,10 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>&
                 Subnode<ImageAlign>& align = *depthAlign;
                 stereo->depth.link(align->input);
                 neuralNetwork->passthrough.link(align->inputAlignTo);
-                align->outputAligned.link(inputDepth);
+                align->outputAligned.link(spatialLocationCalculator->inputDepth);
             } break;
             case Platform::RVC2:
-                stereo->depth.link(inputDepth);
+                stereo->depth.link(spatialLocationCalculator->inputDepth);
                 neuralNetwork->passthrough.link(stereo->inputAlignTo);
                 break;
             case Platform::RVC3:
@@ -91,7 +88,7 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>&
         }
 
     } else {
-        stereo->depth.link(inputDepth);
+        stereo->depth.link(spatialLocationCalculator->inputDepth);
         stereo->setDepthAlign(camera->getBoardSocket());
     }
 }
@@ -104,7 +101,7 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<NeuralDepth>&
     Subnode<ImageAlign>& align = *depthAlign;
     neuralDepth->depth.link(align->input);
     neuralNetwork->passthrough.link(align->inputAlignTo);
-    align->outputAligned.link(inputDepth);
+    align->outputAligned.link(spatialLocationCalculator->inputDepth);
 }
 
 void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera) {
