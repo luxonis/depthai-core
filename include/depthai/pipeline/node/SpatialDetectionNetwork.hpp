@@ -242,6 +242,13 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      */
     float getConfidenceThreshold() const;
 
+    /** Custom interface **/
+    /**
+     * Specifies scale factor for detected bounding boxes.
+     * @param scaleFactor Scale factor must be in the interval (0,1].
+     */
+    void setBoundingBoxScaleFactor(float scaleFactor);
+
     /**
      * Specifies lower threshold in depth units (millimeter by default) for depth values which will used to calculate spatial data
      * @param lowerThreshold LowerThreshold must be in the interval [0,upperThreshold] and less than upperThreshold.

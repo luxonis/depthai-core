@@ -26,7 +26,8 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    spatialDetectionNetworkProperties.def_readwrite("depthThresholds", &SpatialDetectionNetworkProperties::depthThresholds)
+    spatialDetectionNetworkProperties.def_readwrite("detectedBBScaleFactor", &SpatialDetectionNetworkProperties::detectedBBScaleFactor)
+        .def_readwrite("depthThresholds", &SpatialDetectionNetworkProperties::depthThresholds)
         .def_readwrite("calculationAlgorithm", &SpatialDetectionNetworkProperties::calculationAlgorithm)
         .def_readwrite("stepSize", &SpatialDetectionNetworkProperties::stepSize);
 
@@ -172,6 +173,10 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              &SpatialDetectionNetwork::setDepthLowerThreshold,
              py::arg("lowerThreshold"),
              DOC(dai, node, SpatialDetectionNetwork, setDepthLowerThreshold))
+        .def("setBoundingBoxScaleFactor",
+             &SpatialDetectionNetwork::setBoundingBoxScaleFactor,
+             py::arg("scaleFactor"),
+             DOC(dai, node, SpatialDetectionNetwork, setBoundingBoxScaleFactor))
         .def("setDepthUpperThreshold",
              &SpatialDetectionNetwork::setDepthUpperThreshold,
              py::arg("upperThreshold"),

@@ -332,6 +332,11 @@ float SpatialDetectionNetwork::getConfidenceThreshold() const {
     return detectionParser->getConfidenceThreshold();
 }
 
+void SpatialDetectionNetwork::setBoundingBoxScaleFactor(float scaleFactor) {
+    spatialLocationCalculator->initialConfig->setBoundingBoxScaleFactor(scaleFactor);
+    properties.detectedBBScaleFactor = scaleFactor;
+}
+
 void SpatialDetectionNetwork::setDepthLowerThreshold(uint32_t lowerThreshold) {
     properties.depthThresholds.lowerThreshold = lowerThreshold;
     spatialLocationCalculator->initialConfig->setDepthThresholds(lowerThreshold);

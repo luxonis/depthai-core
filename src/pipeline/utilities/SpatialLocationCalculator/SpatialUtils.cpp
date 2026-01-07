@@ -157,6 +157,13 @@ static inline int getStepSize(int stepSize, SpatialLocationCalculatorAlgorithm a
     return stepSize;
 }
 
+dai::RotatedRect scaleRect(const dai::RotatedRect& rect, float scaleFactor) {
+    dai::RotatedRect scaledRect = rect;
+    scaledRect.size.width *= scaleFactor;
+    scaledRect.size.height *= scaleFactor;
+    return scaledRect;
+}
+
 void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
                         const std::vector<dai::SpatialLocationCalculatorConfigData>& configDataVec,
                         std::vector<dai::SpatialLocations>& spatialLocations,
@@ -273,6 +280,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     const bool calculateSpatialKeypoints = config.calculateSpatialKeypoints;
     const bool useSegmentation = config.useSegmentation && !maskSpan.empty();
     const bool passthroughSegmentation = config.segmentationPassthrough && !maskSpan.empty();
+    const float BBoxScaleFactor = config.BBoxScaleFactor;
 
     const std::int32_t depthWidth = depthFrame.getWidth();
     const std::int32_t depthHeight = depthFrame.getHeight();
@@ -299,6 +307,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
         if(!areAligned) depthAlignedRect = detectionsTransformation->remapRectTo(*depthTransformation, depthAlignedRect);
 
         dai::RotatedRect denormalizedRect = depthAlignedRect.denormalize(depthWidth, depthHeight);
+        denormalizedRect = scaleRect(denormalizedRect, BBoxScaleFactor);
 
         const auto& outerPoints = denormalizedRect.getOuterRect();
         auto [xstart, ystart, xend, yend] =

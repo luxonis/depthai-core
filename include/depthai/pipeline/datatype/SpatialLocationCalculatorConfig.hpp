@@ -1,6 +1,5 @@
 #pragma once
 
-#include <unordered_map>
 #include <vector>
 
 #include "depthai/common/Rect.hpp"
@@ -98,6 +97,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
     bool calculateSpatialKeypoints = true;
     bool useSegmentation = true;
     bool segmentationPassthrough = true;
+    float BBoxScaleFactor = 1.0;
     std::vector<SpatialLocationCalculatorConfigData> config;
 
     /**
@@ -173,6 +173,12 @@ class SpatialLocationCalculatorConfig : public Buffer {
     void setSegmentationPassthrough(bool passthroughSegmentation);
 
     /**
+     * Set scale factor for bounding boxes used in spatial calculations.
+     * @param scaleFactor Scale factor must be in the interval (0,1].
+     */
+    void setBoundingBoxScaleFactor(float scaleFactor);
+
+    /**
      * Retrieve configuration data for SpatialLocationCalculator
      * @returns Vector of configuration parameters for ROIs (region of interests)
      */
@@ -216,6 +222,11 @@ class SpatialLocationCalculatorConfig : public Buffer {
      * @warning Only applicable to ImgDetections with segmentation masks.
      */
     bool getSegmentationPassthrough() const;
+
+    /**
+     * Retrieve scale factor for bounding boxes used in spatial calculations.
+     */
+    float getBoundingBoxScaleFactor() const;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
