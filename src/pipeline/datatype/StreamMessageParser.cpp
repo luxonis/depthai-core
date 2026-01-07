@@ -21,6 +21,7 @@
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
+    #include "depthai/pipeline/datatype/DynamicCalibrationWorkerConfig.hpp"
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -296,6 +297,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::DynamicCalibrationWorkerConfig:
+            return parseDatatype<DynamicCalibrationWorkerConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
         case DatatypeEnum::DynamicCalibrationResult:
             return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -311,6 +316,7 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         // Explicitly enum these in this switch state:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::DynamicCalibrationWorkerConfig:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CoverageData:
             break;
