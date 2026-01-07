@@ -3,17 +3,17 @@
 namespace dai {
 namespace node {
 
-NeuralAssistedStereo::Properties& NeuralAssistedStereo::getProperties() {
-    return properties;
+NeuralAssistedStereo::NeuralAssistedStereo(const std::shared_ptr<Device>& device) : DeviceNodeGroup(device) {
+    if(device) {
+        auto platform = device->getPlatform();
+        if(platform != Platform::RVC4) {
+            throw std::runtime_error("NeuralAssistedStereo node is not supported on RVC2 devices.");
+        }
+    }
+    setInitialValues();
 }
 
 NeuralAssistedStereo::~NeuralAssistedStereo() = default;
-
-NeuralAssistedStereo::NeuralAssistedStereo(std::unique_ptr<Properties> props)
-    : DeviceNodeCRTP<DeviceNode, NeuralAssistedStereo, NeuralAssistedStereoProperties>(std::move(props)) {}
-
-NeuralAssistedStereo::NeuralAssistedStereo()
-    : DeviceNodeCRTP<DeviceNode, NeuralAssistedStereo, NeuralAssistedStereoProperties>(std::make_unique<Properties>()) {}
 
 void NeuralAssistedStereo::setInitialValues() {
     // vpp parameters
@@ -68,16 +68,6 @@ void NeuralAssistedStereo::setInitialValues() {
     stereoDepth->initialConfig->postProcessing.holeFilling.minValidDisparity = 1;
     stereoDepth->initialConfig->postProcessing.spatialFilter.enable = false;
     stereoDepth->initialConfig->postProcessing.speckleFilter.enable = true;
-}
-
-void NeuralAssistedStereo::buildInternal() {
-    if(device) {
-        auto platform = device->getPlatform();
-        if(platform != Platform::RVC4) {
-            throw std::runtime_error("NeuralAssistedStereo node is not supported on RVC2 devices.");
-        }
-    }
-    setInitialValues();
 }
 
 std::shared_ptr<NeuralAssistedStereo> NeuralAssistedStereo::build(Output& leftInput, Output& rightInput, DeviceModelZoo neuralModel, bool rectifyImages) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/datatype/StereoDepthConfig.hpp>
 #include <depthai/pipeline/datatype/VppConfig.hpp>
@@ -8,7 +9,6 @@
 #include <depthai/pipeline/node/Rectification.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
 #include <depthai/pipeline/node/Vpp.hpp>
-#include <depthai/properties/NeuralAssistedStereoProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -31,23 +31,18 @@ namespace node {
  *                                      ↓
  *                                 StereoDepth → Final Depth Output
  */
-class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedStereo, NeuralAssistedStereoProperties> {
-   protected:
-    Properties& getProperties() override;
-
+class NeuralAssistedStereo : public DeviceNodeGroup {
    public:
+    using Input = Node::Input;
+    using Output = Node::Output;
+
     constexpr static const char* NAME = "NeuralAssistedStereo";
 
     virtual ~NeuralAssistedStereo();
 
-    using DeviceNodeCRTP::DeviceNodeCRTP;
+    NeuralAssistedStereo(const std::shared_ptr<Device>& device);
 
-    NeuralAssistedStereo();
-
-    NeuralAssistedStereo(std::unique_ptr<Properties> props);
-
-    void buildInternal() override;
-
+   private:
     void setInitialValues();
 
    public:
@@ -58,6 +53,13 @@ class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedSte
      * @param neuralModel Neural depth model to use
      * @return Shared pointer to this node
      */
+
+    [[nodiscard]] static std::shared_ptr<NeuralAssistedStereo> create(const std::shared_ptr<Device>& device) {
+        auto nasPtr = std::make_shared<NeuralAssistedStereo>(device);
+        nasPtr->buildInternal();
+        return nasPtr;
+    }
+
     std::shared_ptr<NeuralAssistedStereo> build(Output& leftInput,
                                                 Output& rightInput,
                                                 DeviceModelZoo neuralModel = DeviceModelZoo::NEURAL_DEPTH_NANO,
@@ -72,7 +74,6 @@ class NeuralAssistedStereo : public DeviceNodeCRTP<DeviceNode, NeuralAssistedSte
     Subnode<node::StereoDepth> stereoDepth{*this, "stereoDepth"};
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-
     // /**
     //  * Input for left ImgFrame
     //  */

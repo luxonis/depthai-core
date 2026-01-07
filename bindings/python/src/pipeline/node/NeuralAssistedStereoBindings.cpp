@@ -8,9 +8,6 @@ void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    // Node and Properties declare upfront
-    py::class_<NeuralAssistedStereoProperties> properties(m, "NeuralAssistedStereoProperties", DOC(dai, NeuralAssistedStereoProperties));
-
     auto node = ADD_NODE(NeuralAssistedStereo);
 
     ///////////////////////////////////////////////////////////////////////
@@ -25,10 +22,6 @@ void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
-
-    // Properties
-
-    properties.def_readwrite("initialConfig", &NeuralAssistedStereoProperties::initialConfig, DOC(dai, NeuralAssistedStereoProperties, initialConfig));
 
     // Node
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
