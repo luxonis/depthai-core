@@ -16,6 +16,9 @@ TEST_CASE("[NeuralAssistedStereo] Check that I am getting output from the subnod
     auto cameraLeftOut = cameraLeft->requestFullResolutionOutput();
     auto cameraRightOut = cameraRight->requestFullResolutionOutput();
 
+    auto cameraLeftQueue = cameraLeftOut->createOutputQueue();
+    auto cameraRightQueue = cameraRightOut->createOutputQueue();
+
     auto nn = p.create<dai::node::NeuralAssistedStereo>()->build(*cameraLeftOut, *cameraRightOut);
 
     auto outputDisparityQueue = nn->disparity.createOutputQueue();
@@ -29,6 +32,8 @@ TEST_CASE("[NeuralAssistedStereo] Check that I am getting output from the subnod
 
     // Start pipeline
     p.start();
+    auto leftGot = cameraLeftQueue->get<dai::ImgFrame>();
+    auto rightGot = cameraRightQueue->get<dai::ImgFrame>();
 
     auto disparityGot = outputDisparityQueue->get<dai::ImgFrame>();
     auto disparityGotCv = disparityGot->getCvFrame();
@@ -46,11 +51,13 @@ TEST_CASE("[NeuralAssistedStereo] Check that I am getting output from the subnod
 
     p.stop();
 
-    REQUIRE(rectifiedLeftGotCv.rows == rectifiedLeftGotCv.rows);
+    REQUIRE(rectifiedLeftGotCv.rows == leftGot->getCvFrame().rows);
+    REQUIRE(rectifiedRightGotCv.rows == rightGot->getCvFrame().rows);
     REQUIRE(vppLeftGotCv.rows == rectifiedLeftGotCv.rows);
     REQUIRE(disparityGotCv.rows == disparityGotCv.rows);
 
-    REQUIRE(rectifiedLeftGotCv.cols == rectifiedLeftGotCv.cols);
+    REQUIRE(rectifiedLeftGotCv.cols == leftGot->getCvFrame().cols);
+    REQUIRE(rectifiedRightGotCv.cols == rightGot->getCvFrame().cols);
     REQUIRE(vppLeftGotCv.cols == rectifiedLeftGotCv.cols);
     REQUIRE(disparityGotCv.cols == disparityGotCv.cols);
 }
