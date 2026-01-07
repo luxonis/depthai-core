@@ -527,7 +527,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
 DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime) {
     auto error = ErrorCode::OK;  // Expect everything is ok
-    auto calibrationCommand = inputControl.tryGet<DynamicCalibrationControl>();
+    std::shared_ptr<DynamicCalibrationControl> calibrationCommand = nullptr;
+    {
+        auto blockEvent = this->inputBlockEvent();
+        calibrationCommand = inputControl.tryGet<DynamicCalibrationControl>();
+    }
     if(calibrationCommand) {
         error = evaluateCommand(calibrationCommand);
     }
@@ -576,7 +580,7 @@ void DynamicCalibration::run() {
     auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
     initializePipeline(device);
-    while(isRunning()) {
+    while(mainLoop()) {
         slept = false;
         doWork(previousLoadingTime);
         if(!slept) {

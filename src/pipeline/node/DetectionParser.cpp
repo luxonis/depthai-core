@@ -413,9 +413,13 @@ void DetectionParser::run() {
     logger->info("Detection parser running on host.");
 
     using namespace std::chrono;
-    while(isRunning()) {
+    while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
-        std::shared_ptr<dai::NNData> sharedInputData = input.get<dai::NNData>();
+        std::shared_ptr<dai::NNData> sharedInputData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            sharedInputData = input.get<dai::NNData>();
+        }
         auto outDetections = std::make_shared<dai::ImgDetections>();
 
         if(!sharedInputData) {
@@ -461,8 +465,11 @@ void DetectionParser::run() {
         outDetections->setTimestampDevice(inputData.getTimestampDevice());
         outDetections->transformation = inputData.transformation;
 
-        // Send detections
-        out.send(outDetections);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            // Send detections
+            out.send(outDetections);
+        }
 
         auto tAbsoluteEnd = steady_clock::now();
         logger->debug("Detection parser total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",

@@ -273,6 +273,7 @@ set(TARGET_CORE_SOURCES
     src/device/CalibrationHandler.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp
+    src/pipeline/PipelineStateApi.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/MessageQueue.cpp
     src/pipeline/Node.cpp
@@ -281,6 +282,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/ThreadedHostNode.cpp
     src/pipeline/DeviceNode.cpp
     src/pipeline/DeviceNodeGroup.cpp
+    src/pipeline/node/internal/PipelineEventAggregation.cpp
+    src/pipeline/node/internal/PipelineStateMerge.cpp
     src/pipeline/node/internal/XLinkIn.cpp
     src/pipeline/node/internal/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
@@ -357,6 +360,9 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/ObjectTrackerConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
+    src/pipeline/datatype/PipelineEvent.cpp
+    src/pipeline/datatype/PipelineState.cpp
+    src/pipeline/datatype/PipelineEventAggregationConfig.cpp
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/ThermalConfig.cpp
@@ -374,6 +380,8 @@ set(TARGET_CORE_SOURCES
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp
+    src/utility/PipelineEventDispatcher.cpp
+    src/utility/PipelineImplHelper.cpp
     src/utility/RecordReplay.cpp
     src/utility/McapImpl.cpp
     src/utility/Environment.cpp

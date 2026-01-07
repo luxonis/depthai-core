@@ -63,7 +63,7 @@ inline std::array<std::array<float, 3>, 3> matmul(std::array<std::array<float, 3
 TEST_CASE("ImgTransformation in ImgFrame") {
     dai::Pipeline pipeline;
     auto cam = pipeline.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1300, 200}, dai::ImgFrame::Type::NV12);
+    auto camOut = cam->requestOutput({600, 400}, dai::ImgFrame::Type::NV12);
     auto q = camOut->createOutputQueue();
     pipeline.start();
     auto frame = q->get<dai::ImgFrame>();
