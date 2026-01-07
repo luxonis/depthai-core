@@ -1,9 +1,6 @@
 #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
 
-#include <sstream>
-
 #include "../../utility/ErrorMacros.hpp"
-#include "depthai/common/DetectionNetworkType.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "nn_archive/NNArchive.hpp"
@@ -18,8 +15,8 @@ namespace node {
 //--------------------------------------------------------------------
 
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
-    : DeviceNodeGroup(device, std::make_unique<SpatialDetectionNetworkProperties>(), false),
-      properties(static_cast<SpatialDetectionNetworkProperties&>(*propertiesHolder))
+    : DeviceNodeGroup(device, std::make_unique<Properties>(), false),
+      properties(static_cast<Properties&>(*propertiesHolder))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
       ,
       input{neuralNetwork->input},
@@ -38,9 +35,9 @@ SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& 
     }
 };
 
-SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<SpatialDetectionNetworkProperties> props)
+SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<Properties> props)
     : DeviceNodeGroup(std::move(props), true),
-      properties(static_cast<SpatialDetectionNetworkProperties&>(*propertiesHolder))
+      properties(static_cast<Properties&>(*propertiesHolder))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
       ,
       input{neuralNetwork->input},
@@ -60,9 +57,9 @@ SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<SpatialDetectio
     }
 };
 
-SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<SpatialDetectionNetworkProperties> props, bool confMode)
+SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
     : DeviceNodeGroup(std::move(props), confMode),
-      properties(static_cast<SpatialDetectionNetworkProperties&>(*propertiesHolder))
+      properties(static_cast<Properties&>(*propertiesHolder))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
       ,
       input{neuralNetwork->input},
@@ -82,9 +79,9 @@ SpatialDetectionNetwork::SpatialDetectionNetwork(std::unique_ptr<SpatialDetectio
     }
 };
 
-SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<SpatialDetectionNetworkProperties> props, bool confMode)
+SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
     : DeviceNodeGroup(device, std::move(props), confMode),
-      properties(static_cast<SpatialDetectionNetworkProperties&>(*propertiesHolder))
+      properties(static_cast<Properties&>(*propertiesHolder))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
       ,
       input{neuralNetwork->input},
@@ -119,6 +116,8 @@ void SpatialDetectionNetwork::buildInternal() {
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
     detectionParser->input.setMaxSize(1);
+    spatialLocationCalculator->inputDetections.setBlocking(true);
+    spatialLocationCalculator->inputDetections.setMaxSize(1);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
@@ -169,6 +168,9 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>&
                 stereo->depth.link(align->input);
                 neuralNetwork->passthrough.link(align->inputAlignTo);
                 align->outputAligned.link(spatialLocationCalculator->inputDepth);
+                // No "internal" buffering
+                spatialLocationCalculator->inputDepth.setBlocking(true);
+                spatialLocationCalculator->inputDepth.setMaxSize(1);
             } break;
             case Platform::RVC2:
                 stereo->depth.link(spatialLocationCalculator->inputDepth);
@@ -195,6 +197,9 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<NeuralDepth>&
     neuralDepth->depth.link(align->input);
     neuralNetwork->passthrough.link(align->inputAlignTo);
     align->outputAligned.link(spatialLocationCalculator->inputDepth);
+    // No "internal" buffering
+    spatialLocationCalculator->inputDepth.setBlocking(true);
+    spatialLocationCalculator->inputDepth.setMaxSize(1);
 }
 
 void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera) {
@@ -327,10 +332,6 @@ float SpatialDetectionNetwork::getConfidenceThreshold() const {
     return detectionParser->getConfidenceThreshold();
 }
 
-void SpatialDetectionNetwork::setBoundingBoxScaleFactor(float scaleFactor) {
-    properties.detectedBBScaleFactor = scaleFactor;
-}
-
 void SpatialDetectionNetwork::setDepthLowerThreshold(uint32_t lowerThreshold) {
     properties.depthThresholds.lowerThreshold = lowerThreshold;
     spatialLocationCalculator->initialConfig->setDepthThresholds(lowerThreshold);
@@ -344,10 +345,12 @@ void SpatialDetectionNetwork::setDepthUpperThreshold(uint32_t upperThreshold) {
 
 void SpatialDetectionNetwork::setSpatialCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm calculationAlgorithm) {
     properties.calculationAlgorithm = calculationAlgorithm;
+    spatialLocationCalculator->initialConfig->setCalculationAlgorithm(calculationAlgorithm);
 }
 
 void SpatialDetectionNetwork::setSpatialCalculationStepSize(int stepSize) {
     properties.stepSize = stepSize;
+    spatialLocationCalculator->initialConfig->setStepSize(stepSize);
 }
 
 std::optional<std::vector<std::string>> SpatialDetectionNetwork::getClasses() const {

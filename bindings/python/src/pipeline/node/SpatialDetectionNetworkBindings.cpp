@@ -1,8 +1,6 @@
 #include "Common.hpp"
-#include "NodeBindings.hpp"
-#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/Node.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
 
 void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
@@ -12,7 +10,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     // Node and Properties declare upfront
     py::class_<SpatialDetectionNetworkProperties, std::shared_ptr<SpatialDetectionNetworkProperties>> spatialDetectionNetworkProperties(
         m, "SpatialDetectionNetworkProperties", DOC(dai, SpatialDetectionNetworkProperties));
-    auto spatialDetectionNetwork = ADD_NODE_DERIVED(SpatialDetectionNetwork, DeviceNode);
+    auto spatialDetectionNetwork = ADD_NODE_DERIVED(SpatialDetectionNetwork, DeviceNodeGroup);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -28,8 +26,9 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    spatialDetectionNetworkProperties.def_readwrite("detectedBBScaleFactor", &SpatialDetectionNetworkProperties::detectedBBScaleFactor)
-        .def_readwrite("depthThresholds", &SpatialDetectionNetworkProperties::depthThresholds);
+    spatialDetectionNetworkProperties.def_readwrite("depthThresholds", &SpatialDetectionNetworkProperties::depthThresholds)
+        .def_readwrite("calculationAlgorithm", &SpatialDetectionNetworkProperties::calculationAlgorithm)
+        .def_readwrite("stepSize", &SpatialDetectionNetworkProperties::stepSize);
 
     // Node
     spatialDetectionNetwork
@@ -160,17 +159,12 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
 
         .def_property_readonly(
             "inputDepth",
-            [](SpatialDetectionNetwork& n) { return &n.inputDepth; },
+            [](SpatialDetectionNetwork& n) { return &n.spatialLocationCalculator->inputDepth; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, inputDepth))
-        //    .def_property_readonly(
-        //        "inputConfig",
-        //        [](SpatialDetectionNetwork& n) { return &n.inputConfig; },
-        //        py::return_value_policy::reference_internal,
-        //        DOC(dai, node, SpatialDetectionNetwork, inputConfig))
         .def_property_readonly(
             "passthroughDepth",
-            [](SpatialDetectionNetwork& n) { return &n.passthroughDepth; },
+            [](SpatialDetectionNetwork& n) { return &n.spatialLocationCalculator->passthroughDepth; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, passthroughDepth))
 
@@ -178,10 +172,6 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              &SpatialDetectionNetwork::setDepthLowerThreshold,
              py::arg("lowerThreshold"),
              DOC(dai, node, SpatialDetectionNetwork, setDepthLowerThreshold))
-        .def("setBoundingBoxScaleFactor",
-             &SpatialDetectionNetwork::setBoundingBoxScaleFactor,
-             py::arg("scaleFactor"),
-             DOC(dai, node, SpatialDetectionNetwork, setBoundingBoxScaleFactor))
         .def("setDepthUpperThreshold",
              &SpatialDetectionNetwork::setDepthUpperThreshold,
              py::arg("upperThreshold"),
