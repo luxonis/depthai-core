@@ -624,7 +624,7 @@ class Main:
         self.camera_queue = {}
         fps = self.args.framerate
         sync = pipeline.create(dai.node.Sync)
-        sync.setSyncThreshold(timedelta(milliseconds=500))
+        sync.setSyncThreshold(timedelta(milliseconds=50))
         for cam_id in self.board_config['cameras']:
             cam_info = self.board_config['cameras'][cam_id]
             if cam_info["name"] not in self.args.disableCamera:
@@ -647,7 +647,7 @@ class Main:
                         if self.args.rgbLensPosition:
                             cam_node.initialControl.setManualFocus(int(self.args.rgbLensPosition[stringToCam[cam_id].name.lower()]))
                         else:
-                            cam_node.initialControl.setManualFocusRaw(int(130 / 255))
+                            cam_node.initialControl.setManualFocusRaw(int(135 / 255))
 
                     self.control_queue = cam_node.inputControl.createInputQueue()
                     sensorName = cam_info['sensorName']
