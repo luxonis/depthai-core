@@ -163,7 +163,9 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>&
     if(device) {
         auto platform = device->getPlatform();
         switch(platform) {
-            case Platform::RVC4: {
+            case Platform::RVC4:
+            case Platform::RVC2:{
+                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
                 Subnode<ImageAlign>& align = *depthAlign;
                 stereo->depth.link(align->input);
                 neuralNetwork->passthrough.link(align->inputAlignTo);
@@ -171,11 +173,11 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>&
                 // No "internal" buffering
                 spatialLocationCalculator->inputDepth.setBlocking(true);
                 spatialLocationCalculator->inputDepth.setMaxSize(1);
-            } break;
-            case Platform::RVC2:
-                stereo->depth.link(spatialLocationCalculator->inputDepth);
-                neuralNetwork->passthrough.link(stereo->inputAlignTo);
-                break;
+                // } break;
+                //     stereo->depth.link(spatialLocationCalculator->inputDepth);
+                //     neuralNetwork->passthrough.link(stereo->inputAlignTo);
+            }
+            break;
             case Platform::RVC3:
             default:
                 throw std::runtime_error("Unsupported platform");
@@ -193,6 +195,7 @@ void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<NeuralDepth>&
     auto device = getDevice();
     DAI_CHECK_V(device, "Device is not set.");
     DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "NeuralDepth with SpatialDetectionNetwork is only supported on RVC4 platforms");
+    if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
     Subnode<ImageAlign>& align = *depthAlign;
     neuralDepth->depth.link(align->input);
     neuralNetwork->passthrough.link(align->inputAlignTo);

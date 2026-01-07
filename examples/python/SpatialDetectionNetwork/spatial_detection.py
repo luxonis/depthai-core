@@ -95,8 +95,6 @@ with dai.Pipeline() as p:
     if args.depthSource == "stereo":
         depthSource = p.create(dai.node.StereoDepth)
         depthSource.setExtendedDisparity(True)
-        if platform == dai.Platform.RVC2:
-            depthSource.setOutputSize(640, 400)
         monoLeft.requestOutput(size).link(depthSource.left)
         monoRight.requestOutput(size).link(depthSource.right)
     elif args.depthSource == "neural":
@@ -111,17 +109,14 @@ with dai.Pipeline() as p:
     spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
         camRgb, depthSource, modelDescription
     )
-    spatialDetectionNetwork.setDepthLowerThreshold(100)
-    spatialDetectionNetwork.setDepthUpperThreshold(1000)
+    spatialDetectionNetwork.detectionParser.setRunOnHost(True)
     visualizer = p.create(SpatialVisualizer)
 
     input_config_queue = spatialDetectionNetwork.spatialLocationCalculator.inputConfig.createInputQueue()
     calculatorConfig = spatialDetectionNetwork.spatialLocationCalculator.initialConfig
 
-    # spatialDetectionNetwork.input.setBlocking(False)
-    # spatialDetectionNetwork.setDepthLowerThreshold(100)
-    # spatialDetectionNetwork.setDepthUpperThreshold(5000)
-
+    spatialDetectionNetwork.input.setBlocking(False)
+    spatialDetectionNetwork.spatialLocationCalculator.initialConfig.setDepthThresholds(100, 5000)
     visualizer.build(
         spatialDetectionNetwork.passthroughDepth,
         spatialDetectionNetwork.out,
