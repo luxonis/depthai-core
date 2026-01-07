@@ -1,13 +1,5 @@
 #pragma once
 
-// std
-#include <vector>
-
-// libraries
-
-// project
-#include "depthai/common/DetectionNetworkType.hpp"
-#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 

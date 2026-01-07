@@ -44,7 +44,13 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
 
 std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
     setNNArchive(nnArchive);
-    nnInput.link(input);
+
+    const auto connections = nnInput.getConnections();
+    const bool alreadyLinked = std::any_of(connections.begin(), connections.end(), [this](const auto& conn) { return conn.in == &input; });
+    if(!alreadyLinked) {
+        printf("Linking DetectionParser input\n");
+        nnInput.link(input);
+    }
     return std::static_pointer_cast<DetectionParser>(shared_from_this());
 }
 

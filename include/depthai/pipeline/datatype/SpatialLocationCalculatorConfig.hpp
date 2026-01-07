@@ -7,6 +7,8 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {
 
+constexpr int MAX_UPPER_THRESHOLD = std::numeric_limits<uint16_t>::max();
+constexpr int MIN_LOWER_THRESHOLD = 100;
 /**
  * SpatialLocation configuration thresholds structure
  *
@@ -17,11 +19,11 @@ struct SpatialLocationCalculatorConfigThresholds {
     /**
      * Values less or equal than this threshold are not taken into calculation.
      */
-    uint32_t lowerThreshold = 0;
+    uint32_t lowerThreshold = MIN_LOWER_THRESHOLD;
     /**
      * Values greater or equal than this threshold are not taken into calculation.
      */
-    uint32_t upperThreshold = 65535;
+    uint32_t upperThreshold = MAX_UPPER_THRESHOLD;
 };
 DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigThresholds, lowerThreshold, upperThreshold);
 
@@ -89,8 +91,8 @@ class SpatialLocationCalculatorConfig : public Buffer {
 
    public:
     int32_t globalStepSize = AUTO;
-    uint32_t globalLowerThreshold = 100;  // less than 100mm is considered too close
-    uint32_t globalUpperThreshold = 65535;
+    uint32_t globalLowerThreshold = MIN_LOWER_THRESHOLD;
+    uint32_t globalUpperThreshold = MAX_UPPER_THRESHOLD;
     SpatialLocationCalculatorAlgorithm globalCalculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
     int32_t globalKeypointRadius = 10;
     bool calculateSpatialKeypoints = true;
@@ -122,7 +124,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
      * @param lowerThreshold Lower threshold in depth units (millimeter by default).
      * @param upperThreshold Upper threshold in depth units (millimeter by default).
      */
-    void setDepthThresholds(uint32_t lowerThreshold = 0, uint32_t upperThreshold = 30000);
+    void setDepthThresholds(uint32_t lowerThreshold = MIN_LOWER_THRESHOLD, uint32_t upperThreshold = MAX_UPPER_THRESHOLD);
 
     /**
      * Set spatial location calculation algorithm. Possible values:

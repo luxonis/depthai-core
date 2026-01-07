@@ -15,7 +15,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-modelDescription = dai.NNModelDescription("yolov6-nano")
+modelDescription = dai.NNModelDescription("luxonis/yolov8-instance-segmentation-nano:coco-512x288")
 size = (640, 400)
 
 if args.depthSource == "stereo":
@@ -54,8 +54,13 @@ class SpatialVisualizer(dai.node.HostNode):
 
         cv2.imshow("depth", depthFrameColor)
         cv2.imshow("rgb", rgbFrame)
-        if cv2.waitKey(1) == ord('q'):
+        key = cv2.waitKey(1)
+        if key == ord('q'):
             self.stopPipeline()
+        elif key == ord('s'):
+            calculatorConfig.setUseSegmentation(not calculatorConfig.getUseSegmentation())
+            input_config_queue.send(calculatorConfig)
+            print(f"setUseSegmentation set to {calculatorConfig.getUseSegmentation()}")
 
     def drawBoundingBoxes(self, depthFrameColor, detection):
         roiData = detection.boundingBoxMapping
@@ -106,12 +111,16 @@ with dai.Pipeline() as p:
     spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
         camRgb, depthSource, modelDescription
     )
+    spatialDetectionNetwork.setDepthLowerThreshold(100)
+    spatialDetectionNetwork.setDepthUpperThreshold(1000)
     visualizer = p.create(SpatialVisualizer)
 
-    spatialDetectionNetwork.input.setBlocking(False)
-    spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
-    spatialDetectionNetwork.setDepthLowerThreshold(100)
-    spatialDetectionNetwork.setDepthUpperThreshold(5000)
+    input_config_queue = spatialDetectionNetwork.spatialLocationCalculator.inputConfig.createInputQueue()
+    calculatorConfig = spatialDetectionNetwork.spatialLocationCalculator.initialConfig
+
+    # spatialDetectionNetwork.input.setBlocking(False)
+    # spatialDetectionNetwork.setDepthLowerThreshold(100)
+    # spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
     visualizer.build(
         spatialDetectionNetwork.passthroughDepth,
