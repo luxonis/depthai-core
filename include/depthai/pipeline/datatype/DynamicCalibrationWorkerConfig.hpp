@@ -21,7 +21,7 @@ struct DynamicCalibrationWorkerConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(DynamicCalibrationWorkerConfig, mode, sleepingTime);
+    DEPTHAI_SERIALIZE(DynamicCalibrationWorkerConfig, mode, sleepingTime, sampsonErrorThreshold);
 };
 
 }  // namespace dai
