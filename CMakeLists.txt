@@ -433,6 +433,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/node/DynamicCalibrationWorker.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
         src/pipeline/datatype/DynamicCalibrationControl.cpp
+        src/pipeline/datatype/DynamicCalibrationWorkerConfig.cpp
     )
 endif()
 
