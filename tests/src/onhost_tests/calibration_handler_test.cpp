@@ -131,6 +131,127 @@ static nlohmann::json loadValidCalibJson() {
     return calibJson;
 }
 
+static CalibrationHandler loadHandlerWithHousing() {
+    nlohmann::json calibJson = {
+        {"productName", "OAK-4-D-AF"},
+        {"cameraData",
+         {// ---------------------- CAM_C (socket 2) - Right stereo ----------------------
+          {2,
+           {{"cameraType", 0},
+            {"distortionCoeff", {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}},
+            {"extrinsics",
+             {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+              {"specTranslation", {{"x", 3.75}, {"y", 0.0}, {"z", 0.0}}},
+              {"toCameraSocket", 0},
+              {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+            {"height", 800},
+            {"intrinsicMatrix", {{796.0, 0.0, 648.5}, {0.0, 796.0, 410.7}, {0.0, 0.0, 1.0}}},
+            {"lensPosition", 0},
+            {"specHfovDeg", 71.86},
+            {"width", 1280}}},
+
+          // ---------------------- CAM_A (socket 0) - RGB ----------------------
+          {0,
+           {{"cameraType", 0},
+            {"distortionCoeff", {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}},
+            {"extrinsics",
+             {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+              {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
+              {"toCameraSocket", -1},
+              {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+            {"height", 2160},
+            {"intrinsicMatrix", {{3088.5, 0.0, 1964.4}, {0.0, 3087.1, 1032.4}, {0.0, 0.0, 1.0}}},
+            {"lensPosition", 0},
+            {"specHfovDeg", 68.79},
+            {"width", 3840}}},
+
+          // ---------------------- CAM_B (socket 1) - Left stereo ----------------------
+          {1,
+           {{"cameraType", 0},
+            {"distortionCoeff", {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}},
+            {"extrinsics",
+             {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+              {"specTranslation", {{"x", -7.5}, {"y", 0.0}, {"z", 0.0}}},
+              {"toCameraSocket", 2},
+              {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+            {"height", 800},
+            {"intrinsicMatrix", {{785.9, 0.0, 665.3}, {0.0, 785.9, 409.4}, {0.0, 0.0, 1.0}}},
+            {"lensPosition", 0},
+            {"specHfovDeg", 71.86},
+            {"width", 1280}}}}},
+
+        // ---------------------- Housing extrinsics ----------------------
+        {"housingExtrinsics",
+         {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+          {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
+          {"toCameraSocket", 2},
+          {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+    };
+
+    return CalibrationHandler::fromJson(calibJson);
+}
+
+static CalibrationHandler loadHandlerWithHousingRotation() {
+    nlohmann::json calibJson = {{"cameraData",
+                                 {// ---------------------- Camera 2 ----------------------
+                                  {2,
+                                   {{"cameraType", 0},
+                                    {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+                                    {"extrinsics",
+                                     {// Rz(90°)
+                                      {"rotationMatrix", {{0.0, -1.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 1.0}}},
+                                      {"specTranslation", {{"x", 1.5}, {"y", 0.5}, {"z", 0.2}}},
+                                      {"toCameraSocket", 0},
+                                      {"translation", {{"x", 1.0}, {"y", 0.0}, {"z", 0.0}}}}},
+                                    {"height", 100},
+                                    {"intrinsicMatrix", {{100.0, 0.0, 50.0}, {0.0, 100.0, 50.0}, {0.0, 0.0, 1.0}}},
+                                    {"lensPosition", 0},
+                                    {"specHfovDeg", 90.0},
+                                    {"width", 100}}},
+
+                                  // ---------------------- Camera 1 ----------------------
+                                  {1,
+                                   {{"cameraType", 0},
+                                    {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+                                    {"extrinsics",
+                                     {// Ry(90°)
+                                      {"rotationMatrix", {{0.0, 0.0, 1.0}, {0.0, 1.0, 0.0}, {-1.0, 0.0, 0.0}}},
+                                      {"specTranslation", {{"x", -1.2}, {"y", 0.3}, {"z", 0.1}}},
+                                      {"toCameraSocket", 2},
+                                      {"translation", {{"x", -1.0}, {"y", 0.0}, {"z", 0.0}}}}},
+                                    {"height", 100},
+                                    {"intrinsicMatrix", {{100.0, 0.0, 50.0}, {0.0, 100.0, 50.0}, {0.0, 0.0, 1.0}}},
+                                    {"lensPosition", 0},
+                                    {"specHfovDeg", 90.0},
+                                    {"width", 100}}},
+
+                                  // ---------------------- Camera 0 ----------------------
+                                  {0,
+                                   {{"cameraType", 0},
+                                    {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+                                    {"extrinsics",
+                                     {// Rx(90°)
+                                      {"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+                                      {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
+                                      {"toCameraSocket", -1},
+                                      {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+                                    {"height", 100},
+                                    {"intrinsicMatrix", {{100.0, 0.0, 50.0}, {0.0, 100.0, 50.0}, {0.0, 0.0, 1.0}}},
+                                    {"lensPosition", 0},
+                                    {"specHfovDeg", 90.0},
+                                    {"width", 100}}}}},
+
+                                // ---------------------- Housing extrinsics ----------------------
+                                {"housingExtrinsics",
+                                 {// Rz(45°)
+                                  {"rotationMatrix", {{0.70710678, -0.70710678, 0.0}, {0.70710678, 0.70710678, 0.0}, {0.0, 0.0, 1.0}}},
+                                  {"specTranslation", {{"x", 1.5}, {"y", 2.5}, {"z", 3.5}}},
+                                  {"toCameraSocket", 2},
+                                  {"translation", {{"x", 1.0}, {"y", 2.0}, {"z", 3.0}}}}}};
+
+    return CalibrationHandler::fromJson(calibJson);
+}
+
 static CalibrationHandler loadInvalidHandler() {
     return CalibrationHandler::fromJson(loadCalibJson());
 }
@@ -793,4 +914,168 @@ TEST_CASE("EepromData constructor throws with missing graph", "[CalibrationHandl
     data.cameraData[CameraBoardSocket::CAM_C].extrinsics.toCameraSocket = CameraBoardSocket::CAM_D;
 
     REQUIRE_THROWS_WITH(dai::CalibrationHandler(data, true), Catch::Matchers::ContainsSubstring("Missing extrinsic link in calibration chain"));
+}
+
+// Helper function to compare 4x4 transformation matrices
+static void requireMatrixApproxEqual(const std::vector<std::vector<float>>& result, const std::vector<std::vector<float>>& expected, float margin = 1e-5) {
+    REQUIRE(result.size() == 4);
+    for(int i = 0; i < 4; i++) {
+        REQUIRE(result[i].size() == 4);
+        for(int j = 0; j < 4; j++) {
+            REQUIRE(result[i][j] == Catch::Approx(expected[i][j]).margin(margin));
+        }
+    }
+}
+
+TEST_CASE("getHousingCalibration - all cameras with specTranslation", "[housingDatabase]") {
+    auto handler = loadHandlerWithHousing();
+
+    // Expected transformations for CAM_A to housing systems
+    std::map<CameraBoardSocket, std::map<HousingCoordinateSystem, std::vector<std::vector<float>>>> expectedTransforms = {
+        {CameraBoardSocket::CAM_A,
+         {{HousingCoordinateSystem::CAM_A, {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.32f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::CAM_B, {{1.0f, 0.0f, 0.0f, 3.75f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::CAM_C, {{1.0f, 0.0f, 0.0f, -3.75f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::FRONT_CAM_A, {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::FRONT_CAM_B, {{1.0f, 0.0f, 0.0f, 3.75f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::FRONT_CAM_C, {{1.0f, 0.0f, 0.0f, -3.75f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::VESA_A, {{1.0f, 0.0f, 0.0f, 3.75f}, {0.0f, 1.0f, 0.0f, 1.123f}, {0.0f, 0.0f, 1.0f, 6.083f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::VESA_B, {{1.0f, 0.0f, 0.0f, -3.75f}, {0.0f, 1.0f, 0.0f, 1.123f}, {0.0f, 0.0f, 1.0f, 6.083f}, {0.0f, 0.0f, 0.0f, 1.0f}}}}},
+        {CameraBoardSocket::CAM_B,
+         {{HousingCoordinateSystem::CAM_A, {{1.0f, 0.0f, 0.0f, -3.75f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.32f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::CAM_B, {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::CAM_C, {{1.0f, 0.0f, 0.0f, -7.5f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::FRONT_CAM_A, {{1.0f, 0.0f, 0.0f, -3.75f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::FRONT_CAM_B, {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::FRONT_CAM_C, {{1.0f, 0.0f, 0.0f, -7.5f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::VESA_A, {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.123f}, {0.0f, 0.0f, 1.0f, 6.083f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::VESA_B, {{1.0f, 0.0f, 0.0f, -7.5f}, {0.0f, 1.0f, 0.0f, 1.123f}, {0.0f, 0.0f, 1.0f, 6.083f}, {0.0f, 0.0f, 0.0f, 1.0f}}}}},
+        {CameraBoardSocket::CAM_C,
+         {{HousingCoordinateSystem::CAM_A, {{1.0f, 0.0f, 0.0f, 3.75f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.32f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::CAM_B, {{1.0f, 0.0f, 0.0f, 7.5f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::CAM_C, {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::FRONT_CAM_A, {{1.0f, 0.0f, 0.0f, 3.75f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::FRONT_CAM_B, {{1.0f, 0.0f, 0.0f, 7.5f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::FRONT_CAM_C, {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::VESA_A, {{1.0f, 0.0f, 0.0f, 7.5f}, {0.0f, 1.0f, 0.0f, 1.123f}, {0.0f, 0.0f, 1.0f, 6.083f}, {0.0f, 0.0f, 0.0f, 1.0f}}},
+          {HousingCoordinateSystem::VESA_B, {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.123f}, {0.0f, 0.0f, 1.0f, 6.083f}, {0.0f, 0.0f, 0.0f, 1.0f}}}}}};
+
+    // Test all cameras and housing coordinate systems
+    for(const auto& [camera, housingSystems] : expectedTransforms) {
+        for(const auto& [housingCS, expected] : housingSystems) {
+            auto result = handler.getHousingCalibration(camera, housingCS, true);
+            requireMatrixApproxEqual(result, expected);
+        }
+    }
+}
+
+TEST_CASE("getHousingCalibration - All cameras to housing with specTranslation", "[getHousingCalibration]") {
+    auto handler = loadHandlerWithHousingRotation();
+
+    // Test CAM_C
+    auto camCToHousing = handler.getHousingCalibration(CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
+
+    std::vector<std::vector<float>> expectedCamC = {
+        {0.707107f, 0.707107f, 0.0f, -2.82843f}, {-0.707107f, 0.707107f, 0.0f, -0.707107f}, {0.0f, 0.0f, 1.0f, -3.5f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+
+    requireMatrixApproxEqual(camCToHousing, expectedCamC, 1e-6);
+
+    // Test CAM_B
+    auto camBToHousing = handler.getHousingCalibration(CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
+
+    std::vector<std::vector<float>> expectedCamB = {
+        {0.0f, 0.707107f, 0.707107f, -3.46482f}, {0.0f, 0.707107f, -0.707107f, 0.353553f}, {-1.0f, 0.0f, 0.0f, -3.4f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+
+    requireMatrixApproxEqual(camBToHousing, expectedCamB, 1e-6);
+
+    // Test CAM_A
+    auto camAToHousing = handler.getHousingCalibration(CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
+
+    std::vector<std::vector<float>> expectedCamA = {
+        {-0.707107f, 0.707107f, 0.0f, -2.12132f}, {-0.707107f, -0.707107f, 0.0f, 0.707107f}, {0.0f, 0.0f, 1.0f, -3.7f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+
+    requireMatrixApproxEqual(camAToHousing, expectedCamA, 1e-6);
+}
+
+TEST_CASE("getHousingCalibration - All cameras to housing with regular translation", "[getHousingCalibration]") {
+    auto handler = loadHandlerWithHousingRotation();
+
+    // Test CAM_C
+    auto camCToHousing = handler.getHousingCalibration(CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::FRONT_CAM_A, false);
+
+    std::vector<std::vector<float>> expectedCamC = {
+        {0.707107f, 0.707107f, 0.0f, -2.12132f}, {-0.707107f, 0.707107f, 0.0f, -0.707107f}, {0.0f, 0.0f, 1.0f, -3.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+
+    requireMatrixApproxEqual(camCToHousing, expectedCamC, 1e-6);
+
+    // Test CAM_B
+    auto camBToHousing = handler.getHousingCalibration(CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::FRONT_CAM_A, false);
+
+    std::vector<std::vector<float>> expectedCamB = {
+        {0.0f, 0.707107f, 0.707107f, -2.82843f}, {0.0f, 0.707107f, -0.707107f, 0.0f}, {-1.0f, 0.0f, 0.0f, -3.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+
+    requireMatrixApproxEqual(camBToHousing, expectedCamB, 1e-6);
+
+    // Test CAM_A
+    auto camAToHousing = handler.getHousingCalibration(CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::FRONT_CAM_A, false);
+
+    std::vector<std::vector<float>> expectedCamA = {
+        {-0.707107f, 0.707107f, 0.0f, -1.41421f}, {-0.707107f, -0.707107f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -3.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+
+    requireMatrixApproxEqual(camAToHousing, expectedCamA, 1e-6);
+}
+
+TEST_CASE("getHousingCalibration - Invalid source camera throws", "[getHousingCalibration]") {
+    auto handler = loadHandlerWithHousingRotation();
+
+    // Try to get housing calibration for a camera that doesn't exist
+    REQUIRE_THROWS_WITH(handler.getHousingCalibration(CameraBoardSocket::CAM_E, dai::HousingCoordinateSystem::FRONT_CAM_A, true),
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the requested source cameraId"));
+}
+
+TEST_CASE("getHousingCalibration - Disconnected origin cameras throw", "[getHousingCalibration]") {
+    // Create handler with disconnected camera trees
+    nlohmann::json calibJson = {{"cameraData",
+                                 {// Camera 0 - one origin tree
+                                  {0,
+                                   {{"cameraType", 0},
+                                    {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+                                    {"extrinsics",
+                                     {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+                                      {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
+                                      {"toCameraSocket", -1},  // origin
+                                      {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+                                    {"height", 100},
+                                    {"intrinsicMatrix", {{100.0, 0.0, 50.0}, {0.0, 100.0, 50.0}, {0.0, 0.0, 1.0}}},
+                                    {"lensPosition", 0},
+                                    {"specHfovDeg", 90.0},
+                                    {"width", 100}}},
+
+                                  // Camera 1 - different origin tree
+                                  {1,
+                                   {{"cameraType", 0},
+                                    {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+                                    {"extrinsics",
+                                     {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+                                      {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
+                                      {"toCameraSocket", -1},  // different origin
+                                      {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+                                    {"height", 100},
+                                    {"intrinsicMatrix", {{100.0, 0.0, 50.0}, {0.0, 100.0, 50.0}, {0.0, 0.0, 1.0}}},
+                                    {"lensPosition", 0},
+                                    {"specHfovDeg", 90.0},
+                                    {"width", 100}}}}},
+
+                                // Housing extrinsics points to camera 1
+                                {"housingExtrinsics",
+                                 {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+                                  {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
+                                  {"toCameraSocket", 1},
+                                  {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}}};
+
+    auto handler = CalibrationHandler::fromJson(calibJson);
+
+    // Try to get housing calibration from CAM_A (origin 0) when housing points to origin 1
+    REQUIRE_THROWS_WITH(handler.getHousingCalibration(CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::FRONT_CAM_A, true),
+                        Catch::Matchers::ContainsSubstring("Missing extrinsic link from source camera to destination camera"));
 }

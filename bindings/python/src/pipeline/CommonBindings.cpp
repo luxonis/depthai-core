@@ -22,6 +22,7 @@
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/FrameEvent.hpp"
+#include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Interpolation.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/common/MemoryInfo.hpp"
@@ -56,6 +57,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Quaterniond> quaterniond(m, "Quaterniond", DOC(dai, Quaterniond));
     py::class_<Size2f> size2f(m, "Size2f", DOC(dai, Size2f));
     py::enum_<CameraBoardSocket> cameraBoardSocket(m, "CameraBoardSocket", DOC(dai, CameraBoardSocket));
+    py::enum_<HousingCoordinateSystem> housingCoordinateSystem(m, "HousingCoordinateSystem", DOC(dai, HousingCoordinateSystem));
     py::enum_<ConnectionInterface> connectionInterface(m, "connectionInterface", DOC(dai, ConnectionInterface));
     py::enum_<CameraSensorType> cameraSensorType(m, "CameraSensorType", DOC(dai, CameraSensorType));
     py::enum_<CameraImageOrientation> cameraImageOrientation(m, "CameraImageOrientation", DOC(dai, CameraImageOrientation));
@@ -284,6 +286,39 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
             return CameraBoardSocket::CAM_C;
         });
     HEDLEY_DIAGNOSTIC_POP
+
+    // HousingCoordinateSystem enum bindings
+    housingCoordinateSystem.value("CAM_A", HousingCoordinateSystem::CAM_A)
+        .value("CAM_B", HousingCoordinateSystem::CAM_B)
+        .value("CAM_C", HousingCoordinateSystem::CAM_C)
+        .value("CAM_D", HousingCoordinateSystem::CAM_D)
+        .value("CAM_E", HousingCoordinateSystem::CAM_E)
+        .value("CAM_F", HousingCoordinateSystem::CAM_F)
+        .value("CAM_G", HousingCoordinateSystem::CAM_G)
+        .value("CAM_H", HousingCoordinateSystem::CAM_H)
+        .value("CAM_I", HousingCoordinateSystem::CAM_I)
+        .value("CAM_J", HousingCoordinateSystem::CAM_J)
+        .value("FRONT_CAM_A", HousingCoordinateSystem::FRONT_CAM_A)
+        .value("FRONT_CAM_B", HousingCoordinateSystem::FRONT_CAM_B)
+        .value("FRONT_CAM_C", HousingCoordinateSystem::FRONT_CAM_C)
+        .value("FRONT_CAM_D", HousingCoordinateSystem::FRONT_CAM_D)
+        .value("FRONT_CAM_E", HousingCoordinateSystem::FRONT_CAM_E)
+        .value("FRONT_CAM_F", HousingCoordinateSystem::FRONT_CAM_F)
+        .value("FRONT_CAM_G", HousingCoordinateSystem::FRONT_CAM_G)
+        .value("FRONT_CAM_H", HousingCoordinateSystem::FRONT_CAM_H)
+        .value("FRONT_CAM_I", HousingCoordinateSystem::FRONT_CAM_I)
+        .value("FRONT_CAM_J", HousingCoordinateSystem::FRONT_CAM_J)
+        .value("VESA_A", HousingCoordinateSystem::VESA_A)
+        .value("VESA_B", HousingCoordinateSystem::VESA_B)
+        .value("VESA_C", HousingCoordinateSystem::VESA_C)
+        .value("VESA_D", HousingCoordinateSystem::VESA_D)
+        .value("VESA_E", HousingCoordinateSystem::VESA_E)
+        .value("VESA_F", HousingCoordinateSystem::VESA_F)
+        .value("VESA_G", HousingCoordinateSystem::VESA_G)
+        .value("VESA_H", HousingCoordinateSystem::VESA_H)
+        .value("VESA_I", HousingCoordinateSystem::VESA_I)
+        .value("VESA_J", HousingCoordinateSystem::VESA_J)
+        .value("IMU", HousingCoordinateSystem::IMU);
 
     // CameraSensorType enum bindings
     cameraSensorType.value("COLOR", CameraSensorType::COLOR)
