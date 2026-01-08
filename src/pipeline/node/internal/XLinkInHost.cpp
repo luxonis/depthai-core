@@ -33,25 +33,29 @@ void XLinkInHost::disconnect() {
     isWaitingForReconnect.notify_all();
 }
 
-std::shared_ptr<ADatatype> XLinkInHost::readData(const XLinkStream& stream) const {
-    auto packet = stream.readMove();
+StreamPacketDesc XLinkInHost::readStreamMessage() const {
+    return stream->readMove();
+}
+
+std::shared_ptr<ADatatype> XLinkInHost::readData() const {
+    auto packet = readStreamMessage();
     const auto msg = StreamMessageParser::parseMessage(std::move(packet));
     if(auto messageGroup = std::dynamic_pointer_cast<MessageGroup>(msg)) {
-        parseMessageGroup(messageGroup, stream);
+        parseMessageGroup(messageGroup);
     }
     if(auto packetizedData = std::dynamic_pointer_cast<PacketizedData>(msg)) {
-        return parsePacketizedData(packetizedData, stream);
+        return parsePacketizedData(packetizedData);
     }
     return msg;
 }
 
-std::shared_ptr<ADatatype> XLinkInHost::parsePacketizedData(const std::shared_ptr<PacketizedData>& packetizedData, const XLinkStream& stream) const {
+std::shared_ptr<ADatatype> XLinkInHost::parsePacketizedData(const std::shared_ptr<PacketizedData>& packetizedData) const {
     std::vector<std::uint8_t> payload;
     payload.reserve(packetizedData->totalSize);
     std::uint32_t currentSize = 0;
 
     for(std::uint32_t i = 0; i < packetizedData->numPackets; ++i) {
-        auto packet = stream.readMove();
+        auto packet = readStreamMessage();
         if(packet.length == 0) {
             continue;
         }
@@ -73,9 +77,9 @@ std::shared_ptr<ADatatype> XLinkInHost::parsePacketizedData(const std::shared_pt
     return StreamMessageParser::parseMessage(&packet);
 }
 
-void XLinkInHost::parseMessageGroup(const std::shared_ptr<MessageGroup>& messageGroup, const XLinkStream& stream) const {
+void XLinkInHost::parseMessageGroup(const std::shared_ptr<MessageGroup>& messageGroup) const {
     for(auto& msg : messageGroup->group) {
-        msg.second = readData(stream);
+        msg.second = readData();
     }
 }
 
@@ -84,12 +88,12 @@ void XLinkInHost::run() {
     bool reconnect = true;
     while(reconnect) {
         reconnect = false;
-        XLinkStream stream(std::move(conn), streamName, 1);
+        stream = std::make_unique<XLinkStream>(std::move(conn), streamName, 1);
         while(mainLoop()) {
             try {
                 // Blocking -- parse packet and gather timing information
                 const auto t1Parse = std::chrono::steady_clock::now();
-                auto msg = readData(stream);
+                auto msg = readData();
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging

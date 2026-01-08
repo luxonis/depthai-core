@@ -20,6 +20,8 @@ struct PacketizedData : public Buffer {
     std::uint32_t numPackets;
     std::uint32_t totalSize;
 
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const;
+
     DEPTHAI_SERIALIZE(PacketizedData, numPackets, totalSize);
 };
 
