@@ -20,7 +20,7 @@ class SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLogge
      * Outputs SystemInformation[RVC4] message that carries various system information
      * like memory and CPU usage, temperatures, ...
      * For series 2 devices output SystemInformation message,
-     * for series 3 and 4 devices output SystemInformationRVC4 message
+     * for series 4 devices output SystemInformationRVC4 message
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationRVC4, false}}}}};
 
