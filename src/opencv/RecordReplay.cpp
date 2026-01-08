@@ -15,23 +15,59 @@ constexpr unsigned int MP4V2_TIMESCALE = 90000;
 
 enum class NALU { P = 1, I = 5, SPS = 7, PPS = 8, INVALID = 0x00 };
 
+struct NaluView {
+    dai::span<const uint8_t> data;
+    NALU type = NALU::INVALID;
+};
+
 struct H26xNals {
     dai::span<const uint8_t> data;
     size_t index = 0;
 
     H26xNals(dai::span<const uint8_t> data) : data(data) {}
 
-    dai::span<const uint8_t> next() {
-        if(index >= data.size()) return {};
-        while(index < data.size() - 4) {
-            if(data[index] == 0 && data[index + 1] == 0 && data[index + 2] == 0 && data[index + 3] == 1) {
-                auto nal = data.subspan(index, data.size() - index);
-                index += 4;
-                return nal;
+    static bool findStartCode(dai::span<const uint8_t> data, size_t offset, size_t& start, size_t& startCodePos) {
+        for(size_t i = offset; i + 3 < data.size(); ++i) {
+            if(data[i] == 0 && data[i + 1] == 0) {
+                if(data[i + 2] == 1) {
+                    startCodePos = i;
+                    start = i + 3;
+                    return true;
+                }
+                if(i + 3 < data.size() && data[i + 2] == 0 && data[i + 3] == 1) {
+                    startCodePos = i;
+                    start = i + 4;
+                    return true;
+                }
             }
-            ++index;
         }
-        return {};
+        return false;
+    }
+
+    std::optional<NaluView> next() {
+        if(index >= data.size()) return std::nullopt;
+        size_t start = 0;
+        size_t startCodePos = 0;
+        if(!findStartCode(data, index, start, startCodePos)) {
+            if(index == 0 && !data.empty()) {
+                index = data.size();
+                return NaluView{data, static_cast<NALU>(data[0] & 0x1F)};
+            }
+            return std::nullopt;
+        }
+        size_t nextStart = 0;
+        size_t nextStartCodePos = 0;
+        size_t end = data.size();
+        if(findStartCode(data, start, nextStart, nextStartCodePos)) {
+            end = nextStartCodePos;
+        }
+        if(end <= start) {
+            index = end;
+            return std::nullopt;
+        }
+        index = end;
+        auto nal = data.subspan(start, end - start);
+        return NaluView{nal, static_cast<NALU>(nal[0] & 0x1F)};
     }
 };
 
@@ -88,41 +124,78 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
 #ifdef DEPTHAI_ENABLE_MP4V2
         case VideoCodec::H264: {
             H26xNals nals(data);
+            std::vector<dai::span<const uint8_t>> sampleNals;
+            bool isSyncSample = false;
             auto nal = nals.next();
-            while(!nal.empty()) {
-                NALU type = (NALU)(nal[4] & 0x1F);
-                switch(type) {
-                    case NALU::P:
-                    case NALU::I: {
-                        if(mp4Track == MP4_INVALID_TRACK_ID) {
-                            // spdlog::info("VideoRecorder track is invalid"); // TODO(asahtik) - check if this is OK or should be a warning
-                            break;
-                        };
-                        std::vector<uint8_t> nalData(nal.data(), nal.data() + nal.size());
-                        nalData[0] = (nal.size() - 4) >> 24;
-                        nalData[1] = (nal.size() - 4) >> 16;
-                        nalData[2] = (nal.size() - 4) >> 8;
-                        nalData[3] = (nal.size() - 4) & 0xFF;
-                        if(!MP4WriteSample(mp4Writer, mp4Track, nalData.data(), nalData.size())) {
-                            spdlog::warn("Failed to write sample to MP4 file");
-                        }
-                        break;
-                    }
+            while(nal.has_value()) {
+                auto nalData = nal->data;
+                switch(nal->type) {
                     case NALU::SPS:
-                        if(mp4Track == MP4_INVALID_TRACK_ID) {
-                            mp4Track = MP4AddH264VideoTrack(mp4Writer, MP4V2_TIMESCALE, MP4V2_TIMESCALE / fps, width, height, nal[5], nal[6], nal[7], 3);
+                        if(mp4Track == MP4_INVALID_TRACK_ID && nalData.size() >= 4) {
+                            mp4Track = MP4AddH264VideoTrack(mp4Writer,
+                                                            MP4V2_TIMESCALE,
+                                                            MP4V2_TIMESCALE / fps,
+                                                            width,
+                                                            height,
+                                                            nalData[1],
+                                                            nalData[2],
+                                                            nalData[3],
+                                                            3);
                             assert(mp4Track != MP4_INVALID_TRACK_ID);
                             MP4SetVideoProfileLevel(mp4Writer, 0x7F);
-                            MP4AddH264SequenceParameterSet(mp4Writer, mp4Track, nal.data(), nal.size());
+                        }
+                        if(mp4Track != MP4_INVALID_TRACK_ID) {
+                            MP4AddH264SequenceParameterSet(mp4Writer, mp4Track, nalData.data(), nalData.size());
                         }
                         break;
                     case NALU::PPS:
-                        MP4AddH264PictureParameterSet(mp4Writer, mp4Track, nal.data(), nal.size());
+                        if(mp4Track != MP4_INVALID_TRACK_ID) {
+                            MP4AddH264PictureParameterSet(mp4Writer, mp4Track, nalData.data(), nalData.size());
+                        }
+                        break;
+                    case NALU::I:
+                        isSyncSample = true;
+                        sampleNals.push_back(nalData);
+                        break;
+                    case NALU::P:
+                        sampleNals.push_back(nalData);
                         break;
                     case NALU::INVALID:
                         break;
                 }
                 nal = nals.next();
+            }
+
+            if(mp4Track == MP4_INVALID_TRACK_ID) {
+                break;
+            }
+            if(sampleNals.empty()) {
+                break;
+            }
+
+            size_t totalSize = 0;
+            for(const auto& n : sampleNals) {
+                totalSize += 4 + n.size();
+            }
+            std::vector<uint8_t> sampleData;
+            sampleData.reserve(totalSize);
+            for(const auto& n : sampleNals) {
+                uint32_t naluSize = static_cast<uint32_t>(n.size());
+                sampleData.push_back(static_cast<uint8_t>((naluSize >> 24) & 0xFF));
+                sampleData.push_back(static_cast<uint8_t>((naluSize >> 16) & 0xFF));
+                sampleData.push_back(static_cast<uint8_t>((naluSize >> 8) & 0xFF));
+                sampleData.push_back(static_cast<uint8_t>(naluSize & 0xFF));
+                sampleData.insert(sampleData.end(), n.begin(), n.end());
+            }
+
+            if(!MP4WriteSample(mp4Writer,
+                               mp4Track,
+                               sampleData.data(),
+                               sampleData.size(),
+                               MP4V2_TIMESCALE / fps,
+                               0,
+                               isSyncSample)) {
+                spdlog::warn("Failed to write sample to MP4 file");
             }
             break;
         }
@@ -131,10 +204,9 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
                 mp4Track = MP4AddVideoTrack(mp4Writer, MP4V2_TIMESCALE, MP4V2_TIMESCALE / fps, width, height, MP4_JPEG_VIDEO_TYPE);
                 assert(mp4Track != MP4_INVALID_TRACK_ID);
                 MP4SetVideoProfileLevel(mp4Writer, 0x7F);
-            } else {
-                if(!MP4WriteSample(mp4Writer, mp4Track, data.data(), data.size())) {
-                    spdlog::warn("Failed to write sample to MP4 file");
-                }
+            }
+            if(!MP4WriteSample(mp4Writer, mp4Track, data.data(), data.size(), MP4V2_TIMESCALE / fps)) {
+                spdlog::warn("Failed to write sample to MP4 file");
             }
             break;
 #else
@@ -184,7 +256,7 @@ void VideoPlayer::init(const std::string& filePath) {
         throw std::runtime_error("VideoPlayer file path is empty");
     }
     cvReader = std::make_unique<cv::VideoCapture>();
-    cvReader->open(filePath);
+    cvReader->open(filePath, cv::CAP_FFMPEG);
     assert(cvReader->isOpened());
     initialized = true;
 }
