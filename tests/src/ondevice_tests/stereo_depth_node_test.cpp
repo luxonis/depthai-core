@@ -73,6 +73,7 @@ TEST_CASE("StereoDepth running while repeatedly setting calibration does not cra
     monoRightOut->link(stereo->right);
 
     auto syncedLeftQueue = stereo->syncedLeft.createOutputQueue();
+    auto disparityQueue = stereo->disparity.createOutputQueue();
 
     pipeline.start();
 
@@ -84,7 +85,7 @@ TEST_CASE("StereoDepth running while repeatedly setting calibration does not cra
         }
 
         std::shared_ptr<dai::ImgFrame> leftFrame;
-
+        auto disparity = disparityQueue->get<dai::ImgFrame>();
         try {
             leftFrame = syncedLeftQueue->get<dai::ImgFrame>();
         } catch(const std::exception& e) {
