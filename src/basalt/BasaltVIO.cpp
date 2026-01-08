@@ -70,7 +70,7 @@ void BasaltVIO::run() {
     Eigen::Quaterniond q(R);
     basalt::PoseState<double>::SE3 opticalTransform(q, Eigen::Vector3d(0, 0, 0));
 
-    while(isRunning()) {
+    while(mainLoop()) {
         if(!initialized) continue;
         pimpl->outStateQueue->pop(data);
 

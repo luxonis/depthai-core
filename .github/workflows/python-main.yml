@@ -1,6 +1,9 @@
 name: Depthai Python CI/CD
 
 # Controls when the action will run. Triggers the workflow on push
+concurrency:
+  group: depthai-python-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
@@ -14,7 +17,7 @@ on:
     branches:
       - main
       - develop
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, reopened, labeled]
 
 ###################################
 ###################################

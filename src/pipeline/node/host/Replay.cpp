@@ -98,7 +98,11 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CoverageData:
+        case DatatypeEnum::PipelineEvent:
+        case DatatypeEnum::PipelineState:
+        case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::VppConfig:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -169,7 +173,11 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CoverageData:
+        case DatatypeEnum::PipelineEvent:
+        case DatatypeEnum::PipelineState:
+        case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::VppConfig:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};
@@ -212,7 +220,7 @@ void ReplayVideo::run() {
     uint64_t index = 0;
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
-    while(isRunning()) {
+    while(mainLoop()) {
         std::shared_ptr<proto::img_frame::ImgFrame> metadata;
         std::vector<uint8_t> frame;
         if(hasMetadata) {
@@ -290,7 +298,10 @@ void ReplayVideo::run() {
             std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
         }
 
-        if(buffer) out.send(buffer);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            if(buffer) out.send(buffer);
+        }
 
         if(fps.has_value() && fps.value() > 0.1f) {
             std::this_thread::sleep_until(loopStart + std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value())));
@@ -339,7 +350,7 @@ void ReplayMetadataOnly::run() {
     bool first = true;
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
-    while(isRunning()) {
+    while(mainLoop()) {
         std::shared_ptr<google::protobuf::Message> metadata;
         std::vector<uint8_t> frame;
         if(!utility::deserializationSupported(datatype)) {
@@ -366,7 +377,10 @@ void ReplayMetadataOnly::run() {
             std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
         }
 
-        if(buffer) out.send(buffer);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            if(buffer) out.send(buffer);
+        }
 
         if(fps.has_value() && fps.value() > 0.1f) {
             std::this_thread::sleep_until(loopStart + std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value())));

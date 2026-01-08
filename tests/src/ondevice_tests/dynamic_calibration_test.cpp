@@ -430,8 +430,8 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
 
     device->setCalibration(getHandler());
     auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper));
-    dynCalib->syncInput.send(group);
     p.start();
+    dynCalib->syncInput.send(group);
     std::this_thread::sleep_for(0.5s);
 
     // load image

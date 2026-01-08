@@ -31,7 +31,7 @@ class TestPassthrough(dai.node.ThreadedHostNode):
         print("Goodbye from", self.name)
 
     def run(self):
-        while self.isRunning():
+        while self.mainLoop():
             buffer = self.input.get()
             print("The passthrough node received a buffer!")
             self.output.send(buffer)
@@ -47,7 +47,7 @@ class TestSink(dai.node.ThreadedHostNode):
         print("Hello, this is", self.name)
 
     def run(self):
-        while self.isRunning():
+        while self.mainLoop():
             buffer = self.input.get()
             del buffer
             print(f"{self.name} node received a buffer!")
@@ -59,7 +59,7 @@ class TestSource(dai.node.ThreadedHostNode):
         self.output = self.createOutput()
 
     def run(self):
-        while self.isRunning():
+        while self.mainLoop():
             buffer = dai.Buffer()
             print(f"{self.name} node is sending a buffer!")
             self.output.send(buffer)
@@ -77,7 +77,7 @@ class TestPassthroughSubnodes(dai.node.ThreadedHostNode):
         self.passthrough1.output.link(self.passthrough2.input)
 
     def run(self):
-        while self.isRunning():
+        while self.mainLoop():
             buffer = self.input.get()
             self.output.send(buffer)
 

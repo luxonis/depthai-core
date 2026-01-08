@@ -243,7 +243,7 @@ void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
 
 void RTABMapSLAM::run() {
     auto& logger = pimpl->logger;
-    while(isRunning()) {
+    while(mainLoop()) {
         if(!initialized) {
             continue;
         } else {
