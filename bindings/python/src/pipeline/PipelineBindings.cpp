@@ -1,4 +1,3 @@
-
 #include "PipelineBindings.hpp"
 
 #include <pybind11/attr.h>
@@ -67,6 +66,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<GlobalProperties> globalProperties(m, "GlobalProperties", DOC(dai, GlobalProperties));
     py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
     py::class_<RecordConfig::VideoEncoding> recordVideoConfig(recordConfig, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
+    py::class_<PipelineStateApi> pipelineStateApi(m, "PipelineStateApi", DOC(dai, PipelineStateApi));
+    py::class_<NodesStateApi> nodesStateApi(m, "NodesStateApi", DOC(dai, NodesStateApi));
+    py::class_<NodeStateApi> nodeStateApi(m, "NodeStateApi", DOC(dai, NodeStateApi));
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
 
     ///////////////////////////////////////////////////////////////////////
@@ -104,6 +106,59 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("outputDir", &RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
         .def_readwrite("videoEncoding", &RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
         .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
+
+    pipelineStateApi.def("nodes", static_cast<NodesStateApi (PipelineStateApi::*)()>(&PipelineStateApi::nodes), DOC(dai, PipelineStateApi, nodes))
+        .def("nodes",
+             static_cast<NodesStateApi (PipelineStateApi::*)(const std::vector<Node::Id>&)>(&PipelineStateApi::nodes),
+             py::arg("nodeIds"),
+             DOC(dai, PipelineStateApi, nodes, 2))
+        .def("nodes",
+             static_cast<NodeStateApi (PipelineStateApi::*)(Node::Id)>(&PipelineStateApi::nodes),
+             py::arg("nodeId"),
+             DOC(dai, PipelineStateApi, nodes, 3));
+
+    nodesStateApi.def("summary", &NodesStateApi::summary, DOC(dai, NodesStateApi, summary))
+        .def("detailed", &NodesStateApi::detailed, DOC(dai, NodesStateApi, detailed))
+        .def("outputs", &NodesStateApi::outputs, DOC(dai, NodesStateApi, outputs))
+        .def("inputs", &NodesStateApi::inputs, DOC(dai, NodesStateApi, inputs))
+        .def("otherTimings", &NodesStateApi::otherTimings, DOC(dai, NodesStateApi, otherTimings));
+
+    nodeStateApi.def("summary", &NodeStateApi::summary, DOC(dai, NodeStateApi, summary))
+        .def("detailed", &NodeStateApi::detailed, DOC(dai, NodeStateApi, detailed))
+        .def("outputs",
+             static_cast<std::unordered_map<std::string, NodeState::OutputQueueState> (NodeStateApi::*)()>(&NodeStateApi::outputs),
+             DOC(dai, NodeStateApi, outputs))
+        .def("outputs",
+             static_cast<std::unordered_map<std::string, NodeState::OutputQueueState> (NodeStateApi::*)(const std::vector<std::string>&)>(
+                 &NodeStateApi::outputs),
+             py::arg("outputNames"),
+             DOC(dai, NodeStateApi, outputs, 2))
+        .def("outputs",
+             static_cast<NodeState::OutputQueueState (NodeStateApi::*)(const std::string&)>(&NodeStateApi::outputs),
+             py::arg("outputName"),
+             DOC(dai, NodeStateApi, outputs, 3))
+        .def("inputs",
+             static_cast<std::unordered_map<std::string, NodeState::InputQueueState> (NodeStateApi::*)()>(&NodeStateApi::inputs),
+             DOC(dai, NodeStateApi, inputs))
+        .def("inputs",
+             static_cast<std::unordered_map<std::string, NodeState::InputQueueState> (NodeStateApi::*)(const std::vector<std::string>&)>(&NodeStateApi::inputs),
+             py::arg("inputNames"),
+             DOC(dai, NodeStateApi, inputs, 2))
+        .def("inputs",
+             static_cast<NodeState::InputQueueState (NodeStateApi::*)(const std::string&)>(&NodeStateApi::inputs),
+             py::arg("inputName"),
+             DOC(dai, NodeStateApi, inputs, 3))
+        .def("otherTimings",
+             static_cast<std::unordered_map<std::string, NodeState::Timing> (NodeStateApi::*)()>(&NodeStateApi::otherTimings),
+             DOC(dai, NodeStateApi, otherTimings))
+        .def("otherTimings",
+             static_cast<std::unordered_map<std::string, NodeState::Timing> (NodeStateApi::*)(const std::vector<std::string>&)>(&NodeStateApi::otherTimings),
+             py::arg("timingNames"),
+             DOC(dai, NodeStateApi, otherTimings, 2))
+        .def("otherTimings",
+             static_cast<NodeState::Timing (NodeStateApi::*)(const std::string&)>(&NodeStateApi::otherTimings),
+             py::arg("timingName"),
+             DOC(dai, NodeStateApi, otherTimings));
 
     // bind pipeline
     pipeline
@@ -258,6 +313,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("isRunning", &Pipeline::isRunning)
         .def("processTasks", &Pipeline::processTasks, py::arg("waitForTasks") = false, py::arg("timeoutSeconds") = -1.0)
         .def("enableHolisticRecord", &Pipeline::enableHolisticRecord, py::arg("recordConfig"), DOC(dai, Pipeline, enableHolisticRecord))
-        .def("enableHolisticReplay", &Pipeline::enableHolisticReplay, py::arg("recordingPath"), DOC(dai, Pipeline, enableHolisticReplay));
+        .def("enableHolisticReplay", &Pipeline::enableHolisticReplay, py::arg("recordingPath"), DOC(dai, Pipeline, enableHolisticReplay))
+        .def("enablePipelineDebugging", &Pipeline::enablePipelineDebugging, py::arg("enable") = true, DOC(dai, Pipeline, enablePipelineDebugging))
+        .def("getPipelineState", &Pipeline::getPipelineState, DOC(dai, Pipeline, getPipelineState));
     ;
 }

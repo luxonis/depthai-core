@@ -21,7 +21,7 @@ class RerunNode(dai.node.ThreadedHostNode):
         rr.init("", spawn=True)
         rr.log("world", rr.ViewCoordinates.RDF)
         rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001]))
-        while self.isRunning():
+        while self.mainLoop():
             try:
                 inPointCloud = self.inputPCL.get()
             except dai.MessageQueue.QueueException:

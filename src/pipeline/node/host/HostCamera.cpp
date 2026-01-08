@@ -13,7 +13,7 @@ void HostCamera::run() {
         throw std::runtime_error("Couldn't open camera");
     }
     int64_t seqNum = 0;
-    while(isRunning()) {
+    while(mainLoop()) {
         cv::Mat frame;
         auto success = cap.read(frame);
         if(frame.empty() || !success) {

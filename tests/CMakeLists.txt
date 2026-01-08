@@ -418,6 +418,14 @@ dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
 
+# Circular buffer test
+dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
+dai_set_test_labels(circular_buffer_test onhost ci)
+
+# Pipeline debugging tests
+dai_add_test(pipeline_debugging_host_test src/onhost_tests/pipeline_debugging_host_test.cpp)
+dai_set_test_labels(pipeline_debugging_host_test onhost ci)
+
 # Datatype tests
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
 dai_set_test_labels(nndata_test onhost ci)
@@ -498,6 +506,14 @@ dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)
 # Pipeline test
 dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
 dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
+
+# Pipeline debugging tests
+dai_add_test(pipeline_debugging_rvc4_test src/ondevice_tests/pipeline_debugging_rvc4_test.cpp)
+dai_set_test_labels(pipeline_debugging_rvc4_test rvc4 ci)
+target_compile_definitions(pipeline_debugging_rvc4_test PRIVATE VIDEO_PATH="${construction_vest}")
+dai_add_test(pipeline_debugging_rvc2_test src/ondevice_tests/pipeline_debugging_rvc2_test.cpp)
+dai_set_test_labels(pipeline_debugging_rvc2_test rvc2 ci)
+target_compile_definitions(pipeline_debugging_rvc2_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # Device USB Speed and serialization macros test
 dai_add_test(device_usbspeed_test src/ondevice_tests/device_usbspeed_test.cpp)

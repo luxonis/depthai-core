@@ -11,7 +11,7 @@ class CustomPCLProcessingNode(dai.node.ThreadedHostNode):
         self.thresholdDistance = 3000.0
 
     def run(self):
-        while self.isRunning():
+        while self.mainLoop():
             try:
                 inPointCloud = self.inputPCL.get()
             except dai.MessageQueue.QueueException:

@@ -221,6 +221,12 @@ dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 rvc4rgb ci)
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
 dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 rvc4rgb ci)
 
+add_python_example(get_pipeline_state Misc/PipelineDebugging/get_pipeline_state.py)
+dai_set_example_test_labels(get_pipeline_state ondevice rvc2_all rvc4 rvc4rgb ci)
+
+add_python_example(node_pipeline_events Misc/PipelineDebugging/node_pipeline_events.py)
+dai_set_example_test_labels(node_pipeline_events ondevice rvc2_all rvc4 rvc4rgb ci)
+
 ## SystemLogger
 add_python_example(system_logger Misc/SystemLogger/system_information.py)
 dai_set_example_test_labels(system_logger ondevice rvc2_all rvc4 ci)

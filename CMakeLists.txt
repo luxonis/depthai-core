@@ -273,6 +273,7 @@ set(TARGET_CORE_SOURCES
     src/device/CalibrationHandler.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp
+    src/pipeline/PipelineStateApi.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/MessageQueue.cpp
     src/pipeline/Node.cpp
@@ -281,6 +282,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/ThreadedHostNode.cpp
     src/pipeline/DeviceNode.cpp
     src/pipeline/DeviceNodeGroup.cpp
+    src/pipeline/node/internal/PipelineEventAggregation.cpp
+    src/pipeline/node/internal/PipelineStateMerge.cpp
     src/pipeline/node/internal/XLinkIn.cpp
     src/pipeline/node/internal/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
@@ -357,6 +360,9 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/ObjectTrackerConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
+    src/pipeline/datatype/PipelineEvent.cpp
+    src/pipeline/datatype/PipelineState.cpp
+    src/pipeline/datatype/PipelineEventAggregationConfig.cpp
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/ThermalConfig.cpp
@@ -374,6 +380,8 @@ set(TARGET_CORE_SOURCES
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp
+    src/utility/PipelineEventDispatcher.cpp
+    src/utility/PipelineImplHelper.cpp
     src/utility/RecordReplay.cpp
     src/utility/McapImpl.cpp
     src/utility/Environment.cpp
@@ -470,6 +478,18 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET)
     )
 endif()
 
+if(DEPTHAI_GENERATE_HOUSING_COORDS)
+    include(DepthaiGenerateHousingCoordinates)
+    DepthaiGenerateHousingCoordinates(
+        ${CMAKE_CURRENT_BINARY_DIR}/src/HousingCoordinates.cpp        # Output file
+        ${CMAKE_CURRENT_LIST_DIR}/shared/depthai_boards/batch/housing # Housing json directory
+    )
+    list(APPEND TARGET_CORE_SOURCES
+        ${CMAKE_CURRENT_BINARY_DIR}/src/HousingCoordinates.cpp
+    )
+endif()
+
+
 add_library(${TARGET_CORE_NAME} ${TARGET_CORE_SOURCES})
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
@@ -478,6 +498,10 @@ target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
 # Add to list of targets to export and install
 list(APPEND targets_to_export ${TARGET_CORE_NAME})
+
+if(DEPTHAI_GENERATE_HOUSING_COORDS)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_HAVE_HOUSING_COORDINATES)
+endif()
 
 if(DEPTHAI_BUILD_ZOO_HELPER)
     # Add model_zoo helper binary

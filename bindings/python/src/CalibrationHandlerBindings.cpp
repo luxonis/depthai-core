@@ -90,6 +90,13 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("useSpecTranslation") = false,
              DOC(dai, CalibrationHandler, getCameraExtrinsics))
 
+        .def("getHousingCalibration",
+             &CalibrationHandler::getHousingCalibration,
+             py::arg("srcCamera"),
+             py::arg("housingCS"),
+             py::arg("useSpecTranslation") = true,
+             DOC(dai, CalibrationHandler, getHousingCalibration))
+
         .def("getCameraTranslationVector",
              &CalibrationHandler::getCameraTranslationVector,
              py::arg("srcCamera"),
