@@ -5,6 +5,15 @@ enable_testing()
 # Add Catch2 for writing tests
 find_package(Catch2 CONFIG REQUIRED)
 
+# Add Trompeloeil mocking framework
+include(FetchContent)
+FetchContent_Declare(
+    trompeloeil
+    GIT_REPOSITORY https://github.com/rollbear/trompeloeil.git
+    GIT_TAG        v44  # You can update this to the latest version
+)
+FetchContent_MakeAvailable(trompeloeil)
+
 # Print details of the Catch2 package
 message(STATUS "Catch2_FOUND: ${Catch2_FOUND}")
 message(STATUS "Catch2_VERSION: ${Catch2_VERSION}")
@@ -56,7 +65,7 @@ function(dai_add_test test_name test_src)
     if(NOT DEPTHAI_MERGED_TARGET)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
-    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog)
+    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
@@ -363,6 +372,10 @@ endif()
 # CalibrationHandler test
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
+
+# XLInkInHost test 
+dai_add_test(xlink_in_host_test src/onhost_tests/pipeline/node/internal/XLinkInHostTest.cpp)
+dai_set_test_labels(xlink_in_host_test onhost ci)
 
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
