@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/Sync.hpp"
+#include <stdexcept>
 
 #include <chrono>
 
@@ -8,36 +9,73 @@
 namespace dai {
 namespace node {
 
-void Sync::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
-    properties.syncThresholdNs = syncThreshold.count();
+namespace {
+template<SyncTimestamp TS>
+inline auto getTs(const std::shared_ptr<dai::Buffer>& b) {
+    if constexpr (TS == SyncTimestamp::Steady) {
+        return b->getTimestamp();          // steady_clock::time_point
+    } else if constexpr (TS == SyncTimestamp::System) {
+        if (!b->getTimestampSystem().has_value()) {
+            throw std::runtime_error("System timestamp missing, might not be supported by the device");
+        }
+        return b->getTimestampSystem().value();    // system_clock::time_point
+    } else {
+        throw std::runtime_error("Unknown SyncTimestamp");
+    }
 }
 
-void Sync::setSyncAttempts(int syncAttempts) {
-    properties.syncAttempts = syncAttempts;
+template<SyncTimestamp TS>
+inline auto getTs(dai::Buffer *b) {
+    if constexpr (TS == SyncTimestamp::Steady) {
+        return b->getTimestamp();          // steady_clock::time_point
+    } else if constexpr (TS == SyncTimestamp::System) {
+        if (!b->getTimestampSystem().has_value()) {
+            throw std::runtime_error("System timestamp missing, might not be supported by the device");
+        }
+        return b->getTimestampSystem().value();    // system_clock::time_point
+    } else {
+        throw std::runtime_error("Unknown SyncTimestamp");
+    }
+}
 }
 
-std::chrono::nanoseconds Sync::getSyncThreshold() const {
-    return std::chrono::nanoseconds(properties.syncThresholdNs);
+template <SyncTimestamp TS>
+void SyncBase<TS>::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
+    this->properties.syncThresholdNs = syncThreshold.count();
 }
 
-int Sync::getSyncAttempts() const {
-    return properties.syncAttempts;
+template <SyncTimestamp TS>
+void SyncBase<TS>::setSyncAttempts(int syncAttempts) {
+    this->properties.syncAttempts = syncAttempts;
 }
 
-void Sync::setRunOnHost(bool runOnHost) {
+template <SyncTimestamp TS>
+std::chrono::nanoseconds SyncBase<TS>::getSyncThreshold() const {
+    return std::chrono::nanoseconds(this->properties.syncThresholdNs);
+}
+
+template <SyncTimestamp TS>
+int SyncBase<TS>::getSyncAttempts() const {
+    return this->properties.syncAttempts;
+}
+
+template <SyncTimestamp TS>
+void SyncBase<TS>::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
 /**
  * Check if the node is set to run on host
  */
-bool Sync::runOnHost() const {
+template <SyncTimestamp TS>
+bool SyncBase<TS>::runOnHost() const {
     return runOnHostVar;
 }
 
-void Sync::run() {
+template <SyncTimestamp TS>
+void SyncBase<TS>::run() {
     using namespace std::chrono;
-    auto& logger = pimpl->logger;
+    auto& logger = this->pimpl->logger;
     const auto inputsName = inputs.name;
 
     if(inputs.empty()) {
@@ -49,12 +87,12 @@ void Sync::run() {
         inputNames.push_back(inputName);
     }
 
-    auto syncThresholdNs = properties.syncThresholdNs;
+    auto syncThresholdNs = this->properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
     time_point<steady_clock> tAfterMessageBeginning;
 
-    while(mainLoop()) {
+    while(this->mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::unordered_map<std::string, std::shared_ptr<dai::Buffer>> inputFrames;
         {
@@ -72,7 +110,7 @@ void Sync::run() {
             for(const auto& frame : inputFrames) {
                 logger->debug("Starting input {} timestamp is {} ms",
                               frame.first,
-                              static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
+                              static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
             }
             tAfterMessageBeginning = steady_clock::now();
             int attempts = 0;
@@ -83,11 +121,11 @@ void Sync::run() {
                     for(const auto& frame : inputFrames) {
                         logger->warn("Output {} timestamp is {} ms",
                                      frame.first,
-                                     static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
+                                     static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
                     }
                 }
-                if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {
-                    if(properties.syncAttempts != 0)
+                if(attempts > this->properties.syncAttempts && this->properties.syncAttempts != -1) {
+                    if(this->properties.syncAttempts != 0)
                         logger->warn(
                             "Sync node has been trying to sync for {} messages, but the messages are still not in sync. "
                             "The node will send the messages anyway.",
@@ -95,18 +133,18 @@ void Sync::run() {
                     break;
                 }
                 // Find a minimum timestamp
-                auto minTs = inputFrames.begin()->second->getTimestamp();
+                auto minTs = getTs<TS>(inputFrames.begin()->second);
                 for(const auto& frame : inputFrames) {
-                    if(frame.second->getTimestamp() < minTs) {
-                        minTs = frame.second->getTimestamp();
+                    if(getTs<TS>(frame.second) < minTs) {
+                        minTs = getTs<TS>(frame.second);
                     }
                 }
 
                 // Find a max timestamp
-                auto maxTs = inputFrames.begin()->second->getTimestamp();
+                auto maxTs = getTs<TS>(inputFrames.begin()->second);
                 for(const auto& frame : inputFrames) {
-                    if(frame.second->getTimestamp() > maxTs) {
-                        maxTs = frame.second->getTimestamp();
+                    if(getTs<TS>(frame.second) > maxTs) {
+                        maxTs = getTs<TS>(frame.second);
                     }
                 }
                 logger->debug("Diff: {} ms", duration_cast<milliseconds>(maxTs - minTs).count());
@@ -118,7 +156,7 @@ void Sync::run() {
                 // Get the message with the minimum timestamp (oldest message)
                 std::string minTsName;
                 for(const auto& frame : inputFrames) {
-                    if(frame.second->getTimestamp() == minTs) {
+                    if(getTs<TS>(frame.second) == minTs) {
                         minTsName = frame.first;
                         break;
                     }
@@ -134,14 +172,15 @@ void Sync::run() {
         for(const auto& name : inputNames) {
             logger->trace("Sending output: {}", name);
             logger->trace("Timestamp: {} ms",
-                          static_cast<float>(duration_cast<microseconds>(inputFrames[name]->getTimestamp().time_since_epoch()).count()) / 1000.f);
+                          static_cast<float>(duration_cast<microseconds>(getTs<TS>(inputFrames[name]).time_since_epoch()).count()) / 1000.f);
             outputGroup->add(name, inputFrames[name]);
-            if(inputFrames[name]->getTimestamp() > newestFrame->getTimestamp()) {
+            if(getTs<TS>(inputFrames[name]) > getTs<TS>(newestFrame)) {
                 newestFrame = inputFrames[name].get();
             }
         }
         outputGroup->setTimestamp(newestFrame->getTimestamp());
         outputGroup->setTimestampDevice(newestFrame->getTimestampDevice());
+        outputGroup->setTimestampSystem(newestFrame->getTimestampSystem());
         outputGroup->setSequenceNum(newestFrame->getSequenceNum());
         {
             auto blockEvent = this->outputBlockEvent();

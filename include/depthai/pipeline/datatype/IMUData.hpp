@@ -1,11 +1,13 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
+#include "depthai/common/optional.hpp"
 
 namespace dai {
 
@@ -32,11 +34,16 @@ struct IMUReport {
     /** Generation timestamp, direct device monotonic clock */
     Timestamp tsDevice = {};
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    /** Generation timestamp, direct device system clock */
+    std::optional<Timestamp> tsSystem;
+    #endif
+
     /**
      * Retrieves timestamp related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const {
-        return timestamp.get();
+        return timestamp.get<std::chrono::steady_clock>();
     }
 
     /**
@@ -44,7 +51,22 @@ struct IMUReport {
      * not synchronized to host time. Used mostly for debugging
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const {
-        return tsDevice.get();
+        return tsDevice.get<std::chrono::steady_clock>();
+    }
+
+    /**
+     * Retrieves timestamp directly captured from device's system clock,
+     * can be synchronized with PTP
+     */
+    std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> getTimestampSystem() const {
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if (!tsSystem.has_value()) {
+            return std::nullopt;
+        }
+        return tsSystem->get<std::chrono::system_clock>();
+        #else
+        return std::nullopt;
+        #endif
     }
 
     /**
@@ -54,7 +76,11 @@ struct IMUReport {
         return sequence;
     }
 };
+#ifndef DEPTHAI_MESSAGES_RVC2
+DEPTHAI_SERIALIZE_EXT(IMUReport, sequence, accuracy, timestamp, tsDevice, tsSystem);
+#else
 DEPTHAI_SERIALIZE_EXT(IMUReport, sequence, accuracy, timestamp, tsDevice);
+#endif
 
 /**
  * @brief Accelerometer
@@ -66,7 +92,11 @@ struct IMUReportAccelerometer : public IMUReport {
     float y = 0;
     float z = 0;
 };
+#ifndef DEPTHAI_MESSAGES_RVC2
+DEPTHAI_SERIALIZE_EXT(IMUReportAccelerometer, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
+#else
 DEPTHAI_SERIALIZE_EXT(IMUReportAccelerometer, x, y, z, sequence, accuracy, timestamp, tsDevice);
+#endif
 
 /**
  * @brief Gyroscope
@@ -78,7 +108,11 @@ struct IMUReportGyroscope : public IMUReport {
     float y = 0;
     float z = 0;
 };
+#ifndef DEPTHAI_MESSAGES_RVC2
+DEPTHAI_SERIALIZE_EXT(IMUReportGyroscope, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
+#else
 DEPTHAI_SERIALIZE_EXT(IMUReportGyroscope, x, y, z, sequence, accuracy, timestamp, tsDevice);
+#endif
 
 /**
  * @brief Magnetic field
@@ -90,7 +124,11 @@ struct IMUReportMagneticField : public IMUReport {
     float y = 0;
     float z = 0;
 };
+#ifndef DEPTHAI_MESSAGES_RVC2
+DEPTHAI_SERIALIZE_EXT(IMUReportMagneticField, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
+#else
 DEPTHAI_SERIALIZE_EXT(IMUReportMagneticField, x, y, z, sequence, accuracy, timestamp, tsDevice);
+#endif
 
 /**
  * @brief Rotation Vector with Accuracy
@@ -104,7 +142,11 @@ struct IMUReportRotationVectorWAcc : public IMUReport {
     float real = 0;                   /**< @brief Quaternion component, real */
     float rotationVectorAccuracy = 0; /**< @brief Accuracy estimate [radians], 0 means no estimate */
 };
+#ifndef DEPTHAI_MESSAGES_RVC2
+DEPTHAI_SERIALIZE_EXT(IMUReportRotationVectorWAcc, i, j, k, real, rotationVectorAccuracy, sequence, accuracy, timestamp, tsDevice, tsSystem);
+#else
 DEPTHAI_SERIALIZE_EXT(IMUReportRotationVectorWAcc, i, j, k, real, rotationVectorAccuracy, sequence, accuracy, timestamp, tsDevice);
+#endif
 
 #if 0
 
@@ -122,7 +164,11 @@ struct IMUReportGyroscopeUncalibrated : public IMUReport {
     float biasY = 0; /**< @brief [rad/s] */
     float biasZ = 0; /**< @brief [rad/s] */
 };
+#ifndef DEPTHAI_MESSAGES_RVC2
+DEPTHAI_SERIALIZE_EXT(IMUReportGyroscopeUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice, tsSystem);
+#else
 DEPTHAI_SERIALIZE_EXT(IMUReportGyroscopeUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice);
+#endif
 
 
 
@@ -140,7 +186,11 @@ struct IMUReportMagneticFieldUncalibrated : public IMUReport {
     float biasY = 0; /**< @brief [uTesla] */
     float biasZ = 0; /**< @brief [uTesla] */
 };
+#ifndef DEPTHAI_MESSAGES_RVC2
+DEPTHAI_SERIALIZE_EXT(IMUReportMagneticFieldUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice, tsSystem);
+#else
 DEPTHAI_SERIALIZE_EXT(IMUReportMagneticFieldUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice);
+#endif
 
 
 
@@ -155,7 +205,11 @@ struct IMUReportRotationVector : public IMUReport {
     float k = 0;    /**< @brief Quaternion component k */
     float real = 0; /**< @brief Quaternion component real */
 };
+#ifndef DEPTHAI_MESSAGES_RVC2
+DEPTHAI_SERIALIZE_EXT(IMUReportRotationVector, i, j, k, real, sequence, accuracy, timestamp, tsDevice, tsSystem);
+#else
 DEPTHAI_SERIALIZE_EXT(IMUReportRotationVector, i, j, k, real, sequence, accuracy, timestamp, tsDevice);
+#endif
 
 
 /**
@@ -172,7 +226,11 @@ struct IMUReportGyroIntegratedRV : public IMUReport {
     float angVelY = 0; /**< @brief Angular velocity about y [rad/s] */
     float angVelZ = 0; /**< @brief Angular velocity about z [rad/s] */
 };
+#ifndef DEPTHAI_MESSAGES_RVC2
+DEPTHAI_SERIALIZE_EXT(IMUReportGyroIntegratedRV, i, j, k, real, angVelX, angVelY, angVelZ, sequence, accuracy, timestamp, tsDevice, tsSystem);
+#else
 DEPTHAI_SERIALIZE_EXT(IMUReportGyroIntegratedRV, i, j, k, real, angVelX, angVelY, angVelZ, sequence, accuracy, timestamp, tsDevice);
+#endif
 
 #endif
 
@@ -243,7 +301,11 @@ class IMUData : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, packets, Buffer::tsSystem);
+    #else
     DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, packets);
+    #endif
 };
 
 }  // namespace dai

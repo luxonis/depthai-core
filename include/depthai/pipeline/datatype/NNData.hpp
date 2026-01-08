@@ -601,7 +601,11 @@ class NNData : public Buffer {
         return DatatypeEnum::NNData;
     }
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, tensors, batchSize, transformation, Buffer::tsSystem);
+    #else
     DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, tensors, batchSize, transformation);
+    #endif
 };
 
 }  // namespace dai

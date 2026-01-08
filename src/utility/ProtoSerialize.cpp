@@ -197,6 +197,16 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations*
     tsDevice->set_sec(message->tsDevice.sec);
     tsDevice->set_nsec(message->tsDevice.nsec);
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = imageAnnotations->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        imageAnnotations->clear_tssystem();
+    }
+    #endif
+
     for(const auto& annotation : message->annotations) {
         proto::image_annotations::ImageAnnotation* imageAnnotation = imageAnnotations->add_annotations();
         for(const auto& circle : annotation.circles) {
@@ -272,6 +282,16 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
     tsDevice->set_sec(message->tsDevice.sec);
     tsDevice->set_nsec(message->tsDevice.nsec);
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = spatialImgDetections->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        spatialImgDetections->clear_tssystem();
+    }
+    #endif
+
     for(const auto& detection : message->detections) {
         proto::spatial_img_detections::SpatialImgDetection* spatialImgDetection = spatialImgDetections->add_detections();
 
@@ -339,6 +359,15 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
         imuAccelerometer->mutable_report()->mutable_tsdevice()->set_sec(packet.acceleroMeter.tsDevice.sec);
         imuAccelerometer->mutable_report()->mutable_tsdevice()->set_nsec(packet.acceleroMeter.tsDevice.nsec);
 
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if (packet.acceleroMeter.tsSystem.has_value()) {
+            imuAccelerometer->mutable_report()->mutable_tssystem()->set_sec(packet.acceleroMeter.tsSystem.value().sec);
+            imuAccelerometer->mutable_report()->mutable_tssystem()->set_nsec(packet.acceleroMeter.tsSystem.value().nsec);
+        } else {
+            imuAccelerometer->mutable_report()->clear_tssystem();
+        }
+        #endif
+
         auto imuGyroscope = imuPacket->mutable_gyroscope();
         imuGyroscope->mutable_vec()->set_x(packet.gyroscope.x);
         imuGyroscope->mutable_vec()->set_y(packet.gyroscope.y);
@@ -349,6 +378,15 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
         imuGyroscope->mutable_report()->mutable_ts()->set_nsec(packet.gyroscope.timestamp.nsec);
         imuGyroscope->mutable_report()->mutable_tsdevice()->set_sec(packet.gyroscope.tsDevice.sec);
         imuGyroscope->mutable_report()->mutable_tsdevice()->set_nsec(packet.gyroscope.tsDevice.nsec);
+
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if (packet.gyroscope.tsSystem.has_value()) {
+            imuGyroscope->mutable_report()->mutable_tssystem()->set_sec(packet.gyroscope.tsSystem.value().sec);
+            imuGyroscope->mutable_report()->mutable_tssystem()->set_nsec(packet.gyroscope.tsSystem.value().nsec);
+        } else {
+            imuGyroscope->mutable_report()->clear_tssystem();
+        }
+        #endif
 
         auto imuMagnetometer = imuPacket->mutable_magnetometer();
         imuMagnetometer->mutable_vec()->set_x(packet.magneticField.x);
@@ -361,6 +399,15 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
         imuMagnetometer->mutable_report()->mutable_tsdevice()->set_sec(packet.magneticField.tsDevice.sec);
         imuMagnetometer->mutable_report()->mutable_tsdevice()->set_nsec(packet.magneticField.tsDevice.nsec);
 
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if (packet.magneticField.tsSystem.has_value()) {
+            imuMagnetometer->mutable_report()->mutable_tssystem()->set_sec(packet.magneticField.tsSystem.value().sec);
+            imuMagnetometer->mutable_report()->mutable_tssystem()->set_nsec(packet.magneticField.tsSystem.value().nsec);
+        } else {
+            imuMagnetometer->mutable_report()->clear_tssystem();
+        }
+        #endif
+
         auto imuRotationVector = imuPacket->mutable_rotationvector();
         imuRotationVector->mutable_quat()->set_x(packet.rotationVector.i);
         imuRotationVector->mutable_quat()->set_y(packet.rotationVector.j);
@@ -372,6 +419,15 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
         imuRotationVector->mutable_report()->mutable_ts()->set_nsec(packet.rotationVector.timestamp.nsec);
         imuRotationVector->mutable_report()->mutable_tsdevice()->set_sec(packet.rotationVector.tsDevice.sec);
         imuRotationVector->mutable_report()->mutable_tsdevice()->set_nsec(packet.rotationVector.tsDevice.nsec);
+
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if (packet.rotationVector.tsSystem.has_value()) {
+            imuRotationVector->mutable_report()->mutable_tssystem()->set_sec(packet.rotationVector.tsSystem.value().sec);
+            imuRotationVector->mutable_report()->mutable_tssystem()->set_nsec(packet.rotationVector.tsSystem.value().nsec);
+        } else {
+            imuRotationVector->mutable_report()->clear_tssystem();
+        }
+        #endif
     }
 
     // Set timestamps
@@ -381,6 +437,17 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
     proto::common::Timestamp* tsDevice = imuData->mutable_tsdevice();
     tsDevice->set_sec(message->tsDevice.sec);
     tsDevice->set_nsec(message->tsDevice.nsec);
+
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = imuData->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        imuData->clear_tssystem();
+    }
+    #endif
+
     imuData->set_sequencenum(message->sequenceNum);
 
     return imuData;
@@ -396,6 +463,16 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
     proto::common::Timestamp* tsDevice = imgDetections->mutable_tsdevice();
     tsDevice->set_sec(message->tsDevice.sec);
     tsDevice->set_nsec(message->tsDevice.nsec);
+
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = imgDetections->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        imgDetections->clear_tssystem();
+    }
+    #endif
 
     for(const auto& detection : message->detections) {
         proto::img_detections::ImgDetection* imgDetection = imgDetections->add_detections();
@@ -485,6 +562,16 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* m
     tsDevice->set_sec(message->tsDevice.sec);
     tsDevice->set_nsec(message->tsDevice.nsec);
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = encodedFrame->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        encodedFrame->clear_tssystem();
+    }
+    #endif
+
     // Set camera settings
     proto::common::CameraSettings* cam = encodedFrame->mutable_cam();
     cam->set_exposuretimeus(message->cam.exposureTimeUs);    // exposureTimeUs -> exposuretimeus
@@ -514,6 +601,16 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* messa
     proto::common::Timestamp* tsDevice = imgFrame->mutable_tsdevice();
     tsDevice->set_sec(message->tsDevice.sec);
     tsDevice->set_nsec(message->tsDevice.nsec);
+
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (message->tsSystem.has_value()) {
+        proto::common::Timestamp* tsSystem = imgFrame->mutable_tssystem();
+        tsSystem->set_sec(message->tsSystem.value().sec);
+        tsSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        imgFrame->clear_tssystem();
+    }
+    #endif
 
     imgFrame->set_sequencenum(message->sequenceNum);
 
@@ -569,6 +666,16 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
     timestampDevice->set_sec(message->tsDevice.sec);
     timestampDevice->set_nsec(message->tsDevice.nsec);
 
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (message->tsSystem.has_value()) {
+        auto timestampSystem = pointCloudData->mutable_tssystem();
+        timestampSystem->set_sec(message->tsSystem.value().sec);
+        timestampSystem->set_nsec(message->tsSystem.value().nsec);
+    } else {
+        pointCloudData->clear_tssystem();
+    }
+    #endif
+
     pointCloudData->set_sequencenum(message->sequenceNum);
     pointCloudData->set_width(message->getWidth());
     pointCloudData->set_height(message->getHeight());
@@ -617,6 +724,15 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiAccelerometer.tsDevice.sec = protoAccelerometer.report().tsdevice().sec();
         daiAccelerometer.tsDevice.nsec = protoAccelerometer.report().tsdevice().nsec();
 
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if (protoAccelerometer.report().has_tssystem()) {
+            daiAccelerometer.tsSystem->sec = protoAccelerometer.report().tssystem().sec();
+            daiAccelerometer.tsSystem->nsec = protoAccelerometer.report().tssystem().nsec();
+        } else {
+            daiAccelerometer.tsSystem.reset();
+        }
+        #endif
+
         auto protoGyroscope = packet.gyroscope();
         auto& daiGyroscope = imuPacket.gyroscope;
         daiGyroscope.x = protoGyroscope.vec().x();
@@ -629,6 +745,15 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiGyroscope.tsDevice.sec = protoGyroscope.report().tsdevice().sec();
         daiGyroscope.tsDevice.nsec = protoGyroscope.report().tsdevice().nsec();
 
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if (protoGyroscope.report().has_tssystem()) {
+            daiGyroscope.tsSystem->sec = protoGyroscope.report().tssystem().sec();
+            daiGyroscope.tsSystem->nsec = protoGyroscope.report().tssystem().nsec();
+        } else {
+            daiGyroscope.tsSystem.reset();
+        }
+        #endif
+
         auto protoMagnetometer = packet.magnetometer();
         auto& daiMagnetometer = imuPacket.magneticField;
         daiMagnetometer.x = protoMagnetometer.vec().x();
@@ -640,6 +765,15 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiMagnetometer.timestamp.nsec = protoMagnetometer.report().ts().nsec();
         daiMagnetometer.tsDevice.sec = protoMagnetometer.report().tsdevice().sec();
         daiMagnetometer.tsDevice.nsec = protoMagnetometer.report().tsdevice().nsec();
+
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if (protoMagnetometer.report().has_tssystem()) {
+            daiMagnetometer.tsSystem->sec = protoMagnetometer.report().tssystem().sec();
+            daiMagnetometer.tsSystem->nsec = protoMagnetometer.report().tssystem().nsec();
+        } else {
+            daiMagnetometer.tsSystem.reset();
+        }
+        #endif
 
         auto protoRotationVector = packet.rotationvector();
         auto& daiRotationVector = imuPacket.rotationVector;
@@ -654,11 +788,29 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiRotationVector.tsDevice.sec = protoRotationVector.report().tsdevice().sec();
         daiRotationVector.tsDevice.nsec = protoRotationVector.report().tsdevice().nsec();
 
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if (protoRotationVector.report().has_tssystem()) {
+            daiRotationVector.tsSystem->sec = protoRotationVector.report().tssystem().sec();
+            daiRotationVector.tsSystem->nsec = protoRotationVector.report().tssystem().nsec();
+        } else {
+            daiRotationVector.tsSystem.reset();
+        }
+        #endif
+
         obj.packets.push_back(imuPacket);
     }
 
-    obj.setTimestamp(fromProtoTimestamp(imuData->ts()));
-    obj.setTimestampDevice(fromProtoTimestamp(imuData->tsdevice()));
+    obj.setTimestamp(fromProtoTimestamp<std::chrono::steady_clock>(imuData->ts()));
+    obj.setTimestampDevice(fromProtoTimestamp<std::chrono::steady_clock>(imuData->tsdevice()));
+
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (imuData->has_tssystem()) {
+        obj.setTimestampSystem(fromProtoTimestamp<std::chrono::system_clock>(imuData->tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+    #endif
+
     obj.setSequenceNum(imuData->sequencenum());
 }
 template <>
@@ -669,11 +821,19 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
     }
     const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
         using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
-        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+        return hasField ? utility::fromProtoTimestamp<std::chrono::steady_clock>(protoTs) : steady_tp{};
     };
     // create and populate ImgFrame protobuf message
     obj.setTimestamp(safeTimestamp(imgFrame->ts(), imgFrame->has_ts()));
     obj.setTimestampDevice(safeTimestamp(imgFrame->tsdevice(), imgFrame->has_tsdevice()));
+
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (imgFrame->has_tssystem()) {
+        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(imgFrame->tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+    #endif
 
     obj.setSequenceNum(imgFrame->sequencenum());
 
@@ -720,11 +880,19 @@ void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bo
     }
     const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
         using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
-        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+        return hasField ? utility::fromProtoTimestamp<std::chrono::steady_clock>(protoTs) : steady_tp{};
     };
     // create and populate ImgFrame protobuf message
     obj.setTimestamp(safeTimestamp(encFrame->ts(), encFrame->has_ts()));
     obj.setTimestampDevice(safeTimestamp(encFrame->tsdevice(), encFrame->has_tsdevice()));
+
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (encFrame->has_tssystem()) {
+        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(encFrame->tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+    #endif
 
     obj.setSequenceNum(encFrame->sequencenum());
 
@@ -764,11 +932,19 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
     }
     const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
         using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
-        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+        return hasField ? utility::fromProtoTimestamp<std::chrono::steady_clock>(protoTs) : steady_tp{};
     };
     // create and populate ImgFrame protobuf message
     obj.setTimestamp(safeTimestamp(pcl->ts(), pcl->has_ts()));
     obj.setTimestampDevice(safeTimestamp(pcl->tsdevice(), pcl->has_tsdevice()));
+
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if (pcl->has_tssystem()) {
+        obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(pcl->tssystem()));
+    } else {
+        obj.setTimestampSystem(std::nullopt);
+    }
+    #endif
 
     obj.setSequenceNum(pcl->sequencenum());
 

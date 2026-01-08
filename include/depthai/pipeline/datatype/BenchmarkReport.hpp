@@ -25,7 +25,13 @@ class BenchmarkReport : public Buffer {
         return DatatypeEnum::BenchmarkReport;
     }
 
-    DEPTHAI_SERIALIZE(BenchmarkReport, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, fps, timeTotal, numMessagesReceived, averageLatency, latencies);
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    DEPTHAI_SERIALIZE(BenchmarkReport, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, fps, timeTotal,
+        numMessagesReceived, averageLatency, latencies, Buffer::tsSystem);
+    #else
+    DEPTHAI_SERIALIZE(BenchmarkReport, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, fps, timeTotal,
+        numMessagesReceived, averageLatency, latencies);
+    #endif
 };
 
 }  // namespace dai

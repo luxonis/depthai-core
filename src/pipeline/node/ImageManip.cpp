@@ -49,6 +49,9 @@ void ImageManip::run() {
             dstFrame.instanceNum = srcFrame.instanceNum;
             dstFrame.sequenceNum = srcFrame.sequenceNum;
             dstFrame.tsDevice = srcFrame.tsDevice;
+            #ifndef DEPTHAI_MESSAGES_RVC2
+            dstFrame.tsSystem = srcFrame.tsSystem;
+            #endif
             dstFrame.ts = srcFrame.ts;
             dstFrame.category = srcFrame.category;
             dstFrame.event = srcFrame.event;
