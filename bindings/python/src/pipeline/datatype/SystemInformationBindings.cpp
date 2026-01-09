@@ -113,6 +113,10 @@ void bind_systeminformationRVC4(pybind11::module& m, void* pCallstack) {
         .def_property(
             "cpuAvgUsage", [](SystemInformationRVC4& i) { return &i.cpuAvgUsage; }, [](SystemInformationRVC4& i, CpuUsage val) { i.cpuAvgUsage = val; })
         .def_property(
+            "processCpuAvgUsage",
+            [](SystemInformationRVC4& i) { return &i.processCpuAvgUsage; },
+            [](SystemInformationRVC4& i, CpuUsage val) { i.processCpuAvgUsage = val; })
+        .def_property(
             "cpuUsages", [](SystemInformationRVC4& i) { return &i.cpuUsages; }, [](SystemInformationRVC4& i, std::vector<CpuUsage> val) { i.cpuUsages = val; })
         .def_property(
             "chipTemperature",

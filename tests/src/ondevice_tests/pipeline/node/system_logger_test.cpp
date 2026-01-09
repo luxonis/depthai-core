@@ -46,14 +46,17 @@ void testSystemLoggerNode(const dai::SystemInformationRVC4& info) {
     REQUIRE(info.ddrMemoryUsage.used < info.ddrMemoryUsage.total);
     REQUIRE(info.ddrMemoryUsage.remaining < info.ddrMemoryUsage.total);
 
-    // Device Process memory
+    // Device Process
     REQUIRE(info.processMemoryUsage > 0);
     REQUIRE(info.processMemoryUsage < info.ddrMemoryUsage.used / 1024);
     REQUIRE(info.processMemoryUsage < info.ddrMemoryUsage.total / 1024);
+    REQUIRE(info.processCpuAvgUsage.average > 0.0f);
+    REQUIRE(info.processCpuAvgUsage.average < 1.0f);
 
     // Average CPU Usage
     REQUIRE(info.cpuAvgUsage.average > 0.0f);
     REQUIRE(info.cpuAvgUsage.average < 1.0f);
+    REQUIRE(info.cpuAvgUsage.average > info.processCpuAvgUsage.average);
 
     // Temperatures (-40.96°C indicates non working sensor)
     REQUIRE(info.chipTemperature.cpuss > -40.0f);
