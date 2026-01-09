@@ -8,9 +8,6 @@
 void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // Type definitions
-    py::enum_<dai::utility::SendSnapCallbackStatus> sendSnapCallbackStatus(m, "SendSnapCallbackStatus", DOC(dai, SendSnapCallbackStatus));
-
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -85,6 +82,8 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     //    py::arg("encodedFrame"),
     //    py::arg("nnData"),
     //    DOC(dai, utility, FileGroup, addImageNNDataPair));
+
+    py::enum_<SendSnapCallbackStatus> sendSnapCallbackStatus(m, "SendSnapCallbackStatus", DOC(dai, SendSnapCallbackStatus));
 
     sendSnapCallbackStatus.value("SUCCESS", SendSnapCallbackStatus::SUCCESS)
         .value("FILE_BATCH_PREPARATION_FAILED", SendSnapCallbackStatus::FILE_BATCH_PREPARATION_FAILED)

@@ -176,7 +176,8 @@ class EventsManager {
     struct EventData {
         std::string localID;
         std::shared_ptr<proto::event::Event> event;
-        std::optional<std::pair<std::function<void(SendSnapCallbackResult)>, std::function<void(SendSnapCallbackResult)>>> callbacks;
+        std::optional<std::function<void(SendSnapCallbackResult)>> onSuccess;
+        std::optional<std::function<void(SendSnapCallbackResult)>> onFailure;
     };
 
     struct SnapData {

@@ -7,9 +7,11 @@ import numpy as np
 
 # Callback functions
 def upload_success_callback(send_snap_result):
+    assert (send_snap_result.uploadStatus == dai.SendSnapCallbackStatus.SUCCESS)
     print(f"Successfully uploaded Snap: ({send_snap_result.snapName}, {send_snap_result.snapTimestamp}, {send_snap_result.snapHubID}) to the hub.")
 
 def upload_failure_callback(send_snap_result):
+    assert (send_snap_result.uploadStatus != dai.SendSnapCallbackStatus.SUCCESS)
     print(f"Upload of Snap: ({send_snap_result.snapName}, {send_snap_result.snapTimestamp}, {send_snap_result.snapLocalID}) to the hub has failed.")
 
     status = send_snap_result.uploadStatus

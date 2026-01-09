@@ -250,9 +250,9 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
     auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
     sourceAppId = appId == "" ? containerId : appId;
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
-    auto connectedDevices = DeviceBase::getAllConnectedDevices();
-    if(!connectedDevices.empty()) {
-        sourceSerialNumber = connectedDevices[0].getDeviceId();
+    auto connectedDevice = DeviceBase::getFirstAvailableDevice();
+    if(std::get<0>(connectedDevice)) {
+        sourceSerialNumber = std::get<1>(connectedDevice).getDeviceId();
     } else {
         sourceSerialNumber = "";
     }
@@ -435,17 +435,16 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
             // After retrying a defined number of times, we can determine the connection is not established, cache if enabled
             if(retryAttempt >= uploadRetryPolicy.maxAttempts) {
                 for(size_t index = 0; index < inputSnapBatch.size(); ++index) {
-                    if(inputSnapBatch.at(index)->eventData->callbacks.has_value()) {
+                    if(inputSnapBatch.at(index)->eventData->onFailure.has_value() && inputSnapBatch.at(index)->eventData->onFailure.value() != nullptr) {
                         auto event = inputSnapBatch.at(index)->eventData->event;
                         std::string serializedPayload;
                         event->SerializeToString(&serializedPayload);
-                        inputSnapBatch.at(index)->eventData->callbacks.value().second(
-                            SendSnapCallbackResult{event->name(),
-                                                   event->created_at(),
-                                                   inputSnapBatch.at(index)->eventData->localID,
-                                                   std::nullopt,
-                                                   serializedPayload,
-                                                   SendSnapCallbackStatus::FILE_BATCH_PREPARATION_FAILED});
+                        inputSnapBatch.at(index)->eventData->onFailure.value()(SendSnapCallbackResult{event->name(),
+                                                                                                      event->created_at(),
+                                                                                                      inputSnapBatch.at(index)->eventData->localID,
+                                                                                                      std::nullopt,
+                                                                                                      serializedPayload,
+                                                                                                      SendSnapCallbackStatus::FILE_BATCH_PREPARATION_FAILED});
                     }
                 }
                 if(cacheIfCannotSend) {
@@ -474,16 +473,16 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
                                                       ->FindValueByNumber(static_cast<int>(prepareGroupResult.rejected().reason()))
                                                       ->name();
                     logger::error("A group has been rejected because of {}", rejectionReason);
-                    if(snapData->eventData->callbacks.has_value()) {
+                    if(snapData->eventData->onFailure.has_value() && snapData->eventData->onFailure.value() != nullptr) {
                         auto event = snapData->eventData->event;
                         std::string serializedPayload;
                         event->SerializeToString(&serializedPayload);
-                        snapData->eventData->callbacks.value().second(SendSnapCallbackResult{event->name(),
-                                                                                             event->created_at(),
-                                                                                             snapData->eventData->localID,
-                                                                                             std::nullopt,
-                                                                                             serializedPayload,
-                                                                                             SendSnapCallbackStatus::GROUP_CONTAINS_REJECTED_FILES});
+                        snapData->eventData->onFailure.value()(SendSnapCallbackResult{event->name(),
+                                                                                      event->created_at(),
+                                                                                      snapData->eventData->localID,
+                                                                                      std::nullopt,
+                                                                                      serializedPayload,
+                                                                                      SendSnapCallbackStatus::GROUP_CONTAINS_REJECTED_FILES});
                     }
                     continue;
                 }
@@ -526,16 +525,16 @@ bool EventsManager::uploadGroup(std::shared_ptr<SnapData> snapData, dai::proto::
                     return uploadFile(std::move(fileData), std::move(uploadUrl));
                 }));
         } else {
-            if(snapData->eventData->callbacks.has_value()) {
+            if(snapData->eventData->onFailure.has_value() && snapData->eventData->onFailure.value() != nullptr) {
                 auto event = snapData->eventData->event;
                 std::string serializedPayload;
                 event->SerializeToString(&serializedPayload);
-                snapData->eventData->callbacks.value().second(SendSnapCallbackResult{event->name(),
-                                                                                     event->created_at(),
-                                                                                     snapData->eventData->localID,
-                                                                                     std::nullopt,
-                                                                                     serializedPayload,
-                                                                                     SendSnapCallbackStatus::GROUP_CONTAINS_REJECTED_FILES});
+                snapData->eventData->onFailure.value()(SendSnapCallbackResult{event->name(),
+                                                                              event->created_at(),
+                                                                              snapData->eventData->localID,
+                                                                              std::nullopt,
+                                                                              serializedPayload,
+                                                                              SendSnapCallbackStatus::GROUP_CONTAINS_REJECTED_FILES});
             }
             return false;
         }
@@ -544,16 +543,16 @@ bool EventsManager::uploadGroup(std::shared_ptr<SnapData> snapData, dai::proto::
     for(auto& uploadResult : fileUploadResults) {
         if(!uploadResult.valid() || !uploadResult.get()) {
             logger::info("Failed to upload all of the files in the given group");
-            if(snapData->eventData->callbacks.has_value()) {
+            if(snapData->eventData->onFailure.has_value() && snapData->eventData->onFailure.value() != nullptr) {
                 auto event = snapData->eventData->event;
                 std::string serializedPayload;
                 event->SerializeToString(&serializedPayload);
-                snapData->eventData->callbacks.value().second(SendSnapCallbackResult{event->name(),
-                                                                                     event->created_at(),
-                                                                                     snapData->eventData->localID,
-                                                                                     std::nullopt,
-                                                                                     serializedPayload,
-                                                                                     SendSnapCallbackStatus::FILE_UPLOAD_FAILED});
+                snapData->eventData->onFailure.value()(SendSnapCallbackResult{event->name(),
+                                                                              event->created_at(),
+                                                                              snapData->eventData->localID,
+                                                                              std::nullopt,
+                                                                              serializedPayload,
+                                                                              SendSnapCallbackStatus::FILE_UPLOAD_FAILED});
             }
             return false;
         }
@@ -643,27 +642,27 @@ void EventsManager::uploadEventBatch() {
     if(response.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event, status code: {}", response.status_code);
         // In case the eventBuffer gets too full (dropped connection), cache the events or drop them
+        std::lock_guard<std::mutex> lock(eventBufferMutex);
         if(eventBuffer.size() >= EVENT_BUFFER_MAX_SIZE) {
             // failureCallback
             for(size_t index = 0; index < eventBuffer.size(); ++index) {
-                if(!eventBuffer.at(index)->callbacks.has_value()) {
+                if(!eventBuffer.at(index)->onFailure.has_value() || eventBuffer.at(index)->onFailure.value() == nullptr) {
                     continue;
                 }
                 auto event = eventBuffer.at(index)->event;
                 std::string serializedPayload;
                 event->SerializeToString(&serializedPayload);
-                eventBuffer.at(index)->callbacks.value().second(SendSnapCallbackResult{event->name(),
-                                                                                       event->created_at(),
-                                                                                       eventBuffer.at(index)->localID,
-                                                                                       std::nullopt,
-                                                                                       serializedPayload,
-                                                                                       SendSnapCallbackStatus::SEND_EVENT_FAILED});
+                eventBuffer.at(index)->onFailure.value()(SendSnapCallbackResult{event->name(),
+                                                                                event->created_at(),
+                                                                                eventBuffer.at(index)->localID,
+                                                                                std::nullopt,
+                                                                                serializedPayload,
+                                                                                SendSnapCallbackStatus::SEND_EVENT_FAILED});
             }
             if(cacheIfCannotSend) {
                 cacheEvents();
             } else {
                 logger::warn("EventBuffer is full and caching is not enabled, dropping events");
-                std::lock_guard<std::mutex> lock(eventBufferMutex);
                 eventBuffer.clear();
             }
         }
@@ -677,26 +676,25 @@ void EventsManager::uploadEventBatch() {
         std::lock_guard<std::mutex> lock(eventBufferMutex);
         // successCallback
         for(int index = 0; index < eventBatch->events_size(); ++index) {
-            if(!eventBuffer.at(index)->callbacks.has_value()) {
-                continue;
-            }
+            bool hasSuccessCallback = eventBuffer.at(index)->onSuccess.has_value() && eventBuffer.at(index)->onSuccess.value() != nullptr;
+            bool hasFailureCallback = eventBuffer.at(index)->onFailure.has_value() && eventBuffer.at(index)->onFailure.value() != nullptr;
             auto event = eventBuffer.at(index)->event;
             std::string serializedPayload;
             event->SerializeToString(&serializedPayload);
-            if(eventBatchUploadResults->events(index).result_case() == proto::event::EventResult::kAccepted) {
-                eventBuffer.at(index)->callbacks.value().first(SendSnapCallbackResult{event->name(),
-                                                                                      event->created_at(),
-                                                                                      eventBuffer.at(index)->localID,
-                                                                                      eventBatchUploadResults->events(index).accepted().id(),
-                                                                                      serializedPayload,
-                                                                                      SendSnapCallbackStatus::SUCCESS});
-            } else {
-                eventBuffer.at(index)->callbacks.value().second(SendSnapCallbackResult{event->name(),
-                                                                                       event->created_at(),
-                                                                                       eventBuffer.at(index)->localID,
-                                                                                       std::nullopt,
-                                                                                       serializedPayload,
-                                                                                       SendSnapCallbackStatus::EVENT_REJECTED});
+            if(eventBatchUploadResults->events(index).result_case() == proto::event::EventResult::kAccepted && hasSuccessCallback) {
+                eventBuffer.at(index)->onSuccess.value()(SendSnapCallbackResult{event->name(),
+                                                                                event->created_at(),
+                                                                                eventBuffer.at(index)->localID,
+                                                                                eventBatchUploadResults->events(index).accepted().id(),
+                                                                                serializedPayload,
+                                                                                SendSnapCallbackStatus::SUCCESS});
+            } else if(eventBatchUploadResults->events(index).result_case() == proto::event::EventResult::kRejected && hasFailureCallback) {
+                eventBuffer.at(index)->onFailure.value()(SendSnapCallbackResult{event->name(),
+                                                                                event->created_at(),
+                                                                                eventBuffer.at(index)->localID,
+                                                                                std::nullopt,
+                                                                                serializedPayload,
+                                                                                SendSnapCallbackStatus::EVENT_REJECTED});
             }
         }
         eventBuffer.erase(eventBuffer.begin(), eventBuffer.begin() + eventBatch->events_size());
@@ -761,7 +759,8 @@ bool EventsManager::sendSnap(const std::string& name,
     auto snapData = std::make_unique<SnapData>();
     snapData->fileGroup = fileGroup;
     snapData->eventData = std::make_unique<EventData>();
-    snapData->eventData->callbacks.emplace(successCallback, failureCallback);
+    snapData->eventData->onSuccess = successCallback;
+    snapData->eventData->onFailure = failureCallback;
     // Create an event
     snapData->eventData->event = std::make_unique<proto::event::Event>();
     snapData->eventData->event->set_created_at(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
@@ -952,6 +951,7 @@ void EventsManager::uploadCachedData() {
         } else if(entry.path().filename().string().rfind("snap", 0) == 0) {
             std::ifstream snapFile(entry.path() / "snap.pb", std::ios::binary);
             auto snapData = std::make_unique<SnapData>();
+            auto eventData = std::make_shared<EventData>();
             auto event = std::make_shared<proto::event::Event>();
             auto fileGroup = std::make_shared<dai::utility::FileGroup>();
             event->ParseFromIstream(&snapFile);
@@ -961,6 +961,7 @@ void EventsManager::uploadCachedData() {
                     fileGroup->fileData.push_back(fileData);
                 }
             }
+            snapData->eventData = eventData;
             snapData->eventData->event = event;
             snapData->fileGroup = fileGroup;
             std::lock_guard<std::mutex> lock(snapBufferMutex);
