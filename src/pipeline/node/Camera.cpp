@@ -253,13 +253,16 @@ Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
 Camera& Camera::setMockIsp(ReplayVideo& replay) {
     if(!replay.getReplayVideoFile().empty()) {
         auto [width, height] = replay.getSize();
+        double fps = (double)replay.getFps();
         if(width <= 0 || height <= 0) {
-            const auto& [vidWidth, vidHeight] = utility::getVideoSize(replay.getReplayVideoFile().string());
+            const auto& [vidWidth, vidHeight, vidFps] = utility::getVideoSize(replay.getReplayVideoFile().string());
             width = vidWidth;
             height = vidHeight;
+            fps = vidFps;
         }
         properties.mockIspWidth = width;
         properties.mockIspHeight = height;
+        properties.mockIspFps = fps;
 
         auto device = getParentPipeline().getDefaultDevice();
         if(device) {

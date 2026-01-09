@@ -44,8 +44,7 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
     return roundDown(numToRound + multiple - 1UL, multiple);
 }
 
-Node::Output* setupHolistiRecordCamera(
-    std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight) {
+Node::Output* setupHolistiRecordCamera(std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight) {
     size_t requestWidth = cam->getMaxRequestedWidth();
     size_t requestHeight = cam->getMaxRequestedHeight();
     size_t width = cam->getMaxWidth();
@@ -119,7 +118,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
                 }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
-                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(".mp4"));
+                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
                 // TODO - once we allow for a lossless code, conditionally change the file extension
                 // recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(".avi"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
@@ -197,22 +196,37 @@ bool setupHolisticReplay(Pipeline& pipeline,
         bool hasCalibration = false;
         std::vector<std::string> tarNodenames;
         std::string tarRoot = ".";
+        std::string videoExt = ".mp4";
         std::filesystem::path rootPath = useTar ? platform::getTempPath() : replayPath;
         if(useTar)
             tarNodenames = filenamesInTar(replayPath);
         else
             tarNodenames = platform::getFilenamesInDirectory(replayPath);
         hasCalibration = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
-            auto pathDelim = path.find_last_of("/\\");
-            auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
+            auto pathObj = std::filesystem::path(path);
+            auto filename = pathObj.filename().string();
             return filename == "calibration.json";
         });
+        bool hasMp4Files = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+            auto pathObj = std::filesystem::path(path);
+            return pathObj.extension() == ".mp4";
+        });
+        bool hasAviFiles = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+            auto pathObj = std::filesystem::path(path);
+            return pathObj.extension() == ".avi";
+        });
+        if(hasMp4Files && hasAviFiles) {
+            throw std::runtime_error("Recording contains both .mp4 and .avi files.");
+        } else if(hasMp4Files) {
+            videoExt = ".mp4";
+        } else if(hasAviFiles) {
+            videoExt = ".avi";
+        }
         tarNodenames.erase(std::remove_if(tarNodenames.begin(),
                                           tarNodenames.end(),
                                           [](const std::string& path) {
-                                              auto pathDelim = path.find_last_of("/\\");
-                                              auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-                                              return filename.size() < 5 || filename.substr(filename.size() - 4, filename.size()) != "mcap";
+                                              auto pathObj = std::filesystem::path(path);
+                                              return pathObj.extension() != ".mcap";
                                           }),
                            tarNodenames.end());
         if(useTar) tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
@@ -248,11 +262,11 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 // auto filename = (deviceId + "_").append(nodeName);
                 auto filename = nodeName;
                 if(useTar) {
-                    inFiles.push_back(tarRoot + filename + ".mp4");
+                    inFiles.push_back(tarRoot + filename + videoExt);
                     inFiles.push_back(tarRoot + filename + ".mcap");
                 }
                 std::filesystem::path filePath = platform::joinPaths(rootPath, filename);
-                outFiles.push_back(std::filesystem::path(filePath).concat(".mp4"));
+                outFiles.push_back(std::filesystem::path(filePath).concat(videoExt));
                 outFiles.push_back(std::filesystem::path(filePath).concat(".mcap"));
                 outFilenames[nodeName] = filePath;
             }
@@ -333,19 +347,24 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
                 replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
                 // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
-                replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + ".mp4"));
+                replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + videoExt));
                 replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
 
                 auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
+                auto [vidWidth, vidHeight, vidFps] = utility::getVideoSize(replay->getReplayVideoFile().string());
+                if(cameraNode) {
+                    cameraNode->properties.mockIspWidth = vidWidth;
+                    cameraNode->properties.mockIspHeight = vidHeight;
+                    cameraNode->properties.mockIspFps = vidFps;
+                } else if(colorCameraNode) {
+                    colorCameraNode->setMockIspSize(vidWidth, vidHeight);
+                } else if(monoCameraNode) {
+                    monoCameraNode->setMockIspSize(vidWidth, vidHeight);
+                }
                 if(videoSize.has_value()) {
                     auto [width, height] = videoSize.value();
-                    if(cameraNode) {
-                        cameraNode->properties.mockIspWidth = width;
-                        cameraNode->properties.mockIspHeight = height;
-                    } else if(colorCameraNode) {
-                        colorCameraNode->setMockIspSize(width, height);
-                    } else if(monoCameraNode) {
-                        monoCameraNode->setMockIspSize(width, height);
+                    if(width != vidWidth || height != vidHeight) {
+                        throw std::runtime_error("Video size does not match metadata size for node " + nodeName);
                     }
                 }
                 DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING

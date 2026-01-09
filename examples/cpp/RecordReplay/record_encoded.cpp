@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
     auto record = pipeline.create<dai::node::RecordVideo>();
 
     std::string path = argc > 1 ? argv[1] : getDefaultRecordingPath();
-    record->setRecordVideoFile(path + std::string(".mp4"));
+    record->setRecordVideoFile(path + std::string(".avi"));
     record->setRecordMetadataFile(path + std::string(".mcap"));
 
     auto* camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, 30.f);

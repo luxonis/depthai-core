@@ -918,8 +918,8 @@ PipelineImpl::~PipelineImpl() {
                 filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
                 outFiles.push_back(nodeName + ".mcap");
                 if(rstr.first[0] == 'v') {
-                    filenames.push_back(std::filesystem::path(filePath).concat(".mp4"));
-                    outFiles.push_back(nodeName + ".mp4");
+                    filenames.push_back(std::filesystem::path(filePath).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
+                    outFiles.push_back(nodeName + (recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
                 }
             }
         }
@@ -936,7 +936,7 @@ PipelineImpl::~PipelineImpl() {
         for(auto& kv : recordReplayFilenames) {
             if(kv.first != "record_config" && kv.first != "calibration") {
                 std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
-                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mp4"));
+                std::filesystem::remove(std::filesystem::path(kv.second).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
             } else {
                 std::filesystem::remove(kv.second);
             }

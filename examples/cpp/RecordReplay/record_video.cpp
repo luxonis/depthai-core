@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
 
         // Create record node
         auto record = pipeline.create<dai::node::RecordVideo>();
-        record->setRecordVideoFile(std::filesystem::path(outputFile + ".mp4"));
+        record->setRecordVideoFile(std::filesystem::path(outputFile + ".avi"));
         videoEncoder->out.link(record->input);
 
         // Start pipeline
