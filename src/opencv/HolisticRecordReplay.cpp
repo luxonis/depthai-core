@@ -45,7 +45,7 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
 }
 
 Node::Output* setupHolistiRecordCamera(
-    std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight, RecordConfig& recordConfig) {
+    std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight) {
     size_t requestWidth = cam->getMaxRequestedWidth();
     size_t requestHeight = cam->getMaxRequestedHeight();
     size_t width = cam->getMaxWidth();
@@ -113,7 +113,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
                 Node::Output* output;
                 size_t camWidth = 1920, camHeight = 1080;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                    output = setupHolistiRecordCamera(std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, camWidth, camHeight, recordConfig);
+                    output = setupHolistiRecordCamera(std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, camWidth, camHeight);
                 } else {
                     output = &nodeS->getRecordOutput();
                 }
