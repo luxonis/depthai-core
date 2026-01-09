@@ -41,6 +41,9 @@ if __name__ == "__main__":
     fps = 30
     device = dai.Device()
     pipeline = dai.Pipeline(device)
+    if not device.isNeuralDepthSupported():
+        print("Exiting NeuralAssistedStereo example: device doesn't support NeuralDepth.")
+        exit()
 
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)

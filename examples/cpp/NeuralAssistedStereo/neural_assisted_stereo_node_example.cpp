@@ -45,6 +45,11 @@ int main() {
 
     // 1. Create pipeline
     dai::Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    if(!device->isNeuralDepthSupported()) {
+        std::cout << "Exiting NeuralAssistedStereo example: device doesn't support NeuralDepth.\n";
+        return 0;
+    }
 
     // 2. Define nodes
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);
