@@ -907,12 +907,12 @@ PipelineImpl::~PipelineImpl() {
     wait();
 
     if(recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
-        std::vector<std::filesystem::path> filenames = {recordReplayFilenames["record_config"]};
-        std::vector<std::string> outFiles = {"record_config.json"};
+        std::vector<std::filesystem::path> filenames = {recordReplayFilenames["record_config"], recordReplayFilenames["calibration"]};
+        std::vector<std::string> outFiles = {"record_config.json", "calibration.json"};
         filenames.reserve(recordReplayFilenames.size() * 2 + 1);
         outFiles.reserve(recordReplayFilenames.size() * 2 + 1);
         for(auto& rstr : recordReplayFilenames) {
-            if(rstr.first != "record_config") {
+            if(rstr.first != "record_config" && rstr.first != "calibration") {
                 std::string nodeName = rstr.first.substr(2);
                 std::filesystem::path filePath = rstr.second;
                 filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
@@ -929,13 +929,12 @@ PipelineImpl::~PipelineImpl() {
         } catch(const std::exception& e) {
             Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
         }
-        std::filesystem::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json"));
     }
 
     if(removeRecordReplayFiles && recordConfig.state != RecordConfig::RecordReplayState::NONE) {
         Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
-            if(kv.first != "record_config") {
+            if(kv.first != "record_config" && kv.first != "calibration") {
                 std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
                 std::filesystem::remove(std::filesystem::path(kv.second).concat(".mp4"));
             } else {

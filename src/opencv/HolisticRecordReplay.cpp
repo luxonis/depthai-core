@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <stdexcept>
 
 #include "../utility/Platform.hpp"
 #include "../utility/RecordReplayImpl.hpp"
@@ -85,10 +86,6 @@ Node::Output* setupHolistiRecordCamera(
     }
     camWidth = width;
     camHeight = height;
-    // TODO remove once a lossless codec is used
-    if(width * height > 9437184U) {
-        recordConfig.videoEncoding.enabled = true;
-    }
     return cam->requestOutput(std::make_pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
@@ -160,17 +157,26 @@ bool setupHolisticRecord(Pipeline& pipeline,
             }
         }
         outFilenames["record_config"] = platform::joinPaths(recordPath, deviceId + "_record_config.json");
+        outFilenames["calibration"] = platform::joinPaths(recordPath, deviceId + "_calibration.json");
     } catch(const std::runtime_error& e) {
         recordConfig.state = RecordConfig::RecordReplayState::NONE;
         spdlog::warn("Record disabled: {}", e.what());
         return false;
     }
-    // Write recordConfig to output dir
+    // Write recordConfig and calibration to output dir
     try {
-        std::filesystem::path path = platform::joinPaths(recordPath, deviceId + "_record_config.json");
-        std::ofstream file(path);
+        // Config
+        std::filesystem::path pathConfig = platform::joinPaths(recordPath, deviceId + "_record_config.json");
+        std::ofstream file(pathConfig);
         json j = recordConfig;
         file << j.dump(4);
+        file.close();
+        // Calibration
+        std::filesystem::path pathCalib = platform::joinPaths(recordPath, deviceId + "_calibration.json");
+        auto calibData = pipeline.getDefaultDevice()->readCalibration().eepromToJson();
+        std::ofstream calibFile(pathCalib);
+        calibFile << calibData.dump(4);
+        calibFile.close();
     } catch(const std::exception& e) {
         spdlog::warn("Error while writing DEPTHAI_RECORD json file: {}", e.what());
         return false;
@@ -185,37 +191,41 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          std::unordered_map<std::string, std::filesystem::path>& outFilenames,
                          bool legacy) {
     UNUSED(deviceId);
-    const std::filesystem::path rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
         bool useTar = !platform::checkPathExists(replayPath, true);
+        bool hasCalibration = false;
         std::vector<std::string> tarNodenames;
-        std::string tarRoot;
-        std::filesystem::path rootPath = replayPath;
-        if(useTar) {
-            rootPath = platform::getDirFromPath(replayPath);
+        std::string tarRoot = ".";
+        std::filesystem::path rootPath = useTar ? platform::getTempPath() : replayPath;
+        if(useTar)
             tarNodenames = filenamesInTar(replayPath);
-            tarNodenames.erase(std::remove_if(tarNodenames.begin(),
-                                              tarNodenames.end(),
-                                              [](const std::string& path) {
-                                                  auto pathDelim = path.find_last_of("/\\");
-                                                  auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-                                                  return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mp4"
-                                                         || filename == "record_config.json";
-                                              }),
-                               tarNodenames.end());
-
-            tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_first_of("/\\") + 1);
-            for(auto& path : tarNodenames) {
-                auto pathDelim = path.find_last_of("/\\");
-                path = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-                path = path.substr(0, path.find_last_of('.'));
-            }
+        else
+            tarNodenames = platform::getFilenamesInDirectory(replayPath);
+        hasCalibration = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+            auto pathDelim = path.find_last_of("/\\");
+            auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
+            return filename == "calibration.json";
+        });
+        tarNodenames.erase(std::remove_if(tarNodenames.begin(),
+                                          tarNodenames.end(),
+                                          [](const std::string& path) {
+                                              auto pathDelim = path.find_last_of("/\\");
+                                              auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
+                                              return filename.size() < 5 || filename.substr(filename.size() - 4, filename.size()) != "mcap";
+                                          }),
+                           tarNodenames.end());
+        if(useTar) tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
+        for(auto& path : tarNodenames) {
+            auto pathDelim = path.find_last_of("/\\");
+            path = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
+            path = path.substr(0, path.find_last_of('.'));
         }
 
         std::vector<std::string> nodeNames;
         std::vector<std::string> pipelineFilenames;
         pipelineFilenames.reserve(sources.size());
+        nodeNames.reserve(sources.size());
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
@@ -224,16 +234,16 @@ bool setupHolisticReplay(Pipeline& pipeline,
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             // Needed for muti-device recordings, not yet supported
             // std::string nodeName = (deviceId + "_").append(nodeParams.name);
-            std::string nodeName = nodeParams.name;
-            pipelineFilenames.push_back(nodeName);
             nodeNames.push_back(nodeParams.name);
+            pipelineFilenames.push_back(nodeParams.name);
         }
         std::filesystem::path configPath;
+        std::filesystem::path calibrationPath;
         std::vector<std::string> inFiles;
         std::vector<std::filesystem::path> outFiles;
         inFiles.reserve(sources.size() + 1);
         outFiles.reserve(sources.size() + 1);
-        if(!useTar || allMatch(pipelineFilenames, tarNodenames)) {
+        if(allMatch(pipelineFilenames, tarNodenames)) {
             for(auto& nodeName : nodeNames) {
                 // auto filename = (deviceId + "_").append(nodeName);
                 auto filename = nodeName;
@@ -246,10 +256,16 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 outFiles.push_back(std::filesystem::path(filePath).concat(".mcap"));
                 outFilenames[nodeName] = filePath;
             }
-            if(useTar) inFiles.emplace_back(tarRoot + "record_config.json");
+            if(useTar) {
+                inFiles.emplace_back(tarRoot + "record_config.json");
+                inFiles.emplace_back(tarRoot + "calibration.json");
+            }
             configPath = platform::joinPaths(rootPath, "record_config.json");
+            calibrationPath = platform::joinPaths(rootPath, "calibration.json");
             outFiles.push_back(configPath);
+            outFiles.push_back(calibrationPath);
             outFilenames["record_config"] = configPath;
+            outFilenames["calibration"] = calibrationPath;
             if(useTar) untarFiles(replayPath, inFiles, outFiles);
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
@@ -287,6 +303,19 @@ bool setupHolisticReplay(Pipeline& pipeline,
         json j = json::parse(file);
         recordConfig = j.get<RecordConfig>();
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
+
+        if(hasCalibration) {
+            std::ifstream calibFile(calibrationPath);
+            json jCalib = json::parse(calibFile);
+            CalibrationHandler calib;
+            try {
+                calib.fromJson(jCalib, true);
+                pipeline.getDefaultDevice()->setCalibration(calib);
+            } catch(const std::runtime_error& e) {
+                spdlog::warn("Recorded calibration is invalid: {}", e.what());
+                hasCalibration = false;
+            }
+        }
 
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
