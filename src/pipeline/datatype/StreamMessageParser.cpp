@@ -15,6 +15,9 @@
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/PipelineEvent.hpp"
+#include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
+#include "depthai/pipeline/datatype/PipelineState.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
@@ -47,6 +50,7 @@
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
+#include "depthai/pipeline/datatype/VppConfig.hpp"
 // shared
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -253,6 +257,15 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::PointCloudData:
             return parseDatatype<PointCloudData>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::PipelineEvent:
+            return parseDatatype<PipelineEvent>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::PipelineState:
+            return parseDatatype<PipelineState>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::PipelineEventAggregationConfig:
+            return parseDatatype<PipelineEventAggregationConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
         case DatatypeEnum::MessageGroup:
             return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -274,6 +287,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::ObjectTrackerConfig:
             return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::VppConfig: {
+            return parseDatatype<VppConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        }
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
