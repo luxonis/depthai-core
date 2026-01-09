@@ -396,6 +396,10 @@ void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {
 
             setPostProcessingHardwareResources(3, 3);
         } break;
+
+        default:
+            DAI_CHECK_V(false, "Unsupported preset mode: {}", static_cast<int>(mode));
+            break;
     }
 }
 
@@ -476,6 +480,10 @@ void StereoDepth::setRvc4ProfilePreset(PresetMode mode) {
             initialConfig->setExtendedDisparity(true);
             initialConfig->setLeftRightCheck(true);
         } break;
+
+        default:
+            DAI_CHECK_V(false, "Unsupported preset mode: {}", static_cast<int>(mode));
+            break;
     }
 }
 
