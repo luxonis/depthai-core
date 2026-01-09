@@ -4,9 +4,15 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/util/time_util.h>
 
+#include <chrono>
+#include <cstdint>
+#include <optional>
 #include <queue>
 
 #include "depthai/schemas/PointCloudData.pb.h"
+#include "depthai/schemas/common.pb.h"
+#include "pipeline/datatype/DatatypeEnum.hpp"
+#include "pipeline/datatype/ImgDetections.hpp"
 
 namespace dai {
 namespace utility {
@@ -143,7 +149,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ImgDetections:
         case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::SystemInformation:
-        case DatatypeEnum::SystemInformationS3:
+        case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
@@ -151,6 +157,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::AprilTags:
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
+        case DatatypeEnum::NeuralDepthConfig:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
         case DatatypeEnum::ToFConfig:
@@ -161,8 +168,18 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImgAnnotations:
+        case DatatypeEnum::ImageFiltersConfig:
+        case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+        case DatatypeEnum::VppConfig:
+        case DatatypeEnum::DynamicCalibrationControl:
+        case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CoverageData:
+        case DatatypeEnum::PipelineEvent:
+        case DatatypeEnum::PipelineState:
+        case DatatypeEnum::PipelineEventAggregationConfig:
             return false;
     }
     return false;
@@ -369,7 +386,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
     return imuData;
 }
 template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool) {
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* message, bool metadataOnly) {
     auto imgDetections = std::make_unique<proto::img_detections::ImgDetections>();
 
     imgDetections->set_sequencenum(message->sequenceNum);
@@ -389,14 +406,58 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
         imgDetection->set_ymin(detection.ymin);
         imgDetection->set_xmax(detection.xmax);
         imgDetection->set_ymax(detection.ymax);
+
+        if(detection.boundingBox.has_value() || !(detection.xmin == 0.f && detection.xmax == 0.f && detection.ymin == 0.f && detection.ymax == 0.f)) {
+            const auto bbox = detection.boundingBox.has_value() ? detection.boundingBox.value() : detection.getBoundingBox();
+            proto::common::RotatedRect* bboxProto = imgDetection->mutable_boundingbox();
+            proto::common::Point2f* center = bboxProto->mutable_center();
+            center->set_x(bbox.center.x);
+            center->set_y(bbox.center.y);
+            proto::common::Size2f* size = bboxProto->mutable_size();
+            size->set_width(bbox.size.width);
+            size->set_height(bbox.size.height);
+            bboxProto->set_angle(bbox.angle);
+        }
+
+        if(detection.keypoints.has_value()) {
+            const auto& keypointsList = detection.keypoints.value();
+            const auto keypointsVec = keypointsList.getKeypoints();
+            const auto edgesVec = keypointsList.getEdges();
+            proto::common::KeypointsList* protoKeypoints = imgDetection->mutable_keypoints();
+            for(const auto& keypoint : keypointsVec) {
+                auto* protoKeypoint = protoKeypoints->add_keypoints();
+                proto::common::Point3f* coords = protoKeypoint->mutable_imagecoordinates();
+                coords->set_x(keypoint.imageCoordinates.x);
+                coords->set_y(keypoint.imageCoordinates.y);
+                coords->set_z(keypoint.imageCoordinates.z);
+                protoKeypoint->set_confidence(keypoint.confidence);
+                protoKeypoint->set_label(keypoint.label);
+            }
+            for(const auto& edge : edgesVec) {
+                auto* protoEdge = protoKeypoints->add_edges();
+                protoEdge->set_src(edge[0]);
+                protoEdge->set_dst(edge[1]);
+            }
+        }
     }
+
+    imgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
+    imgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
 
     proto::common::ImgTransformation* imgTransformation = imgDetections->mutable_transformation();
     if(message->transformation.has_value()) {
         utility::serializeImgTransformation(imgTransformation, message->transformation.value());
     }
+
+    if(!metadataOnly) {
+        std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
+        if(segMaskData) {
+            imgDetections->set_data((*segMaskData).data(), (*segMaskData).size());
+        }
+    }
     return imgDetections;
 }
+
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly) {
     // Create a unique pointer to the protobuf EncodedFrame message
@@ -603,9 +664,16 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
 template <>
 void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool metadataOnly) {
     auto imgFrame = dynamic_cast<const proto::img_frame::ImgFrame*>(msg);
+    if(imgFrame == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to ImgFrame");
+    }
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
+        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+    };
     // create and populate ImgFrame protobuf message
-    obj.setTimestamp(utility::fromProtoTimestamp(imgFrame->ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp(imgFrame->tsdevice()));
+    obj.setTimestamp(safeTimestamp(imgFrame->ts(), imgFrame->has_ts()));
+    obj.setTimestampDevice(safeTimestamp(imgFrame->tsdevice(), imgFrame->has_tsdevice()));
 
     obj.setSequenceNum(imgFrame->sequencenum());
 
@@ -647,9 +715,16 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
 template <>
 void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bool metadataOnly) {
     auto encFrame = dynamic_cast<const proto::encoded_frame::EncodedFrame*>(msg);
+    if(encFrame == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to EncodedFrame");
+    }
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
+        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+    };
     // create and populate ImgFrame protobuf message
-    obj.setTimestamp(utility::fromProtoTimestamp(encFrame->ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp(encFrame->tsdevice()));
+    obj.setTimestamp(safeTimestamp(encFrame->ts(), encFrame->has_ts()));
+    obj.setTimestampDevice(safeTimestamp(encFrame->tsdevice(), encFrame->has_tsdevice()));
 
     obj.setSequenceNum(encFrame->sequencenum());
 
@@ -684,9 +759,16 @@ void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bo
 template <>
 void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, bool metadataOnly) {
     auto pcl = dynamic_cast<const proto::point_cloud_data::PointCloudData*>(msg);
+    if(pcl == nullptr) {
+        throw std::runtime_error("Failed to cast protobuf message to PointCloudData");
+    }
+    const auto safeTimestamp = [](const auto& protoTs, bool hasField) {
+        using steady_tp = std::chrono::time_point<std::chrono::steady_clock>;
+        return hasField ? utility::fromProtoTimestamp(protoTs) : steady_tp{};
+    };
     // create and populate ImgFrame protobuf message
-    obj.setTimestamp(utility::fromProtoTimestamp(pcl->ts()));
-    obj.setTimestampDevice(utility::fromProtoTimestamp(pcl->tsdevice()));
+    obj.setTimestamp(safeTimestamp(pcl->ts(), pcl->has_ts()));
+    obj.setTimestampDevice(safeTimestamp(pcl->tsdevice(), pcl->has_tsdevice()));
 
     obj.setSequenceNum(pcl->sequencenum());
 

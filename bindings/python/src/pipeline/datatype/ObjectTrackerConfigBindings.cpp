@@ -17,7 +17,8 @@ void bind_objecttrackerconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawPointCloudConfig, RawBuffer, std::shared_ptr<RawPointCloudConfig>> rawConfig(m, "RawPointCloudConfig", DOC(dai, RawPointCloudConfig));
-    py::class_<ObjectTrackerConfig, Py<ObjectTrackerConfig>, Buffer, std::shared_ptr<ObjectTrackerConfig>> config(m, "ObjectTrackerConfig", DOC(dai, ObjectTrackerConfig));
+    py::class_<ObjectTrackerConfig, Py<ObjectTrackerConfig>, Buffer, std::shared_ptr<ObjectTrackerConfig>> config(
+        m, "ObjectTrackerConfig", DOC(dai, ObjectTrackerConfig));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -46,7 +47,6 @@ void bind_objecttrackerconfig(pybind11::module& m, void* pCallstack) {
         // .def("set", &ObjectTrackerConfig::set, py::arg("config"), DOC(dai, ObjectTrackerConfig, set))
         // .def("get", &ObjectTrackerConfig::get, DOC(dai, ObjectTrackerConfig, get))
         .def("forceRemoveID", &ObjectTrackerConfig::forceRemoveID, DOC(dai, ObjectTrackerConfig, forceRemoveID))
-        .def("forceRemoveIDs", &ObjectTrackerConfig::forceRemoveIDs, DOC(dai, ObjectTrackerConfig, forceRemoveIDs))
-    ;
+        .def("forceRemoveIDs", &ObjectTrackerConfig::forceRemoveIDs, DOC(dai, ObjectTrackerConfig, forceRemoveIDs));
     // add aliases
 }

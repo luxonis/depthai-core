@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <filesystem>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -9,7 +10,6 @@
 #include <vector>
 
 #include "depthai/common/TensorInfo.hpp"
-#include "depthai/utility/Path.hpp"
 
 namespace dai {
 
@@ -34,7 +34,7 @@ class OpenVINO {
          *
          * @param path Filesystem path to the blob
          */
-        Blob(const dai::Path& path);
+        Blob(const std::filesystem::path& path);
 
         /// OpenVINO version
         Version version;
@@ -74,7 +74,7 @@ class OpenVINO {
          *
          * @param pathToSuperBlobFile: Path to the superblob file (.superblob suffix)
          */
-        SuperBlob(const std::string& pathToSuperBlobFile);
+        SuperBlob(const std::filesystem::path& pathToSuperBlobFile);
 
         /**
          * @brief Generate a blob with a specific number of shaves
@@ -96,7 +96,7 @@ class OpenVINO {
         };
 
         // Read the SuperBlob file into memory
-        std::vector<uint8_t> readSuperBlobFile(const std::string& path);
+        std::vector<uint8_t> readSuperBlobFile(const std::filesystem::path& path);
 
         // Get a pointer to the first byte of the blob data
         const uint8_t* getBlobDataPointer();

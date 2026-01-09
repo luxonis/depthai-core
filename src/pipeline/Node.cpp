@@ -24,6 +24,8 @@ Pipeline Node::getParentPipeline() {
     return Pipeline(impl);
 }
 
+Node::Input::~Input() = default;
+
 Node::Connection::Connection(Output out, Input in) {
     outputId = out.getParent().id;
     outputName = out.getName();
@@ -50,6 +52,15 @@ Node::Connection::Connection(ConnectionInternal c) {
 bool Node::Connection::operator==(const Node::Connection& rhs) const {
     return (outputId == rhs.outputId && outputName == rhs.outputName && outputGroup == rhs.outputGroup && inputId == rhs.inputId && inputName == rhs.inputName
             && inputGroup == rhs.inputGroup);
+}
+
+std::string Node::createUniqueInputName() {
+    std::string name = fmt::format("_{}_input_{}", getName(), inputId++);
+    return name;
+}
+std::string Node::createUniqueOutputName() {
+    std::string name = fmt::format("_{}_output_{}", getName(), outputId++);
+    return name;
 }
 
 std::string Node::Output::toString() const {
@@ -230,8 +241,16 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
     //         }
     //     }
     // }
-    for(auto& messageQueue : connectedInputs) {
-        messageQueue->send(msg);
+    auto sendToInputs = [this, &msg]() {
+        for(auto& messageQueue : connectedInputs) {
+            messageQueue->send(msg);
+        }
+    };
+    if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
+        auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::OUTPUT, getName());
+        sendToInputs();
+    } else {
+        sendToInputs();
     }
 }
 
@@ -252,8 +271,19 @@ bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     //         }
     //     }
     // }
-    for(auto& messageQueue : connectedInputs) {
-        success &= messageQueue->trySend(msg);
+    auto sendToInputs = [this, &msg, &success]() {
+        for(auto& messageQueue : connectedInputs) {
+            success &= messageQueue->trySend(msg);
+        }
+    };
+    if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
+        auto blockEvent = pipelineEventDispatcher->blockEvent(PipelineEvent::Type::OUTPUT, getName());
+        sendToInputs();
+        if(!success) {
+            blockEvent.cancel();
+        }
+    } else {
+        sendToInputs();
     }
 
     return success;
@@ -283,12 +313,12 @@ AssetManager& Node::getAssetManager() {
     return assetManager;
 }
 
-std::vector<uint8_t> Node::loadResource(dai::Path uri) {
+std::vector<uint8_t> Node::loadResource(std::filesystem::path uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-std::vector<uint8_t> Node::moveResource(dai::Path uri) {
+std::vector<uint8_t> Node::moveResource(std::filesystem::path uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd, true);
 }
@@ -305,9 +335,10 @@ Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, 
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
-        Output output(parent, defaultOutput, false);
-        output.setGroup(name);
-        output.setName(key);
+        auto desc = defaultOutput;
+        desc.group = name;
+        desc.name = key;
+        Output output(parent, desc, false);
         insert({{name, key}, output});
     }
     // otherwise just return reference to existing
@@ -316,11 +347,11 @@ Node::Output& Node::OutputMap::operator[](const std::string& key) {
 Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
         // Create using default and rename with group and key
-        Output output(parent, defaultOutput, false);
-
+        auto desc = defaultOutput;
         // Uses \t (tab) as a special character to parse out as subgroup name
-        output.setGroup(fmt::format("{}\t{}", name, groupKey.first));
-        output.setName(groupKey.second);
+        desc.group = fmt::format("{}\t{}", name, groupKey.first);
+        desc.name = groupKey.second;
+        Output output(parent, desc, false);
         insert(std::make_pair(groupKey, output));
     }
     // otherwise just return reference to existing
@@ -337,9 +368,10 @@ Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : Inp
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
-        Input input(parent, defaultInput, false);
-        input.setGroup(name);
-        input.setName(key);
+        auto desc = defaultInput;
+        desc.group = name;
+        desc.name = key;
+        Input input(parent, desc, false);
         insert({{name, key}, input});
     }
     // otherwise just return reference to existing
@@ -348,11 +380,11 @@ Node::Input& Node::InputMap::operator[](const std::string& key) {
 Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
         // Create using default and rename with group and key
-        Input input(parent, defaultInput, false);
-
+        auto desc = defaultInput;
         // Uses \t (tab) as a special character to parse out as subgroup name
-        input.setGroup(fmt::format("{}\t{}", name, groupKey.first));
-        input.setName(groupKey.second);
+        desc.group = fmt::format("{}\t{}", name, groupKey.first);
+        desc.name = groupKey.second;
+        Input input(parent, desc, false);
         insert(std::make_pair(groupKey, input));
     }
     // otherwise just return reference to existing
@@ -746,6 +778,14 @@ void Node::Input::setPossibleDatatypes(std::vector<Node::DatatypeHierarchy> type
 
 std::vector<Node::DatatypeHierarchy> Node::Input::getPossibleDatatypes() const {
     return possibleDatatypes;
+}
+
+std::shared_ptr<dai::node::internal::XLinkInBridge> Node::Input::getXLinkBridge() const {
+    return xLinkBridge;
+}
+
+std::shared_ptr<dai::node::internal::XLinkOutBridge> Node::Output::getXLinkBridge() const {
+    return xLinkBridge;
 }
 
 }  // namespace dai

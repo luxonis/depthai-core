@@ -42,7 +42,9 @@
 #endif
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
-        #pragma clang diagnostic pop
+        #ifdef __clang__
+            #pragma clang diagnostic pop
+        #endif
     #endif
 #elif defined(__GNUC__)
     #pragma GCC diagnostic pop
@@ -69,7 +71,7 @@ class NNData : public Buffer {
      */
     NNData() = default;
     NNData(size_t size);
-    virtual ~NNData() = default;
+    virtual ~NNData();
 
     // getters
     /**
@@ -593,10 +595,11 @@ class NNData : public Buffer {
     }
 
 #endif
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::NNData;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::NNData;
+    }
 
     DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, tensors, batchSize, transformation);
 };

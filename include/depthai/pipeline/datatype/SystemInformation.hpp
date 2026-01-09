@@ -21,7 +21,7 @@ class SystemInformation : public Buffer {
      * Construct SystemInformation message.
      */
     SystemInformation() = default;
-    virtual ~SystemInformation() = default;
+    virtual ~SystemInformation();
 
     MemoryInfo ddrMemoryUsage;
     MemoryInfo cmxMemoryUsage;
@@ -31,10 +31,11 @@ class SystemInformation : public Buffer {
     CpuUsage leonMssCpuUsage;
     ChipTemperature chipTemperature;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::SystemInformation;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::SystemInformation;
+    }
 
     DEPTHAI_SERIALIZE(
         SystemInformation, ddrMemoryUsage, cmxMemoryUsage, leonCssMemoryUsage, leonMssMemoryUsage, leonCssCpuUsage, leonMssCpuUsage, chipTemperature);

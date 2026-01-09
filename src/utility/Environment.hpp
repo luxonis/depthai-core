@@ -1,10 +1,12 @@
 #pragma once
 
+#include <fmt/std.h>
 #include <spdlog/details/os.h>
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
 #include <cstdlib>
+#include <filesystem>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -88,16 +90,22 @@ T getEnvAs(const std::string& var, T defaultValue, spdlog::logger& logger, bool 
                 returnValue = value;
             }
 
+            // filesystem::path
+            else if constexpr(std::is_same_v<T, std::filesystem::path>) {
+                returnValue = std::filesystem::path(value);
+            }
+
             // bool
             else if constexpr(std::is_same_v<T, bool>) {
-                if(value == "1" || value == "true" || value == "TRUE" || value == "True") {
+                std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+                if(value == "1" || value == "true" || value == "t" || value == "on") {
                     returnValue = true;
-                } else if(value == "0" || value == "false" || value == "FALSE" || value == "False") {
+                } else if(value == "0" || value == "false" || value == "f" || value == "off") {
                     returnValue = false;
                 } else {
                     std::ostringstream message;
                     message << "Failed to convert environment variable " << var << " from '" << value << "' to type " << typeid(T).name();
-                    message << ". Possible values are '1', 'true', 'TRUE', 'True', '0', 'false', 'FALSE', 'False'";
+                    message << ". Possible values are '1', 'true', 't', 'on', '0', 'false', 'f', 'off'";
                     throw std::runtime_error(message.str());
                 }
             }

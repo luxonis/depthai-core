@@ -59,49 +59,53 @@ void loop(N& node,
 
     std::shared_ptr<ImgFrame> inImage;
 
-    while(node.isRunning()) {
+    while(node.mainLoop()) {
         std::shared_ptr<ImageManipConfig> pConfig;
         bool hasConfig = false;
         bool needsImage = true;
         bool skipImage = false;
-        if(node.inputConfig.getWaitForMessage()) {
-            pConfig = node.inputConfig.template get<ImageManipConfig>();
-            hasConfig = true;
-            if(inImage != nullptr && hasConfig && pConfig->getReusePreviousImage()) {
-                needsImage = false;
-            }
-            skipImage = pConfig->getSkipCurrentImage();
-        } else {
-            pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
-            if(pConfig != nullptr) {
-                hasConfig = true;
-            }
-        }
+        {
+            auto blockEvent = node.inputBlockEvent();
 
-        if(needsImage) {
-            inImage = node.inputImage.template get<ImgFrame>();
-            if(inImage == nullptr) {
-                logger->warn("No input image, skipping frame");
-                continue;
-            }
-            if(!hasConfig) {
-                auto _pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
-                if(_pConfig != nullptr) {
-                    pConfig = _pConfig;
+            if(node.inputConfig.getWaitForMessage()) {
+                pConfig = node.inputConfig.template get<ImageManipConfig>();
+                hasConfig = true;
+                if(inImage != nullptr && hasConfig && pConfig->getReusePreviousImage()) {
+                    needsImage = false;
+                }
+                skipImage = pConfig->getSkipCurrentImage();
+            } else {
+                pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
+                if(pConfig != nullptr) {
                     hasConfig = true;
                 }
             }
-            if(skipImage) {
-                continue;
-            }
-        }
 
-        // if has new config, parse and check if any changes
-        if(hasConfig) {
-            config = *pConfig;
-        }
-        if(!node.inputConfig.getWaitForMessage() && config.getReusePreviousImage()) {
-            logger->warn("reusePreviousImage is only taken into account when inputConfig is synchronous");
+            if(needsImage) {
+                inImage = node.inputImage.template get<ImgFrame>();
+                if(inImage == nullptr) {
+                    logger->warn("No input image, skipping frame");
+                    continue;
+                }
+                if(!hasConfig) {
+                    auto _pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
+                    if(_pConfig != nullptr) {
+                        pConfig = _pConfig;
+                        hasConfig = true;
+                    }
+                }
+                if(skipImage) {
+                    continue;
+                }
+            }
+
+            // if has new config, parse and check if any changes
+            if(hasConfig) {
+                config = *pConfig;
+            }
+            if(!node.inputConfig.getWaitForMessage() && config.getReusePreviousImage()) {
+                logger->warn("reusePreviousImage is only taken into account when inputConfig is synchronous");
+            }
         }
 
         auto startP = std::chrono::steady_clock::now();
@@ -135,7 +139,11 @@ void loop(N& node,
             if(!success) {
                 logger->error("Processing failed, potentially unsupported config");
             }
-            node.out.send(outImage);
+            {
+                auto blockEvent = node.outputBlockEvent();
+
+                node.out.send(outImage);
+            }
         } else {
             logger->error(
                 "Output image is bigger ({}B) than maximum frame size specified in properties ({}B) - skipping frame.\nPlease use the setMaxOutputFrameSize "
@@ -246,6 +254,52 @@ struct FrameSpecs {
     uint32_t p3Stride;
 };
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+class UndistortOpenCvImpl {
+   public:
+    enum class BuildStatus { ONE_SHOT, TWO_SHOT, NOT_USED, NOT_BUILT, ERROR };
+
+   private:
+    cv::Mat undistortMap1;
+    cv::Mat undistortMap2;
+    cv::Mat undistortMap1Half;
+    cv::Mat undistortMap2Half;
+
+    std::shared_ptr<spdlog::async_logger> logger;
+
+    std::array<float, 9> cameraMatrix;
+    std::array<float, 9> newCameraMatrix;
+    std::vector<float> distCoeffs;
+    dai::ImgFrame::Type type;
+    uint32_t srcWidth;
+    uint32_t srcHeight;
+    uint32_t dstWidth;
+    uint32_t dstHeight;
+
+    bool validMatrix(std::array<float, 9> matrix) const;
+    void initMaps(std::array<float, 9> cameraMatrix,
+                  std::array<float, 9> newCameraMatrix,
+                  std::vector<float> distCoeffs,
+                  dai::ImgFrame::Type type,
+                  uint32_t srcWidth,
+                  uint32_t srcHeight,
+                  uint32_t dstWidth,
+                  uint32_t dstHeight);
+
+   public:
+    UndistortOpenCvImpl(std::shared_ptr<spdlog::async_logger> logger) : logger(std::move(logger)) {}
+    BuildStatus build(std::array<float, 9> cameraMatrix,
+                      std::array<float, 9> newCameraMatrix,
+                      std::vector<float> distCoeffs,
+                      dai::ImgFrame::Type type,
+                      uint32_t srcWidth,
+                      uint32_t srcHeight,
+                      uint32_t dstWidth,
+                      uint32_t dstHeight);
+    void undistort(cv::Mat& src, cv::Mat& dst);
+};
+#endif
+
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 class Warp {
    protected:
@@ -253,10 +307,14 @@ class Warp {
 
     std::shared_ptr<spdlog::async_logger> logger;
 
+    bool isIdentityWarp() const;
+
    public:
     std::array<std::array<float, 3>, 3> matrix;
     ImageManipOpsBase<Container>::Background background = ImageManipOpsBase<Container>::Background::COLOR;
     uint32_t backgroundColor[3] = {0, 0, 0};
+    bool enableUndistort = false;
+    bool undistortOneShot = false;
 
     ImgFrame::Type type;
     FrameSpecs srcSpecs;
@@ -277,6 +335,15 @@ class Warp {
                        const ImgFrame::Type type,
                        const std::array<std::array<float, 3>, 3> matrix,
                        std::vector<std::array<std::array<float, 2>, 4>> srcCorners) = 0;
+    virtual void buildUndistort(bool enable,
+                                const std::array<float, 9>& cameraMatrix,
+                                const std::array<float, 9>& newCameraMatrix,
+                                const std::vector<float>& distCoeffs,
+                                const ImgFrame::Type type,
+                                const uint32_t srcWidth,
+                                const uint32_t srcHeight,
+                                const uint32_t dstWidth,
+                                const uint32_t dstHeight) = 0;
 
     virtual void apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) = 0;
 
@@ -290,6 +357,13 @@ class Warp {
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
     std::shared_ptr<ImageManipBuffer<uint32_t>> fastCvBorder;
+    std::shared_ptr<ImageManipData> auxFrame;
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    std::unique_ptr<UndistortOpenCvImpl> undistortImpl;
+#else
+    std::unique_ptr<uint32_t> dummyUndistortImpl;
+#endif
 
     void transform(const std::shared_ptr<ImageManipData> srcData,
                    std::shared_ptr<ImageManipData> dstData,
@@ -310,6 +384,15 @@ class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
                const ImgFrame::Type type,
                const std::array<std::array<float, 3>, 3> matrix,
                std::vector<std::array<std::array<float, 2>, 4>> srcCorners) override;
+    void buildUndistort(bool enable,
+                        const std::array<float, 9>& cameraMatrix,
+                        const std::array<float, 9>& newCameraMatrix,
+                        const std::vector<float>& distCoeffs,
+                        const ImgFrame::Type type,
+                        const uint32_t srcWidth,
+                        const uint32_t srcHeight,
+                        const uint32_t dstWidth,
+                        const uint32_t dstHeight) override;
 
     void apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) override;
 };
@@ -432,6 +515,15 @@ class ImageManipOperations {
     }
 
     ImageManipOperations& build(const ImageManipOpsBase<Container>& base, ImgFrame::Type outputFrameType, FrameSpecs srcFrameSpecs, ImgFrame::Type type);
+    ImageManipOperations& buildUndistort(bool enable,
+                                         const std::array<float, 9>& cameraMatrix,
+                                         const std::array<float, 9>& newCameraMatrix,
+                                         const std::vector<float>& distCoeffs,
+                                         const ImgFrame::Type type,
+                                         const uint32_t srcWidth,
+                                         const uint32_t srcHeight,
+                                         const uint32_t dstWidth,
+                                         const uint32_t dstHeight);
 
     bool apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst);
 
@@ -446,6 +538,9 @@ class ImageManipOperations {
     }
     std::vector<RotatedRect> getSrcCrops() const;
     std::array<std::array<float, 3>, 3> getMatrix() const;
+    bool undistortEnabled() const {
+        return warpEngine.enableUndistort;
+    }
 
     std::string toString() const;
 };
@@ -2505,9 +2600,7 @@ std::array<std::array<float, 2>, 2> getInverse(const std::array<std::array<float
 
 std::array<std::array<float, 3>, 3> getInverse(const std::array<std::array<float, 3>, 3>& matrix);
 
-std::array<std::array<float, 2>, 4> getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
-
-dai::RotatedRect getRotatedRectFromPoints(const std::vector<std::array<float, 2>>& points);
+dai::RotatedRect getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
 
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
 
@@ -2716,6 +2809,24 @@ ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipO
 
     return *this;
 }  // namespace impl
+
+template <template <typename T> typename ImageManipBuffer,
+          typename ImageManipData,
+          template <template <typename T> typename Buf, typename Dat>
+          typename WarpBackend>
+ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::buildUndistort(
+    bool enable,
+    const std::array<float, 9>& cameraMatrix,
+    const std::array<float, 9>& newCameraMatrix,
+    const std::vector<float>& distCoeffs,
+    const ImgFrame::Type type,
+    const uint32_t srcWidth,
+    const uint32_t srcHeight,
+    const uint32_t dstWidth,
+    const uint32_t dstHeight) {
+    warpEngine.buildUndistort(enable, cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
+    return *this;
+}
 
 size_t getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs);
 
@@ -2945,7 +3056,7 @@ template <template <typename T> typename ImageManipBuffer,
 std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getSrcCrops() const {
     std::vector<RotatedRect> crops;
     for(const auto& corners : srcCorners) {
-        auto rect = getRotatedRectFromPoints({corners[0], corners[1], corners[2], corners[3]});
+        auto rect = getOuterRotatedRect({corners[0], corners[1], corners[2], corners[3]});
         crops.push_back(rect);
     }
     return crops;
@@ -3007,6 +3118,64 @@ void WarpH<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpe
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
+void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable,
+                                                             const std::array<float, 9>& cameraMatrix,
+                                                             const std::array<float, 9>& newCameraMatrix,
+                                                             const std::vector<float>& distCoeffs,
+                                                             const ImgFrame::Type type,
+                                                             const uint32_t srcWidth,
+                                                             const uint32_t srcHeight,
+                                                             const uint32_t dstWidth,
+                                                             const uint32_t dstHeight) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    if(enable) {
+        if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
+        auto undistortStatus = undistortImpl->build(cameraMatrix, newCameraMatrix, distCoeffs, type, srcWidth, srcHeight, dstWidth, dstHeight);
+        switch(undistortStatus) {
+            case UndistortOpenCvImpl::BuildStatus::ONE_SHOT:
+                this->enableUndistort = true;
+                this->undistortOneShot = true;
+                break;
+            case UndistortOpenCvImpl::BuildStatus::TWO_SHOT:
+                this->enableUndistort = true;
+                this->undistortOneShot = false;
+                break;
+            case UndistortOpenCvImpl::BuildStatus::NOT_USED:
+                this->enableUndistort = false;
+                this->undistortOneShot = false;
+                break;
+            case UndistortOpenCvImpl::BuildStatus::NOT_BUILT:
+                break;
+            case UndistortOpenCvImpl::BuildStatus::ERROR:
+                this->enableUndistort = false;
+                break;
+        }
+
+        if(this->enableUndistort && !this->undistortOneShot) {
+            auto frameSize = getAlignedOutputFrameSize(type, srcWidth, srcHeight);
+            if(!auxFrame || auxFrame->size() < frameSize) {
+                auxFrame = std::make_shared<ImageManipData>(frameSize);
+            }
+        }
+    } else {
+        undistortImpl = nullptr;
+        this->enableUndistort = false;
+    }
+#else
+    (void)enable;
+    (void)cameraMatrix;
+    (void)newCameraMatrix;
+    (void)distCoeffs;
+    (void)type;
+    (void)srcWidth;
+    (void)srcHeight;
+    (void)dstWidth;
+    (void)dstHeight;
+    throw std::runtime_error("Undistort requires OpenCV support");
+#endif
+}
+
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 void WarpH<ImageManipBuffer, ImageManipData>::transform(const std::shared_ptr<ImageManipData> src,
                                                         std::shared_ptr<ImageManipData> dst,
                                                         const size_t srcWidth,
@@ -3065,29 +3234,59 @@ void WarpH<ImageManipBuffer, ImageManipData>::transform(const std::shared_ptr<Im
         throw std::runtime_error("FastCV backend not available");
 #endif
     }
+
+#if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+    (void)src;
+    (void)dst;
+    (void)srcWidth;
+    (void)srcHeight;
+    (void)srcStride;
+    (void)dstWidth;
+    (void)dstHeight;
+    (void)dstStride;
+    (void)numChannels;
+    (void)bpp;
+    (void)matrix;
+    (void)background;
+#endif
 }
 
 void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) {
+    auto undistortDst = this->isIdentityWarp() || this->undistortOneShot ? dst : auxFrame;
+    auto undistortSpecs =
+        this->isIdentityWarp() || this->undistortOneShot ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
+    auto warpSrc = this->enableUndistort ? auxFrame : src;
+    auto warpSrcSpecs = this->enableUndistort ? undistortSpecs : this->srcSpecs;
     // Apply transformation multiple times depending on the image format
     switch(this->type) {
         case ImgFrame::Type::RGB888i:
         case ImgFrame::Type::BGR888i:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src->offset(this->srcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      3,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0], this->backgroundColor[1], this->backgroundColor[2]});
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC3, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                cv::Mat dstCv(
+                    undistortSpecs.height, undistortSpecs.width, CV_8UC3, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                this->undistortImpl->undistort(srcCv, dstCv);
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          3,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0], this->backgroundColor[1], this->backgroundColor[2]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3097,42 +3296,66 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
         case ImgFrame::Type::BGR888p:
         case ImgFrame::Type::RGB888p:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src->offset(this->srcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0]});
-            transform(src->offset(this->srcSpecs.p2Offset),
-                      dst->offset(this->dstSpecs.p2Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p2Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p2Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[1]});
-            transform(src->offset(this->srcSpecs.p3Offset),
-                      dst->offset(this->dstSpecs.p3Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p3Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p3Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[2]});
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat dstCv(
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+                {
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p2Offset)->data(), this->srcSpecs.p2Stride);
+                    cv::Mat dstCv(
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p2Offset)->data(), undistortSpecs.p2Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+                {
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p3Offset)->data(), this->srcSpecs.p3Stride);
+                    cv::Mat dstCv(
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p3Offset)->data(), undistortSpecs.p3Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+                transform(warpSrc->offset(warpSrcSpecs.p2Offset),
+                          dst->offset(this->dstSpecs.p2Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p2Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p2Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[1]});
+                transform(warpSrc->offset(warpSrcSpecs.p3Offset),
+                          dst->offset(this->dstSpecs.p3Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p3Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p3Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[2]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3141,42 +3364,74 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             break;
         case ImgFrame::Type::YUV420p:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src->offset(this->srcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0]});
-            transform(src->offset(this->srcSpecs.p2Offset),
-                      dst->offset(this->dstSpecs.p2Offset),
-                      this->srcSpecs.width / 2,
-                      this->srcSpecs.height / 2,
-                      this->srcSpecs.p2Stride,
-                      this->dstSpecs.width / 2,
-                      this->dstSpecs.height / 2,
-                      this->dstSpecs.p2Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[1]});
-            transform(src->offset(this->srcSpecs.p3Offset),
-                      dst->offset(this->dstSpecs.p3Offset),
-                      this->srcSpecs.width / 2,
-                      this->srcSpecs.height / 2,
-                      this->srcSpecs.p3Stride,
-                      this->dstSpecs.width / 2,
-                      this->dstSpecs.height / 2,
-                      this->dstSpecs.p3Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[2]});
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat dstCv(
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+                {
+                    cv::Mat srcCv(
+                        this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC1, src->offset(this->srcSpecs.p2Offset)->data(), this->srcSpecs.p2Stride);
+                    cv::Mat dstCv(undistortSpecs.height / 2,
+                                  undistortSpecs.width / 2,
+                                  CV_8UC1,
+                                  undistortDst->offset(undistortSpecs.p2Offset)->data(),
+                                  undistortSpecs.p2Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+                {
+                    cv::Mat srcCv(
+                        this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC1, src->offset(this->srcSpecs.p3Offset)->data(), this->srcSpecs.p3Stride);
+                    cv::Mat dstCv(undistortSpecs.height / 2,
+                                  undistortSpecs.width / 2,
+                                  CV_8UC1,
+                                  undistortDst->offset(undistortSpecs.p3Offset)->data(),
+                                  undistortSpecs.p3Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+                transform(warpSrc->offset(warpSrcSpecs.p2Offset),
+                          dst->offset(this->dstSpecs.p2Offset),
+                          warpSrcSpecs.width / 2,
+                          warpSrcSpecs.height / 2,
+                          warpSrcSpecs.p2Stride,
+                          this->dstSpecs.width / 2,
+                          this->dstSpecs.height / 2,
+                          this->dstSpecs.p2Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[1]});
+                transform(warpSrc->offset(warpSrcSpecs.p3Offset),
+                          dst->offset(this->dstSpecs.p3Offset),
+                          warpSrcSpecs.width / 2,
+                          warpSrcSpecs.height / 2,
+                          warpSrcSpecs.p3Stride,
+                          this->dstSpecs.width / 2,
+                          this->dstSpecs.height / 2,
+                          this->dstSpecs.p3Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[2]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3185,30 +3440,52 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             break;
         case ImgFrame::Type::NV12:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src->offset(this->srcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0]});
-            transform(src->offset(this->srcSpecs.p2Offset),
-                      dst->offset(this->dstSpecs.p2Offset),
-                      this->srcSpecs.width / 2,
-                      this->srcSpecs.height / 2,
-                      this->srcSpecs.p2Stride,
-                      this->dstSpecs.width / 2,
-                      this->dstSpecs.height / 2,
-                      this->dstSpecs.p2Stride,
-                      2,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[1], this->backgroundColor[2]});
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat dstCv(
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+                {
+                    cv::Mat srcCv(
+                        this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC2, src->offset(this->srcSpecs.p2Offset)->data(), this->srcSpecs.p2Stride);
+                    cv::Mat dstCv(undistortSpecs.height / 2,
+                                  undistortSpecs.width / 2,
+                                  CV_8UC2,
+                                  undistortDst->offset(undistortSpecs.p2Offset)->data(),
+                                  undistortSpecs.p2Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+                transform(warpSrc->offset(warpSrcSpecs.p2Offset),
+                          dst->offset(this->dstSpecs.p2Offset),
+                          warpSrcSpecs.width / 2,
+                          warpSrcSpecs.height / 2,
+                          warpSrcSpecs.p2Stride,
+                          this->dstSpecs.width / 2,
+                          this->dstSpecs.height / 2,
+                          this->dstSpecs.p2Stride,
+                          2,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[1], this->backgroundColor[2]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3218,18 +3495,30 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
         case ImgFrame::Type::RAW8:
         case ImgFrame::Type::GRAY8:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src->offset(this->srcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      1,
-                      this->matrix,
-                      {this->backgroundColor[0]});
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat dstCv(
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          1,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3238,18 +3527,30 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             break;
         case ImgFrame::Type::RAW16:
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-            transform(src->offset(this->srcSpecs.p1Offset),
-                      dst->offset(this->dstSpecs.p1Offset),
-                      this->srcSpecs.width,
-                      this->srcSpecs.height,
-                      this->srcSpecs.p1Stride,
-                      this->dstSpecs.width,
-                      this->dstSpecs.height,
-                      this->dstSpecs.p1Stride,
-                      1,
-                      2,
-                      this->matrix,
-                      {this->backgroundColor[0]});
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+            if(this->enableUndistort) {
+                {
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_16UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat dstCv(
+                        undistortSpecs.height, undistortSpecs.width, CV_16UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                    this->undistortImpl->undistort(srcCv, dstCv);
+                }
+            }
+    #endif
+            if(!this->undistortOneShot && !this->isIdentityWarp()) {
+                transform(warpSrc->offset(warpSrcSpecs.p1Offset),
+                          dst->offset(this->dstSpecs.p1Offset),
+                          warpSrcSpecs.width,
+                          warpSrcSpecs.height,
+                          warpSrcSpecs.p1Stride,
+                          this->dstSpecs.width,
+                          this->dstSpecs.height,
+                          this->dstSpecs.p1Stride,
+                          1,
+                          2,
+                          this->matrix,
+                          {this->backgroundColor[0]});
+            }
 #else
             (void)src;
             (void)dst;
@@ -3284,6 +3585,17 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
             throw std::runtime_error("Unsupported image format. Only YUV420p, RGB888p, BGR888p, RGB888i, BGR888i, RAW8, NV12, GRAY8 are supported");
             break;
     }
+
+#ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
+    (void)warpSrcSpecs;
+#endif
+}
+
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
+bool Warp<ImageManipBuffer, ImageManipData>::isIdentityWarp() const {
+    return (matrix[0][0] == 1.0f && matrix[0][1] == 0.0f && matrix[0][2] == 0.0f && matrix[1][0] == 0.0f && matrix[1][1] == 1.0f && matrix[1][2] == 0.0f
+            && matrix[2][0] == 0.0f && matrix[2][1] == 0.0f && matrix[2][2] == 1.0f)
+           && (srcSpecs.width == dstSpecs.width && srcSpecs.height == dstSpecs.height);
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>

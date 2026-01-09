@@ -1,5 +1,9 @@
 name: DepthAI Core CI/CD
 
+concurrency:
+  group: depthai-core-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
@@ -12,11 +16,41 @@ on:
     branches:
       - main
       - develop
+    types: [opened, reopened, labeled]
 
 jobs:
 
+  # The precheck job determines whether a workflow should be run in full
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+    - name: Evaluate trigger condition
+      id: check
+      run: |
+        EVENT_NAME="${{ github.event_name }}"
+
+        RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
+        if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
+          LABELS="[]"
+        else
+          LABELS="$RAW_LABELS"
+        fi
+
+        SHOULD_RUN="true"
+        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+            SHOULD_RUN="false"
+          fi
+        fi
+
+        echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+
   style:
     runs-on: ubuntu-24.04
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
 
     steps:
     - uses: actions/checkout@v4
@@ -37,6 +71,8 @@ jobs:
 
   tidy:
     runs-on: ubuntu-24.04
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
 
     steps:
     - uses: actions/checkout@v4
@@ -56,6 +92,8 @@ jobs:
 
   build:
     runs-on: ${{ matrix.os }}
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
@@ -80,7 +118,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install libopencv-dev libudev-dev
+        sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
       if: matrix.os == 'windows-latest'
@@ -95,12 +133,12 @@ jobs:
 
   integration:
     runs-on: ${{ matrix.os }}
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        # TODO(Morato) - add back Debug builds to CI
-        # build-type: [Debug, Release]
-        build-type: [Release]
+        build-type: [Debug, Release]
         # shared: [true, false]
         shared: [true]
         platform: [x64]
@@ -128,7 +166,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install libopencv-dev libudev-dev
+        sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
       if: matrix.os == 'windows-latest'

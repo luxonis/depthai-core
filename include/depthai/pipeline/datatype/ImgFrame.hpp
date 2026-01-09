@@ -75,12 +75,13 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     ImgFrame(long fd);
     ImgFrame(size_t size);
     ImgFrame(long fd, size_t size);
-    virtual ~ImgFrame() = default;
+    virtual ~ImgFrame();
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::ImgFrame;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::ImgFrame;
+    }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
@@ -293,18 +294,36 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     Rect remapRectToSource(const Rect& rect) const;
 
     /**
-     * Convience function to initialize meta data from another frame
+     * Convenience function to initialize meta data from another frame
      * Copies over timestamps, transformations done on the image, etc.
      * @param sourceFrame source frame from which the metadata is taken from
      */
     ImgFrame& setMetadata(const ImgFrame& sourceFrame);
 
     /**
-     * Convience function to initialize meta data from another frame
+     * Convenience function to initialize meta data from another frame
      * Copies over timestamps, transformations done on the image, etc.
      * @param sourceFrame shared pointer to source frame from which the metadata is taken from
      */
     ImgFrame& setMetadata(const std::shared_ptr<ImgFrame>& sourceFrame);
+
+    /**
+     * Convenience function to set the data of the ImgFrame
+     * @param data data to set
+     */
+    ImgFrame& copyDataFrom(const ImgFrame& sourceFrame);
+
+    /**
+     * Convenience function to set the data of the ImgFrame
+     * @param data data to set
+     */
+    ImgFrame& copyDataFrom(const std::shared_ptr<ImgFrame>& sourceFrame);
+
+    /**
+     * Create a clone of the ImgFrame with metadata and data copied
+     * @returns cloned ImgFrame
+     */
+    std::shared_ptr<ImgFrame> clone() const;
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -395,7 +414,8 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      *
      * Copies cv::Mat data to the ImgFrame buffer and converts to a specific type.
      *
-     * @param frame Input cv::Mat BGR frame from which to copy the data
+     * @param frame Input cv::Mat BGR frame or single channel frame from which to copy the data from.
+     * @param type  Specifies the target image format for the internal buffer, including color space, layout, and bit depth.
      */
     ImgFrame& setCvFrame(cv::Mat frame, Type type);
 

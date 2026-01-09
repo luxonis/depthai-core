@@ -14,10 +14,12 @@
 // Additions
 #include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
+#include "utility/PipelineEventDispatcherInterface.hpp"
 
 namespace dai {
 
-MessageQueue::MessageQueue(std::string name, unsigned int maxSize, bool blocking) : queue(maxSize, blocking), name(std::move(name)) {}
+MessageQueue::MessageQueue(std::string name, unsigned int maxSize, bool blocking, utility::PipelineEventDispatcherInterface* pipelineEventDispatcher)
+    : queue(maxSize, blocking), name(std::move(name)), pipelineEventDispatcher(pipelineEventDispatcher) {}
 
 MessageQueue::MessageQueue(unsigned int maxSize, bool blocking) : queue(maxSize, blocking) {}
 
@@ -28,6 +30,8 @@ bool MessageQueue::isClosed() const {
 void MessageQueue::close() {
     // Destroy queue
     queue.destruct();
+
+    notifyCondVars();
 
     // Log if name not empty
     if(!name.empty()) spdlog::debug("MessageQueue ({}) closed", name);
@@ -94,6 +98,20 @@ int MessageQueue::addCallback(const std::function<void()>& callback) {
     return addCallback([callback](const std::string&, std::shared_ptr<ADatatype>) { callback(); });
 }
 
+int MessageQueue::addCondVar(std::shared_ptr<std::condition_variable> cv) {
+    // Lock first
+    std::unique_lock<std::mutex> lock(cvNotifyMtx);
+
+    // Get unique id
+    int uniqueId = uniqueCondVarId++;
+
+    // assign callback
+    condVars[uniqueId] = std::move(cv);
+
+    // return id assigned to the callback
+    return uniqueId;
+}
+
 bool MessageQueue::removeCallback(int callbackId) {
     // Lock first
     std::unique_lock<std::mutex> lock(callbacksMtx);
@@ -106,23 +124,65 @@ bool MessageQueue::removeCallback(int callbackId) {
     return true;
 }
 
+bool MessageQueue::removeCondVar(int condVarId) {
+    // Lock first
+    std::unique_lock<std::mutex> lock(cvNotifyMtx);
+
+    // If callback with id 'callbackId' doesn't exists, return false
+    if(condVars.count(condVarId) == 0) return false;
+
+    // Otherwise erase and return true
+    condVars.erase(condVarId);
+    return true;
+}
+
 void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     callCallbacks(msg);
-    auto queueNotClosed = queue.push(msg);
+    notifyCondVars();
+    auto queueNotClosed = queue.push(msg, [&](LockingQueueState state, size_t size) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
+            switch(state) {
+                case LockingQueueState::BLOCKED:
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);
+                    break;
+                case LockingQueueState::CANCELLED:
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
+                    break;
+                case LockingQueueState::SUCCESS:
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::SUCCESS, size);
+                    break;
+            }
+        }
+    });
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
 }
 
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     callCallbacks(msg);
+    notifyCondVars();
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
-    return queue.tryWaitAndPush(msg, timeout);
+    return queue.tryWaitAndPush(msg, timeout, [&](LockingQueueState state, size_t size) {
+        if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
+            switch(state) {
+                case LockingQueueState::BLOCKED:
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::BLOCKED, size);
+                    break;
+                case LockingQueueState::CANCELLED:
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::CANCELLED, size);
+                    break;
+                case LockingQueueState::SUCCESS:
+                    pipelineEventDispatcher->pingInputEvent(name, PipelineEvent::Status::SUCCESS, size);
+                    break;
+            }
+        }
+    });
 }
 
 bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
@@ -141,6 +201,83 @@ void MessageQueue::callCallbacks(std::shared_ptr<ADatatype> message) {
     for(auto& keyValue : callbacks) {
         keyValue.second(name, message);
     }
+}
+
+void MessageQueue::notifyCondVars() {
+    // Lock first
+    std::lock_guard<std::mutex> lock(cvNotifyMtx);
+
+    // Call all callbacks
+    for(auto& keyValue : condVars) {
+        keyValue.second->notify_one();
+    }
+}
+
+MessageQueue::QueueException::~QueueException() noexcept = default;
+
+std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(std::unordered_map<std::string, MessageQueue&> queues) {
+    std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> condVarIds;
+    condVarIds.reserve(queues.size());
+    std::unordered_map<std::string, std::shared_ptr<ADatatype>> inputs;
+
+    std::mutex inputsWaitMutex;
+    auto inputsWaitCv = std::make_shared<std::condition_variable>();
+
+    try {
+        // Register callbacks
+        for(auto& kv : queues) {
+            auto& input = kv.second;
+            auto condVarId = input.addCondVar(inputsWaitCv);
+            condVarIds.push_back({input, condVarId});
+        }
+
+        // Check if any messages already present
+        bool hasAnyMessages = false;
+        for(auto& kv : queues) {
+            if(kv.second.has()) {
+                hasAnyMessages = true;
+                break;
+            }
+        }
+
+        if(!hasAnyMessages) {
+            // Wait for any message to arrive
+            std::unique_lock<std::mutex> lock(inputsWaitMutex);
+            inputsWaitCv->wait(lock, [&]() {
+                for(auto& kv : queues) {
+                    if(kv.second.isClosed()) {
+                        return true;
+                    }
+                }
+                for(auto& kv : queues) {
+                    if(kv.second.has()) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+
+        // Remove condition variables
+        for(auto& [input, condVarId] : condVarIds) {
+            input.removeCondVar(condVarId);
+        }
+
+        // Collect all available messages
+        for(auto& kv : queues) {
+            auto& input = kv.second;
+            if(input.has()) {
+                inputs[kv.first] = input.get<ADatatype>();
+            }
+        }
+    } catch(...) {
+        // Remove condition variables
+        for(auto& [input, condVarId] : condVarIds) {
+            input.removeCondVar(condVarId);
+        }
+        throw;
+    }
+    return inputs;
 }
 
 }  // namespace dai

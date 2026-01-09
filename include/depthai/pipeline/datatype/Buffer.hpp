@@ -23,12 +23,13 @@ class Buffer : public ADatatype {
     Buffer(size_t size);
     Buffer(long fd);
     Buffer(long fd, size_t size);
-    virtual ~Buffer() = default;
 
-    virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::Buffer;
-    };
+    ~Buffer() override;
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::Buffer;
+    }
 
     /**
      * @brief Get non-owning reference to internal buffer

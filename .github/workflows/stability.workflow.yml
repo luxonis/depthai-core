@@ -34,18 +34,16 @@ jobs:
       - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
         run: echo ${{ github.event.inputs.distinct_id }}
   # Testing
-  test:
+  stability_test:
     runs-on: ['self-hosted', 'testbed-runner']
     timeout-minutes: 1450 # 24h & 10minutes
     steps:
-    
-    - uses: actions/checkout@v3
 
-    - name: Prepare HIL Framework
-      run: source scripts/hil/prepare_hil_framework.sh 
+    - uses: actions/checkout@v3
 
     - name: Test
       run: |
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           if [[ -n "${{ github.event.inputs.testbed }}" ]]; then
             TESTBED_OPTION="--testbed ${{ github.event.inputs.testbed }}"
           fi
@@ -58,5 +56,5 @@ jobs:
           if [[ -n  "${{ github.event.inputs.luxonis_os }}" ]]; then
             UPDATE_LUXONIS_OS="--rvc4-os-version ${{ github.event.inputs.luxonis_os }}"
           fi
-          
+
           exec hil $HOLD_RESERVATION --models "oak4_pro or oak4_d" $TESTBED_OPTION $RESERVATION_OPTION $UPDATE_LUXONIS_OS --wait --sync-workspace --stability-test --stability-name depthai-stability --commands 'cd /tmp/depthai-core || exit' 'scripts/hil/run_hil_stability.sh ${{ github.event.inputs.depthai  }}'

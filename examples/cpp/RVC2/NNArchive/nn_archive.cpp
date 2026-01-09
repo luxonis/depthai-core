@@ -69,7 +69,7 @@ int main() {
         dai::NNModelDescription modelDesc;
         modelDesc.model = "yolov6-nano";
         modelDesc.platform = "RVC2";
-        std::string archivePath = dai::getModelFromZoo(modelDesc, true);
+        auto archivePath = dai::getModelFromZoo(modelDesc, true);
 
         // Create pipeline
         dai::Pipeline pipeline;

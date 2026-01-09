@@ -16,7 +16,7 @@ class ObjectTrackerConfig : public Buffer {
      * Construct ObjectTrackerConfig message.
      */
     ObjectTrackerConfig() = default;
-    virtual ~ObjectTrackerConfig() = default;
+    virtual ~ObjectTrackerConfig();
 
     /**
      * Tracklet IDs to remove from tracking.
@@ -34,10 +34,11 @@ class ObjectTrackerConfig : public Buffer {
      */
     ObjectTrackerConfig& forceRemoveIDs(std::vector<int32_t> ids);
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::ObjectTrackerConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::ObjectTrackerConfig;
+    }
 
     DEPTHAI_SERIALIZE(ObjectTrackerConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, trackletIdsToRemove);
 };

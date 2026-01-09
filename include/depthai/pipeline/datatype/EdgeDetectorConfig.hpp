@@ -13,7 +13,7 @@ namespace dai {
 class EdgeDetectorConfig : public Buffer {
    public:
     EdgeDetectorConfig() = default;
-    virtual ~EdgeDetectorConfig() = default;
+    virtual ~EdgeDetectorConfig();
 
     struct EdgeDetectorConfigData {
         /**
@@ -47,10 +47,11 @@ class EdgeDetectorConfig : public Buffer {
 
     EdgeDetectorConfigData config;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::EdgeDetectorConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::EdgeDetectorConfig;
+    }
 
     DEPTHAI_SERIALIZE(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config);
 };

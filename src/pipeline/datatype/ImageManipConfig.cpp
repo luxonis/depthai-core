@@ -6,6 +6,23 @@
 
 namespace dai {
 
+OpBase::~OpBase() = default;
+Translate::~Translate() = default;
+Rotate::~Rotate() = default;
+Resize::~Resize() = default;
+Flip::~Flip() = default;
+Affine::~Affine() = default;
+Perspective::~Perspective() = default;
+FourPoints::~FourPoints() = default;
+Crop::~Crop() = default;
+
+ImageManipConfig::~ImageManipConfig() = default;
+
+void ImageManipConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::ImageManipConfig;
+}
+
 // New API
 ImageManipConfig& ImageManipConfig::clearOps() {
     base.clear();

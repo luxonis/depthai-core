@@ -6,7 +6,7 @@
 
 DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C++ and offers Python bindings out of the box.
 
->  **Important — You’re viewing the `v3.x.y` _release-candidate_ branch.**
+>  **Important — You’re viewing the `v3.x.y` branch.**
 >
 > * For production projects that still rely on **v2**, check out the
 >   [`v2_stable` branch](https://github.com/luxonis/depthai-core/tree/v2_stable).
@@ -14,9 +14,6 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
-
-## Disclaimer
-DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking.
 
 ## Examples
 Examples for both C++ and Python are available in the `examples` folder. To see how to build and run them see [README.md](./examples/README.md) for more information.
@@ -29,8 +26,11 @@ cmake --build build
 ## Dependencies
 - CMake >= 3.20
 - C/C++17 compiler
+- [Linux] libudev >= 1.0.0
 - [optional] OpenCV 4 (required if building examples and for record and replay)
 - [optional] PCL (required for point cloud example)
+
+To install libudev on Debian based systems (Ubuntu, etc.): `sudo apt install libudev-dev`
 
 To install OpenCV:
 MacOS: `brew install opencv`
@@ -68,7 +68,7 @@ Then configure and build
 cmake -S . -B build
 cmake --build build --parallel [num CPU cores]
 ```
-On Windows, we currently only build the dependencies in Release mode, so you may want to add `-DCMAKE_BUILD_TYPE=Release` to the configuration step and you'll need to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
+On Windows it's often required to specify the location of the OpenCV installation. In case you used chocolatey to install OpenCV, you can use the following command:
 
 ```
 cmake -S . -B build -DOpenCV_DIR=C:/tools/opencv/build -DCMAKE_BUILD_TYPE=Release
@@ -91,6 +91,8 @@ Installation of the DepthAI library is currently only available as a dynamic lib
 cmake -S . -B build -D'BUILD_SHARED_LIBS=ON' -D'CMAKE_INSTALL_PREFIX=[path/to/install/dir]'
 cmake --build build --target install --parallel [num CPU cores]
 ```
+
+> ℹ️ Make sure to check out our [template C++ project](https://github.com/luxonis/depthai-core-example).
 
 ### Verifying installation
 To verify the installation works as expected, you can test if the integration project compiles and runs.
@@ -212,9 +214,10 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
-| DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
+| DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in milliseconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
 | DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
+| DEPTHAI_HUB_EVENTS_BASE_URL | URL for events of the Luxonis Hub |
 | DEPTHAI_HUB_API_KEY | API key for the Luxonis Hub |
 | DEPTHAI_ZOO_INTERNET_CHECK | (Default) 1 - perform internet check, if available, download the newest model version 0 - skip internet check and use cached model |
 | DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT | (Default) 1000 - timeout in milliseconds for the internet check |
@@ -222,7 +225,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_ZOO_MODELS_PATH | (Default) depthai_models - Folder where zoo model description files are stored |
 | DEPTHAI_RECORD | Enables holistic record to the specified directory. |
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
-
+| DEPTHAI_PROFILING | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print. |
+| DEPTHAI_PIPELINE_DEBUGGING | Enables pipeline debugging with state dumps. DEPTHAI_LEVEL=trace is required to print the state dumps. |
 
 ## Running tests
 
@@ -286,3 +290,17 @@ cmake -S. -Bbuild -D'OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4'
 ```
 
 Now the build process should correctly discover your OpenCV installation
+
+### Build fails due to out of memory killer
+If your build process is killed by the out of memory killer, you can try to reduce the number of parallel jobs used during the build process.
+
+The error usually looks something like this:
+```
+c++: fatal error: Killed signal terminated program cc1plus
+```
+
+You can do this by passing the `--parallel` flag with a lower number of jobs to the `cmake --build` command, for example:
+```
+cmake --build build --parallel 2
+```
+

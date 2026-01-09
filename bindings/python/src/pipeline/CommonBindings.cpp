@@ -1,5 +1,7 @@
 #include "CommonBindings.hpp"
 
+#include <pybind11/pybind11.h>
+
 // Libraries
 #include "hedley/hedley.h"
 
@@ -9,16 +11,20 @@
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/common/ChipTemperature.hpp"
-#include "depthai/common/ChipTemperatureS3.hpp"
+#include "depthai/common/ChipTemperatureRVC4.hpp"
 #include "depthai/common/Color.hpp"
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/ConnectionInterface.hpp"
 #include "depthai/common/CpuUsage.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "depthai/common/DetectionParserOptions.hpp"
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/FrameEvent.hpp"
+#include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Interpolation.hpp"
+#include "depthai/common/Keypoint.hpp"
 #include "depthai/common/MemoryInfo.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3d.hpp"
@@ -32,6 +38,7 @@
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
+#include "depthai/common/YoloDecodingFamily.hpp"
 
 // depthai
 #include "depthai/common/CameraExposureOffset.hpp"
@@ -50,6 +57,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Quaterniond> quaterniond(m, "Quaterniond", DOC(dai, Quaterniond));
     py::class_<Size2f> size2f(m, "Size2f", DOC(dai, Size2f));
     py::enum_<CameraBoardSocket> cameraBoardSocket(m, "CameraBoardSocket", DOC(dai, CameraBoardSocket));
+    py::enum_<HousingCoordinateSystem> housingCoordinateSystem(m, "HousingCoordinateSystem", DOC(dai, HousingCoordinateSystem));
     py::enum_<ConnectionInterface> connectionInterface(m, "connectionInterface", DOC(dai, ConnectionInterface));
     py::enum_<CameraSensorType> cameraSensorType(m, "CameraSensorType", DOC(dai, CameraSensorType));
     py::enum_<CameraImageOrientation> cameraImageOrientation(m, "CameraImageOrientation", DOC(dai, CameraImageOrientation));
@@ -57,7 +65,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<CameraFeatures> cameraFeatures(m, "CameraFeatures", DOC(dai, CameraFeatures));
     py::class_<MemoryInfo> memoryInfo(m, "MemoryInfo", DOC(dai, MemoryInfo));
     py::class_<ChipTemperature> chipTemperature(m, "ChipTemperature", DOC(dai, ChipTemperature));
-    py::class_<ChipTemperatureS3> chipTemperatureS3(m, "ChipTemperatureS3", DOC(dai, ChipTemperatureS3));
+    py::class_<ChipTemperatureRVC4> chipTemperatureRVC4(m, "ChipTemperatureRVC4", DOC(dai, ChipTemperatureRVC4));
     py::class_<CpuUsage> cpuUsage(m, "CpuUsage", DOC(dai, CpuUsage));
     py::enum_<CameraModel> cameraModel(m, "CameraModel", DOC(dai, CameraModel));
     py::class_<StereoRectification> stereoRectification(m, "StereoRectification", DOC(dai, StereoRectification));
@@ -67,6 +75,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
+    py::enum_<DepthUnit> depthUnitEnum(m, "DepthUnit", DOC(dai, DepthUnit));
+    depthUnitEnum.value("METER", DepthUnit::METER)
+        .value("CENTIMETER", DepthUnit::CENTIMETER)
+        .value("MILLIMETER", DepthUnit::MILLIMETER)
+        .value("INCH", DepthUnit::INCH)
+        .value("FOOT", DepthUnit::FOOT)
+        .value("CUSTOM", DepthUnit::CUSTOM);
+    py::enum_<YoloDecodingFamily> yoloDecodingFamily(m, "YoloDecodingFamily");
     py::enum_<SerializationType> serializationType(m, "SerializationType");
     py::class_<DetectionParserOptions> detectionParserOptions(m, "DetectionParserOptions", DOC(dai, DetectionParserOptions));
     py::class_<RotatedRect> rotatedRect(m, "RotatedRect", DOC(dai, RotatedRect));
@@ -78,6 +94,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
     py::class_<ProfilingData> profilingData(m, "ProfilingData", DOC(dai, ProfilingData));
     py::enum_<Interpolation> interpolation(m, "Interpolation", DOC(dai, Interpolation));
+    py::enum_<DeviceModelZoo> deviceModelZoo(m, "DeviceModelZoo", DOC(dai, DeviceModelZoo));
+    py::class_<Keypoint> keypoint(m, "Keypoint", DOC(dai, Keypoint));
+    py::class_<KeypointsList> keypointsList(m, "KeypointsList", DOC(dai, KeypointsList));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -92,6 +111,51 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    keypoint.def(py::init<>())
+        .def(py::init<Point3f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
+        .def(py::init<Point2f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
+        .def(py::init<float, float, float, float, uint32_t>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("confidence") = 0.f,
+             py::arg("label") = 0,
+             DOC(dai, Keypoint, Keypoint))
+        .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates, DOC(dai, Keypoint, imageCoordinates))
+        .def_readwrite("confidence", &Keypoint::confidence, DOC(dai, Keypoint, confidence))
+        .def_readwrite("label", &Keypoint::label, DOC(dai, Keypoint, label));
+
+    keypointsList.def(py::init<>())
+        .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))
+        .def(py::init<std::vector<Keypoint>>(), py::arg("keypoints"), DOC(dai, KeypointsListT, KeypointsListT))
+        .def(
+            "setKeypoints",
+            [](KeypointsList& self, const std::vector<Keypoint>& kps) { self.Base::setKeypoints(kps); },
+            py::arg("keypoints"),
+            DOC(dai, KeypointsListT, setKeypoints))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Point3f>>(&KeypointsList::setKeypoints),
+             py::arg("keypoints"),
+             DOC(dai, KeypointsListT, setKeypoints))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Point2f>>(&KeypointsList::setKeypoints),
+             py::arg("keypoints"),
+             DOC(dai, KeypointsListT, setKeypoints))
+        .def(
+            "setKeypoints",
+            [](KeypointsList& self, std::vector<Keypoint> keypoints, std::vector<Edge> edges) {
+                self.Base::setKeypoints(std::move(keypoints), std::move(edges));
+            },
+            py::arg("keypoints"),
+            py::arg("edges"),
+            DOC(dai, KeypointsListT, setKeypoints))
+        .def(
+            "setEdges", [](KeypointsList& self, const std::vector<Edge>& edges) { self.Base::setEdges(edges); }, py::arg("edges"))
+        .def("getKeypoints", &KeypointsList::getKeypoints, DOC(dai, KeypointsListT, getKeypoints))
+        .def("getEdges", &KeypointsList::getEdges, DOC(dai, KeypointsListT, getEdges))
+        .def("getPoints3f", &KeypointsList::getPoints3f, DOC(dai, KeypointsListT, getPoints3f))
+        .def("getPoints2f", &KeypointsList::getPoints2f, DOC(dai, KeypointsListT, getPoints2f));
+
     rotatedRect.def(py::init<>())
         .def(py::init<Point2f, Size2f, float>())
         .def(py::init<Rect, float>())
@@ -100,9 +164,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("angle", &RotatedRect::angle)
         .def("isNormalized", &RotatedRect::isNormalized, DOC(dai, RotatedRect, isNormalized))
         .def("normalize", &RotatedRect::normalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, normalize))
-        .def("denormalize", &RotatedRect::denormalize, py::arg("width"), py::arg("height"), DOC(dai, RotatedRect, denormalize))
+        .def("denormalize", &RotatedRect::denormalize, py::arg("width"), py::arg("height"), py::arg("force") = false, DOC(dai, RotatedRect, denormalize))
         .def("getPoints", &RotatedRect::getPoints, DOC(dai, RotatedRect, getPoints))
-        .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect));
+        .def("getOuterRect", &RotatedRect::getOuterRect, DOC(dai, RotatedRect, getOuterRect))
+        .def("getOuterXYWH", &RotatedRect::getOuterXYWH, DOC(dai, RotatedRect, getOuterXYWH))
+        .def("getOuterCXCYWH", &RotatedRect::getOuterCXCYWH, DOC(dai, RotatedRect, getOuterCXCYWH));
 
     rect.def(py::init<>())
         .def(py::init<float, float, float, float>())
@@ -221,6 +287,39 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         });
     HEDLEY_DIAGNOSTIC_POP
 
+    // HousingCoordinateSystem enum bindings
+    housingCoordinateSystem.value("CAM_A", HousingCoordinateSystem::CAM_A)
+        .value("CAM_B", HousingCoordinateSystem::CAM_B)
+        .value("CAM_C", HousingCoordinateSystem::CAM_C)
+        .value("CAM_D", HousingCoordinateSystem::CAM_D)
+        .value("CAM_E", HousingCoordinateSystem::CAM_E)
+        .value("CAM_F", HousingCoordinateSystem::CAM_F)
+        .value("CAM_G", HousingCoordinateSystem::CAM_G)
+        .value("CAM_H", HousingCoordinateSystem::CAM_H)
+        .value("CAM_I", HousingCoordinateSystem::CAM_I)
+        .value("CAM_J", HousingCoordinateSystem::CAM_J)
+        .value("FRONT_CAM_A", HousingCoordinateSystem::FRONT_CAM_A)
+        .value("FRONT_CAM_B", HousingCoordinateSystem::FRONT_CAM_B)
+        .value("FRONT_CAM_C", HousingCoordinateSystem::FRONT_CAM_C)
+        .value("FRONT_CAM_D", HousingCoordinateSystem::FRONT_CAM_D)
+        .value("FRONT_CAM_E", HousingCoordinateSystem::FRONT_CAM_E)
+        .value("FRONT_CAM_F", HousingCoordinateSystem::FRONT_CAM_F)
+        .value("FRONT_CAM_G", HousingCoordinateSystem::FRONT_CAM_G)
+        .value("FRONT_CAM_H", HousingCoordinateSystem::FRONT_CAM_H)
+        .value("FRONT_CAM_I", HousingCoordinateSystem::FRONT_CAM_I)
+        .value("FRONT_CAM_J", HousingCoordinateSystem::FRONT_CAM_J)
+        .value("VESA_A", HousingCoordinateSystem::VESA_A)
+        .value("VESA_B", HousingCoordinateSystem::VESA_B)
+        .value("VESA_C", HousingCoordinateSystem::VESA_C)
+        .value("VESA_D", HousingCoordinateSystem::VESA_D)
+        .value("VESA_E", HousingCoordinateSystem::VESA_E)
+        .value("VESA_F", HousingCoordinateSystem::VESA_F)
+        .value("VESA_G", HousingCoordinateSystem::VESA_G)
+        .value("VESA_H", HousingCoordinateSystem::VESA_H)
+        .value("VESA_I", HousingCoordinateSystem::VESA_I)
+        .value("VESA_J", HousingCoordinateSystem::VESA_J)
+        .value("IMU", HousingCoordinateSystem::IMU);
+
     // CameraSensorType enum bindings
     cameraSensorType.value("COLOR", CameraSensorType::COLOR)
         .value("MONO", CameraSensorType::MONO)
@@ -283,13 +382,15 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("dss", &ChipTemperature::dss)
         .def_readwrite("average", &ChipTemperature::average);
 
-    // ChipTemperatureS3
-    chipTemperatureS3.def(py::init<>())
-        .def_readwrite("css", &ChipTemperatureS3::css)
-        .def_readwrite("mss", &ChipTemperatureS3::mss)
-        .def_readwrite("nce", &ChipTemperatureS3::nce)
-        .def_readwrite("soc", &ChipTemperatureS3::soc)
-        .def_readwrite("average", &ChipTemperatureS3::average);
+    // ChipTemperatureRVC4
+    chipTemperatureRVC4.def(py::init<>())
+        .def_readwrite("cpuss", &ChipTemperatureRVC4::cpuss)
+        .def_readwrite("gpuss", &ChipTemperatureRVC4::gpuss)
+        .def_readwrite("mdmss", &ChipTemperatureRVC4::mdmss)
+        .def_readwrite("video", &ChipTemperatureRVC4::video)
+        .def_readwrite("ddr", &ChipTemperatureRVC4::ddr)
+        .def_readwrite("camera", &ChipTemperatureRVC4::camera)
+        .def_readwrite("average", &ChipTemperatureRVC4::average);
 
     // CpuUsage
     cpuUsage.def(py::init<>()).def_readwrite("average", &CpuUsage::average).def_readwrite("msTime", &CpuUsage::msTime);
@@ -360,6 +461,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     detectionNetworkType.value("YOLO", DetectionNetworkType::YOLO).value("MOBILENET", DetectionNetworkType::MOBILENET);
 
+    yoloDecodingFamily.value("TLBR", YoloDecodingFamily::TLBR)
+        .value("v5AB", YoloDecodingFamily::v5AB)
+        .value("v3AB", YoloDecodingFamily::v3AB)
+        .value("R1AF", YoloDecodingFamily::R1AF);
+
     serializationType.value("LIBNOP", SerializationType::LIBNOP).value("JSON", SerializationType::JSON).value("JSON_MSGPACK", SerializationType::JSON_MSGPACK);
 
     detectionParserOptions.def_readwrite("nnFamily", &DetectionParserOptions::nnFamily)
@@ -368,7 +474,13 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("coordinates", &DetectionParserOptions::coordinates)
         .def_readwrite("anchors", &DetectionParserOptions::anchors)
         .def_readwrite("anchorMasks", &DetectionParserOptions::anchorMasks)
-        .def_readwrite("iouThreshold", &DetectionParserOptions::iouThreshold);
+        .def_readwrite("iouThreshold", &DetectionParserOptions::iouThreshold)
+        .def_readwrite("decodingFamily", &DetectionParserOptions::decodingFamily)
+        .def_readwrite("keypointEdges", &DetectionParserOptions::keypointEdges)
+        .def_readwrite("anchorsV2", &DetectionParserOptions::anchorsV2)
+        .def_readwrite("decodeKeypoints", &DetectionParserOptions::decodeKeypoints)
+        .def_readwrite("numKeypoints", &DetectionParserOptions::nKeypoints)
+        .def_readwrite("outputNames", &DetectionParserOptions::outputNamesToUse);
 
     cameraExposureOffset.value("START", CameraExposureOffset::START).value("MIDDLE", CameraExposureOffset::MIDDLE).value("END", CameraExposureOffset::END);
 
@@ -419,4 +531,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     profilingData.def_readwrite("numBytesWritten", &ProfilingData::numBytesWritten, DOC(dai, ProfilingData, numBytesWritten))
         .def_readwrite("numBytesRead", &ProfilingData::numBytesRead, DOC(dai, ProfilingData, numBytesRead));
+
+    deviceModelZoo.value("NEURAL_DEPTH_LARGE", DeviceModelZoo::NEURAL_DEPTH_LARGE)
+        .value("NEURAL_DEPTH_MEDIUM", DeviceModelZoo::NEURAL_DEPTH_MEDIUM)
+        .value("NEURAL_DEPTH_SMALL", DeviceModelZoo::NEURAL_DEPTH_SMALL)
+        .value("NEURAL_DEPTH_NANO", DeviceModelZoo::NEURAL_DEPTH_NANO);
 }

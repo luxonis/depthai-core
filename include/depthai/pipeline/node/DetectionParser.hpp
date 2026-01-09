@@ -4,26 +4,30 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // standard
-#include <fstream>
-
-// shared
 #include <depthai/nn_archive/NNArchive.hpp>
 #include <depthai/nn_archive/NNArchiveVersionedConfig.hpp>
 #include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 #include <optional>
+#include <string>
+
+#include "depthai/common/YoloDecodingFamily.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/NNData.hpp"
 
 namespace dai {
 namespace node {
 
 /**
- * @brief DetectionParser node. Parses detection results from different neural networks and is being used internally by MobileNetDetectionNetwork and
- * YoloDetectionNetwork.
+ * @brief DetectionParser node. Parses detection results from Mobilenet-SSD or YOLO neural networks.
+ * @note If multiple detection heads are present in the NNArchive, only one type is supported (either YOLO or Mobilenet-SSD) and the last one will be used.
  */
-class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties> {
+class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties>, public HostRunnable {
    public:
     constexpr static const char* NAME = "DetectionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    ~DetectionParser() override;
 
     /**
      * @brief Build DetectionParser node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
@@ -41,11 +45,6 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * Outputs image frame with detected edges
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::ImgDetections, false}}}}};
-
-    /**
-     * Input for image that produced the detection - image size can be taken from here
-     */
-    Input imageIn{*this, {"imageIn", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::ImgFrame, false}}}, true}};
 
     /**
      * Specify number of frames in pool.
@@ -70,7 +69,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * Load network xml and bin files into assets.
      * @param xmlModelPath Path to the neural network model file.
      */
-    void setModelPath(const dai::Path& modelPath);
+    void setModelPath(const std::filesystem::path& modelPath);
 
     /**
      * Load network blob into assets and use once pipeline is started.
@@ -78,7 +77,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlobPath(const dai::Path& path);
+    void setBlobPath(const std::filesystem::path& path);
 
     /**
      * Retrieves some input tensor information from the blob
@@ -93,7 +92,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlob(const dai::Path& path);
+    void setBlob(const std::filesystem::path& path);
 
     /**
      * Set input image size
@@ -108,7 +107,12 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setInputImageSize(std::tuple<int, int> size);
 
     /**
-     * Sets NN Family to parse
+     * Sets NN Family to parse. Possible values are:
+     *
+     * DetectionNetworkType::YOLO - 0
+     * DetectionNetworkType::MOBILENET - 1
+     *
+     * @warning If NN Family is set manually, user must ensure that it matches the actual model being used.
      */
     void setNNFamily(DetectionNetworkType type);
 
@@ -129,39 +133,175 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      */
     float getConfidenceThreshold() const;
 
-    /// Set num classes
+    /**
+     * Set number of classes. This will clear any previously set class names.
+     * @param numClasses Number of classes
+     */
     void setNumClasses(int numClasses);
+
+    /**
+     * Set class names. This will clear any previously set number of classes.
+     * @param classes Vector of class names
+     */
     void setClasses(const std::vector<std::string>& classes);
-    /// Set coordianate size
+
+    /*
+     * Sets the number of coordinates per bounding box.
+     * @param coordinates Number of coordinates. Default is 4
+     */
     void setCoordinateSize(int coordinates);
-    /// Set anchors
+
+    /**
+     * Set anchors for anchor-based yolo models
+     * @param anchors Flattened vector of anchors
+     * @warning This method is deprecated, use setAnchorsV2 instead.
+     */
     void setAnchors(std::vector<float> anchors);
-    /// Set anchor masks
+
+    /**
+     * Set anchor masks for anchor-based yolo models
+     * @param anchorMasks Map of anchor masks
+     */
     void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
-    /// Set anchors with masks
+
+    /**
+     * Set anchors for anchor-based yolo models (v2)
+     * @param anchors 3D vector of anchors [layer][anchor][dim]
+     */
     void setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors);
-    /// Set Iou threshold
+
+    /**
+     * Set IOU threshold for non-maxima suppression
+     * @param thresh IOU threshold
+     */
     void setIouThreshold(float thresh);
 
-    /// Get num classes
+    /**
+     * Set subtype for the parser.
+     * @param subtype Subtype string, currently supported subtypes are:
+     * yolov6r1, yolov6r2 yolov8n, yolov6, yolov8, yolov10, yolov11, yolov3, yolov3-tiny, yolov5, yolov7, yolo-p, yolov5-u
+     */
+    void setSubtype(const std::string& subtype);
+
+    /**
+     * Enable/disable keypoints decoding. If enabled, number of keypoints must also be set.
+     */
+    void setDecodeKeypoints(bool decode);
+
+    /**
+     * Enable/disable segmentation mask decoding.
+     */
+    void setDecodeSegmentation(bool decode);
+
+    /**
+     * Set number of keypoints to decode. Automatically enables keypoints decoding.
+     */
+    void setNumKeypoints(int numKeypoints);
+
+    /**
+     * Set strides for yolo models
+     */
+    void setStrides(const std::vector<int>& strides);
+
+    /**
+     * Set edges connections between keypoints.
+     * @param edges Vector edges connections represented as pairs of keypoint indices.
+     * @note This is only applicable if keypoints decoding is enabled.
+     */
+    void setKeypointEdges(const std::vector<dai::Edge>& edges);
+
+    /**
+     * Get number of classes to decode.
+     */
     int getNumClasses() const;
+
+    /**
+     * Get class names to decode.
+     */
     std::optional<std::vector<std::string>> getClasses() const;
-    /// Get coordianate size
+
+    /**
+     * Get number of coordinates per bounding box.
+     */
     int getCoordinateSize() const;
-    /// Get anchors
+
+    /**
+     * Get anchors for anchor-based yolo models
+     */
     std::vector<float> getAnchors() const;
-    /// Get anchor masks
+
+    /**
+     * Get anchor masks for anchor-based yolo models
+     */
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
-    /// Get Iou threshold
+
+    /**
+     * Get IOU threshold for non-maxima suppression
+     */
     float getIouThreshold() const;
 
+    /**
+     * Get subtype for the parser.
+     */
+    std::string getSubtype() const;
+
+    /**
+     * Get whether keypoints decoding is enabled.
+     */
+    bool getDecodeKeypoints() const;
+
+    /**
+     * Get whether segmentation mask decoding is enabled.
+     */
+    bool getDecodeSegmentation() const;
+
+    /**
+     * Get number of keypoints to decode.
+     */
+    int getNKeypoints() const;
+
+    /**
+     * Get strides for yolo models
+     */
+    std::vector<int> getStrides() const;
+
+    /**
+     * Get NNArchive set for this node
+     */
     const NNArchiveVersionedConfig& getNNArchiveVersionedConfig() const;
 
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
+
+    void decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& outDetections, float confidenceThr);
+
    private:
+    bool runOnHostVar = false;
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     void setConfig(const dai::NNArchiveVersionedConfig& config);
+    YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& subtype);
+    bool decodeSegmentationResolver(const std::vector<std::string>& outputs);
+
+    // host runnable requirements
+    void buildStage1() override;
+    void decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections);
+    std::vector<dai::TensorInfo> inTensorInfo;
+    uint32_t imgWidth;
+    uint32_t imgHeight;
+    uint32_t imgSizesSet = false;
+    //
 
     std::optional<NNArchive> mArchive;
 

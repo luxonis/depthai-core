@@ -82,4 +82,11 @@ Quaterniond TransformData::getQuaternion() const {
     }
     return Quaterniond(qx, qy, qz, qw);
 }
+TransformData::~TransformData() = default;
+
+void TransformData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = DatatypeEnum::TransformData;
+}
+
 }  // namespace dai

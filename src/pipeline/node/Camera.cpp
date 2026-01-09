@@ -1,17 +1,15 @@
 #include "depthai/pipeline/node/Camera.hpp"
+
 // std
-#include <fstream>
 #include <memory>
 #include <stdexcept>
 #include <utility>
 
-#include "depthai/depthai.hpp"
-
-// libraries
-#include "depthai/utility/spimpl.h"
-
-// depthai internal
+// depthai
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+
+// depthai internal utilities
 #include "utility/ErrorMacros.hpp"
 #include "utility/RecordReplayImpl.hpp"
 
@@ -347,14 +345,73 @@ uint32_t Camera::getMaxRequestedHeight() const {
     return height == 0 ? getMaxHeight() : height;
 }
 
-/*
-Camera::Output& Camera::getRecordOutput() {
-    return isp;
+std::shared_ptr<Camera> Camera::setRawNumFramesPool(int num) {
+    properties.numFramesPoolRaw = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
-Camera::Input& Camera::getReplayInput() {
-    return mockIsp;
+
+std::shared_ptr<Camera> Camera::setMaxSizePoolRaw(int size) {
+    properties.maxSizePoolRaw = size;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
 }
-*/
+
+std::shared_ptr<Camera> Camera::setIspNumFramesPool(int num) {
+    properties.numFramesPoolIsp = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setMaxSizePoolIsp(int size) {
+    properties.maxSizePoolIsp = size;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setOutputsNumFramesPool(int num) {
+    properties.numFramesPoolOutputs = num;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setOutputsMaxSizePool(int size) {
+    properties.maxSizePoolOutputs = size;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setNumFramesPools(int raw, int isp, int outputs) {
+    properties.numFramesPoolRaw = raw;
+    properties.numFramesPoolIsp = isp;
+    properties.numFramesPoolOutputs = outputs;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+std::shared_ptr<Camera> Camera::setMaxSizePools(int raw, int isp, int outputs) {
+    properties.maxSizePoolRaw = raw;
+    properties.maxSizePoolIsp = isp;
+    properties.maxSizePoolOutputs = outputs;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+int Camera::getRawNumFramesPool() const {
+    return properties.numFramesPoolRaw;
+}
+
+int Camera::getMaxSizePoolRaw() const {
+    return properties.maxSizePoolRaw;
+}
+
+int Camera::getIspNumFramesPool() const {
+    return properties.numFramesPoolIsp;
+}
+
+int Camera::getMaxSizePoolIsp() const {
+    return properties.maxSizePoolIsp;
+}
+
+std::optional<int> Camera::getOutputsNumFramesPool() const {
+    return properties.numFramesPoolOutputs;
+}
+
+std::optional<size_t> Camera::getOutputsMaxSizePool() const {
+    return properties.maxSizePoolOutputs;
+}
 
 }  // namespace node
 }  // namespace dai

@@ -74,7 +74,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
      * Construct SpatialLocationCalculatorConfig message.
      */
     SpatialLocationCalculatorConfig() = default;
-    virtual ~SpatialLocationCalculatorConfig() = default;
+    virtual ~SpatialLocationCalculatorConfig();
 
     /**
      * Set a vector of ROIs as configuration data.
@@ -93,10 +93,10 @@ class SpatialLocationCalculatorConfig : public Buffer {
      */
     std::vector<SpatialLocationCalculatorConfigData> getConfigData() const;
     std::vector<SpatialLocationCalculatorConfigData> config;
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::SpatialLocationCalculatorConfig;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::SpatialLocationCalculatorConfig;
+    }
     DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config);
 };
 

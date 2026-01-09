@@ -19,21 +19,29 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack);
 void bind_imudata(pybind11::module& m, void* pCallstack);
 void bind_message_group(pybind11::module& m, void* pCallstack);
 void bind_nndata(pybind11::module& m, void* pCallstack);
+void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack);
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack);
 void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack);
 void bind_spatiallocationcalculatordata(pybind11::module& m, void* pCallstack);
 void bind_stereodepthconfig(pybind11::module& m, void* pCallstack);
 void bind_systeminformation(pybind11::module& m, void* pCallstack);
-void bind_systeminformationS3(pybind11::module& m, void* pCallstack);
+void bind_systeminformationRVC4(pybind11::module& m, void* pCallstack);
 void bind_trackedfeatures(pybind11::module& m, void* pCallstack);
 void bind_tracklets(pybind11::module& m, void* pCallstack);
 void bind_benchmarkreport(pybind11::module& m, void* pCallstack);
 void bind_pointcloudconfig(pybind11::module& m, void* pCallstack);
 void bind_pointclouddata(pybind11::module& m, void* pCallstack);
+void bind_pipelineevent(pybind11::module& m, void* pCallstack);
+void bind_pipelinestate(pybind11::module& m, void* pCallstack);
 void bind_transformdata(pybind11::module& m, void* pCallstack);
 void bind_rgbddata(pybind11::module& m, void* pCallstack);
 void bind_imagealignconfig(pybind11::module& m, void* pCallstack);
 void bind_imageannotations(pybind11::module& m, void* pCallstack);
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack);
+void bind_dynamic_calibration_control(pybind11::module& m, void* pCallstack);
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+void bind_vppconfig(pybind11::module& m, void* pCallstack);
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind common datatypebindings
@@ -56,21 +64,29 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_imudata);
     callstack.push_front(bind_message_group);
     callstack.push_front(bind_nndata);
+    callstack.push_front(bind_neuraldepthconfig);
     callstack.push_front(bind_spatialimgdetections);
     callstack.push_front(bind_spatiallocationcalculatorconfig);
     callstack.push_front(bind_spatiallocationcalculatordata);
     callstack.push_front(bind_stereodepthconfig);
     callstack.push_front(bind_systeminformation);
-    callstack.push_front(bind_systeminformationS3);
+    callstack.push_front(bind_systeminformationRVC4);
     callstack.push_front(bind_trackedfeatures);
     callstack.push_front(bind_tracklets);
     callstack.push_front(bind_benchmarkreport);
     callstack.push_front(bind_pointcloudconfig);
     callstack.push_front(bind_pointclouddata);
+    callstack.push_front(bind_pipelineevent);
+    callstack.push_front(bind_pipelinestate);
     callstack.push_front(bind_transformdata);
     callstack.push_front(bind_imagealignconfig);
     callstack.push_front(bind_imageannotations);
     callstack.push_front(bind_rgbddata);
+    callstack.push_front(bind_vppconfig);
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    callstack.push_front(bind_dynamic_calibration_results);
+    callstack.push_front(bind_dynamic_calibration_control);
+#endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 }
 
 void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
@@ -103,7 +119,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("ImgDetections", DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", DatatypeEnum::SpatialImgDetections)
         .value("SystemInformation", DatatypeEnum::SystemInformation)
-        .value("SystemInformationS3", DatatypeEnum::SystemInformationS3)
+        .value("SystemInformationRVC4", DatatypeEnum::SystemInformationRVC4)
         .value("SpatialLocationCalculatorConfig", DatatypeEnum::SpatialLocationCalculatorConfig)
         .value("SpatialLocationCalculatorData", DatatypeEnum::SpatialLocationCalculatorData)
         .value("EdgeDetectorConfig", DatatypeEnum::EdgeDetectorConfig)
@@ -115,6 +131,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("FeatureTrackerConfig", DatatypeEnum::FeatureTrackerConfig)
         .value("ThermalConfig", DatatypeEnum::ThermalConfig)
         .value("ToFConfig", DatatypeEnum::ToFConfig)
+        .value("VppConfig", DatatypeEnum::VppConfig)
         .value("TrackedFeatures", DatatypeEnum::TrackedFeatures)
         .value("BenchmarkReport", DatatypeEnum::BenchmarkReport)
         .value("MessageGroup", DatatypeEnum::MessageGroup)
@@ -123,5 +140,13 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("PointCloudData", DatatypeEnum::PointCloudData)
         .value("ImageAlignConfig", DatatypeEnum::ImageAlignConfig)
         .value("ImgAnnotations", DatatypeEnum::ImgAnnotations)
-        .value("RGBDData", DatatypeEnum::RGBDData);
+        .value("RGBDData", DatatypeEnum::RGBDData)
+        .value("PipelineEvent", DatatypeEnum::PipelineEvent)
+        .value("PipelineState", DatatypeEnum::PipelineState)
+        .value("ImageFiltersConfig", DatatypeEnum::ImageFiltersConfig)
+        .value("ToFDepthConfidenceFilterConfig", DatatypeEnum::ToFDepthConfidenceFilterConfig)
+        .value("DynamicCalibrationControl", DatatypeEnum::DynamicCalibrationControl)
+        .value("DynamicCalibrationResult", DatatypeEnum::DynamicCalibrationResult)
+        .value("CalibrationQuality", DatatypeEnum::CalibrationQuality)
+        .value("CoverageData", DatatypeEnum::CoverageData);
 }

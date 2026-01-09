@@ -62,7 +62,7 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("ImgDetections", dai::DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", dai::DatatypeEnum::SpatialImgDetections)
         .value("SystemInformation", dai::DatatypeEnum::SystemInformation)
-        .value("SystemInformationS3", dai::DatatypeEnum::SystemInformationS3)
+        .value("SystemInformationRVC4", dai::DatatypeEnum::SystemInformationRVC4)
         .value("SpatialLocationCalculatorConfig", dai::DatatypeEnum::SpatialLocationCalculatorConfig)
         .value("SpatialLocationCalculatorData", dai::DatatypeEnum::SpatialLocationCalculatorData)
         .value("EdgeDetectorConfig", dai::DatatypeEnum::EdgeDetectorConfig)
@@ -76,7 +76,8 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("ToFConfig", dai::DatatypeEnum::ToFConfig)
         .value("TrackedFeatures", dai::DatatypeEnum::TrackedFeatures)
         .value("BenchmarkReport", dai::DatatypeEnum::BenchmarkReport)
-        .value("MessageGroup", dai::DatatypeEnum::MessageGroup);
+        .value("MessageGroup", dai::DatatypeEnum::MessageGroup)
+        .value("ImageFiltersConfig", dai::DatatypeEnum::ImageFiltersConfig);
 
     // structs
     value_object<MessageHeader>("MessageHeader")

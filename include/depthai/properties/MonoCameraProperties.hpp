@@ -93,6 +93,8 @@ struct MonoCameraProperties : PropertiesSerializable<Properties, MonoCameraPrope
      * with both packed/unpacked, but disabled for other cameras like ToF.
      */
     std::optional<bool> rawPacked;
+
+    ~MonoCameraProperties() override;
 };
 
 DEPTHAI_SERIALIZE_EXT(MonoCameraProperties,

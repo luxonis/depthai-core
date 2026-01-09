@@ -33,7 +33,7 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
 
     ImgTransformation transformation;
 
-    virtual ~EncodedFrame() = default;
+    virtual ~EncodedFrame();
 
     // getters
     /**
@@ -174,10 +174,11 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
 
     ImgFrame getImgFrameMeta() const;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::EncodedFrame;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::EncodedFrame;
+    }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

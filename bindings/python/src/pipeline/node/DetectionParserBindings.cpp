@@ -34,7 +34,8 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
         .def("setNumFramesPool", &DetectionParser::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, DetectionParser, setNumFramesPool))
         .def("getNumFramesPool", &DetectionParser::getNumFramesPool, DOC(dai, node, DetectionParser, getNumFramesPool))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionParser::setBlob), py::arg("blob"), DOC(dai, node, DetectionParser, setBlob))
-        .def("setBlob", py::overload_cast<const dai::Path&>(&DetectionParser::setBlob), py::arg("path"), DOC(dai, node, DetectionParser, setBlob, 2))
+        .def(
+            "setBlob", py::overload_cast<const std::filesystem::path&>(&DetectionParser::setBlob), py::arg("path"), DOC(dai, node, DetectionParser, setBlob, 2))
         .def("setNNArchive",
              py::overload_cast<const NNArchive&>(&DetectionParser::setNNArchive),
              py::arg("nnArchive"),
@@ -64,11 +65,26 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, DetectionParser, setAnchors, 2))
         .def("setAnchorMasks", &DetectionParser::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, DetectionParser, setAnchorMasks))
         .def("setIouThreshold", &DetectionParser::setIouThreshold, py::arg("thresh"), DOC(dai, node, DetectionParser, setIouThreshold))
+        .def("setRunOnHost", &DetectionParser::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DetectionParser, setRunOnHost))
+        .def("setSubtype", &DetectionParser::setSubtype, py::arg("subtype"), DOC(dai, node, DetectionParser, setSubtype))
+        .def("setDecodeKeypoints", &DetectionParser::setDecodeKeypoints, py::arg("decode"), DOC(dai, node, DetectionParser, setDecodeKeypoints))
+        .def("setDecodeSegmentation", &DetectionParser::setDecodeSegmentation, py::arg("decode"), DOC(dai, node, DetectionParser, setDecodeSegmentation))
+        .def("setNumKeypoints", &DetectionParser::setNumKeypoints, py::arg("numKeypoints"), DOC(dai, node, DetectionParser, setNumKeypoints))
+        .def("setClasses", &DetectionParser::setClasses, py::arg("classes"), DOC(dai, node, DetectionParser, setClasses))
+        .def("setStrides", &DetectionParser::setStrides, py::arg("strides"), DOC(dai, node, DetectionParser, setStrides))
+        .def("setKeypointEdges", &DetectionParser::setKeypointEdges, py::arg("edges"), DOC(dai, node, DetectionParser, setKeypointEdges))
         .def("getNumClasses", &DetectionParser::getNumClasses, DOC(dai, node, DetectionParser, getNumClasses))
+        .def("getClasses", &DetectionParser::getClasses, DOC(dai, node, DetectionParser, getClasses))
         .def("getCoordinateSize", &DetectionParser::getCoordinateSize, DOC(dai, node, DetectionParser, getCoordinateSize))
         .def("getAnchors", &DetectionParser::getAnchors, DOC(dai, node, DetectionParser, getAnchors))
         .def("getAnchorMasks", &DetectionParser::getAnchorMasks, DOC(dai, node, DetectionParser, getAnchorMasks))
         .def("getIouThreshold", &DetectionParser::getIouThreshold, DOC(dai, node, DetectionParser, getIouThreshold))
+        .def("runOnHost", &DetectionParser::runOnHost, DOC(dai, node, DetectionParser, runOnHost))
+        .def("getSubtype", &DetectionParser::getSubtype, DOC(dai, node, DetectionParser, getSubtype))
+        .def("getNkeypoints", &DetectionParser::getNKeypoints, DOC(dai, node, DetectionParser, getNKeypoints))
+        .def("getDecodeKeypoints", &DetectionParser::getDecodeKeypoints, DOC(dai, node, DetectionParser, getDecodeKeypoints))
+        .def("getDecodeSegmentation", &DetectionParser::getDecodeSegmentation, DOC(dai, node, DetectionParser, getDecodeSegmentation))
+        .def("getStrides", &DetectionParser::getStrides, DOC(dai, node, DetectionParser, getStrides))
         .def("build", &DetectionParser::build, DOC(dai, node, DetectionParser, build));
     daiNodeModule.attr("DetectionParser").attr("Properties") = detectionParserProperties;
 }

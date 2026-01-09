@@ -26,7 +26,6 @@ void testBenchmarkIn(bool benchmarkInRunOnHost, bool benchmarkOutRunOnHost, floa
     }
     p.start();
     auto inputFrame = std::make_shared<dai::ImgFrame>();
-    inputFrame->setData(std::vector<std::uint8_t>(100 * 100 * 3, 0));  // FIXME: This is needed on RVC4 for Windows, since very small frames are buffered
     inputQueue->send(inputFrame);
     for(int i = 0; i < 10; i++) {
         if(passthrough) {

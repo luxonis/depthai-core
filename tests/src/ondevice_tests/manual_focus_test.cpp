@@ -5,6 +5,21 @@
 TEST_CASE("Test manual focus") {
     dai::Pipeline pipeline;
     auto fps = 30.0f;
+    const auto device = pipeline.getDefaultDevice();
+    auto features = device->getConnectedCameraFeatures();
+    std::cout << "Connected Camera Features:\n" << features << "\n" << std::flush;
+    // Find CAM_A and check if it has autofocus
+    auto it = std::find_if(features.begin(), features.end(), [](const dai::CameraFeatures& f) { return f.socket == dai::CameraBoardSocket::CAM_A; });
+
+    if(it == features.end()) {
+        std::cout << "CAM_A not found. Skipping test.\n";
+        return;  // Skip the test
+    }
+
+    if(!it->hasAutofocus) {
+        std::cout << "CAM_A does not support autofocus. Skipping test.\n";
+        return;  // Skip the test
+    }
     auto camRgb = pipeline.create<dai::node::Camera>()->build();
     auto* output = camRgb->requestOutput(std::make_pair(640, 480), std::nullopt, dai::ImgResizeMode::CROP, fps);
     auto outputQueue = output->createOutputQueue();
@@ -34,6 +49,23 @@ TEST_CASE("Test manual focus") {
 TEST_CASE("Test manual focus initial config") {
     dai::Pipeline pipeline;
     auto fps = 30.0f;
+    const auto device = pipeline.getDefaultDevice();
+    auto features = device->getConnectedCameraFeatures();
+    std::cout << features << "Connected Camera Features:\n";
+
+    // Find CAM_A and check if it has autofocus
+    auto it = std::find_if(features.begin(), features.end(), [](const dai::CameraFeatures& f) { return f.socket == dai::CameraBoardSocket::CAM_A; });
+
+    if(it == features.end()) {
+        std::cout << "CAM_A not found. Skipping test.\n";
+        return;  // Skip the test
+    }
+
+    if(!it->hasAutofocus) {
+        std::cout << "CAM_A does not support autofocus. Skipping test.\n";
+        return;  // Skip the test
+    }
+
     auto camRgb = pipeline.create<dai::node::Camera>()->build();
     auto* output = camRgb->requestOutput(std::make_pair(640, 480), std::nullopt, dai::ImgResizeMode::CROP, fps);
     auto requestedLensPos = 0.643f;

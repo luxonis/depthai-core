@@ -37,7 +37,7 @@ class PointCloudData : public Buffer, public ProtoSerializable {
      * Construct PointCloudData message.
      */
     PointCloudData() = default;
-    virtual ~PointCloudData() = default;
+    virtual ~PointCloudData();
 
     std::vector<Point3f> getPoints();
     std::vector<Point3fRGBA> getPointsRGB();
@@ -230,10 +230,11 @@ class PointCloudData : public Buffer, public ProtoSerializable {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }
 #endif
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::PointCloudData;
-    };
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::PointCloudData;
+    }
     DEPTHAI_SERIALIZE(
         PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, sparse, instanceNum, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };

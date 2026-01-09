@@ -41,13 +41,10 @@ void DetectionNetwork::buildInternal() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
-    neuralNetwork->passthrough.link(detectionParser->imageIn);
 
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
     detectionParser->input.setMaxSize(1);
-    detectionParser->imageIn.setBlocking(false);
-    detectionParser->imageIn.setMaxSize(1);
 }
 
 std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
@@ -56,13 +53,19 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, c
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, NNModelDescription modelDesc, std::optional<float> fps) {
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+                                                          NNModelDescription modelDesc,
+                                                          std::optional<float> fps,
+                                                          std::optional<dai::ImgResizeMode> resizeMode) {
     auto nnArchive = createNNArchive(modelDesc);
-    return build(camera, nnArchive, fps);
+    return build(camera, nnArchive, fps, resizeMode);
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, const NNArchive& nnArchive, std::optional<float> fps) {
-    neuralNetwork->build(camera, nnArchive, fps);
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera,
+                                                          const NNArchive& nnArchive,
+                                                          std::optional<float> fps,
+                                                          std::optional<dai::ImgResizeMode> resizeMode) {
+    neuralNetwork->build(camera, nnArchive, fps, resizeMode);
     detectionParser->setNNArchive(nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
@@ -167,7 +170,7 @@ void DetectionNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
     neuralNetwork->setNNArchive(nnArchive);
 }
 
-void DetectionNetwork::setBlobPath(const dai::Path& path) {
+void DetectionNetwork::setBlobPath(const std::filesystem::path& path) {
     neuralNetwork->setBlobPath(path);
     detectionParser->setBlobPath(path);
 }
@@ -177,12 +180,12 @@ void DetectionNetwork::setBlob(OpenVINO::Blob blob) {
     detectionParser->setBlob(blob);
 }
 
-void DetectionNetwork::setBlob(const dai::Path& path) {
+void DetectionNetwork::setBlob(const std::filesystem::path& path) {
     neuralNetwork->setBlob(path);
     detectionParser->setBlob(path);
 }
 
-void DetectionNetwork::setModelPath(const dai::Path& modelPath) {
+void DetectionNetwork::setModelPath(const std::filesystem::path& modelPath) {
     neuralNetwork->setModelPath(modelPath);
     detectionParser->setModelPath(modelPath);
 }

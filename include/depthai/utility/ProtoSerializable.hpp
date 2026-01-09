@@ -13,7 +13,7 @@ class ProtoSerializable {
         std::string schema;
     };
 
-    virtual ~ProtoSerializable() = default;
+    virtual ~ProtoSerializable();
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

@@ -9,14 +9,20 @@
 namespace dai {
 
 class ThreadedNode : public Node {
+    friend class PipelineImpl;
+    friend class utility::PipelineImplHelper;
+
    private:
     JoiningThread thread;
     AtomicBool running{false};
 
    public:
+    Output pipelineEventOutput{*this, {"pipelineEventOutput", DEFAULT_GROUP, {{{DatatypeEnum::PipelineEvent, false}}}}};
+
     using Node::Node;
+
     ThreadedNode();
-    virtual ~ThreadedNode() = default;
+    virtual ~ThreadedNode();
 
     /**
      * @brief Function called at the beginning of the `start` function.
@@ -45,6 +51,8 @@ class ThreadedNode : public Node {
     // check if still running
     bool isRunning() const;
 
+    bool mainLoop();
+
     /**
      * @brief Sets the logging severity level for this node.
      *
@@ -58,6 +66,21 @@ class ThreadedNode : public Node {
      * @returns Logging severity level
      */
     virtual dai::LogLevel getLogLevel() const;
+
+    /**
+     * @brief Creates a scoped event that sends start and end events for the getting inputs state
+     */
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent inputBlockEvent(bool startNow = true);
+    /**
+     * @brief Creates a scoped event that sends start and end events for the sending outputs state
+     */
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent outputBlockEvent(bool startNow = true);
+    /**
+     * @brief Creates a scoped event that sends start and end events for a custom block event
+     * @param type Type of the event
+     * @param source Source name of the event
+     */
+    utility::PipelineEventDispatcherInterface::BlockPipelineEvent blockEvent(PipelineEvent::Type type, const std::string& source, bool startNow = true);
 
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;

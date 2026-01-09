@@ -98,14 +98,18 @@ set(SOURCE_LIST
     src/pipeline/node/UVCBindings.cpp
     src/pipeline/node/ToFBindings.cpp
     src/pipeline/node/PointCloudBindings.cpp
-    src/pipeline/node/SyncBindings.cpp
     src/pipeline/node/MessageDemuxBindings.cpp
     src/pipeline/node/HostNodeBindings.cpp
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
     src/pipeline/node/ImageAlignBindings.cpp
     src/pipeline/node/RGBDBindings.cpp
-
+    src/pipeline/node/ImageFiltersBindings.cpp
+    src/pipeline/node/RectificationBindings.cpp
+    src/pipeline/node/NeuralDepthBindings.cpp
+    src/pipeline/node/NeuralAssistedStereoBindings.cpp
+    src/pipeline/FilterParamsBindings.cpp
+    src/pipeline/node/VppBindings.cpp
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
     src/pipeline/datatype/AprilTagsBindings.cpp
@@ -122,6 +126,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/IMUDataBindings.cpp
     src/pipeline/datatype/MessageGroupBindings.cpp
     src/pipeline/datatype/NNDataBindings.cpp
+    src/pipeline/datatype/NeuralDepthConfigBindings.cpp
     src/pipeline/datatype/RGBDDataBindings.cpp
     src/pipeline/datatype/SpatialImgDetectionsBindings.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfigBindings.cpp
@@ -134,9 +139,12 @@ set(SOURCE_LIST
     src/pipeline/datatype/PointCloudConfigBindings.cpp
     src/pipeline/datatype/ObjectTrackerConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
+    src/pipeline/datatype/PipelineEventBindings.cpp
+    src/pipeline/datatype/PipelineStateBindings.cpp
     src/pipeline/datatype/TransformDataBindings.cpp
     src/pipeline/datatype/ImageAlignConfigBindings.cpp
     src/pipeline/datatype/ImgAnnotationsBindings.cpp
+    src/pipeline/datatype/VppConfigBindings.cpp
     src/remote_connection/RemoteConnectionBindings.cpp
 
     src/capabilities/CapabilityBindings.cpp
@@ -164,6 +172,14 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     list(APPEND SOURCE_LIST
         src/pipeline/node/RTABMapVIOBindings.cpp
         src/pipeline/node/RTABMapSLAMBindings.cpp
+    )
+endif()
+
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    list(APPEND SOURCE_LIST
+        src/pipeline/node/DynamicCalibrationBindings.cpp
+        src/pipeline/datatype/DynamicCalibrationResultsBindings.cpp
+        src/pipeline/datatype/DynamicCalibrationControlBindings.cpp
     )
 endif()
 
@@ -201,13 +217,16 @@ else()
     if(NOT bindings_directory)
         set(bindings_directory ${CMAKE_CURRENT_BINARY_DIR})
     endif()
+
     message(STATUS "Mypy available, creating and checking stubs. Running with generate_stubs.py ${TARGET_NAME} ${bindings_directory}")
+    if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py")
+        message(FATAL_ERROR "Cannot add custom build command, ${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py not found")
+    endif ()
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND
         ${CMAKE_COMMAND} -E env
         # Python path (to find compiled module)
         "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-        ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py" "${TARGET_NAME}" "$<TARGET_FILE_DIR:${TARGET_NAME}>"
-        DEPENDS "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py"
+        ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py" "${TARGET_NAME}" "$<TARGET_FILE_DIR:${TARGET_NAME}>" "${PIP_TEMP_LIB_FOLDER}"
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
 endif()
@@ -246,10 +265,10 @@ configure_file(cmake/docstring.hpp.in ${DOCSTRINGS_INCLUDE_PLACEHOLDER_PATH})
 if (DEPTHAI_PYTHON_BUILD_DOCSTRINGS)
     include(pybind11-mkdoc)
     set(DEPTHAI_MKDOC_TARGETS depthai::core)
-    if(DEPTHAI_BASALT_SUPPORT)
+    if(DEPTHAI_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         list(APPEND DEPTHAI_MKDOC_TARGETS depthai::basalt)
     endif()
-    if(DEPTHAI_RTABMAP_SUPPORT)
+    if(DEPTHAI_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         list(APPEND DEPTHAI_MKDOC_TARGETS depthai::rtabmap)
     endif()
     # Set up docstrings for combined targets
@@ -274,18 +293,17 @@ if(DEPTHAI_MERGED_TARGET)
 endif()
 
 set(DEPTHAI_LINK_TARGET depthai::core)
-if(NOT DEPTHAI_MERGED_TARGET)
+if(DEPTHAI_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     list(APPEND DEPTHAI_LINK_TARGET depthai::opencv)
 endif()
 
-if(DEPTHAI_BASALT_SUPPORT)
+if(DEPTHAI_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     list(APPEND DEPTHAI_LINK_TARGET depthai::basalt)
 endif()
-if(DEPTHAI_RTABMAP_SUPPORT AND DEPTHAI_PCL_SUPPORT)
+if(DEPTHAI_RTABMAP_SUPPORT AND DEPTHAI_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     list(APPEND DEPTHAI_LINK_TARGET depthai::rtabmap)
 endif()
 
-# Link with libraries
 target_link_libraries(${TARGET_NAME}
     PUBLIC
         # pybind11

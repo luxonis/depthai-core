@@ -32,7 +32,6 @@ namespace dai {
 class CameraControl : public Buffer {
    public:
     CameraControl() = default;
-    virtual ~CameraControl() = default;
 
     enum class Command : uint8_t {
         START_STREAM = 1,
@@ -522,7 +521,7 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureEnable();
 
     /**
-     * Set a command to specify lock auto exposure
+     * Set a command to stop the auto-exposure algorithm. The latest AE sensor configuration is kept.
      * @param lock Auto exposure lock mode enabled or disabled
      */
     CameraControl& setAutoExposureLock(bool lock);
@@ -538,7 +537,8 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height);
 
     /**
-     * Set a command to specify auto exposure compensation
+     * Set a command to specify auto exposure compensation. This modifies the brightness target with positive nubers making the image brighter and negative
+     * numbers making the image darker.
      * @param compensation Compensation value between -9..9, default 0
      */
     CameraControl& setAutoExposureCompensation(int compensation);
@@ -765,14 +765,14 @@ class CameraControl : public Buffer {
     uint32_t aeMaxExposureTimeUs;
     bool aeLockMode{false};
     bool awbLockMode{false};
-    int8_t expCompensation;  //  -9 ..  9
-    int8_t brightness;       // -10 .. 10
-    int8_t contrast;         // -10 .. 10
-    int8_t saturation;       // -10 .. 10
-    uint8_t sharpness;       //   0 ..  4
-    uint8_t lumaDenoise;     //   0 ..  4
-    uint8_t chromaDenoise;   //   0 ..  4
-    uint16_t wbColorTemp;    // 1000 .. 12000
+    int8_t expCompensation;     //  -9 ..  9
+    int8_t brightness;          // -10 .. 10
+    int8_t contrast;            // -10 .. 10
+    int8_t saturation;          // -10 .. 10
+    uint8_t sharpness;          //   0 ..  4
+    uint8_t lumaDenoise = 0;    //   0 ..  4
+    uint8_t chromaDenoise = 0;  //   0 ..  4
+    uint16_t wbColorTemp;       // 1000 .. 12000
     uint8_t lowPowerNumFramesBurst;
     uint8_t lowPowerNumFramesDiscard;
     bool enableHdr{false};
@@ -793,10 +793,12 @@ class CameraControl : public Buffer {
         return !!(cmdMask & (1ull << (uint8_t)cmd));
     }
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::CameraControl;
-    };
+    ~CameraControl() override;
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::CameraControl;
+    }
 
     DEPTHAI_SERIALIZE(CameraControl,
                       cmdMask,

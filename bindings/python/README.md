@@ -53,7 +53,7 @@ Add parameter `-v` to see the output of the building process.
 To build a wheel, execute the following
 ```
 cd depthai-core/bindings/python
-python3 -m pip wheel . -w wheelhouse
+python3 -m pip wheel . -w wheelhouse --no-deps
 ```
 
 #### Shared library

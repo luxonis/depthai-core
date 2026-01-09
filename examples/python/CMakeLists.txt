@@ -152,69 +152,92 @@ endfunction()
 
 ## Camera output
 add_python_example(camera_output Camera/camera_output.py)
-dai_set_example_test_labels(camera_output ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(camera_output ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(camera_all Camera/camera_all.py)
-dai_set_example_test_labels(camera_all ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(camera_all ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(camera_multiple_outputs Camera/camera_multiple_outputs.py 640 480 0 30 CAM_A 300 300 0 30 CAM_A 300 300 1 30 CAM_A)
-dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(camera_multiple_outputs ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(camera_raw Camera/camera_raw.py)
-dai_set_example_test_labels(camera_raw ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(camera_raw ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(camera_roi_exposure_focus Camera/camera_roi_exposure_focus.py)
-dai_set_example_test_labels(camera_roi_exposure_focus ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(camera_roi_exposure_focus ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(camera_still_max_res Camera/camera_still_max_res.py)
-dai_set_example_test_labels(camera_still_max_res ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(camera_still_max_res ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(camera_max_resolution Camera/camera_max_resolution.py)
-dai_set_example_test_labels(camera_max_resolution ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(camera_max_resolution ondevice rvc2_all rvc4 rvc4rgb ci)
+
+add_python_example(camera_undistortion Camera/camera_undistortion.py)
+dai_set_example_test_labels(camera_undistortion ondevice rvc2_all rvc4 ci)
+
+add_python_example(camera_hdr Camera/camera_hdr.py)
+dai_set_example_test_labels(camera_hdr ondevice rvc4 rvc4rgb ci)
 
 ## AprilTags
 add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
-dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 ci nowindows)
+dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 rvc4rgb ci nowindows)
 
 add_python_example(april_tags AprilTags/april_tags.py)
-dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 ci nowindows)
+dai_set_example_test_labels(april_tags ondevice rvc2_all rvc4 rvc4rgb ci nowindows)
 
 add_python_example(april_tags_replay AprilTags/april_tags_replay.py)
-dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 ci nowindows)
+dai_set_example_test_labels(april_tags_replay ondevice rvc2_all rvc4 rvc4rgb ci nowindows)
 
 ## Detection network
 add_python_example(detection_network DetectionNetwork/detection_network.py)
-dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 rvc4rgb ci)
 add_python_example(detection_network_remap DetectionNetwork/detection_network_remap.py)
-dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(detection_network ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(detection_network_replay_rvc4 DetectionNetwork/detection_network_replay.py --webSocketPort 8761 --httpPort 8071)
-dai_set_example_test_labels(detection_network_replay_rvc4 ondevice rvc4 ci)
+dai_set_example_test_labels(detection_network_replay_rvc4 ondevice rvc4 rvc4rgb ci)
 
 add_python_example(detection_network_replay_rvc2 DetectionNetwork/detection_network_replay.py --webSocketPort 8762 --httpPort 8072)
-dai_set_example_test_labels(detection_network_replay_rvc2 ondevice rvc2 usb ci)
+dai_set_example_test_labels(detection_network_replay_rvc2 ondevice rvc2 usb rvc4rgb ci)
 
 ## Host nodes
 add_python_example(display HostNodes/display.py)
-dai_set_example_test_labels(display ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(display ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(threaded_host_nodes HostNodes/threaded_host_nodes.py)
-dai_set_example_test_labels(threaded_host_nodes ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(threaded_host_nodes ondevice rvc2_all rvc4 rvc4rgb ci)
 
 ## ImageManip
 add_python_example(image_manip_multi_ops ImageManip/image_manip_multi_ops.py)
-dai_set_example_test_labels(image_manip_multi_ops ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(image_manip_multi_ops ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(image_manip_resize ImageManip/image_manip_resize.py)
-dai_set_example_test_labels(image_manip_resize ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(image_manip_resize ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(image_manip_remap ImageManip/image_manip_remap.py)
-dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 rvc4rgb ci)
 
 ## Misc
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
-dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 rvc4rgb ci)
 
+add_python_example(get_pipeline_state Misc/PipelineDebugging/get_pipeline_state.py)
+dai_set_example_test_labels(get_pipeline_state ondevice rvc2_all rvc4 rvc4rgb ci)
+
+add_python_example(node_pipeline_events Misc/PipelineDebugging/node_pipeline_events.py)
+dai_set_example_test_labels(node_pipeline_events ondevice rvc2_all rvc4 rvc4rgb ci)
+
+## SystemLogger
+add_python_example(system_logger Misc/SystemLogger/system_logger.py)
+dai_set_example_test_labels(system_logger ondevice rvc2_all rvc4 ci)
+
+## EdgeDetector
+add_python_example(edge_detector RVC2/EdgeDetector/edge_detector.py)
+dai_set_example_test_labels(edge_detector ondevice rvc2_all ci)
+
+## Vpp
+add_python_example(virtual_patern_projection Vpp/virtual_patern_projection.py)
+dai_set_example_test_labels(virtual_patern_projection ondevice rvc4 ci)
 
 ## RGBD
 add_python_example(rgbd RGBD/rgbd.py)
@@ -229,18 +252,21 @@ dai_set_example_test_labels(visualizer_rgbd_autocreate ondevice rvc2 usb rvc4 ci
 add_python_example(rgbd_o3d RGBD/rgbd_o3d.py)
 dai_set_example_test_labels(rgbd_o3d ondevice rvc2_all rvc4 ci nowindows)
 
+add_python_example(rgbd_pcl_processing RGBD/rgbd_pcl_processing.py)
+dai_set_example_test_labels(rgbd_pcl_processing ondevice rvc2_all rvc4 ci nowindows)
+
 add_python_example(person_crop_out Misc/DigitalZoom/person_crop_out.py)
-dai_set_example_test_labels(person_crop_out ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(person_crop_out ondevice rvc2_all rvc4 rvc4rgb ci)
 
 ## NeuralNetwork
 add_python_example(neural_network NeuralNetwork/neural_network.py)
-dai_set_example_test_labels(neural_network ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(neural_network ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(neural_network_multi_input_combined NeuralNetwork/neural_network_multi_input_combined.py)
-dai_set_example_test_labels(neural_network_multi_input_combined ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(neural_network_multi_input_combined ondevice rvc2_all rvc4 rvc4rgb ci)
 
 add_python_example(neural_network_multi_input NeuralNetwork/neural_network_multi_input.py)
-dai_set_example_test_labels(neural_network_multi_input ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(neural_network_multi_input ondevice rvc2_all rvc4 rvc4rgb ci)
 
 ## Spatial detection network
 add_python_example(spatial_detection SpatialDetectionNetwork/spatial_detection.py)
@@ -255,7 +281,7 @@ dai_set_example_test_labels(stereo_depth_from_host ondevice rvc2_all rvc4 ci)
 
 ## VideoEncoder
 add_python_example(video_encoder VideoEncoder/video_encode.py)
-dai_set_example_test_labels(video_encoder ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(video_encoder ondevice rvc2_all rvc4 rvc4rgb ci)
 
 ## SpatialLocationCalculator
 add_python_example(spatial_location_calculator SpatialLocationCalculator/spatial_location_calculator.py)
@@ -269,11 +295,11 @@ dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
 
 # Split into two examples for RVC2 and RVC4 since the tests are run concurrently, to avoid port conflicts
 # Skip windows, since it asks for user input for the firewall
-add_python_example(visualizer_rvc4 Visualizer/visualizer_yolo.py --webSocketPort 8765 --httpPort 8080)
-dai_set_example_test_labels(visualizer_rvc4 ondevice rvc4 ci nowindows)
+add_python_example(visualizer_rvc4 Visualizer/visualizer_yolo.py --webSocketPort 8765 --httpPort 8082)
+dai_set_example_test_labels(visualizer_rvc4 ondevice rvc4 rvc4rgb ci nowindows)
 
-add_python_example(visualizer_encoded_rvc4 Visualizer/visualizer_encoded.py --webSocketPort 8765 --httpPort 8080)
-dai_set_example_test_labels(visualizer_encoded_rvc4 ondevice rvc4 ci nowindows)
+add_python_example(visualizer_encoded_rvc4 Visualizer/visualizer_encoded.py --webSocketPort 8765 --httpPort 8082)
+dai_set_example_test_labels(visualizer_encoded_rvc4 ondevice rvc4 rvc4rgb ci nowindows)
 
 add_python_example(visualizer_rvc2 Visualizer/visualizer_yolo.py --webSocketPort 8766 --httpPort 8081)
 dai_set_example_test_labels(visualizer_rvc2 ondevice rvc2 usb ci nowindows)
@@ -282,39 +308,67 @@ add_python_example(visualizer_encoded_rvc2 Visualizer/visualizer_encoded.py --we
 dai_set_example_test_labels(visualizer_encoded_rvc2 ondevice rvc2 usb ci nowindows)
 
 add_python_example(custom_services Visualizer/custom_services.py)
-dai_set_example_test_labels(custom_services ondevice rvc2_all rvc4 ci nowindows) # Host-only test
+dai_set_example_test_labels(custom_services ondevice rvc2_all rvc4 rvc4rgb ci nowindows) # Host-only test
 
 
 ## Script node
 add_python_example(script_simple Script/script_simple.py)
-dai_set_example_test_labels(script_simple ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(script_simple ondevice rvc2_all rvc4 rvc4rgb ci)
 dai_example_test_relax_fail_regex(script_simple)
 
 add_python_example(script_all_cameras Script/script_switch_all_cameras.py)
-dai_set_example_test_labels(script_all_cameras ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(script_all_cameras ondevice rvc2_all rvc4 rvc4rgb ci)
 
 ## Benchmark node
 add_python_example(benchmark_node Benchmark/benchmark_simple.py)
-dai_set_example_test_labels(benchmark_node ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(benchmark_node ondevice rvc2_all rvc4 rvc4rgb ci)
 dai_example_test_relax_fail_regex(benchmark_node)
 
 add_python_example(benchmark_cameras Benchmark/benchmark_camera.py)
-dai_set_example_test_labels(benchmark_cameras ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(benchmark_cameras ondevice rvc2_all rvc4 rvc4rgb ci)
 dai_example_test_relax_fail_regex(benchmark_cameras)
 
 add_python_example(benchmark_nn Benchmark/benchmark_nn.py)
-dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(benchmark_nn ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # IMU node
 add_python_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.py)
-dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 ci)
+dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 rvc4rgb ci)
 # On slow hosts the examples warns that batch size is too small
 dai_example_test_relax_fail_regex(imu_gyroscope_accelerometer)
 
 # Warp node
 add_python_example(warp_mesh Warp/warp_mesh.py)
-dai_set_example_test_labels(warp_mesh rvc2_all rvc4 ci)
+dai_set_example_test_labels(warp_mesh rvc2_all rvc4 rvc4rgb ci)
 
 # Feature tracker
 add_python_example(feature_tracker FeatureTracker/feature_tracker.py)
-dai_set_example_test_labels(feature_tracker rvc2_all rvc4 ci)
+dai_set_example_test_labels(feature_tracker rvc2_all rvc4 rvc4rgb ci)
+
+# Object tracker
+add_python_example(object_tracker ObjectTracker/object_tracker.py)
+dai_set_example_test_labels(object_tracker ondevice rvc2_all rvc4 ci)
+add_python_example(object_tracker_replay ObjectTracker/object_tracker_replay.py)
+dai_set_example_test_labels(object_tracker_replay ondevice rvc2_all rvc4 ci)
+add_python_example(object_tracker_remap ObjectTracker/object_tracker_remap.py)
+dai_set_example_test_labels(object_tracker_remap ondevice rvc2_all rvc4 ci)
+
+# ImageFilters
+add_python_example(image_filters StereoDepth/stereo_depth_filters.py)
+dai_set_example_test_labels(image_filters rvc2_all rvc4 ci)
+
+# DynamicCalibration
+if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
+    add_python_example(calibration_integration DynamicCalibration/calibration_integration.py)
+    dai_set_example_test_labels(calibration_integration ondevice rvc2_all rvc4 ci)
+
+    add_python_example(calibration_quality_dynamic DynamicCalibration/calibration_quality_dynamic.py)
+    dai_set_example_test_labels(calibration_quality_dynamic ondevice rvc2_all rvc4 ci)
+
+    add_python_example(calibration_dynamic DynamicCalibration/calibration_dynamic.py)
+    dai_set_example_test_labels(calibration_dynamic ondevice rvc2_all rvc4 ci)
+endif()
+
+## NeuralAssistedStereo 
+add_python_example(neural_assisted_stereo NeuralAssistedStereo/neural_assisted_stereo_node_example.py)
+dai_set_example_test_labels(neural_assisted_stereo ondevice rvc4 ci)

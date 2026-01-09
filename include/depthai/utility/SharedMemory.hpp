@@ -77,14 +77,7 @@ class SharedMemory : public Memory {
         mapFd();
     }
 
-    ~SharedMemory() {
-        unmapFd();
-#if defined(__unix__) && !defined(__APPLE__)
-        if(fd > 0) {
-            close(fd);
-        }
-#endif
-    }
+    ~SharedMemory() override;
 
     SharedMemory& operator=(long argFd) {
         unmapFd();
@@ -130,7 +123,10 @@ class SharedMemory : public Memory {
         if(ftruncate(fd, size) < 0) {
             throw std::runtime_error("Failed to set shared memory size");
         }
+#else
+        (void)size;  // size is not used
 #endif
+
         mapFd();
     }
 

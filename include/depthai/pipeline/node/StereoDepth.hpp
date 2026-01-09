@@ -16,7 +16,7 @@ namespace node {
 class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
    public:
     constexpr static const char* NAME = "StereoDepth";
-    using DeviceNodeCRTP::DeviceNodeCRTP;
+    StereoDepth() = default;
 
     /**
      * Preset modes for stereo depth.
@@ -50,12 +50,15 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * @param autoCreateCameras If true, will create left and right nodes if they don't exist
      * @param presetMode Preset mode for stereo depth
      */
-    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::DEFAULT, std::pair<int, int> size = {640, 400});
+    std::shared_ptr<StereoDepth> build(bool autoCreateCameras,
+                                       PresetMode presetMode = PresetMode::DEFAULT,
+                                       std::pair<int, int> size = {640, 400},
+                                       std::optional<float> fps = std::nullopt);
 
    protected:
-    Properties& getProperties();
-    StereoDepth() = default;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     StereoDepth(std::unique_ptr<Properties> props);
+    Properties& getProperties();
 
    private:
     PresetMode presetMode = PresetMode::DEFAULT;
@@ -184,7 +187,7 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      *
      * height: 800 / 16 + 1 = 51
      */
-    void loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight);
+    void loadMeshFiles(const std::filesystem::path& pathLeft, const std::filesystem::path& pathRight);
 
     /**
      * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.

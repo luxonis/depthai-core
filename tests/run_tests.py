@@ -45,6 +45,7 @@ class ResultThread(threading.Thread):
 # Function to run ctest with specific environment variables and labels
 def run_ctest(env_vars, labels, blocking=True, name=""):
     env = os.environ.copy()
+    env_vars["DEPTHAI_PIPELINE_DEBUGGING"] = "1"
     env.update(env_vars)
 
     cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release"]
@@ -86,6 +87,12 @@ if __name__ == "__main__":
         action="store_true",
         required=False,
     )
+    
+    parser.add_argument(
+        "--rvc4rgb",
+        action="store_true",
+        required=False,
+    )
 
     parser.add_argument(
         "--rvc2",
@@ -111,6 +118,11 @@ if __name__ == "__main__":
             "labels": ["rvc4"],
         },
         {
+            "name": "RVC4 - RGB",
+            "env": {"DEPTHAI_PLATFORM": "rvc4"},
+            "labels": ["rvc4rgb"],
+        },
+        {
             "name": "RVC2 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc2", "DEPTHAI_PROTOCOL": "usb"},
             "labels": ["rvc2", "usb"],
@@ -126,12 +138,14 @@ if __name__ == "__main__":
     resultThreads = []
 
     # Filter configurations based on command-line arguments
-    if args.rvc4==args.rvc2:
-        test_configs=all_configs
+    if args.rvc4==args.rvc2==args.rvc4rgb:
+        test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "rvc4" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4:
-        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) or "onhost" in config.get("labels", [])]
+        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", [])]
     elif args.rvc2:
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
+    elif args.rvc4rgb:
+        test_configs = [config for config in all_configs if "rvc4rgb" in config.get("labels", [])]
 
 
     for config in test_configs:
