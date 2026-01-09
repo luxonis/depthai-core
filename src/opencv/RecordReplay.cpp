@@ -34,7 +34,7 @@ struct H26xNals {
                     start = i + 3;
                     return true;
                 }
-                if(i + 3 < data.size() && data[i + 2] == 0 && data[i + 3] == 1) {
+                if(data[i + 2] == 0 && data[i + 3] == 1) {
                     startCodePos = i;
                     start = i + 4;
                     return true;
