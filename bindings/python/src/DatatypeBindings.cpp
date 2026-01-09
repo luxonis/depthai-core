@@ -25,7 +25,7 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
 void bind_spatiallocationcalculatordata(pybind11::module& m, void* pCallstack);
 void bind_stereodepthconfig(pybind11::module& m, void* pCallstack);
 void bind_systeminformation(pybind11::module& m, void* pCallstack);
-void bind_systeminformationS3(pybind11::module& m, void* pCallstack);
+void bind_systeminformationRVC4(pybind11::module& m, void* pCallstack);
 void bind_trackedfeatures(pybind11::module& m, void* pCallstack);
 void bind_tracklets(pybind11::module& m, void* pCallstack);
 void bind_benchmarkreport(pybind11::module& m, void* pCallstack);
@@ -70,7 +70,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_spatiallocationcalculatordata);
     callstack.push_front(bind_stereodepthconfig);
     callstack.push_front(bind_systeminformation);
-    callstack.push_front(bind_systeminformationS3);
+    callstack.push_front(bind_systeminformationRVC4);
     callstack.push_front(bind_trackedfeatures);
     callstack.push_front(bind_tracklets);
     callstack.push_front(bind_benchmarkreport);
@@ -119,7 +119,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("ImgDetections", DatatypeEnum::ImgDetections)
         .value("SpatialImgDetections", DatatypeEnum::SpatialImgDetections)
         .value("SystemInformation", DatatypeEnum::SystemInformation)
-        .value("SystemInformationS3", DatatypeEnum::SystemInformationS3)
+        .value("SystemInformationRVC4", DatatypeEnum::SystemInformationRVC4)
         .value("SpatialLocationCalculatorConfig", DatatypeEnum::SpatialLocationCalculatorConfig)
         .value("SpatialLocationCalculatorData", DatatypeEnum::SpatialLocationCalculatorData)
         .value("EdgeDetectorConfig", DatatypeEnum::EdgeDetectorConfig)

@@ -228,8 +228,8 @@ add_python_example(node_pipeline_events Misc/PipelineDebugging/node_pipeline_eve
 dai_set_example_test_labels(node_pipeline_events ondevice rvc2_all rvc4 rvc4rgb ci)
 
 ## SystemLogger
-add_python_example(system_logger RVC2/SystemLogger/system_information.py)
-dai_set_example_test_labels(system_logger ondevice rvc2_all ci)
+add_python_example(system_logger Misc/SystemLogger/system_logger.py)
+dai_set_example_test_labels(system_logger ondevice rvc2_all rvc4 ci)
 
 ## EdgeDetector
 add_python_example(edge_detector RVC2/EdgeDetector/edge_detector.py)
