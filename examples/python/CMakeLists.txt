@@ -368,3 +368,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_python_example(calibration_dynamic DynamicCalibration/calibration_dynamic.py)
     dai_set_example_test_labels(calibration_dynamic ondevice rvc2_all rvc4 ci)
 endif()
+
+## NeuralAssistedStereo 
+add_python_example(neural_assisted_stereo NeuralAssistedStereo/neural_assisted_stereo_node_example.py)
+dai_set_example_test_labels(neural_assisted_stereo ondevice rvc4 ci)
