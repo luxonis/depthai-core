@@ -479,7 +479,7 @@ dai_set_test_labels(vpp_test ondevice rvc4 ci)
 # Dynamic calibration tests
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
-    dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
+    dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
     target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
 endif()
 
