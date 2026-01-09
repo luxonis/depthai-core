@@ -10,6 +10,11 @@
 TEST_CASE("[NeuralAssistedStereo] Check that I am getting output from the subnodes") {
     // Create pipeline
     dai::Pipeline p;
+    auto device = p.getDefaultDevice();
+    if(!device->isNeuralDepthSupported()) {
+        WARN("Skipping NeuralAssistedStereo test: device doesn't support NeuralDepth.");
+        return;
+    }
     auto cameraLeft = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto cameraRight = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
@@ -65,6 +70,11 @@ TEST_CASE("[NeuralAssistedStereo] Check that I am getting output from the subnod
 TEST_CASE("[NeuralAssistedStereo] Case without rectification") {
     // Create pipeline
     dai::Pipeline p;
+    auto device = p.getDefaultDevice();
+    if(!device->isNeuralDepthSupported()) {
+        WARN("Skipping NeuralAssistedStereo test: device doesn't support NeuralDepth.");
+        return;
+    }
     auto cameraLeft = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto cameraRight = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
 
