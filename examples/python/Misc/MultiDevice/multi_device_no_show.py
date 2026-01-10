@@ -10,7 +10,6 @@ Minimal changes to original script:
 import contextlib
 import datetime
 
-import cv2
 import depthai as dai
 import time
 import csv
@@ -148,17 +147,6 @@ with contextlib.ExitStack() as stack:
                     msg = latest_frames[i]
                     frame = msg.getCvFrame()
                     fps = fpsCounters[i].getFps()
-                    cv2.putText(
-                        frame,
-                        f"{device_ids[i]} | Timestamp: {ts_values[i]} | FPS:{fps:.2f}",
-                        (20, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.6,
-                        (255, 0, 50),
-                        2,
-                        cv2.LINE_AA,
-                    )
-                    imgs.append(frame)
 
                 delta = max(ts_values) - min(ts_values)
                 print(f"Frame delta [ms]: {delta*1e3:.3f}")
@@ -169,28 +157,9 @@ with contextlib.ExitStack() as stack:
 
                 if len(delta_write_buffer) >= 30:
                     with open(FRAME_DELTA_LOG_FILE, "a", newline="") as f:
+                        print("saving")
                         writer = csv.writer(f)
                         writer.writerows(delta_write_buffer)
                     delta_write_buffer.clear()
-
-                sync_status = "in sync" if abs(delta) < 0.001 else "out of sync"
-                color = (0, 255, 0) if sync_status == "in sync" else (0, 0, 255)
                 
-                cv2.putText(
-                    imgs[0],
-                    f"{sync_status} | delta = {delta*1e3:.3f} ms",
-                    (20, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    color,
-                    2,
-                    cv2.LINE_AA,
-                )
-
-                cv2.imshow("synced_view", cv2.hconcat(imgs))
                 latest_frames.clear()  # Wait for next batch
-
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-
-cv2.destroyAllWindows()
