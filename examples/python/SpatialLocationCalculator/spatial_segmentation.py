@@ -51,7 +51,8 @@ with dai.Pipeline(device) as pipeline:
     spatialOutputQueue = spatialCalculator.outputDetections.createOutputQueue()
     depthQueue = spatialCalculator.passthroughDepth.createOutputQueue()
     inputConfigQueue = spatialCalculator.inputConfig.createInputQueue()
-    calculatorConfig = spatialCalculator.initialConfig # copy initial settings
+    configUpdate = spatialCalculator.initialConfig
+    useSegmentation = spatialCalculator.initialConfig.getUseSegmentation()
 
     pipeline.start()
     print("Pipeline created.")
@@ -70,7 +71,7 @@ with dai.Pipeline(device) as pipeline:
         segmentationMask = cv2.Mat(np.zeros((spatialDetections.getSegmentationMaskHeight(), spatialDetections.getSegmentationMaskWidth()), dtype=np.uint8))
         segmentationMask = spatialDetections.getCvSegmentationMask()
 
-        if segmentationMask is not None and calculatorConfig.getUseSegmentation():
+        if segmentationMask is not None and useSegmentation:
             scaledMask = segmentationMask.copy()
             scaledMask[segmentationMask != 255] = segmentationMask[segmentationMask != 255] * 25 # scale for better visualization
             coloredMask = cv2.applyColorMap(scaledMask, cv2.COLORMAP_JET)
@@ -92,7 +93,7 @@ with dai.Pipeline(device) as pipeline:
                 text = f"X: {int(depth_coordinate.x / 10 )} cm, Y: {int(depth_coordinate.y / 10)} cm, Z: {int(depth / 10)} cm"
                 cv2.putText(image, text, outerPoints[0], cv2.FONT_HERSHEY_PLAIN, 1, (232,36,87), 2)
 
-        concatenatedFrame = addTopPanel(image, calculatorConfig.getUseSegmentation())
+        concatenatedFrame = addTopPanel(image, useSegmentation)
 
         cv2.imshow("Depth", colorizedDepth)
         cv2.imshow("Spatial detections", concatenatedFrame)
@@ -101,6 +102,6 @@ with dai.Pipeline(device) as pipeline:
             break
 
         elif key == ord('s'):
-            calculatorConfig.setUseSegmentation(not calculatorConfig.getUseSegmentation())
-            # calculatorConfig.setSegmentationPassthrough(not calculatorConfig.getSegmentationPassthrough())
-            inputConfigQueue.send(calculatorConfig)
+            useSegmentation = not useSegmentation
+            configUpdate.setUseSegmentation(useSegmentation)
+            inputConfigQueue.send(configUpdate)
