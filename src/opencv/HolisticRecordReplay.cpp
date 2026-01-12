@@ -96,6 +96,11 @@ bool setupHolisticRecord(Pipeline& pipeline,
     auto sources = pipeline.getSourceNodes();
     const std::filesystem::path recordPath = recordConfig.outputDir;
     try {
+        if(!std::filesystem::exists(recordPath)) {
+            std::filesystem::create_directories(recordPath);
+        } else if(!std::filesystem::is_directory(recordPath)) {
+            throw std::runtime_error("Record output path " + recordPath.string() + " is not a directory.");
+        }
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
