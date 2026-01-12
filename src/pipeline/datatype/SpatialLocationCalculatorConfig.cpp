@@ -2,7 +2,6 @@
 
 namespace dai {
 
-constexpr int MAX_STEP_SIZE = 4000;
 SpatialLocationCalculatorConfig::~SpatialLocationCalculatorConfig() = default;
 
 void SpatialLocationCalculatorConfig::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
@@ -35,8 +34,8 @@ void SpatialLocationCalculatorConfig::setCalculationAlgorithm(SpatialLocationCal
 }
 
 void SpatialLocationCalculatorConfig::setStepSize(int32_t stepSize) {
-    if(stepSize < -1 || stepSize >= MAX_STEP_SIZE || stepSize == 0) {
-        throw std::invalid_argument("Step size must be -1 (AUTO) or between 1 and 3999");
+    if(stepSize < -1 || stepSize == 0) {
+        throw std::invalid_argument("Step size must be -1 (AUTO) or a positive integer.");
     }
     globalStepSize = stepSize;
 }

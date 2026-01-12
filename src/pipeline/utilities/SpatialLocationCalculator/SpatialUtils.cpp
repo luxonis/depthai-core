@@ -180,7 +180,13 @@ void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
         float maxHeightSize = 1;
         const SpatialLocationCalculatorAlgorithm calcAlgo = cfg.calculationAlgorithm;
         const int stepSize = getStepSize(cfg.stepSize, calcAlgo);
-
+        if(stepSize >= depthWidth / 2 || stepSize >= depthHeight / 2) {
+            auto message = fmt::format("Step size {} is too large for depth frame size {}x{}. It must be less than half of the depth frame dimensions.",
+                                       stepSize,
+                                       depthWidth,
+                                       depthHeight);
+            throw std::invalid_argument(message);
+        }
         if(!roi.isNormalized()) {
             maxWidthSize = depthFrame->getWidth();
             maxHeightSize = depthFrame->getHeight();
@@ -280,13 +286,15 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     std::size_t segmentationMaskWidth = 0;
     std::size_t segmentationMaskHeight = 0;
 
-    if(useSegmentation) {
-        segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
-        segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
-        if(segmentationMaskWidth == 0 || segmentationMaskHeight == 0) {
-            throw std::runtime_error("Segmentation mask metadata not set on ImgDetections.");
-        }
+    if(stepSize >= depthWidth / 2 || stepSize >= depthHeight / 2) {
+        auto message = fmt::format("Step size {} is too large for depth frame size {}x{}. It must be less than half of the depth frame dimensions.",
+                                   stepSize,
+                                   depthWidth,
+                                   depthHeight);
+        throw std::invalid_argument(message);
+    }
 
+    if(useSegmentation && imgDetections.getSegmentationMaskWidth() > 0 && imgDetections.getSegmentationMaskHeight() > 0) {
         maskPtr = maskSpan.data();
     }
 
