@@ -106,8 +106,8 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
     if [ "$FLAVOR" != "vanilla" ]; then \
-        export CMAKE_TOOLCHAIN_PATH=/workspace/cmake/toolchain/${FLAVOR}.cmake && \
-        echo "Using toolchain: $CMAKE_TOOLCHAIN_PATH"; \
+        export CMAKE_TOOLCHAIN_FILE=/workspace/cmake/toolchain/${FLAVOR}.cmake && \
+        echo "Using toolchain: $CMAKE_TOOLCHAIN_FILE"; \
     else \
         echo "Using vanilla flavor (no toolchain)"; \
     fi && \
