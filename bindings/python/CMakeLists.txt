@@ -107,6 +107,7 @@ set(SOURCE_LIST
     src/pipeline/node/ImageFiltersBindings.cpp
     src/pipeline/node/RectificationBindings.cpp
     src/pipeline/node/NeuralDepthBindings.cpp
+    src/pipeline/node/NeuralAssistedStereoBindings.cpp
     src/pipeline/FilterParamsBindings.cpp
     src/pipeline/node/VppBindings.cpp
     src/pipeline/datatype/ADatatypeBindings.cpp

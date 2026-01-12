@@ -6,7 +6,7 @@
 
 // depthai
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
-#include "depthai/pipeline/datatype/SystemInformationS3.hpp"
+#include "depthai/pipeline/datatype/SystemInformationRVC4.hpp"
 
 // pybind
 #include <pybind11/chrono.h>
@@ -72,13 +72,13 @@ void bind_systeminformation(pybind11::module& m, void* pCallstack) {
             [](SystemInformation& i, ChipTemperature val) { i.chipTemperature = val; });
 }
 
-void bind_systeminformationS3(pybind11::module& m, void* pCallstack) {
+void bind_systeminformationRVC4(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    // py::class_<RawSystemInformationS3, RawBuffer, std::shared_ptr<RawSystemInformationS3>> rawSystemInformationS3(
-    // m, "RawSystemInformationS3", DOC(dai, RawSystemInformationS3));
-    py::class_<SystemInformationS3, Py<SystemInformationS3>, Buffer, std::shared_ptr<SystemInformationS3>> systemInformationS3(
-        m, "SystemInformationS3", DOC(dai, SystemInformationS3));
+    // py::class_<RawSystemInformationRVC4, RawBuffer, std::shared_ptr<RawSystemInformationRVC4>> rawSystemInformationRVC4(
+    // m, "RawSystemInformationRVC4", DOC(dai, RawSystemInformationRVC4));
+    py::class_<SystemInformationRVC4, Py<SystemInformationRVC4>, Buffer, std::shared_ptr<SystemInformationRVC4>> systemInformationRVC4(
+        m, "SystemInformationRVC4", DOC(dai, SystemInformationRVC4));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -94,22 +94,32 @@ void bind_systeminformationS3(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // // Metadata / raw
-    // rawSystemInformationS3.def(py::init<>())
-    //     .def_readwrite("ddrMemoryUsage", &RawSystemInformationS3::ddrMemoryUsage)
-    //     .def_readwrite("cpuAvgUsage", &RawSystemInformationS3::cpuAvgUsage)
-    //     .def_readwrite("chipTemperature", &RawSystemInformationS3::chipTemperature)
-    //     .def_readwrite("cpuUsages", &RawSystemInformationS3::cpuUsages);
+    // rawSystemInformationRVC4.def(py::init<>())
+    //     .def_readwrite("ddrMemoryUsage", &RawSystemInformationRVC4::ddrMemoryUsage)
+    //     .def_readwrite("cpuAvgUsage", &RawSystemInformationRVC4::cpuAvgUsage)
+    //     .def_readwrite("chipTemperature", &RawSystemInformationRVC4::chipTemperature)
+    //     .def_readwrite("cpuUsages", &RawSystemInformationRVC4::cpuUsages);
 
     // Message
-    systemInformationS3.def(py::init<>())
+    systemInformationRVC4.def(py::init<>())
         .def_property(
-            "ddrMemoryUsage", [](SystemInformationS3& i) { return &i.ddrMemoryUsage; }, [](SystemInformationS3& i, MemoryInfo val) { i.ddrMemoryUsage = val; })
+            "ddrMemoryUsage",
+            [](SystemInformationRVC4& i) { return &i.ddrMemoryUsage; },
+            [](SystemInformationRVC4& i, MemoryInfo val) { i.ddrMemoryUsage = val; })
         .def_property(
-            "cpuAvgUsage", [](SystemInformationS3& i) { return &i.cpuAvgUsage; }, [](SystemInformationS3& i, CpuUsage val) { i.cpuAvgUsage = val; })
+            "processMemoryUsage",
+            [](SystemInformationRVC4& i) { return i.processMemoryUsage; },
+            [](SystemInformationRVC4& i, int64_t val) { i.processMemoryUsage = val; })
         .def_property(
-            "cpuUsages", [](SystemInformationS3& i) { return &i.cpuUsages; }, [](SystemInformationS3& i, std::vector<CpuUsage> val) { i.cpuUsages = val; })
+            "cpuAvgUsage", [](SystemInformationRVC4& i) { return &i.cpuAvgUsage; }, [](SystemInformationRVC4& i, CpuUsage val) { i.cpuAvgUsage = val; })
+        .def_property(
+            "processCpuAvgUsage",
+            [](SystemInformationRVC4& i) { return &i.processCpuAvgUsage; },
+            [](SystemInformationRVC4& i, CpuUsage val) { i.processCpuAvgUsage = val; })
+        .def_property(
+            "cpuUsages", [](SystemInformationRVC4& i) { return &i.cpuUsages; }, [](SystemInformationRVC4& i, std::vector<CpuUsage> val) { i.cpuUsages = val; })
         .def_property(
             "chipTemperature",
-            [](SystemInformationS3& i) { return &i.chipTemperature; },
-            [](SystemInformationS3& i, ChipTemperatureS3 val) { i.chipTemperature = val; });
+            [](SystemInformationRVC4& i) { return &i.chipTemperature; },
+            [](SystemInformationRVC4& i, ChipTemperatureRVC4 val) { i.chipTemperature = val; });
 }

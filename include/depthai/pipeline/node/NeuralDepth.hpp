@@ -15,17 +15,15 @@ namespace node {
  * @brief NeuralDepth node. Compute depth from left-right image pair using neural network.
  */
 class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthProperties> {
-   public:
-    constexpr static const char* NAME = "NeuralDepth";
-
    protected:
-    Properties& getProperties() override;
     using DeviceNodeCRTP::DeviceNodeCRTP;
-
-    NeuralDepth() = default;
+    Properties& getProperties() override;
     NeuralDepth(std::unique_ptr<Properties> props);
 
    public:
+    constexpr static const char* NAME = "NeuralDepth";
+    NeuralDepth() = default;
+
     /**
      * Get input size for specific model
      */
