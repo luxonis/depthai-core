@@ -149,7 +149,7 @@ static inline std::array<int, 4> clampRectCorners(dai::Point2f topLeft, dai::Poi
     return {xstart, ystart, xend, yend};
 }
 
-static inline int getStepSize(int stepSize, SpatialLocationCalculatorAlgorithm algo) {
+static inline unsigned int getStepSize(int stepSize, SpatialLocationCalculatorAlgorithm algo) {
     if(stepSize == SpatialLocationCalculatorConfigData::AUTO) {
         if(algo == SpatialLocationCalculatorAlgorithm::MODE || algo == SpatialLocationCalculatorAlgorithm::MEDIAN) {
             return 2;
@@ -158,7 +158,7 @@ static inline int getStepSize(int stepSize, SpatialLocationCalculatorAlgorithm a
         }
     }
 
-    return stepSize;
+    return static_cast<unsigned int>(stepSize);
 }
 
 dai::SpatialKeypoint createSpatialKeypoint(const dai::Keypoint& keypoint, const dai::Point3f& spatialCoordinates) {
@@ -263,24 +263,25 @@ void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
 template <typename PixelValidatorFn>
 void populateDepthStats(DepthStats& depthStats,
                         dai::RotatedRect rectCorners,
-                        int stepSize,
-                        int widthMultiplier,
+                        unsigned int stepSize,
+                        unsigned int widthMultiplier,
                         const dai::ImgFrame& depthFrame,
                         PixelValidatorFn&& validatePixelFn) {
-    const std::int32_t depthWidth = depthFrame.getWidth();
-    const std::int32_t depthHeight = depthFrame.getHeight();
+    const auto depthWidth = static_cast<std::int32_t>(depthFrame.getWidth());
+    const auto depthHeight = static_cast<std::int32_t>(depthFrame.getHeight());
 
     const auto& outerPoints = rectCorners.getOuterRect();
     auto [xstart, ystart, xend, yend] =
         clampRectCorners(dai::Point2f{outerPoints[0], outerPoints[1]}, dai::Point2f{outerPoints[2], outerPoints[3]}, depthWidth, depthHeight);
 
-    const uint16_t* plane = (uint16_t*)depthFrame.data->getData().data();
-    for(int y = ystart; y < yend; y += stepSize) {
-        for(int x = xstart; x < xend; x += stepSize) {
-            int index = y * widthMultiplier + x;
+    const auto& depthData = depthFrame.data->getData();
+    span<const uint16_t> plane(reinterpret_cast<const uint16_t*>(depthData.data()), depthData.size() / sizeof(uint16_t));
+    for(int y = ystart; y < yend; y += static_cast<int>(stepSize)) {
+        for(int x = xstart; x < xend; x += static_cast<int>(stepSize)) {
+            int index = (y * widthMultiplier) + x;
             uint16_t px = plane[index];
 
-            if(validatePixelFn(x, y)) {
+            if(std::forward<PixelValidatorFn>(validatePixelFn)(x, y)) {
                 depthStats.addPixel(px);
             }
         }
@@ -299,10 +300,10 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
     const uint32_t lowerThreshold = config.globalLowerThreshold;
     const uint32_t upperThreshold = config.globalUpperThreshold;
     const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config.globalCalculationAlgorithm;
-    const int stepSize = getStepSize(config.globalStepSize, calculationAlgorithm);
+    const unsigned int stepSize = getStepSize(config.globalStepSize, calculationAlgorithm);
     const int32_t keypointRadius = config.globalKeypointRadius;
-    const std::int32_t depthWidth = depthFrame.getWidth();
-    const std::int32_t depthHeight = depthFrame.getHeight();
+    const unsigned int depthWidth = depthFrame.getWidth();
+    const unsigned int depthHeight = depthFrame.getHeight();
 
     const dai::ImgTransformation* depthTransformation = &depthFrame.transformation;
     const bool areAligned = detectionsTransformation.isAlignedTo(*depthTransformation);
@@ -413,16 +414,11 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     }
     spatialDetections.detections.resize(imgDetectionsVector.size());
 
-    const uint32_t lowerThreshold = config.globalLowerThreshold;
-    const uint32_t upperThreshold = config.globalUpperThreshold;
     const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config.globalCalculationAlgorithm;
-    const int stepSize = getStepSize(config.globalStepSize, calculationAlgorithm);
-    const int32_t keypointRadius = config.globalKeypointRadius;
-    const bool calculateSpatialKeypoints = config.calculateSpatialKeypoints;
+    const unsigned int stepSize = getStepSize(config.globalStepSize, calculationAlgorithm);
 
-    const std::int32_t depthWidth = depthFrame.getWidth();
-    const std::int32_t depthHeight = depthFrame.getHeight();
-    const uint8_t* maskPtr = nullptr;
+    const unsigned int depthWidth = depthFrame.getWidth();
+    const unsigned int depthHeight = depthFrame.getHeight();
     const std::size_t segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
     const std::size_t segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
 
