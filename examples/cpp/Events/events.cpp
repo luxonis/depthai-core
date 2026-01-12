@@ -99,14 +99,20 @@ int main() {
 
         // Trigger sendSnap()
         if(cv::waitKey(1) == 's') {
-            eventsManager->sendSnap("ImageDetection",
-                                    std::nullopt,
-                                    inRgb,
-                                    inDet,
-                                    {"EventsExample", "C++"},
-                                    {{"key_0", "value_0"}, {"key_1", "value_1"}},
-                                    uploadSuccessCallback,
-                                    uploadFailureCallback);
+            auto localSnapID = eventsManager->sendSnap("ImageDetection",
+                                                       std::nullopt,
+                                                       inRgb,
+                                                       inDet,
+                                                       {"EventsExample", "C++"},
+                                                       {{"key_0", "value_0"}, {"key_1", "value_1"}},
+                                                       uploadSuccessCallback,
+                                                       uploadFailureCallback);
+
+            if(localSnapID.has_value()) {
+                std::cout << "Snap with a localID: " << localSnapID.value() << " has been successfully added to the EventsManager" << std::endl;
+            } else {
+                std::cout << "Snap was not successfully added to the EventsManager" << std::endl;
+            }
         }
     }
 

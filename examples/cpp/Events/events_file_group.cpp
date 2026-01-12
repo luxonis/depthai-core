@@ -114,12 +114,18 @@ int main() {
 
             auto fileGroup = std::make_shared<dai::utility::FileGroup>();
             fileGroup->addImageDetectionsPair(ss.str(), inRgb, borderDetections);
-            eventsManager->sendSnap("LowConfidenceDetection",
-                                    fileGroup,
-                                    {"EventsExample", "C++"},
-                                    {{"key_0", "value_0"}, {"key_1", "value_1"}},
-                                    uploadSuccessCallback,
-                                    uploadFailureCallback);
+            auto localSnapID = eventsManager->sendSnap("LowConfidenceDetection",
+                                                       fileGroup,
+                                                       {"EventsExample", "C++"},
+                                                       {{"key_0", "value_0"}, {"key_1", "value_1"}},
+                                                       uploadSuccessCallback,
+                                                       uploadFailureCallback);
+
+            if(localSnapID.has_value()) {
+                std::cout << "Snap with a localID: " << localSnapID.value() << " has been successfully added to the EventsManager" << std::endl;
+            } else {
+                std::cout << "Snap was not successfully added to the EventsManager" << std::endl;
+            }
 
             counter++;
         }

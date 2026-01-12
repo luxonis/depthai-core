@@ -6,15 +6,15 @@ import numpy as np
 
 
 # Callback functions
-def upload_success_callback(send_snap_result):
-    assert (send_snap_result.uploadStatus == dai.SendSnapCallbackStatus.SUCCESS)
-    print(f"Successfully uploaded Snap: ({send_snap_result.snapName}, {send_snap_result.snapTimestamp}, {send_snap_result.snapHubID}) to the hub.")
+def uploadSuccessCallback(sendSnapResult):
+    assert (sendSnapResult.uploadStatus == dai.SendSnapCallbackStatus.SUCCESS)
+    print(f"Successfully uploaded Snap: ({sendSnapResult.snapName}, {sendSnapResult.snapTimestamp}, {sendSnapResult.snapHubID}) to the hub.")
 
-def upload_failure_callback(send_snap_result):
-    assert (send_snap_result.uploadStatus != dai.SendSnapCallbackStatus.SUCCESS)
-    print(f"Upload of Snap: ({send_snap_result.snapName}, {send_snap_result.snapTimestamp}, {send_snap_result.snapLocalID}) to the hub has failed.")
+def uploadFailureCallback(sendSnapResult):
+    assert (sendSnapResult.uploadStatus != dai.SendSnapCallbackStatus.SUCCESS)
+    print(f"Upload of Snap: ({sendSnapResult.snapName}, {sendSnapResult.snapTimestamp}, {sendSnapResult.snapLocalID}) to the hub has failed.")
 
-    status = send_snap_result.uploadStatus
+    status = sendSnapResult.uploadStatus
     if status == dai.SendSnapCallbackStatus.FILE_BATCH_PREPARATION_FAILED:
         print("File batch preparation failed!")
     elif status == dai.SendSnapCallbackStatus.GROUP_CONTAINS_REJECTED_FILES:
@@ -101,7 +101,11 @@ with dai.Pipeline() as pipeline:
 
             fileGroup = dai.FileGroup()
             fileGroup.addImageDetectionsPair(fileName, inRgb, borderDetections)
-            eventMan.sendSnap("LowConfidenceDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"}, 
-                              upload_success_callback, upload_failure_callback)
+            localSnapID = eventMan.sendSnap("LowConfidenceDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"}, 
+                              uploadSuccessCallback, uploadFailureCallback)
+            if localSnapID != None:
+                print(f"Snap with a localID: {localSnapID} has been successfully added to the EventsManager")
+            else:
+                print("Snap was not successfully added to the EventsManager")
 
             counter += 1

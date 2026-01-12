@@ -250,12 +250,13 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
     auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
     sourceAppId = appId == "" ? containerId : appId;
     sourceAppIdentifier = utility::getEnvAs<std::string>("OAKAGENT_APP_IDENTIFIER", "");
-    auto connectedDevice = DeviceBase::getFirstAvailableDevice();
-    if(std::get<0>(connectedDevice)) {
-        sourceSerialNumber = std::get<1>(connectedDevice).getDeviceId();
-    } else {
-        sourceSerialNumber = "";
-    }
+    // auto connectedDevice = DeviceBase::getFirstAvailableDevice();
+    // if(std::get<0>(connectedDevice)) {
+    //     sourceSerialNumber = std::get<1>(connectedDevice).getDeviceId();
+    // } else {
+    //     sourceSerialNumber = "";
+    // }
+    sourceSerialNumber = "";
     url = utility::getEnvAs<std::string>("DEPTHAI_HUB_EVENTS_BASE_URL", "https://events.cloud.luxonis.com");
     token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     // Thread handling preparation and uploads
@@ -701,14 +702,14 @@ void EventsManager::uploadEventBatch() {
     }
 }
 
-bool EventsManager::sendEvent(const std::string& name,
-                              const std::vector<std::string>& tags,
-                              const std::unordered_map<std::string, std::string>& extras,
-                              const std::vector<std::string>& associateFiles) {
+std::optional<std::string> EventsManager::sendEvent(const std::string& name,
+                                                    const std::vector<std::string>& tags,
+                                                    const std::unordered_map<std::string, std::string>& extras,
+                                                    const std::vector<std::string>& associateFiles) {
     // Check if the configuration and limits have already been fetched
     if(!configurationLimitsFetched) {
         logger::error("The configuration and limits have not been successfully fetched, event not sent");
-        return false;
+        return std::nullopt;
     }
 
     // Create an event
@@ -731,28 +732,29 @@ bool EventsManager::sendEvent(const std::string& name,
     }
     if(!validateEvent(*event)) {
         logger::error("Failed to send event, validation failed");
-        return false;
+        return std::nullopt;
     }
 
     // Add event to eventBuffer
     std::lock_guard<std::mutex> lock(eventBufferMutex);
     auto eventData = std::make_unique<EventData>();
-    eventData->localID = generateLocalID(event->created_at());
+    std::string localID = generateLocalID(event->created_at());
+    eventData->localID = localID;
     eventData->event = std::move(event);
     eventBuffer.push_back(std::move(eventData));
-    return true;
+    return localID;
 }
 
-bool EventsManager::sendSnap(const std::string& name,
-                             const std::shared_ptr<FileGroup> fileGroup,
-                             const std::vector<std::string>& tags,
-                             const std::unordered_map<std::string, std::string>& extras,
-                             const std::function<void(SendSnapCallbackResult)> successCallback,
-                             const std::function<void(SendSnapCallbackResult)> failureCallback) {
+std::optional<std::string> EventsManager::sendSnap(const std::string& name,
+                                                   const std::shared_ptr<FileGroup> fileGroup,
+                                                   const std::vector<std::string>& tags,
+                                                   const std::unordered_map<std::string, std::string>& extras,
+                                                   const std::function<void(SendSnapCallbackResult)> successCallback,
+                                                   const std::function<void(SendSnapCallbackResult)> failureCallback) {
     // Check if the configuration and limits have already been fetched
     if(!configurationLimitsFetched) {
         logger::error("The configuration and limits have not been successfully fetched, snap not sent");
-        return false;
+        return std::nullopt;
     }
 
     // Prepare snapData
@@ -764,7 +766,8 @@ bool EventsManager::sendSnap(const std::string& name,
     // Create an event
     snapData->eventData->event = std::make_unique<proto::event::Event>();
     snapData->eventData->event->set_created_at(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
-    snapData->eventData->localID = generateLocalID(snapData->eventData->event->created_at());
+    std::string localID = generateLocalID(snapData->eventData->event->created_at());
+    snapData->eventData->localID = localID;
     snapData->eventData->event->set_name(name);
     snapData->eventData->event->add_tags("snap");
     for(const auto& tag : tags) {
@@ -779,14 +782,14 @@ bool EventsManager::sendSnap(const std::string& name,
     snapData->eventData->event->set_source_app_identifier(sourceAppIdentifier);
     if(!validateEvent(*snapData->eventData->event)) {
         logger::error("Failed to send snap, validation failed");
-        return false;
+        return std::nullopt;
     }
     if(fileGroup->fileData.size() > maxFilesPerGroup) {
         logger::error("Failed to send snap, the number of files in a file group {} exceeds {}", fileGroup->fileData.size(), maxFilesPerGroup);
-        return false;
+        return std::nullopt;
     } else if(fileGroup->fileData.empty()) {
         logger::error("Failed to send snap, the file group is empty");
-        return false;
+        return std::nullopt;
     }
     for(const auto& file : fileGroup->fileData) {
         if(file->size >= maxFileSizeBytes) {
@@ -794,23 +797,23 @@ bool EventsManager::sendSnap(const std::string& name,
                 "Failed to send snap, file: {} is bigger than the current maximum file size limit: {} kB. To increase your maximum file size, contact support.",
                 file->fileName,
                 maxFileSizeBytes / 1024);
-            return false;
+            return std::nullopt;
         }
     }
     // Add the snap to snapBuffer
     std::lock_guard<std::mutex> lock(snapBufferMutex);
     snapBuffer.push_back(std::move(snapData));
-    return true;
+    return localID;
 }
 
-bool EventsManager::sendSnap(const std::string& name,
-                             const std::optional<std::string>& fileName,
-                             const std::shared_ptr<ImgFrame> imgFrame,
-                             const std::optional<std::shared_ptr<ImgDetections>>& imgDetections,
-                             const std::vector<std::string>& tags,
-                             const std::unordered_map<std::string, std::string>& extras,
-                             const std::function<void(SendSnapCallbackResult)> successCallback,
-                             const std::function<void(SendSnapCallbackResult)> failureCallback) {
+std::optional<std::string> EventsManager::sendSnap(const std::string& name,
+                                                   const std::optional<std::string>& fileName,
+                                                   const std::shared_ptr<ImgFrame> imgFrame,
+                                                   const std::optional<std::shared_ptr<ImgDetections>>& imgDetections,
+                                                   const std::vector<std::string>& tags,
+                                                   const std::unordered_map<std::string, std::string>& extras,
+                                                   const std::function<void(SendSnapCallbackResult)> successCallback,
+                                                   const std::function<void(SendSnapCallbackResult)> failureCallback) {
     // Create a FileGroup and send a snap containing it
     auto fileGroup = std::make_shared<dai::utility::FileGroup>();
     if(imgDetections.has_value()) {

@@ -99,12 +99,12 @@ class EventsManager {
      * @param tags List of tags to send
      * @param extras Extra data to send
      * @param associateFiles List of associate files with ids
-     * @return bool
+     * @return LocalID of the sent Event
      */
-    bool sendEvent(const std::string& name,
-                   const std::vector<std::string>& tags = {},
-                   const std::unordered_map<std::string, std::string>& extras = {},
-                   const std::vector<std::string>& associateFiles = {});
+    std::optional<std::string> sendEvent(const std::string& name,
+                                         const std::vector<std::string>& tags = {},
+                                         const std::unordered_map<std::string, std::string>& extras = {},
+                                         const std::vector<std::string>& associateFiles = {});
     /**
      * Send a snap to the events service. Snaps should be used for sending images and other files.
      * @param name Name of the snap
@@ -113,14 +113,14 @@ class EventsManager {
      * @param extras Extra data to send
      * @param successCallback Callback to be called when the snap is successfully uploaded to the hub
      * @param failureCallback Callback to be called if the snap upload is unsuccessful
-     * @return bool
+     * @return LocalID of the sent Snap
      */
-    bool sendSnap(const std::string& name,
-                  const std::shared_ptr<FileGroup> fileGroup,
-                  const std::vector<std::string>& tags = {},
-                  const std::unordered_map<std::string, std::string>& extras = {},
-                  const std::function<void(SendSnapCallbackResult)> successCallback = nullptr,
-                  const std::function<void(SendSnapCallbackResult)> failureCallback = nullptr);
+    std::optional<std::string> sendSnap(const std::string& name,
+                                        const std::shared_ptr<FileGroup> fileGroup,
+                                        const std::vector<std::string>& tags = {},
+                                        const std::unordered_map<std::string, std::string>& extras = {},
+                                        const std::function<void(SendSnapCallbackResult)> successCallback = nullptr,
+                                        const std::function<void(SendSnapCallbackResult)> failureCallback = nullptr);
     /**
      * Send a snap to the events service, with an ImgFrame and ImgDetections pair as files
      * @param name Name of the snap
@@ -131,16 +131,16 @@ class EventsManager {
      * @param extras Extra data to send
      * @param successCallback Callback to be called when the snap is successfully uploaded to the hub
      * @param failureCallback Callback to be called if the snap upload is unsuccessful
-     * @return bool
+     * @return LocalID of the sent Snap
      */
-    bool sendSnap(const std::string& name,
-                  const std::optional<std::string>& fileName,
-                  const std::shared_ptr<ImgFrame> imgFrame,
-                  const std::optional<std::shared_ptr<ImgDetections>>& imgDetections = std::nullopt,
-                  const std::vector<std::string>& tags = {},
-                  const std::unordered_map<std::string, std::string>& extras = {},
-                  const std::function<void(SendSnapCallbackResult)> successCallback = nullptr,
-                  const std::function<void(SendSnapCallbackResult)> failureCallback = nullptr);
+    std::optional<std::string> sendSnap(const std::string& name,
+                                        const std::optional<std::string>& fileName,
+                                        const std::shared_ptr<ImgFrame> imgFrame,
+                                        const std::optional<std::shared_ptr<ImgDetections>>& imgDetections = std::nullopt,
+                                        const std::vector<std::string>& tags = {},
+                                        const std::unordered_map<std::string, std::string>& extras = {},
+                                        const std::function<void(SendSnapCallbackResult)> successCallback = nullptr,
+                                        const std::function<void(SendSnapCallbackResult)> failureCallback = nullptr);
     /**
      * Set the token for the events service. By default, the token is taken from the environment variable DEPTHAI_HUB_API_KEY
      * @param token Token for the events service
