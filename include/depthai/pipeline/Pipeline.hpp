@@ -12,14 +12,18 @@
 #include "AssetManager.hpp"
 #include "DeviceNode.hpp"
 #include "Node.hpp"
+#include "PipelineStateApi.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Device.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 
 // shared
 #include "depthai/device/BoardConfig.hpp"
+#include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
+#include "depthai/pipeline/datatype/PipelineState.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
@@ -31,6 +35,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
     friend class DeviceBase;
+    friend class utility::PipelineImplHelper;
 
    public:
     PipelineImpl(Pipeline& pipeline, bool createImplicitDevice = true) : assetManager("/pipeline/"), parent(pipeline) {
@@ -45,6 +50,28 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl& operator=(PipelineImpl&&) = delete;
     ~PipelineImpl();
 
+   protected:
+    // Record and Replay
+    RecordConfig recordConfig;
+    bool enableHolisticRecordReplay = false;
+    std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
+    bool removeRecordReplayFiles = true;
+    std::string defaultDeviceId;
+    // Is the pipeline building on host? Some steps should be skipped when building on device
+    bool buildingOnHost = true;
+
+    // Pipeline events
+    bool enablePipelineDebugging = false;
+    std::shared_ptr<MessageQueue> pipelineStateOut;
+    std::shared_ptr<InputQueue> pipelineStateRequest;
+    std::shared_ptr<MessageQueue> pipelineStateTraceOut;
+    std::shared_ptr<InputQueue> pipelineStateTraceRequest;
+
+    // Access to nodes
+    std::vector<std::shared_ptr<Node>> getAllNodes() const;
+    std::shared_ptr<Node> getNode(Node::Id id) const;
+    std::vector<std::shared_ptr<Node>> getSourceNodes();
+
    private:
     // static functions
     static bool isSamePipeline(const Node::Output& out, const Node::Input& in);
@@ -52,7 +79,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Functions
     Node::Id getNextUniqueId();
-    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
+    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const fs::path& path);
     void setXLinkChunkSize(int sizeBytes);
@@ -62,11 +90,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
     BoardConfig getBoardConfig() const;
-
-    // Access to nodes
-    std::vector<std::shared_ptr<Node>> getAllNodes() const;
-    std::shared_ptr<Node> getNode(Node::Id id) const;
-    std::vector<std::shared_ptr<Node>> getSourceNodes();
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson(bool includeAssets) const;
@@ -85,6 +108,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool isHostOnly() const;
     bool isDeviceOnly() const;
 
+    // Pipeline state getters
+    PipelineStateApi getPipelineState();
+
     // Must be incremented and unique for each node
     Node::Id latestId = 0;
     // Pipeline asset manager
@@ -97,6 +123,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
     // NodeMap nodeMap;
     std::vector<std::shared_ptr<Node>> nodes;
+    std::vector<std::pair<int64_t, int64_t>> xlinkBridges;
 
     // TODO(themarpe) - refactor, connections are now carried by nodes instead
     using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::ConnectionInternal, Node::ConnectionInternal::Hash>>;
@@ -107,13 +134,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Board configuration
     BoardConfig board;
-
-    // Record and Replay
-    RecordConfig recordConfig;
-    bool enableHolisticRecordReplay = false;
-    std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
-    bool removeRecordReplayFiles = true;
-    std::string defaultDeviceId;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
@@ -288,7 +308,12 @@ class Pipeline {
     /**
      * @returns Pipeline schema
      */
-    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
+
+    /**
+     * @returns Device pipeline schema (without host only nodes and connections)
+     */
+    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
 
     // void loadAssets(AssetManager& assetManager);
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
@@ -477,6 +502,10 @@ class Pipeline {
     void build() {
         impl()->build();
     }
+    void buildDevice() {
+        impl()->buildingOnHost = false;
+        impl()->build();
+    }
     void start() {
         impl()->start();
     }
@@ -506,6 +535,16 @@ class Pipeline {
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
+
+    /// Pipeline debugging
+    void enablePipelineDebugging(bool enable = true);
+
+    // Access to pipeline state queues
+    std::shared_ptr<MessageQueue> getPipelineStateOut() const;
+    std::shared_ptr<InputQueue> getPipelineStateRequest() const;
+
+    // Pipeline state getters
+    PipelineStateApi getPipelineState();
 };
 
 }  // namespace dai

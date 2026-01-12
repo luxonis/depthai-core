@@ -4,10 +4,6 @@
 #include "depthai/utility/CompilerWarnings.hpp"
 
 void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::ProcessorType backend = dai::ProcessorType::CPU) {
-    using namespace std;
-    using namespace std::chrono;
-    using namespace std::chrono_literals;
-
     dai::Pipeline p;
     auto left = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto right = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
@@ -31,12 +27,12 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::Proce
     }
 }
 
-TEST_CASE("Test StereoDepth node FAST_ACCURACY preset") {
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::FAST_ACCURACY);
+TEST_CASE("Test StereoDepth node ACCURACY preset") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::ACCURACY);
 }
 
-TEST_CASE("Test StereoDepth node FAST_DENSITY preset") {
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::FAST_DENSITY);
+TEST_CASE("Test StereoDepth node DENSITY preset") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::DENSITY);
 }
 
 TEST_CASE("Test StereoDepth node DEFAULT preset") {
@@ -61,4 +57,52 @@ TEST_CASE("Test StereoDepth node CPU backend") {
 
 TEST_CASE("Test StereoDepth node DSP backend") {
     testStereoDepthPreset(dai::node::StereoDepth::PresetMode::DEFAULT, dai::ProcessorType::DSP);
+}
+
+TEST_CASE("StereoDepth running while repeatedly setting calibration does not crash device") {
+    dai::Pipeline pipeline;
+
+    auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+
+    auto monoLeftOut = monoLeft->requestFullResolutionOutput();
+    auto monoRightOut = monoRight->requestFullResolutionOutput();
+
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    monoLeftOut->link(stereo->left);
+    monoRightOut->link(stereo->right);
+
+    auto syncedLeftQueue = stereo->syncedLeft.createOutputQueue();
+    auto disparityQueue = stereo->disparity.createOutputQueue();
+
+    pipeline.start();
+
+    constexpr int kNumFrames = 20;
+    int receivedFrames = 0;
+
+    for(int i = 0; i < kNumFrames; ++i) {
+        if(!pipeline.isRunning()) {
+        }
+
+        std::shared_ptr<dai::ImgFrame> leftFrame;
+        auto disparity = disparityQueue->get<dai::ImgFrame>();
+        try {
+            leftFrame = syncedLeftQueue->get<dai::ImgFrame>();
+        } catch(const std::exception& e) {
+            FAIL(std::string("Failed to get syncedLeft frame: ") + e.what());
+        }
+
+        REQUIRE(leftFrame != nullptr);
+
+        // This is the line that crashes in Python
+        try {
+            pipeline.getDefaultDevice()->setCalibration(pipeline.getDefaultDevice()->readCalibration());
+        } catch(const std::exception& e) {
+            FAIL(std::string("setCalibration() threw exception: ") + e.what());
+        }
+
+        receivedFrames++;
+    }
+
+    REQUIRE(receivedFrames == kNumFrames);
 }

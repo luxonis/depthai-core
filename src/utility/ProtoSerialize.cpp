@@ -149,7 +149,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ImgDetections:
         case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::SystemInformation:
-        case DatatypeEnum::SystemInformationS3:
+        case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
@@ -172,10 +172,14 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
+        case DatatypeEnum::VppConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CoverageData:
+        case DatatypeEnum::PipelineEvent:
+        case DatatypeEnum::PipelineState:
+        case DatatypeEnum::PipelineEventAggregationConfig:
             return false;
     }
     return false;
@@ -336,6 +340,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
                 coords->set_z(keypoint.imageCoordinates.z);
                 protoKeypoint->set_confidence(keypoint.confidence);
                 protoKeypoint->set_label(keypoint.label);
+                protoKeypoint->set_labelname(keypoint.labelName);
 
                 auto* spatialCoords = protoKeypoint->mutable_spatialcoordinates();
                 spatialCoords->set_x(keypoint.spatialCoordinates.x);
@@ -478,6 +483,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
                 coords->set_z(keypoint.imageCoordinates.z);
                 protoKeypoint->set_confidence(keypoint.confidence);
                 protoKeypoint->set_label(keypoint.label);
+                protoKeypoint->set_labelname(keypoint.labelName);
             }
             for(const auto& edge : edgesVec) {
                 auto* protoEdge = protoKeypoints->add_edges();

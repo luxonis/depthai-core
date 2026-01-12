@@ -56,10 +56,12 @@ void SpatialLocationCalculator::run() {
 
         imgFrame = inputDepth.get<dai::ImgFrame>();
         if(imgFrame == nullptr) {
-            logger->critical("Invalid input depth.");
+            logger->warn("Invalid input depth. Skipping frame.");
+            continue;
         }
         if(imgFrame->getType() != dai::ImgFrame::Type::RAW16) {
-            logger->critical("Invalid frame type for depth image. Depth image must be RAW16 type, got {}", static_cast<int>(imgFrame->getType()));
+            logger->warn("Invalid frame type for depth image. Depth image must be RAW16 type, got {}", static_cast<int>(imgFrame->getType()));
+            continue;
         }
         auto tAfterMessageBeginning = steady_clock::now();
 
@@ -93,11 +95,11 @@ void SpatialLocationCalculator::run() {
                 auto stop = high_resolution_clock::now();
                 auto timeToComputeSpatialDetections = duration_cast<microseconds>(stop - start);
                 logger->trace("Time to compute spatial detections: {} us", timeToComputeSpatialDetections.count());
+                outputSpatialImgDetections->setSequenceNum(imgDetections->getSequenceNum());
+                outputSpatialImgDetections->setTimestampDevice(imgDetections->getTimestampDevice());
+                outputSpatialImgDetections->setTimestamp(imgDetections->getTimestamp());
+                outputSpatialImgDetections->transformation = imgDetections->transformation;
             }
-            outputSpatialImgDetections->setSequenceNum(imgDetections->getSequenceNum());
-            outputSpatialImgDetections->setTimestampDevice(imgDetections->getTimestampDevice());
-            outputSpatialImgDetections->setTimestamp(imgDetections->getTimestamp());
-            outputSpatialImgDetections->transformation = imgDetections->transformation;
         }
 
         auto tBeforeSend = steady_clock::now();

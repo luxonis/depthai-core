@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <csignal>
 #include <cstddef>
 #include <memory>
 #include <vector>
@@ -125,6 +126,22 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         if(head.metadata.nKeypoints) {
             properties.parser.decodeKeypoints = true;
             properties.parser.nKeypoints = head.metadata.nKeypoints;
+        }
+
+        const auto keypointNamesIt = head.metadata.extraParams.find("keypoint_label_names");
+        if(keypointNamesIt != head.metadata.extraParams.end() && keypointNamesIt->is_array() && !keypointNamesIt->empty()) {
+            pimpl->logger->debug("Found keypoint_label_names in extraParams");
+            std::vector<std::string> keypointLabelNames;
+            for(const auto& labelName : *keypointNamesIt) {
+                if(labelName.is_string()) {
+                    keypointLabelNames.emplace_back(labelName.get<std::string>());
+                } else {
+                    throw std::runtime_error("Non-string value found in keypoint_label_names array. keypoint_label_names should be an array of only strings.");
+                }
+            }
+            properties.parser.nKeypoints = static_cast<int>(keypointLabelNames.size());  // prefer keypoint label names size
+            properties.parser.decodeKeypoints = true;
+            properties.parser.keypointLabelNames = keypointLabelNames;
         }
 
         if(head.metadata.yoloOutputs) {
@@ -417,9 +434,13 @@ void DetectionParser::run() {
     logger->info("Detection parser running on host.");
 
     using namespace std::chrono;
-    while(isRunning()) {
+    while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
-        std::shared_ptr<dai::NNData> sharedInputData = input.get<dai::NNData>();
+        std::shared_ptr<dai::NNData> sharedInputData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            sharedInputData = input.get<dai::NNData>();
+        }
         auto outDetections = std::make_shared<dai::ImgDetections>();
 
         if(!sharedInputData) {
@@ -465,8 +486,11 @@ void DetectionParser::run() {
         outDetections->setTimestampDevice(inputData.getTimestampDevice());
         outDetections->transformation = inputData.transformation;
 
-        // Send detections
-        out.send(outDetections);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            // Send detections
+            out.send(outDetections);
+        }
 
         auto tAbsoluteEnd = steady_clock::now();
         logger->debug("Detection parser total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",

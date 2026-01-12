@@ -45,7 +45,6 @@ WarningsAsErrors: >
   bugprone-unchecked-optional-access,
 
 HeaderFilterRegex: 'core/.*\.hpp'
-AnalyzeTemporaryDtors: false
 FormatStyle:     .clang-format
 User:            user
 CheckOptions:

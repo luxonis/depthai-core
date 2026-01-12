@@ -81,6 +81,7 @@ message Keypoint {
     Point3f imageCoordinates = 1;
     float confidence = 2;
     uint32 label = 3;
+    string labelName = 4;
 }
 
 message Edge {
@@ -97,6 +98,7 @@ message SpatialKeypoint {
     Point3f imageCoordinates = 1;
     float confidence = 2;
     uint32 label = 3;
-    Point3f spatialCoordinates = 4;
+    string labelName = 4;
+    Point3f spatialCoordinates = 5;
 }
 

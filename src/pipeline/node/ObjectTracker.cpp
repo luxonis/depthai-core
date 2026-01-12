@@ -98,38 +98,42 @@ void ObjectTracker::run() {
 
     impl::OCSTracker tracker(properties);
 
-    while(isRunning()) {
+    while(mainLoop()) {
         std::shared_ptr<ImgFrame> inputTrackerImg;
         std::shared_ptr<ImgFrame> inputDetectionImg;
         std::shared_ptr<ImgDetections> inputImgDetections;
         std::shared_ptr<SpatialImgDetections> inputSpatialImgDetections;
         std::shared_ptr<ObjectTrackerConfig> inputCfg;
 
-        inputTrackerImg = inputTrackerFrame.get<ImgFrame>();
-
         bool gotDetections = false;
-        auto detectionsBuffer = inputDetections.get<Buffer>();
-        inputImgDetections = std::dynamic_pointer_cast<ImgDetections>(detectionsBuffer);
-        inputSpatialImgDetections = std::dynamic_pointer_cast<SpatialImgDetections>(detectionsBuffer);
-        if(inputImgDetections) {
-            gotDetections = true;
-            if(!inputImgDetections->transformation.has_value()) {
-                logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
-                inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
+        {
+            auto blockEvent = this->inputBlockEvent();
+
+            inputTrackerImg = inputTrackerFrame.get<ImgFrame>();
+
+            auto detectionsBuffer = inputDetections.get<Buffer>();
+            inputImgDetections = std::dynamic_pointer_cast<ImgDetections>(detectionsBuffer);
+            inputSpatialImgDetections = std::dynamic_pointer_cast<SpatialImgDetections>(detectionsBuffer);
+            if(inputImgDetections) {
+                gotDetections = true;
+                if(!inputImgDetections->transformation.has_value()) {
+                    logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
+                    inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
+                }
+            } else if(inputSpatialImgDetections) {
+                gotDetections = true;
+                if(!inputSpatialImgDetections->transformation.has_value()) {
+                    logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
+                    inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
+                }
+            } else {
+                logger->error("Input detections is not of type ImgDetections or SpatialImgDetections, skipping tracking");
             }
-        } else if(inputSpatialImgDetections) {
-            gotDetections = true;
-            if(!inputSpatialImgDetections->transformation.has_value()) {
-                logger->debug("Transformation is not set for input detections, inputDetectionFrame is required");
-                inputDetectionImg = inputDetectionFrame.get<ImgFrame>();
+            if(inputConfig.getWaitForMessage()) {
+                inputCfg = inputConfig.get<ObjectTrackerConfig>();
+            } else {
+                inputCfg = inputConfig.tryGet<ObjectTrackerConfig>();
             }
-        } else {
-            logger->error("Input detections is not of type ImgDetections or SpatialImgDetections, skipping tracking");
-        }
-        if(inputConfig.getWaitForMessage()) {
-            inputCfg = inputConfig.get<ObjectTrackerConfig>();
-        } else {
-            inputCfg = inputConfig.tryGet<ObjectTrackerConfig>();
         }
 
         if(inputCfg) {
@@ -200,13 +204,17 @@ void ObjectTracker::run() {
         }
         trackletsMsg->transformation = inputTrackerImg->transformation;
 
-        out.send(trackletsMsg);
-        passthroughTrackerFrame.send(inputTrackerImg);
-        if(gotDetections) {
-            passthroughDetections.send(inputImgDetections ? std::dynamic_pointer_cast<Buffer>(inputImgDetections)
-                                                          : std::dynamic_pointer_cast<Buffer>(inputSpatialImgDetections));
-            if(inputDetectionImg) {
-                passthroughDetectionFrame.send(inputDetectionImg);
+        {
+            auto blockEvent = this->outputBlockEvent();
+
+            out.send(trackletsMsg);
+            passthroughTrackerFrame.send(inputTrackerImg);
+            if(gotDetections) {
+                passthroughDetections.send(inputImgDetections ? std::dynamic_pointer_cast<Buffer>(inputImgDetections)
+                                                              : std::dynamic_pointer_cast<Buffer>(inputSpatialImgDetections));
+                if(inputDetectionImg) {
+                    passthroughDetectionFrame.send(inputDetectionImg);
+                }
             }
         }
     }

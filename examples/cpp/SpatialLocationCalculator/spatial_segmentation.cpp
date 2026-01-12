@@ -38,10 +38,7 @@ int main() {
         monoRight->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
 
         auto stereo = pipeline.create<dai::node::StereoDepth>();
-        stereo->setSubpixel(false);
-        stereo->setRectification(true);
-        stereo->setExtendedDisparity(true);
-        stereo->setLeftRightCheck(true);
+
         monoLeft->requestFullResolutionOutput()->link(stereo->left);
         monoRight->requestFullResolutionOutput()->link(stereo->right);
 
