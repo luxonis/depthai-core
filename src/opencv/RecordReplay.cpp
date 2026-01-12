@@ -161,6 +161,7 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
                         sampleNals.push_back(nalData);
                         break;
                     case NALU::INVALID:
+                    default:
                         break;
                 }
                 nal = nals.next();
