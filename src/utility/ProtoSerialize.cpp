@@ -149,7 +149,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ImgDetections:
         case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::SystemInformation:
-        case DatatypeEnum::SystemInformationS3:
+        case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
@@ -482,6 +482,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
                 coords->set_z(keypoint.imageCoordinates.z);
                 protoKeypoint->set_confidence(keypoint.confidence);
                 protoKeypoint->set_label(keypoint.label);
+                protoKeypoint->set_labelname(keypoint.labelName);
             }
             for(const auto& edge : edgesVec) {
                 auto* protoEdge = protoKeypoints->add_edges();

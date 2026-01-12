@@ -665,6 +665,10 @@ endif()
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
 dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
+# SystemLogger test
+dai_add_test(system_logger_test src/ondevice_tests/pipeline/node/system_logger_test.cpp)
+dai_set_test_labels(system_logger_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
 # Manual focus test
 dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
 dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci)
@@ -721,3 +725,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         NEURAL_CALIBRATION_PATH="${test_calib}"
     )
 endif()
+
+# NeuralAssistedStereo test
+dai_add_test(neural_assisted_stereo_node_test src/ondevice_tests/pipeline/node/neural_assisted_stereo_node_test.cpp)
+dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)

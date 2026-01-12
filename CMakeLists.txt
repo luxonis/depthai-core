@@ -328,6 +328,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
+    src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
@@ -343,7 +344,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
-    src/pipeline/datatype/SystemInformationS3.cpp
+    src/pipeline/datatype/SystemInformationRVC4.cpp
     src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
