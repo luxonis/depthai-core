@@ -432,6 +432,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
                 coords->set_z(keypoint.imageCoordinates.z);
                 protoKeypoint->set_confidence(keypoint.confidence);
                 protoKeypoint->set_label(keypoint.label);
+                protoKeypoint->set_labelname(keypoint.labelName);
             }
             for(const auto& edge : edgesVec) {
                 auto* protoEdge = protoKeypoints->add_edges();

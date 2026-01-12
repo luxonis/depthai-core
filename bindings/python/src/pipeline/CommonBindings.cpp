@@ -123,7 +123,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, Keypoint, Keypoint))
         .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates, DOC(dai, Keypoint, imageCoordinates))
         .def_readwrite("confidence", &Keypoint::confidence, DOC(dai, Keypoint, confidence))
-        .def_readwrite("label", &Keypoint::label, DOC(dai, Keypoint, label));
+        .def_readwrite("label", &Keypoint::label, DOC(dai, Keypoint, label))
+        .def_readwrite("labelName", &Keypoint::labelName, DOC(dai, Keypoint, labelName));
 
     keypointsList.def(py::init<>())
         .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))

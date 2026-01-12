@@ -38,6 +38,7 @@ struct DetectionParserOptions {
     std::vector<std::vector<std::vector<float>>> anchorsV2;
     float iouThreshold;
     std::vector<dai::Edge> keypointEdges;
+    std::vector<std::string> keypointLabelNames;
 };
 
 DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
@@ -57,6 +58,7 @@ DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
                       outputNamesToUse,
                       anchorsV2,
                       iouThreshold,
-                      keypointEdges);
+                      keypointEdges,
+                    keypointLabelNames);
 
 }  // namespace dai

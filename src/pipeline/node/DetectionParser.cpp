@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -121,6 +122,22 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
         if(head.metadata.nKeypoints) {
             properties.parser.decodeKeypoints = true;
             properties.parser.nKeypoints = head.metadata.nKeypoints;
+        }
+
+        const auto keypointNamesIt = head.metadata.extraParams.find("keypoint_label_names");
+        if(keypointNamesIt != head.metadata.extraParams.end() && keypointNamesIt->is_array() && !keypointNamesIt->empty()) {
+            pimpl->logger->debug("Found keypoint_label_names in extraParams");
+            std::vector<std::string> keypointLabelNames;
+            for(const auto& labelName : *keypointNamesIt) {
+                if(labelName.is_string()) {
+                    keypointLabelNames.emplace_back(labelName.get<std::string>());
+                } else {
+                    throw std::runtime_error("Non-string value found in keypoint_label_names array. keypoint_label_names should be an array of only strings.");
+                }
+            }
+            properties.parser.nKeypoints = static_cast<int>(keypointLabelNames.size());  // prefer keypoint label names size
+            properties.parser.decodeKeypoints = true;
+            properties.parser.keypointLabelNames = keypointLabelNames;
         }
 
         if(head.metadata.yoloOutputs) {
