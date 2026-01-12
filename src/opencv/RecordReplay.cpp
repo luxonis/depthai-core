@@ -132,15 +132,8 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
                 switch(nal->type) {
                     case NALU::SPS:
                         if(mp4Track == MP4_INVALID_TRACK_ID && nalData.size() >= 4) {
-                            mp4Track = MP4AddH264VideoTrack(mp4Writer,
-                                                            MP4V2_TIMESCALE,
-                                                            MP4V2_TIMESCALE / fps,
-                                                            width,
-                                                            height,
-                                                            nalData[1],
-                                                            nalData[2],
-                                                            nalData[3],
-                                                            3);
+                            mp4Track =
+                                MP4AddH264VideoTrack(mp4Writer, MP4V2_TIMESCALE, MP4V2_TIMESCALE / fps, width, height, nalData[1], nalData[2], nalData[3], 3);
                             assert(mp4Track != MP4_INVALID_TRACK_ID);
                             MP4SetVideoProfileLevel(mp4Writer, 0x7F);
                         }
@@ -189,13 +182,7 @@ void VideoRecorder::write(span<uint8_t>& data, const uint32_t stride) {
                 sampleData.insert(sampleData.end(), n.begin(), n.end());
             }
 
-            if(!MP4WriteSample(mp4Writer,
-                               mp4Track,
-                               sampleData.data(),
-                               sampleData.size(),
-                               MP4V2_TIMESCALE / fps,
-                               0,
-                               isSyncSample)) {
+            if(!MP4WriteSample(mp4Writer, mp4Track, sampleData.data(), sampleData.size(), MP4V2_TIMESCALE / fps, 0, isSyncSample)) {
                 spdlog::warn("Failed to write sample to MP4 file");
             }
             break;
