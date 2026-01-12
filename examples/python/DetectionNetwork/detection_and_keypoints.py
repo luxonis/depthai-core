@@ -5,10 +5,17 @@ import depthai as dai
 import numpy as np
 import time
 
+device = dai.Device()
+fps = 30
+model_name = "luxonis/yolov8-large-pose-estimation:coco-640x352"
+if device.getPlatform() == dai.Platform.RVC2:
+    model_name = "luxonis/yolov8-nano-pose-estimation:coco-512x288"
+    fps = 12
+
 # Create pipeline
-with dai.Pipeline() as pipeline:
-    cameraNode = pipeline.create(dai.node.Camera).build(sensorFps=12)
-    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("luxonis/yolov8-nano-pose-estimation:coco-512x288"))
+with dai.Pipeline(device) as pipeline:
+    cameraNode = pipeline.create(dai.node.Camera).build(sensorFps=fps)
+    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription(model_name))
     labelMap = detectionNetwork.getClasses()
 
     qRgb = detectionNetwork.passthrough.createOutputQueue()

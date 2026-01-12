@@ -1,5 +1,6 @@
 #include <chrono>
 #include <iostream>
+#include <memory>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
@@ -12,7 +13,8 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
 
 int main() {
     // Create pipeline
-    dai::Pipeline pipeline;
+    std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
+    dai::Pipeline pipeline{device};
 
     // Create and configure camera node
     auto cameraNode = pipeline.create<dai::node::Camera>();
@@ -22,7 +24,8 @@ int main() {
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
 
     dai::NNModelDescription modelDescription;
-    modelDescription.model = "luxonis/yolov8-nano-pose-estimation:coco-512x288";
+    modelDescription.model = "luxonis/yolov8-large-pose-estimation:coco-640x352";
+    if(device->getPlatform() == dai::Platform::RVC2) modelDescription.model = "luxonis/yolov8-nano-pose-estimation:coco-512x288";
     detectionNetwork->build(cameraNode, modelDescription);
 
     // Create output queues
@@ -77,6 +80,14 @@ int main() {
                 for(auto kp : detection.getKeypoints()) {
                     auto keypointPos = cv::Point(static_cast<int>(kp.imageCoordinates.x * frameWidth), static_cast<int>(kp.imageCoordinates.y * frameHeight));
                     cv::circle(frame, keypointPos, 3, cv::Scalar(0, 255, 0), -1);
+                    if(kp.labelName != "") {
+                        cv::putText(frame,
+                                    kp.labelName,
+                                    cv::Point(keypointPos.x + 5, keypointPos.y + 5),
+                                    cv::FONT_HERSHEY_TRIPLEX,
+                                    0.4,
+                                    cv::Scalar(0, 255, 0));
+                    }
                 }
                 auto keypoints = detection.keypoints->getPoints2f();
                 for(auto edge : detection.getEdges()) {

@@ -37,8 +37,8 @@ struct DetectionParserOptions {
     /// see YoloDetectionNetwork::setAnchors() for format
     std::vector<std::vector<std::vector<float>>> anchorsV2;
     float iouThreshold;
-    std::vector<dai::Edge> keypointEdges;
-    std::vector<std::string> keypointLabelNames;
+    std::vector<dai::Edge> keypointEdges = {};
+    std::vector<std::string> keypointLabelNames = {};
 };
 
 DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
