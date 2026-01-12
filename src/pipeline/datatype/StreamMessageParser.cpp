@@ -67,8 +67,9 @@ namespace dai {
 static constexpr std::array<uint8_t, 16> endOfPacketMarker = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0};
 
 // Reads int from little endian format
-inline int readIntLE(uint8_t* data) {
-    return data[0] + data[1] * 256 + data[2] * 256 * 256 + data[3] * 256 * 256 * 256;
+inline int readIntLE(const uint8_t* data) {
+    return static_cast<int>(static_cast<uint32_t>(data[0]) | (static_cast<uint32_t>(data[1]) << 8) | (static_cast<uint32_t>(data[2]) << 16)
+                            | (static_cast<uint32_t>(data[3]) << 24));
 }
 
 template <class T>
