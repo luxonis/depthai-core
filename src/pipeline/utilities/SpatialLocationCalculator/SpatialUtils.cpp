@@ -8,11 +8,13 @@
 #include <stdexcept>
 #include <vector>
 
+#include "common/Keypoint.hpp"
 #include "common/Point2f.hpp"
 #include "common/RotatedRect.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
+#include "pipeline/datatype/SpatialImgDetections.hpp"
 
 namespace dai {
 namespace utilities {
@@ -157,6 +159,25 @@ static inline int getStepSize(int stepSize, SpatialLocationCalculatorAlgorithm a
     return stepSize;
 }
 
+dai::SpatialKeypoint createSpatialKeypoint(const dai::Keypoint& keypoint, const dai::Point3f& spatialCoordinates) {
+    dai::SpatialKeypoint spatialKeypoint;
+    spatialKeypoint.imageCoordinates = keypoint.imageCoordinates;
+    spatialKeypoint.confidence = keypoint.confidence;
+    spatialKeypoint.label = keypoint.label;
+    spatialKeypoint.labelName = keypoint.labelName;
+    spatialKeypoint.spatialCoordinates = spatialCoordinates;
+    return spatialKeypoint;
+}
+
+dai::SpatialImgDetection createSpatialDetection(const dai::ImgDetection& detection) {
+    dai::SpatialImgDetection spatialDetection;
+    spatialDetection.setBoundingBox(detection.getBoundingBox());
+    spatialDetection.label = detection.label;
+    spatialDetection.labelName = detection.labelName;
+    spatialDetection.confidence = detection.confidence;
+    return spatialDetection;
+}
+
 void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
                         const std::vector<dai::SpatialLocationCalculatorConfigData>& configDataVec,
                         std::vector<dai::SpatialLocations>& spatialLocations,
@@ -298,6 +319,32 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
         maskPtr = maskSpan.data();
     }
 
+    auto updateDepthStats =
+        [detectionsTransformation, depthTransformation, useSegmentation, areAligned, maskPtr, segmentationMaskWidth, segmentationMaskHeight](
+            bool usePixel, uint16_t px, dai::Point2f maskPoint, int instanceIdx, DepthStats& depthStats) {
+            if(useSegmentation) {
+                if(!areAligned) {  // Possible optimization: internally remap entire mask at once instead of per-point
+                    maskPoint = depthTransformation->remapPointTo(*detectionsTransformation, maskPoint);
+                    maskPoint = clampPoint(maskPoint, segmentationMaskWidth - 1, segmentationMaskHeight - 1);
+                }
+                int maskIndex = static_cast<int>(maskPoint.y) * segmentationMaskWidth + static_cast<int>(maskPoint.x);
+                usePixel = (maskPtr) ? (maskPtr[maskIndex] == instanceIdx) : true;
+            }
+
+            if(usePixel) {
+                depthStats.addPixel(px);
+            }
+        };
+
+    auto createSpatialCoordinates = [detectionsTransformation, depthTransformation, areAligned, calculationAlgorithm](dai::Point2f point,
+                                                                                                                      DepthStats depthStats) -> dai::Point3f {
+        float z = depthStats.calculateDepth(calculationAlgorithm);
+        if(!areAligned) {
+            point = depthTransformation->remapPointFrom(*detectionsTransformation, point);
+        }
+        return calculateSpatialCoordinates(z, detectionsTransformation->getIntrinsicMatrix(), point);
+    };
+
     const uint16_t* plane = (uint16_t*)depthFrame.data->getData().data();
 
     for(int i = 0; i < static_cast<int>(imgDetectionsVector.size()); i++) {
@@ -319,25 +366,11 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
             for(int x = xstart; x < xend; x += stepSize) {
                 int index = y * depthWidth + x;
                 uint16_t px = plane[index];
-
-                bool usePixel = true;
-                if(useSegmentation) {
-                    dai::Point2f maskPoint{static_cast<float>(x), static_cast<float>(y)};
-                    if(!areAligned) {
-                        maskPoint = depthTransformation->remapPointTo(*detectionsTransformation, maskPoint);
-                        maskPoint = clampPoint(maskPoint, segmentationMaskWidth - 1, segmentationMaskHeight - 1);
-                    }
-                    int maskIndex = static_cast<int>(maskPoint.y) * segmentationMaskWidth + static_cast<int>(maskPoint.x);
-                    usePixel = (maskPtr) ? (maskPtr[maskIndex] == i) : true;
-                }
-
-                if(usePixel) {
-                    depthStats.addPixel(px);
-                }
+                updateDepthStats(true, px, dai::Point2f{static_cast<float>(x), static_cast<float>(y)}, i, depthStats);
             }
         }
 
-        dai::SpatialImgDetection spatialDetection;
+        dai::SpatialImgDetection spatialDetection = createSpatialDetection(detection);
         if(calculateSpatialKeypoints) {
             std::vector<dai::SpatialKeypoint> spatialKeypoints;
             for(auto kp : detection.getKeypoints()) {
@@ -358,52 +391,19 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                         uint16_t px = plane[index];
 
                         bool usePixel = (std::hypot(kpx - kx, kpy - ky) <= keypointRadius);
-                        if(usePixel && useSegmentation) {
-                            dai::Point2f maskKpPoint{static_cast<float>(kx), static_cast<float>(ky)};
-                            if(!areAligned) {
-                                maskKpPoint = depthTransformation->remapPointTo(*detectionsTransformation, maskKpPoint);
-                                maskKpPoint = clampPoint(maskKpPoint, segmentationMaskWidth - 1, segmentationMaskHeight - 1);
-                            }
-                            int maskIndex = static_cast<int>(maskKpPoint.y) * segmentationMaskWidth + static_cast<int>(maskKpPoint.x);
-                            usePixel = (maskPtr) ? (maskPtr[maskIndex] == i) : true;
-                        }
-                        if(usePixel) {
-                            kpDepthStats.addPixel(px);
-                        }
+                        updateDepthStats(usePixel, px, dai::Point2f{static_cast<float>(kx), static_cast<float>(ky)}, i, kpDepthStats);
                     }
                 }
 
-                float kpZ = kpDepthStats.calculateDepth(calculationAlgorithm);
-                dai::Point2f kpPointCoordinates{kpx, kpy};
-                if(!areAligned) {
-                    kpPointCoordinates = depthTransformation->remapPointFrom(*detectionsTransformation, kpPointCoordinates);
-                }
-                dai::Point3f spatialCoordinates = calculateSpatialCoordinates(kpZ, detectionsTransformation->getIntrinsicMatrix(), kpPointCoordinates);
-
-                dai::SpatialKeypoint spatialKp;
-                spatialKp.imageCoordinates = kp.imageCoordinates;
-                spatialKp.confidence = kp.confidence;
-                spatialKp.label = kp.label;
-                spatialKp.spatialCoordinates = spatialCoordinates;
-
-                spatialKeypoints.push_back(spatialKp);
+                dai::Point3f spatialCoordinates = createSpatialCoordinates(dai::Point2f{kpx, kpy}, kpDepthStats);
+                spatialKeypoints.push_back(createSpatialKeypoint(kp, spatialCoordinates));
             }
             spatialDetection.setKeypoints(spatialKeypoints);
         }
 
-        float z = depthStats.calculateDepth(calculationAlgorithm);
-        spatialDetection.setBoundingBox(detectionBoundingBox);
-        spatialDetection.label = detection.label;
-        spatialDetection.confidence = detection.confidence;
-        spatialDetection.labelName = detection.labelName;
-
-        // Remap back to original detection coordinates
-        if(!areAligned) denormalizedRect = depthTransformation->remapRectTo(*detectionsTransformation, denormalizedRect);
-
-        dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, detectionsTransformation->getIntrinsicMatrix(), denormalizedRect.center);
-        logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
-
+        dai::Point3f spatialCoordinates = createSpatialCoordinates(denormalizedRect.center, depthStats);
         spatialDetection.spatialCoordinates = spatialCoordinates;
+        logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
         SpatialLocationCalculatorConfigData boundingBoxMapping;
         boundingBoxMapping.depthThresholds.lowerThreshold = lowerThreshold;
