@@ -11,6 +11,13 @@ if device.getPlatform() == dai.Platform.RVC2:
     setRunOnHost = True
     fps = 10
 
+def addTopPanel(image: np.ndarray, useSegmentation: bool) -> np.ndarray:
+    topPanel = np.ones((100, image.shape[1], 3), dtype=np.uint8) * 255
+    cv2.putText(topPanel, "Press 's' to toggle setUseSegmentation", (10, 30), cv2.FONT_HERSHEY_TRIPLEX, 0.7, (0, 0, 0), 1)
+    cv2.putText(topPanel, f"Current setUseSegmentation: {useSegmentation}", (10, 60), cv2.FONT_HERSHEY_TRIPLEX, 0.7, (0, 0, 0), 1)
+    concatenatedFrame = cv2.vconcat([topPanel, image])
+    return concatenatedFrame
+
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
@@ -85,10 +92,7 @@ with dai.Pipeline(device) as pipeline:
                 text = f"X: {int(depth_coordinate.x / 10 )} cm, Y: {int(depth_coordinate.y / 10)} cm, Z: {int(depth / 10)} cm"
                 cv2.putText(image, text, outerPoints[0], cv2.FONT_HERSHEY_PLAIN, 1, (232,36,87), 2)
 
-        topPanel = np.ones((100, image.shape[1], 3), dtype=np.uint8) * 255
-        cv2.putText(topPanel, "Press 's' to toggle setUseSegmentation", (10, 30), cv2.FONT_HERSHEY_TRIPLEX, 0.7, (0, 0, 0), 1)
-        cv2.putText(topPanel, f"Current setUseSegmentation: {calculatorConfig.getUseSegmentation()}", (10, 60), cv2.FONT_HERSHEY_TRIPLEX, 0.7, (0, 0, 0), 1)
-        concatenatedFrame = cv2.vconcat([topPanel, image])
+        concatenatedFrame = addTopPanel(image, calculatorConfig.getUseSegmentation())
 
         cv2.imshow("Depth", colorizedDepth)
         cv2.imshow("Spatial detections", concatenatedFrame)
