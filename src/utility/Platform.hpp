@@ -6,6 +6,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "depthai/utility/JoiningThread.hpp"
 
@@ -66,6 +67,13 @@ std::filesystem::path joinPaths(const std::filesystem::path& path1, const std::f
  * @return directory path
  */
 std::filesystem::path getDirFromPath(const std::filesystem::path& path);
+
+/**
+ * @brief Get list of filenames in a directory
+ * @param path Directory path
+ * @return List of filenames
+ */
+std::vector<std::string> getFilenamesInDirectory(const std::filesystem::path& path);
 
 // TODO change this to std::thread
 void setThreadName(JoiningThread& thread, const std::string& name);

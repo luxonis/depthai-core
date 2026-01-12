@@ -906,43 +906,7 @@ PipelineImpl::~PipelineImpl() {
     stop();
     wait();
 
-    if(recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
-        std::vector<std::filesystem::path> filenames = {recordReplayFilenames["record_config"]};
-        std::vector<std::string> outFiles = {"record_config.json"};
-        filenames.reserve(recordReplayFilenames.size() * 2 + 1);
-        outFiles.reserve(recordReplayFilenames.size() * 2 + 1);
-        for(auto& rstr : recordReplayFilenames) {
-            if(rstr.first != "record_config") {
-                std::string nodeName = rstr.first.substr(2);
-                std::filesystem::path filePath = rstr.second;
-                filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
-                outFiles.push_back(nodeName + ".mcap");
-                if(rstr.first[0] == 'v') {
-                    filenames.push_back(std::filesystem::path(filePath).concat(".mp4"));
-                    outFiles.push_back(nodeName + ".mp4");
-                }
-            }
-        }
-        Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
-        try {
-            utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
-        } catch(const std::exception& e) {
-            Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
-        }
-        std::filesystem::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json"));
-    }
-
-    if(removeRecordReplayFiles && recordConfig.state != RecordConfig::RecordReplayState::NONE) {
-        Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
-        for(auto& kv : recordReplayFilenames) {
-            if(kv.first != "record_config") {
-                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
-                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mp4"));
-            } else {
-                std::filesystem::remove(kv.second);
-            }
-        }
-    }
+    utility::PipelineImplHelper(this).finishHolisticRecordAndReplay();
 }
 
 void PipelineImpl::run() {

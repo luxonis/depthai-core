@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <stdexcept>
 
 #include "../utility/Platform.hpp"
 #include "../utility/RecordReplayImpl.hpp"
@@ -43,8 +44,7 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
     return roundDown(numToRound + multiple - 1UL, multiple);
 }
 
-Node::Output* setupHolistiRecordCamera(
-    std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight, RecordConfig& recordConfig) {
+Node::Output* setupHolistiRecordCamera(std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight) {
     size_t requestWidth = cam->getMaxRequestedWidth();
     size_t requestHeight = cam->getMaxRequestedHeight();
     size_t width = cam->getMaxWidth();
@@ -85,10 +85,6 @@ Node::Output* setupHolistiRecordCamera(
     }
     camWidth = width;
     camHeight = height;
-    // TODO remove once a lossless codec is used
-    if(width * height > 9437184U) {
-        recordConfig.videoEncoding.enabled = true;
-    }
     return cam->requestOutput(std::make_pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
@@ -100,6 +96,11 @@ bool setupHolisticRecord(Pipeline& pipeline,
     auto sources = pipeline.getSourceNodes();
     const std::filesystem::path recordPath = recordConfig.outputDir;
     try {
+        if(!std::filesystem::exists(recordPath)) {
+            std::filesystem::create_directories(recordPath);
+        } else if(!std::filesystem::is_directory(recordPath)) {
+            throw std::runtime_error("Record output path " + recordPath.string() + " is not a directory.");
+        }
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
@@ -116,13 +117,13 @@ bool setupHolisticRecord(Pipeline& pipeline,
                 Node::Output* output;
                 size_t camWidth = 1920, camHeight = 1080;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                    output = setupHolistiRecordCamera(std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, camWidth, camHeight, recordConfig);
+                    output = setupHolistiRecordCamera(std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, camWidth, camHeight);
                 } else {
                     output = &nodeS->getRecordOutput();
                 }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
-                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(".mp4"));
+                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
                 // TODO - once we allow for a lossless code, conditionally change the file extension
                 // recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(".avi"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
@@ -160,17 +161,26 @@ bool setupHolisticRecord(Pipeline& pipeline,
             }
         }
         outFilenames["record_config"] = platform::joinPaths(recordPath, deviceId + "_record_config.json");
+        outFilenames["calibration"] = platform::joinPaths(recordPath, deviceId + "_calibration.json");
     } catch(const std::runtime_error& e) {
         recordConfig.state = RecordConfig::RecordReplayState::NONE;
         spdlog::warn("Record disabled: {}", e.what());
         return false;
     }
-    // Write recordConfig to output dir
+    // Write recordConfig and calibration to output dir
     try {
-        std::filesystem::path path = platform::joinPaths(recordPath, deviceId + "_record_config.json");
-        std::ofstream file(path);
+        // Config
+        std::filesystem::path pathConfig = platform::joinPaths(recordPath, deviceId + "_record_config.json");
+        std::ofstream file(pathConfig);
         json j = recordConfig;
         file << j.dump(4);
+        file.close();
+        // Calibration
+        std::filesystem::path pathCalib = platform::joinPaths(recordPath, deviceId + "_calibration.json");
+        auto calibData = pipeline.getDefaultDevice()->readCalibration().eepromToJson();
+        std::ofstream calibFile(pathCalib);
+        calibFile << calibData.dump(4);
+        calibFile.close();
     } catch(const std::exception& e) {
         spdlog::warn("Error while writing DEPTHAI_RECORD json file: {}", e.what());
         return false;
@@ -185,37 +195,56 @@ bool setupHolisticReplay(Pipeline& pipeline,
                          std::unordered_map<std::string, std::filesystem::path>& outFilenames,
                          bool legacy) {
     UNUSED(deviceId);
-    const std::filesystem::path rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
         bool useTar = !platform::checkPathExists(replayPath, true);
+        bool hasCalibration = false;
         std::vector<std::string> tarNodenames;
-        std::string tarRoot;
-        std::filesystem::path rootPath = replayPath;
-        if(useTar) {
-            rootPath = platform::getDirFromPath(replayPath);
+        std::string tarRoot = ".";
+        std::string videoExt = ".mp4";
+        std::filesystem::path rootPath = useTar ? platform::getTempPath() : replayPath;
+        if(useTar)
             tarNodenames = filenamesInTar(replayPath);
-            tarNodenames.erase(std::remove_if(tarNodenames.begin(),
-                                              tarNodenames.end(),
-                                              [](const std::string& path) {
-                                                  auto pathDelim = path.find_last_of("/\\");
-                                                  auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-                                                  return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mp4"
-                                                         || filename == "record_config.json";
-                                              }),
-                               tarNodenames.end());
-
-            tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_first_of("/\\") + 1);
-            for(auto& path : tarNodenames) {
-                auto pathDelim = path.find_last_of("/\\");
-                path = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-                path = path.substr(0, path.find_last_of('.'));
-            }
+        else
+            tarNodenames = platform::getFilenamesInDirectory(replayPath);
+        hasCalibration = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+            auto pathObj = std::filesystem::path(path);
+            auto filename = pathObj.filename().string();
+            return filename == "calibration.json";
+        });
+        bool hasMp4Files = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+            auto pathObj = std::filesystem::path(path);
+            return pathObj.extension() == ".mp4";
+        });
+        bool hasAviFiles = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+            auto pathObj = std::filesystem::path(path);
+            return pathObj.extension() == ".avi";
+        });
+        if(hasMp4Files && hasAviFiles) {
+            throw std::runtime_error("Recording contains both .mp4 and .avi files.");
+        } else if(hasMp4Files) {
+            videoExt = ".mp4";
+        } else if(hasAviFiles) {
+            videoExt = ".avi";
+        }
+        tarNodenames.erase(std::remove_if(tarNodenames.begin(),
+                                          tarNodenames.end(),
+                                          [](const std::string& path) {
+                                              auto pathObj = std::filesystem::path(path);
+                                              return pathObj.extension() != ".mcap";
+                                          }),
+                           tarNodenames.end());
+        if(useTar) tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
+        for(auto& path : tarNodenames) {
+            auto pathDelim = path.find_last_of("/\\");
+            path = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
+            path = path.substr(0, path.find_last_of('.'));
         }
 
         std::vector<std::string> nodeNames;
         std::vector<std::string> pipelineFilenames;
         pipelineFilenames.reserve(sources.size());
+        nodeNames.reserve(sources.size());
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
@@ -224,32 +253,38 @@ bool setupHolisticReplay(Pipeline& pipeline,
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
             // Needed for muti-device recordings, not yet supported
             // std::string nodeName = (deviceId + "_").append(nodeParams.name);
-            std::string nodeName = nodeParams.name;
-            pipelineFilenames.push_back(nodeName);
             nodeNames.push_back(nodeParams.name);
+            pipelineFilenames.push_back(nodeParams.name);
         }
         std::filesystem::path configPath;
+        std::filesystem::path calibrationPath;
         std::vector<std::string> inFiles;
         std::vector<std::filesystem::path> outFiles;
         inFiles.reserve(sources.size() + 1);
         outFiles.reserve(sources.size() + 1);
-        if(!useTar || allMatch(pipelineFilenames, tarNodenames)) {
+        if(allMatch(pipelineFilenames, tarNodenames)) {
             for(auto& nodeName : nodeNames) {
                 // auto filename = (deviceId + "_").append(nodeName);
                 auto filename = nodeName;
                 if(useTar) {
-                    inFiles.push_back(tarRoot + filename + ".mp4");
+                    inFiles.push_back(tarRoot + filename + videoExt);
                     inFiles.push_back(tarRoot + filename + ".mcap");
                 }
                 std::filesystem::path filePath = platform::joinPaths(rootPath, filename);
-                outFiles.push_back(std::filesystem::path(filePath).concat(".mp4"));
+                outFiles.push_back(std::filesystem::path(filePath).concat(videoExt));
                 outFiles.push_back(std::filesystem::path(filePath).concat(".mcap"));
                 outFilenames[nodeName] = filePath;
             }
-            if(useTar) inFiles.emplace_back(tarRoot + "record_config.json");
+            if(useTar) {
+                inFiles.emplace_back(tarRoot + "record_config.json");
+                inFiles.emplace_back(tarRoot + "calibration.json");
+            }
             configPath = platform::joinPaths(rootPath, "record_config.json");
+            calibrationPath = platform::joinPaths(rootPath, "calibration.json");
             outFiles.push_back(configPath);
+            outFiles.push_back(calibrationPath);
             outFilenames["record_config"] = configPath;
+            outFilenames["calibration"] = calibrationPath;
             if(useTar) untarFiles(replayPath, inFiles, outFiles);
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
@@ -288,6 +323,19 @@ bool setupHolisticReplay(Pipeline& pipeline,
         recordConfig = j.get<RecordConfig>();
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
 
+        if(hasCalibration) {
+            std::ifstream calibFile(calibrationPath);
+            json jCalib = json::parse(calibFile);
+            CalibrationHandler calib;
+            try {
+                calib.fromJson(jCalib, true);
+                pipeline.getDefaultDevice()->setCalibration(calib);
+            } catch(const std::runtime_error& e) {
+                spdlog::warn("Recorded calibration is invalid: {}", e.what());
+                hasCalibration = false;
+            }
+        }
+
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
@@ -304,19 +352,24 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
                 replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
                 // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
-                replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + ".mp4"));
+                replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + videoExt));
                 replay->setOutFrameType(legacy ? ImgFrame::Type::YUV420p : ImgFrame::Type::NV12);
 
                 auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile().string());
+                auto [vidWidth, vidHeight, vidFps] = utility::getVideoSize(replay->getReplayVideoFile().string());
+                if(cameraNode) {
+                    cameraNode->properties.mockIspWidth = vidWidth;
+                    cameraNode->properties.mockIspHeight = vidHeight;
+                    cameraNode->properties.mockIspFps = vidFps;
+                } else if(colorCameraNode) {
+                    colorCameraNode->setMockIspSize(vidWidth, vidHeight);
+                } else if(monoCameraNode) {
+                    monoCameraNode->setMockIspSize(vidWidth, vidHeight);
+                }
                 if(videoSize.has_value()) {
                     auto [width, height] = videoSize.value();
-                    if(cameraNode) {
-                        cameraNode->properties.mockIspWidth = width;
-                        cameraNode->properties.mockIspHeight = height;
-                    } else if(colorCameraNode) {
-                        colorCameraNode->setMockIspSize(width, height);
-                    } else if(monoCameraNode) {
-                        monoCameraNode->setMockIspSize(width, height);
+                    if(width != vidWidth || height != vidHeight) {
+                        throw std::runtime_error("Video size does not match metadata size for node " + nodeName);
                     }
                 }
                 DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING

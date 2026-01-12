@@ -164,7 +164,7 @@ bool allMatch(const std::vector<std::string>& v1, const std::vector<std::string>
 
 std::string matchTo(const std::vector<std::string>& deviceIds, const std::vector<std::string>& filenames, const std::vector<std::string>& nodenames);
 
-std::tuple<size_t, size_t> getVideoSize(const std::string& filePath);
+std::tuple<size_t, size_t, double> getVideoSize(const std::string& filePath);
 
 }  // namespace utility
 }  // namespace dai
