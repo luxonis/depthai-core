@@ -213,8 +213,10 @@ int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const ui
             }
             return -1;
         }
-        memcpy(new + newpos, p_decompressed_block[EXTRA_BLOCK], ctrl[1]);
-        p_decompressed_block[EXTRA_BLOCK] += ctrl[1];
+        if(ctrl[1] > 0 && p_decompressed_block[EXTRA_BLOCK] != NULL) {
+            memcpy(new + newpos, p_decompressed_block[EXTRA_BLOCK], ctrl[1]);
+            p_decompressed_block[EXTRA_BLOCK] += ctrl[1];
+        }
 
         /* Adjust pointers */
         newpos += ctrl[1];
