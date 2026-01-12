@@ -115,14 +115,25 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     keypoint.def(py::init<>())
-        .def(py::init<Point3f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
-        .def(py::init<Point2f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
-        .def(py::init<float, float, float, float, uint32_t>(),
+        .def(py::init<Point3f, float, uint32_t, std::string>(),
+             py::arg("coordinates"),
+             py::arg("confidence") = -1.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, Keypoint, Keypoint))
+        .def(py::init<Point2f, float, uint32_t, std::string>(),
+             py::arg("coordinates"),
+             py::arg("confidence") = -1.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, Keypoint, Keypoint))
+        .def(py::init<float, float, float, float, uint32_t, std::string>(),
              py::arg("x"),
              py::arg("y"),
              py::arg("z"),
-             py::arg("confidence") = 0.f,
+             py::arg("confidence") = -1.f,
              py::arg("label") = 0,
+             py::arg("labelName") = "",
              DOC(dai, Keypoint, Keypoint))
         .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates, DOC(dai, Keypoint, imageCoordinates))
         .def_readwrite("confidence", &Keypoint::confidence, DOC(dai, Keypoint, confidence))
@@ -162,19 +173,21 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getPoints2f", &KeypointsList::getPoints2f, DOC(dai, KeypointsListT, getPoints2f));
 
     spatialKeypoint.def(py::init<>())
-        .def(py::init<Point3f, Point3f, float, uint32_t>(),
+        .def(py::init<Point3f, Point3f, float, uint32_t, std::string>(),
+             py::arg("imageCoordinates"),
+             py::arg("spatialCoordinates") = Point3f{},
+             py::arg("confidence") = -1.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, SpatialKeypoint, SpatialKeypoint))
+        .def(py::init<Point2f, Point3f, float, uint32_t, std::string>(),
              py::arg("imageCoordinates"),
              py::arg("spatialCoordinates") = Point3f{},
              py::arg("confidence") = 0.f,
              py::arg("label") = 0,
+             py::arg("labelName") = "",
              DOC(dai, SpatialKeypoint, SpatialKeypoint))
-        .def(py::init<Point2f, Point3f, float, uint32_t>(),
-             py::arg("imageCoordinates"),
-             py::arg("spatialCoordinates") = Point3f{},
-             py::arg("confidence") = 0.f,
-             py::arg("label") = 0,
-             DOC(dai, SpatialKeypoint, SpatialKeypoint))
-        .def(py::init<float, float, float, float, float, float, float, uint32_t>(),
+        .def(py::init<float, float, float, float, float, float, float, uint32_t, std::string>(),
              py::arg("x"),
              py::arg("y"),
              py::arg("z"),
@@ -183,11 +196,13 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("spatialZ"),
              py::arg("confidence") = 0.f,
              py::arg("label") = 0,
+             py::arg("labelName") = "",
              DOC(dai, SpatialKeypoint, SpatialKeypoint))
         .def_readwrite("imageCoordinates", &SpatialKeypoint::imageCoordinates, DOC(dai, SpatialKeypoint, imageCoordinates))
         .def_readwrite("spatialCoordinates", &SpatialKeypoint::spatialCoordinates, DOC(dai, SpatialKeypoint, spatialCoordinates))
         .def_readwrite("confidence", &SpatialKeypoint::confidence, DOC(dai, SpatialKeypoint, confidence))
-        .def_readwrite("label", &SpatialKeypoint::label, DOC(dai, SpatialKeypoint, label));
+        .def_readwrite("label", &SpatialKeypoint::label, DOC(dai, SpatialKeypoint, label))
+        .def_readwrite("labelName", &SpatialKeypoint::labelName, DOC(dai, SpatialKeypoint, labelName));
 
     spatialKeypointsList.def(py::init<>())
         .def(py::init<std::vector<SpatialKeypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))

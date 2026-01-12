@@ -340,6 +340,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
                 coords->set_z(keypoint.imageCoordinates.z);
                 protoKeypoint->set_confidence(keypoint.confidence);
                 protoKeypoint->set_label(keypoint.label);
+                protoKeypoint->set_labelname(keypoint.labelName);
 
                 auto* spatialCoords = protoKeypoint->mutable_spatialcoordinates();
                 spatialCoords->set_x(keypoint.spatialCoordinates.x);
