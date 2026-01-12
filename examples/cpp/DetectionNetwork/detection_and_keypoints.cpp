@@ -81,12 +81,7 @@ int main() {
                     auto keypointPos = cv::Point(static_cast<int>(kp.imageCoordinates.x * frameWidth), static_cast<int>(kp.imageCoordinates.y * frameHeight));
                     cv::circle(frame, keypointPos, 3, cv::Scalar(0, 255, 0), -1);
                     if(kp.labelName != "") {
-                        cv::putText(frame,
-                                    kp.labelName,
-                                    cv::Point(keypointPos.x + 5, keypointPos.y + 5),
-                                    cv::FONT_HERSHEY_TRIPLEX,
-                                    0.4,
-                                    cv::Scalar(0, 255, 0));
+                        cv::putText(frame, kp.labelName, cv::Point(keypointPos.x + 5, keypointPos.y + 5), cv::FONT_HERSHEY_TRIPLEX, 0.4, cv::Scalar(0, 255, 0));
                     }
                 }
                 auto keypoints = detection.keypoints->getPoints2f();

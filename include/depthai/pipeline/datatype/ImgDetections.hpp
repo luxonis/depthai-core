@@ -101,13 +101,13 @@ struct ImgDetection {
     std::vector<Keypoint> getKeypoints() const;
 
     /**
-    * Returns a list of Point2f coordinates of the keypoints, or empty list if no keypoints were set.
-    */
+     * Returns a list of Point2f coordinates of the keypoints, or empty list if no keypoints were set.
+     */
     std::vector<Point2f> getKeypoints2f() const;
 
     /**
-    * Returns a list of Point3f coordinates of the keypoints, or empty list if no keypoints were set.
-    */
+     * Returns a list of Point3f coordinates of the keypoints, or empty list if no keypoints were set.
+     */
     std::vector<Point3f> getKeypoints3f() const;
 
     /**
