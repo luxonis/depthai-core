@@ -11,6 +11,7 @@
 #include <unordered_set>
 
 #include "depthai/common/CameraInfo.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Point3f.hpp"
@@ -539,7 +540,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
                                                                               bool useSpecTranslation,
                                                                               CameraBoardSocket& originSocket) const {
     // Define scale parameter for mm to cm conversion
-    constexpr float MM_TO_CM_SCALE = 10.0f;
+    constexpr float MM_TO_CM_SCALE = getDepthUnitMultiplier(DepthUnit::MILLIMETER) / getDepthUnitMultiplier(DepthUnit::CENTIMETER);
 
     const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
 
