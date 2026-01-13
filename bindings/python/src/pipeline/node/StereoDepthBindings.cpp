@@ -78,7 +78,9 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .value("DEFAULT", StereoDepth::PresetMode::DEFAULT)
         .value("FACE", StereoDepth::PresetMode::FACE)
         .value("HIGH_DETAIL", StereoDepth::PresetMode::HIGH_DETAIL)
-        .value("ROBOTICS", StereoDepth::PresetMode::ROBOTICS);
+        .value("ROBOTICS", StereoDepth::PresetMode::ROBOTICS)
+        .value("DENSITY", StereoDepth::PresetMode::DENSITY)
+        .value("ACCURACY", StereoDepth::PresetMode::ACCURACY);
 
     // Node
     stereoDepth

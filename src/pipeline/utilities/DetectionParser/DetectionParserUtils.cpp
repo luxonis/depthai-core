@@ -907,6 +907,8 @@ void keypointDecode(const dai::NNData& nnData,
         return;
     }
 
+    const std::vector<std::string> keypointNames = properties.parser.keypointLabelNames;
+
     for(size_t i = 0; i < detectionCandidates.size(); ++i) {  // loop over all detections
         const auto& c = detectionCandidates[i];
         int flattenedIndex = c.rowIndex * featureMapWidths[c.headIndex] + c.columnIndex;
@@ -925,8 +927,11 @@ void keypointDecode(const dai::NNData& nnData,
             float x = std::clamp(keypointMask.get(flattenedIndex, 0, base + 0) / inputWidth, 0.0f, 1.0f);
             float y = std::clamp(keypointMask.get(flattenedIndex, 0, base + 1) / inputHeight, 0.0f, 1.0f);
             float conf = 1.f / (1.f + std::exp(-(keypointMask.get(flattenedIndex, 0, base + 2))));
-
-            keypoints.push_back(dai::Keypoint{dai::Point2f(x, y), conf});
+            dai::Keypoint kp{dai::Point2f(x, y), conf};
+            if(keypointNames.size() == static_cast<size_t>(*properties.parser.nKeypoints)) {
+                kp.labelName = keypointNames[k];
+            }
+            keypoints.push_back(kp);
         }
         outDetections.detections[i].keypoints = KeypointsList(keypoints, properties.parser.keypointEdges);
     }

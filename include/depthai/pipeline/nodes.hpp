@@ -37,6 +37,7 @@
 #include "node/Warp.hpp"
 #include "node/host/RGBD.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include "node/NeuralAssistedStereo.hpp"
     #include "node/Vpp.hpp"
     #include "node/host/Display.hpp"
     #include "node/host/HostCamera.hpp"

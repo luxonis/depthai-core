@@ -120,32 +120,31 @@ TEST_CASE("RecordVideo raw color") {
     REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_color.mp4")));
 }
 
-// TODO: uncomment when GRAY8 camera output is supported on RVC4
-// TEST_CASE("RecordVideo raw gray") {
-//     TestHelper helper;
-//
-//     dai::Pipeline p;
-//
-//     auto cam = p.create<dai::node::Camera>()->build();
-//     auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::GRAY8);
-//
-//     auto recordNode = p.create<dai::node::RecordVideo>();
-//     recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap"));
-//     recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.mp4"));
-//
-//     camOut->link(recordNode->input);
-//
-//     auto camQ = camOut->createOutputQueue();
-//
-//     p.start();
-//
-//     std::this_thread::sleep_for(5s);
-//
-//     p.stop();
-//
-//     REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap")));
-//     REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.mp4")));
-// }
+TEST_CASE("RecordVideo raw gray") {
+    TestHelper helper;
+
+    dai::Pipeline p;
+
+    auto cam = p.create<dai::node::Camera>()->build();
+    auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::GRAY8);
+
+    auto recordNode = p.create<dai::node::RecordVideo>();
+    recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap"));
+    recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.mp4"));
+
+    camOut->link(recordNode->input);
+
+    auto camQ = camOut->createOutputQueue();
+
+    p.start();
+
+    std::this_thread::sleep_for(5s);
+
+    p.stop();
+
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap")));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.mp4")));
+}
 
 TEST_CASE("RecordVideo encoded h264") {
     TestHelper helper;

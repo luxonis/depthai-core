@@ -14,22 +14,25 @@ namespace dai {
 
 struct Keypoint {
     Point3f imageCoordinates;
-    float confidence = 0.f;
+    float confidence = -1.f;  // -1.f indicates confidence is not set
     uint32_t label = 0;
+    std::string labelName = "";
 
     Keypoint() = default;
-    explicit Keypoint(Point3f imageCoordinates, float conf = 0.f, uint32_t label = 0) : imageCoordinates(imageCoordinates), confidence(conf), label(label) {
+    explicit Keypoint(Point3f imageCoordinates, float conf = 0.f, uint32_t label = 0, std::string labelName = "")
+        : imageCoordinates(imageCoordinates), confidence(conf), label(label), labelName(labelName) {
         if(confidence < 0.f) {
             throw std::invalid_argument("Confidence must be non-negative.");
         }
     }
 
-    explicit Keypoint(Point2f imageCoordinates, float confidence = 0.f, uint32_t label = 0)
-        : Keypoint(Point3f{imageCoordinates.x, imageCoordinates.y, 0.f}, confidence, label) {}
+    explicit Keypoint(Point2f imageCoordinates, float confidence = 0.f, uint32_t label = 0, std::string labelName = "")
+        : Keypoint(Point3f{imageCoordinates.x, imageCoordinates.y, 0.f}, confidence, label, labelName) {}
 
-    explicit Keypoint(float x, float y, float z, float confidence = 0.f, uint32_t label = 0) : Keypoint(Point3f{x, y, z}, confidence, label) {}
+    explicit Keypoint(float x, float y, float z, float confidence = 0.f, uint32_t label = 0, std::string labelName = "")
+        : Keypoint(Point3f{x, y, z}, confidence, label, labelName) {}
 
-    DEPTHAI_SERIALIZE(dai::Keypoint, imageCoordinates, confidence, label);
+    DEPTHAI_SERIALIZE(dai::Keypoint, imageCoordinates, confidence, label, labelName);
 };
 
 struct KeypointsList : KeypointsListT<Keypoint> {
