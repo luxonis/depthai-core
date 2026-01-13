@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <depthai/device/CalibrationHandler.hpp>
 #include <nlohmann/json.hpp>
+#include <cmath>
 #include <stdexcept>
 #include <vector>
 
@@ -416,6 +417,30 @@ TEST_CASE("Valid extrinsics for directly linked cameras", "[getCameraExtrinsics]
     // Expect identity 4×4
     std::vector<std::vector<float>> I = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     REQUIRE(M == I);
+}
+
+TEST_CASE("Extrinsics translation scales with measurement unit", "[getCameraExtrinsics][getCameraTranslationVector][getBaselineDistance]") {
+    auto handler = loadValidHandler();
+
+    std::vector<std::vector<float>> R = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    std::vector<float> tABcm = {100.0f, -50.0f, 25.0f};
+    std::vector<float> zeros = {0.0f, 0.0f, 0.0f};
+
+    handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, R, tABcm, zeros);
+
+    auto Mmeters = handler.getCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, false, MeasurementUnit::METER);
+    REQUIRE(Mmeters[0][3] == Catch::Approx(1.0f).margin(1e-6));
+    REQUIRE(Mmeters[1][3] == Catch::Approx(-0.5f).margin(1e-6));
+    REQUIRE(Mmeters[2][3] == Catch::Approx(0.25f).margin(1e-6));
+
+    auto tMillimeters = handler.getCameraTranslationVector(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, false, MeasurementUnit::MILLIMETER);
+    REQUIRE(tMillimeters[0] == Catch::Approx(1000.0f).margin(1e-6));
+    REQUIRE(tMillimeters[1] == Catch::Approx(-500.0f).margin(1e-6));
+    REQUIRE(tMillimeters[2] == Catch::Approx(250.0f).margin(1e-6));
+
+    float baselineMeters = handler.getBaselineDistance(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, false, MeasurementUnit::METER);
+    float expectedMeters = std::sqrt(1.0f * 1.0f + 0.5f * 0.5f + 0.25f * 0.25f);
+    REQUIRE(baselineMeters == Catch::Approx(expectedMeters).margin(1e-6));
 }
 
 TEST_CASE("Same-origin cameras return identity", "[getCameraExtrinsics]") {

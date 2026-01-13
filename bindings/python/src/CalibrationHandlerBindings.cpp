@@ -88,6 +88,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("srcCamera"),
              py::arg("dstCamera"),
              py::arg("useSpecTranslation") = false,
+             py::arg("unit") = MeasurementUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getCameraExtrinsics))
 
         .def("getHousingCalibration",
@@ -95,6 +96,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("srcCamera"),
              py::arg("housingCS"),
              py::arg("useSpecTranslation") = true,
+             py::arg("unit") = MeasurementUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getHousingCalibration))
 
         .def("getCameraTranslationVector",
@@ -102,6 +104,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("srcCamera"),
              py::arg("dstCamera"),
              py::arg("useSpecTranslation") = true,
+             py::arg("unit") = MeasurementUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getCameraTranslationVector))
         .def("getCameraRotationMatrix",
              &CalibrationHandler::getCameraRotationMatrix,
@@ -113,17 +116,20 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("cam1") = dai::CameraBoardSocket::CAM_C,
              py::arg("cam2") = dai::CameraBoardSocket::CAM_B,
              py::arg("useSpecTranslation") = true,
+             py::arg("unit") = MeasurementUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getBaselineDistance))
 
         .def("getCameraToImuExtrinsics",
              &CalibrationHandler::getCameraToImuExtrinsics,
              py::arg("cameraId"),
              py::arg("useSpecTranslation") = false,
+             py::arg("unit") = MeasurementUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getCameraToImuExtrinsics))
         .def("getImuToCameraExtrinsics",
              &CalibrationHandler::getImuToCameraExtrinsics,
              py::arg("cameraId"),
              py::arg("useSpecTranslation") = false,
+             py::arg("unit") = MeasurementUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getImuToCameraExtrinsics))
 
         .def("getStereoRightRectificationRotation",

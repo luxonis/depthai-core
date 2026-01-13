@@ -9,6 +9,9 @@ namespace dai {
  */
 enum class DepthUnit : int32_t { METER, CENTIMETER, MILLIMETER, INCH, FOOT, CUSTOM };
 
+// Alias for generic measurement units used in calibration APIs.
+using MeasurementUnit = DepthUnit;
+
 constexpr float getDepthUnitMultiplier(DepthUnit unit) {
     switch(unit) {
         case DepthUnit::METER:
