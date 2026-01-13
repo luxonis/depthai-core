@@ -114,7 +114,7 @@ jobs:
         pip install --upgrade pip
         pip install numpy pytest pytest-html
         $buildDir = 'C:/depthai-core/build'
-        $overlay  = 'C:/depthai-core/cmake/triplets/release'  # make it absolute
+        $overlay  = 'C:/depthai-core/cmake/triplets/release'
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
