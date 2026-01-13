@@ -15,22 +15,21 @@ namespace node {
  * be additionally refined by using a segmentation mask. If keypoints are provided, the spatial location is calculated around each keypoint.
  */
 class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>, public HostRunnable {
-   public:
-    constexpr static const char* NAME = "SpatialLocationCalculator";
-    using DeviceNodeCRTP::DeviceNodeCRTP;
-
    private:
     bool runOnHostVar = false;
+    std::shared_ptr<SpatialLocationCalculatorConfig> calculationConfig;
 
    protected:
     Properties& getProperties() override;
 
    public:
+    constexpr static const char* NAME = "SpatialLocationCalculator";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
+
     SpatialLocationCalculator() = default;
     SpatialLocationCalculator(std::unique_ptr<Properties> props)
         : DeviceNodeCRTP(std::move(props)), calculationConfig(std::make_shared<SpatialLocationCalculatorConfig>(properties.roiConfig)) {}
 
-    std::shared_ptr<SpatialLocationCalculatorConfig> calculationConfig;
     /**
      * Initial config to use when calculating spatial location data.
      */
