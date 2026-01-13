@@ -31,13 +31,13 @@ struct DepthStats {
 void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
                         const std::vector<dai::SpatialLocationCalculatorConfigData>& configDataVec,
                         std::vector<dai::SpatialLocations>& spatialLocations,
-                        std::shared_ptr<spdlog::async_logger> logger);
+                        std::shared_ptr<spdlog::async_logger>& logger);
 
 void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                               const SpatialLocationCalculatorConfig& config,
                               const dai::ImgDetections& imgDetections,
                               dai::SpatialImgDetections& spatialDetections,
-                              std::shared_ptr<spdlog::async_logger> logger);
+                              std::shared_ptr<spdlog::async_logger>& logger);
 }  // namespace SpatialUtils
 }  // namespace utilities
 }  // namespace dai
