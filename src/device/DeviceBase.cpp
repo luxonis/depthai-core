@@ -296,8 +296,8 @@ class DeviceBase::Impl {
      * RPC call with custom timeout. Set timeout to 0 to enable endless wait.
      */
     template <typename... Args>
-    auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name),
-                                                                                                                  std::forward<Args>(args)...)) {
+    auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args)
+        -> decltype(rpcClient->call(std::string(name), std::forward<Args>(args)...)) {
         ScopedRpcTimeout guard(timeout);
         return rpcClient->call(name, std::forward<Args>(args)...);
     }
@@ -657,7 +657,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         do {
             ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
             if(ret == X_LINK_SUCCESS) {
-                pimpl->logger.warn("Found device by given DeviceInfo: {}", deviceInfo.toString());
+                pimpl->logger.trace("Found device by given DeviceInfo: {}", deviceInfo.toString());
                 break;
             }
             if(timeout < SEARCH_INTERVAL) {
