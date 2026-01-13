@@ -28,7 +28,6 @@ set(FLAG_CANDIDATES
     "-g -fsanitize=thread"
 )
 
-
 # ThreadSanitizer is not compatible with MemorySanitizer.
 if (SANITIZE_THREAD AND SANITIZE_MEMORY)
     message(FATAL_ERROR "ThreadSanitizer is not compatible with "

@@ -102,12 +102,11 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
       https://mirrors.kernel.org/gnu/gperf/gperf-3.1.tar.gz \
       -o /opt/vcpkg-downloads/gperf-3.1.tar.gz
 
-# Set toolchain path only if flavor != vanilla
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
     if [ "$FLAVOR" != "vanilla" ]; then \
-        export CMAKE_TOOLCHAIN_PATH=/workspace/cmake/toolchain/${FLAVOR}.cmake && \
-        echo "Using toolchain: $CMAKE_TOOLCHAIN_PATH"; \
+        export CMAKE_TOOLCHAIN_FILE=/workspace/cmake/toolchain/${FLAVOR}.cmake && \
+        echo "Using toolchain: $CMAKE_TOOLCHAIN_FILE"; \
     else \
         echo "Using vanilla flavor (no toolchain)"; \
     fi && \
