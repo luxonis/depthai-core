@@ -19,6 +19,10 @@ struct Keypoint {
     std::string labelName = "";
 
     Keypoint() = default;
+    /**
+     * Construct a keypoint from 3D image coordinates.
+     * @throws std::invalid_argument if confidence is negative.
+     */
     explicit Keypoint(Point3f imageCoordinates, float conf = 0.f, uint32_t label = 0, std::string labelName = "")
         : imageCoordinates(imageCoordinates), confidence(conf), label(label), labelName(labelName) {
         if(confidence < 0.f) {
@@ -26,9 +30,15 @@ struct Keypoint {
         }
     }
 
+    /**
+     * Construct a keypoint from 2D image coordinates (z = 0).
+     */
     explicit Keypoint(Point2f imageCoordinates, float confidence = 0.f, uint32_t label = 0, std::string labelName = "")
         : Keypoint(Point3f{imageCoordinates.x, imageCoordinates.y, 0.f}, confidence, label, labelName) {}
 
+    /**
+     * Construct a keypoint from explicit x/y/z coordinates.
+     */
     explicit Keypoint(float x, float y, float z, float confidence = 0.f, uint32_t label = 0, std::string labelName = "")
         : Keypoint(Point3f{x, y, z}, confidence, label, labelName) {}
 

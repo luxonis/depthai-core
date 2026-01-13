@@ -39,6 +39,9 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
      * @param size width and height in pixels
      */
     void setOutputSize(std::tuple<int, int> size);
+    /**
+     * Sets output frame size in pixels.
+     */
     void setOutputSize(int width, int height);
 
     /**
@@ -48,6 +51,9 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
      * @param height Height of mesh
      */
     void setWarpMesh(const std::vector<Point2f>& meshData, int width, int height);
+    /**
+     * Set a custom warp mesh from x/y pairs.
+     */
     void setWarpMesh(const std::vector<std::pair<float, float>>& meshData, int width, int height);
 
     /**

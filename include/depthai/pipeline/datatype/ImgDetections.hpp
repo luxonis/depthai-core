@@ -40,9 +40,21 @@ struct ImgDetection {
     std::optional<KeypointsList> keypoints;
 
     ImgDetection() = default;
+    /**
+     * Construct a detection from a bounding box and label.
+     */
     ImgDetection(const RotatedRect& boundingBox, float confidence, uint32_t label);
+    /**
+     * Construct a detection with label name.
+     */
     ImgDetection(const RotatedRect& boundingBox, std::string labelName, float confidence, uint32_t label);
+    /**
+     * Construct a detection with keypoints.
+     */
     ImgDetection(const RotatedRect& boundingBox, const KeypointsList& keypoints, float confidence, uint32_t label);
+    /**
+     * Construct a detection with keypoints and label name.
+     */
     ImgDetection(const RotatedRect& boundingBox, const KeypointsList& keypoints, std::string labelName, float confidence, uint32_t label);
 
     /**

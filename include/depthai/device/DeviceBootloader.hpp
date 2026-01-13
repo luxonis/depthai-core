@@ -179,6 +179,7 @@ class DeviceBootloader {
      */
     static std::vector<std::uint8_t> getEmbeddedBootloaderBinary(Type type = DEFAULT_TYPE);
 
+    /// Default constructor is not available; a DeviceInfo is required.
     DeviceBootloader() = delete;
 
     /**

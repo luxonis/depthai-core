@@ -166,9 +166,15 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
      * Whether to use input features for SLAM. False by default.
      */
     void setUseFeatures(bool use);
+    /**
+     * Set transform between the device and world frames.
+     */
     void setLocalTransform(std::shared_ptr<TransformData> transform) {
         localTransform = transform->getRTABMapTransform();
     }
+    /**
+     * Get transform between the device and world frames.
+     */
     std::shared_ptr<TransformData> getLocalTransform() {
         return std::make_shared<TransformData>(localTransform);
     }

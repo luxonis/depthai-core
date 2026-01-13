@@ -77,6 +77,9 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
      */
     void setUseFeatures(bool use);
 
+    /**
+     * Set transform between the device and world frames.
+     */
     void setLocalTransform(std::shared_ptr<TransformData> transform) {
         localTransform = transform->getRTABMapTransform();
     }

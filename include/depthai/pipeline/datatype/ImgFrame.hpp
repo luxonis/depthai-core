@@ -72,8 +72,17 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * Timestamp is set to now
      */
     ImgFrame();
+    /**
+     * Construct ImgFrame backed by a file descriptor.
+     */
     ImgFrame(long fd);
+    /**
+     * Construct ImgFrame with a preallocated data size.
+     */
     ImgFrame(size_t size);
+    /**
+     * Construct ImgFrame backed by a file descriptor and size.
+     */
     ImgFrame(long fd, size_t size);
     virtual ~ImgFrame();
 

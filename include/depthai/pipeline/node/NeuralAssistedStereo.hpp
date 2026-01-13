@@ -40,6 +40,9 @@ class NeuralAssistedStereo : public DeviceNodeGroup {
 
     virtual ~NeuralAssistedStereo();
 
+    /**
+     * Construct a NeuralAssistedStereo node bound to a device.
+     */
     NeuralAssistedStereo(const std::shared_ptr<Device>& device);
 
    private:

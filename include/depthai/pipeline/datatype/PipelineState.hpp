@@ -30,6 +30,9 @@ class NodeState {
         float fps = 0.0f;
         DurationStats durationStats;
 
+        /**
+         * Return true if timing stats are valid.
+         */
         bool isValid() const {
             return durationStats.minMicros <= durationStats.maxMicros;
         }
@@ -57,6 +60,9 @@ class NodeState {
         // Queue usage stats
         QueueStats queueStats;
 
+        /**
+         * Return true if timing stats are valid.
+         */
         bool isValid() const {
             return timing.isValid();
         }
@@ -70,6 +76,9 @@ class NodeState {
         // Timing info about this output
         Timing timing;
 
+        /**
+         * Return true if timing stats are valid.
+         */
         bool isValid() const {
             return timing.isValid();
         }

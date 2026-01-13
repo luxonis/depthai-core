@@ -13,11 +13,15 @@ class DeviceNode : public ThreadedNode {
     std::shared_ptr<Device> device;
 
    public:
+    /** Deleted default constructor. */
     DeviceNode() = delete;
     virtual ~DeviceNode() = default;
     // virtual 'run' method
     virtual void run() override;
 
+    /**
+     * Indicates this node runs on the device by default.
+     */
     bool runOnHost() const override {
         // By default, don't allow running on host, but can be overridden
         return false;
@@ -33,9 +37,18 @@ class DeviceNode : public ThreadedNode {
     copyable_unique_ptr<Properties> propertiesHolder;
 
     // Get properties
+    /**
+     * Return mutable properties for this node.
+     */
     virtual Properties& getProperties();
 
+    /**
+     * Set logging level for this node.
+     */
     void setLogLevel(dai::LogLevel level) override;
+    /**
+     * Get current logging level for this node.
+     */
     virtual dai::LogLevel getLogLevel() const override;
 
    protected:
@@ -63,6 +76,9 @@ class DeviceNodeCRTP : public Base {
     virtual ~DeviceNodeCRTP() = default;
     /// Underlying properties
     Properties& properties;
+    /**
+     * Return the node name used by the pipeline.
+     */
     const char* getName() const override {
         return Derived::NAME;
     };
@@ -71,6 +87,9 @@ class DeviceNodeCRTP : public Base {
     // };
 
     // No public constructor, only a factory function.
+    /**
+     * Create and initialize a node instance.
+     */
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
         auto nodePtr = std::shared_ptr<Derived>(new Derived(std::forward<Args>(args)...));

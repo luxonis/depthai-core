@@ -15,6 +15,9 @@ namespace dai {
  */
 struct Quaterniond {
     Quaterniond() = default;
+    /**
+     * Construct a quaternion from components.
+     */
     Quaterniond(double qx, double qy, double qz, double qw) : qx(qx), qy(qy), qz(qz), qw(qw) {}
     double qx = 0, qy = 0, qz = 0, qw = 1;
 };

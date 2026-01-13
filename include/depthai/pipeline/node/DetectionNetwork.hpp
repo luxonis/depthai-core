@@ -20,6 +20,9 @@ namespace node {
  */
 class DetectionNetwork : public DeviceNodeGroup {
    public:
+    /**
+     * Construct a DetectionNetwork node bound to a device.
+     */
     DetectionNetwork(const std::shared_ptr<Device>& device);
 
     [[nodiscard]] static std::shared_ptr<DetectionNetwork> create(const std::shared_ptr<Device>& device) {
@@ -35,6 +38,9 @@ class DetectionNetwork : public DeviceNodeGroup {
      * @returns Shared pointer to DetectionNetwork node
      */
     std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
+    /**
+     * Build DetectionNetwork node with a model description.
+     */
     std::shared_ptr<DetectionNetwork> build(const std::shared_ptr<Camera>& input,
                                             NNModelDescription modelDesc,
                                             std::optional<float> fps = std::nullopt,
@@ -53,7 +59,7 @@ class DetectionNetwork : public DeviceNodeGroup {
                                             std::optional<float> fps = std::nullopt,
                                             std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    /*
+    /**
      * @brief Build DetectionNetwork node. Connect ReplayVideo output to this node's input. Also call setNNArchive() with provided model description.
      * @param input: ReplayVideo node
      * @param modelDesc: Neural network model description
@@ -215,6 +221,9 @@ class DetectionNetwork : public DeviceNodeGroup {
 
     std::vector<std::pair<Input&, std::shared_ptr<Capability>>> getRequiredInputs() override;
 
+    /**
+     * Return class labels if available.
+     */
     std::optional<std::vector<std::string>> getClasses() const;
 
     virtual void buildInternal() override;

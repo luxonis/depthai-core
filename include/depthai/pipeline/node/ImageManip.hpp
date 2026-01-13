@@ -27,8 +27,14 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     using PerformanceMode = ImageManipProperties::PerformanceMode;
 
     ImageManip() = default;
+    /**
+     * Construct an ImageManip node with properties.
+     */
     ImageManip(std::unique_ptr<Properties> props);
 
+    /**
+     * Build the node and return a shared pointer to it.
+     */
     std::shared_ptr<ImageManip> build() {
         return std::static_pointer_cast<ImageManip>(shared_from_this());
     }

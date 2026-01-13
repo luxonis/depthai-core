@@ -52,6 +52,9 @@ class DynamicCalibrationControl : public Buffer {
          * @brief Command to perform a full calibration run.
          */
         struct Calibrate {
+            /**
+             * Construct a calibrate command.
+             */
             explicit Calibrate(bool force = false) : force(force) {}
             bool force = false;  ///< Force calibration even when unnecessary.
             DEPTHAI_SERIALIZE(Calibrate, force);
@@ -61,6 +64,9 @@ class DynamicCalibrationControl : public Buffer {
          * @brief Command to perform a calibration quality check.
          */
         struct CalibrationQuality {
+            /**
+             * Construct a calibration quality command.
+             */
             explicit CalibrationQuality(bool force = false) : force(force) {}
             bool force = false;  ///< Force check even if previous quality is valid.
             DEPTHAI_SERIALIZE(CalibrationQuality, force);
@@ -73,6 +79,9 @@ class DynamicCalibrationControl : public Buffer {
          * @param calibrationPeriod How often calibration should run (seconds)
          */
         struct StartCalibration {
+            /**
+             * Construct a start calibration command.
+             */
             explicit StartCalibration(float loadImagePeriod = 0.5f, float calibrationPeriod = 5.0f)
                 : loadImagePeriod(loadImagePeriod), calibrationPeriod(calibrationPeriod) {}
 
@@ -99,6 +108,9 @@ class DynamicCalibrationControl : public Buffer {
          */
         struct ApplyCalibration {
             ApplyCalibration() = default;
+            /**
+             * Construct an apply calibration command.
+             */
             explicit ApplyCalibration(const CalibrationHandler& calibration) : calibration(calibration) {}
 
             CalibrationHandler calibration;  ///< Calibration data to apply.
@@ -114,7 +126,13 @@ class DynamicCalibrationControl : public Buffer {
          * @brief Command to select the calibration performance mode.
          */
         struct SetPerformanceMode {
+            /**
+             * Construct a performance mode command with default mode.
+             */
             SetPerformanceMode() : performanceMode(PerformanceMode::DEFAULT) {}
+            /**
+             * Construct a performance mode command.
+             */
             explicit SetPerformanceMode(PerformanceMode performanceMode) : performanceMode(performanceMode) {}
 
             PerformanceMode performanceMode;  ///< Desired performance mode.
@@ -141,8 +159,14 @@ class DynamicCalibrationControl : public Buffer {
 
     Command command{};
 
+    /**
+     * Construct an empty control message.
+     */
     DynamicCalibrationControl() {}
 
+    /**
+     * Construct a control message with a command.
+     */
     explicit DynamicCalibrationControl(Command cmd) : command(std::move(cmd)) {}
 
     ~DynamicCalibrationControl() override;

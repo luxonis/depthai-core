@@ -152,6 +152,10 @@ struct ImgTransformation {
      */
     float getVFov(bool source = false) const;
 
+    /**
+     * Retrieve currently set source crop rectangles.
+     * @return Vector of source crops
+     */
     std::vector<dai::RotatedRect> getSrcCrops() const;
 
     /**
@@ -204,11 +208,37 @@ struct ImgTransformation {
      * @param scaleY Scale factor in the vertical direction
      */
     ImgTransformation& addScale(float scaleX, float scaleY);
+    /**
+     * Append source crop rectangles.
+     * @param crops Vector of source crops to add
+     */
     ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
+    /**
+     * Set output image size.
+     * @param width Output width
+     * @param height Output height
+     */
     ImgTransformation& setSize(size_t width, size_t height);
+    /**
+     * Set input image size.
+     * @param width Input width
+     * @param height Input height
+     */
     ImgTransformation& setSourceSize(size_t width, size_t height);
+    /**
+     * Set source intrinsic matrix.
+     * @param intrinsicMatrix 3x3 intrinsic matrix
+     */
     ImgTransformation& setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix);
+    /**
+     * Set the source distortion model.
+     * @param model Distortion model
+     */
     ImgTransformation& setDistortionModel(CameraModel model);
+    /**
+     * Set the source distortion coefficients.
+     * @param coefficients Distortion coefficients
+     */
     ImgTransformation& setDistortionCoefficients(std::vector<float> coefficients);
 
     /**

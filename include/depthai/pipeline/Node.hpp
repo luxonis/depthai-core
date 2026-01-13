@@ -75,9 +75,13 @@ class Node : public std::enable_shared_from_this<Node> {
 
    public:
     // Nodes must always be managed
+    /** Deleted copy constructor. */
     Node(const Node&) = delete;
+    /** Deleted copy assignment. */
     Node& operator=(const Node&) = delete;
+    /** Deleted move constructor. */
     Node(Node&&) = delete;
+    /** Deleted move assignment. */
     Node& operator=(Node&&) = delete;
 
     /// Node identificator. Unique for every node on a single Pipeline
@@ -90,6 +94,9 @@ class Node : public std::enable_shared_from_this<Node> {
     class InputMap;
     class OutputMap;
     struct DatatypeHierarchy {
+        /**
+         * Construct a datatype hierarchy entry.
+         */
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
         DatatypeEnum datatype;
         bool descendants;
@@ -106,7 +113,13 @@ class Node : public std::enable_shared_from_this<Node> {
     static constexpr auto BLOCKING_QUEUE = true;
     static constexpr auto NON_BLOCKING_QUEUE = false;
 
+    /**
+     * Create a unique input name for this node.
+     */
     std::string createUniqueInputName();
+    /**
+     * Create a unique output name for this node.
+     */
     std::string createUniqueOutputName();
 
    protected:
@@ -181,9 +194,15 @@ class Node : public std::enable_shared_from_this<Node> {
             }
         }
 
+        /**
+         * Return the parent node.
+         */
         Node& getParent() {
             return parent;
         }
+        /**
+         * Return the parent node (const).
+         */
         const Node& getParent() const {
             return parent;
         }
@@ -351,7 +370,13 @@ class Node : public std::enable_shared_from_this<Node> {
 
        public:
         std::string name;
+        /**
+         * Construct an output map with an explicit name.
+         */
         OutputMap(Node& parent, std::string name, OutputDescription defaultOutput, bool ref = true);
+        /**
+         * Construct an output map with the default name.
+         */
         OutputMap(Node& parent, OutputDescription defaultOutput, bool ref = true);
         /// Create or modify an output
         Output& operator[](const std::string& key);
@@ -513,13 +538,21 @@ class Node : public std::enable_shared_from_this<Node> {
         std::string name;
         // InputMap(Input defaultInput);
         // InputMap(std::string name, Input defaultInput);
+        /**
+         * Construct an input map with the default name.
+         */
         InputMap(Node& parent, InputDescription defaultInput);
+        /**
+         * Construct an input map with an explicit name.
+         */
         InputMap(Node& parent, std::string name, InputDescription defaultInput);
         /// Create or modify an input
         Input& operator[](const std::string& key);
         /// Create or modify an input with specified group
         Input& operator[](std::pair<std::string, std::string> groupKey);
-        // Check if the input exists
+        /**
+         * Check if the input exists.
+         */
         bool has(const std::string& key) const;
     };
 
@@ -543,7 +576,13 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Connection between an Input and Output
     struct Connection {
         friend struct std::hash<Connection>;
+        /**
+         * Construct a connection from output/input handles.
+         */
         Connection(Output out, Input in);
+        /**
+         * Construct a connection from an internal connection.
+         */
         Connection(ConnectionInternal c);
         Id outputId;
         std::string outputName;
@@ -596,7 +635,13 @@ class Node : public std::enable_shared_from_this<Node> {
 
    public:
     // access
+    /**
+     * Return the parent pipeline instance.
+     */
     Pipeline getParentPipeline();
+    /**
+     * Return the parent pipeline instance (const).
+     */
     const Pipeline getParentPipeline() const;
 
     /// Get alias
@@ -620,6 +665,9 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Stop node execution
     virtual void stop() {};
 
+    /**
+     * Request the parent pipeline to stop.
+     */
     void stopPipeline();
 
     /// Build stages;
@@ -653,10 +701,12 @@ class Node : public std::enable_shared_from_this<Node> {
 
     /// Retrieves reference to specific output
     Output* getOutputRef(std::string name);
+    /// Retrieves reference to specific output in a group.
     Output* getOutputRef(std::string group, std::string name);
 
     /// Retrieves reference to specific input
     Input* getInputRef(std::string name);
+    /// Retrieves reference to specific input in a group.
     Input* getInputRef(std::string group, std::string name);
 
     /// Retrieves reference to specific output map
@@ -705,12 +755,33 @@ class Node : public std::enable_shared_from_this<Node> {
     void add(std::shared_ptr<Node> node);
 
     // Access to nodes
+    /**
+     * Return all nodes under this node.
+     */
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
+    /**
+     * Return node by id if it exists, nullptr otherwise.
+     */
     std::shared_ptr<const Node> getNode(Node::Id id) const;
+    /**
+     * Return node by id if it exists, nullptr otherwise.
+     */
     std::shared_ptr<Node> getNode(Node::Id id);
+    /**
+     * Remove a node from this node's map.
+     */
     void remove(std::shared_ptr<Node> node);
+    /**
+     * Return a map of connections for this node.
+     */
     ConnectionMap getConnectionMap();
+    /**
+     * Link an output to an input.
+     */
     void link(const Node::Output& out, const Node::Input& in);
+    /**
+     * Unlink an output from an input.
+     */
     void unlink(const Node::Output& out, const Node::Input& in);
     /// Get a reference to internal node map
 
@@ -723,6 +794,9 @@ class Node : public std::enable_shared_from_this<Node> {
      */
     virtual bool runOnHost() const = 0;
 
+    /**
+     * Return the internal node map.
+     */
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }

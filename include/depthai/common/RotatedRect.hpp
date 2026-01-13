@@ -19,21 +19,34 @@ struct RotatedRect {
     float angle = 0.f;
 
     RotatedRect() = default;
+    /**
+     * Construct a rotated rectangle from center/size and angle.
+     * @throws std::runtime_error if center and size normalization do not match.
+     */
     RotatedRect(const Point2f& center, const Size2f& size, float angle) : center(center), size(size), angle(angle) {
         if(size.isNormalized() != center.isNormalized()) {
             throw std::runtime_error("Cannot create RotatedRect with mixed normalization");
         }
     }
+    /**
+     * Construct a rotated rectangle from an axis-aligned rectangle and angle.
+     */
     RotatedRect(const Rect& rect, float angle = 0.f)
         : center(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, rect.isNormalized()),
           size(rect.width, rect.height, rect.isNormalized()),
           angle(angle) {}
 
+    /**
+     * Convert to the outer axis-aligned rectangle.
+     */
     operator Rect() const {
         const auto [minx, miny, maxx, maxy] = getOuterRect();
         return Rect(minx, miny, maxx - minx, maxy - miny);
     }
 
+    /**
+     * Return whether coordinates are normalized to [0,1].
+     */
     bool isNormalized() const {
         if(size.isNormalized() != center.isNormalized()) {
             throw std::runtime_error("Cannot denormalize RotatedRect with mixed normalization");

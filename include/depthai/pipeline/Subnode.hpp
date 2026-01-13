@@ -12,6 +12,9 @@ class Subnode {
     std::shared_ptr<Node> node;
 
    public:
+    /**
+     * Construct a subnode attached to a parent node with an alias.
+     */
     Subnode(Node& parent, std::string alias) {
         if(!parent.configureMode) {
             // Create node as well
@@ -41,9 +44,15 @@ class Subnode {
         // Add reference
         parent.nodeRefs.push_back(&node);
     }
+    /**
+     * Access the underlying node reference.
+     */
     T& operator*() const noexcept {
         return *std::static_pointer_cast<T>(node).get();
     }
+    /**
+     * Access the underlying node pointer.
+     */
     T* operator->() const noexcept {
         return std::static_pointer_cast<T>(node).get();
     }

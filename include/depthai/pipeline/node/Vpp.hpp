@@ -26,10 +26,16 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
 
     Vpp() = default;
 
+    /**
+     * Construct a Vpp node with properties.
+     */
     Vpp(std::unique_ptr<Properties> props);
 
     virtual ~Vpp();
 
+    /**
+     * Build the node by linking required inputs.
+     */
     std::shared_ptr<Vpp> build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput);
 
     void buildInternal() override;

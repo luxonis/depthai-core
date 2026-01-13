@@ -42,6 +42,9 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
         DENSITY,
         ACCURACY
     };
+    /**
+     * Build node by linking left/right inputs and applying a preset.
+     */
     std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::DEFAULT) {
         setDefaultProfilePreset(presetMode);
         left.link(this->left);

@@ -21,9 +21,21 @@ class RGBDData : public Buffer {
     virtual ~RGBDData();
 
     std::map<std::string, std::shared_ptr<ADatatype>> frames;
+    /**
+     * Set the RGB frame.
+     */
     void setRGBFrame(const std::shared_ptr<ImgFrame>& frame);
+    /**
+     * Set the depth frame.
+     */
     void setDepthFrame(const std::shared_ptr<ImgFrame>& frame);
+    /**
+     * Get the RGB frame.
+     */
     std::shared_ptr<ImgFrame> getRGBFrame();
+    /**
+     * Get the depth frame.
+     */
     std::shared_ptr<ImgFrame> getDepthFrame();
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;

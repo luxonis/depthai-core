@@ -23,6 +23,7 @@ namespace node {
 class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
    public:
     constexpr static const char* NAME = "BasaltVIO";
+    /// Create a Basalt VIO node.
     BasaltVIO();
     ~BasaltVIO();
 
@@ -59,12 +60,15 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
      * VIO configuration file.
      */
     basalt::VioConfig vioConfig;
+    /// Set IMU update rate in Hz.
     void setImuUpdateRate(int rate) {
         imuUpdateRate = rate;
     }
+    /// Set path to the VIO configuration file.
     void setConfigPath(const std::string& path) {
         configPath = path;
     }
+    /// Use spec translation for camera-to-IMU extrinsics if available.
     void setUseSpecTranslation(bool use) {
         useSpecTranslation = use;
     }

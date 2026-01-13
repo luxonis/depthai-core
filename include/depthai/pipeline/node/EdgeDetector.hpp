@@ -26,6 +26,9 @@ class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetecto
 
    public:
     EdgeDetector() = default;
+    /**
+     * Construct an EdgeDetector node with properties.
+     */
     EdgeDetector(std::unique_ptr<Properties> props);
 
     /**

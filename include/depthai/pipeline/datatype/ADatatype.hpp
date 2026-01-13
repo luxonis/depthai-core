@@ -19,6 +19,9 @@ class ADatatype {
 #ifdef DEPTHAI_MESSAGES_NO_HEAP
     explicit ADatatype() = default;
 #else
+    /**
+     * Construct a datatype with an owned memory buffer.
+     */
     explicit ADatatype() : data{std::make_shared<VectorMemory>(std::vector<uint8_t>())} {};
 #endif
 

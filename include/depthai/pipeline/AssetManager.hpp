@@ -14,15 +14,24 @@ namespace dai {
  */
 struct Asset {
     Asset() = default;
+    /**
+     * Construct an asset with a key.
+     */
     explicit Asset(std::string k) : key(std::move(k)) {}
     const std::string key;
     std::vector<std::uint8_t> data;
     std::uint32_t alignment = 1;
+    /**
+     * Return relative URI for this asset.
+     */
     std::string getRelativeUri();
 };
 
 class AssetsMutable : public Assets {
    public:
+    /**
+     * Set asset metadata in the internal map.
+     */
     void set(std::string, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment);
 };
 
@@ -37,7 +46,13 @@ class AssetManager /*: public Assets*/ {
     std::string getRelativeKey(std::string key) const;
 
    public:
+    /**
+     * Construct an empty asset manager.
+     */
     AssetManager();
+    /**
+     * Construct an asset manager with a root path.
+     */
     AssetManager(std::string rootPath);
     /**
      * Adds all assets in an array to the AssetManager
@@ -92,6 +107,9 @@ class AssetManager /*: public Assets*/ {
      * @returns Shared pointer to asset
      */
     std::shared_ptr<dai::Asset> set(const std::string& key, const std::vector<std::uint8_t>& data, int alignment = 64);
+    /**
+     * Loads asset data under the specified key (move).
+     */
     std::shared_ptr<dai::Asset> set(const std::string& key, std::vector<std::uint8_t>&& data, int alignment = 64);
 
     /**

@@ -53,6 +53,9 @@ class ImgAnnotations : public Buffer, public ProtoSerializable {
      * Construct ImgAnnotations message.
      */
     ImgAnnotations() = default;
+    /**
+     * Construct ImgAnnotations with a list of annotations.
+     */
     explicit ImgAnnotations(std::vector<ImgAnnotation> annotations) : annotations(std::move(annotations)) {}
 
     virtual ~ImgAnnotations();

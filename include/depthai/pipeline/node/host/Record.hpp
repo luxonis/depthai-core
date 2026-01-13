@@ -40,13 +40,34 @@ class RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
 
     void run() override;
 
+    /**
+     * Get metadata output file path.
+     */
     std::filesystem::path getRecordMetadataFile() const;
+    /**
+     * Get video output file path.
+     */
     std::filesystem::path getRecordVideoFile() const;
+    /**
+     * Get current compression level.
+     */
     CompressionLevel getCompressionLevel() const;
 
+    /**
+     * Set metadata output file path.
+     */
     RecordVideo& setRecordMetadataFile(const std::filesystem::path& recordFile);
+    /**
+     * Set video output file path.
+     */
     RecordVideo& setRecordVideoFile(const std::filesystem::path& recordFile);
+    /**
+     * Set compression level.
+     */
     RecordVideo& setCompressionLevel(CompressionLevel compressionLevel);
+    /**
+     * Set target frames per second.
+     */
     RecordVideo& setFps(unsigned int fps);
 
    private:
@@ -75,10 +96,22 @@ class RecordMetadataOnly : public NodeCRTP<ThreadedHostNode, RecordMetadataOnly>
 
     void run() override;
 
+    /**
+     * Get record output file path.
+     */
     std::filesystem::path getRecordFile() const;
+    /**
+     * Get current compression level.
+     */
     CompressionLevel getCompressionLevel() const;
 
+    /**
+     * Set record output file path.
+     */
     RecordMetadataOnly& setRecordFile(const std::filesystem::path& recordFile);
+    /**
+     * Set compression level.
+     */
     RecordMetadataOnly& setCompressionLevel(CompressionLevel compressionLevel);
 
    private:

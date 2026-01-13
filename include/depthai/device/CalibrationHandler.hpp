@@ -638,6 +638,7 @@ class CalibrationHandler {
         static constexpr bool value = false;
     };
     template <typename... T>
+    /// RTABMap support required to access this API.
     void getRTABMapCameraModel(T...) {
         static_assert(dependent_false<T...>::value, "Library not configured with RTABMap support");
     }

@@ -68,10 +68,15 @@ struct BoardConfig {
         Drive drive = MA_2;
         bool schmitt = false, slewFast = false;
         GPIO() = default;
+        /// Construct GPIO config with direction only.
         GPIO(Direction direction) : direction(direction) {}
+        /// Construct GPIO config with direction and level.
         GPIO(Direction direction, Level level) : direction(direction), level(level) {}
+        /// Construct GPIO config with direction, level, and pull.
         GPIO(Direction direction, Level level, Pull pull) : direction(direction), level(level), pull(pull) {}
+        /// Construct GPIO config with direction and mode.
         GPIO(Direction direction, Mode mode) : mode(mode), direction(direction) {}
+        /// Construct GPIO config with direction, mode, and pull.
         GPIO(Direction direction, Mode mode, Pull pull) : mode(mode), direction(direction), pull(pull) {}
     };
     std::unordered_map<std::int8_t, GPIO> gpio;
@@ -138,6 +143,7 @@ struct BoardConfig {
     std::unordered_map<CameraBoardSocket, Camera> camera;
 
     struct IMU {
+        /// Construct IMU config with default pin assignments.
         IMU() : bus(0), interrupt(53), wake(34), csGpio(8), boot(46), reset(45) {}
         int8_t bus, interrupt, wake, csGpio, boot, reset;
     };
@@ -149,7 +155,9 @@ struct BoardConfig {
         uint16_t width, height;
         ImgFrame::Type frameType;
         bool enable;
+        /// Construct UVC config with resolution; NV12 and enabled by default.
         UVC(uint16_t width, uint16_t height) : width(width), height(height), frameType(ImgFrame::Type::NV12), enable(true) {}
+        /// Construct UVC config with default 1920x1080 resolution.
         UVC() : UVC(1920, 1080) {}
     };
     std::optional<UVC> uvc;

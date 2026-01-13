@@ -30,6 +30,9 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
    public:
     ToFBase() = default;
+    /**
+     * Construct a ToFBase node with properties.
+     */
     ToFBase(std::unique_ptr<Properties> props);
 
     /**
@@ -79,6 +82,9 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
 class ToF : public DeviceNodeGroup {
    public:
+    /**
+     * Construct a ToF composite node bound to a device.
+     */
     ToF(const std::shared_ptr<Device>& device)
         : DeviceNodeGroup(device),
           rawDepth{tofBase->depth},

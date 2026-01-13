@@ -11,6 +11,9 @@ class ThreadedHostNode : public ThreadedNode {
 
     ~ThreadedHostNode() override;
 
+    /**
+     * Indicates this node runs on host and is not serialized to device.
+     */
     bool runOnHost() const final {
         // Host node don't contain the necessary information to be serialized and sent to the device
         return true;

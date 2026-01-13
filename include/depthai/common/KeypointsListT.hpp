@@ -18,9 +18,16 @@ struct KeypointsListT {
 
    public:
     KeypointsListT() = default;
+    /**
+     * Construct with keypoints and edges.
+     * @throws std::runtime_error if any edge index is out of range.
+     */
     explicit KeypointsListT(std::vector<KeypointT> keypoints, std::vector<Edge> edges) : keypoints(std::move(keypoints)), edges(std::move(edges)) {
         validateEdges();
     }
+    /**
+     * Construct with keypoints only (no edges).
+     */
     explicit KeypointsListT(std::vector<KeypointT> keypoints) : keypoints(std::move(keypoints)) {}
     ~KeypointsListT() = default;
 
@@ -32,28 +39,52 @@ struct KeypointsListT {
     using iterator = typename std::vector<KeypointT>::iterator;
     using const_iterator = typename std::vector<KeypointT>::const_iterator;
 
+    /**
+     * Iterator to the first keypoint.
+     */
     iterator begin() noexcept {
         return keypoints.begin();
     }
+    /**
+     * Iterator to one-past-the-last keypoint.
+     */
     iterator end() noexcept {
         return keypoints.end();
     }
 
+    /**
+     * Const iterator to the first keypoint.
+     */
     const_iterator begin() const noexcept {
         return keypoints.begin();
     }
+    /**
+     * Const iterator to one-past-the-last keypoint.
+     */
     const_iterator end() const noexcept {
         return keypoints.end();
     }
+    /**
+     * Const iterator to the first keypoint.
+     */
     const_iterator cbegin() const noexcept {
         return keypoints.cbegin();
     }
+    /**
+     * Const iterator to one-past-the-last keypoint.
+     */
     const_iterator cend() const noexcept {
         return keypoints.cend();
     }
+    /**
+     * Return true if the list is empty.
+     */
     bool empty() const noexcept {
         return keypoints.empty();
     }
+    /**
+     * Return the number of keypoints.
+     */
     size_t size() const noexcept {
         return keypoints.size();
     }

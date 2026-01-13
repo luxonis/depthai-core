@@ -18,6 +18,7 @@ class CallbackHandler {
 
    public:
     void setCallback(std::function<std::shared_ptr<ADatatype>(std::shared_ptr<ADatatype>)> cb);
+    /// Create a handler for a stream with a processing callback.
     CallbackHandler(std::shared_ptr<XLinkConnection> conn,
                     const std::string& streamName,
                     std::function<std::shared_ptr<ADatatype>(std::shared_ptr<ADatatype>)> cb);

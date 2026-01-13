@@ -44,19 +44,58 @@ class ReplayVideo : public NodeCRTP<ThreadedHostNode, ReplayVideo> {
 
     void run() override;
 
+    /**
+     * Get metadata input file path.
+     */
     std::filesystem::path getReplayMetadataFile() const;
+    /**
+     * Get video input file path.
+     */
     std::filesystem::path getReplayVideoFile() const;
+    /**
+     * Get output frame type.
+     */
     ImgFrame::Type getOutFrameType() const;
+    /**
+     * Get output frame size.
+     */
     std::tuple<int, int> getSize() const;
+    /**
+     * Get replay FPS.
+     */
     float getFps() const;
+    /**
+     * Return whether replay loops.
+     */
     bool getLoop() const;
 
+    /**
+     * Set metadata input file path.
+     */
     ReplayVideo& setReplayMetadataFile(const std::filesystem::path& replayFile);
+    /**
+     * Set video input file path.
+     */
     ReplayVideo& setReplayVideoFile(const std::filesystem::path& replayVideo);
+    /**
+     * Set output frame type.
+     */
     ReplayVideo& setOutFrameType(ImgFrame::Type outFrameType);
+    /**
+     * Set output frame size.
+     */
     ReplayVideo& setSize(std::tuple<int, int> size);
+    /**
+     * Set output frame size.
+     */
     ReplayVideo& setSize(int width, int height);
+    /**
+     * Set replay FPS.
+     */
     ReplayVideo& setFps(float fps);
+    /**
+     * Enable or disable looping.
+     */
     ReplayVideo& setLoop(bool loop);
 };
 
@@ -82,12 +121,30 @@ class ReplayMetadataOnly : public NodeCRTP<ThreadedHostNode, ReplayMetadataOnly>
 
     void run() override;
 
+    /**
+     * Get replay file path.
+     */
     std::filesystem::path getReplayFile() const;
+    /**
+     * Get replay FPS.
+     */
     float getFps() const;
+    /**
+     * Return whether replay loops.
+     */
     bool getLoop() const;
 
+    /**
+     * Set replay file path.
+     */
     ReplayMetadataOnly& setReplayFile(const std::filesystem::path& replayFile);
+    /**
+     * Set replay FPS.
+     */
     ReplayMetadataOnly& setFps(float fps);
+    /**
+     * Enable or disable looping.
+     */
     ReplayMetadataOnly& setLoop(bool loop);
 };
 

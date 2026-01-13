@@ -18,6 +18,9 @@ class UVC : public DeviceNodeCRTP<DeviceNode, UVC, UVCProperties> {
 
    public:
     UVC() = default;
+    /**
+     * Construct a UVC node with properties.
+     */
     UVC(std::unique_ptr<Properties> props);
 
     virtual ~UVC();
