@@ -323,6 +323,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/node/Vpp.cpp
+    src/pipeline/node/Gate.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
@@ -371,6 +372,7 @@ set(TARGET_CORE_SOURCES
     src/properties/Properties.cpp
     src/capabilities/Capabilities.cpp
     src/pipeline/datatype/VppConfig.cpp
+    src/pipeline/datatype/GateControl.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
     src/utility/ObjectTrackerImpl.cpp

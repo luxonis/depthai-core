@@ -169,6 +169,7 @@ void bind_rectification(pybind11::module& m, void* pCallstack);
 void bind_neuraldepth(pybind11::module& m, void* pCallstack);
 void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack);
 void bind_vpp(pybind11::module& m, void* pCallstack);
+void bind_gate(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
 #endif
@@ -222,6 +223,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_neuraldepth);
     callstack.push_front(bind_neuralassistedstereo);
     callstack.push_front(bind_vpp);
+    callstack.push_front(bind_gate);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);
 #endif
