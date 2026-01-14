@@ -253,6 +253,30 @@ static CalibrationHandler loadHandlerWithHousingRotation() {
     return CalibrationHandler::fromJson(calibJson);
 }
 
+static CalibrationHandler loadHandlerWithImuExtrinsics() {
+    dai::EepromData data;
+    data.cameraData[CameraBoardSocket::CAM_A];
+
+    data.imuExtrinsics.rotationMatrix = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    data.imuExtrinsics.translation = {10.0f, -5.0f, 2.5f};
+    data.imuExtrinsics.specTranslation = {1.0f, 2.0f, 3.0f};
+    data.imuExtrinsics.toCameraSocket = CameraBoardSocket::CAM_A;
+
+    return CalibrationHandler(data);
+}
+
+static std::vector<std::pair<LengthUnit, float>> getAllUnitScales(LengthUnit baseUnit) {
+    const float cm = getLengthUnitMultiplier(baseUnit);
+    return {
+        {LengthUnit::METER, getLengthUnitMultiplier(LengthUnit::METER) / cm},
+        {LengthUnit::CENTIMETER, getLengthUnitMultiplier(LengthUnit::CENTIMETER) / cm},
+        {LengthUnit::MILLIMETER, getLengthUnitMultiplier(LengthUnit::MILLIMETER) / cm},
+        {LengthUnit::INCH, getLengthUnitMultiplier(LengthUnit::INCH) / cm},
+        {LengthUnit::FOOT, getLengthUnitMultiplier(LengthUnit::FOOT) / cm},
+        {LengthUnit::CUSTOM, getLengthUnitMultiplier(LengthUnit::CUSTOM) / cm},
+    };
+}
+
 static CalibrationHandler loadInvalidHandler() {
     return CalibrationHandler::fromJson(loadCalibJson());
 }
@@ -1103,4 +1127,46 @@ TEST_CASE("getHousingCalibration - Disconnected origin cameras throw", "[getHous
     // Try to get housing calibration from CAM_A (origin 0) when housing points to origin 1
     REQUIRE_THROWS_WITH(handler.getHousingCalibration(CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::FRONT_CAM_A, true),
                         Catch::Matchers::ContainsSubstring("Missing extrinsic link from source camera to destination camera"));
+}
+
+TEST_CASE("getHousingCalibration scales translation for all units", "[getHousingCalibration][units]") {
+    auto handler = loadHandlerWithHousingRotation();
+    auto base = handler.getHousingCalibration(CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::FRONT_CAM_A, false, LengthUnit::CENTIMETER);
+
+    for(const auto& [unit, scale] : getAllUnitScales(LengthUnit::CENTIMETER)) {
+        auto result = handler.getHousingCalibration(CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::FRONT_CAM_A, false, unit);
+        auto expected = base;
+        expected[0][3] *= scale;
+        expected[1][3] *= scale;
+        expected[2][3] *= scale;
+        requireMatrixApproxEqual(result, expected);
+    }
+}
+
+TEST_CASE("getImuToCameraExtrinsics scales translation for all units", "[getImuToCameraExtrinsics][units]") {
+    auto handler = loadHandlerWithImuExtrinsics();
+    auto base = handler.getImuToCameraExtrinsics(CameraBoardSocket::CAM_A, false, LengthUnit::CENTIMETER);
+
+    for(const auto& [unit, scale] : getAllUnitScales(LengthUnit::CENTIMETER)) {
+        auto result = handler.getImuToCameraExtrinsics(CameraBoardSocket::CAM_A, false, unit);
+        auto expected = base;
+        expected[0][3] *= scale;
+        expected[1][3] *= scale;
+        expected[2][3] *= scale;
+        requireMatrixApproxEqual(result, expected);
+    }
+}
+
+TEST_CASE("getCameraToImuExtrinsics scales translation for all units", "[getCameraToImuExtrinsics][units]") {
+    auto handler = loadHandlerWithImuExtrinsics();
+    auto base = handler.getCameraToImuExtrinsics(CameraBoardSocket::CAM_A, false, LengthUnit::CENTIMETER);
+
+    for(const auto& [unit, scale] : getAllUnitScales(LengthUnit::CENTIMETER)) {
+        auto result = handler.getCameraToImuExtrinsics(CameraBoardSocket::CAM_A, false, unit);
+        auto expected = base;
+        expected[0][3] *= scale;
+        expected[1][3] *= scale;
+        expected[2][3] *= scale;
+        requireMatrixApproxEqual(result, expected);
+    }
 }
