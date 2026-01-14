@@ -14,38 +14,29 @@ except ImportError:
 
 device = dai.Device()
 fps = 30
-frameType = dai.ImgFrame.Type.BGR888i
 modelName = "luxonis/yolov8-large-pose-estimation:coco-640x352"
 if device.getPlatform() == dai.Platform.RVC2:
     modelName = "luxonis/yolov8-nano-pose-estimation:coco-512x288"
     fps = 10
-    frameType = dai.ImgFrame.Type.BGR888p
 
-nnArchive = dai.NNArchive(dai.getModelFromZoo(dai.NNModelDescription(modelName,  device.getPlatformAsString())))
-assert nnArchive is not None
-w = nnArchive.getInputWidth()
-h = nnArchive.getInputHeight()
-assert w is not None
-assert h is not None
+requiredCamCapabilities = dai.ImgFrameCapability()
+requiredCamCapabilities.fps.fixed(fps)
+requiredCamCapabilities.enableUndistortion = True
 
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
     cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    camOut =  cameraNode.requestOutput((w, h), frameType, fps= fps, enableUndistortion=True)
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     stereo = pipeline.create(dai.node.StereoDepth)
 
-    monoLeftOut = monoLeft.requestOutput((w, h))
-    monoRightOut = monoRight.requestOutput((w, h))
+    monoLeftOut = monoLeft.requestFullResolutionOutput()
+    monoRightOut = monoRight.requestFullResolutionOutput()
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
-    stereo.setRectification(True)
-    stereo.setExtendedDisparity(True)
-    stereo.setLeftRightCheck(True)
 
-    detNN = pipeline.create(dai.node.DetectionNetwork).build(camOut, nnArchive)
+    detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
     align = pipeline.create(dai.node.ImageAlign)
     stereo.depth.link(align.input)
     detNN.passthrough.link(align.inputAlignTo)
