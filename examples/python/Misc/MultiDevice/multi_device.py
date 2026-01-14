@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
 """
-Minimal changes to original script:
-  * Adds simple timestamp-based synchronisation across multiple devices.
-  * Presents frames side‑by‑side when they are within 1 / FPS seconds.
-  * Keeps v3 API usage and overall code structure intact.
+PTP example: fetch frames from devices and display them side by side.
+Print time delta between frames on the displayed window.
 """
 
 import contextlib
