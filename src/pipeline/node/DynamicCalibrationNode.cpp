@@ -72,7 +72,7 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
         currentCalibration.getCameraIntrinsics(boardSocketB, resolutionB.first, resolutionB.second, Point2f(), Point2f(),false),
         currentCalibration.getDistortionCoefficients(boardSocketB),
 	currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB),
-	currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false),
+	currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false, MeasurementUnit::METER),
 	currentCalibration.getDistortionModel(boardSocketB)
     );
     // clang-format on
@@ -121,7 +121,7 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(con
     }
 
     for(int i = 0; i < 3; ++i) {
-        tvec[i] = static_cast<dcl::scalar_t>(translationVector[i] / 100.0f);  // Convert to m
+        tvec[i] = static_cast<dcl::scalar_t>(translationVector[i]);
     }
 
     dcl::distortion_t dclDistortion;
