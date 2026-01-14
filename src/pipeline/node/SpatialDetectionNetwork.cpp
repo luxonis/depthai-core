@@ -33,20 +33,23 @@ void SpatialDetectionNetwork::buildInternal() {
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const DepthSource& depthSource,
-                                                                        NNModelDescription modelDesc,
+                                                                        const Model& model,
                                                                         std::optional<float> fps,
                                                                         std::optional<dai::ImgResizeMode> resizeMode) {
-    auto nnArchive = createNNArchive(modelDesc);
-    return build(inputRgb, depthSource, nnArchive, fps, resizeMode);
+    ImgFrameCapability cap;
+    if(fps.has_value()) cap.fps.value = *fps;
+    if(resizeMode.has_value()) cap.resizeMode = *resizeMode;
+    return build(inputRgb, depthSource, model, cap);
 }
 
 std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const std::shared_ptr<Camera>& inputRgb,
                                                                         const DepthSource& depthSource,
-                                                                        const NNArchive& nnArchive,
-                                                                        std::optional<float> fps,
-                                                                        std::optional<dai::ImgResizeMode> resizeMode) {
-    neuralNetwork->build(inputRgb, nnArchive, fps, resizeMode);
-    detectionParser->setNNArchive(nnArchive);
+                                                                        const Model& model,
+                                                                        const ImgFrameCapability& capability) {
+    neuralNetwork->build(inputRgb, model, capability);
+    auto nnArchive = neuralNetwork->getNNArchive();
+    DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
+    detectionParser->setNNArchive(nnArchive.value());
     alignDepth(depthSource, inputRgb);
     return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
