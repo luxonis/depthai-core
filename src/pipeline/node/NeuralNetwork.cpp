@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
+#include <boost/range/algorithm/find.hpp>
 #include <magic_enum/magic_enum.hpp>
 #include <optional>
 #include <stdexcept>
@@ -86,7 +87,7 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
     DAI_CHECK_V(nnArchiveCfg.getVersion() == NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
     auto platform = getDevice()->getPlatform();
     auto supportedPlatforms = nnArchive.getSupportedPlatforms();
-    bool platformSupported = std::find(supportedPlatforms.begin(), supportedPlatforms.end(), platform) != supportedPlatforms.end();
+    bool platformSupported = boost::range::find(supportedPlatforms, platform) != supportedPlatforms.end();
     DAI_CHECK_V(platformSupported, "Platform not supported by the neural network model");
 
     const auto& configV1 = nnArchiveCfg.getConfig<nn_archive::v1::Config>();
@@ -103,9 +104,7 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
     auto inputType = configV1.model.inputs[0].preprocessing.daiType;
     if(inputType.has_value()) {
         auto convertedInputType = magic_enum::enum_cast<ImgFrame::Type>(inputType.value());
-        if(!convertedInputType.has_value()) {
-            DAI_CHECK_V(false, "Unsupported input type: {}", inputType.value());
-        }
+        DAI_CHECK_V(convertedInputType.has_value(), "Unsupported input type: {}", inputType.value());
         type = convertedInputType.value();
     } else {
         if(platform == Platform::RVC2 || platform == Platform::RVC3) {
