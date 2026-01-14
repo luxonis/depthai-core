@@ -104,7 +104,7 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
 
 RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     --mount=type=cache,target=/opt/vcpkg-bincache \
-    if [ "$FLAVOR" != "vanilla" ]; then \
+    if [ "$FLAVOR" != "vanilla" ] && [ "$FLAVOR" != "tsan" ]; then \
         export CMAKE_TOOLCHAIN_FILE=/workspace/cmake/toolchain/${FLAVOR}.cmake && \
         echo "Using toolchain: $CMAKE_TOOLCHAIN_FILE"; \
     else \
