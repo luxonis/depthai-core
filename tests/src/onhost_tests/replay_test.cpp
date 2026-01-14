@@ -14,6 +14,11 @@
 
 constexpr unsigned int NUM_MSGS = 100;
 
+// Disable container overflow detection for this test binary
+extern "C" const char* __asan_default_options() {
+    return "detect_container_overflow=0";
+}
+
 class TestHelper {
    public:
     TestHelper() {

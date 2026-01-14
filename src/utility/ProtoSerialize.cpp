@@ -115,19 +115,19 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
 }
 
 DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
-    if(schemaName == proto::encoded_frame::EncodedFrame::descriptor()->full_name()) {
+    if(schemaName == "dai.proto.encoded_frame.EncodedFrame") {
         return DatatypeEnum::EncodedFrame;
-    } else if(schemaName == proto::imu_data::IMUData::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.imu_data.IMUData") {
         return DatatypeEnum::IMUData;
-    } else if(schemaName == proto::image_annotations::ImageAnnotations::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.image_annotations.ImageAnnotations") {
         return DatatypeEnum::ImgAnnotations;
-    } else if(schemaName == proto::img_detections::ImgDetections::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.img_detections.ImgDetections") {
         return DatatypeEnum::ImgDetections;
-    } else if(schemaName == proto::img_frame::ImgFrame::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.img_frame.ImgFrame") {
         return DatatypeEnum::ImgFrame;
-    } else if(schemaName == proto::point_cloud_data::PointCloudData::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.point_cloud_data.PointCloudData") {
         return DatatypeEnum::PointCloudData;
-    } else if(schemaName == proto::spatial_img_detections::SpatialImgDetections::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.spatial_img_detections.SpatialImgDetections") {
         return DatatypeEnum::SpatialImgDetections;
     } else {
         throw std::runtime_error("Unknown schema name: " + schemaName);
