@@ -49,7 +49,7 @@ class RGBD::Impl {
         }
     }
     void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit) {
-        const float unitPerMeter = getDepthUnitMultiplier(depthUnit);
+        const float unitPerMeter = getLengthUnitMultiplier(depthUnit);
         scaleFactor = unitPerMeter > 0.0f ? (1.0f / unitPerMeter) : 1.0f;
     }
     void printDevices() {

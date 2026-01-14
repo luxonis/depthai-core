@@ -428,17 +428,17 @@ TEST_CASE("Extrinsics translation scales with measurement unit", "[getCameraExtr
 
     handler.setCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, R, tABcm, zeros);
 
-    auto Mmeters = handler.getCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, false, MeasurementUnit::METER);
+    auto Mmeters = handler.getCameraExtrinsics(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, false, LengthUnit::METER);
     REQUIRE(Mmeters[0][3] == Catch::Approx(1.0f).margin(1e-6));
     REQUIRE(Mmeters[1][3] == Catch::Approx(-0.5f).margin(1e-6));
     REQUIRE(Mmeters[2][3] == Catch::Approx(0.25f).margin(1e-6));
 
-    auto tMillimeters = handler.getCameraTranslationVector(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, false, MeasurementUnit::MILLIMETER);
+    auto tMillimeters = handler.getCameraTranslationVector(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, false, LengthUnit::MILLIMETER);
     REQUIRE(tMillimeters[0] == Catch::Approx(1000.0f).margin(1e-6));
     REQUIRE(tMillimeters[1] == Catch::Approx(-500.0f).margin(1e-6));
     REQUIRE(tMillimeters[2] == Catch::Approx(250.0f).margin(1e-6));
 
-    float baselineMeters = handler.getBaselineDistance(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, false, MeasurementUnit::METER);
+    float baselineMeters = handler.getBaselineDistance(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D, false, LengthUnit::METER);
     float expectedMeters = std::sqrt(1.0f * 1.0f + 0.5f * 0.5f + 0.25f * 0.25f);
     REQUIRE(baselineMeters == Catch::Approx(expectedMeters).margin(1e-6));
 }

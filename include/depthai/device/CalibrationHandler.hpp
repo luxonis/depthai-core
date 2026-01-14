@@ -238,7 +238,7 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera,
                                                         CameraBoardSocket dstCamera,
                                                         bool useSpecTranslation = false,
-                                                        MeasurementUnit unit = MeasurementUnit::CENTIMETER) const;
+                                                        LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the transformation matrix between a camera and a chosen housing
@@ -275,7 +275,7 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getHousingCalibration(CameraBoardSocket srcCamera,
                                                           const HousingCoordinateSystem housingCS,
                                                           bool useSpecTranslation = false,
-                                                          MeasurementUnit unit = MeasurementUnit::CENTIMETER) const;
+                                                          LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Camera translation vector between two cameras from the calibration data.
@@ -289,7 +289,7 @@ class CalibrationHandler {
     std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera,
                                                   CameraBoardSocket dstCamera,
                                                   bool useSpecTranslation = true,
-                                                  MeasurementUnit unit = MeasurementUnit::CENTIMETER) const;
+                                                  LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Camera rotation matrix between two cameras from the calibration data.
@@ -319,7 +319,7 @@ class CalibrationHandler {
     float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::CAM_C,
                               CameraBoardSocket cam2 = CameraBoardSocket::CAM_B,
                               bool useSpecTranslation = true,
-                              MeasurementUnit unit = MeasurementUnit::CENTIMETER) const;
+                              LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Camera To Imu Extrinsics object
@@ -342,7 +342,7 @@ class CalibrationHandler {
      */
     std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId,
                                                              bool useSpecTranslation = false,
-                                                             MeasurementUnit unit = MeasurementUnit::CENTIMETER) const;
+                                                             LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Imu To Camera Extrinsics object from the data loaded if there is a linked connection
@@ -365,7 +365,7 @@ class CalibrationHandler {
      */
     std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId,
                                                              bool useSpecTranslation = false,
-                                                             MeasurementUnit unit = MeasurementUnit::CENTIMETER) const;
+                                                             LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      *
@@ -696,6 +696,11 @@ class CalibrationHandler {
                                                               CameraBoardSocket& originSocket) const;
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
+    void scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const;
+
+   protected:
+    static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;
+    LengthUnit getEepromTranslationUnits() const;
 };
 
 }  // namespace dai
