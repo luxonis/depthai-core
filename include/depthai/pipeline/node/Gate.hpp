@@ -19,13 +19,20 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
 
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
-    Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     Input inputControl{*this, {"inputControl", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::GateControl, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
+    void setRunOnHost(bool runOnHost);
+
+    bool runOnHost() const override;
+
     void run() override;
+
+   private:
+    bool runOnHostVar = false;
 };
 
 }  // namespace node
