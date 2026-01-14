@@ -45,7 +45,7 @@ WarningsAsErrors: >
   bugprone-unchecked-optional-access,
 
 HeaderFilterRegex: 'core/.*\.hpp'
-AnalyzeTemporaryDtors: false
+# AnalyzeTemporaryDtors: false # Not supported on newer clang-tidy versions
 FormatStyle:     .clang-format
 User:            user
 CheckOptions:

@@ -657,7 +657,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         do {
             ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
             if(ret == X_LINK_SUCCESS) {
-                pimpl->logger.warn("Found device by given DeviceInfo: {}", deviceInfo.toString());
+                pimpl->logger.trace("Found device by given DeviceInfo: {}", deviceInfo.toString());
                 break;
             }
             if(timeout < SEARCH_INTERVAL) {

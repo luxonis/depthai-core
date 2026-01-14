@@ -112,14 +112,25 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     keypoint.def(py::init<>())
-        .def(py::init<Point3f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
-        .def(py::init<Point2f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
-        .def(py::init<float, float, float, float, uint32_t>(),
+        .def(py::init<Point3f, float, uint32_t, std::string>(),
+             py::arg("coordinates"),
+             py::arg("confidence") = -1.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, Keypoint, Keypoint))
+        .def(py::init<Point2f, float, uint32_t, std::string>(),
+             py::arg("coordinates"),
+             py::arg("confidence") = -1.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, Keypoint, Keypoint))
+        .def(py::init<float, float, float, float, uint32_t, std::string>(),
              py::arg("x"),
              py::arg("y"),
              py::arg("z"),
-             py::arg("confidence") = 0.f,
+             py::arg("confidence") = -1.f,
              py::arg("label") = 0,
+             py::arg("labelName") = "",
              DOC(dai, Keypoint, Keypoint))
         .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates, DOC(dai, Keypoint, imageCoordinates))
         .def_readwrite("confidence", &Keypoint::confidence, DOC(dai, Keypoint, confidence))
