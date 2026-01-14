@@ -21,10 +21,16 @@ class MessageGroup : public Buffer {
     /// Group
     std::shared_ptr<ADatatype> operator[](const std::string& name);
     template <typename T>
+    /**
+     * Retrieve a message by name and cast to type T.
+     */
     std::shared_ptr<T> get(const std::string& name) {
         return std::dynamic_pointer_cast<T>(group[name]);
     }
 
+    /**
+     * Retrieve a message by name.
+     */
     std::shared_ptr<ADatatype> get(const std::string& name) {
         return group[name];
     }
@@ -35,6 +41,9 @@ class MessageGroup : public Buffer {
     //     static_assert(std::is_base_of<ADatatype, T>::value, "T must derive from ADatatype");
     //     group[name] = std::make_shared<T>(value);
     // }
+    /**
+     * Add a message to the group.
+     */
     void add(const std::string& name, const std::shared_ptr<ADatatype>& value);
 
     // Iterators
@@ -52,6 +61,9 @@ class MessageGroup : public Buffer {
      */
     int64_t getIntervalNs() const;
 
+    /**
+     * Return number of messages in the group.
+     */
     int64_t getNumMessages() const;
 
     /**

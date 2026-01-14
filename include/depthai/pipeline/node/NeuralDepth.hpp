@@ -38,6 +38,9 @@ class NeuralDepth : public DeviceNodeCRTP<DeviceNode, NeuralDepth, NeuralDepthPr
      * Initial config to use for NeuralDepth.
      */
     std::shared_ptr<NeuralDepthConfig> initialConfig = std::make_shared<NeuralDepthConfig>();
+    /**
+     * Build node by linking left/right inputs and selecting model.
+     */
     std::shared_ptr<NeuralDepth> build(Output& left, Output& right, DeviceModelZoo model = DeviceModelZoo::NEURAL_DEPTH_SMALL);
     Subnode<Sync> sync{*this, "sync"};
     Subnode<MessageDemux> messageDemux{*this, "messageDemux"};

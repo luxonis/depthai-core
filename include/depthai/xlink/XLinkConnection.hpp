@@ -26,16 +26,31 @@ namespace dai {
  */
 struct DeviceInfo {
     DeviceInfo() = default;
+    /**
+     * Construct device info from explicit fields.
+     */
     DeviceInfo(std::string name, std::string deviceId, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status);
     /**
      * Creates a DeviceInfo by checking whether supplied parameter is a DeviceID or IP/USB name
      * @param deviceIdOrName Either DeviceId, IP Address or USB port name
      */
     explicit DeviceInfo(std::string deviceIdOrName);
+    /**
+     * Construct device info from an XLink device descriptor.
+     */
     explicit DeviceInfo(const deviceDesc_t& desc);
+    /**
+     * Return the underlying XLink device descriptor.
+     */
     deviceDesc_t getXLinkDeviceDesc() const;
     [[deprecated("Use getDeviceId() instead")]] std::string getMxId() const;
+    /**
+     * Return device id string.
+     */
     std::string getDeviceId() const;
+    /**
+     * Return a string representation for logging.
+     */
     std::string toString() const;
 
     std::string name = "";
@@ -95,15 +110,33 @@ class XLinkConnection {
      */
     static ProfilingData getGlobalProfilingData();
 
+    /**
+     * Construct a connection using a provided mvcmd binary.
+     */
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    /**
+     * Construct a connection using an mvcmd path.
+     */
     XLinkConnection(const DeviceInfo& deviceDesc, std::filesystem::path pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    /**
+     * Construct a connection to an already booted device.
+     */
     explicit XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
 
     ~XLinkConnection();
 
+    /**
+     * Configure reboot on destruction.
+     */
     void setRebootOnDestruction(bool reboot);
+    /**
+     * Return whether reboot on destruction is enabled.
+     */
     bool getRebootOnDestruction() const;
 
+    /**
+     * Return the XLink link id.
+     */
     int getLinkId() const;
 
     /**

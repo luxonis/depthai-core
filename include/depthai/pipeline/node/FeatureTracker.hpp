@@ -27,6 +27,9 @@ class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, Feature
 
    public:
     FeatureTracker() = default;
+    /**
+     * Construct a FeatureTracker node with properties.
+     */
     FeatureTracker(std::unique_ptr<Properties> props);
 
     /**

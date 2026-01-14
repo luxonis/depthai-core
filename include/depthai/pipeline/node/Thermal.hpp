@@ -26,6 +26,9 @@ class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
 
    public:
     Thermal() = default;
+    /**
+     * Construct a Thermal node with properties.
+     */
     Thermal(std::unique_ptr<Properties> props);
 
     /**
@@ -61,6 +64,9 @@ class Thermal : public DeviceNodeCRTP<DeviceNode, Thermal, ThermalProperties> {
      */
     CameraBoardSocket getBoardSocket() const;
 
+    /**
+     * Set output frames per second.
+     */
     void setFps(float fps);
 
    private:

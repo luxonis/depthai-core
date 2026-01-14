@@ -15,6 +15,9 @@ namespace dai {
  */
 struct Point3f {
     Point3f() = default;
+    /**
+     * Construct a 3D point from coordinates.
+     */
     Point3f(float x, float y, float z) : x(x), y(y), z(z) {}
     float x = 0, y = 0, z = 0;
 };

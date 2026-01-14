@@ -37,9 +37,15 @@ class HostNode : public ThreadedHostNode {
         sendProcessToPipeline = send;
     }
 
+    /**
+     * Sync on host by enabling host-side synchronization.
+     */
     void runSyncingOnHost() {
         syncOnHost = true;
     }
+    /**
+     * Sync on device by disabling host-side synchronization.
+     */
     void runSyncingOnDevice() {
         syncOnHost = false;
     }

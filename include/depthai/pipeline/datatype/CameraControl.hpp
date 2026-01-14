@@ -778,6 +778,9 @@ class CameraControl : public Buffer {
     bool enableHdr{false};
     std::vector<std::pair<std::string, std::string>> miscControls;
 
+    /**
+     * Set or clear a command bit.
+     */
     void setCommand(Command cmd, bool value = true) {
         uint64_t mask = 1ull << (uint8_t)cmd;
         if(value) {
@@ -786,9 +789,15 @@ class CameraControl : public Buffer {
             cmdMask &= ~mask;
         }
     }
+    /**
+     * Clear a command bit.
+     */
     void clearCommand(Command cmd) {
         setCommand(cmd, false);
     }
+    /**
+     * Return true if a command bit is set.
+     */
     bool getCommand(Command cmd) const {
         return !!(cmdMask & (1ull << (uint8_t)cmd));
     }

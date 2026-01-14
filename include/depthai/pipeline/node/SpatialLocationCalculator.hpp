@@ -23,6 +23,9 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
 
    public:
     SpatialLocationCalculator() = default;
+    /**
+     * Construct a SpatialLocationCalculator node with properties.
+     */
     SpatialLocationCalculator(std::unique_ptr<Properties> props);
 
     /**

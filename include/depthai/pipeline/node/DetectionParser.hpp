@@ -101,8 +101,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      */
     void setInputImageSize(int width, int height);
 
-    /*
-     * Set preview output size, as a tuple<width, height>
+    /**
+     * Set input image size from a tuple<width, height>.
      */
     void setInputImageSize(std::tuple<int, int> size);
 
@@ -145,7 +145,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      */
     void setClasses(const std::vector<std::string>& classes);
 
-    /*
+    /**
      * Sets the number of coordinates per bounding box.
      * @param coordinates Number of coordinates. Default is 4
      */
@@ -283,6 +283,9 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     void run() override;
 
+    /**
+     * Decode MobileNet output into detections.
+     */
     void decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& outDetections, float confidenceThr);
 
    private:

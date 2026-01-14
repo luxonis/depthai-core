@@ -15,11 +15,17 @@ namespace dai {
  */
 struct Point2f {
     Point2f() = default;
+    /**
+     * Construct a 2D point with explicit coordinates.
+     */
     Point2f(float x, float y) {
         this->x = x;
         this->y = y;
         this->hasNormalized = false;
     }
+    /**
+     * Construct a 2D point and explicitly mark normalization.
+     */
     Point2f(float x, float y, bool normalized) {
         this->x = x;
         this->y = y;
@@ -30,6 +36,9 @@ struct Point2f {
     bool normalized = false;
     bool hasNormalized = false;
 
+    /**
+     * Return whether the point is normalized to [0,1].
+     */
     bool isNormalized() const {
         if(hasNormalized) {
             return normalized;

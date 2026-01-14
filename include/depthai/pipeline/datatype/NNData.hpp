@@ -70,6 +70,9 @@ class NNData : public Buffer {
      * Construct NNData message.
      */
     NNData() = default;
+    /**
+     * Construct NNData with a preallocated data size.
+     */
     NNData(size_t size);
     virtual ~NNData();
 
@@ -145,11 +148,17 @@ class NNData : public Buffer {
      * @return NNData&: reference to this object
      */
     template <typename _Ty = double>
+    /**
+     * Add a tensor from a 1xN vector with explicit data type.
+     */
     NNData& addTensor(const std::string& name, const std::vector<_Ty>& data, dai::TensorInfo::DataType dataType) {
         return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}), dataType);
     };
     // addTensor vector dispatch
     template <typename _Ty = double>
+    /**
+     * Add a tensor from a vector with type-based data type selection.
+     */
     NNData& addTensor(const std::string& name, const std::vector<_Ty>& tensor) {
         if constexpr(std::is_same<_Ty, int>::value) {
             return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
@@ -168,27 +177,48 @@ class NNData : public Buffer {
         }
     }
 
+    /**
+     * Add an INT tensor from int data.
+     */
     NNData& addTensor(const std::string& name, const std::vector<int>& tensor) {
         return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
     };
+    /**
+     * Add a FP16 tensor from uint16_t data.
+     */
     NNData& addTensor(const std::string& name, const std::vector<uint16_t>& tensor) {
         return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
     };
+    /**
+     * Add a FP32 tensor from float data.
+     */
     NNData& addTensor(const std::string& name, const std::vector<float>& tensor) {
         return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
     };
+    /**
+     * Add a FP64 tensor from double data.
+     */
     NNData& addTensor(const std::string& name, const std::vector<double>& tensor) {
         return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
     };
+    /**
+     * Add an INT8 tensor from int8 data.
+     */
     NNData& addTensor(const std::string& name, const std::vector<std::int8_t>& tensor) {
         return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
     };
+    /**
+     * Add a U8F tensor from uint8 data.
+     */
     NNData& addTensor(const std::string& name, const std::vector<std::uint8_t>& tensor) {
         return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
     };
 
     // addTensor dispatch
     template <typename _Ty = double>
+    /**
+     * Add a tensor from an xt::xarray with type-based data type selection.
+     */
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor) {
         if constexpr(std::is_same<_Ty, int>::value) {
             return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
@@ -207,21 +237,39 @@ class NNData : public Buffer {
         }
     }
 
+    /**
+     * Add an INT tensor from int xt::xarray data.
+     */
     NNData& addTensor(const std::string& name, const xt::xarray<int>& tensor) {
         return addTensor<int>(name, tensor, dai::TensorInfo::DataType::INT);
     };
+    /**
+     * Add a FP16 tensor from uint16_t xt::xarray data.
+     */
     NNData& addTensor(const std::string& name, const xt::xarray<uint16_t>& tensor) {
         return addTensor<uint16_t>(name, tensor, dai::TensorInfo::DataType::FP16);
     };
+    /**
+     * Add a FP32 tensor from float xt::xarray data.
+     */
     NNData& addTensor(const std::string& name, const xt::xarray<float>& tensor) {
         return addTensor<float>(name, tensor, dai::TensorInfo::DataType::FP32);
     };
+    /**
+     * Add a FP64 tensor from double xt::xarray data.
+     */
     NNData& addTensor(const std::string& name, const xt::xarray<double>& tensor) {
         return addTensor<double>(name, tensor, dai::TensorInfo::DataType::FP64);
     };
+    /**
+     * Add an INT8 tensor from int8 xt::xarray data.
+     */
     NNData& addTensor(const std::string& name, const xt::xarray<std::int8_t>& tensor) {
         return addTensor<std::int8_t>(name, tensor, dai::TensorInfo::DataType::I8);
     };
+    /**
+     * Add a U8F tensor from uint8 xt::xarray data.
+     */
     NNData& addTensor(const std::string& name, const xt::xarray<std::uint8_t>& tensor) {
         return addTensor<std::uint8_t>(name, tensor, dai::TensorInfo::DataType::U8F);
     };
@@ -475,6 +523,9 @@ class NNData : public Buffer {
     }
 
     template <typename _Ty>
+    /**
+     * Change tensor storage order in-place.
+     */
     void changeStorageOrder(xt::xarray<_Ty>& array, TensorInfo::StorageOrder from, TensorInfo::StorageOrder to) {
         // Convert storage order to vector
         auto order2vec = [](TensorInfo::StorageOrder order) {

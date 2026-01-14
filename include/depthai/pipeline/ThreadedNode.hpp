@@ -21,6 +21,9 @@ class ThreadedNode : public Node {
 
     using Node::Node;
 
+    /**
+     * Construct a threaded node.
+     */
     ThreadedNode();
     virtual ~ThreadedNode();
 
@@ -41,16 +44,31 @@ class ThreadedNode : public Node {
     virtual void onStop() {}
 
     // override the following methods
+    /**
+     * Start the node thread.
+     */
     void start() override;
+    /**
+     * Wait for the node thread to finish.
+     */
     void wait() override;
+    /**
+     * Stop the node thread.
+     */
     void stop() override;
 
     // virtual 'run' method
     virtual void run() = 0;
 
     // check if still running
+    /**
+     * Return true if the node thread is running.
+     */
     bool isRunning() const;
 
+    /**
+     * Main processing loop hook used by run() implementations.
+     */
     bool mainLoop();
 
     /**

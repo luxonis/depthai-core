@@ -15,6 +15,9 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
    public:
     constexpr static const char* NAME = "VideoEncoder";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    /**
+     * Build the node by linking an input output.
+     */
     std::shared_ptr<VideoEncoder> build(Node::Output& input);
 
     /**
@@ -125,6 +128,9 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
     float getFrameRate() const;
     /// Get lossless mode. Applies only when using [M]JPEG profile.
     bool getLossless() const;
+    /**
+     * Get the maximum encoded frame size in bytes.
+     */
     int getMaxOutputFrameSize() const;
 };
 

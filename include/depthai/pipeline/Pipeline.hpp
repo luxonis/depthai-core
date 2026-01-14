@@ -264,13 +264,22 @@ class Pipeline {
     std::shared_ptr<PipelineImpl> pimpl;
 
    public:
+    /**
+     * Return the internal pipeline implementation pointer.
+     */
     PipelineImpl* impl() {
         return pimpl.get();
     }
+    /**
+     * Return the internal pipeline implementation pointer (const).
+     */
     const PipelineImpl* impl() const {
         return pimpl.get();
     }
 
+    /**
+     * Return pipeline source nodes.
+     */
     std::vector<std::shared_ptr<Node>> getSourceNodes() {
         return impl()->getSourceNodes();
     }
@@ -315,7 +324,9 @@ class Pipeline {
      */
     PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
 
-    // void loadAssets(AssetManager& assetManager);
+    /**
+     * Serialize pipeline schema and assets to the provided storage buffers.
+     */
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
         impl()->serialize(schema, assets, assetStorage);
     }
@@ -342,46 +353,65 @@ class Pipeline {
         impl()->add(node);
     }
 
-    /// Removes a node from pipeline
+    /**
+     * Remove a node from the pipeline.
+     */
     void remove(std::shared_ptr<Node> node) {
         impl()->remove(node);
     }
 
-    /// Get a vector of all nodes
+    /**
+     * Return all nodes in the pipeline.
+     */
     std::vector<std::shared_ptr<Node>> getAllNodes() const {
         return impl()->getAllNodes();
     }
 
-    /// Get node with id if it exists, nullptr otherwise
+    /**
+     * Return node by id if it exists, nullptr otherwise.
+     */
     std::shared_ptr<const Node> getNode(Node::Id id) const {
         return impl()->getNode(id);
     }
-    /// Get node with id if it exists, nullptr otherwise
+    /**
+     * Return node by id if it exists, nullptr otherwise.
+     */
     std::shared_ptr<Node> getNode(Node::Id id) {
         return impl()->getNode(id);
     }
 
-    /// Get all connections
+    /**
+     * Return all connections.
+     */
     std::vector<Node::Connection> getConnections() const {
         return impl()->getConnections();
     }
 
     using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
+    /**
+     * Return a map of node connections.
+     */
     NodeConnectionMap getConnectionMap() const {
         return impl()->getConnectionMap();
     }
 
-    /// Get pipelines AssetManager as reference
+    /**
+     * Return the pipeline asset manager (const).
+     */
     const AssetManager& getAssetManager() const {
         return impl()->assetManager;
     }
 
-    /// Get pipelines AssetManager as reference
+    /**
+     * Return the pipeline asset manager.
+     */
     AssetManager& getAssetManager() {
         return impl()->assetManager;
     }
 
-    /// Set a specific OpenVINO version to use with this pipeline
+    /**
+     * Set a specific OpenVINO version for this pipeline.
+     */
     void setOpenVINOVersion(OpenVINO::Version version) {
         impl()->forceRequiredOpenVINOVersion = version;
     }
@@ -440,7 +470,9 @@ class Pipeline {
         return impl()->getEepromId();
     }
 
-    /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
+    /**
+     * Set a camera tuning blob path used for all cameras.
+     */
     void setCameraTuningBlobPath(const fs::path& path) {
         impl()->setCameraTuningBlobPath(path);
     }
@@ -476,74 +508,125 @@ class Pipeline {
         impl()->setSippDmaBufferSize(sizeBytes);
     }
 
-    /// Sets board configuration
+    /**
+     * Set board configuration for the pipeline.
+     */
     void setBoardConfig(BoardConfig board) {
         impl()->setBoardConfig(board);
     }
 
-    /// Gets board configuration
+    /**
+     * Get current board configuration.
+     */
     BoardConfig getBoardConfig() const {
         return impl()->getBoardConfig();
     }
 
-    /// Get device configuration needed for this pipeline
+    /**
+     * Get the device configuration for this pipeline.
+     */
     Device::Config getDeviceConfig() const {
         return impl()->getDeviceConfig();
     }
 
+    /**
+     * Return true if the pipeline is running.
+     */
     bool isRunning() const {
         return impl()->isRunning();
     }
 
+    /**
+     * Return true if the pipeline is built.
+     */
     bool isBuilt() const {
         return impl()->isBuilt();
     }
 
+    /**
+     * Build the pipeline.
+     */
     void build() {
         impl()->build();
     }
+    /**
+     * Build pipeline for device-only execution.
+     */
     void buildDevice() {
         impl()->buildingOnHost = false;
         impl()->build();
     }
+    /**
+     * Start pipeline execution.
+     */
     void start() {
         impl()->start();
     }
+    /**
+     * Wait for pipeline execution to finish.
+     */
     void wait() {
         impl()->wait();
     }
+    /**
+     * Stop pipeline execution.
+     */
     void stop() {
         impl()->stop();
     }
+    /**
+     * Process pending tasks with optional timeout.
+     */
     void processTasks(bool waitForTasks = false, double timeoutSeconds = -1.0) {
         impl()->processTasks(waitForTasks, timeoutSeconds);
     }
+    /**
+     * Run the pipeline in the current thread.
+     */
     void run() {
         impl()->run();
     }
     /*
      * @note In case of a host only pipeline, this function returns a nullptr
      */
+    /**
+     * Return the default device instance, if available.
+     */
     std::shared_ptr<Device> getDefaultDevice() {
         return impl()->defaultDevice;
     }
 
+    /**
+     * Add a task to be executed by the pipeline.
+     */
     void addTask(std::function<void()> task) {
         impl()->addTask(std::move(task));
     }
 
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
+    /**
+     * Enable holistic replay from a recording path.
+     */
     void enableHolisticReplay(const std::string& pathToRecording);
 
     /// Pipeline debugging
     void enablePipelineDebugging(bool enable = true);
 
     // Access to pipeline state queues
+    /**
+     * Return pipeline state output queue.
+     */
     std::shared_ptr<MessageQueue> getPipelineStateOut() const;
+    /**
+     * Return pipeline state request queue.
+     */
     std::shared_ptr<InputQueue> getPipelineStateRequest() const;
 
     // Pipeline state getters
+    /**
+     * Return pipeline state API helper.
+     */
     PipelineStateApi getPipelineState();
 };
 

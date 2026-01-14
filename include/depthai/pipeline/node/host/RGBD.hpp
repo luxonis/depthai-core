@@ -30,6 +30,9 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
    public:
     constexpr static const char* NAME = "RGBD";
 
+    /**
+     * Construct an RGBD host node.
+     */
     RGBD();
     ~RGBD();
     Subnode<node::Sync> sync{*this, "sync"};
@@ -49,6 +52,9 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
      */
     Output rgbd{*this, {"rgbd", DEFAULT_GROUP, {{DatatypeEnum::RGBDData, true}}}};
 
+    /**
+     * Build the RGBD node.
+     */
     std::shared_ptr<RGBD> build();
 
     /**
@@ -73,6 +79,9 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
                                 std::pair<int, int> frameSize = std::make_pair(640, 400),
                                 std::optional<float> fps = std::nullopt);
 
+    /**
+     * Set depth unit for point cloud output.
+     */
     void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit);
     /**
      * @brief Use single-threaded CPU for processing

@@ -31,6 +31,9 @@ using DepthSource = std::variant<std::shared_ptr<StereoDepth>, std::shared_ptr<N
  */
 class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
+    /**
+     * Construct a spatial detection network bound to a device.
+     */
     explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
         : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device)
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -47,6 +50,9 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
             }
         }
     };
+    /**
+     * Construct a spatial detection network with properties.
+     */
     SpatialDetectionNetwork(std::unique_ptr<Properties> props)
         : DeviceNodeCRTP(std::move(props))
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -64,6 +70,9 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
             }
         }
     };
+    /**
+     * Construct a spatial detection network with properties and config mode.
+     */
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
         : DeviceNodeCRTP(std::move(props), confMode)
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -81,6 +90,9 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
             }
         }
     };
+    /**
+     * Construct a spatial detection network with device, properties, and config mode.
+     */
     SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
         : DeviceNodeCRTP(device, std::move(props), confMode)
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4

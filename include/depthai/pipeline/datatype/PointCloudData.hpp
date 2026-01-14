@@ -39,9 +39,21 @@ class PointCloudData : public Buffer, public ProtoSerializable {
     PointCloudData() = default;
     virtual ~PointCloudData();
 
+    /**
+     * Get point cloud points without color.
+     */
     std::vector<Point3f> getPoints();
+    /**
+     * Get point cloud points with color.
+     */
     std::vector<Point3fRGBA> getPointsRGB();
+    /**
+     * Set point cloud points without color.
+     */
     void setPoints(const std::vector<Point3f>& points);
+    /**
+     * Set point cloud points with color.
+     */
     void setPointsRGB(const std::vector<Point3fRGBA>& points);
 
     /**
@@ -212,9 +224,21 @@ class PointCloudData : public Buffer, public ProtoSerializable {
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
      */
     pcl::PointCloud<pcl::PointXYZ>::Ptr getPclData() const;
+    /**
+     * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZRGB>
+     */
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr getPclDataRGB() const;
+    /**
+     * Set point cloud from pcl::PointCloud<pcl::PointXYZ>
+     */
     void setPclData(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
+    /**
+     * Set point cloud from pcl::PointCloud<pcl::PointXYZRGB>
+     */
     void setPclData(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud);
+    /**
+     * Set point cloud from pcl::PointCloud<pcl::PointXYZRGB> (alias)
+     */
     void setPclDataRGB(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud);
 #else
     template <typename... T>
@@ -222,10 +246,16 @@ class PointCloudData : public Buffer, public ProtoSerializable {
         static constexpr bool value = false;
     };
     template <typename... T>
+    /**
+     * Stub when PCL support is disabled.
+     */
     void getPclData() const {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }
     template <typename... T>
+    /**
+     * Stub when PCL support is disabled.
+     */
     void setPclData(T...) {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }

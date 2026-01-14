@@ -20,8 +20,17 @@ using VisualizeType = std::variant<std::shared_ptr<ImgAnnotations>, std::shared_
 class Buffer : public ADatatype {
    public:
     Buffer() = default;
+    /**
+     * Construct a buffer with a given size.
+     */
     Buffer(size_t size);
+    /**
+     * Construct a buffer from a file descriptor.
+     */
     Buffer(long fd);
+    /**
+     * Construct a buffer from a file descriptor and size.
+     */
     Buffer(long fd, size_t size);
 
     ~Buffer() override;

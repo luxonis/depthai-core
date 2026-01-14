@@ -23,6 +23,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
 
     class QueueException : public std::runtime_error {
        public:
+        /**
+         * Construct a queue exception with message.
+         */
         explicit QueueException(const std::string& message) : std::runtime_error(message) {}
         ~QueueException() noexcept override;
     };
@@ -48,12 +51,21 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
 
    public:
     // DataOutputQueue constructor
+    /**
+     * Construct a message queue with optional max size and blocking behavior.
+     */
     explicit MessageQueue(unsigned int maxSize = 16, bool blocking = true);
+    /**
+     * Construct a named message queue with optional max size and blocking behavior.
+     */
     explicit MessageQueue(std::string name,
                           unsigned int maxSize = 16,
                           bool blocking = true,
                           utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr);
 
+    /**
+     * Copy-construct a message queue.
+     */
     MessageQueue(const MessageQueue& c)
         : enable_shared_from_this(c),
           queue(c.queue),
@@ -61,6 +73,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
           callbacks(c.callbacks),
           uniqueCallbackId(c.uniqueCallbackId),
           pipelineEventDispatcher(c.pipelineEventDispatcher){};
+    /**
+     * Move-construct a message queue.
+     */
     MessageQueue(MessageQueue&& m) noexcept
         : enable_shared_from_this(m),
           queue(std::move(m.queue)),

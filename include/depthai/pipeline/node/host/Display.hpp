@@ -10,6 +10,9 @@ class Display : public dai::NodeCRTP<ThreadedHostNode, Display> {
     std::string name;
 
    public:
+    /**
+     * Construct a display node with an optional window name.
+     */
     explicit Display(std::string name = "Display");
     Input input{*this, {}};
     void run() override;

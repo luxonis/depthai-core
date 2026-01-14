@@ -25,6 +25,7 @@ struct Version {
             const std::optional<uint16_t>& preReleaseVersion = std::nullopt,
             const std::string& buildInfo = "");
 
+    /// Construct Version with build metadata and no pre-release tag.
     Version(unsigned major, unsigned minor, unsigned patch, const std::string& buildInfo)
         : Version(major, minor, patch, PreReleaseType::NONE, std::nullopt, buildInfo) {}
     bool operator==(const Version& other) const;

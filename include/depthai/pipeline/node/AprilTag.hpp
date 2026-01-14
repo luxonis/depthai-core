@@ -26,6 +26,9 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
 
    public:
     AprilTag() = default;
+    /**
+     * Construct an AprilTag node with properties.
+     */
     AprilTag(std::unique_ptr<Properties> props);
 
     /**
