@@ -288,45 +288,32 @@ class NodeEventAggregation {
     // Calculate and update FPS statistics from the given buffer
     inline void updateFpsStats(NodeState::Timing& timing, utility::CircularBuffer<FpsMeasurement>& buffer) {
         using namespace std::chrono;
-        const size_t delta = 9;
-        const float alpha = 0.1f;
-        const float expectedTimeFactor = 1.5f;
-        const float decayA = 2;
-        const float decayB = 10;
+        const uint32_t windowSizeSeconds = 5;
+        const float alpha = 0.8;
 
-        if(buffer.size() < delta) return;
-        // If fps is zero, initialize it with the average fps over the buffer
-        if(timing.fps == 0.0f) {
+        if(buffer.size() < 2) return;
+        auto offsetNow = steady_clock::now() - eventOffsetBuffer.getAverage();
+        auto windowStart = offsetNow - seconds(windowSizeSeconds);
+        auto newFps = 0.0f;
+        if(buffer.first().time > windowStart) {
+            // All entries are within the window
             const auto& first = buffer.first();
             const auto& last = buffer.last();
             auto timeDiff = duration_cast<microseconds>(last.time - first.time).count() / (buffer.size() - 1);
-            timing.fps = 1e6f / (float)timeDiff;
+            newFps = 1e6f / (float)timeDiff;
+        } else {
+            // Count how many entries are within the window
+            size_t delta = 0;
+            for(auto rit = buffer.rbegin(); rit != buffer.rend(); ++rit) {
+                if(rit->time >= windowStart) {
+                    delta++;
+                } else {
+                    break;
+                }
+            }
+            newFps = (float)delta / (float)windowSizeSeconds;
         }
-        // Consume fps entries, update state with exponential smoothing with a gaussian-ish decay
-        for(auto i = 0U; i < buffer.size() - delta; --i) {
-            auto& last1 = buffer.at(i + delta);
-            auto& last2 = buffer.at(i);
-            auto timeDiff = duration_cast<microseconds>(last1.time - last2.time).count() / delta;
-            auto newFps = 1e6f / (float)timeDiff;
-            timing.fps = timing.fps + alpha * (newFps - timing.fps);
-        }
-        auto nextExpectedTime = buffer.last().time + microseconds((long)(1e6 * (double)expectedTimeFactor / (double)timing.fps));
-        auto offsetNow = steady_clock::now() - eventOffsetBuffer.getAverage();
-        if(nextExpectedTime < offsetNow) {
-            // Decay fps towards 0 if we're late
-            float delay = (float)duration_cast<milliseconds>(offsetNow - nextExpectedTime).count() / 1000.0f;
-            float decayFactor = exp(-powf(delay / decayA, 2) / decayB);
-            timing.fps *= decayFactor;
-        }
-        // Keep only the last delta-1 entries in the buffer
-        std::vector<FpsMeasurement> tail(delta - 1);
-        for(auto i = 0U; i < delta - 1; ++i) {
-            tail[i] = buffer.at(buffer.size() - delta + 1 + i);
-        }
-        buffer.clear();
-        for(auto& v : tail) {
-            buffer.add(v);
-        }
+        timing.fps = timing.fps + alpha * (newFps - timing.fps);
     }
     // Calculate and update queue size statistics
     inline void updateQueueStats(NodeState::QueueStats& queueStats, const utility::CircularBuffer<uint32_t>& buffer) {
@@ -389,14 +376,16 @@ class NodeEventAggregation {
                     state.state = NodeState::State::PROCESSING;
                 break;
         }
-        bool addedEvent = false;
         if(event.interval == PipelineEvent::Interval::NONE && event.type != PipelineEvent::Type::INPUT && event.type != PipelineEvent::Type::OUTPUT
            && event.status == PipelineEvent::Status::SUCCESS) {
-            addedEvent = updatePingBuffers(event);
+            updatePingBuffers(event);
         } else if(event.interval != PipelineEvent::Interval::NONE && event.status == PipelineEvent::Status::SUCCESS) {
-            addedEvent = updateIntervalBuffers(event);
+            updateIntervalBuffers(event);
         }
-        if(addedEvent && std::chrono::steady_clock::now() - lastUpdated >= std::chrono::milliseconds(statsUpdateIntervalMs)) {
+    }
+
+    bool updateStats() {
+        if(std::chrono::steady_clock::now() - lastUpdated >= std::chrono::milliseconds(statsUpdateIntervalMs)) {
             lastUpdated = std::chrono::steady_clock::now();
             // Update stats for all event types and sources
             for(int i = (int)PipelineEvent::Type::CUSTOM; i <= (int)PipelineEvent::Type::OUTPUT_BLOCK; ++i) {
@@ -439,7 +428,9 @@ class NodeEventAggregation {
                 }
             }
             updated = true;
+            return true;
         }
+        return false;
     }
 };
 
@@ -478,13 +469,14 @@ class PipelineEventHandler {
             std::unordered_map<std::string, std::shared_ptr<PipelineEvent>> events;
             try {
                 // Wait for any events
-                auto msgs = MessageQueue::getAny<PipelineEvent>(inputMap);
+                auto msgs = MessageQueue::getAny<PipelineEvent>(inputMap, std::chrono::milliseconds(statsUpdateIntervalMs));
                 for(auto& [k, v] : msgs) {
                     if(v != nullptr) {
                         events[k] = v;
                     }
                 }
             } catch(const dai::MessageQueue::QueueException&) {
+                break;
             }
             // Process events
             for(auto& [k, event] : events) {
@@ -493,6 +485,9 @@ class PipelineEventHandler {
                     nodeStates.try_emplace(event->nodeId, aggregationWindowSize, statsUpdateIntervalMs, eventWaitWindow, logger);
                     nodeStates.at(event->nodeId).add(*event);
                 }
+            }
+            for(auto& [_, nodeState] : nodeStates) {
+                nodeState.updateStats();
             }
         }
     }
