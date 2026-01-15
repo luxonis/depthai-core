@@ -65,7 +65,7 @@ int main() {
             std::vector<float> depthValues;
             for(int i = 0; i < frameDepth.rows; i++) {
                 for(int j = 0; j < frameDepth.cols; j++) {
-                    float val = frameDepth.at<float>(i, j);
+                    uint16_t val = frameDepth.at<uint16_t>(i, j);
                     if(val > 0) depthValues.push_back(val);
                 }
             }
