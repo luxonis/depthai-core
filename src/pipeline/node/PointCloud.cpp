@@ -469,6 +469,7 @@ void PointCloud::run() {
             pc->setMaxZ(maxZ);
             
             pc->setPoints(points);
+            pc->setSparse(true);
             
             {
                 auto blockEvent = this->outputBlockEvent();
