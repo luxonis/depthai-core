@@ -377,6 +377,7 @@ class CameraControl : public Buffer {
         OFF = 0,
         OUTPUT,
         INPUT,
+        TIME_PTP,
         // TODO soft sync modes?
     };
 
