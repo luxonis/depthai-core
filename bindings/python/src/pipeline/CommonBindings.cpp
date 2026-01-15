@@ -146,11 +146,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("keypoints"),
             DOC(dai, KeypointsListT, setKeypoints))
         .def("setKeypoints",
-             py::overload_cast<const std::vector<Point3f>>(&KeypointsList::setKeypoints),
+             py::overload_cast<const std::vector<Point3f>&>(&KeypointsList::setKeypoints),
              py::arg("keypoints"),
              DOC(dai, KeypointsListT, setKeypoints))
         .def("setKeypoints",
-             py::overload_cast<const std::vector<Point2f>>(&KeypointsList::setKeypoints),
+             py::overload_cast<const std::vector<Point2f>&>(&KeypointsList::setKeypoints),
              py::arg("keypoints"),
              DOC(dai, KeypointsListT, setKeypoints))
         .def(
