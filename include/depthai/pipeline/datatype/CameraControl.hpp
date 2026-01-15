@@ -760,7 +760,7 @@ class CameraControl : public Buffer {
     CaptureIntent captureIntent;
     ControlMode controlMode;
     EffectMode effectMode;
-    FrameSyncMode frameSyncMode;
+    FrameSyncMode frameSyncMode{FrameSyncMode::OFF};
     StrobeConfig strobeConfig;
     StrobeTimings strobeTimings;
     uint32_t aeMaxExposureTimeUs;
