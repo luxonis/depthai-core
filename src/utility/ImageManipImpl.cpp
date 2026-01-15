@@ -4,6 +4,7 @@
 
 #include "OCVPorts.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/utility/matrixOps.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/calib3d.hpp>
@@ -504,38 +505,7 @@ std::array<std::array<float, 2>, 2> dai::impl::getInverse(const std::array<std::
 }
 
 std::array<std::array<float, 3>, 3> dai::impl::getInverse(const std::array<std::array<float, 3>, 3>& matrix) {
-    std::array<std::array<float, 3>, 3> inv;
-    float det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
-                - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
-                + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
-
-    if(det == 0) {
-        throw std::runtime_error("Matrix is singular and cannot be inverted.");
-    }
-
-    std::array<std::array<float, 3>, 3> adj;
-
-    adj[0][0] = (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]);
-    adj[0][1] = -(matrix[0][1] * matrix[2][2] - matrix[0][2] * matrix[2][1]);
-    adj[0][2] = (matrix[0][1] * matrix[1][2] - matrix[0][2] * matrix[1][1]);
-
-    adj[1][0] = -(matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]);
-    adj[1][1] = (matrix[0][0] * matrix[2][2] - matrix[0][2] * matrix[2][0]);
-    adj[1][2] = -(matrix[0][0] * matrix[1][2] - matrix[0][2] * matrix[1][0]);
-
-    adj[2][0] = (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
-    adj[2][1] = -(matrix[0][0] * matrix[2][1] - matrix[0][1] * matrix[2][0]);
-    adj[2][2] = (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]);
-
-    float invDet = 1.0f / det;
-
-    for(int i = 0; i < 3; ++i) {
-        for(int j = 0; j < 3; ++j) {
-            inv[i][j] = adj[i][j] * invDet;
-        }
-    }
-
-    return inv;
+    return matrix::getMatrixInverse(matrix);
 }
 
 dai::RotatedRect dai::impl::getOuterRotatedRect(const std::vector<std::array<float, 2>>& points) {

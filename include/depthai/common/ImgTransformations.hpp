@@ -4,10 +4,9 @@
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/matrixOps.hpp"
 
 namespace dai {
-
-std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix);
 
 /**
  * ImgTransformation struct. Holds information of how a ImgFrame or related message was transformed from their source. Useful for remapping from one ImgFrame to
@@ -41,7 +40,7 @@ struct ImgTransformation {
         : srcWidth(srcWidth), srcHeight(srcHeight), width(width), height(height) {}
     ImgTransformation(size_t width, size_t height, std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix)
         : sourceIntrinsicMatrix(sourceIntrinsicMatrix), srcWidth(width), srcHeight(height), width(width), height(height) {
-        sourceIntrinsicMatrixInv = getMatrixInverse(sourceIntrinsicMatrix);
+        sourceIntrinsicMatrixInv = matrix::getMatrixInverse(sourceIntrinsicMatrix);
     }
     ImgTransformation(size_t width,
                       size_t height,
@@ -55,7 +54,7 @@ struct ImgTransformation {
           srcHeight(height),
           width(width),
           height(height) {
-        sourceIntrinsicMatrixInv = getMatrixInverse(sourceIntrinsicMatrix);
+        sourceIntrinsicMatrixInv = matrix::getMatrixInverse(sourceIntrinsicMatrix);
     }
 
     /**
