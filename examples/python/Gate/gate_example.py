@@ -4,7 +4,7 @@ import time
 import depthai as dai
 import cv2 
 
-deviceInfo = dai.DeviceInfo(ip)
+deviceInfo = dai.DeviceInfo()
 device = dai.Device(deviceInfo)
 
 withGate = True 
@@ -16,12 +16,10 @@ with dai.Pipeline(device) as pipeline:
     gate  = pipeline.create(dai.node.Gate)
     cameraOut.link(gate.input)
     cameraQueue = gate.output.createOutputQueue()
-    # gateControlQueue = gate.input.createInputQueue()
     gateControlQueue = gate.inputControl.createInputQueue()
 
     gateControl = dai.GateControl()
     gateControl.stop()
-        
 
     pipeline.start()
 
@@ -40,8 +38,6 @@ with dai.Pipeline(device) as pipeline:
         if elapsed > 5.0:  # 5 seconds
             # Toggle the value
             gate_state = not gate_state
-            print(gate_state)
-            
             # Create and send the control message
             ctrl = dai.GateControl()
             ctrl.value = gate_state
