@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/ImageAlign.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <sstream>
 #include <unordered_set>
 
@@ -370,6 +372,13 @@ void ImageAlign::run() {
                 inputAlignToImgFrame = *inputAlignToImg;
 
                 inputAlignToTransform = inputAlignToImg->transformation;
+                const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
+                const bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
+                if(hasDistortion) {
+                    logger->warn(
+                        "The input connected to inputAlignTo is distorted. The aligned image will still be undistorted, meaning it won't be perfectly "
+                        "aligned.");
+                }
 
                 alignSourceIntrinsics = inputAlignToImg->transformation.getIntrinsicMatrix();
 
@@ -575,13 +584,14 @@ void ImageAlign::run() {
         alignedImg->setSequenceNum(inputImg->getSequenceNum());
 
         alignedImg->transformation = inputAlignToTransform;
+        const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
+        alignedImg->transformation.setDistortionCoefficients(std::vector<float>(alignToDistortion.size(), 0.0f));
 
         tStop = steady_clock::now();
         auto runtime = duration_cast<milliseconds>(tStop - tStart).count();
 
         logger->trace("ImageAlign took {} ms", runtime);
 
-        alignedImg->transformation.setDistortionCoefficients({});
         {
             auto blockEvent = this->outputBlockEvent();
             outputAligned.send(alignedImg);

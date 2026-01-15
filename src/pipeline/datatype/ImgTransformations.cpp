@@ -459,4 +459,27 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
     return transformed;
 }
 
+bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
+    if(width != to.width || height != to.height) return false;
+    if(this->distortionModel != to.distortionModel) return false;
+    auto approxEqual = [](float a, float b, float absTol = ROUND_UP_EPS, float relTol = 2 * ROUND_UP_EPS) {
+        return std::abs(a - b) <= (absTol + relTol * std::max(std::abs(a), std::abs(b)));
+    };
+
+    for(size_t i = 0; i < distortionCoefficients.size(); ++i) {
+        if(!approxEqual(distortionCoefficients[i], to.distortionCoefficients[i])) {
+            return false;
+        }
+    }
+
+    std::array<std::array<float, 3>, 3> thisIntrinsic = this->getIntrinsicMatrix();
+    std::array<std::array<float, 3>, 3> toIntrinsic = to.getIntrinsicMatrix();
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            if(!approxEqual(toIntrinsic[i][j], thisIntrinsic[i][j])) return false;
+        }
+    }
+    return true;
+}
+
 };  // namespace dai
