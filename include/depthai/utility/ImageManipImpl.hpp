@@ -59,49 +59,53 @@ void loop(N& node,
 
     std::shared_ptr<ImgFrame> inImage;
 
-    while(node.isRunning()) {
+    while(node.mainLoop()) {
         std::shared_ptr<ImageManipConfig> pConfig;
         bool hasConfig = false;
         bool needsImage = true;
         bool skipImage = false;
-        if(node.inputConfig.getWaitForMessage()) {
-            pConfig = node.inputConfig.template get<ImageManipConfig>();
-            hasConfig = true;
-            if(inImage != nullptr && hasConfig && pConfig->getReusePreviousImage()) {
-                needsImage = false;
-            }
-            skipImage = pConfig->getSkipCurrentImage();
-        } else {
-            pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
-            if(pConfig != nullptr) {
-                hasConfig = true;
-            }
-        }
+        {
+            auto blockEvent = node.inputBlockEvent();
 
-        if(needsImage) {
-            inImage = node.inputImage.template get<ImgFrame>();
-            if(inImage == nullptr) {
-                logger->warn("No input image, skipping frame");
-                continue;
-            }
-            if(!hasConfig) {
-                auto _pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
-                if(_pConfig != nullptr) {
-                    pConfig = _pConfig;
+            if(node.inputConfig.getWaitForMessage()) {
+                pConfig = node.inputConfig.template get<ImageManipConfig>();
+                hasConfig = true;
+                if(inImage != nullptr && hasConfig && pConfig->getReusePreviousImage()) {
+                    needsImage = false;
+                }
+                skipImage = pConfig->getSkipCurrentImage();
+            } else {
+                pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
+                if(pConfig != nullptr) {
                     hasConfig = true;
                 }
             }
-            if(skipImage) {
-                continue;
-            }
-        }
 
-        // if has new config, parse and check if any changes
-        if(hasConfig) {
-            config = *pConfig;
-        }
-        if(!node.inputConfig.getWaitForMessage() && config.getReusePreviousImage()) {
-            logger->warn("reusePreviousImage is only taken into account when inputConfig is synchronous");
+            if(needsImage) {
+                inImage = node.inputImage.template get<ImgFrame>();
+                if(inImage == nullptr) {
+                    logger->warn("No input image, skipping frame");
+                    continue;
+                }
+                if(!hasConfig) {
+                    auto _pConfig = node.inputConfig.template tryGet<ImageManipConfig>();
+                    if(_pConfig != nullptr) {
+                        pConfig = _pConfig;
+                        hasConfig = true;
+                    }
+                }
+                if(skipImage) {
+                    continue;
+                }
+            }
+
+            // if has new config, parse and check if any changes
+            if(hasConfig) {
+                config = *pConfig;
+            }
+            if(!node.inputConfig.getWaitForMessage() && config.getReusePreviousImage()) {
+                logger->warn("reusePreviousImage is only taken into account when inputConfig is synchronous");
+            }
         }
 
         auto startP = std::chrono::steady_clock::now();
@@ -135,7 +139,11 @@ void loop(N& node,
             if(!success) {
                 logger->error("Processing failed, potentially unsupported config");
             }
-            node.out.send(outImage);
+            {
+                auto blockEvent = node.outputBlockEvent();
+
+                node.out.send(outImage);
+            }
         } else {
             logger->error(
                 "Output image is bigger ({}B) than maximum frame size specified in properties ({}B) - skipping frame.\nPlease use the setMaxOutputFrameSize "
@@ -2592,9 +2600,7 @@ std::array<std::array<float, 2>, 2> getInverse(const std::array<std::array<float
 
 std::array<std::array<float, 3>, 3> getInverse(const std::array<std::array<float, 3>, 3>& matrix);
 
-std::array<std::array<float, 2>, 4> getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
-
-dai::RotatedRect getRotatedRectFromPoints(const std::vector<std::array<float, 2>>& points);
+dai::RotatedRect getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
 
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
 
@@ -3050,7 +3056,7 @@ template <template <typename T> typename ImageManipBuffer,
 std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getSrcCrops() const {
     std::vector<RotatedRect> crops;
     for(const auto& corners : srcCorners) {
-        auto rect = getRotatedRectFromPoints({corners[0], corners[1], corners[2], corners[3]});
+        auto rect = getOuterRotatedRect({corners[0], corners[1], corners[2], corners[3]});
         crops.push_back(rect);
     }
     return crops;

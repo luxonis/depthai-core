@@ -66,17 +66,22 @@ inline bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array
     return true;
 }
 
-std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix) {
+std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrixFloat) {
+    // Step 1: Convert to double
+    std::array<std::array<double, 3>, 3> matrix;
+    for(int i = 0; i < 3; ++i)
+        for(int j = 0; j < 3; ++j) matrix[i][j] = static_cast<double>(matrixFloat[i][j]);
+
     std::array<std::array<float, 3>, 3> inv;
-    float det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
-                - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
-                + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+    double det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
+                 - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
+                 + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
 
     if(det == 0) {
         throw std::runtime_error("Matrix is singular and cannot be inverted.");
     }
 
-    std::array<std::array<float, 3>, 3> adj;
+    std::array<std::array<double, 3>, 3> adj;
 
     adj[0][0] = (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]);
     adj[0][1] = -(matrix[0][1] * matrix[2][2] - matrix[0][2] * matrix[2][1]);
@@ -90,11 +95,11 @@ std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array
     adj[2][1] = -(matrix[0][0] * matrix[2][1] - matrix[0][1] * matrix[2][0]);
     adj[2][2] = (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]);
 
-    float invDet = 1.0f / det;
+    double invDet = 1.0 / det;
 
     for(int i = 0; i < 3; ++i) {
         for(int j = 0; j < 3; ++j) {
-            inv[i][j] = adj[i][j] * invDet;
+            inv[i][j] = static_cast<float>(adj[i][j] * invDet);
         }
     }
 
@@ -121,7 +126,7 @@ dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const Im
         auto point = interSourceFrameTransform(points[i], from, to);
         vPoints[i] = {point.x, point.y};
     }
-    return impl::getRotatedRectFromPoints(vPoints);
+    return impl::getOuterRotatedRect(vPoints);
 }
 
 void ImgTransformation::calcCrops() {
@@ -165,7 +170,7 @@ dai::RotatedRect ImgTransformation::transformRect(dai::RotatedRect rect) const {
         auto point = transformPoint(points[i]);
         vPoints[i] = {point.x, point.y};
     }
-    return impl::getRotatedRectFromPoints(vPoints);
+    return impl::getOuterRotatedRect(vPoints);
 }
 dai::Point2f ImgTransformation::invTransformPoint(dai::Point2f point) const {
     auto transformed = matvecmul(transformationMatrixInv, {point.x, point.y});
@@ -178,7 +183,7 @@ dai::RotatedRect ImgTransformation::invTransformRect(dai::RotatedRect rect) cons
         auto point = invTransformPoint(points[i]);
         vPoints[i] = {point.x, point.y};
     }
-    return impl::getRotatedRectFromPoints(vPoints);
+    return impl::getOuterRotatedRect(vPoints);
 }
 
 std::pair<size_t, size_t> ImgTransformation::getSize() const {
@@ -295,7 +300,7 @@ ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int heigh
     for(auto i = 0; i < 4; ++i) {
         srcCorners[i] = matvecmul(transformationMatrix, corners[i]);
     }
-    auto rect = impl::getRotatedRectFromPoints(srcCorners);
+    auto rect = impl::getOuterRotatedRect(srcCorners);
     srcCrops.push_back(rect);
     cropsValid = false;
     return *this;
@@ -424,9 +429,13 @@ dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai
     if(normalized) {
         rect = rect.denormalize(width, height);
     }
-    auto sourceRectFrom = invTransformRect(rect);
-    auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, *this, to);
-    auto transformed = to.transformRect(sourceRectTo);
+    const auto points = rect.getPoints();
+    std::vector<std::array<float, 2>> vPoints(points.size());
+    for(auto i = 0U; i < points.size(); ++i) {
+        auto point = remapPointTo(to, points[i]);
+        vPoints[i] = {point.x, point.y};
+    }
+    auto transformed = impl::getOuterRotatedRect(vPoints);
     if(normalized) {
         transformed = transformed.normalize(to.width, to.height);
     }
@@ -437,9 +446,13 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
     if(normalized) {
         rect = rect.denormalize(from.width, from.height);
     }
-    auto sourceRectFrom = from.invTransformRect(rect);
-    auto sourceRectTo = interSourceFrameTransform(sourceRectFrom, from, *this);
-    auto transformed = transformRect(sourceRectTo);
+    const auto points = rect.getPoints();
+    std::vector<std::array<float, 2>> vPoints(points.size());
+    for(auto i = 0U; i < points.size(); ++i) {
+        auto point = remapPointFrom(from, points[i]);
+        vPoints[i] = {point.x, point.y};
+    }
+    auto transformed = impl::getOuterRotatedRect(vPoints);
     if(normalized) {
         transformed = transformed.normalize(width, height);
     }

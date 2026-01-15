@@ -17,12 +17,12 @@ class SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLogge
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
-     * Outputs SystemInformation[S3] message that carries various system information
+     * Outputs SystemInformation[RVC4] message that carries various system information
      * like memory and CPU usage, temperatures, ...
-     * For series 2 devices outputs SystemInformation message,
-     * for series 3 devices outputs SystemInformationS3 message
+     * For series 2 devices output SystemInformation message,
+     * for series 4 devices output SystemInformationRVC4 message
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationRVC4, false}}}}};
 
     /**
      * Specify logging rate, at which messages will be sent out

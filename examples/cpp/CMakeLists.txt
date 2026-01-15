@@ -4,6 +4,7 @@ option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of 
 # Dependencies
 find_package(OpenCV REQUIRED)
 find_package(Sanitizers)
+find_package(argparse REQUIRED)
 
 # Create utility library
 add_library(utility utility/utility.cpp)
@@ -40,7 +41,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
     elseif(NOT DEPTHAI_MERGED_TARGET)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
-    target_link_libraries(${example_name} PRIVATE utility ${DEPTHAI_TARGET} ${OpenCV_LIBS} Threads::Threads)
+    target_link_libraries(${example_name} PRIVATE utility ${DEPTHAI_TARGET} ${OpenCV_LIBS} Threads::Threads argparse::argparse)
     # Set compiler features (c++17), and disables extensions (g++17)
     set_property(TARGET ${example_name} PROPERTY CXX_STANDARD 17)
     set_property(TARGET ${example_name} PROPERTY CXX_STANDARD_REQUIRED ON)
@@ -157,3 +158,5 @@ add_subdirectory(RGBD)
 add_subdirectory(Warp)
 add_subdirectory(ImageAlign)
 add_subdirectory(NeuralDepth)
+add_subdirectory(Vpp)
+add_subdirectory(NeuralAssistedStereo)

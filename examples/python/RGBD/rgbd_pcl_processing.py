@@ -11,7 +11,7 @@ class CustomPCLProcessingNode(dai.node.ThreadedHostNode):
         self.thresholdDistance = 3000.0
 
     def run(self):
-        while self.isRunning():
+        while self.mainLoop():
             try:
                 inPointCloud = self.inputPCL.get()
             except dai.MessageQueue.QueueException:
@@ -29,7 +29,7 @@ class CustomPCLProcessingNode(dai.node.ThreadedHostNode):
 
 parser = ArgumentParser()
 parser.add_argument("--webSocketPort", type=int, default=8765)
-parser.add_argument("--httpPort", type=int, default=8080)
+parser.add_argument("--httpPort", type=int, default=8082)
 args = parser.parse_args()
 
 with dai.Pipeline() as p:

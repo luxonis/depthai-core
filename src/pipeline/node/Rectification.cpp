@@ -116,9 +116,14 @@ void Rectification::run() {
     std::array<std::array<float, 3>, 3> targetM1, targetM2;
     dai::ImgTransformation output1ImgTransformation;
     dai::ImgTransformation output2ImgTransformation;
-    while(isRunning()) {
-        auto input1Frame = input1.get<dai::ImgFrame>();
-        auto input2Frame = input2.get<dai::ImgFrame>();
+    while(mainLoop()) {
+        std::shared_ptr<dai::ImgFrame> input1Frame;
+        std::shared_ptr<dai::ImgFrame> input2Frame;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            input1Frame = input1.get<dai::ImgFrame>();
+            input2Frame = input2.get<dai::ImgFrame>();
+        }
         uint32_t output1FrameWidth;
         uint32_t output1FrameHeight;
         uint32_t output2FrameWidth;
@@ -270,12 +275,15 @@ void Rectification::run() {
         auto duration = duration_cast<milliseconds>(end - start).count();
         logger->debug("Rectification took {} ms", duration);
 
-        output1.send(rectifiedFrame1);
-        output2.send(rectifiedFrame2);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            output1.send(rectifiedFrame1);
+            output2.send(rectifiedFrame2);
 
-        // Passthrough the message
-        passthrough1.send(input1Frame);
-        passthrough2.send(input2Frame);
+            // Passthrough the message
+            passthrough1.send(input1Frame);
+            passthrough2.send(input2Frame);
+        }
     }
 }
 #endif  // DEPTHAI_HAVE_OPENCV_SUPPORT

@@ -7,16 +7,18 @@
 #include "common/CameraFeatures.hpp"
 #include "common/CameraSensorType.hpp"
 #include "common/Point3fRGBA.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
+#include "depthai/pipeline/datatype/RGBDData.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/ImageAlign.hpp"
-#include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
-#include "depthai/pipeline/node/ToF.hpp"
+#include "utility/ErrorMacros.hpp"
+
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     #include "depthai/shaders/rgbd2pointcloud.hpp"
     #include "kompute/Kompute.hpp"
@@ -47,27 +49,8 @@ class RGBD::Impl {
         }
     }
     void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit) {
-        // Default is millimeter
-        switch(depthUnit) {
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::MILLIMETER:
-                scaleFactor = 1.0f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::METER:
-                scaleFactor = 0.001f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::CENTIMETER:
-                scaleFactor = 0.01f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::FOOT:
-                scaleFactor = 0.3048f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::INCH:
-                scaleFactor = 0.0254f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::CUSTOM:
-                scaleFactor = 1.0f;
-                break;
-        }
+        const float unitPerMeter = getDepthUnitMultiplier(depthUnit);
+        scaleFactor = unitPerMeter > 0.0f ? (1.0f / unitPerMeter) : 1.0f;
     }
     void printDevices() {
 #ifdef DEPTHAI_ENABLE_KOMPUTE
@@ -261,6 +244,7 @@ void RGBD::buildInternal() {
 std::shared_ptr<RGBD> RGBD::build() {
     return std::static_pointer_cast<RGBD>(shared_from_this());
 }
+
 std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode, std::pair<int, int> size, std::optional<float> fps) {
     if(!autocreate) {
         return std::static_pointer_cast<RGBD>(shared_from_this());
@@ -328,6 +312,14 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
     return build();
 }
 
+std::shared_ptr<RGBD> RGBD::build(const std::shared_ptr<Camera>& camera,
+                                  const DepthSource& depthSource,
+                                  std::pair<int, int> frameSize,
+                                  std::optional<float> fps) {
+    alignDepth(depthSource, camera, frameSize, fps);
+    return build();
+}
+
 void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     // Initialize the camera intrinsics
     // Check if width, width and cameraID match
@@ -363,10 +355,14 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
 }
 
 void RGBD::run() {
-    while(isRunning()) {
+    while(mainLoop()) {
         if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty() || !rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
-            // Get the color and depth frames
-            auto group = inSync.get<MessageGroup>();
+            std::shared_ptr<MessageGroup> group = nullptr;
+            {
+                auto blockEvent = this->inputBlockEvent();
+                // Get the color and depth frames
+                group = inSync.get<MessageGroup>();
+            }
             if(group == nullptr) continue;
             if(!initialized) {
                 initialize(group);
@@ -429,17 +425,22 @@ void RGBD::run() {
             pc->setTimestampDevice(colorFrame->getTimestampDevice());
             pc->setSequenceNum(colorFrame->getSequenceNum());
             pc->setInstanceNum(colorFrame->getInstanceNum());
-            if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty()) {
-                pcl.send(pc);
-            }
-            if(!rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
-                auto rgbdData = std::make_shared<RGBDData>();
-                rgbdData->setTimestamp(colorFrame->getTimestamp());
-                rgbdData->setTimestampDevice(colorFrame->getTimestampDevice());
-                rgbdData->setSequenceNum(colorFrame->getSequenceNum());
-                rgbdData->setDepthFrame(depthFrame);
-                rgbdData->setRGBFrame(colorFrame);
-                rgbd.send(rgbdData);
+            {
+                auto blockEvent = this->outputBlockEvent();
+                if(!pcl.getQueueConnections().empty() || !pcl.getConnections().empty()) {
+                    {
+                        pcl.send(pc);
+                    }
+                }
+                if(!rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
+                    auto rgbdData = std::make_shared<RGBDData>();
+                    rgbdData->setTimestamp(colorFrame->getTimestamp());
+                    rgbdData->setTimestampDevice(colorFrame->getTimestampDevice());
+                    rgbdData->setSequenceNum(colorFrame->getSequenceNum());
+                    rgbdData->setDepthFrame(depthFrame);
+                    rgbdData->setRGBFrame(colorFrame);
+                    rgbd.send(rgbdData);
+                }
             }
         }
     }
@@ -458,6 +459,99 @@ void RGBD::useGPU(uint32_t device) {
 }
 void RGBD::printDevices() {
     pimpl->printDevices();
+}
+
+void RGBD::alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps) {
+    std::visit([this, &camera, &frameSize, &fps](const auto& source) { alignDepthImpl(source, camera, frameSize, fps); }, depthSource);
+}
+
+void RGBD::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo,
+                          const std::shared_ptr<Camera>& camera,
+                          std::pair<int, int> frameSize,
+                          std::optional<float> fps) {
+    auto pipeline = getParentPipeline();
+    auto device = pipeline.getDefaultDevice();
+
+    std::optional<ImgFrame::Type> colorCamOutputType = ImgFrame::Type::RGB888i;
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    colorCamOutputType = std::nullopt;  // native output for each platform
+#endif
+
+    if(device) {
+        auto platform = device->getPlatform();
+
+        auto* colorCamOutput = camera->requestOutput(frameSize, colorCamOutputType, ImgResizeMode::CROP, fps, true);
+
+        if(platform == Platform::RVC4) {
+            auto align = pipeline.create<node::ImageAlign>();
+            colorCamOutput->link(inColor);
+            stereo->depth.link(align->input);
+            colorCamOutput->link(align->inputAlignTo);
+            align->outputAligned.link(inDepth);
+        } else if(platform == Platform::RVC2) {
+            colorCamOutput->link(inColor);
+            colorCamOutput->link(stereo->inputAlignTo);
+            stereo->depth.link(inDepth);
+        } else {
+            throw std::runtime_error("Unsupported platform for RGBD with StereoDepth");
+        }
+    } else {
+        // Fallback without device info
+        auto* colorCamOutput = camera->requestOutput(frameSize, colorCamOutputType, ImgResizeMode::CROP, fps, true);
+        colorCamOutput->link(inColor);
+        stereo->depth.link(inDepth);
+        stereo->setDepthAlign(camera->getBoardSocket());
+    }
+}
+
+void RGBD::alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth,
+                          const std::shared_ptr<Camera>& camera,
+                          std::pair<int, int> frameSize,
+                          std::optional<float> fps) {
+    auto pipeline = getParentPipeline();
+    auto device = pipeline.getDefaultDevice();
+
+    std::optional<ImgFrame::Type> colorCamOutputType = ImgFrame::Type::RGB888i;
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    colorCamOutputType = std::nullopt;  // native output for each platform
+#endif
+
+    DAI_CHECK_V(device, "RGBD with NeuralDepth requires device to be set");
+    DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "NeuralDepth with RGBD currently only supported on RVC4 platform");
+
+    auto* colorCamOutput = camera->requestOutput(frameSize, colorCamOutputType, ImgResizeMode::CROP, fps, true);
+
+    auto align = pipeline.create<node::ImageAlign>();
+    colorCamOutput->link(inColor);
+    neuralDepth->depth.link(align->input);
+    colorCamOutput->link(align->inputAlignTo);
+    align->outputAligned.link(inDepth);
+}
+
+void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera, std::pair<int, int> frameSize, std::optional<float> fps) {
+    auto pipeline = getParentPipeline();
+    auto device = pipeline.getDefaultDevice();
+
+    std::optional<ImgFrame::Type> colorCamOutputType = ImgFrame::Type::RGB888i;
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    colorCamOutputType = std::nullopt;  // native output for each platform
+#endif
+
+    DAI_CHECK_V(device, "RGBD with ToF requires device to be set");
+
+    auto* colorCamOutput = camera->requestOutput(frameSize, colorCamOutputType, ImgResizeMode::CROP, fps, true);
+
+    auto align = pipeline.create<node::ImageAlign>();
+    colorCamOutput->link(inColor);
+    tof->depth.link(align->input);
+    colorCamOutput->link(align->inputAlignTo);
+    align->outputAligned.link(inDepth);
+
+    // ImageAlign and Sync do not work well on ToF cameras - run on host for better performance
+    align->setRunOnHost(true);
+    constexpr float DEFAULT_TOF_FPS = 30.0f;
+    sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(500 / fps.value_or(DEFAULT_TOF_FPS))));
+    sync->setRunOnHost(true);
 }
 
 }  // namespace node

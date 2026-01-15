@@ -14,22 +14,21 @@ namespace dai {
 
 struct Keypoint {
     Point3f imageCoordinates;
-    float confidence = 0.f;
+    float confidence = -1.f;  // -1.f indicates confidence is not set
     uint32_t label = 0;
+    std::string labelName;
 
     Keypoint() = default;
-    explicit Keypoint(Point3f imageCoordinates, float conf = 0.f, uint32_t label = 0) : imageCoordinates(imageCoordinates), confidence(conf), label(label) {
-        if(confidence < 0.f) {
-            throw std::invalid_argument("Confidence must be non-negative.");
-        }
-    }
+    explicit Keypoint(Point3f imageCoordinates, float conf = 0.f, uint32_t label = 0, std::string labelName = "")
+        : imageCoordinates(imageCoordinates), confidence(conf), label(label), labelName(std::move(labelName)) {}
 
-    explicit Keypoint(Point2f imageCoordinates, float confidence = 0.f, uint32_t label = 0)
-        : Keypoint(Point3f{imageCoordinates.x, imageCoordinates.y, 0.f}, confidence, label) {}
+    explicit Keypoint(Point2f imageCoordinates, float confidence = 0.f, uint32_t label = 0, std::string labelName = "")
+        : Keypoint(Point3f{imageCoordinates.x, imageCoordinates.y, 0.f}, confidence, label, std::move(labelName)) {}
 
-    explicit Keypoint(float x, float y, float z, float confidence = 0.f, uint32_t label = 0) : Keypoint(Point3f{x, y, z}, confidence, label) {}
+    explicit Keypoint(float x, float y, float z, float confidence = 0.f, uint32_t label = 0, std::string labelName = "")
+        : Keypoint(Point3f{x, y, z}, confidence, label, std::move(labelName)) {}
 
-    DEPTHAI_SERIALIZE(dai::Keypoint, imageCoordinates, confidence, label);
+    DEPTHAI_SERIALIZE(dai::Keypoint, imageCoordinates, confidence, label, labelName);
 };
 
 struct KeypointsList : KeypointsListT<Keypoint> {
@@ -50,7 +49,7 @@ struct KeypointsList : KeypointsListT<Keypoint> {
      * @param keypoints list of Point3f objects to set.
      * @note This will clear any existing keypoints and edges.
      */
-    void setKeypoints(const std::vector<Point3f> kps3) {
+    void setKeypoints(const std::vector<Point3f>& kps3) {
         edges.clear();
         keypoints.clear();
         keypoints.reserve(kps3.size());
@@ -64,7 +63,7 @@ struct KeypointsList : KeypointsListT<Keypoint> {
      * @param keypoints list of Point2f objects to set.
      * @note This will clear any existing keypoints and edges.
      */
-    void setKeypoints(const std::vector<Point2f> kps2) {
+    void setKeypoints(const std::vector<Point2f>& kps2) {
         edges.clear();
         keypoints.clear();
         keypoints.reserve(kps2.size());

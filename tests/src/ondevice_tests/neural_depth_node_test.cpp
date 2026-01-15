@@ -181,7 +181,7 @@ TEST_CASE("NeuralDepth replay aligns with StereoDepth medians") {
 
     auto stereoDepth = pipeline.create<dai::node::StereoDepth>();
     stereoDepth->build(*leftOutput, *rightOutput);
-    stereoDepth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::FAST_ACCURACY);
+    stereoDepth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::ACCURACY);
 
     auto neuralDepthQueue = neuralDepth->depth.createOutputQueue();
     auto stereoDepthQueue = stereoDepth->depth.createOutputQueue();

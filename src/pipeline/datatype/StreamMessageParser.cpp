@@ -15,6 +15,9 @@
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/PipelineEvent.hpp"
+#include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
+#include "depthai/pipeline/datatype/PipelineState.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
@@ -41,12 +44,13 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
-#include "depthai/pipeline/datatype/SystemInformationS3.hpp"
+#include "depthai/pipeline/datatype/SystemInformationRVC4.hpp"
 #include "depthai/pipeline/datatype/ThermalConfig.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
+#include "depthai/pipeline/datatype/VppConfig.hpp"
 // shared
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -83,6 +87,9 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
 }
 
 static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* const packet) {
+    if(packet == nullptr || packet->data == nullptr) {
+        throw std::runtime_error("Bad packet, couldn't parse (null packet or data)");
+    }
     if(packet->length < 24) {
         throw std::runtime_error(fmt::format("Bad packet, couldn't parse (not enough data), total size {}", packet->length));
     }
@@ -131,7 +138,13 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
     auto* const metadataStart = packet->data + bufferLength;
 
     // copy data part
-    std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
+    if(packet->data == nullptr && bufferLength > 0) {
+        throw std::runtime_error("Bad packet, couldn't parse (null data buffer)");
+    }
+    std::vector<uint8_t> data;
+    if(bufferLength > 0) {
+        data.assign(packet->data, packet->data + bufferLength);
+    }
 
     fd = packet->fd;
 
@@ -182,8 +195,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<SystemInformation>(metadataStart, serializedObjectSize, data, fd);
             break;
 
-        case DatatypeEnum::SystemInformationS3:
-            return parseDatatype<SystemInformationS3>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::SystemInformationRVC4:
+            return parseDatatype<SystemInformationRVC4>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorData:
@@ -244,6 +257,15 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::PointCloudData:
             return parseDatatype<PointCloudData>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::PipelineEvent:
+            return parseDatatype<PipelineEvent>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::PipelineState:
+            return parseDatatype<PipelineState>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::PipelineEventAggregationConfig:
+            return parseDatatype<PipelineEventAggregationConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
         case DatatypeEnum::MessageGroup:
             return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -265,6 +287,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::ObjectTrackerConfig:
             return parseDatatype<ObjectTrackerConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::VppConfig: {
+            return parseDatatype<VppConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        }
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);

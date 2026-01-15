@@ -221,13 +221,23 @@ dai_set_example_test_labels(image_manip_remap ondevice rvc2_all rvc4 rvc4rgb ci)
 add_python_example(reconnect_callback Misc/AutoReconnect/reconnect_callback.py)
 dai_set_example_test_labels(reconnect_callback ondevice rvc2_all rvc4 rvc4rgb ci)
 
+add_python_example(get_pipeline_state Misc/PipelineDebugging/get_pipeline_state.py)
+dai_set_example_test_labels(get_pipeline_state ondevice rvc2_all rvc4 ci)
+
+add_python_example(node_pipeline_events Misc/PipelineDebugging/node_pipeline_events.py)
+dai_set_example_test_labels(node_pipeline_events ondevice rvc4 ci)
+
 ## SystemLogger
-add_python_example(system_logger RVC2/SystemLogger/system_information.py)
-dai_set_example_test_labels(system_logger ondevice rvc2_all ci)
+add_python_example(system_logger Misc/SystemLogger/system_logger.py)
+dai_set_example_test_labels(system_logger ondevice rvc2_all rvc4 ci)
 
 ## EdgeDetector
 add_python_example(edge_detector RVC2/EdgeDetector/edge_detector.py)
 dai_set_example_test_labels(edge_detector ondevice rvc2_all ci)
+
+## Vpp
+add_python_example(virtual_patern_projection Vpp/virtual_patern_projection.py)
+dai_set_example_test_labels(virtual_patern_projection ondevice rvc4 ci)
 
 ## RGBD
 add_python_example(rgbd RGBD/rgbd.py)
@@ -285,10 +295,10 @@ dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
 
 # Split into two examples for RVC2 and RVC4 since the tests are run concurrently, to avoid port conflicts
 # Skip windows, since it asks for user input for the firewall
-add_python_example(visualizer_rvc4 Visualizer/visualizer_yolo.py --webSocketPort 8765 --httpPort 8080)
+add_python_example(visualizer_rvc4 Visualizer/visualizer_yolo.py --webSocketPort 8765 --httpPort 8082)
 dai_set_example_test_labels(visualizer_rvc4 ondevice rvc4 rvc4rgb ci nowindows)
 
-add_python_example(visualizer_encoded_rvc4 Visualizer/visualizer_encoded.py --webSocketPort 8765 --httpPort 8080)
+add_python_example(visualizer_encoded_rvc4 Visualizer/visualizer_encoded.py --webSocketPort 8765 --httpPort 8082)
 dai_set_example_test_labels(visualizer_encoded_rvc4 ondevice rvc4 rvc4rgb ci nowindows)
 
 add_python_example(visualizer_rvc2 Visualizer/visualizer_yolo.py --webSocketPort 8766 --httpPort 8081)
@@ -358,3 +368,7 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_python_example(calibration_dynamic DynamicCalibration/calibration_dynamic.py)
     dai_set_example_test_labels(calibration_dynamic ondevice rvc2_all rvc4 ci)
 endif()
+
+## NeuralAssistedStereo
+add_python_example(neural_assisted_stereo NeuralAssistedStereo/neural_assisted_stereo.py)
+dai_set_example_test_labels(neural_assisted_stereo ondevice rvc4 ci)

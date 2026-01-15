@@ -18,6 +18,7 @@ option(DEPTHAI_ENABLE_PROTOBUF "Enable Protobuf support" ON)
 option(DEPTHAI_ENABLE_CURL "Enable CURL support" ${DEPTHAI_DEFAULT_CURL_SUPPORT})
 option(DEPTHAI_ENABLE_KOMPUTE "Enable Kompute support" OFF)
 option(DEPTHAI_ENABLE_MP4V2 "Enable video recording using the MP4V2 library" ON)
+option(DEPTHAI_FETCH_ARTIFACTS "Enable fetching artifacts from remote repository" ON)
 
 # ---------- Optional Features (public) -------------
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
@@ -92,8 +93,8 @@ if(DEPTHAI_ENABLE_PROTOBUF)
     if(DEPTHAI_ENABLE_CURL AND DEPTHAI_OPENCV_SUPPORT)
         option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ${DEPTHAI_DEFAULT_EVENTS_MANAGER_SUPPORT})
     else()
-        message(STATUS "Events Manager disabled because Protobuf & curl support is disabled.")
-        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Enable Events Manager" ${DEPTHAI_DEFAULT_EVENTS_MANAGER_SUPPORT})
+        message(STATUS "Events Manager disabled because Protobuf or curl or opencv support is disabled.")
+        option(DEPTHAI_ENABLE_EVENTS_MANAGER "Disable Events Manager" OFF)
     endif()
 else()
     option(DEPTHAI_ENABLE_REMOTE_CONNECTION "Enable Remote Connection support" OFF)
@@ -124,3 +125,4 @@ set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootl
 
 # Options for internal use
 option(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4 "This build is part of the rvc4 firmware build" OFF)
+option(DEPTHAI_GENERATE_HOUSING_COORDS "Generate housing coordinate system data from JSON files" ON)

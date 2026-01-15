@@ -53,7 +53,7 @@ void BasaltVIO::run() {
     Eigen::Quaterniond q(R);
     basalt::PoseState<double>::SE3 opticalTransform(q, Eigen::Vector3d(0, 0, 0));
 
-    while(isRunning()) {
+    while(mainLoop()) {
         if(!initialized) continue;
         pimpl->outStateQueue->pop(data);
 
@@ -114,6 +114,9 @@ void BasaltVIO::stereoCB(std::shared_ptr<ADatatype> in) {
 
 void BasaltVIO::imuCB(std::shared_ptr<ADatatype> imuData) {
     auto imuPackets = std::dynamic_pointer_cast<IMUData>(imuData);
+    if(!imuPackets) {
+        return;
+    }
 
     for(auto& imuPacket : imuPackets->packets) {
         basalt::ImuData<double>::Ptr data;
