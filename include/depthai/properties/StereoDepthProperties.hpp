@@ -146,7 +146,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     bool enableFrameSync = true;
 
-    /*
+    /**
      * Override baseline from calibration.
      * Used only in disparity to depth conversion.
      * Units are centimeters.

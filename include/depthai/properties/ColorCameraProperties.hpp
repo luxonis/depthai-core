@@ -77,7 +77,7 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
      */
     enum class ColorOrder : int32_t { BGR, RGB };
 
-    /*
+    /**
      * Initial controls applied to ColorCamera node
      */
     CameraControl initialControl;
@@ -196,7 +196,7 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
     int warpMeshStepWidth = 32;
     int warpMeshStepHeight = 32;
 
-    /*
+    /**
      * List of events to receive, the rest will be ignored
      */
     std::vector<dai::FrameEvent> eventFilter = {dai::FrameEvent::READOUT_START};

@@ -34,34 +34,34 @@ class ImgDetectionsT : public Buffer {
      * Common API
      */
 
-    /*
+    /**
      * Returns the width of the segmentation mask.
      */
     std::size_t getSegmentationMaskWidth() const;
 
-    /*
+    /**
      * Returns the height of the segmentation mask.
      */
     std::size_t getSegmentationMaskHeight() const;
 
-    /*
+    /**
      * Sets the segmentation mask from a vector of bytes.
      * The size of the vector must be equal to width * height.
      */
     void setSegmentationMask(const std::vector<std::uint8_t>& mask, size_t width, size_t height);
 
-    /*
+    /**
      * Sets the segmentation mask from an ImgFrame.
      * @param frame Frame must be of type GRAY8
      */
     void setSegmentationMask(dai::ImgFrame& frame);
 
-    /*
+    /**
      * Returns a copy of the segmentation mask data as a vector of bytes. If mask data is not set, returns std::nullopt.
      */
     std::optional<std::vector<std::uint8_t>> getMaskData() const;
 
-    /*
+    /**
      * Returns the segmentation mask as an ImgFrame. If mask data is not set, returns std::nullopt.
      */
     std::optional<dai::ImgFrame> getSegmentationMask() const;
