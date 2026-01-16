@@ -661,9 +661,9 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
     // These are provided by the calibration data.
     // ------------------------------------------------------------
 
-    std::vector<std::vector<float>> HousingToHousingOrigin = getHousingToHousingOrigin(housingCS, useSpecTranslation, housingOriginCamera);
+    std::vector<std::vector<float>> housingToHousingOrigin = getHousingToHousingOrigin(housingCS, useSpecTranslation, housingOriginCamera);
 
-    std::vector<std::vector<float>> HousingOriginToOrigin = getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
+    std::vector<std::vector<float>> housingOriginToOrigin = getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
 
     std::vector<std::vector<float>> camToOrigin = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera2);
 
@@ -682,13 +682,13 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
     //         housing → housing_origin
     //    So we invert that SE3 transform first.
     // ------------------------------------------------------------
-    invertSe3Matrix4x4InPlace(HousingOriginToOrigin);   // now represents origin → housing_origin
-    invertSe3Matrix4x4InPlace(HousingToHousingOrigin);  // now represents housing_origin → housing
+    invertSe3Matrix4x4InPlace(housingOriginToOrigin);   // now represents origin → housing_origin
+    invertSe3Matrix4x4InPlace(housingToHousingOrigin);  // now represents housing_origin → housing
     // ------------------------------------------------------------
     // 3. Compose transformations:
     //    cam_src → origin → housing_origin
     // ------------------------------------------------------------
-    camToHousingOrigin = matMul(HousingOriginToOrigin, camToOrigin);
+    camToHousingOrigin = matMul(housingOriginToOrigin, camToOrigin);
 
     // ------------------------------------------------------------
     // 4. And finally:

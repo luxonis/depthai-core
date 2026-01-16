@@ -66,11 +66,11 @@ inline bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array
     return true;
 }
 
-std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix_float) {
+std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrixFloat) {
     // Step 1: Convert to double
     std::array<std::array<double, 3>, 3> matrix;
     for(int i = 0; i < 3; ++i)
-        for(int j = 0; j < 3; ++j) matrix[i][j] = static_cast<double>(matrix_float[i][j]);
+        for(int j = 0; j < 3; ++j) matrix[i][j] = static_cast<double>(matrixFloat[i][j]);
 
     std::array<std::array<float, 3>, 3> inv;
     double det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
