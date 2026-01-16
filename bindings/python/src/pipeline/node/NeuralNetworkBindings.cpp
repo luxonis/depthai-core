@@ -112,6 +112,9 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
             [](NeuralNetwork& self, const std::shared_ptr<Camera>& input, const NeuralNetwork::Model& model, const ImgFrameCapability& capability) {
                 return self.build(input, model, capability);
             },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("capability"),
             DOC(dai, node, NeuralNetwork, build, 3))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def(
