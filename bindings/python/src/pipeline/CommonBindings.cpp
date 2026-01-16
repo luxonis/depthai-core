@@ -169,8 +169,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getPoints2f", &KeypointsList::getPoints2f, DOC(dai, KeypointsListT, getPoints2f));
 
     rotatedRect.def(py::init<>())
-        .def(py::init<Point2f, Size2f, float>())
-        .def(py::init<Rect, float>())
+        .def(py::init<Point2f, Size2f, float>(), py::arg("center"), py::arg("size"), py::arg("angle"), DOC(dai, RotatedRect, RotatedRect))
+        .def(py::init<Rect, float>(), py::arg("rect"), py::arg("angle") = 0.f, DOC(dai, RotatedRect, RotatedRect))
         .def_readwrite("center", &RotatedRect::center)
         .def_readwrite("size", &RotatedRect::size)
         .def_readwrite("angle", &RotatedRect::angle)
@@ -183,12 +183,18 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getOuterCXCYWH", &RotatedRect::getOuterCXCYWH, DOC(dai, RotatedRect, getOuterCXCYWH));
 
     rect.def(py::init<>())
-        .def(py::init<float, float, float, float>())
-        .def(py::init<float, float, float, float, bool>())
-        .def(py::init<Point2f, Point2f>())
-        .def(py::init<Point2f, Point2f, bool>())
-        .def(py::init<Point2f, Size2f>())
-        .def(py::init<Point2f, Size2f, bool>())
+        .def(py::init<float, float, float, float>(), py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, Rect, Rect))
+        .def(py::init<float, float, float, float, bool>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("width"),
+             py::arg("height"),
+             py::arg("normalized"),
+             DOC(dai, Rect, Rect, 2))
+        .def(py::init<Point2f, Point2f>(), py::arg("point_1"), py::arg("point_2"), DOC(dai, Rect, Rect, 6))
+        .def(py::init<Point2f, Point2f, bool>(), py::arg("point_1"), py::arg("point_2"), py::arg("normalized"), DOC(dai, Rect, Rect, 7))
+        .def(py::init<Point2f, Size2f>(), py::arg("top_left"), py::arg("size"), DOC(dai, Rect, Rect, 4))
+        .def(py::init<Point2f, Size2f, bool>(), py::arg("top_left"), py::arg("size"), py::arg("normalized"), DOC(dai, Rect, Rect, 5))
 
         .def("topLeft", &Rect::topLeft, DOC(dai, Rect, topLeft))
         .def("bottomRight", &Rect::bottomRight, DOC(dai, Rect, bottomRight))
@@ -225,12 +231,20 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("isNormalized", &Point2f::isNormalized);
 
     point3f.def(py::init<>())
-        .def(py::init<float, float, float>())
+        .def(py::init<float, float, float>(), py::arg("x"), py::arg("y"), py::arg("z"), DOC(dai, Point3f, Point3f))
         .def_readwrite("x", &Point3f::x)
         .def_readwrite("y", &Point3f::y)
         .def_readwrite("z", &Point3f::z);
     point3fRGBA.def(py::init<>())
-        .def(py::init<float, float, float, int, int, int>())
+        .def(py::init<float, float, float, int, int, int, int>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("r"),
+             py::arg("g"),
+             py::arg("b"),
+             py::arg("a") = 255,
+             DOC(dai, Point3fRGBA, Point3fRGBA))
         .def_readwrite("x", &Point3fRGBA::x)
         .def_readwrite("y", &Point3fRGBA::y)
         .def_readwrite("z", &Point3fRGBA::z)
@@ -239,12 +253,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("b", &Point3fRGBA::b)
         .def_readwrite("a", &Point3fRGBA::a);
     point3d.def(py::init<>())
-        .def(py::init<double, double, double>())
+        .def(py::init<double, double, double>(), py::arg("x"), py::arg("y"), py::arg("z"), DOC(dai, Point3d, Point3d))
         .def_readwrite("x", &Point3d::x)
         .def_readwrite("y", &Point3d::y)
         .def_readwrite("z", &Point3d::z);
     quaterniond.def(py::init<>())
-        .def(py::init<double, double, double, double>())
+        .def(py::init<double, double, double, double>(), py::arg("qx"), py::arg("qy"), py::arg("qz"), py::arg("qw"), DOC(dai, Quaterniond, Quaterniond))
         .def_readwrite("qx", &Quaterniond::qx)
         .def_readwrite("qy", &Quaterniond::qy)
         .def_readwrite("qz", &Quaterniond::qz)
