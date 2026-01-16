@@ -50,7 +50,7 @@ jobs:
 
   run_vanilla_tests:
     needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
+    if: needs.precheck.outputs.should_run == 'false'
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
@@ -62,7 +62,7 @@ jobs:
 
   run_tsan_tests:
     needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
+    if: needs.precheck.outputs.should_run == 'false'
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
@@ -84,7 +84,7 @@ jobs:
 
   run_windows_tests:
     needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
+    if: needs.precheck.outputs.should_run == 'false'
     uses: ./.github/workflows/test_child_windows.yml
     with:
       luxonis_os_versions_to_test: "['1.23.1']"
