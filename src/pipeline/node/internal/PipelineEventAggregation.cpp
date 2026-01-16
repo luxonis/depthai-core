@@ -366,8 +366,7 @@ class NodeEventAggregation {
                         state.inputStates[event.source].state = NodeState::InputQueueState::State::IDLE;
                         break;
                     case PipelineEvent::Interval::NONE:
-                        if(event.status == PipelineEvent::Status::BLOCKED || event.status == PipelineEvent::Status::CANCELLED)
-                            state.inputStates[event.source].state = NodeState::InputQueueState::State::BLOCKED;
+                        if(event.status == PipelineEvent::Status::BLOCKED) state.inputStates[event.source].state = NodeState::InputQueueState::State::BLOCKED;
                         break;
                 }
                 break;
