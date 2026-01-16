@@ -96,8 +96,6 @@ TEST_CASE("Test Gate N Messages") {
     auto cameraQueue = gate->output.createOutputQueue(8, false);  // Non-blocking
     auto gateControlQueue = gate->inputControl.createInputQueue();
 
-    pipeline.start();
-
     // Test Parameters
     const int num_messages = 8;
     const int num_cycles = 4;            // Number of times to toggle
@@ -110,7 +108,10 @@ TEST_CASE("Test Gate N Messages") {
 
     // Initial Gate Control (On)
     auto ctrl = std::make_shared<dai::GateControl>(true, num_messages);
-    gateControlQueue->send(ctrl);
+    gate->initialConfig->open = true;
+    gate->initialConfig->numMessages = num_messages;
+
+    pipeline.start();
 
     std::cout << "--- Starting Test: Gate is ON ---" << std::endl;
 
@@ -119,11 +120,7 @@ TEST_CASE("Test Gate N Messages") {
         std::chrono::duration<double> elapsed = now - start_time;
 
         if(elapsed.count() >= period_duration) {
-            if(cycle_count == 0) {
-                CHECK(frames_in_period >= num_messages);
-            } else {
-                CHECK(frames_in_period == num_messages);
-            }
+            CHECK(frames_in_period == num_messages);
             gateControlQueue->send(ctrl);
             std::cout << "[VERIFY] Gate ON for N messages period finished. Frames received: " << frames_in_period << std::endl;
 

@@ -10,11 +10,13 @@ namespace node {
 
 class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
    protected:
-    Properties& getProperties() override {
-        return properties;
-    }
+    Properties& getProperties() override;
 
    public:
+    Gate(std::unique_ptr<Properties> props);
+
+    std::shared_ptr<GateControl> initialConfig = std::make_shared<GateControl>();
+
     constexpr static const char* NAME = "Gate";
 
     using DeviceNodeCRTP::DeviceNodeCRTP;
