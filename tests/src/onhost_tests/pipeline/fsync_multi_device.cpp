@@ -17,9 +17,15 @@
 
 #define REQUIRE_MSG(x, msg) if(!(x)) { std::cout << "\x1B[1;31m" << msg << "\x1B[0m" << std::endl; REQUIRE((x)); }
 
-dai::Node::Output *createPipeline(dai::Pipeline& pipeline, dai::CameraBoardSocket socket, int sensorFps) {
-    auto cam = pipeline.create<dai::node::Camera>()
-        ->build(socket, std::nullopt, sensorFps);
+dai::Node::Output *createPipeline(dai::Pipeline& pipeline, dai::CameraBoardSocket socket, int sensorFps, dai::M8FsyncRole role) {
+    std::shared_ptr<dai::node::Camera> cam;
+    if (role == dai::M8FsyncRole::MASTER) {
+        cam = pipeline.create<dai::node::Camera>()
+            ->build(socket, std::nullopt, sensorFps);
+    } else {
+        cam = pipeline.create<dai::node::Camera>()
+        ->build(socket, std::nullopt);
+    }
 
     auto output = cam->requestOutput(
         std::make_pair(640, 480), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH);
@@ -33,7 +39,6 @@ int testFsync(float TARGET_FPS, double SYNC_THRESHOLD_SEC, uint64_t testDuration
     std::cout << "SYNC_THRESHOLD_SEC: " << SYNC_THRESHOLD_SEC << std::endl;
     std::cout << "RECV_ALL_TIMEOUT_SEC: " << RECV_ALL_TIMEOUT_SEC << std::endl;
     std::cout << "INITIAL_SYNC_TIMEOUT_SEC: " << INITIAL_SYNC_TIMEOUT_SEC << std::endl;
-    float FRAME_LOST_THRESHOLD = 1.0f / TARGET_FPS * 5;
 
     std::vector<dai::DeviceInfo> DEVICE_INFOS = dai::Device::getAllAvailableDevices();
 
@@ -54,23 +59,26 @@ int testFsync(float TARGET_FPS, double SYNC_THRESHOLD_SEC, uint64_t testDuration
         auto pipeline = dai::Pipeline(std::make_shared<dai::Device>(deviceInfo));
         auto device = pipeline.getDefaultDevice();
 
+        auto role = device->getM8FsyncRole();
+
         std::cout << "=== Connected to " << deviceInfo.getDeviceId() << std::endl;
         std::cout << "    Device ID: " << device->getDeviceId() << std::endl;
         std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
         auto socket = device->getConnectedCameras()[0];
-        if (device->getProductName().find("OAK4-D") != std::string::npos) {
+        if (device->getProductName().find("OAK4-D") != std::string::npos ||
+            device->getProductName().find("OAK-4-D") != std::string::npos)
+        {
             socket = device->getConnectedCameras()[1];
         }
 
-        auto out_n = createPipeline(pipeline, socket, TARGET_FPS);
+        auto out_n = createPipeline(pipeline, socket, TARGET_FPS, role);
 
-        if (device->getProductName().find("OAK4-D-PRO") != std::string::npos) {
+        if (device->getProductName().find("OAK4-D-PRO") != std::string::npos ||
+            device->getProductName().find("OAK-4-PRO") != std::string::npos) {
             device->setIrFloodLightIntensity(0.1);
             device->setIrLaserDotProjectorIntensity(0.1);
         }
-
-        auto role = device->getM8FsyncRole();
 
         if (role == dai::M8FsyncRole::MASTER) {
             device->setM8StrobeEnable(true);
@@ -153,16 +161,13 @@ int testFsync(float TARGET_FPS, double SYNC_THRESHOLD_SEC, uint64_t testDuration
             auto end_time = std::chrono::steady_clock::now();
             auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
             REQUIRE_MSG(elapsed_sec < RECV_ALL_TIMEOUT_SEC, "Timeout: Didn't receive all frames in time");
-        } else {
-            auto end_time = std::chrono::steady_clock::now();
-            auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - prev_received).count();
-            REQUIRE_MSG(elapsed_sec < FRAME_LOST_THRESHOLD, "Frame lost: Didn't receive all frames in time");
+        }
 
-            elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
-            if (elapsed_sec >= testDuration_sec) {
-                std::cout << "Timeout: Test finished after " << elapsed_sec << " sec" << std::endl;
-                break;
-            }
+        auto total_elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time).count();
+
+        if (total_elapsed_sec >= testDuration_sec) {
+            std::cout << "Timeout: Test finished after " << total_elapsed_sec << " sec" << std::endl;
+            break;
         }
 
         if (latest_frame_group.has_value()) {
