@@ -211,11 +211,10 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
             [](SpatialKeypointsList& self, const std::vector<SpatialKeypoint>& kps) { self.Base::setKeypoints(kps); },
             py::arg("keypoints"),
             DOC(dai, KeypointsListT, setKeypoints))
-        .def(
-            "setKeypoints",
-            [](SpatialKeypointsList& self, const std::vector<Point3f>& kps) { self.Base::setKeypoints(kps); },
-            py::arg("keypoints"),
-            DOC(dai, KeypointsListT, setKeypoints))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Point3f>&>(&SpatialKeypointsList::setKeypoints),
+             py::arg("keypoints"),
+             DOC(dai, KeypointsListT, setKeypoints))
         .def(
             "setKeypoints",
             [](SpatialKeypointsList& self, std::vector<SpatialKeypoint> keypoints, std::vector<Edge> edges) {
