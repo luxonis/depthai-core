@@ -191,10 +191,10 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("height"),
              py::arg("normalized"),
              DOC(dai, Rect, Rect, 2))
-        .def(py::init<Point2f, Point2f>(), py::arg("point_1"), py::arg("point_2"), DOC(dai, Rect, Rect, 6))
-        .def(py::init<Point2f, Point2f, bool>(), py::arg("point_1"), py::arg("point_2"), py::arg("normalized"), DOC(dai, Rect, Rect, 7))
         .def(py::init<Point2f, Size2f>(), py::arg("top_left"), py::arg("size"), DOC(dai, Rect, Rect, 4))
         .def(py::init<Point2f, Size2f, bool>(), py::arg("top_left"), py::arg("size"), py::arg("normalized"), DOC(dai, Rect, Rect, 5))
+        .def(py::init<Point2f, Point2f>(), py::arg("point_1"), py::arg("point_2"), DOC(dai, Rect, Rect, 6))
+        .def(py::init<Point2f, Point2f, bool>(), py::arg("point_1"), py::arg("point_2"), py::arg("normalized"), DOC(dai, Rect, Rect, 7))
 
         .def("topLeft", &Rect::topLeft, DOC(dai, Rect, topLeft))
         .def("bottomRight", &Rect::bottomRight, DOC(dai, Rect, bottomRight))

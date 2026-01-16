@@ -25,6 +25,11 @@ struct Rect {
 
     /**
      * Construct Rectangle from (x, y) coordinates of the top-left corner, width, height and normalization flag.
+     * @param x Top-left x coordinate
+     * @param y Top-left y coordinate
+     * @param width Width of the rectangle
+     * @param height Height of the rectangle
+     * @param normalized Whether the rectangle is normalized (coordinates in [0,1] range) or not
      */
     Rect(float x, float y, float width, float height, bool normalized)
         : x(x), y(y), width(width), height(height), normalized(normalized), hasNormalized(true) {}
@@ -40,19 +45,25 @@ struct Rect {
     Rect(const Point2f& org, const Size2f& sz) : x(org.x), y(org.y), width(sz.width), height(sz.height) {}
 
     /**
-     * Construct Rectangle from top left point, size and normalization flag
+     * Construct Rectangle from top left point, size and normalization flag.
+     * @note: if normalized is true, the coordinates are in [0,1] range
      */
     Rect(const Point2f& org, const Size2f& sz, bool normalized)
         : x(org.x), y(org.y), width(sz.width), height(sz.height), normalized(normalized), hasNormalized(true) {}
 
     /**
-     * Construct Rectangle between the two points
+     * Construct Rectangle between any two given points. Constructor will determine top-left and bottom-right points.
+     * @param pt1 First point
+     * @param pt2 Second point
      */
     Rect(const Point2f& pt1, const Point2f& pt2)
         : x(std::min(pt1.x, pt2.x)), y(std::min(pt1.y, pt2.y)), width(std::max(pt1.x, pt2.x) - x), height(std::max(pt1.y, pt2.y) - y) {}
 
     /**
-     * Construct Rectangle between the two points with normalization flag
+     * Construct Rectangle between any two given points with normalization flag. Constructor will determine top-left and bottom-right points.
+     * @param pt1 First point
+     * @param pt2 Second point
+     * @param normalized Whether the rectangle is normalized (coordinates in [0,1] range) or not
      */
     Rect(const Point2f& pt1, const Point2f& pt2, bool normalized)
         : x(std::min(pt1.x, pt2.x)),

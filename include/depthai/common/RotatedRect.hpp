@@ -28,7 +28,9 @@ struct RotatedRect {
         }
     }
     /**
-     * Construct RotatedRect from a non-rotated rectangle and an angle
+     * Construct RotatedRect from provided dai::Rect rect and angle
+     * @param rect dai::Rect rectangle
+     * @param angle Rotation angle in degrees
      */
     RotatedRect(const Rect& rect, float angle = 0.f)
         : center(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, rect.isNormalized()),
