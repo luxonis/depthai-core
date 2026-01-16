@@ -17,6 +17,7 @@ import math
 
 import argparse
 import signal
+import numpy as np
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -43,11 +44,19 @@ class FPSCounter:
 # ---------------------------------------------------------------------------
 # Pipeline creation (unchanged API – only uses TARGET_FPS constant)
 # ---------------------------------------------------------------------------
-def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensorFps: int):
-    cam = (
-        pipeline.create(dai.node.Camera)
-        .build(socket, sensorFps=sensorFps)
-    )
+def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensorFps: int, role: dai.M8FsyncRole):
+    cam = None
+    if role == dai.M8FsyncRole.MASTER:
+        cam = (
+            pipeline.create(dai.node.Camera)
+            .build(socket, sensorFps=sensorFps)
+        )
+    else:
+        cam = (
+            pipeline.create(dai.node.Camera)
+            .build(socket)
+        )
+
     output = (
         cam.requestOutput(
             (640, 480), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
@@ -87,7 +96,6 @@ TARGET_FPS = args.fps  # Must match sensorFps in createPipeline()
 RECV_ALL_TIMEOUT_SEC = args.recv_all_timeout_sec
 
 SYNC_THRESHOLD_SEC = args.sync_threshold_sec
-FRAME_LOST_THRESHOLD = 1/TARGET_FPS * 5
 INITIAL_SYNC_TIMEOUT_SEC = args.initial_sync_timeout_sec
 # ---------------------------------------------------------------------------
 # Main
@@ -108,21 +116,19 @@ with contextlib.ExitStack() as stack:
         pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
         device = pipeline.getDefaultDevice()
 
+        role = device.getM8FsyncRole()
+
         print("=== Connected to", deviceInfo.getDeviceId())
         print("    Device ID:", device.getDeviceId())
         print("    Num of cameras:", len(device.getConnectedCameras()))
 
         socket = device.getConnectedCameras()[0]
-        if "OAK4-D" in device.getProductName():
+        if "OAK4-D" in device.getProductName() or \
+            "OAK-4-D" in device.getProductName():
             socket = device.getConnectedCameras()[1]
 
-        pipeline, out_n = createPipeline(pipeline, socket, TARGET_FPS)
+        pipeline, out_n = createPipeline(pipeline, socket, TARGET_FPS, role)
 
-        if "OAK4-D-PRO" in device.getProductName():
-            device.setIrFloodLightIntensity(0.1)
-            device.setIrLaserDotProjectorIntensity(0.1)
-
-        role = device.getM8FsyncRole()
         if role == dai.M8FsyncRole.MASTER:
             device.setM8StrobeEnable(True)
             device.setM8StrobeLimits(0.05, 0.95)
@@ -199,11 +205,6 @@ with contextlib.ExitStack() as stack:
             if elapsed_sec >= RECV_ALL_TIMEOUT_SEC:
                 print(f"Timeout: Didn't receive all frames in time: {elapsed_sec:.2f} sec")
                 running = False
-        else:
-            end_time = datetime.datetime.now()
-            elapsed_sec = (end_time - prev_received).total_seconds()
-            if elapsed_sec >= FRAME_LOST_THRESHOLD:
-                print(f"Frame lost: Didn't receive all frames in time: {elapsed_sec:.2f} sec")
 
         # -------------------------------------------------------------------
         # Synchronise: we need at least one frame from every camera and their

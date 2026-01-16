@@ -46,9 +46,15 @@ class FPSCounter {
     }
 };
 
-dai::Node::Output *createPipeline(dai::Pipeline& pipeline, dai::CameraBoardSocket socket, int sensorFps) {
-    auto cam = pipeline.create<dai::node::Camera>()
-        ->build(socket, std::nullopt, sensorFps);
+dai::Node::Output *createPipeline(dai::Pipeline& pipeline, dai::CameraBoardSocket socket, int sensorFps, dai::M8FsyncRole role) {
+    std::shared_ptr<dai::node::Camera> cam;
+    if (role == dai::M8FsyncRole::MASTER) {
+        cam = pipeline.create<dai::node::Camera>()
+            ->build(socket, std::nullopt, sensorFps);
+    } else {
+        cam = pipeline.create<dai::node::Camera>()
+        ->build(socket, std::nullopt);
+    }
 
     auto output = cam->requestOutput(
         std::make_pair(640, 480), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH);
@@ -82,7 +88,6 @@ int main(int argc, char** argv) {
 
     int RECV_ALL_TIMEOUT_SEC = std::stoi(argv[2]);
     float SYNC_THRESHOLD_SEC = std::stof(argv[3]);
-    float FRAME_LOST_THRESHOLD = 1.0f / TARGET_FPS * 5;
     int INITIAL_SYNC_TIMEOUT_SEC = std::stoi(argv[4]);
 
     std::vector<dai::DeviceInfo> DEVICE_INFOS;
@@ -115,23 +120,20 @@ int main(int argc, char** argv) {
         auto pipeline = dai::Pipeline(std::make_shared<dai::Device>(deviceInfo));
         auto device = pipeline.getDefaultDevice();
 
+        auto role = device->getM8FsyncRole();
+
         std::cout << "=== Connected to " << deviceInfo.getDeviceId() << std::endl;
         std::cout << "    Device ID: " << device->getDeviceId() << std::endl;
         std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
         auto socket = device->getConnectedCameras()[0];
-        if (device->getProductName().find("OAK4-D") != std::string::npos) {
+        if (device->getProductName().find("OAK4-D") != std::string::npos ||
+            device->getProductName().find("OAK-4-D") != std::string::npos)
+        {
             socket = device->getConnectedCameras()[1];
         }
 
-        auto out_n = createPipeline(pipeline, socket, TARGET_FPS);
-
-        if (device->getProductName().find("OAK4-D-PRO") != std::string::npos) {
-            device->setIrFloodLightIntensity(0.1);
-            device->setIrLaserDotProjectorIntensity(0.1);
-        }
-
-        auto role = device->getM8FsyncRole();
+        auto out_n = createPipeline(pipeline, socket, TARGET_FPS, role);
 
         if (role == dai::M8FsyncRole::MASTER) {
             device->setM8StrobeEnable(true);
@@ -218,12 +220,6 @@ int main(int argc, char** argv) {
             if (elapsed_sec >= RECV_ALL_TIMEOUT_SEC) {
                 std::cout << "Timeout: Didn't receive all frames in time: " << elapsed_sec << std::endl;
                 running = false;
-            }
-        } else {
-            auto end_time = std::chrono::steady_clock::now();
-            auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - prev_received).count();
-            if (elapsed_sec >= FRAME_LOST_THRESHOLD) {
-                std::cout << "Frame lost: Didn't receive all frames in time: " << elapsed_sec << std::endl;
             }
         }
 
