@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/ImageAlign.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <sstream>
 #include <unordered_set>
 
@@ -198,6 +200,7 @@ void ImageAlign::run() {
     std::array<std::array<float, 3>, 3> depthSourceIntrinsics;
     std::array<std::array<float, 3>, 3> alignSourceIntrinsics;
     std::array<std::array<float, 4>, 4> depthToAlignExtrinsics;
+    std::vector<float> depthDistortionCoefficients;
 
     dai::CameraBoardSocket alignFrom;
     dai::CameraBoardSocket alignTo;
@@ -241,7 +244,9 @@ void ImageAlign::run() {
     auto extractCalibrationData = [&](int depthWidth, int depthHeight, int alignWidth, int alignHeight) {
         if(calibrationSet) return;
 
-        auto depthDistortionCoefficients = std::vector<float>(14, 0.0f);
+        if(depthDistortionCoefficients.empty()) {
+            depthDistortionCoefficients.assign(14, 0.0f);
+        }
         auto alignDistortionCoefficients = calibHandler.getDistortionCoefficients(alignTo);
 
         auto depthToAlignRotation = calibHandler.getCameraRotationMatrix(alignFrom, alignTo);
@@ -254,22 +259,22 @@ void ImageAlign::run() {
         auto cv_M1 = arrayToCvMat(3, 3, CV_32FC1, depthSourceIntrinsics);
         auto cv_M2 = arrayToCvMat(3, 3, CV_32FC1, alignSourceIntrinsics);
 
-        auto cv_dNone = vecToCvMat(1, depthDistortionCoefficients.size(), CV_32FC1, depthDistortionCoefficients);
-        auto cv_d2 = vecToCvMat(1, alignDistortionCoefficients.size(), CV_32FC1, alignDistortionCoefficients);
-
+        auto cv_d1 = vecToCvMat(1, depthDistortionCoefficients.size(), CV_32FC1, depthDistortionCoefficients);
+        auto cv_dNone = vecToCvMat(
+            1, alignDistortionCoefficients.size(), CV_32FC1, std::vector<float>(alignDistortionCoefficients.size(), 0.0f));  // No distortion for aligned frame
         auto cv_R = vecToCvMat(3, 3, CV_32FC1, depthToAlignRotation);
         auto cv_T = vecToCvMat(1, 3, CV_32FC1, depthToAlignTranslation);
 
         cv::Mat cv_R1, cv_R2;
         cv::Size imageSize = cv::Size(depthWidth, depthHeight);
-        std::tie(cv_R1, cv_R2) = computeRectificationMatrices(cv_M1, cv_dNone, cv_M2, cv_d2, imageSize, cv_R, cv_T);
+        std::tie(cv_R1, cv_R2) = computeRectificationMatrices(cv_M1, cv_d1, cv_M2, cv_dNone, imageSize, cv_R, cv_T);
 
         // dai::CameraModel cameraModel = dai::CameraModel::Perspective;  // todo
 
         auto cv_targetCamMatrix = cv_M1.clone();
         auto cv_meshSize = cv::Size(depthWidth, depthHeight);
 
-        cv::initUndistortRectifyMap(cv_M1, cv_dNone, cv_R1, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_1, map_y_1);
+        cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_1, map_y_1);
 
         cv::Mat cv_newR = cv_R2 * (cv_R * cv_R1.t());
         cv::Mat cv_newT = cv_R2 * cv_T.t();
@@ -370,14 +375,31 @@ void ImageAlign::run() {
                 inputAlignToImgFrame = *inputAlignToImg;
 
                 inputAlignToTransform = inputAlignToImg->transformation;
-
-                alignSourceIntrinsics = inputAlignToImg->transformation.getIntrinsicMatrix();
+                const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
+                const bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
+                if(hasDistortion) {
+                    logger->warn(
+                        "The input connected to inputAlignTo is distorted. The aligned image will still be undistorted, meaning it won't be perfectly "
+                        "aligned.");
+                }
 
                 alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
                 if(alignWidth == 0 || alignHeight == 0) {
                     alignWidth = inputAlignToImg->getWidth();
                     alignHeight = inputAlignToImg->getHeight();
                 }
+
+                auto alignTransformForIntrinsics = inputAlignToTransform;
+                auto [alignTransformWidth, alignTransformHeight] = alignTransformForIntrinsics.getSize();
+                if(static_cast<int>(alignTransformWidth) != alignWidth || static_cast<int>(alignTransformHeight) != alignHeight) {
+                    float scaleX = static_cast<float>(alignWidth) / static_cast<float>(alignTransformWidth);
+                    float scaleY = static_cast<float>(alignHeight) / static_cast<float>(alignTransformHeight);
+                    alignTransformForIntrinsics.addScale(scaleX, scaleY);
+                    alignTransformForIntrinsics.setSize(alignWidth, alignHeight);
+                }
+
+                alignSourceIntrinsics = alignTransformForIntrinsics.getIntrinsicMatrix();
+                inputAlignToTransform = alignTransformForIntrinsics;
             }
 
             if(inputConfig.getWaitForMessage()) {
@@ -405,6 +427,7 @@ void ImageAlign::run() {
         inputFrameType = inputImg->getType();
 
         depthSourceIntrinsics = inputImg->transformation.getIntrinsicMatrix();
+        depthDistortionCoefficients = inputImg->transformation.getDistortionCoefficients();
 
         if(alignFrom == alignTo) {
             logger->error("Cannot align image to itself (camera socket {}), possible misconfiguration, skipping frame!", (int)alignFrom);
@@ -575,13 +598,14 @@ void ImageAlign::run() {
         alignedImg->setSequenceNum(inputImg->getSequenceNum());
 
         alignedImg->transformation = inputAlignToTransform;
+        const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
+        alignedImg->transformation.setDistortionCoefficients(std::vector<float>(alignToDistortion.size(), 0.0f));
 
         tStop = steady_clock::now();
         auto runtime = duration_cast<milliseconds>(tStop - tStart).count();
 
         logger->trace("ImageAlign took {} ms", runtime);
 
-        alignedImg->transformation.setDistortionCoefficients({});
         {
             auto blockEvent = this->outputBlockEvent();
             outputAligned.send(alignedImg);
