@@ -21,13 +21,10 @@ int main() {
 
     auto gateControlQueue = gate->inputControl.createInputQueue();
 
-    auto gateControl = std::make_shared<dai::GateControl>();
-    gateControl->stop();
-
     pipeline.start();
 
     auto start_time = std::chrono::steady_clock::now();
-    bool gate_state = true;
+    bool openGate = true;
 
     while(pipeline.isRunning()) {
         auto frame = cameraQueue->tryGet<dai::ImgFrame>();
@@ -39,13 +36,15 @@ int main() {
         std::chrono::duration<double> elapsed = current_time - start_time;
 
         if(elapsed.count() > 5.0) {
-            gate_state = !gate_state;
+            openGate = !openGate;
 
-            gateControl->value = gate_state;
+            if(openGate) {
+                gateControlQueue->send(dai::GateControl::openGate());
+            } else {
+                gateControlQueue->send(dai::GateControl::closeGate());
+            }
 
-            gateControlQueue->send(gateControl);
-
-            std::cout << "Gate toggled to: " << (gate_state ? "True" : "False") << std::endl;
+            std::cout << "Gate toggled to: " << (openGate ? "True" : "False") << std::endl;
 
             start_time = current_time;
         }

@@ -11,22 +11,42 @@ bool Gate::runOnHost() const {
     return runOnHostVar;
 }
 
-void Gate::run() {
-    bool startStopSwitch = true;  // true start, false stop
-    while(mainLoop()) {
-        if(startStopSwitch) {
-            auto control = inputControl.tryGet<GateControl>();
-            if(control) {
-                startStopSwitch = control->value;
-            }
+std::shared_ptr<GateControl> Gate::sendMessages() {
+    while(true) {
+        auto control = inputControl.tryGet<GateControl>();
+        if(control) {
+            return control;
+        }
+        auto inData = input.get();
+        output.send(inData);
+    }
+}
 
-            auto inData = input.get();
-            output.send(inData);
-        } else {
-            auto control = inputControl.get<GateControl>();
-            if(control) {
-                startStopSwitch = control->value;
+std::shared_ptr<GateControl> Gate::sendMessages(int numMessages) {
+    for(int i = 0; i < numMessages; i++) {
+        auto inData = input.get();
+        output.send(inData);
+    }
+    return std::make_shared<GateControl>(false, -1);
+}
+
+std::shared_ptr<GateControl> Gate::waitFotCommand() {
+    auto control = inputControl.get<GateControl>();
+    return control;
+}
+
+void Gate::run() {
+    auto currentCommand = std::make_shared<GateControl>(true, -1);
+
+    while(mainLoop()) {
+        if(currentCommand->open) {
+            if(currentCommand->numMessages >= 0) {
+                currentCommand = sendMessages(currentCommand->numMessages);
+            } else {
+                currentCommand = sendMessages();
             }
+        } else {
+            currentCommand = waitFotCommand();
         }
     }
 }

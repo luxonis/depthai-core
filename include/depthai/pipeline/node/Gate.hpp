@@ -33,6 +33,12 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
 
    private:
     bool runOnHostVar = false;
+
+    std::shared_ptr<GateControl> sendMessages();
+
+    std::shared_ptr<GateControl> sendMessages(int numMessages);
+
+    std::shared_ptr<GateControl> waitFotCommand();
 };
 
 }  // namespace node

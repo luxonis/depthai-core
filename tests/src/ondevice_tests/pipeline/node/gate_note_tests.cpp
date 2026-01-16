@@ -34,8 +34,7 @@ TEST_CASE("Test Gate Timing and Data Flow") {
     bool is_measuring = false;
 
     // Initial Gate Control (On)
-    auto ctrl = std::make_shared<dai::GateControl>();
-    ctrl->value = current_gate_state;
+    auto ctrl = std::make_shared<dai::GateControl>(current_gate_state, -1);
     gateControlQueue->send(ctrl);
 
     std::cout << "--- Starting Test: Gate is ON ---" << std::endl;
@@ -56,7 +55,7 @@ TEST_CASE("Test Gate Timing and Data Flow") {
 
             // Toggle State
             current_gate_state = !current_gate_state;
-            ctrl->value = current_gate_state;
+            ctrl->open = current_gate_state;
             gateControlQueue->send(ctrl);
 
             // Reset Period
