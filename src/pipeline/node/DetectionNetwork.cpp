@@ -15,6 +15,7 @@
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "nn_archive/NNArchiveVersionedConfig.hpp"
 #include "pipeline/DeviceNodeGroup.hpp"
+#include "pipeline/node/NeuralNetwork.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
@@ -54,30 +55,29 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, c
 }
 
 std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera,
-                                                          NNModelDescription modelDesc,
+                                                          const Model& model,
                                                           std::optional<float> fps,
                                                           std::optional<dai::ImgResizeMode> resizeMode) {
-    auto nnArchive = createNNArchive(modelDesc);
-    return build(camera, nnArchive, fps, resizeMode);
+    ImgFrameCapability cap;
+    if(fps.has_value()) cap.fps.value = *fps;
+    if(resizeMode.has_value()) cap.resizeMode = *resizeMode;
+    return build(camera, model, cap);
 }
 
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera,
-                                                          const NNArchive& nnArchive,
-                                                          std::optional<float> fps,
-                                                          std::optional<dai::ImgResizeMode> resizeMode) {
-    neuralNetwork->build(camera, nnArchive, fps, resizeMode);
-    detectionParser->setNNArchive(nnArchive);
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<Camera>& camera, const Model& model, const ImgFrameCapability& capability) {
+    neuralNetwork->build(camera, model, capability);
+    auto nnArchive = neuralNetwork->getNNArchive();
+    DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
+    detectionParser->setNNArchive(*nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
-    auto nnArchive = createNNArchive(modelDesc);
-    return build(input, nnArchive, fps);
-}
-std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
-    neuralNetwork->build(input, nnArchive, fps);
-    detectionParser->setNNArchive(nnArchive);
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<ReplayVideo>& input, const Model& model, std::optional<float> fps) {
+    neuralNetwork->build(input, model, fps);
+    auto nnArchive = neuralNetwork->getNNArchive();
+    DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
+    detectionParser->setNNArchive(*nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 #endif
