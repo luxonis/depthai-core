@@ -438,6 +438,10 @@ dai_set_test_labels(nndata_test onhost ci)
 dai_add_test(imgdetections_test src/onhost_tests/pipeline/datatype/imgdetections_test.cpp)
 dai_set_test_labels(imgdetections_test onhost ci)
 
+#Gate tests
+dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_note_tests.cpp)
+dai_set_test_labels(gate_node_test onhost ci)
+
 #ImgFrame tests
 dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
 dai_set_test_labels(imgframe_test onhost ci)
