@@ -175,7 +175,8 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("remapPointFrom", &ImgTransformation::remapPointFrom, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
         .def("remapRectTo", &ImgTransformation::remapRectTo, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
         .def("remapRectFrom", &ImgTransformation::remapRectFrom, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
-        .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid));
+        .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid))
+        .def("isAlignedTo", &ImgTransformation::isAlignedTo, py::arg("to"), DOC(dai, ImgTransformation, isAlignedTo));
 
     // TODO add RawImgFrame::CameraSettings
 

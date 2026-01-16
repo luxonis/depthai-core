@@ -1,7 +1,5 @@
 #pragma once
 
-#include <spdlog/async_logger.h>
-
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
@@ -17,22 +15,21 @@ namespace node {
  * be additionally refined by using a segmentation mask. If keypoints are provided, the spatial location is calculated around each keypoint.
  */
 class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>, public HostRunnable {
-   public:
-    constexpr static const char* NAME = "SpatialLocationCalculator";
-    using DeviceNodeCRTP::DeviceNodeCRTP;
-
    private:
     bool runOnHostVar = false;
+    std::shared_ptr<SpatialLocationCalculatorConfig> calculationConfig;
 
    protected:
     Properties& getProperties() override;
 
    public:
+    constexpr static const char* NAME = "SpatialLocationCalculator";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
+
     SpatialLocationCalculator() = default;
     SpatialLocationCalculator(std::unique_ptr<Properties> props)
-        : DeviceNodeCRTP(std::move(props)), roiConfig(std::make_shared<SpatialLocationCalculatorConfig>(properties.roiConfig)) {}
+        : DeviceNodeCRTP(std::move(props)), calculationConfig(std::make_shared<SpatialLocationCalculatorConfig>(properties.roiConfig)) {}
 
-    std::shared_ptr<SpatialLocationCalculatorConfig> roiConfig;
     /**
      * Initial config to use when calculating spatial location data.
      */
@@ -48,7 +45,7 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
      * Input messages on which spatial location will be calculated.
      * Possible datatypes are ImgDetections or Keypoints.
      */
-    Input input{*this, {"input", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::ImgDetections, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::ImgDetections, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object.
@@ -58,14 +55,13 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
 
     /**
      * Outputs SpatialLocationCalculatorData message that carries spatial locations for each additional ROI that is specified in the config.
-     * @warning Will be deprecated in future releases. Use spatialOutput instead.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
 
     /**
-     * Outputs SpatialImgDetections or SpatialKeypoints message that carries spatial locations along with original input data.
+     * Outputs SpatialImgDetections message that carries spatial locations along with original input data.
      */
-    Output spatialOutput{*this, {"spatialOutput", DEFAULT_GROUP, {{DatatypeEnum::SpatialImgDetections, false}}}};
+    Output outputDetections{*this, {"outputDetections", DEFAULT_GROUP, {{DatatypeEnum::SpatialImgDetections, false}}}};
 
     /**
      * Passthrough message on which the calculation was performed.

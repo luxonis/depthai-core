@@ -63,7 +63,7 @@ inline std::array<std::array<float, 3>, 3> matmul(std::array<std::array<float, 3
 TEST_CASE("ImgTransformation in ImgFrame") {
     dai::Pipeline pipeline;
     auto cam = pipeline.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1300, 200}, dai::ImgFrame::Type::NV12);
+    auto camOut = cam->requestOutput({600, 400}, dai::ImgFrame::Type::NV12);
     auto q = camOut->createOutputQueue();
     pipeline.start();
     auto frame = q->get<dai::ImgFrame>();
@@ -225,6 +225,34 @@ TEST_CASE("ImgTransformation remap vertical") {
     REQUIRE_THAT(sourceAR, Catch::Matchers::WithinAbs(destAR, 0.01));
 
     pipeline.stop();
+}
+
+// -----------------------------------------------------------------------------
+// ImgTransformation isAlignedTo
+// Purpose:
+//   Validates alignment checks between transformations. Ensures that
+//   transformations from the same stream are aligned, while transformations
+//   from differently-sized outputs are not.
+// -----------------------------------------------------------------------------
+TEST_CASE("ImgTransformation isAlignedTo") {
+    dai::Pipeline pipeline;
+    auto camera = pipeline.create<dai::node::Camera>()->build();
+    auto alignedOut = camera->requestOutput({640, 480});
+    auto misalignedOut = camera->requestOutput({320, 240});
+    auto alignedQueue = alignedOut->createOutputQueue();
+    auto misalignedQueue = misalignedOut->createOutputQueue();
+    pipeline.start();
+    auto alignedFrame = alignedQueue->get<dai::ImgFrame>();
+    auto misalignedFrame = misalignedQueue->get<dai::ImgFrame>();
+    REQUIRE(alignedFrame != nullptr);
+    REQUIRE(misalignedFrame != nullptr);
+    pipeline.stop();
+
+    REQUIRE(alignedFrame->transformation.isValid());
+    REQUIRE(misalignedFrame->transformation.isValid());
+    REQUIRE(alignedFrame->transformation.isAlignedTo(alignedFrame->transformation));
+    REQUIRE_FALSE(alignedFrame->transformation.isAlignedTo(misalignedFrame->transformation));
+    REQUIRE_FALSE(misalignedFrame->transformation.isAlignedTo(alignedFrame->transformation));
 }
 
 // -----------------------------------------------------------------------------

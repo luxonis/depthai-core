@@ -29,7 +29,7 @@
 #include "datatype/SpatialLocationCalculatorData.hpp"
 #include "datatype/StereoDepthConfig.hpp"
 #include "datatype/SystemInformation.hpp"
-#include "datatype/SystemInformationS3.hpp"
+#include "datatype/SystemInformationRVC4.hpp"
 #include "datatype/ThermalConfig.hpp"
 #include "datatype/ToFConfig.hpp"
 #include "datatype/TrackedFeatures.hpp"
@@ -39,3 +39,4 @@
     #include "datatype/DynamicCalibrationControl.hpp"
     #include "datatype/DynamicCalibrationResults.hpp"
 #endif
+#include "datatype/VppConfig.hpp"

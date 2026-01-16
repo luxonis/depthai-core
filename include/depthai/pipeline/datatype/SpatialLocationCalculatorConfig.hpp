@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai/common/Point3f.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {
@@ -77,27 +76,26 @@ DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds,
  * - Calculation algorithm: MEDIAN
  * - Step size: AUTO
  * - Keypoint radius [px]: 10
- * - Use keypoints for ImgDetections: false
+ * - Calculate spatial keypoints: true
  * - Use segmentation for ImgDetections: true
+ * - Segmentation passthrough: true
  *
  * An optional list of per-ROI configurations is available via `config`. ROI
  * settings override the corresponding global values where specified.
  *
- * @note The ROI-based API (`setROIs`, `addROI`) is scheduled for deprecation in future releases.
- * Users are encouraged to utilize the global configuration
- * methods instead.
  */
 class SpatialLocationCalculatorConfig : public Buffer {
     static constexpr std::int32_t AUTO = -1;
 
    public:
     int32_t globalStepSize = AUTO;
-    uint32_t globalLowerThreshold = 0;
+    uint32_t globalLowerThreshold = 100;  // less than 100mm is considered too close
     uint32_t globalUpperThreshold = 65535;
     SpatialLocationCalculatorAlgorithm globalCalculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
     int32_t globalKeypointRadius = 10;
     bool calculateSpatialKeypoints = true;
     bool useSegmentation = true;
+    bool segmentationPassthrough = true;
     std::vector<SpatialLocationCalculatorConfigData> config;
 
     /**
@@ -110,14 +108,12 @@ class SpatialLocationCalculatorConfig : public Buffer {
      * Specify additional regions of interest (ROI) to calculate their spatial coordinates. Results of ROI coordinates are available on
      SpatialLocationCalculatorData output.
      * @param ROIs Vector of configuration parameters for ROIs (region of interests)
-     * @warning Will be deprecated in future releases.
      */
     void setROIs(std::vector<SpatialLocationCalculatorConfigData> ROIs);
 
     /**
      * Add a new region of interest (ROI) to configuration data.
      * @param roi Configuration parameters for ROI
-     * @warning Will be deprecated in future releases.
      */
     void addROI(SpatialLocationCalculatorConfigData& ROI);
 
@@ -168,6 +164,13 @@ class SpatialLocationCalculatorConfig : public Buffer {
     void setUseSegmentation(bool useSegmentation);
 
     /**
+     * Specify whether to passthrough segmentation mask along with spatial detections.
+     * @param passthroughSegmentation
+     * @warning Only applicable to ImgDetections with segmentation masks.
+     */
+    void setSegmentationPassthrough(bool passthroughSegmentation);
+
+    /**
      * Retrieve configuration data for SpatialLocationCalculator
      * @returns Vector of configuration parameters for ROIs (region of interests)
      */
@@ -194,17 +197,23 @@ class SpatialLocationCalculatorConfig : public Buffer {
      */
     int32_t getKeypointRadius() const;
 
-    /*
+    /**
      * Retrieve whether keypoints are used for spatial location calculation.
      * @warning Only applicable to ImgDetections with keypoints.
      */
     bool getCalculateSpatialKeypoints() const;
 
-    /*
+    /**
      * Retrieve whether segmentation is used for spatial location calculation.
      * @warning Only applicable to ImgDetections with segmentation masks.
      */
     bool getUseSegmentation() const;
+
+    /**
+     * Retrieve whether segmentation is passed through along with spatial detections.
+     * @warning Only applicable to ImgDetections with segmentation masks.
+     */
+    bool getSegmentationPassthrough() const;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 

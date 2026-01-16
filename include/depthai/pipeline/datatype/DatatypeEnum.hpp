@@ -16,7 +16,7 @@ enum class DatatypeEnum : std::int32_t {
     ImgDetections,
     SpatialImgDetections,
     SystemInformation,
-    SystemInformationS3,
+    SystemInformationRVC4,
     SpatialLocationCalculatorConfig,
     SpatialLocationCalculatorData,
     EdgeDetectorConfig,
@@ -46,6 +46,10 @@ enum class DatatypeEnum : std::int32_t {
     CalibrationQuality,
     CoverageData,
     SegmentationParserConfig,
+    PipelineEvent,
+    PipelineState,
+    PipelineEventAggregationConfig,
+    VppConfig
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

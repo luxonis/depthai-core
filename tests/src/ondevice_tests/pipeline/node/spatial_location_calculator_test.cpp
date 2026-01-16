@@ -1,19 +1,23 @@
 #include <algorithm>
 #include <array>
 #include <catch2/catch_all.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <tuple>
 #include <vector>
 
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
+#include "depthai/pipeline/node/ImageManip.hpp"
 
 using Catch::Approx;
 
@@ -42,6 +46,30 @@ std::shared_ptr<dai::ImgFrame> createDepthFrame(const cv::Mat& depthMat, const s
     return depthFrame;
 }
 
+std::shared_ptr<dai::ImgFrame> createDetectionFrameWithManipulation(const std::shared_ptr<dai::ImgFrame>& depthFrame, unsigned width, unsigned height) {
+    constexpr float rotationDegrees = 180.0F;
+    constexpr std::array<float, 4> shearMatrix = {1.0F, 0.08F, 0.12F, 1.0F};
+
+    dai::Pipeline pipeline;
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->initialConfig->setFrameType(depthFrame->getType());
+    manip->initialConfig->setOutputSize(width, height);
+    manip->initialConfig->addRotateDeg(rotationDegrees);
+    manip->initialConfig->addTransformAffine(shearMatrix);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    pipeline.start();
+    inputQueue->send(depthFrame);
+    auto transformedFrame = outputQueue->get<dai::ImgFrame>();
+    REQUIRE(transformedFrame != nullptr);
+    pipeline.stop();
+    pipeline.wait();
+
+    return transformedFrame;
+}
+
 std::tuple<dai::SpatialLocationCalculatorData, dai::ImgFrame, dai::SpatialImgDetections> processDepthFrame(
     dai::SpatialLocationCalculatorConfig initialConfig,
     std::shared_ptr<dai::ImgFrame> depthMat,
@@ -58,12 +86,12 @@ std::tuple<dai::SpatialLocationCalculatorData, dai::ImgFrame, dai::SpatialImgDet
     auto depthQueue = spatial->inputDepth.createInputQueue();
     std::shared_ptr<dai::InputQueue> detectionsQueue = nullptr;
     if(detectionMsg != nullptr) {
-        detectionsQueue = spatial->input.createInputQueue();
+        detectionsQueue = spatial->inputDetections.createInputQueue();
     }
 
     std::shared_ptr<dai::MessageQueue> outputQueue = nullptr;
     if(detectionMsg != nullptr) {
-        outputQueue = spatial->spatialOutput.createOutputQueue();
+        outputQueue = spatial->outputDetections.createOutputQueue();
     }
     auto passthroughQueue = spatial->passthroughDepth.createOutputQueue();
     std::shared_ptr<dai::MessageQueue> legacyOutputQueue = nullptr;
@@ -496,6 +524,103 @@ TEST_CASE("Segmentation usage can be toggled") {
         const float expectedDepth = ((segArea * 1400.0F) + ((bboxArea - segArea) * 2600.0F)) / bboxArea;  // mask ignored, so full bbox average applies
         CHECK(detection.spatialCoordinates.z == Approx(expectedDepth).margin(1.0F));
     }
+}
+
+TEST_CASE("Spatial detections remap depth to detection transformations") {
+    constexpr unsigned width = 320;
+    constexpr unsigned height = 240;
+    const std::array<std::array<float, 3>, 3> intrinsics = {{
+        {{5.5F, 0.0F, 2.5F}},
+        {{0.0F, 5.5F, 2.0F}},
+        {{0.0F, 0.0F, 1.0F}},
+    }};
+
+    dai::Device device = dai::Device();
+    if(device.getPlatform() == dai::Platform::RVC2) {  // skipping test on RVC2
+        device.close();
+        return;
+    }
+    device.close();
+
+    constexpr std::uint16_t farDepth = 4200;
+    constexpr std::uint16_t nearDepth = 1400;
+    cv::Mat depthMat(height, width, CV_16UC1, cv::Scalar(farDepth));
+    setDepthValue(depthMat, 0, 0, static_cast<int>(width / 2), static_cast<int>(height), nearDepth);
+    auto depthFrame = createDepthFrame(depthMat, intrinsics);
+
+    dai::SpatialLocationCalculatorConfig initialConfig;
+    initialConfig.setCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm::AVERAGE);
+    initialConfig.setDepthThresholds(0, 10000);
+    initialConfig.setUseSegmentation(false);
+    initialConfig.setCalculateSpatialKeypoints(false);
+
+    auto detectionMsg = std::make_shared<dai::ImgDetections>();
+    detectionMsg->detections.resize(1);
+    auto& detection = detectionMsg->detections.front();
+    const float bboxWidthNorm = 0.2F;
+    const float bboxHeightNorm = 0.5F;
+    const float bboxCenterXNorm = 0.75F;
+    const float bboxCenterYNorm = 0.5F;
+    const dai::RotatedRect gtBbox{dai::Point2f(bboxCenterXNorm, bboxCenterYNorm, true), dai::Size2f(bboxWidthNorm, bboxHeightNorm, true), 0.0F};
+    const dai::RotatedRect denormGtBbox = gtBbox.denormalize(width, height);
+    detection.setBoundingBox(gtBbox);
+    detection.confidence = 0.9F;
+    detection.label = 7;
+    auto manipulatedDetectionFrame = createDetectionFrameWithManipulation(depthFrame, width, height);
+    detectionMsg->transformation = manipulatedDetectionFrame->transformation;
+    detectionMsg->setTimestamp(manipulatedDetectionFrame->getTimestamp());
+    detectionMsg->setSequenceNum(manipulatedDetectionFrame->getSequenceNum());
+
+    const auto detectionBoundingBox = detection.getBoundingBox();
+    REQUIRE(detectionMsg->transformation.has_value());
+    const auto& detectionTransformation = detectionMsg->transformation.value();
+    auto remappedRect = detectionTransformation.remapRectTo(depthFrame->transformation, detectionBoundingBox);
+    auto remappedRectPx = remappedRect.denormalize(width, height);
+    const float remappedCenterX = remappedRectPx.center.x;
+    const float remappedCenterY = remappedRectPx.center.y;
+    REQUIRE(remappedCenterX < static_cast<float>(width) / 2.0F);  // should land on the near-depth side
+
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+    static_cast<void>(unusedLegacy);
+    static_cast<void>(unusedPassthrough);
+    REQUIRE(spatialDetections.detections.size() == 1);
+
+    const auto formatMatrix = [](const std::array<std::array<float, 3>, 3>& matrix) {
+        std::ostringstream oss;
+        oss << '[';
+        for(size_t row = 0; row < matrix.size(); ++row) {
+            if(row > 0) {
+                oss << ", ";
+            }
+            oss << '[' << matrix[row][0] << ", " << matrix[row][1] << ", " << matrix[row][2] << ']';
+        }
+        oss << ']';
+        return oss.str();
+    };
+    INFO("Depth transformation matrix: " << formatMatrix(depthFrame->transformation.getMatrix()));
+    INFO("RGB transformation matrix: " << formatMatrix(detectionTransformation.getMatrix()));
+
+    const auto& spatialDetection = spatialDetections.detections.front();
+    const auto intrinsicMatrix = detectionTransformation.getIntrinsicMatrix();
+    const float fx = intrinsicMatrix[0][0];
+    const float fy = intrinsicMatrix[1][1];
+    const float cx = intrinsicMatrix[0][2];
+    const float cy = intrinsicMatrix[1][2];
+    const dai::RotatedRect denormalizedBBox = detection.getBoundingBox().denormalize(width, height);
+
+    const float expectedDepth = static_cast<float>(nearDepth);
+    const float expectedX = (denormGtBbox.center.x - cx) * expectedDepth / fx;
+    const float expectedY = (denormGtBbox.center.y - cy) * expectedDepth / fy;
+
+    // Check bounding box mapping
+    const auto outputBox = spatialDetection.getBoundingBox();
+    CHECK(outputBox.center.x == Approx(bboxCenterXNorm).margin(1e-6F));
+    CHECK(outputBox.center.y == Approx(bboxCenterYNorm).margin(1e-6F));
+
+    // Check spatial coordinates
+    CHECK(spatialDetection.spatialCoordinates.z == Approx(expectedDepth).margin(1.0F));
+    CHECK(spatialDetection.spatialCoordinates.x == Approx(expectedX).margin(1.0F));
+    CHECK(spatialDetection.spatialCoordinates.y == Approx(expectedY).margin(1.0F));
 }
 
 TEST_CASE("Spatial detections return zero depth when depth frame is empty") {

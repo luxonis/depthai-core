@@ -1,12 +1,13 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <tuple>
-#include <optional>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/EepromData.hpp"
+#include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Size2f.hpp"
 
@@ -30,6 +31,7 @@ namespace dai {
  *  - boardOptions
  *  - productName
  */
+
 class CalibrationHandler {
    public:
     CalibrationHandler() = default;
@@ -232,6 +234,41 @@ class CalibrationHandler {
      *
      */
     std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
+
+    /**
+     * Get the transformation matrix between a camera and a chosen housing
+     * coordinate system. The returned 4x4 homogeneous transformation matrix maps
+     * points from the camera's coordinate system into the specified housing
+     * coordinate system.
+     *
+     * The transformation consists of a rotation matrix and translation vector
+     * extracted either from the calibration data or from the board design
+     * (specification) data, depending on the `useSpecTranslation` flag.
+     *
+     * @param srcCamera         Camera whose coordinate frame will be treated as the origin.
+     * @param housingCS         The housing coordinate system to which the camera
+     *                          transformation is requested (e.g. VESA_RIGHT, FRONT_COVER_LEFT, etc.).
+     * @param useSpecTranslation If true, uses board-design (spec) translation values.
+     *                           If false, uses calibrated translation values.
+     *
+     * @return A 4x4 homogeneous transformation matrix.
+     *
+     * Matrix representation of the transformation:
+     * \f[
+     * \text{Transformation Matrix} =
+     * \left[
+     * \begin{matrix}
+     *     r_{00} & r_{01} & r_{02} & T_x \\
+     *     r_{10} & r_{11} & r_{12} & T_y \\
+     *     r_{20} & r_{21} & r_{22} & T_z \\
+     *       0    &   0    &   0    & 1
+     * \end{matrix}
+     * \right]
+     * \f]
+     */
+    std::vector<std::vector<float>> getHousingCalibration(CameraBoardSocket srcCamera,
+                                                          const HousingCoordinateSystem housingCS,
+                                                          bool useSpecTranslation = false) const;
 
     /**
      * Get the Camera translation vector between two cameras from the calibration data.
@@ -635,6 +672,9 @@ class CalibrationHandler {
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
     std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
+    std::vector<std::vector<float>> getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
+                                                              bool useSpecTranslation,
+                                                              CameraBoardSocket& originSocket) const;
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
 };

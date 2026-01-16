@@ -10,7 +10,7 @@ fps = 30
 model_name = "luxonis/yolov8-large-pose-estimation:coco-640x352"
 if device.getPlatform() == dai.Platform.RVC2:
     model_name = "luxonis/yolov8-nano-pose-estimation:coco-512x288"
-    fps = 10
+    fps = 12
 
 # Create pipeline
 with dai.Pipeline(device) as pipeline:
@@ -67,6 +67,15 @@ with dai.Pipeline(device) as pipeline:
                     (keypoint.imageCoordinates.x, keypoint.imageCoordinates.y),
                 )
                 cv2.circle(frame, (keypoint_pos[0], keypoint_pos[1]), 3, (0, 255, 0), -1)
+                if keypoint.labelName != "":
+                    cv2.putText(
+                        frame,
+                        keypoint.labelName,
+                        (keypoint_pos[0] + 5, keypoint_pos[1] - 5),
+                        cv2.FONT_HERSHEY_TRIPLEX,
+                        0.4,
+                        (0, 255, 0),
+                    )
 
             for edge in detection.getEdges():
                 kp1 = keypoints[edge[0]]

@@ -2,22 +2,42 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstdint>
-#include <opencv2/opencv.hpp>
 #include <optional>
 #include <stdexcept>
 #include <vector>
 
+#include "common/ImgTransformations.hpp"
+#include "common/Keypoint.hpp"
+#include "common/Point2f.hpp"
+#include "common/RotatedRect.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
+#include "pipeline/datatype/SpatialImgDetections.hpp"
 
 namespace dai {
 namespace utilities {
 namespace SpatialUtils {
 
-float calculateDepth(
-    SpatialLocationCalculatorAlgorithm algo, std::vector<uint16_t>& validPixels, std::uint32_t sum, std::uint32_t counter, float min, float max) {
+DepthStats::DepthStats(std::uint32_t lowerThreshold, std::uint32_t upperThreshold, std::uint32_t maxNumPixels)
+    : lowerThreshold(lowerThreshold), upperThreshold(upperThreshold) {
+    validPixels.reserve(maxNumPixels);
+}
+
+void DepthStats::addPixel(uint16_t px) {
+    if(px > lowerThreshold && px < upperThreshold) {
+        validPixels.push_back(px);
+        sum += static_cast<std::double_t>(px);
+        ++counter;
+        if(px < min) min = static_cast<std::uint32_t>(px);
+        if(px > max) max = static_cast<std::uint32_t>(px);
+    }
+}
+
+float DepthStats::calculateDepth(SpatialLocationCalculatorAlgorithm algo) {
     if(counter == 0 || validPixels.empty()) {
         return 0;
     }
@@ -99,7 +119,7 @@ float calculateDepth(
     return z;
 }
 
-dai::Point3f calculateSpatialCoordinates(float z, std::array<std::array<float, 3>, 3> intrinsicMatrix, dai::Point2f center) {
+dai::Point3f calculateSpatialCoordinates(float z, const std::array<std::array<float, 3>, 3>& intrinsicMatrix, dai::Point2f center) {
     float fx = intrinsicMatrix[0][0];
     float fy = intrinsicMatrix[1][1];
     float cx = intrinsicMatrix[0][2];
@@ -111,40 +131,86 @@ dai::Point3f calculateSpatialCoordinates(float z, std::array<std::array<float, 3
     return dai::Point3f(x, y, z);
 }
 
-void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
+static inline dai::Point2f clampPoint(dai::Point2f point, int width, int height) {
+    float x = std::min(std::max(0.0f, point.x), static_cast<float>(width));
+    float y = std::min(std::max(0.0f, point.y), static_cast<float>(height));
+    return dai::Point2f(x, y);
+}
+
+static inline std::array<int, 4> clampRectCorners(dai::Point2f topLeft, dai::Point2f bottomRight, int width, int height) {
+    dai::Point2f clampedTopLeft = clampPoint(topLeft, width - 1, height - 1);  // -1 to ensure start is within bounds
+    dai::Point2f clampedBottomRight = clampPoint(bottomRight, width, height);
+
+    int xstart = std::min(std::max(0, static_cast<int>(clampedTopLeft.x)), width);
+    int ystart = std::min(std::max(0, static_cast<int>(clampedTopLeft.y)), height);
+    int xend = std::min(std::max(0, static_cast<int>(clampedBottomRight.x)), width);
+    int yend = std::min(std::max(0, static_cast<int>(clampedBottomRight.y)), height);
+
+    return {xstart, ystart, xend, yend};
+}
+
+static inline unsigned int getStepSize(int stepSize, SpatialLocationCalculatorAlgorithm algo) {
+    if(stepSize == SpatialLocationCalculatorConfigData::AUTO) {
+        if(algo == SpatialLocationCalculatorAlgorithm::MODE || algo == SpatialLocationCalculatorAlgorithm::MEDIAN) {
+            return 2;
+        } else {
+            return 1;
+        }
+    }
+
+    return static_cast<unsigned int>(stepSize);
+}
+
+dai::SpatialKeypoint createSpatialKeypoint(const dai::Keypoint& keypoint, const dai::Point3f& spatialCoordinates) {
+    dai::SpatialKeypoint spatialKeypoint;
+    spatialKeypoint.imageCoordinates = keypoint.imageCoordinates;
+    spatialKeypoint.confidence = keypoint.confidence;
+    spatialKeypoint.label = keypoint.label;
+    spatialKeypoint.labelName = keypoint.labelName;
+    spatialKeypoint.spatialCoordinates = spatialCoordinates;
+    return spatialKeypoint;
+}
+
+dai::SpatialImgDetection createSpatialDetection(const dai::ImgDetection& detection, const dai::Point3f& spatialCoordinates) {
+    dai::SpatialImgDetection spatialDetection;
+    spatialDetection.setBoundingBox(detection.getBoundingBox());
+    spatialDetection.label = detection.label;
+    spatialDetection.labelName = detection.labelName;
+    spatialDetection.confidence = detection.confidence;
+    spatialDetection.spatialCoordinates = spatialCoordinates;
+    return spatialDetection;
+}
+
+void computeSpatialData(const std::shared_ptr<const dai::ImgFrame>& depthFrame,
                         const std::vector<dai::SpatialLocationCalculatorConfigData>& configDataVec,
                         std::vector<dai::SpatialLocations>& spatialLocations,
-                        std::shared_ptr<spdlog::async_logger> logger) {
-    logger->info("Compute spatial data!");
-    if(configDataVec.size() == 0) {
-        logger->info("Empty config vector!");
+                        const std::shared_ptr<spdlog::async_logger>& logger) {
+    if(configDataVec.empty()) {
+        logger->debug("Empty config vector!");
         return;
     }
 
     if(!depthFrame->transformation.isValid()) {
-        logger->error("DepthFrame has invalid Image Transformations. Cannot get intrinsic matrix, skipping computation of spatial coordinates.");
-        return;
+        throw std::runtime_error("DepthFrame has invalid Image Transformations. Cannot get intrinsic matrix.");
     }
 
     spatialLocations.resize(configDataVec.size());
     std::int32_t depthWidth = depthFrame->getWidth();
     std::int32_t depthHeight = depthFrame->getHeight();
-    for(int i = 0; i < static_cast<int>(configDataVec.size()); i++) {
+    for(size_t i = 0; i < configDataVec.size(); i++) {
         const auto& cfg = configDataVec[i];
         const auto& roi = cfg.roi;
         float maxWidthSize = 1;
         float maxHeightSize = 1;
         const SpatialLocationCalculatorAlgorithm calcAlgo = cfg.calculationAlgorithm;
-
-        int stepSize = cfg.stepSize;
-        if(stepSize == SpatialLocationCalculatorConfigData::AUTO) {
-            if(calcAlgo == SpatialLocationCalculatorAlgorithm::MODE || calcAlgo == SpatialLocationCalculatorAlgorithm::MEDIAN) {
-                stepSize = 2;
-            } else {
-                stepSize = 1;
-            }
+        const int stepSize = getStepSize(cfg.stepSize, calcAlgo);
+        if(stepSize >= depthWidth / 2 || stepSize >= depthHeight / 2) {
+            auto message = fmt::format("Step size {} is too large for depth frame size {}x{}. It must be less than half of the depth frame dimensions.",
+                                       stepSize,
+                                       depthWidth,
+                                       depthHeight);
+            throw std::invalid_argument(message);
         }
-
         if(!roi.isNormalized()) {
             maxWidthSize = depthFrame->getWidth();
             maxHeightSize = depthFrame->getHeight();
@@ -160,90 +226,186 @@ void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
             spatialLocations[i] = SpatialLocations();
             continue;
         }
-        std::uint32_t lowerThreshold = cfg.depthThresholds.lowerThreshold;
-        std::uint32_t upperThreshold = cfg.depthThresholds.upperThreshold;
-        logger->debug("Depth limits, lower: {}, upper: {}", lowerThreshold, upperThreshold);
 
-        bool skipCalculation = false;
-        std::uint32_t sum = 0;
-        std::uint16_t min = 65535, max = 0;
-        std::uint32_t counter = 0;
         dai::Rect denormRoi = roi.denormalize(depthWidth, depthHeight);
-        int ystart = denormRoi.topLeft().y;
-        int yend = denormRoi.bottomRight().y;
-        int xstart = denormRoi.topLeft().x;
-        int xend = denormRoi.bottomRight().x;
+        auto [xstart, ystart, xend, yend] = clampRectCorners(denormRoi.topLeft(), denormRoi.bottomRight(), depthWidth, depthHeight);
 
-        if(ystart > depthHeight || yend > depthHeight || xstart > depthWidth || xend > depthWidth) {
-            skipCalculation = true;
-            logger->warn("Invalid ROI. Depth image size: {}, {}. Bounding box: start - {},{} | end - {},{}. Skipping calculation.",
-                         depthWidth,
-                         depthHeight,
-                         xstart,
-                         ystart,
-                         xend,
-                         yend);
-        }
-        if(ystart >= yend || xstart >= xend) {
-            skipCalculation = true;
-            logger->warn("Invalid ROI. Bounding box: start - {},{} | end - {},{}. Skipping calculation.", xstart, ystart, xend, yend);
-        }
+        std::uint32_t maxNumPixels = ((xend - xstart + stepSize - 1) / stepSize) * ((yend - ystart + stepSize - 1) / stepSize);
+        DepthStats depthStats(cfg.depthThresholds.lowerThreshold, cfg.depthThresholds.upperThreshold, maxNumPixels);
 
-        std::vector<uint16_t> validPixels;
-        if(!skipCalculation) {
-            uint16_t* plane = (uint16_t*)depthFrame->data->getData().data();
-            for(int y = ystart; y < yend; y += stepSize) {
-                for(int x = xstart; x < xend; x += stepSize) {
-                    uint16_t px = plane[y * depthWidth + x];
-                    if(px > lowerThreshold && px < upperThreshold) {
-                        validPixels.push_back(px);
-                        sum += px;
-                        ++counter;
-                        // min, max
-                        if(px < min) min = px;
-                        if(px > max) max = px;
-                    }
-                }
+        const uint16_t* plane = (uint16_t*)depthFrame->data->getData().data();
+        for(int y = ystart; y < yend; y += stepSize) {
+            for(int x = xstart; x < xend; x += stepSize) {
+                uint16_t px = plane[y * depthWidth + x];
+                depthStats.addPixel(px);
             }
-        }
-        float average = (counter == 0) ? 0 : (float)sum / counter;
-        if(counter == 0) {
-            min = max = 0;
         }
 
         SpatialLocations spatialData = {};
-        spatialData.depthAverage = average;
-        spatialData.depthMin = min;
-        spatialData.depthMax = max;
-
+        spatialData.depthAverage = depthStats.calculateDepth(SpatialLocationCalculatorAlgorithm::AVERAGE);
+        spatialData.depthMin = depthStats.min;
+        spatialData.depthMax = depthStats.max;
         spatialData.config = cfg;
-        spatialData.depthAveragePixelCount = counter;
+        spatialData.depthAveragePixelCount = depthStats.counter;
 
-        if(!skipCalculation) {
-            float z = calculateDepth(calcAlgo, validPixels, sum, counter, min, max);
+        float z = depthStats.calculateDepth(calcAlgo);
 
-            float roiCx = denormRoi.x + denormRoi.width / 2.0f;
-            float roiCy = denormRoi.y + denormRoi.height / 2.0f;
-            std::array<std::array<float, 3>, 3> intrinsicMatrix = depthFrame->transformation.getIntrinsicMatrix();
-            dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, intrinsicMatrix, dai::Point2f(roiCx, roiCy));
-            logger->debug("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
+        float roiCx = denormRoi.x + denormRoi.width / 2.0f;
+        float roiCy = denormRoi.y + denormRoi.height / 2.0f;
 
-            spatialData.spatialCoordinates = spatialCoordinates;
-        }
+        dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, depthFrame->transformation.getIntrinsicMatrix(), dai::Point2f(roiCx, roiCy));
+        logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
+        spatialData.spatialCoordinates = spatialCoordinates;
         spatialLocations[i] = spatialData;
     }
 }
+template <typename PixelValidatorFn>
+void populateDepthStats(DepthStats& depthStats,
+                        dai::RotatedRect rectCorners,
+                        unsigned int stepSize,
+                        unsigned int widthMultiplier,
+                        const dai::ImgFrame& depthFrame,
+                        PixelValidatorFn&& validatePixelFn) {
+    const auto depthWidth = static_cast<std::int32_t>(depthFrame.getWidth());
+    const auto depthHeight = static_cast<std::int32_t>(depthFrame.getHeight());
 
-void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
-                              const std::shared_ptr<SpatialLocationCalculatorConfig> config,
-                              dai::ImgDetections& imgDetections,
+    const auto& outerPoints = rectCorners.getOuterRect();
+    auto [xstart, ystart, xend, yend] =
+        clampRectCorners(dai::Point2f{outerPoints[0], outerPoints[1]}, dai::Point2f{outerPoints[2], outerPoints[3]}, depthWidth, depthHeight);
+
+    const auto& depthData = depthFrame.data->getData();
+    span<const uint16_t> plane(reinterpret_cast<const uint16_t*>(depthData.data()), depthData.size() / sizeof(uint16_t));
+    for(int y = ystart; y < yend; y += static_cast<int>(stepSize)) {
+        for(int x = xstart; x < xend; x += static_cast<int>(stepSize)) {
+            int index = (y * widthMultiplier) + x;
+            uint16_t px = plane[index];
+
+            if(std::forward<PixelValidatorFn>(validatePixelFn)(x, y)) {
+                depthStats.addPixel(px);
+            }
+        }
+    }
+}
+
+dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame,
+                                                 const dai::ImgDetection& detection,
+                                                 const span<const std::uint8_t>& maskSpan,
+                                                 const SpatialLocationCalculatorConfig& config,
+                                                 const int instanceIndex,
+                                                 const dai::ImgTransformation& detectionsTransformation,
+                                                 const int segMaskWidth,
+                                                 const int segMaskHeight,
+                                                 const std::shared_ptr<spdlog::async_logger>& logger) {
+    const uint32_t lowerThreshold = config.globalLowerThreshold;
+    const uint32_t upperThreshold = config.globalUpperThreshold;
+    const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config.globalCalculationAlgorithm;
+    const unsigned int stepSize = getStepSize(config.globalStepSize, calculationAlgorithm);
+    const int32_t keypointRadius = config.globalKeypointRadius;
+    const unsigned int depthWidth = depthFrame.getWidth();
+    const unsigned int depthHeight = depthFrame.getHeight();
+
+    const dai::ImgTransformation* depthTransformation = &depthFrame.transformation;
+    const bool areAligned = detectionsTransformation.isAlignedTo(*depthTransformation);
+
+    const dai::RotatedRect detectionBBox = detection.getBoundingBox();
+    dai::RotatedRect denormalizedRect = detectionBBox;
+    if(!areAligned) denormalizedRect = detectionsTransformation.remapRectTo(*depthTransformation, denormalizedRect);
+    denormalizedRect = denormalizedRect.denormalize(depthWidth, depthHeight);
+
+    if(!maskSpan.empty()) {
+        assert(maskSpan.size() == static_cast<size_t>(segMaskWidth * segMaskHeight));  // should never happen
+    }
+
+    auto usePixelSeg = [&](int x, int y) -> bool {
+        if(maskSpan.empty()) return true;
+        dai::Point2f pt{static_cast<float>(x), static_cast<float>(y)};
+        if(!areAligned) {
+            pt = detectionsTransformation.remapPointTo(*depthTransformation, pt);
+            pt = clampPoint(pt, segMaskWidth - 1, segMaskHeight - 1);
+        }
+        int maskIndex = static_cast<int>(pt.y) * segMaskWidth + static_cast<int>(pt.x);
+        return maskSpan[maskIndex] == instanceIndex;
+    };
+
+    // object depth
+    std::uint32_t maxNumPixels = ((denormalizedRect.size.width * denormalizedRect.size.height) / (stepSize * stepSize));
+    DepthStats depthStats(lowerThreshold, upperThreshold, maxNumPixels);
+    populateDepthStats(depthStats, denormalizedRect, stepSize, depthWidth, depthFrame, usePixelSeg);
+
+    dai::Point2f centerPoint = denormalizedRect.center;
+    if(!areAligned) centerPoint = depthTransformation->remapPointTo(detectionsTransformation, centerPoint);
+    dai::Point3f spatialCoordinates =
+        calculateSpatialCoordinates(depthStats.calculateDepth(calculationAlgorithm), detectionsTransformation.getIntrinsicMatrix(), centerPoint);
+    logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
+
+    dai::SpatialImgDetection spatialDetection = createSpatialDetection(detection, spatialCoordinates);
+
+    if(config.calculateSpatialKeypoints) {  // keypoint depths
+        std::vector<dai::SpatialKeypoint> spatialKeypoints;
+        for(auto kp : detection.getKeypoints()) {
+            dai::Point2f mappedKp = dai::Point2f{kp.imageCoordinates.x, kp.imageCoordinates.y};
+
+            float kpx = mappedKp.x * depthWidth;
+            float kpy = mappedKp.y * depthHeight;
+            dai::RotatedRect keypointRect{
+                dai::Point2f{kpx, kpy, false},
+                dai::Size2f{static_cast<float>(keypointRadius * 2), static_cast<float>(keypointRadius * 2), false},
+                0.0f,
+            };
+
+            auto useKpPixel = [kpx, kpy, keypointRadius, usePixelSeg](int x, int y) {
+                bool usePixel = (std::hypot(kpx - x, kpy - y) <= keypointRadius);
+                return usePixel && usePixelSeg(x, y);
+            };
+
+            DepthStats kpDepthStats(lowerThreshold, upperThreshold, static_cast<std::uint32_t>(keypointRadius * keypointRadius));
+            populateDepthStats(kpDepthStats, keypointRect, 1, depthWidth, depthFrame, useKpPixel);
+
+            float kpz = kpDepthStats.calculateDepth(calculationAlgorithm);
+            dai::Point2f kpCenter{kpx, kpy};
+            if(!areAligned) kpCenter = depthTransformation->remapPointTo(detectionsTransformation, kpCenter);
+            dai::Point3f spatialCoordinates = calculateSpatialCoordinates(kpz, detectionsTransformation.getIntrinsicMatrix(), kpCenter);
+
+            spatialKeypoints.push_back(createSpatialKeypoint(kp, spatialCoordinates));
+        }
+        spatialDetection.setKeypoints(spatialKeypoints);
+    }
+
+    SpatialLocationCalculatorConfigData boundingBoxMapping;
+    boundingBoxMapping.depthThresholds.lowerThreshold = lowerThreshold;
+    boundingBoxMapping.depthThresholds.upperThreshold = upperThreshold;
+    boundingBoxMapping.calculationAlgorithm = calculationAlgorithm;
+    spatialDetection.boundingBoxMapping = boundingBoxMapping;
+
+    return spatialDetection;
+}
+
+void computeSpatialDetections(const dai::ImgFrame& depthFrame,
+                              const SpatialLocationCalculatorConfig& config,
+                              const dai::ImgDetections& imgDetections,
                               dai::SpatialImgDetections& spatialDetections,
-                              std::shared_ptr<spdlog::async_logger> logger) {
-    logger->info("Computing spatial image detections!");
-
+                              const std::shared_ptr<spdlog::async_logger>& logger) {
     if(!imgDetections.transformation.has_value()) {
         throw std::runtime_error("No transformation set on ImgDetections. Cannot compute spatial coordinates.");
+    }
+
+    if(!imgDetections.transformation.value().isValid()) {
+        throw std::runtime_error("ImgDetections has invalid Image Transformations. Cannot map segmentation mask to depth frame.");
+    }
+
+    if(!depthFrame.transformation.isValid()) {
+        throw std::runtime_error("DepthFrame has invalid Image Transformations. Cannot map segmentation mask to depth frame.");
+    }
+
+    const dai::ImgTransformation* depthTransformation = &depthFrame.transformation;
+    const dai::ImgTransformation* detectionsTransformation = &imgDetections.transformation.value();
+    const bool areAligned = detectionsTransformation->isAlignedTo(*depthTransformation);
+    if(!areAligned) {
+        logger->warn(
+            "DepthFrame and ImgDetections transformations are not aligned and processing may be slowed down due to need for remapping points. Consider "
+            "using "
+            "ImageAlign node beforehand.");
     }
 
     std::vector<dai::ImgDetection> imgDetectionsVector = imgDetections.detections;
@@ -252,154 +414,46 @@ void computeSpatialDetections(std::shared_ptr<dai::ImgFrame> depthFrame,
     }
     spatialDetections.detections.resize(imgDetectionsVector.size());
 
-    std::optional<std::vector<std::uint8_t>> optMaskData = imgDetections.getMaskData();
+    const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config.globalCalculationAlgorithm;
+    const unsigned int stepSize = getStepSize(config.globalStepSize, calculationAlgorithm);
 
-    const uint32_t lowerThreshold = config->globalLowerThreshold;
-    const uint32_t upperThreshold = config->globalUpperThreshold;
-    const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config->globalCalculationAlgorithm;
-    int stepSize = config->globalStepSize;
-    if(stepSize == SpatialLocationCalculatorConfigData::AUTO) {
-        if(calculationAlgorithm == SpatialLocationCalculatorAlgorithm::MODE || calculationAlgorithm == SpatialLocationCalculatorAlgorithm::MEDIAN) {
-            stepSize = 2;
-        } else {
-            stepSize = 1;
-        }
-    }
-    const int32_t keypointRadius = config->globalKeypointRadius;
-    const bool calculateSpatialKeypoints = config->calculateSpatialKeypoints;
-    const bool useSegmentation = config->useSegmentation && optMaskData.has_value();
+    const unsigned int depthWidth = depthFrame.getWidth();
+    const unsigned int depthHeight = depthFrame.getHeight();
+    const std::size_t segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
+    const std::size_t segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
 
-    std::int32_t depthWidth = depthFrame->getWidth();
-    std::int32_t depthHeight = depthFrame->getHeight();
-    uint8_t* maskPtr = nullptr;
-    if(useSegmentation) {
-        logger->debug("Using segmentation for spatial image calculations.");
-        std::size_t segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
-        std::size_t segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
-        std::optional<cv::Mat> optSeg = imgDetections.getCvSegmentationMask();
-        if(!optSeg.has_value()) {
-            logger->error("Segmentation mask expected but not available in ImgDetections.");
-            throw;
-        }
-        // add if opencv support here
-        cv::Mat seg = optSeg.value();
-        if(static_cast<int>(segmentationMaskHeight) != depthHeight || static_cast<int>(segmentationMaskWidth) != depthWidth) {
-            logger->debug("Segmentation mask size {}x{} does not match depth frame size {}x{}. Resizing to depth frame size.", segmentationMaskWidth, segmentationMaskHeight, depthWidth, depthHeight);
-            cv::resize(seg, seg, cv::Size(depthWidth, depthHeight), 0, 0, cv::INTER_NEAREST);
-        }
-        maskPtr = seg.data;
+    span<const std::uint8_t> maskSpan = imgDetections.getData();
+    const bool passthroughSegmentation = config.segmentationPassthrough && !maskSpan.empty();
+    if(!config.useSegmentation) {  // ignore segmentation mask even if provided
+        maskSpan = span<const std::uint8_t>{};
     }
 
-    const uint16_t* plane = (uint16_t*)depthFrame->data->getData().data();
+    if(stepSize >= depthWidth / 2 || stepSize >= depthHeight / 2) {
+        auto message = fmt::format("Step size {} is too large for depth frame size {}x{}. It must be less than half of the depth frame dimensions.",
+                                   stepSize,
+                                   depthWidth,
+                                   depthHeight);
+        throw std::invalid_argument(message);
+    }
 
     for(int i = 0; i < static_cast<int>(imgDetectionsVector.size()); i++) {
         const dai::ImgDetection& detection = imgDetectionsVector[i];
-        dai::RotatedRect rotatedRect = detection.getBoundingBox();
-        rotatedRect = rotatedRect.denormalize(depthWidth, depthHeight, true);
-
-        const auto& outerPoints = rotatedRect.getOuterRect();
-        unsigned int xstart = std::min(std::max(0, (int)outerPoints[0]), depthWidth - 1);
-        unsigned int ystart = std::min(std::max(0, (int)outerPoints[1]), depthHeight - 1);
-        unsigned int xend = std::min(depthWidth - 1, (int)outerPoints[2]);
-        unsigned int yend = std::min(depthHeight - 1, (int)outerPoints[3]);
-
-        std::uint32_t sum = 0;
-        std::uint16_t min = 65535, max = 0;
-        std::uint32_t counter = 0;
-
-        std::vector<uint16_t> validPixels;
-        for(unsigned int y = ystart; y < yend; y += stepSize) {
-            for(unsigned int x = xstart; x < xend; x += stepSize) {
-                int index = y * depthWidth + x;
-                uint16_t px = plane[index];
-
-                bool usePixel = true;
-                if(useSegmentation) {
-                    usePixel = (maskPtr) ? (maskPtr[index] == i) : true;
-                }
-
-                if(px > lowerThreshold && px < upperThreshold && usePixel) {
-                    validPixels.push_back(px);
-                    sum += px;
-                    ++counter;
-                    if(px < min) min = px;
-                    if(px > max) max = px;
-                }
-            }
-        }
-        dai::SpatialImgDetection spatialDetection;
-        if(calculateSpatialKeypoints) {
-            logger->info("Calculating spatial keypoints for detection {}", i);
-            std::vector<dai::SpatialKeypoint> spatialKeypoints;
-            for(auto kp : detection.getKeypoints()) {
-                int kpx = static_cast<int>(kp.imageCoordinates.x * depthWidth);
-                int kpy = static_cast<int>(kp.imageCoordinates.y * depthHeight);
-
-                int kpxstart = std::max(0, kpx - keypointRadius);
-                int kpystart = std::max(0, kpy - keypointRadius);
-                int kpxend = std::min(depthWidth - 1, kpx + keypointRadius);
-                int kpyend = std::min(depthHeight - 1, kpy + keypointRadius);
-
-                std::uint32_t kpSum = 0;
-                std::uint16_t kpMin = 65535, max = 0;
-                std::uint32_t kpCounter = 0;
-                std::vector<uint16_t> kpValidPixels;
-                for(int ky = kpystart; ky < kpyend; ky++) {
-                    for(int kx = kpxstart; kx < kpxend; kx++) {
-                        int index = ky * depthWidth + kx;
-                        uint16_t px = plane[index];
-
-                        bool usePixel = (std::hypot(kpx - kx, kpy - ky) <= keypointRadius);
-                        if(usePixel && useSegmentation) {
-                            usePixel = (maskPtr) ? (maskPtr[index] == i) : true;
-                        }
-                        if(px > lowerThreshold && px < upperThreshold && usePixel) {
-                            kpValidPixels.push_back(px);
-                            kpSum += px;
-                            ++kpCounter;
-                            if(px < kpMin) kpMin = px;
-                            if(px > max) max = px;
-                        }
-                    }
-                }
-
-                float kpZ = calculateDepth(calculationAlgorithm, kpValidPixels, kpSum, kpCounter, kpMin, max);
-                dai::Point2f kpCenter = dai::Point2f(kpx, kpy);
-                dai::Point3f spatialCoordinates = calculateSpatialCoordinates(kpZ, imgDetections.transformation->getIntrinsicMatrix(), kpCenter);
-
-                dai::SpatialKeypoint spatialKp;
-                spatialKp.imageCoordinates = kp.imageCoordinates;
-                spatialKp.confidence = kp.confidence;
-                spatialKp.label = kp.label;
-                spatialKp.spatialCoordinates = spatialCoordinates;
-
-                spatialKeypoints.push_back(spatialKp);
-            }
-            spatialDetection.setKeypoints(spatialKeypoints);
-        }
-
-        float z = calculateDepth(calculationAlgorithm, validPixels, sum, counter, min, max);
-        spatialDetection.setBoundingBox(rotatedRect);
-        spatialDetection.label = detection.label;
-        spatialDetection.confidence = detection.confidence;
-        spatialDetection.labelName = detection.labelName;
-
-        dai::Point3f spatialCoordinates = calculateSpatialCoordinates(z, imgDetections.transformation->getIntrinsicMatrix(), rotatedRect.center);
-        logger->debug("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
-
-        spatialDetection.spatialCoordinates = spatialCoordinates;
-
-        SpatialLocationCalculatorConfigData boundingBoxMapping;
-        boundingBoxMapping.depthThresholds.lowerThreshold = lowerThreshold;
-        boundingBoxMapping.depthThresholds.upperThreshold = upperThreshold;
-        boundingBoxMapping.calculationAlgorithm = calculationAlgorithm;
-        spatialDetection.boundingBoxMapping = boundingBoxMapping;
-        spatialDetections.detections[i] = spatialDetection;
+        dai::SpatialImgDetection spatialImgDetection = computeSpatialDetection(depthFrame,
+                                                                               detection,
+                                                                               maskSpan,
+                                                                               config,
+                                                                               i,
+                                                                               *detectionsTransformation,
+                                                                               static_cast<int>(segmentationMaskWidth),
+                                                                               static_cast<int>(segmentationMaskHeight),
+                                                                               logger);
+        spatialDetections.detections[i] = spatialImgDetection;
     }
 
-    std::optional<std::vector<std::uint8_t>> maskData = imgDetections.getMaskData();
-    if(maskData) {
-        spatialDetections.setSegmentationMask(*maskData, imgDetections.getSegmentationMaskWidth(), imgDetections.getSegmentationMaskHeight());
+    if(passthroughSegmentation) {
+        spatialDetections.data = imgDetections.data;
+        spatialDetections.segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
+        spatialDetections.segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
     }
 }
 

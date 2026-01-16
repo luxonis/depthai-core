@@ -387,6 +387,10 @@ dai_set_test_labels(image_transformations_test onhost ci)
 dai_add_test(normalization_test src/onhost_tests/normalization_test.cpp)
 dai_set_test_labels(normalization_test onhost ci)
 
+# Depth unit tests
+dai_add_test(depth_unit_test src/onhost_tests/depth_unit_test.cpp)
+dai_set_test_labels(depth_unit_test onhost ci)
+
 # MessageQueue tests
 dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 dai_set_test_labels(message_queue_test onhost ci)
@@ -417,6 +421,14 @@ dai_add_test(platform_test src/onhost_tests/utility/platform_test.cpp)
 dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
+
+# Circular buffer test
+dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
+dai_set_test_labels(circular_buffer_test onhost ci)
+
+# Pipeline debugging tests
+dai_add_test(pipeline_debugging_host_test src/onhost_tests/pipeline_debugging_host_test.cpp)
+dai_set_test_labels(pipeline_debugging_host_test onhost ci)
 
 # Datatype tests
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
@@ -464,10 +476,14 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
 endif()
 
+# Vpp node tests
+dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
+dai_set_test_labels(vpp_test ondevice rvc4 ci)
+
 # Dynamic calibration tests
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
-    dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
+    dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
     target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
 endif()
 
@@ -485,7 +501,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
 endif()
 
 dai_add_test(spatial_location_calculator_test src/ondevice_tests/pipeline/node/spatial_location_calculator_test.cpp)
-dai_set_test_labels(spatial_location_calculator_test ondevice onhost rvc2_all rvc4 ci)
+dai_set_test_labels(spatial_location_calculator_test ondevice rvc2_all rvc4 ci)
 
 # Color camera test
 dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
@@ -494,6 +510,14 @@ dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)
 # Pipeline test
 dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
 dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
+
+# Pipeline debugging tests
+dai_add_test(pipeline_debugging_rvc4_test src/ondevice_tests/pipeline_debugging_rvc4_test.cpp)
+dai_set_test_labels(pipeline_debugging_rvc4_test rvc4 ci)
+target_compile_definitions(pipeline_debugging_rvc4_test PRIVATE VIDEO_PATH="${construction_vest}")
+dai_add_test(pipeline_debugging_rvc2_test src/ondevice_tests/pipeline_debugging_rvc2_test.cpp)
+dai_set_test_labels(pipeline_debugging_rvc2_test rvc2 ci)
+target_compile_definitions(pipeline_debugging_rvc2_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # Device USB Speed and serialization macros test
 dai_add_test(device_usbspeed_test src/ondevice_tests/device_usbspeed_test.cpp)
@@ -645,6 +669,10 @@ endif()
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
 dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
+# SystemLogger test
+dai_add_test(system_logger_test src/ondevice_tests/pipeline/node/system_logger_test.cpp)
+dai_set_test_labels(system_logger_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
 # Manual focus test
 dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
 dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci)
@@ -701,3 +729,7 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         NEURAL_CALIBRATION_PATH="${test_calib}"
     )
 endif()
+
+# NeuralAssistedStereo test
+dai_add_test(neural_assisted_stereo_node_test src/ondevice_tests/pipeline/node/neural_assisted_stereo_node_test.cpp)
+dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)

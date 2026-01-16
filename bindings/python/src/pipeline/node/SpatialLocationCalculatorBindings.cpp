@@ -1,7 +1,4 @@
 #include "Common.hpp"
-#include "NodeBindings.hpp"
-#include "depthai/pipeline/Node.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/SpatialLocationCalculator.hpp"
 
 void bind_spatiallocationcalculator(pybind11::module& m, void* pCallstack) {
@@ -31,10 +28,10 @@ void bind_spatiallocationcalculator(pybind11::module& m, void* pCallstack) {
 
     // Node
     spatialLocationCalculator.def_readonly("inputConfig", &SpatialLocationCalculator::inputConfig, DOC(dai, node, SpatialLocationCalculator, inputConfig))
-        .def_readonly("input", &SpatialLocationCalculator::input, DOC(dai, node, SpatialLocationCalculator, input))
+        .def_readonly("inputDetections", &SpatialLocationCalculator::inputDetections, DOC(dai, node, SpatialLocationCalculator, inputDetections))
         .def_readonly("inputDepth", &SpatialLocationCalculator::inputDepth, DOC(dai, node, SpatialLocationCalculator, inputDepth))
         .def_readonly("out", &SpatialLocationCalculator::out, DOC(dai, node, SpatialLocationCalculator, out))
-        .def_readonly("spatialOutput", &SpatialLocationCalculator::spatialOutput, DOC(dai, node, SpatialLocationCalculator, spatialOutput))
+        .def_readonly("outputDetections", &SpatialLocationCalculator::outputDetections, DOC(dai, node, SpatialLocationCalculator, outputDetections))
         .def_readonly("passthroughDepth", &SpatialLocationCalculator::passthroughDepth, DOC(dai, node, SpatialLocationCalculator, passthroughDepth))
         .def_readonly("initialConfig", &SpatialLocationCalculator::initialConfig, DOC(dai, node, SpatialLocationCalculator, initialConfig));
     // ALIAS

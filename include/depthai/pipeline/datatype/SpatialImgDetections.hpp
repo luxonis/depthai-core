@@ -126,27 +126,27 @@ struct SpatialImgDetection {
     /**
      * Returns the X coordinate of the center of the bounding box.
      */
-    float getCenterX() const noexcept;
+    float getCenterX() const;
 
     /**
      * Returns the Y coordinate of the center of the bounding box.
      */
-    float getCenterY() const noexcept;
+    float getCenterY() const;
 
     /**
      * Returns the width of the (rotated) bounding box.
      */
-    float getWidth() const noexcept;
+    float getWidth() const;
 
     /**
      * Returns the height of the (rotated) bounding box.
      */
-    float getHeight() const noexcept;
+    float getHeight() const;
 
     /**
      * Returns the angle of the bounding box.
      */
-    float getAngle() const noexcept;
+    float getAngle() const;
     DEPTHAI_SERIALIZE(
         SpatialImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints, spatialCoordinates, boundingBoxMapping);
 };
@@ -186,8 +186,14 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(
-        SpatialImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation, segmentationMaskWidth, segmentationMaskHeight);
+    DEPTHAI_SERIALIZE(SpatialImgDetections,
+                      Base::Buffer::sequenceNum,
+                      Base::Buffer::ts,
+                      Base::Buffer::tsDevice,
+                      detections,
+                      transformation,
+                      segmentationMaskWidth,
+                      segmentationMaskHeight);
 };
 
 }  // namespace dai

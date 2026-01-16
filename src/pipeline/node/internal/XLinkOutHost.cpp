@@ -53,9 +53,13 @@ void XLinkOutHost::run() {
             stream = XLinkStream(this->conn, this->streamName, maxSize);
             currentMaxSize = maxSize;
         };
-        while(isRunning()) {
+        while(mainLoop()) {
             try {
-                auto outgoing = in.get();
+                std::shared_ptr<ADatatype> outgoing;
+                {
+                    auto blockEvent = this->inputBlockEvent();
+                    outgoing = in.get();
+                }
                 auto metadata = StreamMessageParser::serializeMetadata(outgoing);
 
                 using namespace std::chrono;

@@ -34,8 +34,8 @@ void SpatialLocationCalculatorConfig::setCalculationAlgorithm(SpatialLocationCal
 }
 
 void SpatialLocationCalculatorConfig::setStepSize(int32_t stepSize) {
-    if(stepSize < -1 || stepSize >= 4000 || stepSize == 0) {
-        throw std::invalid_argument("Step size must be -1 (AUTO) or between 1 and 3999");
+    if(stepSize < -1 || stepSize == 0) {
+        throw std::invalid_argument("Step size must be -1 (AUTO) or a positive integer.");
     }
     globalStepSize = stepSize;
 }
@@ -53,6 +53,10 @@ void SpatialLocationCalculatorConfig::setCalculateSpatialKeypoints(bool calculat
 
 void SpatialLocationCalculatorConfig::setUseSegmentation(bool useSegmentation) {
     this->useSegmentation = useSegmentation;
+}
+
+void SpatialLocationCalculatorConfig::setSegmentationPassthrough(bool passthroughSegmentation) {
+    this->segmentationPassthrough = passthroughSegmentation;
 }
 
 std::pair<int32_t, int32_t> SpatialLocationCalculatorConfig::getDepthThresholds() const {
@@ -77,6 +81,10 @@ bool SpatialLocationCalculatorConfig::getCalculateSpatialKeypoints() const {
 
 bool SpatialLocationCalculatorConfig::getUseSegmentation() const {
     return useSegmentation;
+}
+
+bool SpatialLocationCalculatorConfig::getSegmentationPassthrough() const {
+    return segmentationPassthrough;
 }
 
 }  // namespace dai

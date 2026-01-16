@@ -24,7 +24,7 @@ class ImageReplay(dai.node.ThreadedHostNode):
         imgFrame.setType(dai.ImgFrame.Type.GRAY8)
         self.imgFrame = imgFrame
     def run(self):
-        while self.isRunning():
+        while self.mainLoop():
             self.output.send(self.imgFrame)
             time.sleep(0.03)
 

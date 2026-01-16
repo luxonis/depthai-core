@@ -79,6 +79,9 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
              &SpatialLocationCalculatorConfig::setCalculateSpatialKeypoints,
              DOC(dai, SpatialLocationCalculatorConfig, setCalculateSpatialKeypoints))
         .def("setUseSegmentation", &SpatialLocationCalculatorConfig::setUseSegmentation, DOC(dai, SpatialLocationCalculatorConfig, setUseSegmentation))
+        .def("setSegmentationPassthrough",
+             &SpatialLocationCalculatorConfig::setSegmentationPassthrough,
+             DOC(dai, SpatialLocationCalculatorConfig, setSegmentationPassthrough))
         .def("getDepthThresholds", &SpatialLocationCalculatorConfig::getDepthThresholds, DOC(dai, SpatialLocationCalculatorConfig, getDepthThresholds))
         .def("getCalculationAlgorithm",
              &SpatialLocationCalculatorConfig::getCalculationAlgorithm,
@@ -88,5 +91,8 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         .def("getCalculateSpatialKeypoints",
              &SpatialLocationCalculatorConfig::getCalculateSpatialKeypoints,
              DOC(dai, SpatialLocationCalculatorConfig, getCalculateSpatialKeypoints))
-        .def("getUseSegmentation", &SpatialLocationCalculatorConfig::getUseSegmentation, DOC(dai, SpatialLocationCalculatorConfig, getUseSegmentation));
+        .def("getUseSegmentation", &SpatialLocationCalculatorConfig::getUseSegmentation, DOC(dai, SpatialLocationCalculatorConfig, getUseSegmentation))
+        .def("getSegmentationPassthrough",
+             &SpatialLocationCalculatorConfig::getSegmentationPassthrough,
+             DOC(dai, SpatialLocationCalculatorConfig, getSegmentationPassthrough));
 }

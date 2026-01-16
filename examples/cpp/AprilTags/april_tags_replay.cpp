@@ -27,7 +27,7 @@ class ImageReplay : public dai::NodeCRTP<dai::node::ThreadedHostNode, ImageRepla
     }
 
     void run() override {
-        while(isRunning()) {
+        while(mainLoop()) {
             output.send(_imgFrame);
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }

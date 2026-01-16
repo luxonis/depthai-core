@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include <array>
 #include <cstring>
 
 #include "depthai/utility/ImageManipImpl.hpp"
@@ -66,11 +67,11 @@ inline bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array
     return true;
 }
 
-std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix_float) {
+std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrixFloat) {
     // Step 1: Convert to double
     std::array<std::array<double, 3>, 3> matrix;
     for(int i = 0; i < 3; ++i)
-        for(int j = 0; j < 3; ++j) matrix[i][j] = static_cast<double>(matrix_float[i][j]);
+        for(int j = 0; j < 3; ++j) matrix[i][j] = static_cast<double>(matrixFloat[i][j]);
 
     std::array<std::array<float, 3>, 3> inv;
     double det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
@@ -457,6 +458,29 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
         transformed = transformed.normalize(width, height);
     }
     return transformed;
+}
+
+bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
+    if(width != to.width || height != to.height) return false;
+    if(this->distortionModel != to.distortionModel) return false;
+    auto approxEqual = [](float a, float b, float absTol = ROUND_UP_EPS, float relTol = 2 * ROUND_UP_EPS) {
+        return std::abs(a - b) <= (absTol + relTol * std::max(std::abs(a), std::abs(b)));
+    };
+
+    for(size_t i = 0; i < distortionCoefficients.size(); ++i) {
+        if(!approxEqual(distortionCoefficients[i], to.distortionCoefficients[i])) {
+            return false;
+        }
+    }
+
+    std::array<std::array<float, 3>, 3> thisIntrinsic = this->getIntrinsicMatrix();
+    std::array<std::array<float, 3>, 3> toIntrinsic = to.getIntrinsicMatrix();
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            if(!approxEqual(toIntrinsic[i][j], thisIntrinsic[i][j])) return false;
+        }
+    }
+    return true;
 }
 
 };  // namespace dai

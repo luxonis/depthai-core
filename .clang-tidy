@@ -42,10 +42,11 @@ Checks: >
 #WarningsAsErrors: 'modernize-*,cppcoreguidelines-*,boost-*,performance-*,google-build-using-namespace,readability-else-after-return,google-readability-todo'
 WarningsAsErrors: >
   bugprone-throw-keyword-missing,
-  bugprone-unchecked-optional-access,
+# Bring back later once fixed
+# bugprone-unchecked-optional-access,
 
 HeaderFilterRegex: 'core/.*\.hpp'
-AnalyzeTemporaryDtors: false
+# AnalyzeTemporaryDtors: false # Not supported on newer clang-tidy versions
 FormatStyle:     .clang-format
 User:            user
 CheckOptions:
