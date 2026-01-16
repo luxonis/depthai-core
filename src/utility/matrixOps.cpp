@@ -227,6 +227,14 @@ std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]) {
     return R;
 }
 
+std::array<std::array<float, 2>, 2> getMatrixInverse(const std::array<std::array<float, 2>, 2>& matrix) {
+    auto det = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+    if(det == 0) {
+        throw std::runtime_error("Determinant is zero");
+    }
+    return {{{matrix[1][1] / det, -matrix[0][1] / det}, {-matrix[1][0] / det, matrix[0][0] / det}}};
+}
+
 std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix_float) {
     // Step 1: Convert to double
     std::array<std::array<double, 3>, 3> matrix;
@@ -268,12 +276,4 @@ std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array
 }
 
 }  // namespace matrix
-}  // namespace dai
-
-namespace dai {
-
-std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix) {
-    return matrix::getMatrixInverse(matrix);
-}
-
 }  // namespace dai
