@@ -11,7 +11,7 @@ withGate = True
 
 with dai.Pipeline(device) as pipeline:
     camera = pipeline.create(dai.node.Camera).build()
-    cameraOut = camera.requestFullResolutionOutput(fps=30)
+    cameraOut = camera.requestOutput((640, 400), fps=30)
 
     gate  = pipeline.create(dai.node.Gate)
     cameraOut.link(gate.input)
@@ -19,13 +19,12 @@ with dai.Pipeline(device) as pipeline:
     gateControlQueue = gate.inputControl.createInputQueue()
 
     gateControl = dai.GateControl()
-    gateControl.stop()
 
     pipeline.start()
 
     ellapsed = 0
     start_time = time.monotonic()
-    gate_state = True
+    gateOpen = True
 
     while pipeline.isRunning():
         frame = cameraQueue.tryGet()
@@ -37,13 +36,14 @@ with dai.Pipeline(device) as pipeline:
 
         if elapsed > 5.0:  # 5 seconds
             # Toggle the value
-            gate_state = not gate_state
+            gateOpen = not gateOpen
             # Create and send the control message
-            ctrl = dai.GateControl()
-            ctrl.value = gate_state
-            gateControlQueue.send(ctrl)
+            if (gateOpen):
+                gateControlQueue.send(dai.GateControl.openGate())
+            else:
+                gateControlQueue.send(dai.GateControl.closeGate())
             
-            print(f"Gate toggled to: {gate_state}")
+            print(f"Gate toggled to: {gateOpen}")
             
             # Reset the timer
             start_time = current_time

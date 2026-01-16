@@ -6,19 +6,27 @@ namespace dai {
 
 class GateControl : public Buffer {
    public:
+    bool open = true;
+
+    int numMessages = -1;
+
+    static std::shared_ptr<GateControl> openGate(int numMessages) {
+        return std::make_shared<GateControl>(true, numMessages);
+    }
+
+    static std::shared_ptr<GateControl> openGate() {
+        return std::make_shared<GateControl>(true, -1);
+    }
+
+    static std::shared_ptr<GateControl> closeGate() {
+        return std::make_shared<GateControl>(false, -1);
+    }
+
     GateControl() = default;
 
+    GateControl(bool open, int numMessages) : open(open), numMessages(numMessages) {};
+
     ~GateControl() override;
-
-    bool value = true;
-
-    void start() {
-        value = true;
-    }
-
-    void stop() {
-        value = false;
-    }
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
@@ -29,7 +37,7 @@ class GateControl : public Buffer {
         return DatatypeEnum::GateControl;
     }
 
-    DEPTHAI_SERIALIZE(GateControl, value);
+    DEPTHAI_SERIALIZE(GateControl, open, numMessages);
 };
 
 }  // namespace dai
