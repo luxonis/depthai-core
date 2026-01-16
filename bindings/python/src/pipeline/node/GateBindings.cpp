@@ -22,6 +22,13 @@ void bind_gate(pybind11::module& m, void* pCallstack) {
 
     gate.def_readonly("input", &Gate::input, DOC(dai, node, Gate, input))
 
+        .def_property(
+            "initialConfig",
+            [](Gate& self) { return self.initialConfig; },
+            [](Gate& self, std::shared_ptr<GateControl> cfg) { self.initialConfig = cfg; },
+            DOC(dai, node, Gate, initialConfig),
+            "Initial config of the node.")
+
         .def_readonly("inputControl", &Gate::inputControl, DOC(dai, node, Gate, inputControl))
 
         .def("runOnHost", &Gate::runOnHost, DOC(dai, node, Gate, runOnHost))

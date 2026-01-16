@@ -3,6 +3,11 @@
 namespace dai {
 namespace node {
 
+Gate::Properties& Gate::getProperties() {
+    properties.initialConfig = *initialConfig;
+    return properties;
+}
+
 void Gate::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
@@ -10,6 +15,10 @@ void Gate::setRunOnHost(bool runOnHost) {
 bool Gate::runOnHost() const {
     return runOnHostVar;
 }
+
+Gate::Gate(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, Gate, GateProperties>(std::move(props)),
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 std::shared_ptr<GateControl> Gate::sendMessages() {
     while(true) {
@@ -36,7 +45,7 @@ std::shared_ptr<GateControl> Gate::waitFotCommand() {
 }
 
 void Gate::run() {
-    auto currentCommand = std::make_shared<GateControl>(true, -1);
+    auto currentCommand = std::make_shared<GateControl>(*initialConfig);
 
     while(mainLoop()) {
         if(currentCommand->open) {

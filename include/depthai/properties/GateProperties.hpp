@@ -1,5 +1,6 @@
 #pragma once
 
+#include "depthai/pipeline/datatype/GateControl.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -9,11 +10,11 @@ namespace dai {
  */
 
 struct GateProperties : PropertiesSerializable<Properties, GateProperties> {
-    int sleepingTimeMs = 50;  // sleep 50 ms between each inputControl reading
+    GateControl initialConfig;
 
     ~GateProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(GateProperties, sleepingTimeMs);
+DEPTHAI_SERIALIZE_EXT(GateProperties, initialConfig);
 
 }  // namespace dai
