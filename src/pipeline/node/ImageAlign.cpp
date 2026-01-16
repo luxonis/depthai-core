@@ -260,7 +260,8 @@ void ImageAlign::run() {
         auto cv_M2 = arrayToCvMat(3, 3, CV_32FC1, alignSourceIntrinsics);
 
         auto cv_d1 = vecToCvMat(1, depthDistortionCoefficients.size(), CV_32FC1, depthDistortionCoefficients);
-        auto cv_dNone = vecToCvMat(1, alignDistortionCoefficients.size(), CV_32FC1, std::vector<float>{0.0f});  // No distortion for aligned frame
+        auto cv_dNone = vecToCvMat(
+            1, alignDistortionCoefficients.size(), CV_32FC1, std::vector<float>(alignDistortionCoefficients.size(), 0.0f));  // No distortion for aligned frame
         auto cv_R = vecToCvMat(3, 3, CV_32FC1, depthToAlignRotation);
         auto cv_T = vecToCvMat(1, 3, CV_32FC1, depthToAlignTranslation);
 
