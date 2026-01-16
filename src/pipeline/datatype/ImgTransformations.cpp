@@ -2,6 +2,8 @@
 
 #include <assert.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 
 #include "depthai/utility/ImageManipImpl.hpp"
@@ -466,8 +468,11 @@ bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
         return std::abs(a - b) <= (absTol + relTol * std::max(std::abs(a), std::abs(b)));
     };
 
-    for(size_t i = 0; i < distortionCoefficients.size(); ++i) {
-        if(!approxEqual(distortionCoefficients[i], to.distortionCoefficients[i])) {
+    const size_t maxCoeffCount = std::max(distortionCoefficients.size(), to.distortionCoefficients.size());
+    for(size_t i = 0; i < maxCoeffCount; ++i) {
+        const float lhs = (i < distortionCoefficients.size()) ? distortionCoefficients[i] : 0.0f;
+        const float rhs = (i < to.distortionCoefficients.size()) ? to.distortionCoefficients[i] : 0.0f;
+        if(!approxEqual(lhs, rhs)) {
             return false;
         }
     }
