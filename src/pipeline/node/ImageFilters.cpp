@@ -826,6 +826,10 @@ void ImageFilters::run() {
             // Set config
             while(inputConfig.has()) {
                 auto configMsg = inputConfig.get<ImageFiltersConfig>();
+                if(!configMsg) {
+                    logger->debug("ImageFilters: Received null ImageFiltersConfig");
+                    continue;
+                }
                 bool isUpdate = configMsg->filterIndices.size() > 0;
                 if(isUpdate) {
                     updateExistingFilterPipeline(*configMsg);
@@ -969,12 +973,6 @@ void ToFDepthConfidenceFilter::run() {
                 if(configMsg) {
                     confidenceThreshold = configMsg->confidenceThreshold;
                 }
-            }
-
-            // Update threshold dynamically
-            while(inputConfig.has()) {
-                auto configMsg = inputConfig.get<ToFDepthConfidenceFilterConfig>();
-                confidenceThreshold = configMsg->confidenceThreshold;
             }
 
             // Get frames from input queue
