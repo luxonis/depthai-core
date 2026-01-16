@@ -192,12 +192,11 @@ class BridgeNode : public node::CustomThreadedNode<BridgeNode> {
 };
 
 class TryNode : public node::CustomThreadedNode<TryNode> {
-    bool doStep = true;
-    int runTo = 0;
-
    public:
     Input input{*this, {"input", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+
+    bool doOnce = false;
 
     void run() override {
         while(mainLoop()) {
@@ -213,6 +212,7 @@ class TryNode : public node::CustomThreadedNode<TryNode> {
                 auto blockEvent = this->outputBlockEvent();
                 output.trySend(msg);
             }
+            if(doOnce) break;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
@@ -507,6 +507,8 @@ TEST_CASE("Try I/O test") {
     p.enablePipelineDebugging();
 
     auto tryNode = p.create<TryNode>();
+    auto tryNode2 = p.create<TryNode>();
+    tryNode2->doOnce = true;
     auto gen = p.create<GeneratorNode>();
     auto cons = p.create<ConsumerNode>();
     gen->output.link(tryNode->input);
@@ -520,6 +522,7 @@ TEST_CASE("Try I/O test") {
     REQUIRE(!state.nodeStates.at(tryNode->id).inputStates["input"].isValid());
     REQUIRE(state.nodeStates.at(tryNode->id).inputStates["input"].timing.fps == 0.f);
     REQUIRE(state.nodeStates.at(tryNode->id).outputStates["output"].isValid());
+    REQUIRE(state.nodeStates.at(tryNode2->id).inputStates["input"].state == dai::NodeState::InputQueueState::State::IDLE);
 }
 
 TEST_CASE("State callback test") {

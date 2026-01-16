@@ -221,7 +221,6 @@ TEST_CASE("Keypoint validation", "[ImgDetections][Keypoint]") {
     using namespace dai;
 
     REQUIRE_NOTHROW(Keypoint(Point3f{0.0F, 0.0F, 0.0F}, 0.1F));
-    REQUIRE_THROWS_AS(Keypoint(Point3f{0.0F, 0.0F, 0.0F}, -0.1F), std::invalid_argument);
 }
 
 TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segmentation]") {

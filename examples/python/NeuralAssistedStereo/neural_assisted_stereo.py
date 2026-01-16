@@ -2,6 +2,7 @@ import numpy as np
 import cv2 as cv
 import depthai as dai
 
+FPS = 20
 
 def showDepth(depthFrame, windowName="Depth", minDistance=500, maxDistance=5000,
                colormap=cv.COLORMAP_TURBO, useLog=False):
@@ -31,27 +32,25 @@ def showDepth(depthFrame, windowName="Depth", minDistance=500, maxDistance=5000,
     depthFrame = np.uint8(np.clip(depthFrame, minDistance, maxDistance) / maxDistance * 255)
 
     # Apply color map
-    depth_color = cv.applyColorMap(depthFrame, colormap)
+    depthColor = cv.applyColorMap(depthFrame, colormap)
 
     # Show in a window
-    cv.imshow(windowName, depth_color)
-
+    cv.imshow(windowName, depthColor)
 
 if __name__ == "__main__":
-    fps = 30
     device = dai.Device()
     pipeline = dai.Pipeline(device)
     if not device.isNeuralDepthSupported():
         print("Exiting NeuralAssistedStereo example: device doesn't support NeuralDepth.")
         exit()
 
-    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
-    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
+    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=FPS)
+    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=FPS)
 
     monoLeftOut = monoLeft.requestFullResolutionOutput()
     monoRightOut = monoRight.requestFullResolutionOutput()
 
-    neuralAssistedStereo = pipeline.create(dai.node.NeuralAssistedStereo).build(monoLeftOut, monoRightOut)
+    neuralAssistedStereo = pipeline.create(dai.node.NeuralAssistedStereo).build(monoLeftOut, monoRightOut, neuralModel=dai.DeviceModelZoo.NEURAL_DEPTH_NANO)
 
     disparityQueue = neuralAssistedStereo.disparity.createOutputQueue()
 
