@@ -1,6 +1,6 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
-#include <boost/range/algorithm/find.hpp>
+#include <algorithm>
 #include <magic_enum/magic_enum.hpp>
 #include <optional>
 #include <stdexcept>
@@ -87,7 +87,7 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
     DAI_CHECK_V(nnArchiveCfg.getVersion() == NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
     auto platform = getDevice()->getPlatform();
     auto supportedPlatforms = nnArchive.getSupportedPlatforms();
-    bool platformSupported = boost::range::find(supportedPlatforms, platform) != supportedPlatforms.end();
+    bool platformSupported = std::find(supportedPlatforms.begin(), supportedPlatforms.end(), platform) != supportedPlatforms.end();
     DAI_CHECK_V(platformSupported, "Platform not supported by the neural network model");
 
     const auto& configV1 = nnArchiveCfg.getConfig<nn_archive::v1::Config>();
@@ -116,19 +116,12 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
         }
     }
     auto cap = ImgFrameCapability();
+    if(expectedCapability.has_value()) {
+        cap = *expectedCapability;
+    }
     cap.size.value = std::pair(*inputWidth, *inputHeight);
     cap.type = type;
 
-    if(expectedCapability.has_value()) {
-        const auto& expected = *expectedCapability;
-        if(expected.fps.value.has_value()) {
-            cap.fps.value = expected.fps.value;
-        }
-        cap.resizeMode = expected.resizeMode;
-        if(expected.enableUndistortion.has_value()) {
-            cap.enableUndistortion = expected.enableUndistortion;
-        }
-    }
     return cap;
 }
 

@@ -28,8 +28,11 @@ namespace node {
 //--------------------------------------------------------------------
 
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
-    : DeviceNodeGroup(device), out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {
-      };
+    : DeviceNodeGroup(device),
+      out{detectionParser->out},
+      outNetwork{neuralNetwork->out},
+      input{neuralNetwork->input},
+      passthrough{neuralNetwork->passthrough} {};
 
 // -------------------------------------------------------------------
 // Neural Network API
@@ -65,7 +68,7 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
     neuralNetwork->build(camera, model, capability);
     auto nnArchive = neuralNetwork->getNNArchive();
     DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
-    detectionParser->setNNArchive(nnArchive->get());
+    detectionParser->setNNArchive(*nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
@@ -74,7 +77,7 @@ std::shared_ptr<DetectionNetwork> DetectionNetwork::build(const std::shared_ptr<
     neuralNetwork->build(input, model, fps);
     auto nnArchive = neuralNetwork->getNNArchive();
     DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
-    detectionParser->setNNArchive(nnArchive->get());
+    detectionParser->setNNArchive(*nnArchive);
     return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 #endif

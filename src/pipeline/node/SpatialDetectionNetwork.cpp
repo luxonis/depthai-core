@@ -39,6 +39,7 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
     ImgFrameCapability cap;
     if(fps.has_value()) cap.fps.value = *fps;
     if(resizeMode.has_value()) cap.resizeMode = *resizeMode;
+    cap.enableUndistortion = true;  // default for SpatialDetectionNetwork
     return build(inputRgb, depthSource, model, cap);
 }
 
@@ -46,7 +47,9 @@ std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build(const st
                                                                         const DepthSource& depthSource,
                                                                         const Model& model,
                                                                         const ImgFrameCapability& capability) {
-    neuralNetwork->build(inputRgb, model, capability);
+    auto cap = capability;
+    if(!cap.enableUndistortion.has_value()) cap.enableUndistortion = true;
+    neuralNetwork->build(inputRgb, model, cap);
     auto nnArchive = neuralNetwork->getNNArchive();
     DAI_CHECK(nnArchive.has_value(), "NeuralNetwork NNArchive is not set after build.");
     detectionParser->setNNArchive(nnArchive.value());
