@@ -87,7 +87,7 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
     DAI_CHECK_V(nnArchiveCfg.getVersion() == NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
     auto platform = getDevice()->getPlatform();
     auto supportedPlatforms = nnArchive.getSupportedPlatforms();
-    bool platformSupported = boost::range::find(supportedPlatforms, platform) != supportedPlatforms.end();
+    bool platformSupported = std::find(supportedPlatforms.begin(), supportedPlatforms.end(), platform) != supportedPlatforms.end();
     DAI_CHECK_V(platformSupported, "Platform not supported by the neural network model");
 
     const auto& configV1 = nnArchiveCfg.getConfig<nn_archive::v1::Config>();
