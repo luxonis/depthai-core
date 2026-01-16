@@ -11,6 +11,10 @@ if device.getPlatform() == dai.Platform.RVC2:
     setRunOnHost = True
     fps = 10
 
+requiredCamCapabilities = dai.ImgFrameCapability()
+requiredCamCapabilities.fps.fixed(fps)
+requiredCamCapabilities.enableUndistortion = True
+
 def addTopPanel(image: np.ndarray, useSegmentation: bool) -> np.ndarray:
     topPanel = np.ones((100, image.shape[1], 3), dtype=np.uint8) * 255
     cv2.putText(topPanel, "Press 's' to toggle setUseSegmentation", (10, 30), cv2.FONT_HERSHEY_TRIPLEX, 0.7, (0, 0, 0), 1)
@@ -23,7 +27,7 @@ with dai.Pipeline(device) as pipeline:
 
     cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
 
-    detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription(modelName), fps=fps)
+    detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
     detNN.detectionParser.setRunOnHost(setRunOnHost)
 
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
@@ -34,9 +38,6 @@ with dai.Pipeline(device) as pipeline:
     monoRightOut = monoRight.requestFullResolutionOutput()
     monoLeftOut.link(stereo.left)
     monoRightOut.link(stereo.right)
-    stereo.setRectification(True)
-    stereo.setExtendedDisparity(True)
-    stereo.setLeftRightCheck(True)
 
     align = pipeline.create(dai.node.ImageAlign)
     stereo.depth.link(align.input)

@@ -29,40 +29,52 @@ void SpatialLocationCalculator::run() {
         calculationConfig = initialConfig;
     }
 
-    using namespace std::chrono;
-    while(isRunning()) {
-        auto tAbsoluteBeginning = steady_clock::now();
-
-        bool hasConfig = false;
-        std::shared_ptr<SpatialLocationCalculatorConfig> config;
+    using std::chrono::duration_cast;
+    using std::chrono::high_resolution_clock;
+    using std::chrono::microseconds;
+    using std::chrono::steady_clock;
+    while(mainLoop()) {
         std::shared_ptr<ImgFrame> imgFrame;
-        if(inputConfigSync) {
-            config = inputConfig.get<dai::SpatialLocationCalculatorConfig>();
-            if(config == nullptr) {
-                logger->critical("Invalid input config.");
+        auto outputSpatialImgDetections = std::make_shared<dai::SpatialImgDetections>();
+        std::shared_ptr<dai::ImgDetections> imgDetections = nullptr;
+
+        auto tAbsoluteBeginning = steady_clock::now();
+        {
+            bool hasConfig = false;
+            std::shared_ptr<SpatialLocationCalculatorConfig> config;
+            auto blockEvent = this->inputBlockEvent();
+            if(inputConfigSync) {
+                config = inputConfig.get<dai::SpatialLocationCalculatorConfig>();
+                if(config == nullptr) {
+                    logger->critical("Invalid input config.");
+                } else {
+                    hasConfig = true;
+                }
             } else {
-                hasConfig = true;
+                auto tmpConfig = inputConfig.tryGet<dai::SpatialLocationCalculatorConfig>();
+                if(tmpConfig != nullptr) {
+                    config = tmpConfig;
+                    hasConfig = true;
+                }
             }
-        } else {
-            auto tmpConfig = inputConfig.tryGet<dai::SpatialLocationCalculatorConfig>();
-            if(tmpConfig != nullptr) {
-                config = tmpConfig;
-                hasConfig = true;
+            if(hasConfig) {
+                calculationConfig = config;
             }
-        }
-        if(hasConfig) {
-            calculationConfig = config;
+
+            imgFrame = inputDepth.get<dai::ImgFrame>();
+            if(imgFrame == nullptr) {
+                logger->warn("Invalid input depth. Skipping frame.");
+                continue;
+            }
+            if(imgFrame->getType() != dai::ImgFrame::Type::RAW16) {
+                logger->warn("Invalid frame type for depth image. Depth image must be RAW16 type, got {}", static_cast<int>(imgFrame->getType()));
+                continue;
+            }
+            if(inputDetections.isConnected()) {  // detections are connected and need to be processed
+                imgDetections = inputDetections.get<dai::ImgDetections>();
+            }
         }
 
-        imgFrame = inputDepth.get<dai::ImgFrame>();
-        if(imgFrame == nullptr) {
-            logger->warn("Invalid input depth. Skipping frame.");
-            continue;
-        }
-        if(imgFrame->getType() != dai::ImgFrame::Type::RAW16) {
-            logger->warn("Invalid frame type for depth image. Depth image must be RAW16 type, got {}", static_cast<int>(imgFrame->getType()));
-            continue;
-        }
         auto tAfterMessageBeginning = steady_clock::now();
 
         std::vector<SpatialLocations> spatialLocations;
@@ -77,39 +89,33 @@ void SpatialLocationCalculator::run() {
             auto stop = high_resolution_clock::now();
             auto timeToComputeSpatialData = duration_cast<microseconds>(stop - start);
 
-            logger->trace("Time to compute spatial data CPU: {} us", timeToComputeSpatialData.count());
+            logger->trace("Time to compute spatial data: {} us", timeToComputeSpatialData.count());
             outputSpatial->spatialLocations = std::move(spatialLocations);
         }
 
-        // process imgDetections
+        if(imgDetections != nullptr) {  // process imgDetections
+            start = high_resolution_clock::now();
+            utilities::SpatialUtils::computeSpatialDetections(*imgFrame, *calculationConfig, *imgDetections, *outputSpatialImgDetections, logger);
 
-        auto outputSpatialImgDetections = std::make_shared<dai::SpatialImgDetections>();
-        if(inputDetections.isConnected()) {  // detections are connected and need to be processed
-            std::shared_ptr<dai::ImgDetections> imgDetections = nullptr;
-            imgDetections = inputDetections.get<dai::ImgDetections>();
-
-            if(imgDetections != nullptr) {
-                start = high_resolution_clock::now();
-                utilities::SpatialUtils::computeSpatialDetections(*imgFrame, *calculationConfig, *imgDetections, *outputSpatialImgDetections, logger);
-
-                auto stop = high_resolution_clock::now();
-                auto timeToComputeSpatialDetections = duration_cast<microseconds>(stop - start);
-                logger->trace("Time to compute spatial detections: {} us", timeToComputeSpatialDetections.count());
-                outputSpatialImgDetections->setSequenceNum(imgDetections->getSequenceNum());
-                outputSpatialImgDetections->setTimestampDevice(imgDetections->getTimestampDevice());
-                outputSpatialImgDetections->setTimestamp(imgDetections->getTimestamp());
-                outputSpatialImgDetections->transformation = imgDetections->transformation;
-            }
+            auto stop = high_resolution_clock::now();
+            auto timeToComputeSpatialDetections = duration_cast<microseconds>(stop - start);
+            logger->trace("Time to compute spatial detections: {} us", timeToComputeSpatialDetections.count());
+            outputSpatialImgDetections->setSequenceNum(imgDetections->getSequenceNum());
+            outputSpatialImgDetections->setTimestampDevice(imgDetections->getTimestampDevice());
+            outputSpatialImgDetections->setTimestamp(imgDetections->getTimestamp());
+            outputSpatialImgDetections->transformation = imgDetections->transformation;
         }
 
         auto tBeforeSend = steady_clock::now();
+        {
+            auto blockEvent = this->outputBlockEvent();
 
-        outputDetections.send(outputSpatialImgDetections);
-        out.send(outputSpatial);
-        passthroughDepth.send(imgFrame);
-
+            outputDetections.send(outputSpatialImgDetections);
+            out.send(outputSpatial);
+            passthroughDepth.send(imgFrame);
+        }
         auto tAbsoluteEnd = steady_clock::now();
-        logger->debug("SpatialLocationCalculator total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",
+        logger->debug("SpatialLocationCalculator total took {} ms, processing {} ms, getting_frames {} ms, sending_frames {} ms",
                       duration_cast<microseconds>(tAbsoluteEnd - tAbsoluteBeginning).count() / 1000,
                       duration_cast<microseconds>(tBeforeSend - tAfterMessageBeginning).count() / 1000,
                       duration_cast<microseconds>(tAfterMessageBeginning - tAbsoluteBeginning).count() / 1000,

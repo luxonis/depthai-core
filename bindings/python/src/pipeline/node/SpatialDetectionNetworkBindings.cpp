@@ -10,7 +10,8 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     // Node and Properties declare upfront
     py::class_<SpatialDetectionNetworkProperties, std::shared_ptr<SpatialDetectionNetworkProperties>> spatialDetectionNetworkProperties(
         m, "SpatialDetectionNetworkProperties", DOC(dai, SpatialDetectionNetworkProperties));
-    auto spatialDetectionNetwork = ADD_NODE_DERIVED(SpatialDetectionNetwork, DeviceNodeGroup);
+    auto spatialDetectionNetwork = ADD_NODE_DERIVED(SpatialDetectionNetwork, DeviceNode);
+    spatialDetectionNetwork.attr("Model") = daiNodeModule.attr("NeuralNetwork").attr("Model");
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -34,43 +35,64 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     // Node
     spatialDetectionNetwork
         // Build methods with DepthSource variant
-        .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&,
-                               const node::DepthSource&,
-                               NNModelDescription,
-                               std::optional<float>,
-                               std::optional<dai::ImgResizeMode>>(&SpatialDetectionNetwork::build),
-             py::arg("input"),
-             py::arg("depthSource"),
-             py::arg("model"),
-             py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-             DOC(dai, node, SpatialDetectionNetwork, build))
-        .def("build",
-             ([](SpatialDetectionNetwork& self,
-                 const std::shared_ptr<Camera>& input,
-                 const node::DepthSource& depthSource,
-                 std::string model,
-                 std::optional<float> fps,
-                 std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, depthSource, NNModelDescription{model}, fps, resizeMode); }),
-             py::arg("input"),
-             py::arg("depthSource"),
-             py::arg("model"),
-             py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-             DOC(dai, node, SpatialDetectionNetwork, build))
-        .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&,
-                               const node::DepthSource&,
-                               const NNArchive&,
-                               std::optional<float>,
-                               std::optional<dai::ImgResizeMode>>(&SpatialDetectionNetwork::build),
-             py::arg("input"),
-             py::arg("depthSource"),
-             py::arg("nnArchive"),
-             py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-             DOC(dai, node, SpatialDetectionNetwork, build, 2))
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
+               NNModelDescription modelDesc,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) {
+                return self.build(input, depthSource, SpatialDetectionNetwork::Model{std::move(modelDesc)}, fps, resizeMode);
+            },
+            py::arg("input"),
+            py::arg("stereo"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, SpatialDetectionNetwork, build))
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
+               const NNArchive& nnArchive,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) {
+                return self.build(input, depthSource, SpatialDetectionNetwork::Model{nnArchive}, fps, resizeMode);
+            },
+            py::arg("input"),
+            py::arg("stereo"),
+            py::arg("nnArchive"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, SpatialDetectionNetwork, build))
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
+               const std::string& model,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, depthSource, SpatialDetectionNetwork::Model{model}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("stereo"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, SpatialDetectionNetwork, build))
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
+               const SpatialDetectionNetwork::Model& model,
+               const ImgFrameCapability& capability) { return self.build(input, depthSource, model, capability); },
+            py::arg("input"),
+            py::arg("stereo"),
+            py::arg("model"),
+            py::arg("capability"),
+            DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",

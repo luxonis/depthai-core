@@ -7,6 +7,7 @@
 #include "common/CameraFeatures.hpp"
 #include "common/CameraSensorType.hpp"
 #include "common/Point3fRGBA.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -48,27 +49,8 @@ class RGBD::Impl {
         }
     }
     void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit) {
-        // Default is millimeter
-        switch(depthUnit) {
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::MILLIMETER:
-                scaleFactor = 1.0f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::METER:
-                scaleFactor = 0.001f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::CENTIMETER:
-                scaleFactor = 0.01f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::FOOT:
-                scaleFactor = 0.3048f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::INCH:
-                scaleFactor = 0.0254f;
-                break;
-            case StereoDepthConfig::AlgorithmControl::DepthUnit::CUSTOM:
-                scaleFactor = 1.0f;
-                break;
-        }
+        const float unitPerMeter = getDepthUnitMultiplier(depthUnit);
+        scaleFactor = unitPerMeter > 0.0f ? (1.0f / unitPerMeter) : 1.0f;
     }
     void printDevices() {
 #ifdef DEPTHAI_ENABLE_KOMPUTE

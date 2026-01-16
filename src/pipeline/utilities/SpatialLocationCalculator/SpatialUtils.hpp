@@ -28,16 +28,16 @@ struct DepthStats {
     float calculateDepth(SpatialLocationCalculatorAlgorithm algo);
 };
 
-void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
+void computeSpatialData(const std::shared_ptr<const dai::ImgFrame>& depthFrame,
                         const std::vector<dai::SpatialLocationCalculatorConfigData>& configDataVec,
                         std::vector<dai::SpatialLocations>& spatialLocations,
-                        std::shared_ptr<spdlog::async_logger> logger);
+                        const std::shared_ptr<spdlog::async_logger>& logger);
 
 void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                               const SpatialLocationCalculatorConfig& config,
                               const dai::ImgDetections& imgDetections,
                               dai::SpatialImgDetections& spatialDetections,
-                              std::shared_ptr<spdlog::async_logger> logger);
+                              const std::shared_ptr<spdlog::async_logger>& logger);
 }  // namespace SpatialUtils
 }  // namespace utilities
 }  // namespace dai

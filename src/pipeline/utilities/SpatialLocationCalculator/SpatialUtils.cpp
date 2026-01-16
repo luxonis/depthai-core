@@ -191,7 +191,7 @@ dai::RotatedRect scaleRect(const dai::RotatedRect& rect, float scaleFactor) {
 void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
                         const std::vector<dai::SpatialLocationCalculatorConfigData>& configDataVec,
                         std::vector<dai::SpatialLocations>& spatialLocations,
-                        std::shared_ptr<spdlog::async_logger> logger) {
+                        const std::shared_ptr<spdlog::async_logger>& logger) {
     if(configDataVec.empty()) {
         logger->debug("Empty config vector!");
         return;
@@ -303,7 +303,7 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
                                                  const dai::ImgTransformation& detectionsTransformation,
                                                  const int segMaskWidth,
                                                  const int segMaskHeight,
-                                                 std::shared_ptr<spdlog::async_logger> logger) {
+                                                 const std::shared_ptr<spdlog::async_logger>& logger) {
     const uint32_t lowerThreshold = config.globalLowerThreshold;
     const uint32_t upperThreshold = config.globalUpperThreshold;
     const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config.globalCalculationAlgorithm;
@@ -392,7 +392,7 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                               const SpatialLocationCalculatorConfig& config,
                               const dai::ImgDetections& imgDetections,
                               dai::SpatialImgDetections& spatialDetections,
-                              std::shared_ptr<spdlog::async_logger> logger) {
+                              const std::shared_ptr<spdlog::async_logger>& logger) {
     if(!imgDetections.transformation.has_value()) {
         throw std::runtime_error("No transformation set on ImgDetections. Cannot compute spatial coordinates.");
     }

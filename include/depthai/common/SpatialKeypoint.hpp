@@ -46,6 +46,20 @@ struct SpatialKeypointsList : KeypointsListT<SpatialKeypoint> {
     using Base::setKeypoints;
 
     /**
+     * Sets the keypoints list.
+     * @param keypoints list of Point3f objects to set.
+     * @note This will clear any existing keypoints and edges.
+     */
+    void setKeypoints(const std::vector<Point3f>& kps3) {
+        edges.clear();
+        keypoints.clear();
+        keypoints.reserve(kps3.size());
+        for(const auto& kp : kps3) {
+            keypoints.emplace_back(SpatialKeypoint(kp));
+        }
+    }
+
+    /**
      * Sets the keypoints from a vector of 3D spatial points.
      * @param spatialCoordinates vector of Point3f objects to set as spatial coordinates.
      * @note The size of spatialCoordinates must match the number of keypoints.
