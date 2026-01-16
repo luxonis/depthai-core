@@ -382,13 +382,23 @@ void ImageAlign::run() {
                         "aligned.");
                 }
 
-                alignSourceIntrinsics = inputAlignToImg->transformation.getIntrinsicMatrix();
-
                 alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
                 if(alignWidth == 0 || alignHeight == 0) {
                     alignWidth = inputAlignToImg->getWidth();
                     alignHeight = inputAlignToImg->getHeight();
                 }
+
+                auto alignTransformForIntrinsics = inputAlignToTransform;
+                auto [alignTransformWidth, alignTransformHeight] = alignTransformForIntrinsics.getSize();
+                if(static_cast<int>(alignTransformWidth) != alignWidth || static_cast<int>(alignTransformHeight) != alignHeight) {
+                    float scaleX = static_cast<float>(alignWidth) / static_cast<float>(alignTransformWidth);
+                    float scaleY = static_cast<float>(alignHeight) / static_cast<float>(alignTransformHeight);
+                    alignTransformForIntrinsics.addScale(scaleX, scaleY);
+                    alignTransformForIntrinsics.setSize(alignWidth, alignHeight);
+                }
+
+                alignSourceIntrinsics = alignTransformForIntrinsics.getIntrinsicMatrix();
+                inputAlignToTransform = alignTransformForIntrinsics;
             }
 
             if(inputConfig.getWaitForMessage()) {
