@@ -188,7 +188,7 @@ dai::RotatedRect scaleRect(const dai::RotatedRect& rect, float scaleFactor) {
     return scaledRect;
 }
 
-void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
+void computeSpatialData(const std::shared_ptr<const dai::ImgFrame>& depthFrame,
                         const std::vector<dai::SpatialLocationCalculatorConfigData>& configDataVec,
                         std::vector<dai::SpatialLocations>& spatialLocations,
                         const std::shared_ptr<spdlog::async_logger>& logger) {
@@ -240,7 +240,7 @@ void computeSpatialData(std::shared_ptr<dai::ImgFrame> depthFrame,
         std::uint32_t maxNumPixels = ((xend - xstart + stepSize - 1) / stepSize) * ((yend - ystart + stepSize - 1) / stepSize);
         DepthStats depthStats(cfg.depthThresholds.lowerThreshold, cfg.depthThresholds.upperThreshold, maxNumPixels);
 
-        const uint16_t* plane = (uint16_t*)depthFrame->data->getData().data();
+        const uint16_t* plane = reinterpret_cast<const uint16_t*>(depthFrame->data->getData().data());
         for(int y = ystart; y < yend; y += stepSize) {
             for(int x = xstart; x < xend; x += stepSize) {
                 uint16_t px = plane[y * depthWidth + x];
