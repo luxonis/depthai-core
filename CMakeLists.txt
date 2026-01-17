@@ -1294,6 +1294,39 @@ elseif(UNIX)
   set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/")
 endif()
 
+# Apply the same RPATH settings to other targets if they exist
+if(TARGET ${TARGET_OPENCV_NAME})
+  if(APPLE)
+    set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+  elseif(UNIX)
+    set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+  endif()
+endif()
+
+if(TARGET ${TARGET_PCL_NAME})
+  if(APPLE)
+    set_target_properties(${TARGET_PCL_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+  elseif(UNIX)
+    set_target_properties(${TARGET_PCL_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+  endif()
+endif()
+
+if(TARGET ${TARGET_RTABMAP_NAME})
+  if(APPLE)
+    set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+  elseif(UNIX)
+    set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+  endif()
+endif()
+
+if(TARGET ${TARGET_BASALT_NAME})
+  if(APPLE)
+    set_target_properties(${TARGET_BASALT_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+  elseif(UNIX)
+    set_target_properties(${TARGET_BASALT_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+  endif()
+endif()
+
 # Export to CMake registry if specified
 if(CMAKE_EXPORT_PACKAGE_REGISTRY)
     export(PACKAGE depthai)
@@ -1319,6 +1352,92 @@ if(DEPTHAI_INSTALL)
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
     endif()
+
+    # Set RPATH handling
+    # use, i.e. don't skip the full RPATH for the build tree
+    set(CMAKE_SKIP_BUILD_RPATH FALSE)
+
+    # when building, use the install RPATH already
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
+    # add the automatically determined parts of the RPATH
+    # which point to directories outside the build tree to the install RPATH
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+    # the RPATH to be used when installing, but only if it's not a system directory
+    list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" isSystemDir)
+    if("${isSystemDir}" STREQUAL "-1")
+        set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+    endif()
+
+    # Install Python examples
+    if(DEPTHAI_BUILD_PYTHON)
+        # Define Python installation directory if not already defined
+        if(NOT DEFINED PYTHON_INSTALL_DIR)
+            set(PYTHON_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages")
+        endif()
+
+        install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/examples/python/"
+                DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/python-examples")
+
+        # Install Python CLI utilities
+        install(FILES
+            "${CMAKE_CURRENT_SOURCE_DIR}/bindings/python/utilities/stress_test.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/bindings/python/utilities/cam_test.py"
+            DESTINATION "${PYTHON_INSTALL_DIR}/depthai_cli")
+
+        install(FILES
+            "${CMAKE_CURRENT_SOURCE_DIR}/bindings/python/depthai_cli/__init__.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/bindings/python/depthai_cli/depthai_cli.py"
+            DESTINATION "${PYTHON_INSTALL_DIR}/depthai_cli")
+    endif()
+
+    # Find and install all shared libraries
+    file(GLOB_RECURSE SHARED_LIBS
+        LIST_DIRECTORIES false
+        RELATIVE "${CMAKE_BINARY_DIR}"
+        "${CMAKE_BINARY_DIR}/*.so*"
+        "${CMAKE_BINARY_DIR}/*.dylib*")
+
+    foreach(LIB_FILE ${SHARED_LIBS})
+        get_filename_component(LIB_NAME ${LIB_FILE} NAME)
+        if(NOT EXISTS "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/${LIB_NAME}")
+            install(FILES "${CMAKE_BINARY_DIR}/${LIB_FILE}"
+                    DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+        endif()
+    endforeach()
+
+    # Find and install all executables in bin directory
+    file(GLOB BIN_EXECUTABLES
+        LIST_DIRECTORIES false
+        "${CMAKE_BINARY_DIR}/bin/*")
+
+    foreach(EXEC_FILE ${BIN_EXECUTABLES})
+        if(NOT IS_DIRECTORY "${EXEC_FILE}")
+            install(PROGRAMS "${EXEC_FILE}"
+                    DESTINATION "${CMAKE_INSTALL_BINDIR}")
+        endif()
+    endforeach()
+
+    # Find and install all executables in examples directory
+    file(GLOB EXAMPLE_EXECUTABLES
+        LIST_DIRECTORIES false
+        "${CMAKE_BINARY_DIR}/examples/*")
+
+    foreach(EXEC_FILE ${EXAMPLE_EXECUTABLES})
+        if(NOT IS_DIRECTORY "${EXEC_FILE}")
+            install(PROGRAMS "${EXEC_FILE}"
+                    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/examples")
+        endif()
+    endforeach()
+
+    # Install Python modules
+    if(DEPTHAI_BUILD_PYTHON)
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/bindings/python/"
+                DESTINATION "${PYTHON_INSTALL_DIR}"
+                FILES_MATCHING PATTERN "*.so*" PATTERN "*.dylib*")
+    endif()
+
     # Install any required dll files
     if(DEFINED required_dll_files)
         set(DLL_INSTALLATION_DIR "${CMAKE_INSTALL_LIBDIR}")

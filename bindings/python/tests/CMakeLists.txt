@@ -46,3 +46,12 @@ add_custom_target(
 
 # Link to depthai
 target_link_libraries(${TARGET_TEST_MODULE} PRIVATE pybind11::pybind11 depthai::core)
+
+# Set RPATH for the Python test module
+if(APPLE)
+    set_target_properties(${TARGET_TEST_MODULE} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/../../../lib")
+elseif(UNIX)
+    set_target_properties(${TARGET_TEST_MODULE} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/../../../lib")
+endif()
+# Ensure we use the install RPATH during build
+set_target_properties(${TARGET_TEST_MODULE} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)

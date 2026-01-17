@@ -315,6 +315,15 @@ target_link_libraries(${TARGET_NAME}
         spdlog::spdlog
 )
 
+# Set RPATH for the Python module
+if(APPLE)
+    set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/../lib")
+elseif(UNIX)
+    set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/../lib")
+endif()
+# Ensure we use the install RPATH during build
+set_target_properties(${TARGET_NAME} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
+
 # Add embedded module option, otherwise link to pybind11 as usual
 if(DEPTHAI_PYTHON_EMBEDDED_MODULE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PYTHON_EMBEDDED_MODULE)
