@@ -441,6 +441,20 @@ TEST_CASE("Get any async", "[MessageQueue]") {
     thread.join();
 }
 
+TEST_CASE("Get any timeout", "[MessageQueue]") {
+    MessageQueue queue1(10);
+    MessageQueue queue2(10);
+    MessageQueue queue3(10);
+
+    std::unordered_map<std::string, MessageQueue&> queues;
+    queues.insert_or_assign("queue1", queue1);
+    queues.insert_or_assign("queue2", queue2);
+    queues.insert_or_assign("queue3", queue3);
+
+    auto out = MessageQueue::getAny(queues, std::chrono::milliseconds(1000));
+    REQUIRE(out.size() == 0);
+}
+
 TEST_CASE("Pipeline event dispatcher tests", "[MessageQueue]") {
     class TestNode : public dai::node::CustomThreadedNode<TestNode> {
        public:

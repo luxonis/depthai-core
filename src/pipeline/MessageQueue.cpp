@@ -215,7 +215,8 @@ void MessageQueue::notifyCondVars() {
 
 MessageQueue::QueueException::~QueueException() noexcept = default;
 
-std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(std::unordered_map<std::string, MessageQueue&> queues, std::optional<std::chrono::milliseconds> timeout) {
+std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(std::unordered_map<std::string, MessageQueue&> queues,
+                                                                                 std::optional<std::chrono::milliseconds> timeout) {
     std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> condVarIds;
     condVarIds.reserve(queues.size());
     std::unordered_map<std::string, std::shared_ptr<ADatatype>> inputs;
@@ -242,35 +243,24 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
 
         if(!hasAnyMessages) {
             // Wait for any message to arrive
+            auto pred = [&]() {
+                for(auto& kv : queues) {
+                    if(kv.second.isClosed()) {
+                        return true;
+                    }
+                }
+                for(auto& kv : queues) {
+                    if(kv.second.has()) {
+                        return true;
+                    }
+                }
+                return false;
+            };
             std::unique_lock<std::mutex> lock(inputsWaitMutex);
             if(timeout.has_value()) {
-                inputsWaitCv->wait_for(lock, timeout.value(), [&]() {
-                    for(auto& kv : queues) {
-                        if(kv.second.isClosed()) {
-                            return true;
-                        }
-                    }
-                    for(auto& kv : queues) {
-                        if(kv.second.has()) {
-                            return true;
-                        }
-                    }
-                    return false;
-                });
+                inputsWaitCv->wait_for(lock, timeout.value(), pred);
             } else {
-                inputsWaitCv->wait(lock, [&]() {
-                    for(auto& kv : queues) {
-                        if(kv.second.isClosed()) {
-                            return true;
-                        }
-                    }
-                    for(auto& kv : queues) {
-                        if(kv.second.has()) {
-                            return true;
-                        }
-                    }
-                    return false;
-                });
+                inputsWaitCv->wait(lock, pred);
             }
         }
 
