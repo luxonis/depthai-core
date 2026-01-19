@@ -20,7 +20,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 device = dai.Device()
-fps = 25
+fps = 24
 modelName = "luxonis/yolov8-large-pose-estimation:coco-640x352"
 if device.getPlatform() == dai.Platform.RVC2:
     modelName = "luxonis/yolov8-nano-pose-estimation:coco-512x288"
