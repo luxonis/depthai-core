@@ -83,7 +83,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
     //    py::arg("nnData"),
     //    DOC(dai, utility, FileGroup, addImageNNDataPair));
 
-    py::enum_<SendSnapCallbackStatus> sendSnapCallbackStatus(m, "SendSnapCallbackStatus", DOC(dai, SendSnapCallbackStatus));
+    py::enum_<SendSnapCallbackStatus> sendSnapCallbackStatus(m, "SendSnapCallbackStatus", DOC(dai, utility, SendSnapCallbackStatus));
 
     sendSnapCallbackStatus.value("SUCCESS", SendSnapCallbackStatus::SUCCESS)
         .value("FILE_BATCH_PREPARATION_FAILED", SendSnapCallbackStatus::FILE_BATCH_PREPARATION_FAILED)
