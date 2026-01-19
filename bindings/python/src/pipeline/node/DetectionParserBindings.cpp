@@ -85,6 +85,6 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
         .def("getDecodeKeypoints", &DetectionParser::getDecodeKeypoints, DOC(dai, node, DetectionParser, getDecodeKeypoints))
         .def("getDecodeSegmentation", &DetectionParser::getDecodeSegmentation, DOC(dai, node, DetectionParser, getDecodeSegmentation))
         .def("getStrides", &DetectionParser::getStrides, DOC(dai, node, DetectionParser, getStrides))
-        .def("build", &DetectionParser::build, DOC(dai, node, DetectionParser, build));
+        .def("build", &DetectionParser::build, py::arg("input"), py::arg("nnArchive"), DOC(dai, node, DetectionParser, build));
     daiNodeModule.attr("DetectionParser").attr("Properties") = detectionParserProperties;
 }
