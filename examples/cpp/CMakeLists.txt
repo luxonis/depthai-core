@@ -13,6 +13,9 @@ target_include_directories(utility PUBLIC "utility" "$<BUILD_INTERFACE:${FP16_IN
 add_default_flags(utility LEAN)
 target_link_libraries(utility ${OpenCV_LIBS})
 
+# Include depthaiHelpers.cmake
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/depthaiHelpers.cmake)
+
 set(test_env
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
@@ -90,11 +93,14 @@ function(dai_add_example example_name example_src enable_test use_pcl)
         else()
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
         endif()
-        add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
-            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${example_name}>>"
-            COMMAND_EXPAND_LISTS
-            VERBATIM
-        )
+        foreach(dll_path IN LISTS depthai_dll_libraries)
+            add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
+                ${CMAKE_COMMAND} -DDLLS=${dll_path} -DDEST_DIR=$<TARGET_FILE_DIR:${example_name}>
+                -P "${CMAKE_SOURCE_DIR}/cmake/CreateSymlinks.cmake"
+                VERBATIM
+            )
+        endforeach()
+        add_runtime_dependencies_symlinked(${example_name} usb-1.0)
     endif()
 endfunction()
 

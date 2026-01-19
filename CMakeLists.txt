@@ -924,36 +924,13 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
+# Include depthaiHelpers.cmake
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/depthaiHelpers.cmake)
+
 if(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4)
 endif()
 
-# Helper function
-macro(add_runtime_dependencies depending_target dependency)
-    if(TARGET ${dependency})
-        get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
-        set(dlls "")
-        message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency}. Imported configurations: ${imported_configs}")
-        foreach(cfg ${imported_configs})
-            message(STATUS "Adding runtime dependencies for ${depending_target} on ${dependency} (${cfg})")
-            get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-            message(STATUS "Retrieved dll for ${cfg}: '${dll}'")
-            list(APPEND dlls $<$<CONFIG:${cfg}>:${dll}>)
-        endforeach()
-        message(STATUS "Required dlls for ${depending_target} on ${dependency} are: ${dlls}")
-    endif()
-    # Create a list of required dll files
-    set(required_dll_files ${dlls})
-    # Copy the required dlls
-    if(WIN32)
-        add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-            "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
-            COMMAND_EXPAND_LISTS
-            VERBATIM
-        )
-        message(STATUS "Required dlls for core are: ${required_dll_files}")
-    endif()
-endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 # Add dynamic calibration dll in build time
@@ -1341,5 +1318,4 @@ if(DEPTHAI_INSTALL)
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
-
 endif()
