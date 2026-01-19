@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <chrono>
+#include <iostream>
 #include <thread>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
@@ -144,6 +145,56 @@ TEST_CASE("Multiple outputs") {
     }
 }
 #endif
+
+TEST_CASE("Camera start/stop stream") {
+    constexpr float K_FPS = 30.0f;
+    constexpr uint32_t K_REPORT_EVERY_N = 10;
+    const auto kReportTimeout = std::chrono::seconds(4);
+
+    dai::Pipeline p;
+    auto camera = p.create<dai::node::Camera>()->build();
+    camera->initialControl.setStopStreaming();
+    auto* output = camera->requestFullResolutionOutput(dai::ImgFrame::Type::NV12, K_FPS);
+    REQUIRE(output != nullptr);
+
+    auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
+    output->link(benchmarkIn->input);
+    benchmarkIn->sendReportEveryNMessages(K_REPORT_EVERY_N);
+    auto reportQueue = benchmarkIn->report.createOutputQueue();
+    auto controlQueue = camera->inputControl.createInputQueue();
+
+    auto waitForReport = [&](std::chrono::milliseconds timeout) {
+        bool timedOut = false;
+        auto report = reportQueue->get<dai::BenchmarkReport>(timeout, timedOut);
+        return timedOut ? nullptr : report;
+    };
+
+    p.start();
+
+    auto startCtrl = std::make_shared<dai::CameraControl>();
+    startCtrl->setStartStreaming();
+    controlQueue->send(startCtrl);
+
+    auto initialReport = waitForReport(kReportTimeout);
+    REQUIRE(initialReport != nullptr);
+
+    while(reportQueue->tryGet<dai::BenchmarkReport>() != nullptr) {
+    }
+
+    auto stopCtrl = std::make_shared<dai::CameraControl>();
+    stopCtrl->setStopStreaming();
+    controlQueue->send(stopCtrl);
+
+    auto next = waitForReport(kReportTimeout);
+    REQUIRE(next == nullptr);
+
+    auto restartCtrl = std::make_shared<dai::CameraControl>();
+    restartCtrl->setStartStreaming();
+    controlQueue->send(restartCtrl);
+
+    auto restartedReport = waitForReport(kReportTimeout);
+    REQUIRE(restartedReport != nullptr);
+}
 
 TEST_CASE("Test how default FPS is generated for a specific output") {
     constexpr float FPS_TO_SET = 20.0;

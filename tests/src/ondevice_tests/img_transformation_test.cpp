@@ -289,3 +289,22 @@ TEST_CASE("ImgTransformation matrix inverse consistency (ImgFrame)") {
     REQUIRE(approxIdentity(I3));
     REQUIRE(approxIdentity(I4));
 }
+
+// -----------------------------------------------------------------------------
+// ImgTransformation isAlignedTo distortion coefficients handling
+// Purpose:
+//   Ensures isAlignedTo treats missing distortion coefficients as zeros while
+//   still detecting real mismatches.
+// -----------------------------------------------------------------------------
+TEST_CASE("ImgTransformation isAlignedTo distortion coefficients handling") {
+    dai::ImgTransformation base(640, 480);
+    dai::ImgTransformation zeros(640, 480);
+    dai::ImgTransformation nonZero(640, 480);
+
+    base.setDistortionCoefficients({});
+    zeros.setDistortionCoefficients({0.0f, 0.0f, 0.0f, 0.0f, 0.0f});
+    nonZero.setDistortionCoefficients({0.0f, 0.0f, 0.0f, 0.0f, 0.01f});
+
+    REQUIRE(base.isAlignedTo(zeros));
+    REQUIRE_FALSE(base.isAlignedTo(nonZero));
+}
