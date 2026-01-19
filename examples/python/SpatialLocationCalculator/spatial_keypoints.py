@@ -2,6 +2,7 @@ import depthai as dai
 import sys
 import numpy as np
 import cv2
+import argparse
 
 try:
     import open3d as o3d
@@ -11,6 +12,12 @@ except ImportError:
             sys.executable
         )
     )
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--depthSource", type=str, default="stereo", choices=["stereo", "neural"]
+)
+args = parser.parse_args()
 
 device = dai.Device()
 fps = 25
@@ -29,8 +36,8 @@ with dai.Pipeline(device) as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
-    monoLeftOut = monoLeft.requestFullResolutionOutput()
-    monoRightOut = monoRight.requestFullResolutionOutput()
+    monoLeftOut = monoLeft.requestOutput((640, 400), fps=fps)
+    monoRightOut = monoRight.requestOutput((640, 400), fps=fps)
 
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
 
@@ -38,16 +45,22 @@ with dai.Pipeline(device) as pipeline:
     spatialCalculator.initialConfig.setCalculateSpatialKeypoints(True)
     detNN.out.link(spatialCalculator.inputDetections)
 
-    if device.getPlatform() == dai.Platform.RVC2:
-        depth = pipeline.create(dai.node.StereoDepth).build(monoLeftOut, monoRightOut, presetMode=dai.node.StereoDepth.PresetMode.ACCURACY)
-        detNN.passthrough.link(depth.inputAlignTo)
-        depth.depth.link(spatialCalculator.inputDepth)
-    else:
+    if args.depthSource == "stereo":
+        depth = pipeline.create(dai.node.StereoDepth).build(monoLeftOut, monoRightOut, presetMode=dai.node.StereoDepth.PresetMode.FAST_DENSITY)
+        if device.getPlatform() == dai.Platform.RVC2:
+            detNN.passthrough.link(depth.inputAlignTo)
+            depth.depth.link(spatialCalculator.inputDepth)
+
+    elif args.depthSource == "neural":
         depth = pipeline.create(dai.node.NeuralDepth).build(monoLeftOut, monoRightOut, dai.DeviceModelZoo.NEURAL_DEPTH_MEDIUM)
+
+    else:
+        raise ValueError(f"Invalid depth source: {args.depthSource}")
+
+    if device.getPlatform() == dai.Platform.RVC4:
         align = pipeline.create(dai.node.ImageAlign)
         depth.depth.link(align.input)
         detNN.passthrough.link(align.inputAlignTo)
-
         align.outputAligned.link(spatialCalculator.inputDepth)
 
     camQueue = detNN.passthrough.createOutputQueue()
