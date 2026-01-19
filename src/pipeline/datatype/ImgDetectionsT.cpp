@@ -8,6 +8,7 @@
 
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 
 namespace dai {
 
@@ -158,5 +159,6 @@ std::optional<cv::Mat> ImgDetectionsT<DetectionT>::getCvSegmentationMaskByClass(
 #endif
 
 template class ImgDetectionsT<dai::ImgDetection>;
+template class ImgDetectionsT<dai::SpatialImgDetection>;
 
 }  // namespace dai

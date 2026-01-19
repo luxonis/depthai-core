@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-import "ImgDetections.proto";
 import "common.proto";
 package dai.proto.spatial_img_detections;
+import "ImgDetections.proto";
 
 message SpatialImgDetections {
     int64 sequenceNum = 1;
@@ -10,18 +10,16 @@ message SpatialImgDetections {
     common.Timestamp tsDevice = 3;
     repeated SpatialImgDetection detections = 4;
     common.ImgTransformation transformation = 5;
+    int64 segmentationMaskWidth = 6;
+    int64 segmentationMaskHeight = 7;
+    bytes maskData = 8;
 }
 
 message SpatialImgDetection {
     img_detections.ImgDetection detection = 1;
     Point3f spatialCoordinates = 2;
     SpatialLocationCalculatorConfigData boundingBoxMapping = 3;
-}
-
-message Point3f {
-    float x = 1; // default value: 0.0f
-    float y = 2; // default value: 0.0f
-    float z = 3; // default value: 0.0f
+    common.SpatialKeypointsList keypoints = 4;
 }
 
 message SpatialLocationCalculatorConfigData {
@@ -30,7 +28,6 @@ message SpatialLocationCalculatorConfigData {
     SpatialLocationCalculatorAlgorithm calculationAlgorithm = 3;
     int32 stepSize = 4; // default value: AUTO
 }
-
 
 message Rect {
     float x = 1; // default value: 0.0f
@@ -52,4 +49,10 @@ enum SpatialLocationCalculatorAlgorithm {
     MAX = 2;
     MODE = 3;
     MEDIAN = 4;
+}
+
+message Point3f {
+    float x = 1;
+    float y = 2;
+    float z = 3;
 }

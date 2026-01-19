@@ -11,19 +11,24 @@ namespace dai {
 namespace node {
 
 /**
- * @brief SpatialLocationCalculator node. Calculates spatial location data on a set of ROIs on depth map.
+ * @brief SpatialLocationCalculator node. Calculates the spatial locations of detected objects based on the input depth map. Spatial location calculations can
+ * be additionally refined by using a segmentation mask. If keypoints are provided, the spatial location is calculated around each keypoint.
  */
-class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
+class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>, public HostRunnable {
+   private:
+    bool runOnHostVar = false;
+    std::shared_ptr<SpatialLocationCalculatorConfig> calculationConfig;
+
+   protected:
+    Properties& getProperties() override;
+
    public:
     constexpr static const char* NAME = "SpatialLocationCalculator";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-   protected:
-    Properties& getProperties();
-
-   public:
     SpatialLocationCalculator() = default;
-    SpatialLocationCalculator(std::unique_ptr<Properties> props);
+    SpatialLocationCalculator(std::unique_ptr<Properties> props)
+        : DeviceNodeCRTP(std::move(props)), calculationConfig(std::make_shared<SpatialLocationCalculatorConfig>(properties.roiConfig)) {}
 
     /**
      * Initial config to use when calculating spatial location data.
@@ -37,21 +42,45 @@ class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocat
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
+     * Input messages on which spatial location will be calculated.
+     * Possible datatypes are ImgDetections or Keypoints.
+     */
+    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, true, 1, {{{DatatypeEnum::ImgDetections, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
+    /**
      * Input message with depth data used to retrieve spatial information about detected object.
      * Default queue is non-blocking with size 4.
      */
     Input inputDepth{*this, {"inputDepth", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
-     * Outputs SpatialLocationCalculatorData message that carries spatial location results.
+     * Outputs SpatialLocationCalculatorData message that carries spatial locations for each additional ROI that is specified in the config.
      */
     Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
+
+    /**
+     * Outputs SpatialImgDetections message that carries spatial locations along with original input data.
+     */
+    Output outputDetections{*this, {"outputDetections", DEFAULT_GROUP, {{DatatypeEnum::SpatialImgDetections, false}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
 };
 
 }  // namespace node

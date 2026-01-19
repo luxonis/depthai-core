@@ -4,14 +4,12 @@
 #include <cctype>
 #include <csignal>
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <vector>
 
 #include "common/DetectionNetworkType.hpp"
 #include "common/ModelType.hpp"
 #include "common/YoloDecodingFamily.hpp"
-#include "depthai/modelzoo/Zoo.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "nn_archive/v1/Head.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
