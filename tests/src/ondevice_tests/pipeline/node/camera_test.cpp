@@ -152,9 +152,12 @@ TEST_CASE("Camera start/stop stream") {
     const auto kReportTimeout = std::chrono::seconds(4);
 
     dai::Pipeline p;
+    auto isRvc4 = p.getDefaultDevice()->getPlatform() == dai::Platform::RVC4;
+
     auto camera = p.create<dai::node::Camera>()->build();
     camera->initialControl.setStopStreaming();
-    auto* output = camera->requestFullResolutionOutput(dai::ImgFrame::Type::NV12, K_FPS);
+    auto* output = isRvc4 ? camera->requestFullResolutionOutput(dai::ImgFrame::Type::NV12, K_FPS)
+                          : camera->requestOutput({1280, 800}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, K_FPS);  // rvc2 start/stop fails on 4K
     REQUIRE(output != nullptr);
 
     auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
