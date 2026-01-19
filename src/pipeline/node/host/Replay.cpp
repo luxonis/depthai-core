@@ -102,6 +102,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
         case DatatypeEnum::VppConfig:
+        case DatatypeEnum::PacketizedData:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -176,6 +177,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
         case DatatypeEnum::VppConfig:
+        case DatatypeEnum::PacketizedData:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};

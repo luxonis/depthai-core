@@ -180,6 +180,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::PipelineEvent:
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
+        case DatatypeEnum::PacketizedData:
             return false;
     }
     return false;

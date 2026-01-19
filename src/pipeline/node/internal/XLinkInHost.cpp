@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 
+#include "../../datatype/PacketizedData.hpp"
 #include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
@@ -32,25 +33,67 @@ void XLinkInHost::disconnect() {
     isWaitingForReconnect.notify_all();
 }
 
+StreamPacketDesc XLinkInHost::readStreamMessage() const {
+    return stream->readMove();
+}
+
+std::shared_ptr<ADatatype> XLinkInHost::readData() const {
+    auto packet = readStreamMessage();
+    const auto msg = StreamMessageParser::parseMessage(std::move(packet));
+    if(auto messageGroup = std::dynamic_pointer_cast<MessageGroup>(msg)) {
+        parseMessageGroup(messageGroup);
+    }
+    if(auto packetizedData = std::dynamic_pointer_cast<PacketizedData>(msg)) {
+        return parsePacketizedData(packetizedData);
+    }
+    return msg;
+}
+
+std::shared_ptr<ADatatype> XLinkInHost::parsePacketizedData(const std::shared_ptr<PacketizedData>& packetizedData) const {
+    std::vector<std::uint8_t> payload;
+    payload.reserve(packetizedData->totalSize);
+    std::uint32_t currentSize = 0;
+
+    for(std::uint32_t i = 0; i < packetizedData->numPackets; ++i) {
+        auto packet = readStreamMessage();
+        if(packet.length == 0) {
+            continue;
+        }
+        currentSize += packet.length;
+        payload.insert(payload.end(), packet.data, packet.data + packet.length);
+    }
+
+    if(currentSize != packetizedData->totalSize) {
+        throw std::runtime_error(
+            "XLinkInHost: Data size mismatch. "
+            "Expected size: "
+            + std::to_string(packetizedData->totalSize) + ", but received size: " + std::to_string(currentSize) + ".");
+    }
+
+    streamPacketDesc_t packet;
+    packet.data = payload.data();
+    packet.length = static_cast<uint32_t>(payload.size());
+
+    return StreamMessageParser::parseMessage(&packet);
+}
+
+void XLinkInHost::parseMessageGroup(const std::shared_ptr<MessageGroup>& messageGroup) const {
+    for(auto& msg : messageGroup->group) {
+        msg.second = readData();
+    }
+}
+
 void XLinkInHost::run() {
     // Create a stream for the connection
     bool reconnect = true;
     while(reconnect) {
         reconnect = false;
-        XLinkStream stream(std::move(conn), streamName, 1);
+        stream = std::make_unique<XLinkStream>(std::move(conn), streamName, 1);
         while(mainLoop()) {
             try {
                 // Blocking -- parse packet and gather timing information
-                auto packet = stream.readMove();
                 const auto t1Parse = std::chrono::steady_clock::now();
-                const auto msg = StreamMessageParser::parseMessage(std::move(packet));
-                if(std::dynamic_pointer_cast<MessageGroup>(msg) != nullptr) {
-                    auto msgGrp = std::static_pointer_cast<MessageGroup>(msg);
-                    for(auto& msg : msgGrp->group) {
-                        auto dpacket = stream.readMove();
-                        msg.second = StreamMessageParser::parseMessage(&dpacket);
-                    }
-                }
+                auto msg = readData();
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
