@@ -1246,6 +1246,22 @@ void DeviceBase::crashDevice() {
     }
 }
 
+std::tuple<bool, std::string>  DeviceBase::setM8FsyncRole(M8FsyncRole role) {
+    return pimpl->rpcClient->call("setM8FsyncRole", role);
+}
+
+M8FsyncRole DeviceBase::getM8FsyncRole() {
+    return pimpl->rpcClient->call("getM8FsyncRole");
+}
+
+std::tuple<bool, std::string>  DeviceBase::setM8StrobeLimits(float min, float max) {
+    return pimpl->rpcClient->call("setM8StrobeLimits", min, max);
+}
+
+void DeviceBase::setM8StrobeEnable(bool enable) {
+    pimpl->rpcCall("setM8StrobeEnable", enable);
+}
+
 dai::Version DeviceBase::getIMUFirmwareVersion() {
     isClosed();
     std::string versionStr = pimpl->rpcCall("getIMUFirmwareVersion").as<std::string>();
@@ -1719,14 +1735,22 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     logCollection::logPipeline(schema, deviceInfo);
     this->pipelineSchema = schema;  // Save the schema so it can be saved alongside the crashdump
 
-    // Build and start the pipeline
     bool success = false;
     std::string errorMsg;
+
+    // Initialize the device (M8 Fsync slaves need to lock onto the signal first)    
+    std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
+
+    if (!success) {
+        throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
+    }
+
+    // Build and start the pipeline
     std::tie(success, errorMsg) = pimpl->rpcCall("buildPipeline").as<std::tuple<bool, std::string>>();
     if(success) {
         pimpl->rpcCall("startPipeline");
     } else {
-        throw std::runtime_error(errorMsg);
+        throw std::runtime_error("Device " + getDeviceId() + " error: " + errorMsg);
         return false;
     }
 

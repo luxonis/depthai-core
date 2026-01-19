@@ -7,6 +7,7 @@
 
 // depthai/
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/M8FsyncRoles.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
@@ -58,6 +59,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Size2f> size2f(m, "Size2f", DOC(dai, Size2f));
     py::enum_<CameraBoardSocket> cameraBoardSocket(m, "CameraBoardSocket", DOC(dai, CameraBoardSocket));
     py::enum_<HousingCoordinateSystem> housingCoordinateSystem(m, "HousingCoordinateSystem", DOC(dai, HousingCoordinateSystem));
+    py::enum_<M8FsyncRole> m8FsyncRole(m, "M8FsyncRole", DOC(dai, M8FsyncRole));
     py::enum_<ConnectionInterface> connectionInterface(m, "connectionInterface", DOC(dai, ConnectionInterface));
     py::enum_<CameraSensorType> cameraSensorType(m, "CameraSensorType", DOC(dai, CameraSensorType));
     py::enum_<CameraImageOrientation> cameraImageOrientation(m, "CameraImageOrientation", DOC(dai, CameraImageOrientation));
@@ -345,6 +347,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("VESA_I", HousingCoordinateSystem::VESA_I)
         .value("VESA_J", HousingCoordinateSystem::VESA_J)
         .value("IMU", HousingCoordinateSystem::IMU);
+    
+    // M8FsyncRole enum bindings
+    m8FsyncRole.value("AUTO_DETECT", M8FsyncRole::AUTO_DETECT)
+        .value("MASTER", M8FsyncRole::MASTER)
+        .value("SLAVE", M8FsyncRole::SLAVE);
 
     // CameraSensorType enum bindings
     cameraSensorType.value("COLOR", CameraSensorType::COLOR)
