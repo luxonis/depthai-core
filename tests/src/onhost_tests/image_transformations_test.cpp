@@ -355,9 +355,9 @@ TEST_CASE("testRotation") {
 // -----------------------------------------------------------------------------
 TEST_CASE("interFrameRemap") {
     std::array<std::array<float, 3>, 3> intr1 = {{{784.8082885742188, 0.0, 652.2084350585938}, {0.0, 786.7345581054688, 406.1820373535156}, {0.0, 0.0, 1.0}}};
-    auto intr1inv = dai::impl::getInverse(intr1);
+    auto intr1inv = dai::matrix::getMatrixInverse(intr1);
     std::array<std::array<float, 3>, 3> intr2 = {{{3105.2021484375, 0.0, 1877.4822998046875}, {0.0, 3113.031494140625, 1128.080078125}, {0.0, 0.0, 1.0}}};
-    auto intr2inv = dai::impl::getInverse(intr2);
+    auto intr2inv = dai::matrix::getMatrixInverse(intr2);
     auto tr1 = dai::ImgTransformation(1920, 1080, intr1);
     auto tr2 = dai::ImgTransformation(1280, 720, intr2);
 

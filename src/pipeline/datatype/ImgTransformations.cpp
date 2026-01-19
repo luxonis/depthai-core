@@ -68,46 +68,6 @@ inline bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array
     return true;
 }
 
-std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrixFloat) {
-    // Step 1: Convert to double
-    std::array<std::array<double, 3>, 3> matrix;
-    for(int i = 0; i < 3; ++i)
-        for(int j = 0; j < 3; ++j) matrix[i][j] = static_cast<double>(matrixFloat[i][j]);
-
-    std::array<std::array<float, 3>, 3> inv;
-    double det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
-                 - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
-                 + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
-
-    if(det == 0) {
-        throw std::runtime_error("Matrix is singular and cannot be inverted.");
-    }
-
-    std::array<std::array<double, 3>, 3> adj;
-
-    adj[0][0] = (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]);
-    adj[0][1] = -(matrix[0][1] * matrix[2][2] - matrix[0][2] * matrix[2][1]);
-    adj[0][2] = (matrix[0][1] * matrix[1][2] - matrix[0][2] * matrix[1][1]);
-
-    adj[1][0] = -(matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]);
-    adj[1][1] = (matrix[0][0] * matrix[2][2] - matrix[0][2] * matrix[2][0]);
-    adj[1][2] = -(matrix[0][0] * matrix[1][2] - matrix[0][2] * matrix[1][0]);
-
-    adj[2][0] = (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
-    adj[2][1] = -(matrix[0][0] * matrix[2][1] - matrix[0][1] * matrix[2][0]);
-    adj[2][2] = (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]);
-
-    double invDet = 1.0 / det;
-
-    for(int i = 0; i < 3; ++i) {
-        for(int j = 0; j < 3; ++j) {
-            inv[i][j] = static_cast<float>(adj[i][j] * invDet);
-        }
-    }
-
-    return inv;
-}
-
 dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransformation& from, const ImgTransformation& to) {
     auto fromSource = from.getSourceIntrinsicMatrix();
     auto fromSourceInv = from.getSourceIntrinsicMatrixInv();
@@ -286,7 +246,7 @@ bool ImgTransformation::getDstMaskPt(size_t x, size_t y) {
 
 ImgTransformation& ImgTransformation::addTransformation(std::array<std::array<float, 3>, 3> matrix) {
     transformationMatrix = matmul(matrix, transformationMatrix);
-    transformationMatrixInv = getMatrixInverse(transformationMatrix);
+    transformationMatrixInv = matrix::getMatrixInverse(transformationMatrix);
     cropsValid = false;
     return *this;
 }
@@ -376,7 +336,7 @@ ImgTransformation& ImgTransformation::setSourceSize(size_t width, size_t height)
 }
 ImgTransformation& ImgTransformation::setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix) {
     sourceIntrinsicMatrix = intrinsicMatrix;
-    sourceIntrinsicMatrixInv = getMatrixInverse(intrinsicMatrix);
+    sourceIntrinsicMatrixInv = matrix::getMatrixInverse(intrinsicMatrix);
     return *this;
 }
 ImgTransformation& ImgTransformation::setDistortionModel(CameraModel model) {
