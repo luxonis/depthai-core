@@ -23,7 +23,7 @@ int main() {
 
     pipeline.start();
 
-    auto start_time = std::chrono::steady_clock::now();
+    auto startTime = std::chrono::steady_clock::now();
     bool openGate = true;
 
     while(pipeline.isRunning()) {
@@ -32,8 +32,8 @@ int main() {
             cv::imshow("camera", frame->getCvFrame());
         }
 
-        auto current_time = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsed = current_time - start_time;
+        auto currentTime = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed = currentTime - startTime;
 
         if(elapsed.count() > 5.0) {
             openGate = !openGate;
@@ -46,7 +46,7 @@ int main() {
 
             std::cout << "Gate toggled to: " << (openGate ? "True" : "False") << std::endl;
 
-            start_time = current_time;
+            startTime = currentTime;
         }
 
         int key = cv::waitKey(1);

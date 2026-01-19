@@ -23,59 +23,57 @@ TEST_CASE("Test Gate Timing and Data Flow") {
     pipeline.start();
 
     // Test Parameters
-    const int num_cycles = 4;            // Number of times to toggle
-    const double period_duration = 2.0;  // 2 seconds per state
-    const double wait_delay = 0.05;      // 0.05s stabilization wait
-    bool current_gate_state = true;      // Start with Gate ON as requested
+    const int numCycles = 4;            // Number of times to toggle
+    const double periodDuration = 2.0;  // 2 seconds per state
+    const double waitDelay = 0.05;      // 0.05s stabilization wait
+    bool currentGateState = true;       // Start with Gate ON as requested
 
-    auto start_time = std::chrono::steady_clock::now();
-    int cycle_count = 0;
-    int frames_in_period = 0;
-    bool is_measuring = false;
+    auto startTime = std::chrono::steady_clock::now();
+    int cycleCount = 0;
+    int framesInPeriod = 0;
+    bool isMeasuring = false;
 
     // Initial Gate Control (On)
-    auto ctrl = std::make_shared<dai::GateControl>(current_gate_state, -1);
+    auto ctrl = std::make_shared<dai::GateControl>(currentGateState, -1);
     gateControlQueue->send(ctrl);
 
     std::cout << "--- Starting Test: Gate is ON ---" << std::endl;
 
-    while(pipeline.isRunning() && cycle_count < num_cycles) {
+    while(pipeline.isRunning() && cycleCount < numCycles) {
         auto now = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsed = now - start_time;
+        std::chrono::duration<double> elapsed = now - startTime;
 
-        if(elapsed.count() >= period_duration) {
-            std::cout << "\n--- Cycle " << cycle_count << ": Toggling Gate to " << (current_gate_state ? "ON" : "OFF") << " ---" << std::endl;
-            if(current_gate_state) {
-                CHECK(frames_in_period > 30);
-                std::cout << "[VERIFY] Gate ON period finished. Frames received: " << frames_in_period << std::endl;
+        if(elapsed.count() >= periodDuration) {
+            std::cout << "\n--- Cycle " << cycleCount << ": Toggling Gate to " << (currentGateState ? "ON" : "OFF") << " ---" << std::endl;
+            if(currentGateState) {
+                CHECK(framesInPeriod > 30);
+                std::cout << "[VERIFY] Gate ON period finished. Frames received: " << framesInPeriod << std::endl;
             } else {
-                CHECK(frames_in_period == 0);
-                std::cout << "[VERIFY] Gate OFF period finished. Frames received: " << frames_in_period << std::endl;
+                CHECK(framesInPeriod == 0);
+                std::cout << "[VERIFY] Gate OFF period finished. Frames received: " << framesInPeriod << std::endl;
             }
 
             // Toggle State
-            current_gate_state = !current_gate_state;
-            ctrl->open = current_gate_state;
+            currentGateState = !currentGateState;
+            ctrl->open = currentGateState;
             gateControlQueue->send(ctrl);
 
             // Reset Period
-            start_time = now;
-            frames_in_period = 0;
-            is_measuring = false;
-            cycle_count++;
+            startTime = now;
+            framesInPeriod = 0;
+            isMeasuring = false;
+            cycleCount++;
             continue;
         }
         auto frame = cameraQueue->tryGet<dai::ImgFrame>();
 
-        if(elapsed.count() >= wait_delay) {
-            is_measuring = true;
+        if(elapsed.count() >= waitDelay) {
+            isMeasuring = true;
         }
 
-        if(is_measuring) {
+        if(isMeasuring) {
             if(frame) {
-                if(is_measuring) {
-                    frames_in_period++;
-                }
+                framesInPeriod++;
             }
         }
     }
@@ -97,43 +95,43 @@ TEST_CASE("Test Gate N Messages") {
     auto gateControlQueue = gate->inputControl.createInputQueue();
 
     // Test Parameters
-    const int num_messages = 8;
-    const int num_cycles = 4;            // Number of times to toggle
-    const double period_duration = 2.0;  // 2 seconds per state
-    const double wait_delay = 0.05;      // 0.05s stabilization wait
+    const int numMessages = 8;
+    const int numCycles = 4;            // Number of times to toggle
+    const double periodDuration = 2.0;  // 2 seconds per state
+    const double waitDelay = 0.05;      // 0.05s stabilization wait
 
-    auto start_time = std::chrono::steady_clock::now();
-    int cycle_count = 0;
-    int frames_in_period = 0;
+    auto startTime = std::chrono::steady_clock::now();
+    int cycleCount = 0;
+    int framesInPeriod = 0;
 
     // Initial Gate Control (On)
-    auto ctrl = std::make_shared<dai::GateControl>(true, num_messages);
+    auto ctrl = std::make_shared<dai::GateControl>(true, numMessages);
     gate->initialConfig->open = true;
-    gate->initialConfig->numMessages = num_messages;
+    gate->initialConfig->numMessages = numMessages;
 
     pipeline.start();
 
     std::cout << "--- Starting Test: Gate is ON ---" << std::endl;
 
-    while(pipeline.isRunning() && cycle_count < num_cycles) {
+    while(pipeline.isRunning() && cycleCount < numCycles) {
         auto now = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsed = now - start_time;
+        std::chrono::duration<double> elapsed = now - startTime;
 
-        if(elapsed.count() >= period_duration) {
-            CHECK(frames_in_period == num_messages);
+        if(elapsed.count() >= periodDuration) {
+            CHECK(framesInPeriod == numMessages);
             gateControlQueue->send(ctrl);
-            std::cout << "[VERIFY] Gate ON for N messages period finished. Frames received: " << frames_in_period << std::endl;
+            std::cout << "[VERIFY] Gate ON for N messages period finished. Frames received: " << framesInPeriod << std::endl;
 
             // Reset Period
-            start_time = now;
-            frames_in_period = 0;
-            cycle_count++;
+            startTime = now;
+            framesInPeriod = 0;
+            cycleCount++;
             continue;
         }
         auto frame = cameraQueue->tryGet<dai::ImgFrame>();
 
         if(frame) {
-            frames_in_period++;
+            framesInPeriod++;
         }
     }
 }

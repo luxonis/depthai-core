@@ -20,7 +20,7 @@ with dai.Pipeline(device) as pipeline:
     pipeline.start()
 
     ellapsed = 0
-    start_time = time.monotonic()
+    startTime = time.monotonic()
     gateOpen = True
 
     while pipeline.isRunning():
@@ -28,8 +28,8 @@ with dai.Pipeline(device) as pipeline:
         if frame is not None:
             cv2.imshow("camera", frame.getCvFrame())
 
-        current_time = time.monotonic()
-        elapsed = current_time - start_time
+        currentTime = time.monotonic()
+        elapsed = currentTime - startTime
 
         if elapsed > 5.0:  # 5 seconds
             # Toggle the value
@@ -43,7 +43,7 @@ with dai.Pipeline(device) as pipeline:
             print(f"Gate toggled to: {gateOpen}")
             
             # Reset the timer
-            start_time = current_time
+            startTime = currentTime
 
         key = cv2.waitKey(1)
 
