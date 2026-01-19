@@ -1,11 +1,8 @@
-import os
-import sys
 import time
-import depthai as dai
 import cv2 
+import depthai as dai
 
-deviceInfo = dai.DeviceInfo()
-device = dai.Device(deviceInfo)
+device = dai.Device()
 
 withGate = True 
 
