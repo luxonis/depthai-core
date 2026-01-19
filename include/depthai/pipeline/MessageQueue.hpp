@@ -88,9 +88,11 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         return *this;
     }
 
-    static std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues, std::optional<std::chrono::milliseconds> timeout = std::nullopt);
+    static std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues,
+                                                                              std::optional<std::chrono::milliseconds> timeout = std::nullopt);
     template <typename T>
-    static std::unordered_map<std::string, std::shared_ptr<T>> getAny(std::unordered_map<std::string, MessageQueue&> queues, std::optional<std::chrono::milliseconds> timeout = std::nullopt) {
+    static std::unordered_map<std::string, std::shared_ptr<T>> getAny(std::unordered_map<std::string, MessageQueue&> queues,
+                                                                      std::optional<std::chrono::milliseconds> timeout = std::nullopt) {
         auto resultADatatype = getAny(std::move(queues), timeout);
         std::unordered_map<std::string, std::shared_ptr<T>> result;
         for(auto& [k, v] : resultADatatype) {

@@ -510,7 +510,6 @@ TEST_CASE("FPS should go towards zero when pipeline is stopped") {
             REQUIRE(inputState2.timing.isValid());
             REQUIRE(inputState1.timing.fps == Catch::Approx(10.f).margin(5.f));
             REQUIRE(inputState2.timing.fps == Catch::Approx(0.f).margin(2.f));
-
         }
         for(const auto& [outputName, outputState1] : nodeState1.outputStates) {
             if(outputName.rfind("_ack") != std::string::npos) continue;
