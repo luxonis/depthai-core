@@ -30,7 +30,9 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                     colors.emplace_back(pclData[i].r, pclData[i].g, pclData[i].b);
                 }
                 rec.log("world/obstacle_pcl", rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
-                auto colorFrame = rgbdIn->getRGBFrame()->getCvFrame();
+                auto rgbFrame = rgbdIn->getRGBFrame();
+                if(!rgbFrame.has_value()) continue;
+                auto colorFrame = std::get<std::shared_ptr<dai::ImgFrame>>(rgbFrame.value())->getCvFrame();
                 cv::cvtColor(colorFrame, colorFrame, cv::COLOR_BGR2RGB);
                 rec.log("rgb",
                         rerun::Image(reinterpret_cast<const uint8_t*>(colorFrame.data),
