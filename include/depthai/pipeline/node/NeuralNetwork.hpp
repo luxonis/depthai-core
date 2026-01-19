@@ -1,5 +1,6 @@
 #pragma once
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
@@ -25,12 +26,12 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
    public:
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     ~NeuralNetwork() override;
 
     /**
-     * @brief Build NeuralNetwork node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
-     *
+     * @brief Build NeuralNetwork node. Connect output to this node's input and sets up the NNArchive.
      * @param output: Output to link
      * @param nnArchive: Neural network archive
      * @returns Shared pointer to NeuralNetwork node
@@ -38,47 +39,36 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
 
     /**
-     * @brief Build NeuralNetwork node. Connect Camera output to this node's input. Also call setNNArchive() with provided model description.
+     * @brief Build NeuralNetwork node. Connect Camera output to this node's input and configure the inference model.
      * @param input: Camera node
-     * @param modelDesc: Neural network model description
+     * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param fps: Desired frames per second
      * @param resizeMode: Resize mode for input frames
      *
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input,
-                                         NNModelDescription modelDesc,
+                                         const Model& model,
                                          std::optional<float> fps = std::nullopt,
                                          std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
     /**
-     * @brief Build NeuralNetwork node. Connect Camera output to this node's input. Also call setNNArchive() with provided NNArchive.
+     * @brief Build NeuralNetwork node. Connect Camera output to this node's input and configure the inference model.
      * @param input: Camera node
-     * @param nnArchive: Neural network archive
-     * @param fps: Desired frames per second
-     * @param resizeMode: Resize mode for input frames
+     * @param model: Neural network model description, NNArchive or HubAI model id string
+     * @param capability: Camera capabilities
      * @returns Shared pointer to NeuralNetwork node
      */
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input,
-                                         NNArchive nnArchive,
-                                         std::optional<float> fps = std::nullopt,
-                                         std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, const Model& model, const ImgFrameCapability& capability);
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
-     * @brief Build NeuralNetwork node. Connect ReplayVideo output to this node's input. Also call setNNArchive() with provided model description.
+     * @brief Build NeuralNetwork node. Connect ReplayVideo output to this node's input and configure the inference model.
      * @param input: ReplayVideo node
-     * @param modelDesc: Neural network model description
+     * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param fps: Desired frames per second
      * @returns Shared pointer to NeuralNetwork node
      */
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
-    /**
-     * @brief Build NeuralNetwork node. Connect ReplayVideo output to this node's input.
-     * @param input: ReplayVideo node
-     * @param nnArchive: Neural network archive
-     * @param fps: Desired frames per second
-     * @returns Shared pointer to NeuralNetwork node
-     */
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const Model& model, std::optional<float> fps = std::nullopt);
 #endif
 
     /**
@@ -238,7 +228,9 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-    ImgFrameCapability getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps, std::optional<dai::ImgResizeMode> resizeMode);
+    void decodeModel(const Model& model);
+
+    ImgFrameCapability getFrameCapability(const NNArchive& nnArchive, std::optional<ImgFrameCapability> expectedCapability = std::nullopt);
     std::optional<NNArchive> nnArchive;
 };
 

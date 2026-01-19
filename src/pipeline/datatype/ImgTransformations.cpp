@@ -2,6 +2,8 @@
 
 #include <assert.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 
 #include "depthai/utility/ImageManipImpl.hpp"
@@ -457,6 +459,32 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
         transformed = transformed.normalize(width, height);
     }
     return transformed;
+}
+
+bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
+    if(width != to.width || height != to.height) return false;
+    if(this->distortionModel != to.distortionModel) return false;
+    auto approxEqual = [](float a, float b, float absTol = ROUND_UP_EPS, float relTol = 2 * ROUND_UP_EPS) {
+        return std::abs(a - b) <= (absTol + relTol * std::max(std::abs(a), std::abs(b)));
+    };
+
+    const size_t maxCoeffCount = std::max(distortionCoefficients.size(), to.distortionCoefficients.size());
+    for(size_t i = 0; i < maxCoeffCount; ++i) {
+        const float lhs = (i < distortionCoefficients.size()) ? distortionCoefficients[i] : 0.0f;
+        const float rhs = (i < to.distortionCoefficients.size()) ? to.distortionCoefficients[i] : 0.0f;
+        if(!approxEqual(lhs, rhs)) {
+            return false;
+        }
+    }
+
+    std::array<std::array<float, 3>, 3> thisIntrinsic = this->getIntrinsicMatrix();
+    std::array<std::array<float, 3>, 3> toIntrinsic = to.getIntrinsicMatrix();
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            if(!approxEqual(toIntrinsic[i][j], thisIntrinsic[i][j])) return false;
+        }
+    }
+    return true;
 }
 
 };  // namespace dai

@@ -65,7 +65,7 @@ with dai.Pipeline() as pipeline:
     sync = pipeline.create(dai.node.Sync)
     align = pipeline.create(dai.node.ImageAlign)
 
-    camRgbOut = camRgb.requestOutput(COLOR_RESOLUTION, fps=FPS)
+    camRgbOut = camRgb.requestOutput(COLOR_RESOLUTION, fps=FPS, enableUndistortion=True)
 
     sync.setSyncThreshold(timedelta(seconds=3 / FPS))
 
@@ -134,12 +134,6 @@ with dai.Pipeline() as pipeline:
 
         rgbIntrinsics = calibrationHandler.getCameraIntrinsics(RGB_SOCKET, int(frameRgbCv.shape[1]), int(frameRgbCv.shape[0]))
 
-        cvFrameUndistorted = cv2.undistort(
-            frameRgbCv,
-            np.array(rgbIntrinsics),
-            np.array(rgbDistortion),
-        )
-
         # Colorize the aligned depth
         thermalFrame = thermalAligned.getData().view(np.float16).reshape((thermalAligned.getHeight(), thermalAligned.getWidth())).astype(np.float32)
         # Create a mask for nan values
@@ -151,7 +145,7 @@ with dai.Pipeline() as pipeline:
         # Apply the mask back with black pixels (0)
         colormappedFrame[mask] = 0
 
-        blended = cv2.addWeighted(cvFrameUndistorted, rgbWeight, colormappedFrame, thermalWeight, 0)
+        blended = cv2.addWeighted(frameRgbCv, rgbWeight, colormappedFrame, thermalWeight, 0)
 
         cv2.putText(
             blended,
