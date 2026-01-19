@@ -6,10 +6,12 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <sstream>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "depthai/common/RotatedRect.hpp"
@@ -18,6 +20,7 @@
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 using Catch::Approx;
 
@@ -46,11 +49,14 @@ std::shared_ptr<dai::ImgFrame> createDepthFrame(const cv::Mat& depthMat, const s
     return depthFrame;
 }
 
-std::shared_ptr<dai::ImgFrame> createDetectionFrameWithManipulation(const std::shared_ptr<dai::ImgFrame>& depthFrame, unsigned width, unsigned height) {
+std::shared_ptr<dai::ImgFrame> createDetectionFrameWithManipulation(const std::shared_ptr<dai::ImgFrame>& depthFrame,
+                                                                    unsigned width,
+                                                                    unsigned height,
+                                                                    std::optional<dai::DeviceInfo> deviceInfo = std::nullopt) {
     constexpr float rotationDegrees = 180.0F;
     constexpr std::array<float, 4> shearMatrix = {1.0F, 0.08F, 0.12F, 1.0F};
 
-    dai::Pipeline pipeline;
+    dai::Pipeline pipeline = deviceInfo.has_value() ? dai::Pipeline{std::make_shared<dai::Device>(*deviceInfo)} : dai::Pipeline{};
     auto manip = pipeline.create<dai::node::ImageManip>();
     manip->initialConfig->setFrameType(depthFrame->getType());
     manip->initialConfig->setOutputSize(width, height);
@@ -73,9 +79,11 @@ std::shared_ptr<dai::ImgFrame> createDetectionFrameWithManipulation(const std::s
 std::tuple<dai::SpatialLocationCalculatorData, dai::ImgFrame, dai::SpatialImgDetections> processDepthFrame(
     dai::SpatialLocationCalculatorConfig initialConfig,
     std::shared_ptr<dai::ImgFrame> depthMat,
+    std::optional<dai::DeviceInfo> deviceInfo = std::nullopt,
     std::shared_ptr<dai::ImgDetections> detectionMsg = nullptr,
     std::optional<std::vector<dai::SpatialLocationCalculatorConfigData>> configData = std::nullopt) {
-    dai::Pipeline pipeline;
+    dai::Pipeline pipeline = deviceInfo.has_value() ? dai::Pipeline{std::make_shared<dai::Device>(*deviceInfo)} : dai::Pipeline{};
+
     auto spatial = pipeline.create<dai::node::SpatialLocationCalculator>();
 
     spatial->initialConfig = std::make_shared<dai::SpatialLocationCalculatorConfig>(initialConfig);
@@ -240,7 +248,7 @@ TEST_CASE("SpatialLocationCalculator synthetic depth data test") {
 
     dai::SpatialLocationCalculatorConfig config;
 
-    auto [spatialData, passthroughFrame, spatialDetections] = processDepthFrame(config, depthFrame, nullptr, configData);
+    auto [spatialData, passthroughFrame, spatialDetections] = processDepthFrame(config, depthFrame, std::nullopt, nullptr, configData);
     REQUIRE(spatialDetections.detections.empty());
     const auto results = spatialData.getSpatialLocations();
     REQUIRE(results.size() == roiSpecs.size());
@@ -317,7 +325,7 @@ TEST_CASE("Spatial keypoints support") {
     detectionMsg->transformation = depthFrame->transformation;
     detectionMsg->setTimestamp(depthFrame->getTimestamp());
     detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
-    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, std::nullopt, detectionMsg);
     static_cast<void>(unusedLegacy);
     static_cast<void>(unusedPassthrough);
     REQUIRE(spatialDetections.detections.size() == 1);
@@ -427,7 +435,7 @@ TEST_CASE("Spatial detections respect segmentation mask pixels") {
     detectionMsg->setTimestamp(depthFrame->getTimestamp());
     detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
 
-    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, std::nullopt, detectionMsg);
     static_cast<void>(unusedLegacy);
     static_cast<void>(unusedPassthrough);
 
@@ -506,7 +514,7 @@ TEST_CASE("Segmentation usage can be toggled") {
         detectionMsg->setTimestamp(depthFrame->getTimestamp());
         detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
 
-        auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+        auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, std::nullopt, detectionMsg);
         static_cast<void>(unusedLegacy);
         static_cast<void>(unusedPassthrough);
         REQUIRE(spatialDetections.detections.size() == 1);
@@ -560,8 +568,7 @@ TEST_CASE("Segmentation passthrough can be toggled") {
         auto detectionMsg = std::make_shared<dai::ImgDetections>();
         detectionMsg->detections.resize(1);
         auto& detection = detectionMsg->detections.front();
-        detection.setBoundingBox(
-            dai::RotatedRect(dai::Point2f(0.5F, 0.5F, true), dai::Size2f(0.4F, 0.4F, true), 0.0F));
+        detection.setBoundingBox(dai::RotatedRect(dai::Point2f(0.5F, 0.5F, true), dai::Size2f(0.4F, 0.4F, true), 0.0F));
         detection.confidence = 0.5F;
         detection.label = 2;
         detectionMsg->setSegmentationMask(mask, width, height);
@@ -569,7 +576,7 @@ TEST_CASE("Segmentation passthrough can be toggled") {
         detectionMsg->setTimestamp(depthFrame->getTimestamp());
         detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
 
-        auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+        auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, std::nullopt, detectionMsg);
         static_cast<void>(unusedLegacy);
         static_cast<void>(unusedPassthrough);
         REQUIRE(spatialDetections.detections.size() == 1);
@@ -596,6 +603,25 @@ TEST_CASE("Segmentation passthrough can be toggled") {
 }
 
 TEST_CASE("Spatial detections remap depth to detection transformations") {
+    using std::chrono::steady_clock;
+    const auto RESET_REMOTE_TIMEOUT_MS = std::chrono::milliseconds(2000);
+    auto waitForDevice = [RESET_REMOTE_TIMEOUT_MS](dai::DeviceInfo& connectedDeviceInfo) {
+        auto disappearStart = steady_clock::now();
+        while(steady_clock::now() - disappearStart < RESET_REMOTE_TIMEOUT_MS) {
+            std::vector<dai::DeviceInfo> devices = dai::XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, true, 50);
+            bool found = false;
+            for(const auto& dev : devices) {
+                if(dev.deviceId == connectedDeviceInfo.deviceId) {
+                    found = true;
+                }
+            }
+            if(!found) {
+                break;  // Device disappeared and went into reset
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    };
+
     constexpr unsigned width = 320;
     constexpr unsigned height = 240;
     const std::array<std::array<float, 3>, 3> intrinsics = {{
@@ -604,12 +630,19 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
         {{0.0F, 0.0F, 1.0F}},
     }};
 
-    dai::Device device = dai::Device();
-    if(device.getPlatform() == dai::Platform::RVC2) {  // skipping test on RVC2
-        device.close();
+    std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
+
+    if(device->getPlatform() == dai::Platform::RVC2) {  // skipping test on RVC2
+        device->close();
         return;
     }
-    device.close();
+
+    dai::DeviceInfo connectedDeviceInfo;
+    connectedDeviceInfo.deviceId = device->getDeviceId();
+    connectedDeviceInfo.platform = device->getDeviceInfo().platform;
+    device->close();
+
+    waitForDevice(connectedDeviceInfo);
 
     constexpr std::uint16_t farDepth = 4200;
     constexpr std::uint16_t nearDepth = 1400;
@@ -635,7 +668,8 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     detection.setBoundingBox(gtBbox);
     detection.confidence = 0.9F;
     detection.label = 7;
-    auto manipulatedDetectionFrame = createDetectionFrameWithManipulation(depthFrame, width, height);
+    auto manipulatedDetectionFrame = createDetectionFrameWithManipulation(depthFrame, width, height, connectedDeviceInfo);
+    waitForDevice(connectedDeviceInfo);
     detectionMsg->transformation = manipulatedDetectionFrame->transformation;
     detectionMsg->setTimestamp(manipulatedDetectionFrame->getTimestamp());
     detectionMsg->setSequenceNum(manipulatedDetectionFrame->getSequenceNum());
@@ -648,8 +682,7 @@ TEST_CASE("Spatial detections remap depth to detection transformations") {
     const float remappedCenterX = remappedRectPx.center.x;
     const float remappedCenterY = remappedRectPx.center.y;
     REQUIRE(remappedCenterX < static_cast<float>(width) / 2.0F);  // should land on the near-depth side
-
-    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, connectedDeviceInfo, detectionMsg, std::nullopt);
     static_cast<void>(unusedLegacy);
     static_cast<void>(unusedPassthrough);
     REQUIRE(spatialDetections.detections.size() == 1);
@@ -720,7 +753,7 @@ TEST_CASE("Spatial detections return zero depth when depth frame is empty") {
     detectionMsg->setTimestamp(depthFrame->getTimestamp());
     detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
 
-    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, std::nullopt, detectionMsg);
     static_cast<void>(unusedLegacy);
     static_cast<void>(unusedPassthrough);
     REQUIRE(spatialDetections.detections.size() == 1);
@@ -764,7 +797,7 @@ TEST_CASE("Spatial keypoints can be disabled") {
     detectionMsg->setTimestamp(depthFrame->getTimestamp());
     detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
 
-    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, std::nullopt, detectionMsg);
     static_cast<void>(unusedLegacy);
     static_cast<void>(unusedPassthrough);
     REQUIRE(spatialDetections.detections.size() == 1);
@@ -837,7 +870,7 @@ TEST_CASE("Keypoint spatial calculation skips invalid or thresholded depth") {
     detectionMsg->setTimestamp(depthFrame->getTimestamp());
     detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
 
-    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, std::nullopt, detectionMsg);
     static_cast<void>(unusedLegacy);
     static_cast<void>(unusedPassthrough);
     REQUIRE(spatialDetections.detections.size() == 1);
@@ -908,7 +941,7 @@ TEST_CASE("Spatial detections handle segmentation and keypoints together") {
     detectionMsg->setTimestamp(depthFrame->getTimestamp());
     detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
 
-    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, std::nullopt, detectionMsg);
     static_cast<void>(unusedLegacy);
     static_cast<void>(unusedPassthrough);
     REQUIRE(spatialDetections.detections.size() == 1);
