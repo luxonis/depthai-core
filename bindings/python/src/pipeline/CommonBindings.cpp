@@ -75,13 +75,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
-    py::enum_<DepthUnit> depthUnitEnum(m, "DepthUnit", DOC(dai, DepthUnit));
-    depthUnitEnum.value("METER", DepthUnit::METER)
-        .value("CENTIMETER", DepthUnit::CENTIMETER)
-        .value("MILLIMETER", DepthUnit::MILLIMETER)
-        .value("INCH", DepthUnit::INCH)
-        .value("FOOT", DepthUnit::FOOT)
-        .value("CUSTOM", DepthUnit::CUSTOM);
+    py::enum_<LengthUnit> LengthUnitEnum(m, "LengthUnit", DOC(dai, LengthUnit));
+    LengthUnitEnum.value("METER", LengthUnit::METER)
+        .value("CENTIMETER", LengthUnit::CENTIMETER)
+        .value("MILLIMETER", LengthUnit::MILLIMETER)
+        .value("INCH", LengthUnit::INCH)
+        .value("FOOT", LengthUnit::FOOT)
+        .value("CUSTOM", LengthUnit::CUSTOM);
+    m.attr("DepthUnit") = m.attr("LengthUnit");
     py::enum_<YoloDecodingFamily> yoloDecodingFamily(m, "YoloDecodingFamily");
     py::enum_<SerializationType> serializationType(m, "SerializationType");
     py::class_<DetectionParserOptions> detectionParserOptions(m, "DetectionParserOptions", DOC(dai, DetectionParserOptions));
