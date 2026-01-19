@@ -526,6 +526,75 @@ TEST_CASE("Segmentation usage can be toggled") {
     }
 }
 
+TEST_CASE("Segmentation passthrough can be toggled") {
+    constexpr unsigned width = 320;
+    constexpr unsigned height = 240;
+    const std::array<std::array<float, 3>, 3> intrinsics = {{
+        {{7.5F, 0.0F, 3.2F}},
+        {{0.0F, 4.8F, 2.4F}},
+        {{0.0F, 0.0F, 1.0F}},
+    }};
+
+    cv::Mat depthMat(height, width, CV_16UC1, cv::Scalar(2000));
+
+    std::vector<std::uint8_t> mask(width * height, 255);
+    const int segStartX = 40;
+    const int segStartY = 30;
+    const int segWidth = 60;
+    const int segHeight = 50;
+    for(int y = segStartY; y < segStartY + segHeight; ++y) {
+        for(int x = segStartX; x < segStartX + segWidth; ++x) {
+            mask.at(y * static_cast<int>(width) + x) = 0;
+        }
+    }
+
+    auto runSpatial = [&](bool passthrough) {
+        auto depthFrame = createDepthFrame(depthMat, intrinsics);
+        dai::SpatialLocationCalculatorConfig initialConfig;
+        initialConfig.setCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm::AVERAGE);
+        initialConfig.setDepthThresholds(0, 10000);
+        initialConfig.setUseSegmentation(true);
+        initialConfig.setSegmentationPassthrough(passthrough);
+        initialConfig.setCalculateSpatialKeypoints(false);
+
+        auto detectionMsg = std::make_shared<dai::ImgDetections>();
+        detectionMsg->detections.resize(1);
+        auto& detection = detectionMsg->detections.front();
+        detection.setBoundingBox(
+            dai::RotatedRect(dai::Point2f(0.5F, 0.5F, true), dai::Size2f(0.4F, 0.4F, true), 0.0F));
+        detection.confidence = 0.5F;
+        detection.label = 2;
+        detectionMsg->setSegmentationMask(mask, width, height);
+        detectionMsg->transformation = depthFrame->transformation;
+        detectionMsg->setTimestamp(depthFrame->getTimestamp());
+        detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
+
+        auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, detectionMsg);
+        static_cast<void>(unusedLegacy);
+        static_cast<void>(unusedPassthrough);
+        REQUIRE(spatialDetections.detections.size() == 1);
+        return spatialDetections;
+    };
+
+    SECTION("Passthrough enabled includes mask data") {
+        const auto spatialDetections = runSpatial(true);
+        const auto outMask = spatialDetections.getMaskData();
+        REQUIRE(outMask.has_value());
+        CHECK(outMask->size() == mask.size());
+        CHECK(*outMask == mask);
+        CHECK(spatialDetections.getSegmentationMaskWidth() == width);
+        CHECK(spatialDetections.getSegmentationMaskHeight() == height);
+    }
+
+    SECTION("Passthrough disabled omits mask data") {
+        const auto spatialDetections = runSpatial(false);
+        const auto outMask = spatialDetections.getMaskData();
+        CHECK_FALSE(outMask.has_value());
+        CHECK(spatialDetections.getSegmentationMaskWidth() == 0);
+        CHECK(spatialDetections.getSegmentationMaskHeight() == 0);
+    }
+}
+
 TEST_CASE("Spatial detections remap depth to detection transformations") {
     constexpr unsigned width = 320;
     constexpr unsigned height = 240;

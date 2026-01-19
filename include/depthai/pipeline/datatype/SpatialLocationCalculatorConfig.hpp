@@ -229,6 +229,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
                       globalKeypointRadius,
                       calculateSpatialKeypoints,
                       useSegmentation,
+                      segmentationPassthrough,
                       config);
 };
 

@@ -13,7 +13,7 @@ except ImportError:
     )
 
 device = dai.Device()
-fps = 30
+fps = 25
 modelName = "luxonis/yolov8-large-pose-estimation:coco-640x352"
 if device.getPlatform() == dai.Platform.RVC2:
     modelName = "luxonis/yolov8-nano-pose-estimation:coco-512x288"
@@ -29,22 +29,26 @@ with dai.Pipeline(device) as pipeline:
     cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
-    stereo = pipeline.create(dai.node.StereoDepth)
-
     monoLeftOut = monoLeft.requestFullResolutionOutput()
     monoRightOut = monoRight.requestFullResolutionOutput()
-    monoLeftOut.link(stereo.left)
-    monoRightOut.link(stereo.right)
 
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
-    align = pipeline.create(dai.node.ImageAlign)
-    stereo.depth.link(align.input)
-    detNN.passthrough.link(align.inputAlignTo)
 
     spatialCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
     spatialCalculator.initialConfig.setCalculateSpatialKeypoints(True)
-    align.outputAligned.link(spatialCalculator.inputDepth)
     detNN.out.link(spatialCalculator.inputDetections)
+
+    if device.getPlatform() == dai.Platform.RVC2:
+        depth = pipeline.create(dai.node.StereoDepth).build(monoLeftOut, monoRightOut, presetMode=dai.node.StereoDepth.PresetMode.ACCURACY)
+        detNN.passthrough.link(depth.inputAlignTo)
+        depth.depth.link(spatialCalculator.inputDepth)
+    else:
+        depth = pipeline.create(dai.node.NeuralDepth).build(monoLeftOut, monoRightOut, dai.DeviceModelZoo.NEURAL_DEPTH_MEDIUM)
+        align = pipeline.create(dai.node.ImageAlign)
+        depth.depth.link(align.input)
+        detNN.passthrough.link(align.inputAlignTo)
+
+        align.outputAligned.link(spatialCalculator.inputDepth)
 
     camQueue = detNN.passthrough.createOutputQueue()
     spatialOutputQueue = spatialCalculator.outputDetections.createOutputQueue()
@@ -141,8 +145,8 @@ with dai.Pipeline(device) as pipeline:
         vis.poll_events()
         vis.update_renderer()
 
-        cv2.imshow("depth", colorizedDepth)
-        cv2.imshow("det", image)
+        cv2.imshow("Depth", colorizedDepth)
+        cv2.imshow("Detections", image)
         key = cv2.waitKey(1)
         if key == ord('q'):
             vis.destroy_window()
