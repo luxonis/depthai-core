@@ -5,12 +5,14 @@
 #include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 #include <depthai/pipeline/node/ImageAlign.hpp>
+#include <variant>
+
+// depth map source nodes
+#include <depthai/pipeline/node/NeuralDepth.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
+#include <depthai/pipeline/node/ToF.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
-
-// standard
-#include <fstream>
 
 // shared
 #include <depthai/properties/SpatialDetectionNetworkProperties.hpp>
@@ -19,10 +21,18 @@ namespace dai {
 namespace node {
 
 /**
+ * @brief Variant type representing different depth sources.
+ * Supported depth sources: StereoDepth, NeuralDepth, ToF
+ */
+using DepthSource = std::variant<std::shared_ptr<StereoDepth>, std::shared_ptr<NeuralDepth>, std::shared_ptr<ToF>>;
+
+/**
  * @brief SpatialDetectionNetwork node. Runs a neural inference on input image and calculates spatial location data.
  */
 class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
+    using Model = NeuralNetwork::Model;
+
     explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
         : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device)
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -94,36 +104,34 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     constexpr static const char* NAME = "SpatialDetectionNetwork";
 
     /**
-     * @brief Build SpatialDetectionNetwork node. Connect Camera and StereoDepth outputs to this node's inputs. Also call setNNArchive() with provided model
-     * description.
-     * @param inputRgb: Camera node
-     * @param stereo: StereoDepth node
-     * @param modelDesc: Neural network model description
-     * @param fps: Desired frames per second
-     * @param resizeMode: Resize mode for input color frames
+     * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs and configure the
+     * inference model
+     * @param inputRgb Camera node
+     * @param depthSource Depth source node (StereoDepth, NeuralDepth, or ToF)
+     * @param model: Neural network model description, NNArchive or HubAI model id string
+     * @param fps Desired frames per second
+     * @param resizeMode Resize mode for input color frames
      * @returns Shared pointer to SpatialDetectionNetwork node
      */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
-                                                   const std::shared_ptr<StereoDepth>& stereo,
-                                                   dai::NNModelDescription modelDesc,
+                                                   const DepthSource& depthSource,
+                                                   const Model& model,
                                                    std::optional<float> fps = std::nullopt,
                                                    std::optional<dai::ImgResizeMode> resizeMode = std::nullopt);
 
     /**
-     * @brief Build SpatialDetectionNetwork node. Connect Camera and StereoDepth outputs to this node's inputs. Also call setNNArchive() with provided
-     * NNArchive.
-     * @param inputRgb: Camera node
-     * @param stereo: StereoDepth node
-     * @param nnArchive: Neural network archive
-     * @param fps: Desired frames per second
-     * @param resizeMode: Resize mode for input color frames
+     * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs and configure the
+     * inference model.
+     * @param inputRgb Camera node
+     * @param depthSource Depth source node (StereoDepth, NeuralDepth, or ToF)
+     * @param model: Neural network model description, NNArchive or HubAI model id string
+     * @param capability: Camera capabilities
      * @returns Shared pointer to SpatialDetectionNetwork node
      */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
-                                                   const std::shared_ptr<StereoDepth>& stereo,
-                                                   const dai::NNArchive& nnArchive,
-                                                   std::optional<float> fps = std::nullopt,
-                                                   std::optional<dai::ImgResizeMode> resizeMode = std::nullopt);
+                                                   const DepthSource& depthSource,
+                                                   const Model& model,
+                                                   const ImgFrameCapability& capability);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
@@ -340,7 +348,14 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-    void alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
+
+    // Unified depth alignment helper
+    void alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera);
+
+    // Type-specific alignment implementations
+    void alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
+    void alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera);
+    void alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera);
 
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;

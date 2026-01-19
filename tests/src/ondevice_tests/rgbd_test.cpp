@@ -24,7 +24,7 @@ TEST_CASE("basic rgbd") {
     right->build(dai::CameraBoardSocket::CAM_C);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
 
-    auto* out = color->requestOutput(std::pair<int, int>(1280, 800), dai::ImgFrame::Type::RGB888i);
+    auto* out = color->requestOutput(std::pair<int, int>(1280, 800), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
     left->requestOutput(std::pair<int, int>(1280, 800))->link(stereo->left);
     right->requestOutput(std::pair<int, int>(1280, 800))->link(stereo->right);
 

@@ -280,6 +280,28 @@ TEST_CASE("DetectionParser can set properties") {
         REQUIRE(properties.anchorsV2.empty());
         REQUIRE(properties.nKeypoints.has_value());
     }
+
+    SECTION("Mobilenet SSD") {
+        auto description = dai::NNModelDescription{"luxonis/mobilenet-ssd:300x300", "RVC2"};
+        auto archivePath = dai::getModelFromZoo(description);
+        dai::NNArchive nnArchive{archivePath};
+        REQUIRE_NOTHROW(parser.setNNArchive(nnArchive));
+
+        dai::DetectionParserOptions properties = parser.properties.parser;
+
+        REQUIRE(properties.nnFamily == DetectionNetworkType::MOBILENET);
+        REQUIRE_FALSE(properties.decodeSegmentation);
+        REQUIRE_FALSE(properties.decodeKeypoints);
+        REQUIRE_FALSE(properties.nKeypoints.has_value());
+    }
+
+    SECTION("Unsupported non-detection archive") {
+        auto description = dai::NNModelDescription{"luxonis/paddle-text-recognition:320x48", "RVC4"};
+        auto archivePath = dai::getModelFromZoo(description);
+        dai::NNArchive nnArchive{archivePath};
+
+        REQUIRE_THROWS(parser.setNNArchive(nnArchive));
+    }
 }
 
 TEST_CASE("DetectionParser replay test") {
@@ -300,7 +322,7 @@ TEST_CASE("DetectionParser replay test") {
         {"yolov6-nano:r2-coco-512x288:a26d1ee", yoloV6R2Coco512x288GroundTruth, peopleWalkingVideo},
         {"yolov6-nano:r2-coco-512x384:fb1429e", yoloV6R2Coco512x384GroundTruth, peopleWalkingVideo},
         {"yolov8-instance-segmentation-nano:coco-512x288:6c0402a", yoloV8InstanceSegmentationNanoCoco512x288GroundTruth, peopleWalkingVideo},
-        {"yolov8-large-pose-estimation:coco-640x352:1868e39", yoloV8LargePoseEstimationCoco640x352GroundTruth, peopleWalkingVideo},
+        {"luxonis/yolov8-large-pose-estimation:coco-640x352:5b88dac", yoloV8LargePoseEstimationCoco640x352GroundTruth, peopleWalkingVideo},
         {"yolov8-instance-segmentation-large:coco-640x352:701031f", yoloV8InstanceSegmentationLargeCoco640x352GroundTruth, peopleWalkingVideo},
         {"yolov10-nano:coco-512x288:007b5fe", yoloV10NanoCoco512x288GroundTruth, peopleWalkingVideo},
         {"ppe-detection:640x640:419a4e5", ppeDetection640x640GroundTruth, peopleWalkingVideo},

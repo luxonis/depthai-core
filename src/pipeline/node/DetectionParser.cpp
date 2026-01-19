@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -84,15 +85,27 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     std::vector<nn_archive::v1::Head> modelHeads = *model.heads;
     int yoloHeadIndex = 0;
     int numYoloHeads = 0;
+    int numMobilenetHeads = 0;
+    int mobilenetHeadIndex = 0;
     for(size_t i = 0; i < modelHeads.size(); i++) {
         if(modelHeads[i].parser == "YOLO" || modelHeads[i].parser == "YOLOExtendedParser") {
             yoloHeadIndex = static_cast<int>(i);
             numYoloHeads++;
+        } else if(modelHeads[i].parser == "SSD" || modelHeads[i].parser == "MOBILENET") {
+            numMobilenetHeads++;
+            mobilenetHeadIndex = static_cast<int>(i);
         }
     }
 
-    DAI_CHECK_V(numYoloHeads == 1, "NNArchive should contain exactly one YOLO head. Found {} YOLO heads.", numYoloHeads);  // no support for multi-head YOLO
-    const auto head = (*model.heads)[yoloHeadIndex];
+    DAI_CHECK_V(numYoloHeads > 0 || numMobilenetHeads > 0, "NNArchive should contain at least one detection head (YOLO or Mobilenet-SSD).");
+    DAI_CHECK_V(!(numYoloHeads > 0 && numMobilenetHeads > 0),
+                "NNArchive should contain only one type of detection head (YOLO or Mobilenet-SSD). Found {} YOLO heads and {} Mobilenet-SSD heads.",
+                numYoloHeads,
+                numMobilenetHeads);
+
+    int headIndex = (numYoloHeads > 0) ? yoloHeadIndex : mobilenetHeadIndex;
+
+    const auto head = (*model.heads)[headIndex];
 
     if(head.parser == "YOLO" || head.parser == "YOLOExtendedParser") {
         properties.parser.nnFamily = DetectionNetworkType::YOLO;
@@ -111,11 +124,37 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             properties.parser.nKeypoints = head.metadata.nKeypoints;
         }
 
+        const auto keypointNamesIt = head.metadata.extraParams.find("keypoint_label_names");
+        if(keypointNamesIt != head.metadata.extraParams.end() && keypointNamesIt->is_array() && !keypointNamesIt->empty()) {
+            pimpl->logger->debug("Found keypoint_label_names in extraParams");
+            std::vector<std::string> keypointLabelNames;
+            for(const auto& labelName : *keypointNamesIt) {
+                if(labelName.is_string()) {
+                    keypointLabelNames.emplace_back(labelName.get<std::string>());
+                } else {
+                    throw std::runtime_error("Non-string value found in keypoint_label_names array. keypoint_label_names should be an array of only strings.");
+                }
+            }
+            properties.parser.nKeypoints = static_cast<int>(keypointLabelNames.size());  // prefer keypoint label names size
+            properties.parser.decodeKeypoints = true;
+            properties.parser.keypointLabelNames = keypointLabelNames;
+        }
+
         if(head.metadata.yoloOutputs) {
             properties.parser.outputNamesToUse = *head.metadata.yoloOutputs;
         }
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
+        properties.parser.subtype.clear();
+        properties.parser.decodingFamily = YoloDecodingFamily::TLBR;
+        properties.parser.decodeSegmentation = false;
+        properties.parser.decodeKeypoints = false;
+        properties.parser.nKeypoints.reset();
+        properties.parser.outputNamesToUse.clear();
+        properties.parser.anchors.clear();
+        properties.parser.anchorsV2.clear();
+        properties.parser.anchorMasks.clear();
+        properties.parser.keypointEdges.clear();
     } else {
         DAI_CHECK_V(false, "Unsupported parser: {}", head.parser);
     }
@@ -391,9 +430,13 @@ void DetectionParser::run() {
     logger->info("Detection parser running on host.");
 
     using namespace std::chrono;
-    while(isRunning()) {
+    while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
-        std::shared_ptr<dai::NNData> sharedInputData = input.get<dai::NNData>();
+        std::shared_ptr<dai::NNData> sharedInputData;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            sharedInputData = input.get<dai::NNData>();
+        }
         auto outDetections = std::make_shared<dai::ImgDetections>();
 
         if(!sharedInputData) {
@@ -439,8 +482,11 @@ void DetectionParser::run() {
         outDetections->setTimestampDevice(inputData.getTimestampDevice());
         outDetections->transformation = inputData.transformation;
 
-        // Send detections
-        out.send(outDetections);
+        {
+            auto blockEvent = this->outputBlockEvent();
+            // Send detections
+            out.send(outDetections);
+        }
 
         auto tAbsoluteEnd = steady_clock::now();
         logger->debug("Detection parser total took {}ms, processing {}ms, getting_frames {}ms, sending_frames {}ms",

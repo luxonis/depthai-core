@@ -30,6 +30,7 @@ class RemoteConnectionImpl {
     bool removeTopic(const std::string& topicName);
     void registerPipeline(const Pipeline& pipeline);
     void registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback);
+    void registerBinaryService(const std::string& serviceName, std::function<std::vector<uint8_t>(const std::vector<uint8_t>&)> callback);
     int waitKey(int delayMs);
 
    private:

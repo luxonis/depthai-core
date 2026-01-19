@@ -33,7 +33,7 @@ class O3DNode(dai.node.ThreadedHostNode):
         )
         vis.add_geometry(coordinateFrame)
         first = True
-        while self.isRunning():
+        while self.mainLoop():
             try:
                 inPointCloud = self.inputPCL.tryGet()
             except dai.MessageQueue.QueueException:
@@ -80,7 +80,7 @@ with dai.Pipeline() as p:
     right.requestOutput((640, 400)).link(stereo.right)
     platform = p.getDefaultDevice().getPlatform()
     if platform == dai.Platform.RVC4:
-        out = color.requestOutput((640, 400), dai.ImgFrame.Type.RGB888i)
+        out = color.requestOutput((640, 400), dai.ImgFrame.Type.RGB888i, enableUndistortion=True)
         align = p.create(dai.node.ImageAlign)
         stereo.depth.link(align.input)
         out.link(align.inputAlignTo)

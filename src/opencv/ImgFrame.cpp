@@ -373,7 +373,7 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
             fb.stride = mat.cols;
             fb.p1Offset = 0;
             fb.p2Offset = size;
-            fb.p3Offset = size / 4;
+            fb.p3Offset = fb.p2Offset + size / 4;
             cv::cvtColor(mat, output, cv::ColorConversionCodes::COLOR_BGR2YUV_I420);
             setFrame(output);
         } break;

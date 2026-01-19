@@ -1,6 +1,9 @@
 name: Depthai Python CI/CD
 
 # Controls when the action will run. Triggers the workflow on push
+concurrency:
+  group: depthai-python-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
@@ -14,7 +17,7 @@ on:
     branches:
       - main
       - develop
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, reopened, labeled]
 
 ###################################
 ###################################
@@ -386,7 +389,7 @@ jobs:
         run: |
           cd bindings/python && mv wheelhouse/audited wheelhouse/audited_pre && mkdir -p wheelhouse/audited
           echo "Combining repaired wheels into one master wheel"
-          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited --strip
+          python3 ci/combine_wheels.py --input_folder=wheelhouse/audited_pre --output_folder=wheelhouse/audited
       - name: Upload combined wheels as an artifact
         uses: actions/upload-artifact@v4
         with:

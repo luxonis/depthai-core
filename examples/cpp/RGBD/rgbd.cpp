@@ -15,7 +15,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
         rec.log_static("world", rerun::ViewCoordinates::RDF);
-        while(isRunning()) {
+        while(mainLoop()) {
             auto pclIn = inputPCL.get<dai::PointCloudData>();
             auto rgbdIn = inputRGBD.get<dai::RGBDData>();
             if(pclIn != nullptr) {
@@ -73,7 +73,7 @@ int main() {
 
     auto platform = pipeline.getDefaultDevice()->getPlatform();
     if(platform == dai::Platform::RVC4) {
-        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i);
+        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
         out->link(rgbd->inColor);
         align = pipeline.create<dai::node::ImageAlign>();
         stereo->depth.link(align->input);

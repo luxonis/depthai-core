@@ -11,7 +11,9 @@
 #include <unordered_set>
 
 #include "depthai/common/CameraInfo.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "nlohmann/json.hpp"
@@ -49,7 +51,80 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 }
 }  // namespace
 
-CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath) {
+CalibrationHandler::ExtrinsicGraphValidationResult CalibrationHandler::validateExtrinsicGraph() const {
+    std::unordered_map<CameraBoardSocket, CameraBoardSocket> originMap;
+    for(const auto& kv : eepromData.cameraData) {
+        CameraBoardSocket start = kv.first;
+        CameraBoardSocket originCamera;
+        std::unordered_set<CameraBoardSocket> localVisited;
+        CameraBoardSocket current = start;
+
+        while(true) {
+            if(localVisited.count(current)) {
+                return {CalibrationHandler::ExtrinsicGraphError::CycleDetected, current, eepromData.cameraData.at(current).extrinsics.toCameraSocket};
+            }
+
+            localVisited.insert(current);
+
+            const auto& info = eepromData.cameraData.at(current);
+
+            if(info.extrinsics.toCameraSocket == CameraBoardSocket::AUTO) break;
+
+            if(eepromData.cameraData.count(info.extrinsics.toCameraSocket) == 0) {
+                return {CalibrationHandler::ExtrinsicGraphError::DanglingReference, current, info.extrinsics.toCameraSocket};
+            }
+
+            current = info.extrinsics.toCameraSocket;
+        }
+        std::vector<std::vector<float>> srcOriginMatrix = getExtrinsicsToOrigin(start, false, originCamera);
+        originMap[start] = originCamera;
+    }
+    // Now, check that all cameras have the same origin
+    if(!originMap.empty()) {
+        CameraBoardSocket expectedOrigin = originMap.begin()->second;
+
+        for(const auto& kv : originMap) {
+            CameraBoardSocket camOrigin = kv.second;
+
+            if(camOrigin != expectedOrigin) {
+                return {CalibrationHandler::ExtrinsicGraphError::DisconnectedGraph, camOrigin, expectedOrigin};
+            }
+        }
+    }
+
+    return {};
+}
+
+void CalibrationHandler::validateCalibrationHandler(bool throwOnError) const {
+    auto result = validateExtrinsicGraph();
+
+    if(result.error == ExtrinsicGraphError::None) return;
+
+    std::string message;
+    switch(result.error) {
+        case ExtrinsicGraphError::None:
+            return;
+        case ExtrinsicGraphError::CycleDetected:
+            message = "Extrinsic cycle detected: " + toString(result.at) + " → " + toString(result.to);
+            break;
+
+        case ExtrinsicGraphError::DanglingReference:
+            message = "Dangling extrinsic reference: " + toString(result.at) + " → " + toString(result.to);
+            break;
+
+        case ExtrinsicGraphError::DisconnectedGraph:
+            message = "Missing extrinsic link in calibration chain: " + toString(result.at) + " → " + toString(result.to);
+            break;
+    }
+
+    if(throwOnError) {
+        throw std::runtime_error(message);
+    } else {
+        std::cout << "Warning: " << message << std::endl;
+    }
+}
+
+CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, std::optional<bool> validateCalibration) {
     std::ifstream jsonStream(eepromDataPath);
     // TODO(sachin): Check if the file exists first.
     if(!jsonStream.is_open()) {
@@ -60,15 +135,23 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath) {
     }
     nlohmann::json jsonData = nlohmann::json::parse(jsonStream);
     eepromData = jsonData;
+    if(validateCalibration.value_or(false)) {
+        validateCalibrationHandler();
+    }
 }
 
-CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson) {
+CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson, std::optional<bool> validateCalibration) {
     CalibrationHandler calib;
     calib.eepromData = eepromDataJson;
+    if(validateCalibration.value_or(false)) {
+        calib.validateCalibrationHandler();
+    }
     return calib;
 }
 
-CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath, std::filesystem::path boardConfigPath) {
+CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath,
+                                       std::filesystem::path boardConfigPath,
+                                       std::optional<bool> validateCalibration) {
     auto matrixConv = [](std::vector<float>& src, int startIdx) {
         std::vector<std::vector<float>> dest;
         int currIdx = startIdx;
@@ -191,10 +274,16 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath
     temp = camera.extrinsics.rotationMatrix[1][2];
     camera.extrinsics.rotationMatrix[1][2] = camera.extrinsics.rotationMatrix[2][1];
     camera.extrinsics.rotationMatrix[2][1] = temp;
+    if(validateCalibration.value_or(false)) {
+        validateCalibrationHandler();
+    }
 }
 
-CalibrationHandler::CalibrationHandler(EepromData newEepromData) {
+CalibrationHandler::CalibrationHandler(EepromData newEepromData, std::optional<bool> validateCalibration) {
     eepromData = newEepromData;
+    if(validateCalibration.value_or(false)) {
+        validateCalibrationHandler();
+    }
 }
 
 dai::EepromData CalibrationHandler::getEepromData() const {
@@ -445,6 +534,150 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
     }
 
     return extrinsics;
+}
+
+std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
+                                                                              bool useSpecTranslation,
+                                                                              CameraBoardSocket& originSocket) const {
+    // Define scale parameter for mm to cm conversion
+    constexpr float MM_TO_CM_SCALE = getDepthUnitMultiplier(DepthUnit::MILLIMETER) / getDepthUnitMultiplier(DepthUnit::CENTIMETER);
+
+    const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
+
+    originSocket = housingExtrinsics.toCameraSocket;
+
+    // Convert CameraBoardSocket to HousingCoordinateSystem (they have the same enum order)
+    HousingCoordinateSystem housingOrigin = static_cast<HousingCoordinateSystem>(static_cast<int32_t>(housingExtrinsics.toCameraSocket));
+
+    auto housingRotation = housingExtrinsics.rotationMatrix;
+    auto housingTranslation = housingExtrinsics.translation;          // Point3f
+    auto housingSpecTranslation = housingExtrinsics.specTranslation;  // Point3f
+
+    // ------------------------------------------------------------
+    // If using spec translation, try to get it from the database
+    // ------------------------------------------------------------
+    if(useSpecTranslation) {
+        const auto& housingData = getHousingCoordinates();
+
+        if(!eepromData.productName.empty()) {
+            auto productIt = housingData.find(eepromData.productName);
+            if(productIt != housingData.end()) {
+                auto housingIt = productIt->second.find(housingOrigin);
+                if(housingIt != productIt->second.end()) {
+                    // Get the translation from the database (in mm) and convert to cm
+                    const auto& dbTranslation = housingIt->second;
+                    housingSpecTranslation =
+                        Point3f(-dbTranslation[0] / MM_TO_CM_SCALE, -dbTranslation[1] / MM_TO_CM_SCALE, -dbTranslation[2] / MM_TO_CM_SCALE);
+                }
+            }
+        }
+    }
+
+    // Build 4x4 transform matrix from HousingOrigin to Housing
+    std::vector<std::vector<float>> T_HousingToHousingOrigin(4, std::vector<float>(4, 0.0f));
+
+    for(int r = 0; r < 3; ++r) {
+        // Copy rotation row
+        for(int c = 0; c < 3; ++c) {
+            T_HousingToHousingOrigin[r][c] = housingRotation[r][c];
+        }
+
+        // Pick translation vector
+        const auto& t = useSpecTranslation ? housingSpecTranslation : housingTranslation;
+
+        // Map row index -> x/y/z
+        float tval = (r == 0 ? t.x : (r == 1 ? t.y : t.z));
+        T_HousingToHousingOrigin[r][3] = tval;
+    }
+
+    // Last row = [0 0 0 1]
+    T_HousingToHousingOrigin[3][3] = 1.0f;
+
+    // ------------------------------------------------------------
+    // Get the requested specific housing coordinate system translation and subtract it
+    // ------------------------------------------------------------
+    if(useSpecTranslation && housingCS != HousingCoordinateSystem::AUTO) {
+        const auto& housingData = getHousingCoordinates();
+
+        if(!eepromData.productName.empty()) {
+            auto productIt = housingData.find(eepromData.productName);
+            if(productIt != housingData.end()) {
+                auto requestedHousingIt = productIt->second.find(housingCS);
+                if(requestedHousingIt != productIt->second.end()) {
+                    // Get the translation from the database (in mm) and convert to cm
+                    const auto& requestedDbTranslation = requestedHousingIt->second;
+
+                    // Subtract the requested housing translation (converting from mm to cm)
+                    T_HousingToHousingOrigin[0][3] += requestedDbTranslation[0] / MM_TO_CM_SCALE;
+                    T_HousingToHousingOrigin[1][3] += requestedDbTranslation[1] / MM_TO_CM_SCALE;
+                    T_HousingToHousingOrigin[2][3] += requestedDbTranslation[2] / MM_TO_CM_SCALE;
+                }
+            }
+        }
+    }
+
+    return T_HousingToHousingOrigin;
+}
+
+std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(CameraBoardSocket srcCamera,
+                                                                          const HousingCoordinateSystem housingCS,
+                                                                          bool useSpecTranslation) const {
+    // Ensure we have calibration data for the requested source camera
+    if(eepromData.cameraData.find(srcCamera) == eepromData.cameraData.end()) {
+        throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
+    }
+
+    std::vector<std::vector<float>> camToHousing;
+    std::vector<std::vector<float>> camToHousingOrigin;
+    CameraBoardSocket housingOriginCamera;
+    CameraBoardSocket originCamera1;
+    CameraBoardSocket originCamera2;
+
+    // ------------------------------------------------------------
+    // 1. Retrieve the following transformations:
+    //    cam_src           → origin
+    //    housing_origin    → origin
+    //    housing           → housing_origin
+    // These are provided by the calibration data.
+    // ------------------------------------------------------------
+
+    std::vector<std::vector<float>> housingToHousingOrigin = getHousingToHousingOrigin(housingCS, useSpecTranslation, housingOriginCamera);
+
+    std::vector<std::vector<float>> housingOriginToOrigin = getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
+
+    std::vector<std::vector<float>> camToOrigin = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera2);
+
+    // The "origin" for both lookups must be the same camera
+    if(originCamera1 != originCamera2) {
+        throw std::runtime_error("Missing extrinsic link from source camera to destination camera.");
+    }
+
+    // ------------------------------------------------------------
+    // 2. To combine cam_src → origin with origin → housing_origin,
+    //    we need the matrices:
+    //         origin → housing_origin
+    //         housing_origin → housing
+    //    But what we have:
+    //         housing_origin → origin
+    //         housing → housing_origin
+    //    So we invert that SE3 transform first.
+    // ------------------------------------------------------------
+    invertSe3Matrix4x4InPlace(housingOriginToOrigin);   // now represents origin → housing_origin
+    invertSe3Matrix4x4InPlace(housingToHousingOrigin);  // now represents housing_origin → housing
+    // ------------------------------------------------------------
+    // 3. Compose transformations:
+    //    cam_src → origin → housing_origin
+    // ------------------------------------------------------------
+    camToHousingOrigin = matMul(housingOriginToOrigin, camToOrigin);
+
+    // ------------------------------------------------------------
+    // 4. And finally:
+    //    cam_src → housing_origin → housing
+    //    Which gives us: cam_src → housing
+    // ------------------------------------------------------------
+    camToHousing = matMul(housingToHousingOrigin, camToHousingOrigin);
+
+    return camToHousing;
 }
 
 std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) const {
@@ -806,6 +1039,11 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
         eepromData.cameraData.emplace(srcCameraId, camera_info);
     } else {
         eepromData.cameraData[srcCameraId].extrinsics = extrinsics;
+    }
+    auto result = validateExtrinsicGraph();
+    if(result.error == ExtrinsicGraphError::CycleDetected) {
+        auto message = "Extrinsic cycle detected: " + toString(result.at) + " → " + toString(result.to);
+        throw std::runtime_error(message);
     }
     return;
 }

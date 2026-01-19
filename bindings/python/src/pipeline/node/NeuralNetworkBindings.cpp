@@ -2,6 +2,7 @@
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
@@ -14,6 +15,10 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
     py::class_<NeuralNetworkProperties, std::shared_ptr<NeuralNetworkProperties>> neuralNetworkProperties(
         m, "NeuralNetworkProperties", DOC(dai, NeuralNetworkProperties));
     auto neuralNetwork = ADD_NODE(NeuralNetwork);
+    py::class_<NeuralNetwork::Model> neuralNetworkModel(neuralNetwork, "Model");
+    neuralNetworkModel.def(py::init<const NNModelDescription&>(), py::arg("modelDesc"))
+        .def(py::init<const NNArchive&>(), py::arg("nnArchive"))
+        .def(py::init<const std::string&>(), py::arg("model_id"));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -66,46 +71,79 @@ void bind_neuralnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("input"),
              py::arg("nnArchive"),
              DOC(dai, node, NeuralNetwork, build))
-        .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, dai::NNModelDescription, std::optional<float>, std::optional<dai::ImgResizeMode>>(
-                 &NeuralNetwork::build),
-             py::arg("input"),
-             py::arg("modelDesc"),
-             py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-             DOC(dai, node, NeuralNetwork, build, 2))
-        .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, dai::NNArchive, std::optional<float>, std::optional<dai::ImgResizeMode>>(&NeuralNetwork::build),
-             py::arg("input"),
-             py::arg("model"),
-             py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-             DOC(dai, node, NeuralNetwork, build, 3))
+        .def(
+            "build",
+            [](NeuralNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               NNModelDescription modelDesc,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, NeuralNetwork::Model{std::move(modelDesc)}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("modelDesc"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, NeuralNetwork, build, 2))
+        .def(
+            "build",
+            [](NeuralNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const NNArchive& nnArchive,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, NeuralNetwork::Model{nnArchive}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, NeuralNetwork, build, 2))
         .def(
             "build",
             [](NeuralNetwork& self,
                const std::shared_ptr<Camera>& input,
                const std::string& model,
                std::optional<float> fps,
-               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, NNModelDescription{model}, fps, resizeMode); },
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, NeuralNetwork::Model{model}, fps, resizeMode); },
             py::arg("input"),
             py::arg("model"),
             py::arg("fps") = std::nullopt,
             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-            DOC(dai, node, NeuralNetwork, build))
+            DOC(dai, node, NeuralNetwork, build, 2))
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<Camera>& input, const NeuralNetwork::Model& model, const ImgFrameCapability& capability) {
+                return self.build(input, model, capability);
+            },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("capability"),
+            DOC(dai, node, NeuralNetwork, build, 3))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>>(&NeuralNetwork::build),
-             py::arg("input"),
-             py::arg("model"),
-             py::arg("fps") = std::nullopt,
-             DOC(dai, node, NeuralNetwork, build, 4))
-        .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>>(&NeuralNetwork::build),
-             py::arg("input"),
-             py::arg("nnArchive"),
-             py::arg("fps") = std::nullopt,
-             DOC(dai, node, NeuralNetwork, build, 5))
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<ReplayVideo>& input, const NNModelDescription modelDesc, std::optional<float> fps) {
+                return self.build(input, NeuralNetwork::Model{modelDesc}, fps);
+            },
+            py::arg("input"),
+            py::arg("modelDesc"),
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, NeuralNetwork, build, 4))
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<ReplayVideo>& input, const std::string& model, std::optional<float> fps) {
+                return self.build(input, NeuralNetwork::Model{NNModelDescription{model}}, fps);
+            },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, NeuralNetwork, build, 4))
+        .def(
+            "build",
+            [](NeuralNetwork& self, const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
+                return self.build(input, NeuralNetwork::Model{nnArchive}, fps);
+            },
+            py::arg("input"),
+            py::arg("nnArchive"),
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, NeuralNetwork, build, 4))
 #endif
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&NeuralNetwork::setBlob), py::arg("blob"), DOC(dai, node, NeuralNetwork, setBlob))
         .def("setBlob", py::overload_cast<const std::filesystem::path&>(&NeuralNetwork::setBlob), py::arg("path"), DOC(dai, node, NeuralNetwork, setBlob, 2))

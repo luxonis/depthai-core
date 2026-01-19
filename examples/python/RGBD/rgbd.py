@@ -21,7 +21,7 @@ class RerunNode(dai.node.ThreadedHostNode):
         rr.init("", spawn=True)
         rr.log("world", rr.ViewCoordinates.RDF)
         rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001]))
-        while self.isRunning():
+        while self.mainLoop():
             try:
                 inPointCloud = self.inputPCL.get()
             except dai.MessageQueue.QueueException:
@@ -59,7 +59,7 @@ with dai.Pipeline() as p:
     platform = p.getDefaultDevice().getPlatform()
 
     if platform == dai.Platform.RVC4:
-        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i)
+        out = color.requestOutput((640,400), dai.ImgFrame.Type.RGB888i, enableUndistortion=True)
         align = p.create(dai.node.ImageAlign)
         stereo.depth.link(align.input)
         out.link(align.inputAlignTo)
