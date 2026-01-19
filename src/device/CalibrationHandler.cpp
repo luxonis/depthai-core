@@ -695,7 +695,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
     //    cam_src → housing_origin → housing
     //    Which gives us: cam_src → housing
     // ------------------------------------------------------------
-    camToHousing = matMul(HousingToHousingOrigin, camToHousingOrigin);
+    camToHousing = matMul(housingToHousingOrigin, camToHousingOrigin);
     scaleTranslationInPlace(camToHousing, unit);
 
     return camToHousing;
