@@ -32,6 +32,7 @@
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/MapData.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/NeuralDepthConfig.hpp"
@@ -257,6 +258,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::PointCloudData:
             return parseDatatype<PointCloudData>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::MapData:
+            return parseDatatype<MapData>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::PipelineEvent:
             return parseDatatype<PipelineEvent>(metadataStart, serializedObjectSize, data, fd);
             break;

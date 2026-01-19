@@ -11,13 +11,6 @@
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Size2f.hpp"
 
-#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
-    #pragma push_macro("_res")
-    #undef _res
-    #define _res resfixed_
-    #include "rtabmap/core/StereoCameraModel.h"
-    #pragma pop_macro("_res")
-#endif
 namespace dai {
 /**
  * CalibrationHandler is an interface to read/load/write structured calibration and device data.
@@ -611,37 +604,6 @@ class CalibrationHandler {
      *
      */
     void validateCalibrationHandler(bool throwOnError = true) const;
-
-// Optional - RTABMap support
-#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
-    /**
-     * @note This API only available if RTABMap support is enabled
-     *
-     * Provide the rtabmap::StereoCameraModel object
-     *
-     * @param model StereoCameraModel object to be filled with the intrinsics and extrinsics of the camera
-     * @param socketID CameraBoardSocket of the camera
-     * @param width Width of the image for which intrinsics is requested
-     * @param height Height of the image for which intrinsics is requested
-     */
-    rtabmap::StereoCameraModel getRTABMapCameraModel(CameraBoardSocket cameraId,
-                                                     int width,
-                                                     int height,
-                                                     const rtabmap::Transform& localTransform = rtabmap::Transform::getIdentity(),
-                                                     float alphaScaling = -1.0,
-                                                     dai::CameraBoardSocket left = CameraBoardSocket::CAM_B,
-                                                     dai::CameraBoardSocket right = CameraBoardSocket::CAM_C);
-
-#else
-    template <typename... T>
-    struct dependent_false {
-        static constexpr bool value = false;
-    };
-    template <typename... T>
-    void getRTABMapCameraModel(T...) {
-        static_assert(dependent_false<T...>::value, "Library not configured with RTABMap support");
-    }
-#endif
 
    private:
     /** when the user is writing extrinsics do we validate if

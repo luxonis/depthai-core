@@ -17,10 +17,10 @@ int main() {
     auto imu = pipeline.create<dai::node::IMU>();
     auto odom = pipeline.create<dai::node::BasaltVIO>();
     auto slam = pipeline.create<dai::node::RTABMapSLAM>();
-    auto params = rtabmap::ParametersMap();
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDCreateOccupancyGrid(), "true"));
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGrid3D(), "true"));
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapSaveWMState(), "true"));
+    std::map<std::string, std::string> params{};
+    params.insert(std::make_pair<std::string, std::string>("RGBD/CreateOccupancyGrid", "true"));
+    params.insert(std::make_pair<std::string, std::string>("Grid/3D", "true"));
+    params.insert(std::make_pair<std::string, std::string>("Rtabmap/SaveWMState", "true"));
     slam->setParams(params);
     auto rerun = pipeline.create<RerunNode>();
 

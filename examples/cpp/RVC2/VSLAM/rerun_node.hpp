@@ -3,6 +3,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/MapData.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -24,7 +25,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
     Input inputImg{*this, {.name = "inImg", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
     Input inputObstaclePCL{*this, {.name = "inObstaclePCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
     Input inputGroundPCL{*this, {.name = "inGroundPCL", .types = {{dai::DatatypeEnum::PointCloudData, true}}}};
-    Input inputMap{*this, {.name = "inMap", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputMap{*this, {.name = "inMap", .types = {{dai::DatatypeEnum::MapData, true}}}};
 
     void getFocalLengthFromImage(std::shared_ptr<dai::ImgFrame> imgFrame) {
         auto p = getParentPipeline();
@@ -49,7 +50,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
             }
             auto pclObstData = inputObstaclePCL.tryGet<dai::PointCloudData>();
             auto pclGrndData = inputGroundPCL.tryGet<dai::PointCloudData>();
-            auto mapData = inputMap.tryGet<dai::ImgFrame>();
+            auto mapData = inputMap.tryGet<dai::MapData>();
             if(transData != nullptr) {
                 auto trans = transData->getTranslation();
                 auto quat = transData->getQuaternion();
@@ -96,9 +97,10 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 }
 #endif
                 if(mapData != nullptr) {
-                    auto image = mapData->getCvFrame();
+                    auto map = mapData->map;
+                    auto image = map.getCvFrame();
                     rec.log("map", rerun::Image(reinterpret_cast<const uint8_t*>(image.data),
-                        {static_cast<uint32_t>(mapData->getWidth()), static_cast<uint32_t>(mapData->getHeight())}, rerun::datatypes::ColorModel::L));
+                        {static_cast<uint32_t>(map.getWidth()), static_cast<uint32_t>(map.getHeight())}, rerun::datatypes::ColorModel::L));
                 }
             }
         }
