@@ -171,7 +171,7 @@ struct IMUProperties : PropertiesSerializable<Properties, IMUProperties> {
     std::int32_t batchReportThreshold = 1;
     /* Maximum number of IMU packets in a batch. Maximum 5. */
     std::int32_t maxBatchReports = 5;
-    /*
+    /**
      * Whether to perform firmware update or not.
      * Default value: false.
      */

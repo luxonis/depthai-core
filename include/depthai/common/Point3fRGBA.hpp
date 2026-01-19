@@ -8,7 +8,7 @@ namespace dai {
 /**
  * Point3fRGBA structure
  *
- * x,y,z coordinates and RGB color values that define a 3D point with color.
+ * x,y,z coordinates and RGB color values that define a 3D point with color and alpha.
  */
 struct Point3fRGBA {
     Point3fRGBA() = default;

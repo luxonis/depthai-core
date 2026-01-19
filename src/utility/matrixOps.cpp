@@ -1,5 +1,8 @@
 #include "depthai/utility/matrixOps.hpp"
 
+#include <array>
+#include <stdexcept>
+
 namespace dai {
 namespace matrix {
 
@@ -222,6 +225,54 @@ std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]) {
     R[2][2] = c + uz * uz * one_minus_c;
 
     return R;
+}
+
+std::array<std::array<float, 2>, 2> getMatrixInverse(const std::array<std::array<float, 2>, 2>& matrix) {
+    auto det = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+    if(det == 0) {
+        throw std::runtime_error("Determinant is zero");
+    }
+    return {{{matrix[1][1] / det, -matrix[0][1] / det}, {-matrix[1][0] / det, matrix[0][0] / det}}};
+}
+
+std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix_float) {
+    // Step 1: Convert to double
+    std::array<std::array<double, 3>, 3> matrix;
+    for(int i = 0; i < 3; ++i)
+        for(int j = 0; j < 3; ++j) matrix[i][j] = static_cast<double>(matrix_float[i][j]);
+
+    std::array<std::array<float, 3>, 3> inv;
+    double det = matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1])
+                 - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0])
+                 + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+
+    if(det == 0) {
+        throw std::runtime_error("Matrix is singular and cannot be inverted.");
+    }
+
+    std::array<std::array<double, 3>, 3> adj;
+
+    adj[0][0] = (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]);
+    adj[0][1] = -(matrix[0][1] * matrix[2][2] - matrix[0][2] * matrix[2][1]);
+    adj[0][2] = (matrix[0][1] * matrix[1][2] - matrix[0][2] * matrix[1][1]);
+
+    adj[1][0] = -(matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]);
+    adj[1][1] = (matrix[0][0] * matrix[2][2] - matrix[0][2] * matrix[2][0]);
+    adj[1][2] = -(matrix[0][0] * matrix[1][2] - matrix[0][2] * matrix[1][0]);
+
+    adj[2][0] = (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+    adj[2][1] = -(matrix[0][0] * matrix[2][1] - matrix[0][1] * matrix[2][0]);
+    adj[2][2] = (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]);
+
+    double invDet = 1.0 / det;
+
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            inv[i][j] = static_cast<float>(adj[i][j] * invDet);
+        }
+    }
+
+    return inv;
 }
 
 }  // namespace matrix

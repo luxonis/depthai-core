@@ -72,7 +72,7 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties>, public Source
      */
     std::int32_t getMaxBatchReports() const;
 
-    /*
+    /**
      * Whether to perform firmware update or not.
      * Default value: false.
      */

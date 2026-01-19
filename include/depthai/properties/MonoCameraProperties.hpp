@@ -22,7 +22,7 @@ struct MonoCameraProperties : PropertiesSerializable<Properties, MonoCameraPrope
      */
     enum class SensorResolution : int32_t { THE_720_P, THE_800_P, THE_400_P, THE_480_P, THE_1200_P, THE_4000X3000, THE_4224X3136 };
 
-    /*
+    /**
      * Initial controls applied to MonoCamera node
      */
     CameraControl initialControl;

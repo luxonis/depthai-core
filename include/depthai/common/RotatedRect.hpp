@@ -19,11 +19,19 @@ struct RotatedRect {
     float angle = 0.f;
 
     RotatedRect() = default;
+    /**
+     * A rotated rectangle is specified by the center point, size, and rotation angle in degrees.
+     */
     RotatedRect(const Point2f& center, const Size2f& size, float angle) : center(center), size(size), angle(angle) {
         if(size.isNormalized() != center.isNormalized()) {
             throw std::runtime_error("Cannot create RotatedRect with mixed normalization");
         }
     }
+    /**
+     * Construct RotatedRect from provided dai::Rect rect and angle
+     * @param rect dai::Rect rectangle
+     * @param angle Rotation angle in degrees
+     */
     RotatedRect(const Rect& rect, float angle = 0.f)
         : center(rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f, rect.isNormalized()),
           size(rect.width, rect.height, rect.isNormalized()),
@@ -36,7 +44,7 @@ struct RotatedRect {
 
     bool isNormalized() const {
         if(size.isNormalized() != center.isNormalized()) {
-            throw std::runtime_error("Cannot denormalize RotatedRect with mixed normalization");
+            throw std::runtime_error("Cannot determine normalization as size and center have mixed normalization.");
         }
         return size.isNormalized();
     }
