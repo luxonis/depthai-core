@@ -75,8 +75,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
-    py::enum_<LengthUnit> LengthUnitEnum(m, "LengthUnit", DOC(dai, LengthUnit));
-    LengthUnitEnum.value("METER", LengthUnit::METER)
+    py::enum_<LengthUnit> lengthUnitEnum(m, "lengthUnit", DOC(dai, LengthUnit));
+    lengthUnitEnum.value("METER", LengthUnit::METER)
         .value("CENTIMETER", LengthUnit::CENTIMETER)
         .value("MILLIMETER", LengthUnit::MILLIMETER)
         .value("INCH", LengthUnit::INCH)
