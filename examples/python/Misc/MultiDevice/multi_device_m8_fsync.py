@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 
-"""
-Minimal changes to original script:
-  * Adds simple timestamp-based synchronisation across multiple devices.
-  * Presents frames side‑by‑side when they are within 1 / FPS seconds.
-  * Keeps v3 API usage and overall code structure intact.
-"""
-
 import contextlib
 import datetime
 
