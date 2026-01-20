@@ -206,5 +206,5 @@ TEST_CASE("Test Multi-device Fsync with different FPS values", "[fsync]") {
     // auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f, 120.0f, 240.0f, 300.0f, 600.0f);
     auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f);
     CAPTURE(fps);
-    testFsync(fps, 3e-3, 60, 10, 4);
+    testFsync(fps, 1e-3, 60, 10, 4);
 }
