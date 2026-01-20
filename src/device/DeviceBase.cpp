@@ -1254,8 +1254,8 @@ ExternalFrameSyncRole DeviceBase::getExternalFrameSyncRole() {
     return pimpl->rpcClient->call("getExternalFrameSyncRole");
 }
 
-std::tuple<bool, std::string> DeviceBase::setExternalStrobeLimits(float min, float max) {
-    return pimpl->rpcClient->call("setExternalStrobeLimits", min, max);
+std::tuple<bool, std::string> DeviceBase::setExternalStrobeRelativeLimits(float min, float max) {
+    return pimpl->rpcClient->call("setExternalStrobeRelativeLimits", min, max);
 }
 
 void DeviceBase::setExternalStrobeEnable(bool enable) {

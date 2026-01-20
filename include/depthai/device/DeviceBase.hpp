@@ -819,16 +819,20 @@ class DeviceBase {
     ExternalFrameSyncRole getExternalFrameSyncRole();
 
     /**
-     * Sets the external strobe limits. Limits the strobe duty cycle, between 0 and 1. 0 means always off, 1 means always on.
+     * Sets the relative external strobe limits.
+     * Limits the strobe duty cycle, between 0 and 1, as a fraction of the whole period. 0 means always off, 1 means always on.
+     * The rising edge of the strobe signal is always synced to end of exposure.
+     * The falling edge of the strobe signal is then limited according to the min and max values.
      * Default values are 0.005 and 0.995
      * @param min Minimum strobe value
      * @param max Maximum strobe value
      * @returns Tuple of bool and string. Bool specifies if role was set without failures. String is the error message describing the failure reason.
      */
-    std::tuple<bool, std::string> setExternalStrobeLimits(float min, float max);
+    std::tuple<bool, std::string> setExternalStrobeRelativeLimits(float min, float max);
 
     /**
-     * Set whether the external strobe should be enabled
+     * Set whether the external strobe should be enabled.
+     * External strobe signal is low for the duration of exposure, and high for the rest of the frame.
      * @param enable Enables or disables strobe
      */
     void setExternalStrobeEnable(bool enable);
