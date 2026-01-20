@@ -43,12 +43,13 @@ class PipelineEventDispatcherInterface {
             }
         }
         void end() {
-            if(canceled || std::uncaught_exceptions() > 0) return;
+            if(std::uncaught_exceptions() > 0) return;
             PipelineEvent event;
             event.type = type;
             event.source = source;
             event.sequenceNum = sequence;
             event.queueSize = queueSize;
+            event.status = canceled ? PipelineEvent::Status::CANCELLED : PipelineEvent::Status::SUCCESS;
             dispatcher.endTrackedEvent(event, endTs);
             canceled = true;
         }

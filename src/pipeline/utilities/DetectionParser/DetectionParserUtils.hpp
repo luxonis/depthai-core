@@ -17,7 +17,7 @@ struct DetectionCandidate {
     int label, headIndex, rowIndex, columnIndex;
     std::optional<std::string> labelName;
 };
-/*
+/**
 Decode anchor free yolo v6r1 with sigmoid assisted center detection
 */
 void decodeR1AF(const dai::NNData& nnData,
@@ -25,7 +25,7 @@ void decodeR1AF(const dai::NNData& nnData,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger);
 
-/*
+/**
 Decode anchor based yolo v3 and v3-Tiny
 */
 void decodeV3AB(const dai::NNData& nnData,
@@ -33,7 +33,7 @@ void decodeV3AB(const dai::NNData& nnData,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger);
 
-/*
+/**
 Decode anchor based networks, e.g., yolo v5, v7, P
 */
 void decodeV5AB(const dai::NNData& nnData,
@@ -41,7 +41,7 @@ void decodeV5AB(const dai::NNData& nnData,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger);
 
-/*
+/**
 Decode anchor free top-left-bottom-right (TLBR) style networks, e.g., yolo v6r2, v8, v10, v11
 */
 void decodeTLBR(const dai::NNData& nnData,

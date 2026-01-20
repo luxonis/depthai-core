@@ -25,7 +25,7 @@ class GeneratorNode : public node::CustomThreadedNode<GeneratorNode> {
    public:
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
-    Input ping{*this, {"_ping", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input ping{*this, {"_ping", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Output ack{*this, {"_ack", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     void run() override {
@@ -65,7 +65,7 @@ class ConsumerNode : public node::CustomThreadedNode<ConsumerNode> {
    public:
     Input input{*this, {"input", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
-    Input ping{*this, {"_ping", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input ping{*this, {"_ping", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Output ack{*this, {"_ack", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     void run() override {
@@ -107,7 +107,7 @@ class MapNode : public node::CustomThreadedNode<MapNode> {
     InputMap inputs{*this, "inputs", {DEFAULT_NAME, DEFAULT_GROUP, false, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     OutputMap outputs{*this, "outputs", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
-    Input ping{*this, {"_ping", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input ping{*this, {"_ping", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Output ack{*this, {"_ack", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     void run() override {
@@ -155,7 +155,7 @@ class BridgeNode : public node::CustomThreadedNode<BridgeNode> {
     Input input{*this, {"input", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
-    Input ping{*this, {"_ping", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input ping{*this, {"_ping", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Output ack{*this, {"_ack", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     void run() override {
@@ -192,12 +192,11 @@ class BridgeNode : public node::CustomThreadedNode<BridgeNode> {
 };
 
 class TryNode : public node::CustomThreadedNode<TryNode> {
-    bool doStep = true;
-    int runTo = 0;
-
    public:
     Input input{*this, {"input", DEFAULT_GROUP, true, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
     Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+
+    bool doOnce = false;
 
     void run() override {
         while(mainLoop()) {
@@ -213,6 +212,7 @@ class TryNode : public node::CustomThreadedNode<TryNode> {
                 auto blockEvent = this->outputBlockEvent();
                 output.trySend(msg);
             }
+            if(doOnce) break;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
@@ -475,6 +475,54 @@ TEST_CASE("Node timings test") {
     ph.stop();
 }
 
+TEST_CASE("FPS should go towards zero when pipeline is stopped") {
+    PipelineHandler ph;
+    ph.start();
+
+    // Let nodes run for a while
+    auto start = std::chrono::steady_clock::now();
+    while(std::chrono::steady_clock::now() - start < std::chrono::seconds(3)) {
+        for(const auto& nodeName : ph.getNodeNames()) {
+            ph.pingNoAck(nodeName, 0);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    auto state1 = ph.pipeline.getPipelineState().nodes().detailed();
+
+    std::this_thread::sleep_for(std::chrono::seconds(7));
+
+    auto state2 = ph.pipeline.getPipelineState().nodes().detailed();
+
+    for(const auto& nodeName : ph.getNodeNames()) {
+        auto nodeState1 = state1.nodeStates.at(ph.getNodeId(nodeName));
+        auto nodeState2 = state2.nodeStates.at(ph.getNodeId(nodeName));
+
+        REQUIRE(nodeState1.mainLoopTiming.isValid());
+        REQUIRE(nodeState2.mainLoopTiming.isValid());
+        REQUIRE(nodeState1.mainLoopTiming.fps == Catch::Approx(10.f).margin(5.f));
+        REQUIRE(nodeState2.mainLoopTiming.fps == Catch::Approx(0.f).margin(2.f));
+
+        for(const auto& [inputName, inputState1] : nodeState1.inputStates) {
+            if(inputName.rfind("_ping") != std::string::npos) continue;
+            auto inputState2 = nodeState2.inputStates.at(inputName);
+            REQUIRE(inputState1.timing.isValid());
+            REQUIRE(inputState2.timing.isValid());
+            REQUIRE(inputState1.timing.fps == Catch::Approx(10.f).margin(5.f));
+            REQUIRE(inputState2.timing.fps == Catch::Approx(0.f).margin(2.f));
+        }
+        for(const auto& [outputName, outputState1] : nodeState1.outputStates) {
+            if(outputName.rfind("_ack") != std::string::npos) continue;
+            auto outputState2 = nodeState2.outputStates.at(outputName);
+            REQUIRE(outputState1.timing.isValid());
+            REQUIRE(outputState2.timing.isValid());
+            REQUIRE(outputState1.timing.fps == Catch::Approx(10.f).margin(5.f));
+            REQUIRE(outputState2.timing.fps == Catch::Approx(0.f).margin(2.f));
+        }
+    }
+    ph.stop();
+}
+
 TEST_CASE("Input duration test") {
     PipelineHandler ph(1);
     ph.start();
@@ -507,6 +555,8 @@ TEST_CASE("Try I/O test") {
     p.enablePipelineDebugging();
 
     auto tryNode = p.create<TryNode>();
+    auto tryNode2 = p.create<TryNode>();
+    tryNode2->doOnce = true;
     auto gen = p.create<GeneratorNode>();
     auto cons = p.create<ConsumerNode>();
     gen->output.link(tryNode->input);
@@ -520,6 +570,7 @@ TEST_CASE("Try I/O test") {
     REQUIRE(!state.nodeStates.at(tryNode->id).inputStates["input"].isValid());
     REQUIRE(state.nodeStates.at(tryNode->id).inputStates["input"].timing.fps == 0.f);
     REQUIRE(state.nodeStates.at(tryNode->id).outputStates["output"].isValid());
+    REQUIRE(state.nodeStates.at(tryNode2->id).inputStates["input"].state == dai::NodeState::InputQueueState::State::IDLE);
 }
 
 TEST_CASE("State callback test") {

@@ -49,6 +49,11 @@ void showDepth(const cv::Mat& depthFrameIn,
 int main() {
     int fps = 20;
     dai::Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    if(!device->isNeuralDepthSupported()) {
+        std::cout << "Exiting Vpp example: device doesn't support NeuralDepth.\n";
+        return 0;
+    }
 
     // Left / Right cameras
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, fps);

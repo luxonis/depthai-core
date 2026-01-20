@@ -13,7 +13,7 @@ class NodeState {
    public:
     struct DurationEvent {
         PipelineEvent startEvent;
-        uint64_t durationUs;
+        uint64_t durationUs = 0;
         DEPTHAI_SERIALIZE(DurationEvent, startEvent, durationUs);
     };
     struct DurationStats {

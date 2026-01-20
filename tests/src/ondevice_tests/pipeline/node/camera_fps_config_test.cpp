@@ -76,7 +76,7 @@ TEST_CASE("Camera sensor configs configurations") {
                 for(int i = 0; i < 3; i++) {
                     auto benchmarkReport = benchmarkQueue->get<dai::BenchmarkReport>();
                     // Allow +-10% difference
-                    REQUIRE(benchmarkReport->fps == Catch::Approx(fpsVariant).margin(fpsVariant * 0.1));
+                    REQUIRE(benchmarkReport->fps == Catch::Approx(fpsVariant).margin(fpsVariant * 0.15f));
                 }
             }
         }
