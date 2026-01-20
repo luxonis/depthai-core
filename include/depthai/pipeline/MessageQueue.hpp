@@ -60,14 +60,14 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
           name(c.name),
           callbacks(c.callbacks),
           uniqueCallbackId(c.uniqueCallbackId),
-          pipelineEventDispatcher(c.pipelineEventDispatcher) {};
+          pipelineEventDispatcher(c.pipelineEventDispatcher){};
     MessageQueue(MessageQueue&& m) noexcept
         : enable_shared_from_this(m),
           queue(std::move(m.queue)),
           name(std::move(m.name)),
           callbacks(std::move(m.callbacks)),
           uniqueCallbackId(m.uniqueCallbackId),
-          pipelineEventDispatcher(m.pipelineEventDispatcher) {};
+          pipelineEventDispatcher(m.pipelineEventDispatcher){};
 
     MessageQueue& operator=(const MessageQueue& c) {
         queue = c.queue;
