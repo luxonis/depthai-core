@@ -231,7 +231,8 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
     std::unique_lock<std::mutex> lock(waitMutex);
     inputsWaitCv->wait(lock, [&]() {
         for(MessageQueue& queue : queues) {
-            if(queue.has() || queue.isClosed()) return true;
+            if(queue.isClosed()) continue;
+            if(queue.has()) return true;
         }
         return false;
     });
@@ -243,6 +244,7 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
 
     // 4. Return true if data is available
     for(MessageQueue& queue : queues) {
+        if(queue.isClosed()) continue;
         if(queue.has()) return true;
     }
     return false;
