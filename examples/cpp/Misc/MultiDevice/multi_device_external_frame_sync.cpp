@@ -8,10 +8,13 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
+#include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+#include <map>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -46,12 +49,12 @@ class FPSCounter {
     }
 };
 
-dai::Node::Output* createPipeline(dai::Pipeline& pipeline, dai::CameraBoardSocket socket, int sensorFps, dai::ExternalFrameSyncRole role) {
+dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline, dai::CameraBoardSocket socket, int sensorFps, dai::ExternalFrameSyncRole role) {
     std::shared_ptr<dai::node::Camera> cam;
     if(role == dai::ExternalFrameSyncRole::MASTER) {
-        cam = pipeline.create<dai::node::Camera>()->build(socket, std::nullopt, sensorFps);
+        cam = pipeline->create<dai::node::Camera>()->build(socket, std::nullopt, sensorFps);
     } else {
-        cam = pipeline.create<dai::node::Camera>()->build(socket, std::nullopt);
+        cam = pipeline->create<dai::node::Camera>()->build(socket, std::nullopt);
     }
 
     auto output = cam->requestOutput(std::make_pair(640, 480), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH);
@@ -73,9 +76,9 @@ void interruptHandler(int sig) {
 }
 
 int main(int argc, char** argv) {
-    if(argc < 5) {
+    if(argc < 6) {
         std::cout << "Usage: " << argv[0]
-                  << " <target_fps> <recv-all-timeout-sec> <sync-threshold-sec> <initial-sync-timeout-sec> [<device_ip_1> <device_ip_2> [device_ip_3]] ..."
+                  << " <target_fps> <recv-all-timeout-sec> <sync-threshold-sec> <initial-sync-timeout-sec> <sockets> [<device_ip_1> <device_ip_2> [device_ip_3]] ..."
                   << std::endl;
         std::exit(0);
     }
@@ -88,10 +91,17 @@ int main(int argc, char** argv) {
     float syncThresholdSec = std::stof(argv[3]);
     int initialSyncTimeoutSec = std::stoi(argv[4]);
 
+    std::vector<std::string> sockets;
+    std::stringstream ss(argv[5]);
+    std::string item;
+    while(std::getline(ss, item, ',')) {
+        sockets.push_back(item);
+    }
+
     std::vector<dai::DeviceInfo> deviceInfos;
 
-    if(argc > 5) {
-        for(int i = 5; i < argc; i++) {
+    if(argc > 6) {
+        for(int i = 6; i < argc; i++) {
             deviceInfos.emplace_back(std::string(argv[i]));
         }
     } else {
@@ -103,18 +113,20 @@ int main(int argc, char** argv) {
         std::exit(0);
     }
 
-    std::vector<dai::Node::Output*> masterNodes;
-    std::vector<std::shared_ptr<dai::MessageQueue>> slaveQueues;
-    std::vector<dai::Pipeline> masterPipelines;
-    std::vector<dai::Pipeline> slavePipelines;
-    std::vector<std::string> deviceIds;
+    std::shared_ptr<dai::Pipeline> masterPipeline;
+    std::optional<std::map<std::string, dai::Node::Output*>> masterNode;
 
-    std::vector<std::shared_ptr<dai::InputQueue>> inputQueues;
+    std::map<std::string, std::shared_ptr<dai::Pipeline>> slavePipelines;
+    std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>> slaveQueues;
+
+    std::map<std::string, std::shared_ptr<dai::InputQueue>> inputQueues;
     std::vector<std::string> outputNames;
+    std::vector<std::string> camSockets;
 
     for(auto deviceInfo : deviceInfos) {
-        auto pipeline = dai::Pipeline(std::make_shared<dai::Device>(deviceInfo));
-        auto device = pipeline.getDefaultDevice();
+        auto pipeline = std::make_shared<dai::Pipeline>(std::make_shared<dai::Device>(deviceInfo));
+        auto device = pipeline->getDefaultDevice();
+        std::string name = deviceInfo.getXLinkDeviceDesc().name;
 
         auto role = device->getExternalFrameSyncRole();
 
@@ -122,59 +134,78 @@ int main(int argc, char** argv) {
         std::cout << "    Device ID: " << device->getDeviceId() << std::endl;
         std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
-        auto socket = device->getConnectedCameras()[0];
-        if(device->getProductName().find("OAK4-D") != std::string::npos || device->getProductName().find("OAK-4-D") != std::string::npos) {
-            socket = device->getConnectedCameras()[1];
-        }
+        for(auto socket : device->getConnectedCameras()) {
+            if(std::find(sockets.begin(), sockets.end(), dai::toString(socket)) == sockets.end()) {
+                continue;
+            }
+            auto outNode = createPipeline(pipeline, socket, targetFps, role);
 
-        auto outNode = createPipeline(pipeline, socket, targetFps, role);
+            if(role == dai::ExternalFrameSyncRole::MASTER) {
+                if(!masterNode.has_value()) {
+                    masterNode.emplace();
+                }
+
+                masterNode.value().emplace(dai::toString(socket), outNode);
+            } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
+                if(slaveQueues.find(name) == slaveQueues.end()) {
+                    slaveQueues.emplace(name, std::map<std::string, std::shared_ptr<dai::MessageQueue>>());
+                }
+
+                slaveQueues[name].emplace(dai::toString(socket), outNode->createOutputQueue());
+            } else {
+                throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
+            }
+
+            if(std::find(camSockets.begin(), camSockets.end(), dai::toString(socket)) == camSockets.end()) {
+                camSockets.emplace_back(dai::toString(socket));
+            }
+        }
 
         if(role == dai::ExternalFrameSyncRole::MASTER) {
             device->setExternalStrobeEnable(true);
-            masterPipelines.push_back(pipeline);
-            masterNodes.push_back(outNode);
             std::cout << device->getDeviceId() << " is master" << std::endl;
+
+            if(masterPipeline != nullptr) {
+                throw std::runtime_error("Only one master pipeline is supported");
+            }
+            masterPipeline = pipeline;
         } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
-            slavePipelines.push_back(pipeline);
-            slaveQueues.push_back(outNode->createOutputQueue());
+            slavePipelines[name] = pipeline;
             std::cout << device->getDeviceId() << " is slave" << std::endl;
         } else {
             throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
         }
-
-        deviceIds.push_back(deviceInfo.getXLinkDeviceDesc().name);
     }
 
-    if(masterPipelines.size() > 1) {
-        throw std::runtime_error("Multiple masters detected!");
-    }
-    if(masterPipelines.size() == 0) {
+    if(masterPipeline == nullptr || !masterNode.has_value()) {
         throw std::runtime_error("No master detected!");
     }
     if(slavePipelines.size() < 1) {
         throw std::runtime_error("No slaves detected!");
     }
 
-    auto sync = masterPipelines[0].create<dai::node::Sync>();
+    auto sync = masterPipeline->create<dai::node::Sync>();
     sync->setRunOnHost(true);
     sync->setSyncThreshold(std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))));
-    masterNodes[0]->link(sync->inputs["master"]);
-    outputNames.push_back("master");
+    for(auto p : *masterNode) {
+        p.second->link(sync->inputs[std::string("master_") + p.first]);
+        outputNames.push_back(std::string("master_") + p.first);
+    }
 
-    for(unsigned long i = 0; i < slaveQueues.size(); i++) {
-        auto name = std::string("slave_") + std::to_string(i);
-        outputNames.push_back(name);
-        auto input_queue = sync->inputs[name].createInputQueue();
-        inputQueues.push_back(input_queue);
+    for(auto p : slaveQueues) {
+        for(auto q : p.second) {
+            auto name = std::string("slave_") + p.first + "_" + q.first;
+            outputNames.push_back(name);
+            auto input_queue = sync->inputs[name].createInputQueue();
+            inputQueues.emplace(name, input_queue);
+        }
     }
 
     auto queue = sync->out.createOutputQueue();
 
-    for(auto p : masterPipelines) {
-        p.start();
-    }
+    masterPipeline->start();
     for(auto p : slavePipelines) {
-        p.start();
+        p.second->start();
     }
 
     FPSCounter fpsCounter;
@@ -189,9 +220,11 @@ int main(int argc, char** argv) {
     bool waitingForInitialSync = true;
 
     while(running) {
-        for(int i = 0; i < slaveQueues.size(); i++) {
-            while(slaveQueues[i]->has()) {
-                inputQueues[i]->send(slaveQueues[i]->get());
+        for(auto p : slaveQueues) {
+            for(auto q : p.second) {
+                while(q.second->has()) {
+                    inputQueues[std::string("slave_") + p.first + "_" + q.first]->send(q.second->get());
+                }
             }
         }
 
@@ -216,22 +249,40 @@ int main(int argc, char** argv) {
         }
 
         if(latestFrameGroup.has_value() && size_t(latestFrameGroup.value()->getNumMessages()) == outputNames.size()) {
-            std::vector<std::chrono::time_point<std::chrono::steady_clock>> tsValues;
+            using ts_type = std::chrono::time_point<std::chrono::steady_clock>;
+            std::map<std::string, ts_type> tsValues;
             for(auto name : outputNames) {
                 auto frame = latestFrameGroup.value()->get<dai::ImgFrame>(name);
-                tsValues.push_back(frame->getTimestamp(dai::CameraExposureOffset::END));
+                tsValues.emplace(name, frame->getTimestamp(dai::CameraExposureOffset::END));
             }
 
-            cv::Mat imgs;
-            for(int i = 0; i < outputNames.size(); i++) {
-                auto msg = latestFrameGroup.value()->get<dai::ImgFrame>(outputNames[i]);
+            std::vector<cv::Mat> imgs;
+            std::vector<bool> firstFrameDone;
+            for(auto name : camSockets) {
+                imgs.emplace_back();
+                firstFrameDone.emplace_back(false);
+            }
+
+            int32_t idx = -1;
+            for(auto outputName : outputNames) {
+                for(uint32_t i = 0; i < camSockets.size(); i++) {
+                    if(outputName.find(camSockets[i]) != std::string::npos) {
+                        idx = i;
+                        break;
+                    }
+                }
+                if(idx == -1) {
+                    throw std::runtime_error(std::string("Could not find camera socket for ") + outputName);
+                }
+                
+                auto msg = latestFrameGroup.value()->get<dai::ImgFrame>(outputName);
                 auto fps = fpsCounter.getFps();
                 auto frame = msg->getCvFrame();
 
-                cv::putText(frame, deviceIds[i] + " (" + outputNames[i] + ")", {20, 40}, cv::FONT_HERSHEY_SIMPLEX, 0.6, {0, 127, 255}, 2, cv::LINE_AA);
+                cv::putText(frame, outputName, {20, 40}, cv::FONT_HERSHEY_SIMPLEX, 0.6, {0, 127, 255}, 2, cv::LINE_AA);
 
                 cv::putText(frame,
-                            "Timestamp: " + std::to_string(1e-6 * std::chrono::duration_cast<std::chrono::microseconds>(tsValues[i].time_since_epoch()).count())
+                            "Timestamp: " + std::to_string(1e-6 * std::chrono::duration_cast<std::chrono::microseconds>(tsValues[outputName].time_since_epoch()).count())
                                 + " | FPS: " + std::to_string(fps).substr(0, 5),
                             {20, 80},
                             cv::FONT_HERSHEY_SIMPLEX,
@@ -240,14 +291,24 @@ int main(int argc, char** argv) {
                             2,
                             cv::LINE_AA);
 
-                if(i == 0) {
-                    imgs = frame;
+                if(!firstFrameDone[idx]) {
+                    imgs[idx] = frame;
+                    firstFrameDone[idx] = true;
                 } else {
-                    cv::hconcat(frame, imgs, imgs);
+                    cv::hconcat(frame, imgs[idx], imgs[idx]);
                 }
             }
 
-            auto delta = *std::max_element(tsValues.begin(), tsValues.end()) - *std::min_element(tsValues.begin(), tsValues.end());
+            auto maxElement = std::max_element(tsValues.begin(), tsValues.end(),
+                    [](const std::pair<std::string, ts_type> &p1, const std::pair<std::string, ts_type> &p2){
+                        return p1.second < p2.second;
+                    });
+            auto minElement = std::min_element(tsValues.begin(), tsValues.end(),
+                    [](const std::pair<std::string, ts_type> &p1, const std::pair<std::string, ts_type> &p2){
+                        return p1.second < p2.second;
+                    });
+            
+            auto delta = maxElement->second - minElement->second;
 
             bool syncStatus = std::chrono::duration_cast<std::chrono::seconds>(delta).count() < syncThresholdSec;
             std::string syncStatusStr = (syncStatus) ? "in sync" : "out of sync";
@@ -274,17 +335,21 @@ int main(int argc, char** argv) {
                 running = false;
             }
 
-            cv::putText(imgs,
-                        syncStatusStr + " | delta = "
-                            + std::to_string(1e-3 * float(std::chrono::duration_cast<std::chrono::microseconds>(delta).count())).substr(0, 5) + " ms",
-                        {20, 120},
-                        cv::FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        color,
-                        2,
-                        cv::LINE_AA);
+            for(auto i = 0; i < imgs.size(); i++) {
+                cv::putText(imgs[i],
+                            syncStatusStr + " | delta = "
+                                + std::to_string(1e-3 * float(std::chrono::duration_cast<std::chrono::microseconds>(delta).count())).substr(0, 5) + " ms",
+                            {20, 120},
+                            cv::FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            color,
+                            2,
+                            cv::LINE_AA);
+            }
 
-            cv::imshow("synced_view", imgs);
+            for (auto i = 0; i < imgs.size(); i++) {
+                cv::imshow("synced_view_" + camSockets[i], imgs[i]);
+            }
 
             latestFrameGroup.reset();
         }
