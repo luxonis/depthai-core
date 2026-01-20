@@ -97,7 +97,7 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 }
 #endif
                 if(mapData != nullptr) {
-                    auto map = mapData->map;
+                    auto &map = mapData->map;
                     auto image = map.getCvFrame();
                     rec.log("map", rerun::Image(reinterpret_cast<const uint8_t*>(image.data),
                         {static_cast<uint32_t>(map.getWidth()), static_cast<uint32_t>(map.getHeight())}, rerun::datatypes::ColorModel::L));

@@ -172,7 +172,6 @@ void BasaltVIO::setAccelNoiseStd(const std::vector<double>& accelNoiseStd) {
         throw std::invalid_argument("Accelerometer noise vector must have 3 elements.");
     }
     this->accelNoiseStd = accelNoiseStd;
-    ;
 }
 
 void BasaltVIO::setGyroNoiseStd(const std::vector<double>& gyroNoiseStd) {
@@ -184,9 +183,8 @@ void BasaltVIO::setGyroNoiseStd(const std::vector<double>& gyroNoiseStd) {
 
 void BasaltVIO::setGyroBias(const std::vector<double>& gyroBias) {
     if(gyroBias.size() != 12) {
-        throw std::invalid_argument("Gyroscope bias vector must have 9 elements.");
+        throw std::invalid_argument("Gyroscope bias vector must have 12 elements.");
     }
-
     this->gyroBias = gyroBias;
 }
 

@@ -9,13 +9,10 @@
 namespace dai {
 
 /**
- * RGBD message. Carries RGB and Depth frames.
+ * MapData message. Carries grid map data and minX/minY messages to help place it in 3D space.
  */
 class MapData : public Buffer {
    public:
-    /**
-     * Construct RGBD message.
-     */
     MapData() = default;
 
     virtual ~MapData() = default;

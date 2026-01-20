@@ -55,8 +55,6 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
         bool vio_debug;
         bool vio_extended_logging;
 
-        //  double vio_outlier_threshold;
-        //  int vio_filter_iteration;
         int vio_max_iterations;
 
         double vio_obs_std_dev;
@@ -79,7 +77,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
         bool vio_marg_lost_landmarks;
         bool vio_fix_long_term_keyframes;
         double vio_kf_marg_feature_ratio;
-        KeyframeMargCriteria vio_kf_marg_criteria;  // Keyframe removal criteria
+        KeyframeMargCriteria vio_kf_marg_criteria;
 
         double mapper_obs_std_dev;
         double mapper_obs_huber_thresh;

@@ -36,7 +36,7 @@ void bind_basaltnode(pybind11::module& m, void* pCallstack) {
         .def_readonly("passthrough", &BasaltVIO::passthrough, DOC(dai, node, BasaltVIO, passthrough))
         .def("setImuUpdateRate", &BasaltVIO::setImuUpdateRate, py::arg("rate"), DOC(dai, node, BasaltVIO, setImuUpdateRate))
         .def("setConfigPath", &BasaltVIO::setConfigPath, py::arg("path"), DOC(dai, node, BasaltVIO, setConfigPath))
-        .def("setVioConfig", &BasaltVIO::setConfig, py::arg("config"), DOC(dai, node, BasaltVIO, setConfig))
+        .def("setConfig", &BasaltVIO::setConfig, py::arg("config"), DOC(dai, node, BasaltVIO, setConfig))
         .def("setAccelBias", &BasaltVIO::setAccelBias, py::arg("bias"))
         .def("setGyroBias", &BasaltVIO::setGyroBias, py::arg("bias"))
         .def("setAccelNoiseStd", &BasaltVIO::setAccelNoiseStd, py::arg("noise"))
