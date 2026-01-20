@@ -846,40 +846,40 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("enable"),
             DOC(dai, DeviceBase, setTimesync, 2))
         .def(
-            "setM8FsyncRole",
-            [](DeviceBase& d, M8FsyncRole role) {
+            "setExternalFrameSyncRole",
+            [](DeviceBase& d, ExternalFrameSyncRole role) {
                 py::gil_scoped_release release;
-                return d.setM8FsyncRole(role);
+                return d.setExternalFrameSyncRole(role);
             },
             py::arg("role"),
-            DOC(dai, DeviceBase, setM8FsyncRole)
+            DOC(dai, DeviceBase, setExternalFrameSyncRole)
         )
         .def(
-            "getM8FsyncRole",
+            "getExternalFrameSyncRole",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
-                return d.getM8FsyncRole();
+                return d.getExternalFrameSyncRole();
             },
-            DOC(dai, DeviceBase, getM8FsyncRole)
+            DOC(dai, DeviceBase, getExternalFrameSyncRole)
         )
         .def(
-            "setM8StrobeLimits",
+            "setExternalStrobeLimits",
             [](DeviceBase& d, float min, float max) {
                 py::gil_scoped_release release;
-                return d.setM8StrobeLimits(min, max);
+                return d.setExternalStrobeLimits(min, max);
             },
             py::arg("min"),
             py::arg("max"),
-            DOC(dai, DeviceBase, setM8StrobeLimits)
+            DOC(dai, DeviceBase, setExternalStrobeLimits)
         )
         .def(
-            "setM8StrobeEnable",
+            "setExternalStrobeEnable",
             [](DeviceBase& d, bool enable) {
                 py::gil_scoped_release release;
-                d.setM8StrobeEnable(enable);
+                d.setExternalStrobeEnable(enable);
             },
             py::arg("enable"),
-            DOC(dai, DeviceBase, setM8StrobeEnable)
+            DOC(dai, DeviceBase, setExternalStrobeEnable)
         )
         .def(
             "getDeviceName",
