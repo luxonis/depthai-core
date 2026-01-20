@@ -13,6 +13,7 @@
 #include "common/Keypoint.hpp"
 #include "common/Point2f.hpp"
 #include "common/RotatedRect.hpp"
+#include "common/Size2f.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
@@ -181,6 +182,13 @@ dai::SpatialImgDetection createSpatialDetection(const dai::ImgDetection& detecti
     return spatialDetection;
 }
 
+dai::RotatedRect scaleRect(const dai::RotatedRect& rect, float scaleFactor) {
+    dai::RotatedRect scaledRect = rect;
+    scaledRect.size.width *= scaleFactor;
+    scaledRect.size.height *= scaleFactor;
+    return scaledRect;
+}
+
 void computeSpatialData(const std::shared_ptr<const dai::ImgFrame>& depthFrame,
                         const std::vector<dai::SpatialLocationCalculatorConfigData>& configDataVec,
                         std::vector<dai::SpatialLocations>& spatialLocations,
@@ -233,7 +241,7 @@ void computeSpatialData(const std::shared_ptr<const dai::ImgFrame>& depthFrame,
         std::uint32_t maxNumPixels = ((xend - xstart + stepSize - 1) / stepSize) * ((yend - ystart + stepSize - 1) / stepSize);
         DepthStats depthStats(cfg.depthThresholds.lowerThreshold, cfg.depthThresholds.upperThreshold, maxNumPixels);
 
-        const uint16_t* plane = (uint16_t*)depthFrame->data->getData().data();
+        const uint16_t* plane = reinterpret_cast<const uint16_t*>(depthFrame->data->getData().data());
         for(int y = ystart; y < yend; y += stepSize) {
             for(int x = xstart; x < xend; x += stepSize) {
                 uint16_t px = plane[y * depthWidth + x];
@@ -308,8 +316,14 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
     const dai::ImgTransformation* depthTransformation = &depthFrame.transformation;
     const bool areAligned = detectionsTransformation.isAlignedTo(*depthTransformation);
 
+    SpatialLocationCalculatorConfigData boundingBoxMapping;
+    boundingBoxMapping.depthThresholds.lowerThreshold = lowerThreshold;
+    boundingBoxMapping.depthThresholds.upperThreshold = upperThreshold;
+    boundingBoxMapping.calculationAlgorithm = calculationAlgorithm;
+
     const dai::RotatedRect detectionBBox = detection.getBoundingBox();
-    dai::RotatedRect denormalizedRect = detectionBBox;
+    dai::RotatedRect denormalizedRect = scaleRect(detectionBBox, config.bBoxScaleFactor);
+    boundingBoxMapping.roi = dai::Rect(denormalizedRect);
     if(!areAligned) denormalizedRect = detectionsTransformation.remapRectTo(*depthTransformation, denormalizedRect);
     denormalizedRect = denormalizedRect.denormalize(depthWidth, depthHeight);
 
@@ -372,10 +386,6 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
         spatialDetection.setKeypoints(spatialKeypoints);
     }
 
-    SpatialLocationCalculatorConfigData boundingBoxMapping;
-    boundingBoxMapping.depthThresholds.lowerThreshold = lowerThreshold;
-    boundingBoxMapping.depthThresholds.upperThreshold = upperThreshold;
-    boundingBoxMapping.calculationAlgorithm = calculationAlgorithm;
     spatialDetection.boundingBoxMapping = boundingBoxMapping;
 
     return spatialDetection;

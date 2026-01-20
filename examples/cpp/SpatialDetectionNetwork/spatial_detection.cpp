@@ -7,7 +7,7 @@
 #include "depthai/depthai.hpp"
 
 constexpr float NEURAL_FPS = 8.0f;
-constexpr float STEREO_DEFAULT_FPS = 30.0f;
+constexpr float STEREO_DEFAULT_FPS = 20.0f;
 
 // Custom host node for spatial visualization
 class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisualizer> {
@@ -41,19 +41,19 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
    private:
     cv::Mat processDepthFrame(const cv::Mat& depthFrame) {
         // Downscale depth frame
-        cv::Mat depth_downscaled;
-        cv::resize(depthFrame, depth_downscaled, cv::Size(), 0.25, 0.25);
+        cv::Mat depthDownscaled;
+        cv::resize(depthFrame, depthDownscaled, cv::Size(), 0.25, 0.25);
 
         // Find min and max depth values
-        double min_depth = 0, max_depth = 0;
-        cv::Mat mask = (depth_downscaled != 0);
+        double minDepth = 0, maxDepth = 0;
+        cv::Mat mask = (depthDownscaled != 0);
         if(cv::countNonZero(mask) > 0) {
-            cv::minMaxLoc(depth_downscaled, &min_depth, &max_depth, nullptr, nullptr, mask);
+            cv::minMaxLoc(depthDownscaled, &minDepth, &maxDepth, nullptr, nullptr, mask);
         }
 
         // Normalize depth frame
         cv::Mat depthFrameColor;
-        depthFrame.convertTo(depthFrameColor, CV_8UC1, 255.0 / (max_depth - min_depth), -min_depth * 255.0 / (max_depth - min_depth));
+        depthFrame.convertTo(depthFrameColor, CV_8UC1, 255.0 / (maxDepth - minDepth), -minDepth * 255.0 / (maxDepth - minDepth));
 
         // Apply color map
         cv::Mat colorized;
@@ -138,7 +138,7 @@ int main(int argc, char** argv) {
     try {
         program.parse_args(argc, argv);
     } catch(const std::runtime_error& err) {
-        std::cerr << err.what() << std::endl;
+        std::cerr << err.what() << '\n';
         std::cerr << program;
         return EXIT_FAILURE;
     }
@@ -148,8 +148,8 @@ int main(int argc, char** argv) {
 
     // Validate depth source argument
     if(depthSourceArg != "stereo" && depthSourceArg != "neural" && depthSourceArg != "tof") {
-        std::cerr << "Invalid depth source: " << depthSourceArg << std::endl;
-        std::cerr << "Valid options are: stereo, neural, tof" << std::endl;
+        std::cerr << "Invalid depth source: " << depthSourceArg << '\n';
+        std::cerr << "Valid options are: stereo, neural, tof" << '\n';
         return EXIT_FAILURE;
     }
 
@@ -182,10 +182,6 @@ int main(int argc, char** argv) {
             monoRight->build(dai::CameraBoardSocket::CAM_C, std::nullopt, fps);
 
             stereo->setExtendedDisparity(true);
-            if(platform == dai::Platform::RVC2) {
-                stereo->setOutputSize(640, 400);
-            }
-
             monoLeft->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->left);
             monoRight->requestOutput(size, std::nullopt, dai::ImgResizeMode::CROP)->link(stereo->right);
 
@@ -227,14 +223,14 @@ int main(int argc, char** argv) {
         // Linking
         visualizer->build(spatialDetectionNetwork->passthroughDepth, spatialDetectionNetwork->out, spatialDetectionNetwork->passthrough);
 
-        std::cout << "Pipeline starting with depth source: " << depthSourceArg << std::endl;
+        std::cout << "Pipeline starting with depth source: " << depthSourceArg << '\n';
 
         // Start pipeline
         pipeline.start();
         pipeline.wait();
 
     } catch(const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << "Error: " << e.what() << '\n';
         return EXIT_FAILURE;
     }
 

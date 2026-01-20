@@ -59,6 +59,13 @@ void SpatialLocationCalculatorConfig::setSegmentationPassthrough(bool passthroug
     this->segmentationPassthrough = passthroughSegmentation;
 }
 
+void SpatialLocationCalculatorConfig::setBoundingBoxScaleFactor(float scaleFactor) {
+    if(scaleFactor <= 0.0f) {
+        throw std::invalid_argument("Scale factor must be larger than 0.");
+    }
+    bBoxScaleFactor = scaleFactor;
+}
+
 std::pair<int32_t, int32_t> SpatialLocationCalculatorConfig::getDepthThresholds() const {
     return {globalLowerThreshold, globalUpperThreshold};
 }
@@ -85,6 +92,10 @@ bool SpatialLocationCalculatorConfig::getUseSegmentation() const {
 
 bool SpatialLocationCalculatorConfig::getSegmentationPassthrough() const {
     return segmentationPassthrough;
+}
+
+float SpatialLocationCalculatorConfig::getBoundingBoxScaleFactor() const {
+    return bBoxScaleFactor;
 }
 
 }  // namespace dai

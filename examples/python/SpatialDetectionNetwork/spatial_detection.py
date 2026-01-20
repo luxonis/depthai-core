@@ -7,7 +7,7 @@ import depthai as dai
 import numpy as np
 
 NEURAL_FPS = 8
-STEREO_DEFAULT_FPS = 30
+STEREO_DEFAULT_FPS = 20
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -37,13 +37,13 @@ class SpatialVisualizer(dai.node.HostNode):
         self.displayResults(rgbPreview, depthFrameColor, detections.detections)
 
     def processDepthFrame(self, depthFrame):
-        depth_downscaled = depthFrame[::4]
-        if np.all(depth_downscaled == 0):
-            min_depth = 0
+        depthDownscaled = depthFrame[::4]
+        if np.all(depthDownscaled == 0):
+            minDepth = 0
         else:
-            min_depth = np.percentile(depth_downscaled[depth_downscaled != 0], 1)
-        max_depth = np.percentile(depth_downscaled, 99)
-        depthFrameColor = np.interp(depthFrame, (min_depth, max_depth), (0, 255)).astype(np.uint8)
+            minDepth = np.percentile(depthDownscaled[depthDownscaled != 0], 1)
+        maxDepth = np.percentile(depthDownscaled, 99)
+        depthFrameColor = np.interp(depthFrame, (minDepth, maxDepth), (0, 255)).astype(np.uint8)
         return cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_HOT)
 
     def displayResults(self, rgbFrame, depthFrameColor, detections):
@@ -52,8 +52,8 @@ class SpatialVisualizer(dai.node.HostNode):
             self.drawBoundingBoxes(depthFrameColor, detection)
             self.drawDetections(rgbFrame, detection, width, height)
 
-        cv2.imshow("depth", depthFrameColor)
-        cv2.imshow("rgb", rgbFrame)
+        cv2.imshow("Depth frame", depthFrameColor)
+        cv2.imshow("Color frame", rgbFrame)
         if cv2.waitKey(1) == ord('q'):
             self.stopPipeline()
 
@@ -90,8 +90,6 @@ with dai.Pipeline() as p:
     if args.depthSource == "stereo":
         depthSource = p.create(dai.node.StereoDepth)
         depthSource.setExtendedDisparity(True)
-        if platform == dai.Platform.RVC2:
-            depthSource.setOutputSize(640, 400)
         monoLeft.requestOutput(size).link(depthSource.left)
         monoRight.requestOutput(size).link(depthSource.right)
     elif args.depthSource == "neural":
@@ -106,6 +104,7 @@ with dai.Pipeline() as p:
     spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
         camRgb, depthSource, modelDescription
     )
+    spatialDetectionNetwork.detectionParser.setRunOnHost(False)
     visualizer = p.create(SpatialVisualizer)
 
     spatialDetectionNetwork.input.setBlocking(False)
