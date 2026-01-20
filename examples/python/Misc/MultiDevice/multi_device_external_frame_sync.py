@@ -11,6 +11,8 @@ import math
 import argparse
 import signal
 import numpy as np
+
+from typing import Optional, Dict
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -73,6 +75,7 @@ signal.signal(signal.SIGINT, interruptHandler)
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("-f", "--fps", type=float, default=30.0, help="Target FPS", required=False)
 parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs", required=False)
+parser.add_argument("--sockets", type=str, help="Socket ids to sync, comma separated", required=False)
 parser.add_argument("-t1", "--recv-all-timeout-sec", type=float, default=10, help="Timeout for receiving the first frame from all devices", required=False)
 parser.add_argument("-t2", "--sync-threshold-sec", type=float, default=3e-3, help="Sync threshold in seconds", required=False)
 parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, help="Timeout for synchronization to complete", required=False)
@@ -86,6 +89,12 @@ else:
 assert len(deviceInfos) > 1, "At least two devices are required for this example."
 
 targetFps = args.fps  # Must match sensorFps in createPipeline()
+
+if args.sockets:
+    sockets = args.sockets.split(",")
+else:
+    sockets = None
+
 recvAllTimeoutSec = args.recv_all_timeout_sec
 
 syncThresholdSec = args.sync_threshold_sec
@@ -95,19 +104,22 @@ initialSyncTimeoutSec = args.initial_sync_timeout_sec
 # ---------------------------------------------------------------------------
 with contextlib.ExitStack() as stack:
 
-    masterNodes = []
-    slaveQueues = []
-    slavePipelines = []
-    masterPipelines = []
-    deviceIds = []
+    masterPipeline: Optional[dai.Pipeline] = None
+    masterNode: Optional[Dict[str, dai.Node.Output]] = None
 
-    inputQueues = []
-    slaveInputNames = []
+    slavePipelines: Dict[str, dai.Pipeline] = {}
+    slaveQueues: Dict[str, Dict[str, dai.MessageQueue]] = {}
+
+    inputQueues = {}
+
     outputNames = []
+
+    camSockets = []
 
     for idx, deviceInfo in enumerate(deviceInfos):
         pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
         device = pipeline.getDefaultDevice()
+        name = deviceInfo.getXLinkDeviceDesc().name
 
         role = device.getExternalFrameSyncRole()
 
@@ -115,57 +127,65 @@ with contextlib.ExitStack() as stack:
         print("    Device ID:", device.getDeviceId())
         print("    Num of cameras:", len(device.getConnectedCameras()))
 
-        socket = device.getConnectedCameras()[0]
-        if "OAK4-D" in device.getProductName() or \
-            "OAK-4-D" in device.getProductName():
-            socket = device.getConnectedCameras()[1]
+        for socket in device.getConnectedCameras():
+            if sockets is not None and socket.name not in sockets:
+                continue
+            pipeline, outNode = createPipeline(pipeline, socket, targetFps, role)
 
-        pipeline, outNode = createPipeline(pipeline, socket, targetFps, role)
+            if role == dai.ExternalFrameSyncRole.MASTER:
+                if masterNode is None:
+                    masterNode = {}
+                
+                masterNode[socket.name] = outNode
+            elif role == dai.ExternalFrameSyncRole.SLAVE:
+                if slaveQueues.get(name) is None:
+                    slaveQueues[name] = {}
+                
+                slaveQueues[name][socket.name] = outNode.createOutputQueue()
+            else:
+                raise RuntimeError(f"Don't know how to handle role {role}")
+            
+            if socket.name not in camSockets:
+                camSockets.append(socket.name)
 
         if role == dai.ExternalFrameSyncRole.MASTER:
             device.setExternalStrobeEnable(True)
             print(f"{device.getDeviceId()} is master")
-            masterPipelines.append(pipeline)
-            masterNodes.append(outNode)
+
+            if masterPipeline is not None:
+                raise RuntimeError("Only one master pipeline is supported")
+            masterPipeline = pipeline
         elif role == dai.ExternalFrameSyncRole.SLAVE:
-            slavePipelines.append(pipeline)
-            slaveQueues.append(outNode.createOutputQueue())
+            slavePipelines[name] = pipeline
             print(f"{device.getDeviceId()} is slave")
         else:
             raise RuntimeError(f"Don't know how to handle role {role}")
 
-        deviceIds.append(deviceInfo.getXLinkDeviceDesc().name)
-
-    if len(masterPipelines) > 1:
-        raise RuntimeError("Multiple masters detected!")
-
-    if len(masterPipelines) == 0:
+    if masterPipeline is None or masterNode is None:
         raise RuntimeError("No master detected!")
 
     if len(slavePipelines) < 1:
         raise RuntimeError("No slaves detected!")
 
-    sync = masterPipelines[0].create(dai.node.Sync)
+    sync = masterPipeline.create(dai.node.Sync)
     sync.setRunOnHost(True)
     sync.setSyncThreshold(datetime.timedelta(milliseconds=1000 / (2 * targetFps)))
-    masterNodes[0].link(sync.inputs["master"])
-    outputNames.append("master")
+    for k, v in masterNode.items():
+        v.link(sync.inputs[f"master_{k}"])
+        outputNames.append(f"master_{k}")
 
-    for i in range(len(slaveQueues)):
-        name = f"slave_{i}"
-        slaveInputNames.append(name)
-        outputNames.append(name)
-        input_queue = sync.inputs[name].createInputQueue()
-        inputQueues.append(input_queue)
+    for k, v in slaveQueues.items():
+        for k2, v2 in v.items():
+            name = f"slave_{k}_{k2}"
+            outputNames.append(name)
+            input_queue = sync.inputs[name].createInputQueue()
+            inputQueues[name] = input_queue
 
     queue = sync.out.createOutputQueue()
 
-    for p in masterPipelines:
-        p.start()
-
-    for p in slavePipelines:
-        p.start()
-
+    masterPipeline.start()
+    for k, v in slavePipelines.items():
+        v.start()
 
     fpsCounter = FPSCounter()
 
@@ -179,9 +199,10 @@ with contextlib.ExitStack() as stack:
 
     while running:
 
-        for i, slq in enumerate(slaveQueues):
-            while slq.has():
-                inputQueues[i].send(slq.get())
+        for k, v in slaveQueues.items():
+            for k2, v2 in v.items():
+                while v2.has():
+                    inputQueues[f"slave_{k}_{k2}"].send(v2.get())
 
         while queue.has():
             latestFrameGroup = queue.get()
@@ -203,17 +224,29 @@ with contextlib.ExitStack() as stack:
         # timestamps must align within SYNC_THRESHOLD_SEC.
         # -------------------------------------------------------------------
         if latestFrameGroup is not None and latestFrameGroup.getNumMessages() == len(outputNames):
-            tsValues = [latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds() for name in outputNames]
+            tsValues = {}
+            for name in outputNames:
+                tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
             # Build composite image side‑by‑side
             imgs = []
+            for name in camSockets:
+                imgs.append([])
             fps = fpsCounter.getFps()
 
-            for i, outputName in enumerate(outputNames):
+            for outputName in outputNames:
+                idx = -1
+                for i, name in enumerate(camSockets):
+                    if name in outputName:
+                        idx = i
+                        break
+                if idx == -1:
+                    raise RuntimeError(f"Could not find camera socket for {outputName}")
+                
                 msg = latestFrameGroup[outputName]
                 frame = msg.getCvFrame()
                 cv2.putText(
                     frame,
-                    f"{deviceIds[i]} ({outputName})",
+                    f"{outputName}",
                     (20, 40),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6,
@@ -223,7 +256,7 @@ with contextlib.ExitStack() as stack:
                 )
                 cv2.putText(
                     frame,
-                    f"Timestamp: {tsValues[i]} | FPS:{fps:.2f}",
+                    f"Timestamp: {tsValues[outputName]} | FPS:{fps:.2f}",
                     (20, 80),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6,
@@ -231,9 +264,9 @@ with contextlib.ExitStack() as stack:
                     2,
                     cv2.LINE_AA,
                 )
-                imgs.append(frame)
+                imgs[idx].append(frame)
 
-            delta = max(tsValues) - min(tsValues)
+            delta = max(tsValues.values()) - min(tsValues.values())
 
             syncStatus = abs(delta) < syncThresholdSec
             syncStatusStr = "in sync" if syncStatus else "out of sync"
@@ -255,18 +288,20 @@ with contextlib.ExitStack() as stack:
 
             color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
             
-            cv2.putText(
-                imgs[0],
-                f"{syncStatusStr} | delta = {delta*1e3:.3f} ms",
-                (20, 120),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                color,
-                2,
-                cv2.LINE_AA,
-            )
+            for i, img in enumerate(imgs):
+                cv2.putText(
+                    imgs[i][0],
+                    f"{syncStatusStr} | delta = {delta*1e3:.3f} ms",
+                    (20, 120),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    color,
+                    2,
+                    cv2.LINE_AA,
+                )
 
-            cv2.imshow("synced_view", cv2.hconcat(imgs))
+            for i, img in enumerate(imgs):
+                cv2.imshow(f"synced_view_{camSockets[i]}", cv2.hconcat(imgs[i]))
 
             latestFrameGroup = None  # Wait for next batch
 
