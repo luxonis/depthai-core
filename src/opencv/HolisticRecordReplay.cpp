@@ -328,8 +328,8 @@ bool setupHolisticReplay(Pipeline& pipeline,
             json jCalib = json::parse(calibFile);
             CalibrationHandler calib;
             try {
-                calib.fromJson(jCalib, true);
-                pipeline.getDefaultDevice()->setCalibration(calib);
+                calib = CalibrationHandler::fromJson(jCalib, true);
+                pipeline.setCalibrationData(calib);
             } catch(const std::runtime_error& e) {
                 spdlog::warn("Recorded calibration is invalid: {}", e.what());
                 hasCalibration = false;
