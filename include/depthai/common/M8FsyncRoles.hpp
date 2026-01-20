@@ -5,7 +5,7 @@
 
 namespace dai {
 /**
- * Which Fsymc role the device will have.
+ * Which Fsync role the device will have.
  *
  * AUTO_DETECT denotes that the decision will be made by device.
  * It will choose between MASTER and SLAVE.
