@@ -124,7 +124,6 @@ with contextlib.ExitStack() as stack:
 
         if role == dai.M8FsyncRole.MASTER:
             device.setM8StrobeEnable(True)
-            device.setM8StrobeLimits(0.05, 0.95)
             print(f"{device.getDeviceId()} is master")
             masterPipelines.append(pipeline)
             masterNodes.append(outNode)

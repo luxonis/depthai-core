@@ -136,7 +136,6 @@ int main(int argc, char** argv) {
 
         if (role == dai::M8FsyncRole::MASTER) {
             device->setM8StrobeEnable(true);
-            device->setM8StrobeLimits(0.05f, 0.95f);
             masterPipelines.push_back(pipeline);
             masterNodes.push_back(outNode);
             std::cout << device->getDeviceId() << " is master" << std::endl;
