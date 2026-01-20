@@ -863,14 +863,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBase, getExternalFrameSyncRole)
         )
         .def(
-            "setExternalStrobeLimits",
+            "setExternalStrobeRelativeLimits",
             [](DeviceBase& d, float min, float max) {
                 py::gil_scoped_release release;
-                return d.setExternalStrobeLimits(min, max);
+                return d.setExternalStrobeRelativeLimits(min, max);
             },
             py::arg("min"),
             py::arg("max"),
-            DOC(dai, DeviceBase, setExternalStrobeLimits)
+            DOC(dai, DeviceBase, setExternalStrobeRelativeLimits)
         )
         .def(
             "setExternalStrobeEnable",
