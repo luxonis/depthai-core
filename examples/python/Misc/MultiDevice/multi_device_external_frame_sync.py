@@ -37,9 +37,9 @@ class FPSCounter:
 # ---------------------------------------------------------------------------
 # Pipeline creation (unchanged API – only uses TARGET_FPS constant)
 # ---------------------------------------------------------------------------
-def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensorFps: int, role: dai.M8FsyncRole):
+def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensorFps: int, role: dai.ExternalFrameSyncRole):
     cam = None
-    if role == dai.M8FsyncRole.MASTER:
+    if role == dai.ExternalFrameSyncRole.MASTER:
         cam = (
             pipeline.create(dai.node.Camera)
             .build(socket, sensorFps=sensorFps)
@@ -109,7 +109,7 @@ with contextlib.ExitStack() as stack:
         pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
         device = pipeline.getDefaultDevice()
 
-        role = device.getM8FsyncRole()
+        role = device.getExternalFrameSyncRole()
 
         print("=== Connected to", deviceInfo.getDeviceId())
         print("    Device ID:", device.getDeviceId())
@@ -122,12 +122,12 @@ with contextlib.ExitStack() as stack:
 
         pipeline, outNode = createPipeline(pipeline, socket, targetFps, role)
 
-        if role == dai.M8FsyncRole.MASTER:
-            device.setM8StrobeEnable(True)
+        if role == dai.ExternalFrameSyncRole.MASTER:
+            device.setExternalStrobeEnable(True)
             print(f"{device.getDeviceId()} is master")
             masterPipelines.append(pipeline)
             masterNodes.append(outNode)
-        elif role == dai.M8FsyncRole.SLAVE:
+        elif role == dai.ExternalFrameSyncRole.SLAVE:
             slavePipelines.append(pipeline)
             slaveQueues.append(outNode.createOutputQueue())
             print(f"{device.getDeviceId()} is slave")

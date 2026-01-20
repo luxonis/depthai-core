@@ -16,7 +16,7 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraExposureOffset.hpp"
-#include "depthai/common/M8FsyncRoles.hpp"
+#include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -46,9 +46,9 @@ class FPSCounter {
     }
 };
 
-dai::Node::Output* createPipeline(dai::Pipeline& pipeline, dai::CameraBoardSocket socket, int sensorFps, dai::M8FsyncRole role) {
+dai::Node::Output* createPipeline(dai::Pipeline& pipeline, dai::CameraBoardSocket socket, int sensorFps, dai::ExternalFrameSyncRole role) {
     std::shared_ptr<dai::node::Camera> cam;
-    if(role == dai::M8FsyncRole::MASTER) {
+    if(role == dai::ExternalFrameSyncRole::MASTER) {
         cam = pipeline.create<dai::node::Camera>()->build(socket, std::nullopt, sensorFps);
     } else {
         cam = pipeline.create<dai::node::Camera>()->build(socket, std::nullopt);
@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
         auto pipeline = dai::Pipeline(std::make_shared<dai::Device>(deviceInfo));
         auto device = pipeline.getDefaultDevice();
 
-        auto role = device->getM8FsyncRole();
+        auto role = device->getExternalFrameSyncRole();
 
         std::cout << "=== Connected to " << deviceInfo.getDeviceId() << std::endl;
         std::cout << "    Device ID: " << device->getDeviceId() << std::endl;
@@ -129,12 +129,12 @@ int main(int argc, char** argv) {
 
         auto outNode = createPipeline(pipeline, socket, targetFps, role);
 
-        if(role == dai::M8FsyncRole::MASTER) {
-            device->setM8StrobeEnable(true);
+        if(role == dai::ExternalFrameSyncRole::MASTER) {
+            device->setExternalStrobeEnable(true);
             masterPipelines.push_back(pipeline);
             masterNodes.push_back(outNode);
             std::cout << device->getDeviceId() << " is master" << std::endl;
-        } else if(role == dai::M8FsyncRole::SLAVE) {
+        } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
             slavePipelines.push_back(pipeline);
             slaveQueues.push_back(outNode->createOutputQueue());
             std::cout << device->getDeviceId() << " is slave" << std::endl;

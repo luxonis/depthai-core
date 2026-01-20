@@ -1246,20 +1246,20 @@ void DeviceBase::crashDevice() {
     }
 }
 
-std::tuple<bool, std::string> DeviceBase::setM8FsyncRole(M8FsyncRole role) {
-    return pimpl->rpcClient->call("setM8FsyncRole", role);
+std::tuple<bool, std::string> DeviceBase::setExternalFrameSyncRole(ExternalFrameSyncRole role) {
+    return pimpl->rpcClient->call("setExternalFrameSyncRole", role);
 }
 
-M8FsyncRole DeviceBase::getM8FsyncRole() {
-    return pimpl->rpcClient->call("getM8FsyncRole");
+ExternalFrameSyncRole DeviceBase::getExternalFrameSyncRole() {
+    return pimpl->rpcClient->call("getExternalFrameSyncRole");
 }
 
-std::tuple<bool, std::string> DeviceBase::setM8StrobeLimits(float min, float max) {
-    return pimpl->rpcClient->call("setM8StrobeLimits", min, max);
+std::tuple<bool, std::string> DeviceBase::setExternalStrobeLimits(float min, float max) {
+    return pimpl->rpcClient->call("setExternalStrobeLimits", min, max);
 }
 
-void DeviceBase::setM8StrobeEnable(bool enable) {
-    pimpl->rpcCall("setM8StrobeEnable", enable);
+void DeviceBase::setExternalStrobeEnable(bool enable) {
+    pimpl->rpcCall("setExternalStrobeEnable", enable);
 }
 
 dai::Version DeviceBase::getIMUFirmwareVersion() {
@@ -1738,7 +1738,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     bool success = false;
     std::string errorMsg;
 
-    // Initialize the device (M8 Fsync slaves need to lock onto the signal first)
+    // Initialize the device (External frame sync slaves need to lock onto the signal first)
     std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
 
     if(!success) {
