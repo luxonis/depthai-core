@@ -90,6 +90,9 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
 
     /**
      * Set RTABMap parameters.
+     * For the list of all parameters visit
+     *
+     * https://github.com/introlab/rtabmap/blob/master/corelib/include/rtabmap/core/Parameters.h
      */
     void setParams(const std::map<std::string, std::string>& params);
 

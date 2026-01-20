@@ -1,12 +1,9 @@
 #include "depthai/rtabmap/RTABMapConversions.hpp"
 
 #include "common/CameraBoardSocket.hpp"
-#include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
-#include "pcl/impl/point_types.hpp"
-#include "pcl/point_cloud.h"
-#include "pipeline/datatype/PointCloudData.hpp"
 #include "rtabmap/core/StereoCameraModel.h"
+#include "rtabmap/core/Transform.h"
 namespace dai {
 
 std::shared_ptr<TransformData> rtabmapToTransformData(rtabmap::Transform transformRTABMap) {

@@ -1,7 +1,6 @@
 #include <memory>
 
 #include "common/CameraBoardSocket.hpp"
-#include "depthai/depthai.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 

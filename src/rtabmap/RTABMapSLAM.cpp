@@ -151,7 +151,7 @@ RTABMapSLAM::~RTABMapSLAM() {
         pimplRtabmap->rtabmap.close(true, databasePath);
     }
 }
-void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
+void RTABMapSLAM::setParams(const std::map<std::string, std::string>& params) {
     rtabParams = params;
 }
 
