@@ -296,8 +296,8 @@ class DeviceBase::Impl {
      * RPC call with custom timeout. Set timeout to 0 to enable endless wait.
      */
     template <typename... Args>
-    auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name),
-                                                                                                                  std::forward<Args>(args)...)) {
+    auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args)
+        -> decltype(rpcClient->call(std::string(name), std::forward<Args>(args)...)) {
         ScopedRpcTimeout guard(timeout);
         return rpcClient->call(name, std::forward<Args>(args)...);
     }
@@ -1246,7 +1246,7 @@ void DeviceBase::crashDevice() {
     }
 }
 
-std::tuple<bool, std::string>  DeviceBase::setM8FsyncRole(M8FsyncRole role) {
+std::tuple<bool, std::string> DeviceBase::setM8FsyncRole(M8FsyncRole role) {
     return pimpl->rpcClient->call("setM8FsyncRole", role);
 }
 
@@ -1254,7 +1254,7 @@ M8FsyncRole DeviceBase::getM8FsyncRole() {
     return pimpl->rpcClient->call("getM8FsyncRole");
 }
 
-std::tuple<bool, std::string>  DeviceBase::setM8StrobeLimits(float min, float max) {
+std::tuple<bool, std::string> DeviceBase::setM8StrobeLimits(float min, float max) {
     return pimpl->rpcClient->call("setM8StrobeLimits", min, max);
 }
 
@@ -1738,10 +1738,10 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     bool success = false;
     std::string errorMsg;
 
-    // Initialize the device (M8 Fsync slaves need to lock onto the signal first)    
+    // Initialize the device (M8 Fsync slaves need to lock onto the signal first)
     std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
 
-    if (!success) {
+    if(!success) {
         throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
     }
 
