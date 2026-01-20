@@ -34,13 +34,15 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
     void run() override;
 
    private:
+    const std::unordered_map<std::string, MessageQueue&> inputs = {{"inputControl", inputControl}, {"input", input}};
+
     bool runOnHostVar = false;
 
     std::shared_ptr<GateControl> sendMessages();
 
     std::shared_ptr<GateControl> sendMessages(int numMessages);
 
-    std::shared_ptr<GateControl> waitFotCommand();
+    std::shared_ptr<GateControl> waitForCommand();
 };
 
 }  // namespace node

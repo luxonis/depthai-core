@@ -21,25 +21,36 @@ Gate::Gate(std::unique_ptr<Properties> props)
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 std::shared_ptr<GateControl> Gate::sendMessages() {
-    while(true) {
-        auto control = inputControl.tryGet<GateControl>();
-        if(control) {
-            return control;
+    while(mainLoop()) {
+        auto inputMap = MessageQueue::getAny(inputs);
+        if(inputMap["input"]) {
+            output.send(inputMap["input"]);
         }
-        auto inData = input.get();
-        output.send(inData);
+        if(inputMap["inputControl"]) {
+            if(auto control = std::dynamic_pointer_cast<GateControl>(inputMap["inputControl"])) {
+                return control;
+            }
+        }
     }
+    return nullptr;
 }
 
 std::shared_ptr<GateControl> Gate::sendMessages(int numMessages) {
     for(int i = 0; i < numMessages; i++) {
-        auto inData = input.get();
-        output.send(inData);
+        auto inputMap = MessageQueue::getAny(inputs);
+        if(inputMap["input"]) {
+            output.send(inputMap["input"]);
+        }
+        if(inputMap["inputControl"]) {
+            if(auto control = std::dynamic_pointer_cast<GateControl>(inputMap["inputControl"])) {
+                return control;
+            }
+        }
     }
     return std::make_shared<GateControl>(false, -1);
 }
 
-std::shared_ptr<GateControl> Gate::waitFotCommand() {
+std::shared_ptr<GateControl> Gate::waitForCommand() {
     auto control = inputControl.get<GateControl>();
     return control;
 }
@@ -55,7 +66,7 @@ void Gate::run() {
                 currentCommand = sendMessages();
             }
         } else {
-            currentCommand = waitFotCommand();
+            currentCommand = waitForCommand();
         }
     }
 }
