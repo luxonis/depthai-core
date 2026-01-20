@@ -820,6 +820,7 @@ class DeviceBase {
 
     /**
      * Sets the M8 Fsync strobe limits
+     * Default values are 0.005 and 0.995
      * @param min Minimum strobe value in percent
      * @param max Maximum strobe value in percent
      * @returns Tuple of bool and string. Bool specifies if role was set without failures. String is the error message describing the failure reason.

@@ -82,7 +82,6 @@ int testFsync(float targetFps, double syncThresholdSec, uint64_t testDurationSec
 
         if (role == dai::M8FsyncRole::MASTER) {
             device->setM8StrobeEnable(true);
-            device->setM8StrobeLimits(0.05f, 0.95f);
             masterPipelines.push_back(pipeline);
             masterNodes.push_back(outNode);
             std::cout << device->getDeviceId() << " is master" << std::endl;
