@@ -263,6 +263,7 @@ cv::Mat ImgFrame::getCvFrame(cv::MatAllocator* allocator) {
 }
 
 ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
+    auto alignUp = [](size_t value, size_t alignment) { return (value + (alignment - 1)) & ~(alignment - 1); };
     cv::Mat output;
     setType(type);
     setSize(mat.cols, mat.rows);
@@ -380,30 +381,54 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
 
         case Type::NV12:
         case Type::NV21: {
-            CV_Assert(mat.channels() == 3);
-            fb.stride = mat.cols;
-            fb.p1Offset = 0;
-            fb.p2Offset = size;
-            fb.p3Offset = size;
-            auto code = type == Type::NV12 ? cv::COLOR_BGR2YUV_I420 : cv::COLOR_BGR2YUV_YV12;
-            cv::cvtColor(mat, output, code);
-            int chromaRows = mat.rows / 2;
-            int chromaCols = mat.cols / 2;
-            unsigned int ySize = mat.cols * mat.rows;
-            assert(ySize % 4 == 0);
-            unsigned int uvSize = ySize / 4;
-            assert(output.isContinuous());
-            assert(output.total() * output.elemSize() == mat.rows * mat.cols * 3UL / 2UL);
-            assert(ySize + 2 * uvSize == output.total());
+            // Width should be 128 aligned and height 32 aligned, plane size should be multiple of 4096
+            assert(mat.type() == CV_8UC3);
 
-            std::vector<uint8_t> dataVec(ySize + 2 * uvSize);
-            std::memcpy(dataVec.data(), output.ptr(), ySize);
-            cv::Mat uvDest(chromaRows, chromaCols, CV_8UC2, dataVec.data() + ySize);
-            cv::Mat chromaPlane1(chromaRows, chromaCols, CV_8UC1, output.ptr() + ySize);           // if NV12: U plane, if NV21: V plane
-            cv::Mat chromaPlane2(chromaRows, chromaCols, CV_8UC1, output.ptr() + ySize + uvSize);  // if NV12: V plane, if NV21: U plane
-            std::vector<cv::Mat> channels = {chromaPlane1, chromaPlane2};
-            cv::merge(channels, uvDest);
-            setData(dataVec);
+            const int w = mat.cols, h = mat.rows;
+            assert((w % 2) == 0 && (h % 2) == 0);
+
+            cv::Mat yuv420;
+            cv::cvtColor(mat, yuv420, cv::COLOR_BGR2YUV_I420);
+            assert(yuv420.isContinuous());
+
+            const int cw = w / 2, ch = h / 2;
+
+            const size_t strideA = alignUp(w, 128);
+            const size_t yRowsA = alignUp(h, 32);
+            const size_t uvRowsA = alignUp(ch, 16);
+
+            const size_t yPlaneSizeA = alignUp(strideA * yRowsA, 4096);
+            const size_t uvPlaneSizeA = alignUp(strideA * uvRowsA, 4096);
+
+            std::vector<uint8_t> out(yPlaneSizeA + uvPlaneSizeA, 0);
+
+            uint8_t* dstY = out.data();
+            uint8_t* dstUV = out.data() + yPlaneSizeA;
+
+            cv::Mat Ydst(h, w, CV_8UC1, dstY, strideA);
+            cv::Mat UVdst(ch, cw, CV_8UC2, dstUV, strideA);
+
+            const uint8_t* srcY = yuv420.ptr<uint8_t>();
+            const uint8_t* srcU = srcY + static_cast<size_t>(w) * h;
+            const uint8_t* srcV = srcU + static_cast<size_t>(cw) * ch;
+
+            cv::Mat Ysrc(h, w, CV_8UC1, (void*)srcY);
+            cv::Mat Usrc(ch, cw, CV_8UC1, (void*)srcU);
+            cv::Mat Vsrc(ch, cw, CV_8UC1, (void*)srcV);
+
+            Ysrc.copyTo(Ydst);
+
+            if(type == Type::NV12)
+                cv::merge(std::vector<cv::Mat>{Usrc, Vsrc}, UVdst);
+            else
+                cv::merge(std::vector<cv::Mat>{Vsrc, Usrc}, UVdst);
+
+            fb.stride = strideA;
+            fb.p1Offset = 0;
+            fb.p2Offset = yPlaneSizeA;
+            fb.p3Offset = fb.p2Offset + yPlaneSizeA;
+
+            setData(out);
         } break;
 
         case Type::RAW8:
