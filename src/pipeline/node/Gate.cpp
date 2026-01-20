@@ -22,13 +22,12 @@ Gate::Gate(std::unique_ptr<Properties> props)
 
 std::shared_ptr<GateControl> Gate::sendMessages() {
     while(mainLoop()) {
-        auto inputMap = MessageQueue::getAny(inputs);
-        if(inputMap["input"]) {
-            output.send(inputMap["input"]);
-        }
-        if(inputMap["inputControl"]) {
-            if(auto control = std::dynamic_pointer_cast<GateControl>(inputMap["inputControl"])) {
-                return control;
+        if(MessageQueue::waitAny(inputs)) {
+            if(auto inControl = inputControl.tryGet<GateControl>()) {
+                return inControl;
+            }
+            if(auto in = input.tryGet()) {
+                output.send(in);
             }
         }
     }
@@ -37,13 +36,14 @@ std::shared_ptr<GateControl> Gate::sendMessages() {
 
 std::shared_ptr<GateControl> Gate::sendMessages(int numMessages) {
     for(int i = 0; i < numMessages; i++) {
-        auto inputMap = MessageQueue::getAny(inputs);
-        if(inputMap["input"]) {
-            output.send(inputMap["input"]);
-        }
-        if(inputMap["inputControl"]) {
-            if(auto control = std::dynamic_pointer_cast<GateControl>(inputMap["inputControl"])) {
-                return control;
+        if(MessageQueue::waitAny(inputs)) {
+            if(!mainLoop()) break;
+
+            if(auto inControl = inputControl.tryGet<GateControl>()) {
+                return inControl;
+            }
+            if(auto in = input.tryGet()) {
+                output.send(in);
             }
         }
     }

@@ -34,8 +34,7 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
     void run() override;
 
    private:
-    const std::unordered_map<std::string, MessageQueue&> inputs = {{"inputControl", inputControl}, {"input", input}};
-
+    const std::vector<std::reference_wrapper<MessageQueue>> inputs = {inputControl, input};
     bool runOnHostVar = false;
 
     std::shared_ptr<GateControl> sendMessages();
