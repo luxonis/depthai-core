@@ -28,7 +28,6 @@ namespace node {
 //--------------------------------------------------------------------
 
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
-DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
     : DeviceNodeGroup(device),
       out{detectionParser->out},
       outNetwork{neuralNetwork->out},
