@@ -86,33 +86,33 @@ parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, 
 args = parser.parse_args()
 
 if len(args.devices) == 0:
-    DEVICE_INFOS = dai.Device.getAllAvailableDevices()
+    deviceInfos = dai.Device.getAllAvailableDevices()
 else:
-    DEVICE_INFOS = [dai.DeviceInfo(ip) for ip in args.devices] #The master camera needs to be first here
+    deviceInfos = [dai.DeviceInfo(ip) for ip in args.devices] #The master camera needs to be first here
 
-assert len(DEVICE_INFOS) > 1, "At least two devices are required for this example."
+assert len(deviceInfos) > 1, "At least two devices are required for this example."
 
-TARGET_FPS = args.fps  # Must match sensorFps in createPipeline()
-RECV_ALL_TIMEOUT_SEC = args.recv_all_timeout_sec
+targetFps = args.fps  # Must match sensorFps in createPipeline()
+recvAllTimeoutSec = args.recv_all_timeout_sec
 
-SYNC_THRESHOLD_SEC = args.sync_threshold_sec
-INITIAL_SYNC_TIMEOUT_SEC = args.initial_sync_timeout_sec
+syncThresholdSec = args.sync_threshold_sec
+initialSyncTimeoutSec = args.initial_sync_timeout_sec
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 with contextlib.ExitStack() as stack:
 
-    master_nodes = []
-    slave_queues = []
-    slave_pipelines = []
-    master_pipelines = []
-    device_ids = []
+    masterNodes = []
+    slaveQueues = []
+    slavePipelines = []
+    masterPipelines = []
+    deviceIds = []
 
-    input_queues = []
-    slave_input_names = []
-    output_names = []
+    inputQueues = []
+    slaveInputNames = []
+    outputNames = []
 
-    for idx, deviceInfo in enumerate(DEVICE_INFOS):
+    for idx, deviceInfo in enumerate(deviceInfos):
         pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
         device = pipeline.getDefaultDevice()
 
@@ -127,101 +127,101 @@ with contextlib.ExitStack() as stack:
             "OAK-4-D" in device.getProductName():
             socket = device.getConnectedCameras()[1]
 
-        pipeline, out_n = createPipeline(pipeline, socket, TARGET_FPS, role)
+        pipeline, outNode = createPipeline(pipeline, socket, targetFps, role)
 
         if role == dai.M8FsyncRole.MASTER:
             device.setM8StrobeEnable(True)
             device.setM8StrobeLimits(0.05, 0.95)
             print(f"{device.getDeviceId()} is master")
-            master_pipelines.append(pipeline)
-            master_nodes.append(out_n)
+            masterPipelines.append(pipeline)
+            masterNodes.append(outNode)
         elif role == dai.M8FsyncRole.SLAVE:
-            slave_pipelines.append(pipeline)
-            slave_queues.append(out_n.createOutputQueue())
+            slavePipelines.append(pipeline)
+            slaveQueues.append(outNode.createOutputQueue())
             print(f"{device.getDeviceId()} is slave")
         else:
             raise RuntimeError(f"Don't know how to handle role {role}")
 
-        device_ids.append(deviceInfo.getXLinkDeviceDesc().name)
+        deviceIds.append(deviceInfo.getXLinkDeviceDesc().name)
 
-    if len(master_pipelines) > 1:
+    if len(masterPipelines) > 1:
         raise RuntimeError("Multiple masters detected!")
 
-    if len(master_pipelines) == 0:
+    if len(masterPipelines) == 0:
         raise RuntimeError("No master detected!")
 
-    if len(slave_pipelines) < 1:
+    if len(slavePipelines) < 1:
         raise RuntimeError("No slaves detected!")
 
-    sync = master_pipelines[0].create(dai.node.Sync)
+    sync = masterPipelines[0].create(dai.node.Sync)
     sync.setRunOnHost(True)
-    sync.setSyncThreshold(datetime.timedelta(milliseconds=1000 / (2 * TARGET_FPS)))
-    master_nodes[0].link(sync.inputs["master"])
-    output_names.append("master")
+    sync.setSyncThreshold(datetime.timedelta(milliseconds=1000 / (2 * targetFps)))
+    masterNodes[0].link(sync.inputs["master"])
+    outputNames.append("master")
 
-    for i in range(len(slave_queues)):
+    for i in range(len(slaveQueues)):
         name = f"slave_{i}"
-        slave_input_names.append(name)
-        output_names.append(name)
+        slaveInputNames.append(name)
+        outputNames.append(name)
         input_queue = sync.inputs[name].createInputQueue()
-        input_queues.append(input_queue)
+        inputQueues.append(input_queue)
 
     queue = sync.out.createOutputQueue()
 
-    for p in master_pipelines:
+    for p in masterPipelines:
         p.start()
 
-    for p in slave_pipelines:
+    for p in slavePipelines:
         p.start()
 
 
     fpsCounter = FPSCounter()
 
-    latest_frame_group = None
-    first_received = False
-    start_time = datetime.datetime.now()
-    prev_received = datetime.datetime.now()
+    latestFrameGroup = None
+    firstReceived = False
+    startTime = datetime.datetime.now()
+    prevReceived = datetime.datetime.now()
 
-    initial_sync_time = None
-    waiting_for_sync = True
+    initialSyncTime = None
+    waitingForSync = True
 
     while running:
 
-        for i, slq in enumerate(slave_queues):
+        for i, slq in enumerate(slaveQueues):
             while slq.has():
-                input_queues[i].send(slq.get())
+                inputQueues[i].send(slq.get())
 
         while queue.has():
-            latest_frame_group = queue.get()
-            if not first_received:
-                first_received = True
-                initial_sync_time = datetime.datetime.now()
-            prev_received = datetime.datetime.now()
+            latestFrameGroup = queue.get()
+            if not firstReceived:
+                firstReceived = True
+                initialSyncTime = datetime.datetime.now()
+            prevReceived = datetime.datetime.now()
             fpsCounter.tick()
 
-        if not first_received:
-            end_time = datetime.datetime.now()
-            elapsed_sec = (end_time - start_time).total_seconds()
-            if elapsed_sec >= RECV_ALL_TIMEOUT_SEC:
-                print(f"Timeout: Didn't receive all frames in time: {elapsed_sec:.2f} sec")
+        if not firstReceived:
+            endTime = datetime.datetime.now()
+            elapsedSec = (endTime - startTime).total_seconds()
+            if elapsedSec >= recvAllTimeoutSec:
+                print(f"Timeout: Didn't receive all frames in time: {elapsedSec:.2f} sec")
                 running = False
 
         # -------------------------------------------------------------------
         # Synchronise: we need at least one frame from every camera and their
         # timestamps must align within SYNC_THRESHOLD_SEC.
         # -------------------------------------------------------------------
-        if latest_frame_group is not None and latest_frame_group.getNumMessages() == len(output_names):
-            ts_values = [latest_frame_group[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds() for name in output_names]
+        if latestFrameGroup is not None and latestFrameGroup.getNumMessages() == len(outputNames):
+            tsValues = [latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds() for name in outputNames]
             # Build composite image side‑by‑side
             imgs = []
             fps = fpsCounter.getFps()
 
-            for i, output_name in enumerate(output_names):
-                msg = latest_frame_group[output_name]
+            for i, outputName in enumerate(outputNames):
+                msg = latestFrameGroup[outputName]
                 frame = msg.getCvFrame()
                 cv2.putText(
                     frame,
-                    f"{device_ids[i]} ({output_name})",
+                    f"{deviceIds[i]} ({outputName})",
                     (20, 40),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6,
@@ -231,7 +231,7 @@ with contextlib.ExitStack() as stack:
                 )
                 cv2.putText(
                     frame,
-                    f"Timestamp: {ts_values[i]} | FPS:{fps:.2f}",
+                    f"Timestamp: {tsValues[i]} | FPS:{fps:.2f}",
                     (20, 80),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6,
@@ -241,31 +241,31 @@ with contextlib.ExitStack() as stack:
                 )
                 imgs.append(frame)
 
-            delta = max(ts_values) - min(ts_values)
+            delta = max(tsValues) - min(tsValues)
 
-            sync_status = abs(delta) < SYNC_THRESHOLD_SEC
-            sync_status_str = "in sync" if sync_status else "out of sync"
+            syncStatus = abs(delta) < syncThresholdSec
+            syncStatusStr = "in sync" if syncStatus else "out of sync"
 
-            if not sync_status and waiting_for_sync:
-                end_time = datetime.datetime.now()
-                elapsed_sec = (end_time - initial_sync_time).total_seconds()
-                if elapsed_sec >= INITIAL_SYNC_TIMEOUT_SEC:
+            if not syncStatus and waitingForSync:
+                endTime = datetime.datetime.now()
+                elapsedSec = (endTime - initialSyncTime).total_seconds()
+                if elapsedSec >= initialSyncTimeoutSec:
                     print("Timeout: Didn't sync frames in time")
                     running = False
 
-            if sync_status and waiting_for_sync:
-                print(f"Sync status: {sync_status_str}")
-                waiting_for_sync = False
+            if syncStatus and waitingForSync:
+                print(f"Sync status: {syncStatusStr}")
+                waitingForSync = False
 
-            if not sync_status and not waiting_for_sync:
+            if not syncStatus and not waitingForSync:
                 print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
                 running = False
 
-            color = (0, 255, 0) if sync_status_str == "in sync" else (0, 0, 255)
+            color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
             
             cv2.putText(
                 imgs[0],
-                f"{sync_status_str} | delta = {delta*1e3:.3f} ms",
+                f"{syncStatusStr} | delta = {delta*1e3:.3f} ms",
                 (20, 120),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
@@ -276,7 +276,7 @@ with contextlib.ExitStack() as stack:
 
             cv2.imshow("synced_view", cv2.hconcat(imgs))
 
-            latest_frame_group = None  # Wait for next batch
+            latestFrameGroup = None  # Wait for next batch
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break

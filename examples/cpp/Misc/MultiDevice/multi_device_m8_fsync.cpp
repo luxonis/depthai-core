@@ -84,38 +84,37 @@ int main(int argc, char** argv) {
 
     signal(SIGINT, interruptHandler);
 
-    float TARGET_FPS = std::stof(argv[1]);
+    float targetFps = std::stof(argv[1]);
 
-    int RECV_ALL_TIMEOUT_SEC = std::stoi(argv[2]);
-    float SYNC_THRESHOLD_SEC = std::stof(argv[3]);
-    int INITIAL_SYNC_TIMEOUT_SEC = std::stoi(argv[4]);
+    int recvAllTimeoutSec = std::stoi(argv[2]);
+    float syncThresholdSec = std::stof(argv[3]);
+    int initialSyncTimeoutSec = std::stoi(argv[4]);
 
-    std::vector<dai::DeviceInfo> DEVICE_INFOS;
+    std::vector<dai::DeviceInfo> deviceInfos;
 
     if (argc > 5) {
         for (int i = 5; i < argc; i++) {
-            DEVICE_INFOS.emplace_back(std::string(argv[i]));
+            deviceInfos.emplace_back(std::string(argv[i]));
         }
     } else {
-        DEVICE_INFOS = dai::Device::getAllAvailableDevices();
+        deviceInfos = dai::Device::getAllAvailableDevices();
     }
 
-    if (DEVICE_INFOS.size() < 2) {
+    if (deviceInfos.size() < 2) {
         std::cout << "At least two devices are required for this example." << std::endl;
         std::exit(0);
     }
 
-    std::vector<dai::Node::Output *> master_nodes;
-    std::vector<std::shared_ptr<dai::MessageQueue>> slave_queues;
-    std::vector<dai::Pipeline> master_pipelines;
-    std::vector<dai::Pipeline> slave_pipelines;
-    std::vector<std::string> device_ids;
+    std::vector<dai::Node::Output *> masterNodes;
+    std::vector<std::shared_ptr<dai::MessageQueue>> slaveQueues;
+    std::vector<dai::Pipeline> masterPipelines;
+    std::vector<dai::Pipeline> slavePipelines;
+    std::vector<std::string> deviceIds;
 
-    std::vector<std::shared_ptr<dai::InputQueue>> input_queues;
-    std::vector<std::string> slave_input_names;
-    std::vector<std::string> output_names;
+    std::vector<std::shared_ptr<dai::InputQueue>> inputQueues;
+    std::vector<std::string> outputNames;
 
-    for (auto deviceInfo : DEVICE_INFOS) 
+    for (auto deviceInfo : deviceInfos) 
     {
         auto pipeline = dai::Pipeline(std::make_shared<dai::Device>(deviceInfo));
         auto device = pipeline.getDefaultDevice();
@@ -133,112 +132,111 @@ int main(int argc, char** argv) {
             socket = device->getConnectedCameras()[1];
         }
 
-        auto out_n = createPipeline(pipeline, socket, TARGET_FPS, role);
+        auto outNode = createPipeline(pipeline, socket, targetFps, role);
 
         if (role == dai::M8FsyncRole::MASTER) {
             device->setM8StrobeEnable(true);
             device->setM8StrobeLimits(0.05f, 0.95f);
-            master_pipelines.push_back(pipeline);
-            master_nodes.push_back(out_n);
+            masterPipelines.push_back(pipeline);
+            masterNodes.push_back(outNode);
             std::cout << device->getDeviceId() << " is master" << std::endl;
         } else if (role == dai::M8FsyncRole::SLAVE) {
-            slave_pipelines.push_back(pipeline);
-            slave_queues.push_back(out_n->createOutputQueue());
+            slavePipelines.push_back(pipeline);
+            slaveQueues.push_back(outNode->createOutputQueue());
             std::cout << device->getDeviceId() << " is slave" << std::endl;
         } else {
             throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
         }
 
-        device_ids.push_back(deviceInfo.getXLinkDeviceDesc().name);
+        deviceIds.push_back(deviceInfo.getXLinkDeviceDesc().name);
     }
 
-    if (master_pipelines.size() > 1) {
+    if (masterPipelines.size() > 1) {
         throw std::runtime_error("Multiple masters detected!");
     }
-    if (master_pipelines.size() == 0) {
+    if (masterPipelines.size() == 0) {
         throw std::runtime_error("No master detected!");
     }
-    if (slave_pipelines.size() < 1) {
+    if (slavePipelines.size() < 1) {
         throw std::runtime_error("No slaves detected!");
     }
 
-    auto sync = master_pipelines[0].create<dai::node::Sync>();
+    auto sync = masterPipelines[0].create<dai::node::Sync>();
     sync->setRunOnHost(true);
-    sync->setSyncThreshold(std::chrono::nanoseconds(long(round(1e9 * 0.5f / TARGET_FPS))));
-    master_nodes[0]->link(sync->inputs["master"]);
-    output_names.push_back("master");
+    sync->setSyncThreshold(std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))));
+    masterNodes[0]->link(sync->inputs["master"]);
+    outputNames.push_back("master");
 
-    for (unsigned long i = 0; i < slave_queues.size(); i++) {
+    for (unsigned long i = 0; i < slaveQueues.size(); i++) {
         auto name = std::string("slave_") + std::to_string(i);
-        slave_input_names.push_back(name);
-        output_names.push_back(name);
+        outputNames.push_back(name);
         auto input_queue = sync->inputs[name].createInputQueue();
-        input_queues.push_back(input_queue);
+        inputQueues.push_back(input_queue);
     }
 
     auto queue = sync->out.createOutputQueue();
 
-    for (auto p : master_pipelines) {
+    for (auto p : masterPipelines) {
         p.start();
     }
-    for (auto p : slave_pipelines) {
+    for (auto p : slavePipelines) {
         p.start();
     }
 
     FPSCounter fpsCounter;
 
-    std::optional<std::shared_ptr<dai::MessageGroup>> latest_frame_group;
-    bool first_received = false;
-    auto start_time = std::chrono::steady_clock::now();
-    auto prev_received = std::chrono::steady_clock::now();
+    std::optional<std::shared_ptr<dai::MessageGroup>> latestFrameGroup;
+    bool firstReceived = false;
+    auto startTime = std::chrono::steady_clock::now();
+    auto prevReceived = std::chrono::steady_clock::now();
 
-    std::optional<std::chrono::time_point<std::chrono::steady_clock>> initial_sync_time;
+    std::optional<std::chrono::time_point<std::chrono::steady_clock>> initialSyncTime;
 
-    bool waiting_for_initial_sync = true;
+    bool waitingForInitialSync = true;
 
     while (running) {
-        for (int i = 0; i < slave_queues.size(); i++) {
-            while (slave_queues[i]->has()) {
-                input_queues[i]->send(slave_queues[i]->get());
+        for (int i = 0; i < slaveQueues.size(); i++) {
+            while (slaveQueues[i]->has()) {
+                inputQueues[i]->send(slaveQueues[i]->get());
             }
         }
 
         while (queue->has()) {
             auto syncData = queue->get();
-            latest_frame_group = std::dynamic_pointer_cast<dai::MessageGroup>(syncData);
-            if (!first_received) {
-                first_received = true;
-                initial_sync_time = std::chrono::steady_clock::now();
+            latestFrameGroup = std::dynamic_pointer_cast<dai::MessageGroup>(syncData);
+            if (!firstReceived) {
+                firstReceived = true;
+                initialSyncTime = std::chrono::steady_clock::now();
             }
-            prev_received = std::chrono::steady_clock::now();
+            prevReceived = std::chrono::steady_clock::now();
             fpsCounter.tick();
         }
 
-        if (!first_received) {
-            auto end_time = std::chrono::steady_clock::now();
-            auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
-            if (elapsed_sec >= RECV_ALL_TIMEOUT_SEC) {
-                std::cout << "Timeout: Didn't receive all frames in time: " << elapsed_sec << std::endl;
+        if (!firstReceived) {
+            auto endTime = std::chrono::steady_clock::now();
+            auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
+            if (elapsedSec >= recvAllTimeoutSec) {
+                std::cout << "Timeout: Didn't receive all frames in time: " << elapsedSec << std::endl;
                 running = false;
             }
         }
 
-        if (latest_frame_group.has_value() && size_t(latest_frame_group.value()->getNumMessages()) == output_names.size()) {
+        if (latestFrameGroup.has_value() && size_t(latestFrameGroup.value()->getNumMessages()) == outputNames.size()) {
 
-            std::vector<std::chrono::time_point<std::chrono::steady_clock>> ts_values;
-            for (auto name : output_names) {
-                auto frame = latest_frame_group.value()->get<dai::ImgFrame>(name);
-                ts_values.push_back(frame->getTimestamp(dai::CameraExposureOffset::END));
+            std::vector<std::chrono::time_point<std::chrono::steady_clock>> tsValues;
+            for (auto name : outputNames) {
+                auto frame = latestFrameGroup.value()->get<dai::ImgFrame>(name);
+                tsValues.push_back(frame->getTimestamp(dai::CameraExposureOffset::END));
             }
             
             cv::Mat imgs;
-            for (int i = 0; i < output_names.size(); i++) {
-                auto msg = latest_frame_group.value()->get<dai::ImgFrame>(output_names[i]);
+            for (int i = 0; i < outputNames.size(); i++) {
+                auto msg = latestFrameGroup.value()->get<dai::ImgFrame>(outputNames[i]);
                 auto fps = fpsCounter.getFps();
                 auto frame = msg->getCvFrame();
                 
                 cv::putText(frame,
-                    device_ids[i] + " (" + output_names[i] + ")",
+                    deviceIds[i] + " (" + outputNames[i] + ")",
                     {20, 40},
                     cv::FONT_HERSHEY_SIMPLEX,
                     0.6,
@@ -247,7 +245,7 @@ int main(int argc, char** argv) {
                     cv::LINE_AA);
 
                 cv::putText(frame,
-                    "Timestamp: " + std::to_string(1e-6 * std::chrono::duration_cast<std::chrono::microseconds>(ts_values[i].time_since_epoch()).count()) + " | FPS: " + std::to_string(fps).substr(0, 5),
+                    "Timestamp: " + std::to_string(1e-6 * std::chrono::duration_cast<std::chrono::microseconds>(tsValues[i].time_since_epoch()).count()) + " | FPS: " + std::to_string(fps).substr(0, 5),
                     {20, 80},
                     cv::FONT_HERSHEY_SIMPLEX,
                     0.6,
@@ -262,34 +260,34 @@ int main(int argc, char** argv) {
                 }
             }
 
-            auto delta = *std::max_element(ts_values.begin(), ts_values.end()) - *std::min_element(ts_values.begin(), ts_values.end());
+            auto delta = *std::max_element(tsValues.begin(), tsValues.end()) - *std::min_element(tsValues.begin(), tsValues.end());
 
-            bool sync_status = std::chrono::duration_cast<std::chrono::seconds>(delta).count() < SYNC_THRESHOLD_SEC;
-            std::string sync_status_str = (sync_status) ? "in sync" : "out of sync";
+            bool syncStatus = std::chrono::duration_cast<std::chrono::seconds>(delta).count() < syncThresholdSec;
+            std::string syncStatusStr = (syncStatus) ? "in sync" : "out of sync";
 
-            cv::Scalar color = (sync_status) ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
+            cv::Scalar color = (syncStatus) ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
 
-            if (!sync_status && waiting_for_initial_sync) {
-                auto end_time = std::chrono::steady_clock::now();
-                auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(end_time - initial_sync_time.value()).count();
-                if (elapsed_sec >= INITIAL_SYNC_TIMEOUT_SEC) {
+            if (!syncStatus && waitingForInitialSync) {
+                auto endTime = std::chrono::steady_clock::now();
+                auto elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(endTime - initialSyncTime.value()).count();
+                if (elapsedSec >= initialSyncTimeoutSec) {
                     std::cout << "Timeout: Didn't sync frames in time" << std::endl;
                     running = false;
                 }
             }
 
-            if (sync_status && waiting_for_initial_sync) {
-                std::cout << "Sync status: " << sync_status_str << std::endl;
-                waiting_for_initial_sync = false;
+            if (syncStatus && waitingForInitialSync) {
+                std::cout << "Sync status: " << syncStatusStr << std::endl;
+                waitingForInitialSync = false;
             }
 
-            if (!sync_status && !waiting_for_initial_sync) {
+            if (!syncStatus && !waitingForInitialSync) {
                 std::cout << "Sync error: Sync lost, threshold exceeded " << std::chrono::duration_cast<std::chrono::microseconds>(delta).count() << " us" << std::endl;
                 running = false;
             }
 
             cv::putText(imgs,
-                sync_status_str + " | delta = " + std::to_string(1e-3 * float(std::chrono::duration_cast<std::chrono::microseconds>(delta).count())).substr(0, 5) + " ms",
+                syncStatusStr + " | delta = " + std::to_string(1e-3 * float(std::chrono::duration_cast<std::chrono::microseconds>(delta).count())).substr(0, 5) + " ms",
                 {20, 120},
                 cv::FONT_HERSHEY_SIMPLEX,
                 0.7,
@@ -299,7 +297,7 @@ int main(int argc, char** argv) {
 
             cv::imshow("synced_view", imgs);
 
-            latest_frame_group.reset();
+            latestFrameGroup.reset();
         }
 
         if (cv::waitKey(1) == 'q') {
