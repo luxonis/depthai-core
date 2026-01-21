@@ -99,9 +99,28 @@ int testFsync(
             }
         }
 
-        if(device->getProductName().find("OAK4-D-PRO") != std::string::npos || device->getProductName().find("OAK-4-PRO") != std::string::npos) {
-            device->setIrFloodLightIntensity(0.1);
-            device->setIrLaserDotProjectorIntensity(0.1);
+        auto drivers = device->getIrDrivers();
+        bool found = false;
+
+        for (auto &driver : drivers) {
+            std::string name;
+            int bus;
+            int addr;
+            std::tie(name, bus, addr) = driver;
+
+            if(name == "stm-dot") {
+                device->setIrLaserDotProjectorIntensity(0.1);
+                found = true;
+            } else if(name == "stm-flood") {
+                device->setIrFloodLightIntensity(0.1);
+                found = true;
+            }
+        }
+
+        if(!found) {
+            std::cout << "No IR drivers found, skipping IR intensity setting" << std::endl;
+        } else {
+            std::cout << "IR intensity set" << std::endl;
         }
 
         if(role == dai::ExternalFrameSyncRole::MASTER) {
