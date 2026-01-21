@@ -35,6 +35,7 @@
 #include "depthai/common/Rect.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/Size2f.hpp"
+#include "depthai/common/SpatialKeypoint.hpp"
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
@@ -75,13 +76,14 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
-    py::enum_<DepthUnit> depthUnitEnum(m, "DepthUnit", DOC(dai, DepthUnit));
-    depthUnitEnum.value("METER", DepthUnit::METER)
-        .value("CENTIMETER", DepthUnit::CENTIMETER)
-        .value("MILLIMETER", DepthUnit::MILLIMETER)
-        .value("INCH", DepthUnit::INCH)
-        .value("FOOT", DepthUnit::FOOT)
-        .value("CUSTOM", DepthUnit::CUSTOM);
+    py::enum_<LengthUnit> lengthUnitEnum(m, "LengthUnit", DOC(dai, LengthUnit));
+    lengthUnitEnum.value("METER", LengthUnit::METER)
+        .value("CENTIMETER", LengthUnit::CENTIMETER)
+        .value("MILLIMETER", LengthUnit::MILLIMETER)
+        .value("INCH", LengthUnit::INCH)
+        .value("FOOT", LengthUnit::FOOT)
+        .value("CUSTOM", LengthUnit::CUSTOM);
+    m.attr("DepthUnit") = m.attr("LengthUnit");
     py::enum_<YoloDecodingFamily> yoloDecodingFamily(m, "YoloDecodingFamily");
     py::enum_<SerializationType> serializationType(m, "SerializationType");
     py::class_<DetectionParserOptions> detectionParserOptions(m, "DetectionParserOptions", DOC(dai, DetectionParserOptions));
@@ -97,6 +99,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<DeviceModelZoo> deviceModelZoo(m, "DeviceModelZoo", DOC(dai, DeviceModelZoo));
     py::class_<Keypoint> keypoint(m, "Keypoint", DOC(dai, Keypoint));
     py::class_<KeypointsList> keypointsList(m, "KeypointsList", DOC(dai, KeypointsList));
+    py::class_<SpatialKeypoint> spatialKeypoint(m, "SpatialKeypoint", DOC(dai, SpatialKeypoint));
+    py::class_<SpatialKeypointsList> spatialKeypointsList(m, "SpatialKeypointsList", DOC(dai, SpatialKeypointsList));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -112,18 +116,30 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     keypoint.def(py::init<>())
-        .def(py::init<Point3f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
-        .def(py::init<Point2f, float, uint32_t>(), py::arg("coordinates"), py::arg("confidence") = 0.f, py::arg("label") = 0, DOC(dai, Keypoint, Keypoint))
-        .def(py::init<float, float, float, float, uint32_t>(),
+        .def(py::init<Point3f, float, uint32_t, std::string>(),
+             py::arg("coordinates"),
+             py::arg("confidence") = -1.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, Keypoint, Keypoint))
+        .def(py::init<Point2f, float, uint32_t, std::string>(),
+             py::arg("coordinates"),
+             py::arg("confidence") = -1.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, Keypoint, Keypoint))
+        .def(py::init<float, float, float, float, uint32_t, std::string>(),
              py::arg("x"),
              py::arg("y"),
              py::arg("z"),
-             py::arg("confidence") = 0.f,
+             py::arg("confidence") = -1.f,
              py::arg("label") = 0,
+             py::arg("labelName") = "",
              DOC(dai, Keypoint, Keypoint))
         .def_readwrite("imageCoordinates", &Keypoint::imageCoordinates, DOC(dai, Keypoint, imageCoordinates))
         .def_readwrite("confidence", &Keypoint::confidence, DOC(dai, Keypoint, confidence))
-        .def_readwrite("label", &Keypoint::label, DOC(dai, Keypoint, label));
+        .def_readwrite("label", &Keypoint::label, DOC(dai, Keypoint, label))
+        .def_readwrite("labelName", &Keypoint::labelName, DOC(dai, Keypoint, labelName));
 
     keypointsList.def(py::init<>())
         .def(py::init<std::vector<Keypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))
@@ -134,11 +150,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("keypoints"),
             DOC(dai, KeypointsListT, setKeypoints))
         .def("setKeypoints",
-             py::overload_cast<const std::vector<Point3f>>(&KeypointsList::setKeypoints),
+             py::overload_cast<const std::vector<Point3f>&>(&KeypointsList::setKeypoints),
              py::arg("keypoints"),
              DOC(dai, KeypointsListT, setKeypoints))
         .def("setKeypoints",
-             py::overload_cast<const std::vector<Point2f>>(&KeypointsList::setKeypoints),
+             py::overload_cast<const std::vector<Point2f>&>(&KeypointsList::setKeypoints),
              py::arg("keypoints"),
              DOC(dai, KeypointsListT, setKeypoints))
         .def(
@@ -156,9 +172,73 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getPoints3f", &KeypointsList::getPoints3f, DOC(dai, KeypointsListT, getPoints3f))
         .def("getPoints2f", &KeypointsList::getPoints2f, DOC(dai, KeypointsListT, getPoints2f));
 
+    spatialKeypoint.def(py::init<>())
+        .def(py::init<Point3f, Point3f, float, uint32_t, std::string>(),
+             py::arg("imageCoordinates"),
+             py::arg("spatialCoordinates") = Point3f{},
+             py::arg("confidence") = -1.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, SpatialKeypoint, SpatialKeypoint))
+        .def(py::init<Point2f, Point3f, float, uint32_t, std::string>(),
+             py::arg("imageCoordinates"),
+             py::arg("spatialCoordinates") = Point3f{},
+             py::arg("confidence") = 0.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, SpatialKeypoint, SpatialKeypoint))
+        .def(py::init<float, float, float, float, float, float, float, uint32_t, std::string>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("spatialX"),
+             py::arg("spatialY"),
+             py::arg("spatialZ"),
+             py::arg("confidence") = 0.f,
+             py::arg("label") = 0,
+             py::arg("labelName") = "",
+             DOC(dai, SpatialKeypoint, SpatialKeypoint))
+        .def_readwrite("imageCoordinates", &SpatialKeypoint::imageCoordinates, DOC(dai, SpatialKeypoint, imageCoordinates))
+        .def_readwrite("spatialCoordinates", &SpatialKeypoint::spatialCoordinates, DOC(dai, SpatialKeypoint, spatialCoordinates))
+        .def_readwrite("confidence", &SpatialKeypoint::confidence, DOC(dai, SpatialKeypoint, confidence))
+        .def_readwrite("label", &SpatialKeypoint::label, DOC(dai, SpatialKeypoint, label))
+        .def_readwrite("labelName", &SpatialKeypoint::labelName, DOC(dai, SpatialKeypoint, labelName));
+
+    spatialKeypointsList.def(py::init<>())
+        .def(py::init<std::vector<SpatialKeypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))
+        .def(py::init<std::vector<SpatialKeypoint>>(), py::arg("keypoints"), DOC(dai, KeypointsListT, KeypointsListT))
+        .def(
+            "setKeypoints",
+            [](SpatialKeypointsList& self, const std::vector<SpatialKeypoint>& kps) { self.Base::setKeypoints(kps); },
+            py::arg("keypoints"),
+            DOC(dai, KeypointsListT, setKeypoints))
+        .def("setKeypoints",
+             py::overload_cast<const std::vector<Point3f>&>(&SpatialKeypointsList::setKeypoints),
+             py::arg("keypoints"),
+             DOC(dai, KeypointsListT, setKeypoints))
+        .def(
+            "setKeypoints",
+            [](SpatialKeypointsList& self, std::vector<SpatialKeypoint> keypoints, std::vector<Edge> edges) {
+                self.Base::setKeypoints(std::move(keypoints), std::move(edges));
+            },
+            py::arg("keypoints"),
+            py::arg("edges"),
+            DOC(dai, KeypointsListT, setKeypoints))
+        .def(
+            "setEdges", [](SpatialKeypointsList& self, const std::vector<Edge>& edges) { self.Base::setEdges(edges); }, py::arg("edges"))
+        .def("getKeypoints", &SpatialKeypointsList::getKeypoints, DOC(dai, KeypointsListT, getKeypoints))
+        .def("getEdges", &SpatialKeypointsList::getEdges, DOC(dai, KeypointsListT, getEdges))
+        .def("getPoints3f", &SpatialKeypointsList::getPoints3f, DOC(dai, KeypointsListT, getPoints3f))
+        .def("getPoints2f", &SpatialKeypointsList::getPoints2f, DOC(dai, KeypointsListT, getPoints2f))
+        .def("setSpatialCoordinates",
+             &SpatialKeypointsList::setSpatialCoordinates,
+             py::arg("spatialCoordinates"),
+             DOC(dai, SpatialKeypointsList, setSpatialCoordinates))
+        .def("getSpatialCoordinates", &SpatialKeypointsList::getSpatialCoordinates, DOC(dai, SpatialKeypointsList, getSpatialCoordinates));
+
     rotatedRect.def(py::init<>())
-        .def(py::init<Point2f, Size2f, float>())
-        .def(py::init<Rect, float>())
+        .def(py::init<Point2f, Size2f, float>(), py::arg("center"), py::arg("size"), py::arg("angle"), DOC(dai, RotatedRect, RotatedRect))
+        .def(py::init<Rect, float>(), py::arg("rect"), py::arg("angle") = 0.f, DOC(dai, RotatedRect, RotatedRect))
         .def_readwrite("center", &RotatedRect::center)
         .def_readwrite("size", &RotatedRect::size)
         .def_readwrite("angle", &RotatedRect::angle)
@@ -171,12 +251,18 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getOuterCXCYWH", &RotatedRect::getOuterCXCYWH, DOC(dai, RotatedRect, getOuterCXCYWH));
 
     rect.def(py::init<>())
-        .def(py::init<float, float, float, float>())
-        .def(py::init<float, float, float, float, bool>())
-        .def(py::init<Point2f, Point2f>())
-        .def(py::init<Point2f, Point2f, bool>())
-        .def(py::init<Point2f, Size2f>())
-        .def(py::init<Point2f, Size2f, bool>())
+        .def(py::init<float, float, float, float>(), py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, Rect, Rect))
+        .def(py::init<float, float, float, float, bool>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("width"),
+             py::arg("height"),
+             py::arg("normalized"),
+             DOC(dai, Rect, Rect, 2))
+        .def(py::init<Point2f, Size2f>(), py::arg("top_left"), py::arg("size"), DOC(dai, Rect, Rect, 4))
+        .def(py::init<Point2f, Size2f, bool>(), py::arg("top_left"), py::arg("size"), py::arg("normalized"), DOC(dai, Rect, Rect, 5))
+        .def(py::init<Point2f, Point2f>(), py::arg("point_1"), py::arg("point_2"), DOC(dai, Rect, Rect, 6))
+        .def(py::init<Point2f, Point2f, bool>(), py::arg("point_1"), py::arg("point_2"), py::arg("normalized"), DOC(dai, Rect, Rect, 7))
 
         .def("topLeft", &Rect::topLeft, DOC(dai, Rect, topLeft))
         .def("bottomRight", &Rect::bottomRight, DOC(dai, Rect, bottomRight))
@@ -213,12 +299,20 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("isNormalized", &Point2f::isNormalized);
 
     point3f.def(py::init<>())
-        .def(py::init<float, float, float>())
+        .def(py::init<float, float, float>(), py::arg("x"), py::arg("y"), py::arg("z"), DOC(dai, Point3f, Point3f))
         .def_readwrite("x", &Point3f::x)
         .def_readwrite("y", &Point3f::y)
         .def_readwrite("z", &Point3f::z);
     point3fRGBA.def(py::init<>())
-        .def(py::init<float, float, float, int, int, int>())
+        .def(py::init<float, float, float, int, int, int, int>(),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("z"),
+             py::arg("r"),
+             py::arg("g"),
+             py::arg("b"),
+             py::arg("a") = 255,
+             DOC(dai, Point3fRGBA, Point3fRGBA))
         .def_readwrite("x", &Point3fRGBA::x)
         .def_readwrite("y", &Point3fRGBA::y)
         .def_readwrite("z", &Point3fRGBA::z)
@@ -227,12 +321,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("b", &Point3fRGBA::b)
         .def_readwrite("a", &Point3fRGBA::a);
     point3d.def(py::init<>())
-        .def(py::init<double, double, double>())
+        .def(py::init<double, double, double>(), py::arg("x"), py::arg("y"), py::arg("z"), DOC(dai, Point3d, Point3d))
         .def_readwrite("x", &Point3d::x)
         .def_readwrite("y", &Point3d::y)
         .def_readwrite("z", &Point3d::z);
     quaterniond.def(py::init<>())
-        .def(py::init<double, double, double, double>())
+        .def(py::init<double, double, double, double>(), py::arg("qx"), py::arg("qy"), py::arg("qz"), py::arg("qw"), DOC(dai, Quaterniond, Quaterniond))
         .def_readwrite("qx", &Quaterniond::qx)
         .def_readwrite("qy", &Quaterniond::qy)
         .def_readwrite("qz", &Quaterniond::qz)

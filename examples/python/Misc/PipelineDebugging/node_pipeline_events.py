@@ -22,7 +22,7 @@ with dai.Pipeline() as pipeline:
     stereo.setLeftRightCheck(True)
 
     disparityQueue = stereo.disparity.createOutputQueue()
-    monoLeftEventQueue = monoLeft.pipelineEventOutput.createOutputQueue()
+    monoLeftEventQueue = monoLeft.pipelineEventOutput.createOutputQueue() # Supported on core and rvc4 only
 
     colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
     colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black

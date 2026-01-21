@@ -1,5 +1,4 @@
 #include <catch2/catch_all.hpp>
-#include <chrono>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -100,7 +99,7 @@ TEST_CASE("RecordVideo raw color") {
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::BGR888i);
+    auto *camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::BGR888i);
 
     auto recordNode = p.create<dai::node::RecordVideo>();
     recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_color.mcap"));
@@ -126,7 +125,7 @@ TEST_CASE("RecordVideo raw gray") {
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::GRAY8);
+    auto *camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::GRAY8);
 
     auto recordNode = p.create<dai::node::RecordVideo>();
     recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap"));
@@ -152,7 +151,7 @@ TEST_CASE("RecordVideo encoded h264") {
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
+    auto *camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();
@@ -182,7 +181,7 @@ TEST_CASE("RecordVideo encoded mjpeg") {
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
+    auto *camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();
@@ -217,7 +216,7 @@ TEST_CASE("MockIn Camera") {
     replayNode->setLoop(false);
 
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, *replayNode);
-    auto camOut = cam->requestOutput({2016, 1520});
+    auto *camOut = cam->requestOutput({2016, 1520});
 
     auto camQ = camOut->createOutputQueue();
     auto replayQ = replayNode->out.createOutputQueue();

@@ -23,11 +23,13 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      */
     enum class PresetMode : std::uint32_t {
         /**
+         * @deprecated This mode is deprecated and will be removed in a future release.
          * Prefers accuracy over density. More invalid depth values, but less outliers.
          * This mode does not turn on any post-processing and is light on resources.
          */
         FAST_ACCURACY,
         /**
+         * @deprecated This mode is deprecated and will be removed in a future release.
          * Prefers density over accuracy. Less invalid depth values, but more outliers.
          * This mode does not turn on any post-processing and is light on resources.
          */
@@ -36,7 +38,9 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
         DEFAULT,
         FACE,
         HIGH_DETAIL,
-        ROBOTICS
+        ROBOTICS,
+        DENSITY,
+        ACCURACY
     };
     std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::DEFAULT) {
         setDefaultProfilePreset(presetMode);
@@ -61,7 +65,9 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     Properties& getProperties();
 
    private:
-    PresetMode presetMode = PresetMode::DEFAULT;
+    // Platform specific profile presets
+    void setRvc2ProfilePreset(PresetMode mode);
+    void setRvc4ProfilePreset(PresetMode mode);
 
    public:
     using MedianFilter = dai::StereoDepthConfig::MedianFilter;

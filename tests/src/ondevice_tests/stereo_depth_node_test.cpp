@@ -27,12 +27,12 @@ void testStereoDepthPreset(dai::node::StereoDepth::PresetMode preset, dai::Proce
     }
 }
 
-TEST_CASE("Test StereoDepth node FAST_ACCURACY preset") {
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::FAST_ACCURACY);
+TEST_CASE("Test StereoDepth node ACCURACY preset") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::ACCURACY);
 }
 
-TEST_CASE("Test StereoDepth node FAST_DENSITY preset") {
-    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::FAST_DENSITY);
+TEST_CASE("Test StereoDepth node DENSITY preset") {
+    testStereoDepthPreset(dai::node::StereoDepth::PresetMode::DENSITY);
 }
 
 TEST_CASE("Test StereoDepth node DEFAULT preset") {

@@ -9,6 +9,7 @@
 #include <depthai/pipeline/datatype/ImageManipConfig.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/properties/ImageManipProperties.hpp>
+#include <depthai/utility/matrixOps.hpp>
 #include <sstream>
 
 #include "depthai/common/RotatedRect.hpp"
@@ -2596,10 +2597,6 @@ std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array
 
 std::vector<std::array<float, 2>> getHull(const std::vector<std::array<float, 2>> points);
 
-std::array<std::array<float, 2>, 2> getInverse(const std::array<std::array<float, 2>, 2> mat);
-
-std::array<std::array<float, 3>, 3> getInverse(const std::array<std::array<float, 3>, 3>& matrix);
-
 dai::RotatedRect getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
 
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
@@ -2643,7 +2640,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
 
     auto [matrix, imageCorners, srcCorners] = getTransform(operations, inputWidth, inputHeight, base.outputWidth, base.outputHeight);
 
-    getOutputSizeFromCorners(imageCorners, base.center, getInverse(matrix), inputWidth, inputHeight, base.outputWidth, base.outputHeight);
+    getOutputSizeFromCorners(imageCorners, base.center, matrix::getMatrixInverse(matrix), inputWidth, inputHeight, base.outputWidth, base.outputHeight);
 
     if(base.resizeMode != ImageManipOpsBase<C>::ResizeMode::NONE) {
         Resize res;
@@ -2681,7 +2678,7 @@ std::tuple<std::array<std::array<float, 3>, 3>, std::array<std::array<float, 2>,
         outputOps.emplace_back(Translate(tx, ty));
     }
 
-    auto matrixInv = getInverse(matrix);
+    auto matrixInv = matrix::getMatrixInverse(matrix);
 
     if(type == ImgFrame::Type::NV12 || type == ImgFrame::Type::YUV420p || outputFrameType == ImgFrame::Type::NV12
        || outputFrameType == ImgFrame::Type::YUV420p) {
@@ -2769,7 +2766,7 @@ ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipO
         auto [matrix, imageCorners, _srcCorners] = getFullTransform<Container>(base, inputWidth, inputHeight, type, outputFrameType, outputOps);
 
         this->matrix = matrix;
-        this->matrixInv = getInverse(matrix);
+        this->matrixInv = matrix::getMatrixInverse(matrix);
         this->srcCorners = _srcCorners;
 
         if(logger) {

@@ -31,6 +31,8 @@ using DepthSource = std::variant<std::shared_ptr<StereoDepth>, std::shared_ptr<N
  */
 class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
+    using Model = NeuralNetwork::Model;
+
     explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
         : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device)
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -102,36 +104,34 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     constexpr static const char* NAME = "SpatialDetectionNetwork";
 
     /**
-     * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs.
-     * Also call setNNArchive() with provided model description.
+     * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs and configure the
+     * inference model
      * @param inputRgb Camera node
      * @param depthSource Depth source node (StereoDepth, NeuralDepth, or ToF)
-     * @param modelDesc Neural network model description
+     * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param fps Desired frames per second
      * @param resizeMode Resize mode for input color frames
      * @returns Shared pointer to SpatialDetectionNetwork node
      */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const DepthSource& depthSource,
-                                                   dai::NNModelDescription modelDesc,
+                                                   const Model& model,
                                                    std::optional<float> fps = std::nullopt,
                                                    std::optional<dai::ImgResizeMode> resizeMode = std::nullopt);
 
     /**
-     * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs.
-     * Also call setNNArchive() with provided NNArchive.
+     * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs and configure the
+     * inference model.
      * @param inputRgb Camera node
      * @param depthSource Depth source node (StereoDepth, NeuralDepth, or ToF)
-     * @param nnArchive Neural network archive
-     * @param fps Desired frames per second
-     * @param resizeMode Resize mode for input color frames
+     * @param model: Neural network model description, NNArchive or HubAI model id string
+     * @param capability: Camera capabilities
      * @returns Shared pointer to SpatialDetectionNetwork node
      */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
                                                    const DepthSource& depthSource,
-                                                   const dai::NNArchive& nnArchive,
-                                                   std::optional<float> fps = std::nullopt,
-                                                   std::optional<dai::ImgResizeMode> resizeMode = std::nullopt);
+                                                   const Model& model,
+                                                   const ImgFrameCapability& capability);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};

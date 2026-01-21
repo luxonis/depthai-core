@@ -11,6 +11,7 @@
 #include <unordered_set>
 
 #include "depthai/common/CameraInfo.hpp"
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Point3f.hpp"
@@ -48,7 +49,24 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
     }
     for(int i = 0; i < 3; ++i) mat[i][3] = newTrans[i];
 }
+
+float getDistanceUnitScale(LengthUnit targetUnit, LengthUnit sourceUnit) {
+    return getLengthUnitMultiplier(targetUnit) / getLengthUnitMultiplier(sourceUnit);
+}
 }  // namespace
+
+LengthUnit CalibrationHandler::getEepromTranslationUnits() const {
+    return eepromTranslationUnits;
+}
+
+void CalibrationHandler::scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const {
+    const LengthUnit myUnits = getEepromTranslationUnits();
+    const float scale = getDistanceUnitScale(unit, myUnits);
+    if(scale == 1.0f) return;
+    for(int i = 0; i < 3; ++i) {
+        mat[i][3] *= scale;
+    }
+}
 
 CalibrationHandler::ExtrinsicGraphValidationResult CalibrationHandler::validateExtrinsicGraph() const {
     std::unordered_map<CameraBoardSocket, CameraBoardSocket> originMap;
@@ -444,7 +462,8 @@ CameraModel CalibrationHandler::getDistortionModel(CameraBoardSocket cameraId) c
 
 std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBoardSocket srcCamera,
                                                                         CameraBoardSocket dstCamera,
-                                                                        bool useSpecTranslation) const {
+                                                                        bool useSpecTranslation,
+                                                                        LengthUnit unit) const {
     /**
      * 1. Check if both camera ID exists.
      * 2. Check if the forward link exists from source and destination camera to origin camera.
@@ -477,6 +496,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
 
     // Get the matrix from src to dst camera
     extrinsics = matMul(dstOriginMatrix, srcOriginMatrix);
+    scaleTranslationInPlace(extrinsics, unit);
     return extrinsics;
 }
 
@@ -539,7 +559,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
                                                                               bool useSpecTranslation,
                                                                               CameraBoardSocket& originSocket) const {
     // Define scale parameter for mm to cm conversion
-    constexpr float MM_TO_CM_SCALE = 10.0f;
+    constexpr float MM_TO_CM_SCALE = getLengthUnitMultiplier(DepthUnit::MILLIMETER) / getLengthUnitMultiplier(DepthUnit::CENTIMETER);
 
     const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
 
@@ -620,7 +640,8 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
 
 std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(CameraBoardSocket srcCamera,
                                                                           const HousingCoordinateSystem housingCS,
-                                                                          bool useSpecTranslation) const {
+                                                                          bool useSpecTranslation,
+                                                                          LengthUnit unit) const {
     // Ensure we have calibration data for the requested source camera
     if(eepromData.cameraData.find(srcCamera) == eepromData.cameraData.end()) {
         throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
@@ -640,9 +661,9 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
     // These are provided by the calibration data.
     // ------------------------------------------------------------
 
-    std::vector<std::vector<float>> HousingToHousingOrigin = getHousingToHousingOrigin(housingCS, useSpecTranslation, housingOriginCamera);
+    std::vector<std::vector<float>> housingToHousingOrigin = getHousingToHousingOrigin(housingCS, useSpecTranslation, housingOriginCamera);
 
-    std::vector<std::vector<float>> HousingOriginToOrigin = getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
+    std::vector<std::vector<float>> housingOriginToOrigin = getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
 
     std::vector<std::vector<float>> camToOrigin = getExtrinsicsToOrigin(srcCamera, useSpecTranslation, originCamera2);
 
@@ -661,26 +682,30 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
     //         housing → housing_origin
     //    So we invert that SE3 transform first.
     // ------------------------------------------------------------
-    invertSe3Matrix4x4InPlace(HousingOriginToOrigin);   // now represents origin → housing_origin
-    invertSe3Matrix4x4InPlace(HousingToHousingOrigin);  // now represents housing_origin → housing
+    invertSe3Matrix4x4InPlace(housingOriginToOrigin);   // now represents origin → housing_origin
+    invertSe3Matrix4x4InPlace(housingToHousingOrigin);  // now represents housing_origin → housing
     // ------------------------------------------------------------
     // 3. Compose transformations:
     //    cam_src → origin → housing_origin
     // ------------------------------------------------------------
-    camToHousingOrigin = matMul(HousingOriginToOrigin, camToOrigin);
+    camToHousingOrigin = matMul(housingOriginToOrigin, camToOrigin);
 
     // ------------------------------------------------------------
     // 4. And finally:
     //    cam_src → housing_origin → housing
     //    Which gives us: cam_src → housing
     // ------------------------------------------------------------
-    camToHousing = matMul(HousingToHousingOrigin, camToHousingOrigin);
+    camToHousing = matMul(housingToHousingOrigin, camToHousingOrigin);
+    scaleTranslationInPlace(camToHousing, unit);
 
     return camToHousing;
 }
 
-std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) const {
-    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, useSpecTranslation);
+std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSocket srcCamera,
+                                                                  CameraBoardSocket dstCamera,
+                                                                  bool useSpecTranslation,
+                                                                  LengthUnit unit) const {
+    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, useSpecTranslation, unit);
 
     std::vector<float> translationVector = {0, 0, 0};
     for(auto i = 0; i < 3; i++) {
@@ -690,7 +715,7 @@ std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSoc
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getCameraRotationMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const {
-    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, false);
+    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, false, LengthUnit::CENTIMETER);
 
     std::vector<std::vector<float>> rotationMatrix = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
     for(auto i = 0; i < 3; i++) {
@@ -701,8 +726,8 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraRotationMatrix(Came
     return rotationMatrix;
 }
 
-float CalibrationHandler::getBaselineDistance(CameraBoardSocket cam1, CameraBoardSocket cam2, bool useSpecTranslation) const {
-    std::vector<float> translationVector = getCameraTranslationVector(cam1, cam2, useSpecTranslation);
+float CalibrationHandler::getBaselineDistance(CameraBoardSocket cam1, CameraBoardSocket cam2, bool useSpecTranslation, LengthUnit unit) const {
+    std::vector<float> translationVector = getCameraTranslationVector(cam1, cam2, useSpecTranslation, unit);
     float sum = 0;
     for(auto val : translationVector) {
         sum += val * val;
@@ -710,13 +735,13 @@ float CalibrationHandler::getBaselineDistance(CameraBoardSocket cam1, CameraBoar
     return std::sqrt(sum);
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation) const {
-    std::vector<std::vector<float>> transformationMatrix = getImuToCameraExtrinsics(cameraId, useSpecTranslation);
+std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation, LengthUnit unit) const {
+    std::vector<std::vector<float>> transformationMatrix = getImuToCameraExtrinsics(cameraId, useSpecTranslation, unit);
     invertSe3Matrix4x4InPlace(transformationMatrix);
     return transformationMatrix;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation) const {
+std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation, LengthUnit unit) const {
     if(eepromData.imuExtrinsics.rotationMatrix.size() == 0 || eepromData.imuExtrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
         throw std::runtime_error("IMU calibration data is not available on device yet.");
     } else if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
@@ -737,11 +762,14 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
     currTransformationMatrixImu.push_back(homogeneous_vector);
 
     if(eepromData.imuExtrinsics.toCameraSocket == cameraId) {
+        scaleTranslationInPlace(currTransformationMatrixImu, unit);
         return currTransformationMatrixImu;
     } else {
         std::vector<std::vector<float>> destTransformationMatrixCurr =
-            getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useSpecTranslation);
-        return matMul(destTransformationMatrixCurr, currTransformationMatrixImu);
+            getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useSpecTranslation, LengthUnit::CENTIMETER);
+        auto result = matMul(destTransformationMatrixCurr, currTransformationMatrixImu);
+        scaleTranslationInPlace(result, unit);
+        return result;
     }
 }
 
