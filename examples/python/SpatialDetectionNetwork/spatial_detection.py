@@ -104,7 +104,6 @@ with dai.Pipeline() as p:
     spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
         camRgb, depthSource, modelDescription
     )
-    spatialDetectionNetwork.detectionParser.setRunOnHost(False)
     visualizer = p.create(SpatialVisualizer)
 
     spatialDetectionNetwork.input.setBlocking(False)
