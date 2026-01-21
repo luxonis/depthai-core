@@ -14,7 +14,8 @@ parser.add_argument(
     "--depthSource", type=str, default="stereo", choices=["stereo", "neural"]
 )
 args = parser.parse_args()
-
+# For better results on OAK4, use a segmentation model like "luxonis/yolov8-instance-segmentation-large:coco-640x480"
+# for depth estimation over the objects mask instead of the full bounding box.
 modelDescription = dai.NNModelDescription("yolov6-nano")
 size = (640, 400)
 
@@ -106,8 +107,8 @@ with dai.Pipeline() as p:
     )
     visualizer = p.create(SpatialVisualizer)
 
+    spatialDetectionNetwork.spatialLocationCalculator.initialConfig.setSegmentationPassthrough(False)
     spatialDetectionNetwork.input.setBlocking(False)
-    spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)
     spatialDetectionNetwork.setDepthUpperThreshold(5000)
 

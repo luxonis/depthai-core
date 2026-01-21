@@ -214,11 +214,14 @@ int main(int argc, char** argv) {
 
         // Set up model and build with DepthSource variant
         dai::NNModelDescription modelDesc;
+        // For better results on OAK4, use a segmentation model like "luxonis/yolov8-instance-segmentation-large:coco-640x480"
+        // for depth estimation over the objects mask instead of the full bounding box.
         modelDesc.model = "yolov6-nano";
         spatialDetectionNetwork->build(camRgb, depthSource, modelDesc);
 
         // Set label map
         visualizer->labelMap = spatialDetectionNetwork->getClasses().value();
+        spatialDetectionNetwork->spatialLocationCalculator->initialConfig->setSegmentationPassthrough(false);
 
         // Linking
         visualizer->build(spatialDetectionNetwork->passthroughDepth, spatialDetectionNetwork->out, spatialDetectionNetwork->passthrough);
