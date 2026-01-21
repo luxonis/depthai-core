@@ -161,13 +161,13 @@ bool setupHolisticRecord(Pipeline& pipeline,
             }
         }
         outFilenames["record_config"] = platform::joinPaths(recordPath, deviceId + "_record_config.json");
-        outFilenames["calibration"] = platform::joinPaths(recordPath, deviceId + "_calibration.json");
+        outFilenames["camera_info"] = platform::joinPaths(recordPath, deviceId + "_camera_info.json");
     } catch(const std::runtime_error& e) {
         recordConfig.state = RecordConfig::RecordReplayState::NONE;
         spdlog::warn("Record disabled: {}", e.what());
         return false;
     }
-    // Write recordConfig and calibration to output dir
+    // Write recordConfig and camera info to output dir
     try {
         // Config
         std::filesystem::path pathConfig = platform::joinPaths(recordPath, deviceId + "_record_config.json");
@@ -175,12 +175,21 @@ bool setupHolisticRecord(Pipeline& pipeline,
         json j = recordConfig;
         file << j.dump(4);
         file.close();
-        // Calibration
-        std::filesystem::path pathCalib = platform::joinPaths(recordPath, deviceId + "_calibration.json");
-        auto calibData = pipeline.getDefaultDevice()->readCalibration().eepromToJson();
-        std::ofstream calibFile(pathCalib);
-        calibFile << calibData.dump(4);
-        calibFile.close();
+        // Camera info
+        std::filesystem::path pathCamInfo = platform::joinPaths(recordPath, deviceId + "_camera_info.json");
+        auto calibData = pipeline.getCalibrationData().eepromToJson();
+        if(!pipeline.getEepromData().has_value()) {
+            calibData = pipeline.getDefaultDevice()->readCalibration().eepromToJson();
+        }
+        auto cameraFeatures = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
+        auto imu = pipeline.getDefaultDevice()->getConnectedIMU();
+        nlohmann::json cameraInfo;
+        cameraInfo["calibration"] = calibData;
+        cameraInfo["camera_features"] = cameraFeatures;
+        cameraInfo["imu"] = imu;
+        std::ofstream camInfoFile(pathCamInfo);
+        camInfoFile << cameraInfo.dump(4);
+        camInfoFile.close();
     } catch(const std::exception& e) {
         spdlog::warn("Error while writing DEPTHAI_RECORD json file: {}", e.what());
         return false;
@@ -198,7 +207,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
     auto sources = pipeline.getSourceNodes();
     try {
         bool useTar = !platform::checkPathExists(replayPath, true);
-        bool hasCalibration = false;
+        bool hasCameraInfo = false;
         std::vector<std::string> tarNodenames;
         std::string tarRoot = ".";
         std::string videoExt = ".mp4";
@@ -207,10 +216,10 @@ bool setupHolisticReplay(Pipeline& pipeline,
             tarNodenames = filenamesInTar(replayPath);
         else
             tarNodenames = platform::getFilenamesInDirectory(replayPath);
-        hasCalibration = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+        hasCameraInfo = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
             auto pathObj = std::filesystem::path(path);
             auto filename = pathObj.filename().string();
-            return filename == "calibration.json";
+            return filename == "camera_info.json";
         });
         bool hasMp4Files = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
             auto pathObj = std::filesystem::path(path);
@@ -257,7 +266,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
             pipelineFilenames.push_back(nodeParams.name);
         }
         std::filesystem::path configPath;
-        std::filesystem::path calibrationPath;
+        std::filesystem::path cameraInfoPath;
         std::vector<std::string> inFiles;
         std::vector<std::filesystem::path> outFiles;
         inFiles.reserve(sources.size() + 1);
@@ -277,14 +286,14 @@ bool setupHolisticReplay(Pipeline& pipeline,
             }
             if(useTar) {
                 inFiles.emplace_back(tarRoot + "record_config.json");
-                inFiles.emplace_back(tarRoot + "calibration.json");
+                inFiles.emplace_back(tarRoot + "camera_info.json");
             }
             configPath = platform::joinPaths(rootPath, "record_config.json");
-            calibrationPath = platform::joinPaths(rootPath, "calibration.json");
+            cameraInfoPath = platform::joinPaths(rootPath, "camera_info.json");
             outFiles.push_back(configPath);
-            outFiles.push_back(calibrationPath);
+            outFiles.push_back(cameraInfoPath);
             outFilenames["record_config"] = configPath;
-            outFilenames["calibration"] = calibrationPath;
+            outFilenames["camera_info"] = cameraInfoPath;
             if(useTar) untarFiles(replayPath, inFiles, outFiles);
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
@@ -323,16 +332,18 @@ bool setupHolisticReplay(Pipeline& pipeline,
         recordConfig = j.get<RecordConfig>();
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
 
-        if(hasCalibration) {
-            std::ifstream calibFile(calibrationPath);
-            json jCalib = json::parse(calibFile);
+        if(hasCameraInfo) {
+            std::ifstream camInfoFile(cameraInfoPath);
+            json jCamInfo = json::parse(camInfoFile);
             CalibrationHandler calib;
             try {
-                calib = CalibrationHandler::fromJson(jCalib, true);
+                calib = CalibrationHandler::fromJson(jCamInfo["calibration"], true);
                 pipeline.setCalibrationData(calib);
+                std::vector<CameraFeatures> camFeatures = jCamInfo["camera_features"];  // TODO set to device
+                std::string imu = jCamInfo["imu"];                         // TODO set to device
             } catch(const std::runtime_error& e) {
                 spdlog::warn("Recorded calibration is invalid: {}", e.what());
-                hasCalibration = false;
+                hasCameraInfo = false;
             }
         }
 
