@@ -4,6 +4,9 @@
 #include <condition_variable>
 #include <mutex>
 
+namespace dai {
+namespace utility {
+
 /**
  * @brief A binary semaphore implementation
  * Should be removed and replaced with std::binary_semaphore if and when C++20 is supported
@@ -57,3 +60,6 @@ class BinarySemaphore {
         return true;
     }
 };
+
+}  // namespace utility
+}  // namespace dai

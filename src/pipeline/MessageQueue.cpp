@@ -98,7 +98,7 @@ int MessageQueue::addCallback(const std::function<void()>& callback) {
     return addCallback([callback](const std::string&, std::shared_ptr<ADatatype>) { callback(); });
 }
 
-int MessageQueue::addNotifier(std::shared_ptr<ManyToOneNotifier> notifier) {
+int MessageQueue::addNotifier(std::shared_ptr<utility::ManyToOneNotifier> notifier) {
     // Lock first
     std::unique_lock<std::mutex> lock(notifierMtx);
 
@@ -116,7 +116,7 @@ bool MessageQueue::removeCallback(int callbackId) {
     // Lock first
     std::unique_lock<std::mutex> lock(callbacksMtx);
 
-    // If callback with id 'callbackId' doesn't exists, return false
+    // If callback with id 'callbackId' doesn't exist, return false
     if(callbacks.count(callbackId) == 0) return false;
 
     // Otherwise erase and return true
@@ -128,7 +128,7 @@ bool MessageQueue::removeNotifier(int notifierId) {
     // Lock first
     std::unique_lock<std::mutex> lock(notifierMtx);
 
-    // If callback with id 'callbackId' doesn't exists, return false
+    // If callback with id 'notifierId' doesn't exist, return false
     if(notifiers.count(notifierId) == 0) return false;
 
     // Otherwise erase and return true
@@ -208,7 +208,7 @@ void MessageQueue::notifyListeners() {
     // Lock first
     std::lock_guard<std::mutex> lock(notifierMtx);
 
-    // Call all callbacks
+    // Notify all listeners
     for(auto& keyValue : notifiers) {
         keyValue.second->notifyOne();
     }
@@ -242,7 +242,7 @@ bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::option
         return checkForMessages();
     };
 
-    std::shared_ptr<ManyToOneNotifier> notifier = std::make_shared<ManyToOneNotifier>();
+    std::shared_ptr<utility::ManyToOneNotifier> notifier = std::make_shared<utility::ManyToOneNotifier>();
     try {
         // Add notifier to all queues, if any message arrives from this point, wait should return
         for(auto* input : queues) {
@@ -256,13 +256,12 @@ bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::option
             }
             notifier->wait(pred);
         }
-        return true;
     } catch(...) {
         removeNotifiers();
         throw;
     }
     removeNotifiers();
-    return false;
+    return true;
 }
 std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(std::unordered_map<std::string, MessageQueue&> queues,
                                                                                  std::optional<std::chrono::milliseconds> timeout) {
@@ -276,8 +275,7 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
     if(gotAny) {
         for(auto& kv : queues) {
             auto& input = kv.second;
-            if(input.has())
-                inputs[kv.first] = input.get<ADatatype>();
+            if(input.has()) inputs[kv.first] = input.get<ADatatype>();
         }
     }
     return inputs;

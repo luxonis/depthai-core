@@ -1,9 +1,13 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <stdexcept>
 
 #include "BinarySemaphore.hpp"
+
+namespace dai {
+namespace utility {
 
 class ManyToOneNotifier {
     BinarySemaphore semaphore{false};
@@ -64,3 +68,6 @@ class ManyToOneNotifier {
         waiting = false;
     }
 };
+
+}  // namespace utility
+}  // namespace dai

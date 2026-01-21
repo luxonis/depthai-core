@@ -35,8 +35,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     std::string name;
 
     std::mutex notifierMtx;
-    std::unordered_map<CallbackId, std::shared_ptr<ManyToOneNotifier>> notifiers;
-    ;
+    std::unordered_map<CallbackId, std::shared_ptr<utility::ManyToOneNotifier>> notifiers;
     CallbackId uniqueNotifierId{0};
 
    public:
@@ -78,6 +77,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         callbacks = c.callbacks;
         notifiers = c.notifiers;
         uniqueCallbackId = c.uniqueCallbackId;
+        uniqueNotifierId = c.uniqueNotifierId;
         pipelineEventDispatcher = c.pipelineEventDispatcher;
         return *this;
     }
@@ -88,6 +88,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         callbacks = std::move(m.callbacks);
         notifiers = std::move(m.notifiers);
         uniqueCallbackId = m.uniqueCallbackId;
+        uniqueNotifierId = m.uniqueNotifierId;
         pipelineEventDispatcher = m.pipelineEventDispatcher;
         return *this;
     }
@@ -204,7 +205,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      * @param notifier Notifier to be notified
      * @returns Notifier id
      */
-    CallbackId addNotifier(std::shared_ptr<ManyToOneNotifier> notifier);
+    CallbackId addNotifier(std::shared_ptr<utility::ManyToOneNotifier> notifier);
 
     /**
      * Removes a callback
