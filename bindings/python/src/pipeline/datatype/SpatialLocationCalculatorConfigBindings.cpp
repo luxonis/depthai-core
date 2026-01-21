@@ -82,6 +82,9 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         .def("setSegmentationPassthrough",
              &SpatialLocationCalculatorConfig::setSegmentationPassthrough,
              DOC(dai, SpatialLocationCalculatorConfig, setSegmentationPassthrough))
+        .def("setBoundingBoxScaleFactor",
+             &SpatialLocationCalculatorConfig::setBoundingBoxScaleFactor,
+             DOC(dai, SpatialLocationCalculatorConfig, setBoundingBoxScaleFactor))
         .def("getDepthThresholds", &SpatialLocationCalculatorConfig::getDepthThresholds, DOC(dai, SpatialLocationCalculatorConfig, getDepthThresholds))
         .def("getCalculationAlgorithm",
              &SpatialLocationCalculatorConfig::getCalculationAlgorithm,
@@ -94,5 +97,8 @@ void bind_spatiallocationcalculatorconfig(pybind11::module& m, void* pCallstack)
         .def("getUseSegmentation", &SpatialLocationCalculatorConfig::getUseSegmentation, DOC(dai, SpatialLocationCalculatorConfig, getUseSegmentation))
         .def("getSegmentationPassthrough",
              &SpatialLocationCalculatorConfig::getSegmentationPassthrough,
-             DOC(dai, SpatialLocationCalculatorConfig, getSegmentationPassthrough));
+             DOC(dai, SpatialLocationCalculatorConfig, getSegmentationPassthrough))
+        .def("getBoundingBoxScaleFactor",
+             &SpatialLocationCalculatorConfig::getBoundingBoxScaleFactor,
+             DOC(dai, SpatialLocationCalculatorConfig, getBoundingBoxScaleFactor));
 }
