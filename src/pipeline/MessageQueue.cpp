@@ -232,7 +232,9 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
     inputsWaitCv->wait(lock, [&]() {
         for(MessageQueue& queue : queues) {
             if(queue.isClosed()) continue;
-            if(queue.has()) return true;
+            if(queue.has()) {
+                return true;
+            }
         }
         return false;
     });
@@ -241,13 +243,7 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
     for(auto& pair : ids) {
         pair.first.removeCondVar(pair.second);
     }
-
-    // 4. Return true if data is available
-    for(MessageQueue& queue : queues) {
-        if(queue.isClosed()) continue;
-        if(queue.has()) return true;
-    }
-    return false;
+    return true;
 }
 
 std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
