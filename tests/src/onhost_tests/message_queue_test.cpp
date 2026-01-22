@@ -455,6 +455,69 @@ TEST_CASE("Get any timeout", "[MessageQueue]") {
     REQUIRE(out.size() == 0);
 }
 
+TEST_CASE("Get any multiple queues", "[MessageQueue]") {
+    MessageQueue queue1(10);
+    MessageQueue queue2(10);
+    MessageQueue queue3(10);
+
+    std::unordered_map<std::string, MessageQueue&> queues;
+    queues.insert_or_assign("queue1", queue1);
+    queues.insert_or_assign("queue2", queue2);
+    queues.insert_or_assign("queue3", queue3);
+
+    auto msg1 = std::make_shared<ADatatype>();
+    auto msg3 = std::make_shared<ADatatype>();
+    queue1.send(msg1);
+    queue3.send(msg3);
+
+    auto out = MessageQueue::getAny(queues);
+    REQUIRE(out.size() == 2);
+    REQUIRE(out.at("queue1") == msg1);
+    REQUIRE(out.at("queue3") == msg3);
+    REQUIRE_FALSE(queue1.has());
+    REQUIRE_FALSE(queue3.has());
+}
+
+TEST_CASE("Wait any sync", "[MessageQueue]") {
+    MessageQueue queue1(10);
+    MessageQueue queue2(10);
+
+    auto msg = std::make_shared<ADatatype>();
+    queue1.send(msg);
+
+    std::vector<MessageQueue*> queues{&queue1, &queue2};
+    REQUIRE(MessageQueue::waitAny(queues));
+    REQUIRE(queue1.has());
+    REQUIRE(queue1.get() == msg);
+}
+
+TEST_CASE("Wait any async", "[MessageQueue]") {
+    MessageQueue queue1(10);
+    MessageQueue queue2(10);
+
+    std::vector<MessageQueue*> queues{&queue1, &queue2};
+
+    auto thread = std::thread([&]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        queue2.send(std::make_shared<ADatatype>());
+    });
+
+    REQUIRE(MessageQueue::waitAny(queues, std::chrono::milliseconds(500)));
+    REQUIRE(queue2.has());
+    queue2.get();
+    thread.join();
+}
+
+TEST_CASE("Wait any timeout", "[MessageQueue]") {
+    MessageQueue queue1(10);
+    MessageQueue queue2(10);
+
+    std::vector<MessageQueue*> queues{&queue1, &queue2};
+    REQUIRE_FALSE(MessageQueue::waitAny(queues, std::chrono::milliseconds(100)));
+    REQUIRE_FALSE(queue1.has());
+    REQUIRE_FALSE(queue2.has());
+}
+
 TEST_CASE("Pipeline event dispatcher tests", "[MessageQueue]") {
     class TestNode : public dai::node::CustomThreadedNode<TestNode> {
        public:
