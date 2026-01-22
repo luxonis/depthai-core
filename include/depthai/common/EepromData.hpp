@@ -19,7 +19,6 @@ namespace dai {
 struct EepromData {
     uint32_t version = 7;
     std::string productName, boardCustom, boardName, boardRev, boardConf, hardwareConf, deviceName;
-    std::string batchName;  /// Deprecated, not used or stored
     uint64_t batchTime{0};
     uint32_t boardOptions{0};
     std::unordered_map<CameraBoardSocket, CameraInfo> cameraData;
@@ -41,7 +40,6 @@ DEPTHAI_SERIALIZE_OPTIONAL_EXT(EepromData,
                                hardwareConf,
                                productName,
                                deviceName,
-                               batchName,
                                batchTime,
                                boardOptions,
                                cameraData,

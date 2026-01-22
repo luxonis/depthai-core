@@ -27,7 +27,6 @@ namespace dai {
  *  - boardRev
  *  - boardConf
  *  - hardwareConf
- *  - batchName
  *  - batchTime
  *  - boardOptions
  *  - productName
@@ -428,7 +427,6 @@ class CalibrationHandler {
      * @param boardRev Sets board revision id.
      * @param boardConf Sets board configuration id.
      * @param hardwareConf Sets hardware configuration id.
-     * @param batchName Sets batch name.
      * @param batchTime Sets batch time (unix timestamp).
      * @param boardCustom Sets a custom board (Default empty string).
      */
@@ -437,7 +435,6 @@ class CalibrationHandler {
                       std::string boardRev,
                       std::string boardConf,
                       std::string hardwareConf,
-                      std::string batchName,
                       uint64_t batchTime,
                       uint32_t boardOptions,
                       std::string boardCustom = "");
@@ -451,7 +448,6 @@ class CalibrationHandler {
      * @param boardRev Sets board revision id.
      * @param boardConf Sets board configuration id.
      * @param hardwareConf Sets hardware configuration id.
-     * @param batchName Sets batch name. Not supported anymore
      * @param batchTime Sets batch time (unix timestamp).
      * @param boardCustom Sets a custom board (Default empty string).
      */
@@ -461,7 +457,6 @@ class CalibrationHandler {
                       std::string boardRev,
                       std::string boardConf,
                       std::string hardwareConf,
-                      std::string batchName,
                       uint64_t batchTime,
                       uint32_t boardOptions,
                       std::string boardCustom = "");

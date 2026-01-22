@@ -150,20 +150,19 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("boardRev"),
              DOC(dai, CalibrationHandler, setBoardInfo))
         .def("setBoardInfo",
-             py::overload_cast<std::string, std::string, std::string, std::string, std::string, std::string, uint64_t, uint32_t, std::string>(
+             py::overload_cast<std::string, std::string, std::string, std::string, std::string, uint64_t, uint32_t, std::string>(
                  &CalibrationHandler::setBoardInfo),
              py::arg("productName"),
              py::arg("boardName"),
              py::arg("boardRev"),
              py::arg("boardConf"),
              py::arg("hardwareConf"),
-             py::arg("batchName"),
              py::arg("batchTime"),
              py::arg("boardOptions"),
              py::arg("boardCustom") = "",
              DOC(dai, CalibrationHandler, setBoardInfo, 2))
         .def("setBoardInfo",
-             py::overload_cast<std::string, std::string, std::string, std::string, std::string, std::string, std::string, uint64_t, uint32_t, std::string>(
+             py::overload_cast<std::string, std::string, std::string, std::string, std::string, std::string, uint64_t, uint32_t, std::string>(
                  &CalibrationHandler::setBoardInfo),
              py::arg("deviceName"),
              py::arg("productName"),
@@ -171,7 +170,6 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("boardRev"),
              py::arg("boardConf"),
              py::arg("hardwareConf"),
-             py::arg("batchName"),
              py::arg("batchTime"),
              py::arg("boardOptions"),
              py::arg("boardCustom") = "",
