@@ -50,7 +50,7 @@ int main() {
     sync->setSyncThreshold(std::chrono::milliseconds(static_cast<int>((1 / FPS) * 1000.0 * 0.5)));
 
     align->outputAligned.link(sync->inputs["aligned"]);
-    auto* RGBOutput = camRgb->requestOutput(std::make_pair(640, 400));
+    auto* RGBOutput = camRgb->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, std::nullopt, true);
     RGBOutput->link(align->inputAlignTo);
     RGBOutput->link(sync->inputs["rgb"]);
     left->requestOutput(std::make_pair(640, 400))->link(align->input);

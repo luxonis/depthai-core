@@ -71,7 +71,7 @@ int main() {
 
     auto platform = pipeline.getDefaultDevice()->getPlatform();
     if(platform == dai::Platform::RVC4) {
-        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i);
+        auto* out = color->requestOutput(std::pair<int, int>(640, 400), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
         out->link(rgbd->inColor);
         align = pipeline.create<dai::node::ImageAlign>();
         stereo->depth.link(align->input);

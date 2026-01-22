@@ -228,6 +228,34 @@ TEST_CASE("ImgTransformation remap vertical") {
 }
 
 // -----------------------------------------------------------------------------
+// ImgTransformation isAlignedTo
+// Purpose:
+//   Validates alignment checks between transformations. Ensures that
+//   transformations from the same stream are aligned, while transformations
+//   from differently-sized outputs are not.
+// -----------------------------------------------------------------------------
+TEST_CASE("ImgTransformation isAlignedTo") {
+    dai::Pipeline pipeline;
+    auto camera = pipeline.create<dai::node::Camera>()->build();
+    auto alignedOut = camera->requestOutput({640, 480});
+    auto misalignedOut = camera->requestOutput({320, 240});
+    auto alignedQueue = alignedOut->createOutputQueue();
+    auto misalignedQueue = misalignedOut->createOutputQueue();
+    pipeline.start();
+    auto alignedFrame = alignedQueue->get<dai::ImgFrame>();
+    auto misalignedFrame = misalignedQueue->get<dai::ImgFrame>();
+    REQUIRE(alignedFrame != nullptr);
+    REQUIRE(misalignedFrame != nullptr);
+    pipeline.stop();
+
+    REQUIRE(alignedFrame->transformation.isValid());
+    REQUIRE(misalignedFrame->transformation.isValid());
+    REQUIRE(alignedFrame->transformation.isAlignedTo(alignedFrame->transformation));
+    REQUIRE_FALSE(alignedFrame->transformation.isAlignedTo(misalignedFrame->transformation));
+    REQUIRE_FALSE(misalignedFrame->transformation.isAlignedTo(alignedFrame->transformation));
+}
+
+// -----------------------------------------------------------------------------
 // ImgTransformation matrix inverse consistency (ImgFrame)
 // Purpose:
 //   Ensures that the forward matrix (M) and its stored inverse (Minv)
@@ -260,4 +288,23 @@ TEST_CASE("ImgTransformation matrix inverse consistency (ImgFrame)") {
     REQUIRE(approxIdentity(I2));
     REQUIRE(approxIdentity(I3));
     REQUIRE(approxIdentity(I4));
+}
+
+// -----------------------------------------------------------------------------
+// ImgTransformation isAlignedTo distortion coefficients handling
+// Purpose:
+//   Ensures isAlignedTo treats missing distortion coefficients as zeros while
+//   still detecting real mismatches.
+// -----------------------------------------------------------------------------
+TEST_CASE("ImgTransformation isAlignedTo distortion coefficients handling") {
+    dai::ImgTransformation base(640, 480);
+    dai::ImgTransformation zeros(640, 480);
+    dai::ImgTransformation nonZero(640, 480);
+
+    base.setDistortionCoefficients({});
+    zeros.setDistortionCoefficients({0.0f, 0.0f, 0.0f, 0.0f, 0.0f});
+    nonZero.setDistortionCoefficients({0.0f, 0.0f, 0.0f, 0.0f, 0.01f});
+
+    REQUIRE(base.isAlignedTo(zeros));
+    REQUIRE_FALSE(base.isAlignedTo(nonZero));
 }

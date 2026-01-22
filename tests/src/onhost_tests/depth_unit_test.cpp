@@ -5,22 +5,22 @@
 namespace {
 
 float toUnit(float meters, dai::DepthUnit unit) {
-    return meters * dai::getDepthUnitMultiplier(unit);
+    return meters * dai::getLengthUnitMultiplier(unit);
 }
 
 float toMeters(float value, dai::DepthUnit unit) {
-    return value / dai::getDepthUnitMultiplier(unit);
+    return value / dai::getLengthUnitMultiplier(unit);
 }
 
 }  // namespace
 
 TEST_CASE("DepthUnit multipliers", "[DepthUnit]") {
-    REQUIRE(dai::getDepthUnitMultiplier(dai::DepthUnit::METER) == Catch::Approx(1.0f));
-    REQUIRE(dai::getDepthUnitMultiplier(dai::DepthUnit::CENTIMETER) == Catch::Approx(100.0f));
-    REQUIRE(dai::getDepthUnitMultiplier(dai::DepthUnit::MILLIMETER) == Catch::Approx(1000.0f));
-    REQUIRE(dai::getDepthUnitMultiplier(dai::DepthUnit::INCH) == Catch::Approx(39.3701f));
-    REQUIRE(dai::getDepthUnitMultiplier(dai::DepthUnit::FOOT) == Catch::Approx(3.28084f));
-    REQUIRE(dai::getDepthUnitMultiplier(dai::DepthUnit::CUSTOM) == Catch::Approx(1.0f));
+    REQUIRE(dai::getLengthUnitMultiplier(dai::DepthUnit::METER) == Catch::Approx(1.0f));
+    REQUIRE(dai::getLengthUnitMultiplier(dai::DepthUnit::CENTIMETER) == Catch::Approx(100.0f));
+    REQUIRE(dai::getLengthUnitMultiplier(dai::DepthUnit::MILLIMETER) == Catch::Approx(1000.0f));
+    REQUIRE(dai::getLengthUnitMultiplier(dai::DepthUnit::INCH) == Catch::Approx(39.3701f));
+    REQUIRE(dai::getLengthUnitMultiplier(dai::DepthUnit::FOOT) == Catch::Approx(3.28084f));
+    REQUIRE(dai::getLengthUnitMultiplier(dai::DepthUnit::CUSTOM) == Catch::Approx(1.0f));
 }
 
 TEST_CASE("DepthUnit conversions", "[DepthUnit]") {

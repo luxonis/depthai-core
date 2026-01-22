@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/Point3f.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 
