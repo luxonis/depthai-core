@@ -1640,6 +1640,10 @@ void DeviceBase::flashFactoryEepromClear() {
     }
 }
 
+void DeviceBase::overrideCameraFeatures(const std::vector<CameraFeatures>& features, const std::string& imu) {
+    pimpl->rpcCall("overrideCameraFeatures", features, imu);
+}
+
 bool DeviceBase::startPipeline(const Pipeline& pipeline) {
     // first check if pipeline is not already running
     if(isPipelineRunning()) {

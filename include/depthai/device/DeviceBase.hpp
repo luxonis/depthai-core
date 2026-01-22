@@ -784,6 +784,14 @@ class DeviceBase {
     void crashDevice();
 
     /**
+     * Sets connected camera features.
+     * Used for holistic record and replay
+     * @param features Vector of camera features to set
+     * @param imu IMU type to set (if any)
+     */
+    void overrideCameraFeatures(const std::vector<CameraFeatures>& features, const std::string& imu="");
+
+    /**
      * Returns underlying XLinkConnection
      */
     std::shared_ptr<XLinkConnection> getConnection() {

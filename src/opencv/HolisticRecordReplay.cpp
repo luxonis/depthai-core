@@ -124,8 +124,6 @@ bool setupHolisticRecord(Pipeline& pipeline,
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
                 recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
-                // TODO - once we allow for a lossless code, conditionally change the file extension
-                // recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(".avi"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
                 if(recordConfig.videoEncoding.enabled) {
                     auto videnc = pipeline.create<dai::node::VideoEncoder>();
@@ -339,8 +337,9 @@ bool setupHolisticReplay(Pipeline& pipeline,
             try {
                 calib = CalibrationHandler::fromJson(jCamInfo["calibration"], true);
                 pipeline.setCalibrationData(calib);
-                std::vector<CameraFeatures> camFeatures = jCamInfo["camera_features"];  // TODO set to device
-                std::string imu = jCamInfo["imu"];                         // TODO set to device
+                std::vector<CameraFeatures> camFeatures = jCamInfo["camera_features"];
+                std::string imu = jCamInfo["imu"];
+                pipeline.getDefaultDevice()->overrideCameraFeatures(camFeatures, imu);
             } catch(const std::runtime_error& e) {
                 spdlog::warn("Recorded calibration is invalid: {}", e.what());
                 hasCameraInfo = false;
