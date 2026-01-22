@@ -48,8 +48,10 @@ with dai.Pipeline() as pipeline:
         return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
 
 
+    print("Press 's' to send a snap, and 'q' to quit")
     while pipeline.isRunning():
-        if cv2.waitKey(1) != -1:
+        key = cv2.waitKey(1)
+        if key == ord("q"):
             pipeline.stop()
             break
 
@@ -88,7 +90,7 @@ with dai.Pipeline() as pipeline:
             cv2.imshow("rgb", frame)
 
         # Trigger sendSnap()
-        if cv2.waitKey(1) == ord("s"):
+        if key == ord("s"):
             localSnapID = eventMan.sendSnap("ImageDetection", None, inRgb, inDet, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"}, 
                               uploadSuccessCallback, uploadFailureCallback)
             if localSnapID != None:

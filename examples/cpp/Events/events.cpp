@@ -59,8 +59,10 @@ int main() {
 
     pipeline.start();
 
+    std::cout << "Press 's' to send a snap, and 'q' to quit" << std::endl;
     while(pipeline.isRunning()) {
-        if(cv::waitKey(1) != -1) {
+        auto key = cv::waitKey(1);
+        if(key == 'q') {
             break;
         }
 
@@ -98,7 +100,7 @@ int main() {
         }
 
         // Trigger sendSnap()
-        if(cv::waitKey(1) == 's') {
+        if(key == 's') {
             auto localSnapID = eventsManager->sendSnap("ImageDetection",
                                                        std::nullopt,
                                                        inRgb,

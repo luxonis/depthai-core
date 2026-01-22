@@ -61,7 +61,7 @@ int main() {
 
     int counter = 0;
     while(pipeline.isRunning()) {
-        if(cv::waitKey(1) != -1) {
+        if(cv::waitKey(1) == 'q') {
             break;
         }
 

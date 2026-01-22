@@ -47,9 +47,10 @@ with dai.Pipeline() as pipeline:
         return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
 
 
+    print("Press 'q' to quit")
     counter = 0
     while pipeline.isRunning():
-        if cv2.waitKey(1) != -1:
+        if cv2.waitKey(1) == ord("q"):
             pipeline.stop()
             break
 
