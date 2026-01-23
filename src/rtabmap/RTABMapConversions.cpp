@@ -1,4 +1,4 @@
-#include "depthai/rtabmap/RTABMapConversions.hpp"
+#include "RTABMapConversions.hpp"
 
 #include "common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"

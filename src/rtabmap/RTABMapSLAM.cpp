@@ -2,7 +2,7 @@
 
 #include "../utility/PimplImpl.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/rtabmap/RTABMapConversions.hpp"
+#include "RTABMapConversions.hpp"
 #include "pcl/filters/filter.h"
 #include "pcl/point_cloud.h"
 #include "pipeline/ThreadedNodeImpl.hpp"
