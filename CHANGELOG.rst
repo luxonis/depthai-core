@@ -2,6 +2,10 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.31.1 (2026-01-23)
+-------------------
+* Minor bugfixes
+
 2.31.0 (2025-12-03)
 -------------------
 ## Features
@@ -248,7 +252,7 @@ Features
 
 
 2.19.0 (2022-09-20)
------------
+-------------------
 * Stability improvements #616
 * isUserBootloaderSupported API
 * Device.setTimesync(true/false) convenience function to enable or disable subsequent timesyncing
