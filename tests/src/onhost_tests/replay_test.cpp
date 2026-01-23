@@ -14,7 +14,7 @@
 
 constexpr unsigned int NUM_MSGS = 100;
 
-// Disable container overflow detection for this test binary
+// Disable container overflow detection for this test binary (false positive from protobuf)
 extern "C" const char* __asan_default_options() {
     return "detect_container_overflow=0";
 }
