@@ -436,7 +436,7 @@ BoardConfig PipelineImpl::getBoardConfig() const {
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
     DAI_CHECK_V(!isBuilt(), "Cannot remove node from pipeline once it is built.");
     DAI_CHECK_V(toRemove->parent.lock() != nullptr, "Cannot remove a node that is not a part of any pipeline");
-    DAI_CHECK_V(toRemove->parent.lock() == parent.pimpl, "Cannot remove a node that is not a part of this pipeline");
+    DAI_CHECK_V(toRemove->parent.lock() == shared_from_this(), "Cannot remove a node that is not a part of this pipeline");
 
     // First remove the node from the pipeline directly
     auto it = std::remove(nodes.begin(), nodes.end(), toRemove);
@@ -582,8 +582,8 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         }
 
         if(curNode->parent.lock() == nullptr) {
-            curNode->parent = parent.pimpl;
-        } else if(curNode->parent.lock() != parent.pimpl) {
+            curNode->parent = shared_from_this();
+        } else if(curNode->parent.lock() != shared_from_this()) {
             throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
         }
 
@@ -615,7 +615,7 @@ void PipelineImpl::build() {
 
     if(isBuild) return;
 
-    utility::PipelineImplHelper(this).setupHolisticRecordAndReplay();
+    utility::PipelineImplHelper(shared_from_this()).setupHolisticRecordAndReplay();
 
     // Run first build stage for all nodes
     for(const auto& node : getAllNodes()) {
@@ -631,7 +631,7 @@ void PipelineImpl::build() {
         node->buildStage3();
     }
 
-    utility::PipelineImplHelper(this).setupPipelineDebuggingPre();
+    utility::PipelineImplHelper(shared_from_this()).setupPipelineDebuggingPre();
 
     // Go through all the connections and handle any
     // Host -> Device connections
@@ -774,7 +774,7 @@ void PipelineImpl::build() {
         }
     }
 
-    utility::PipelineImplHelper(this).setupPipelineDebuggingPost(bridgesOut, bridgesIn);
+    utility::PipelineImplHelper(shared_from_this()).setupPipelineDebuggingPost(bridgesOut, bridgesIn);
 
     isBuild = true;
 }
