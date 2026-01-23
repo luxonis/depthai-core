@@ -8,6 +8,12 @@ namespace node {
 
 void Script::buildInternal() {}
 
+void Script::buildStage1() {
+    if(properties.scriptUri.empty()) {
+        throw std::runtime_error("No script set. Please set a script using setScriptPath or setScript.");
+    }
+}
+
 void Script::setScriptPath(const std::filesystem::path& path, const std::string& name) {
     properties.scriptUri = assetManager.set("__script", path)->getRelativeUri();
     scriptPath = path;
