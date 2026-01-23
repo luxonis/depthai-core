@@ -6,9 +6,11 @@
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/SpatialKeypoint.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -20,39 +22,148 @@ namespace dai {
  *
  * Contains image detection results together with spatial location data.
  */
-struct SpatialImgDetection : public ImgDetection {
+struct SpatialImgDetection {
+    uint32_t label = 0;
+    std::string labelName;
+    float confidence = 0.f;
+    float xmin = 0.f;
+    float ymin = 0.f;
+    float xmax = 0.f;
+    float ymax = 0.f;
+    std::optional<RotatedRect> boundingBox;
+    std::optional<SpatialKeypointsList> keypoints;
     Point3f spatialCoordinates;
     SpatialLocationCalculatorConfigData boundingBoxMapping;
 
-    DEPTHAI_SERIALIZE(SpatialImgDetection,
-                      ImgDetection::xmax,
-                      ImgDetection::xmin,
-                      ImgDetection::ymax,
-                      ImgDetection::ymin,
-                      ImgDetection::label,
-                      ImgDetection::labelName,
-                      ImgDetection::confidence,
-                      ImgDetection::boundingBox,
-                      ImgDetection::keypoints,
-                      spatialCoordinates,
-                      boundingBoxMapping);
+    SpatialImgDetection() = default;
+    SpatialImgDetection(const RotatedRect& boundingBox, Point3f spatialCoordinates, float confidence = 1.f, uint32_t label = 0);
+    SpatialImgDetection(const RotatedRect& boundingBox, Point3f spatialCoordinates, std::string labelName, float confidence, uint32_t label);
+    SpatialImgDetection(
+        const RotatedRect& boundingBox, Point3f spatialCoordinates, const SpatialKeypointsList& keypoints, float confidence = 1.f, uint32_t label = 0);
+    SpatialImgDetection(const RotatedRect& boundingBox,
+                        Point3f spatialCoordinates,
+                        const SpatialKeypointsList& keypoints,
+                        std::string labelName,
+                        float confidence,
+                        uint32_t label);
+
+    /**
+     * Sets the bounding box and the legacy coordinates of the detection.
+     */
+    void setBoundingBox(RotatedRect boundingBox);
+
+    /**
+     * Returns bounding box if it was set, else it constructs a new one from the legacy xmin, ymin, xmax, ymax values.
+     */
+    RotatedRect getBoundingBox() const;
+
+    /**
+     * Sets the bounding box and the legacy coordinates of the detection from the top-left and bottom-right points.
+     */
+    void setOuterBoundingBox(const float xmin, const float ymin, const float xmax, const float ymax);
+
+    /**
+     * Sets the keypoints of the detection.
+     * @param keypoints list of Keypoint objects to set.
+     * @note This will clear any existing keypoints and edges.
+     */
+    void setKeypoints(const SpatialKeypointsList keypoints);
+
+    /**
+     * Sets the keypoints of the detection.
+     * @param keypoints list of Keypoint objects to set.
+     * @note This will clear any existing keypoints and edges.
+     */
+    void setKeypoints(const std::vector<SpatialKeypoint> keypoints);
+
+    /**
+     * Sets the keypoints of the detection.
+     * @param keypoints list of Point2f objects to set.
+     * @note This will clear any existing keypoints and edges.
+     */
+    void setKeypoints(const std::vector<SpatialKeypoint> keypoints, const std::vector<Edge> edges);
+
+    /**
+     * Sets the keypoints of the detection.
+     * @param keypoints list of Point3f objects to set.
+     * @note This will clear any existing keypoints and edges.
+     */
+    void setKeypoints(const std::vector<Point3f> keypoints);
+
+    /**
+     * Sets spatial coordinates for the detection.
+     * @param spatialCoordinates list of Point3f objects to set.
+     * @note The size of spatialCoordinates.
+     */
+    void setSpatialCoordinate(const Point3f spatialCoordinates);
+
+    /**
+     * Sets edges for the keypoints, throws if no keypoints were set beforehand.
+     */
+    void setEdges(const std::vector<Edge> edges);
+
+    /**
+     * Converts SpatialImgDetection to ImgDetection by dropping spatial data.
+     * @return dai::ImgDetection object.
+     */
+    dai::ImgDetection getImgDetection() const;
+
+    /**
+     * Returns a list of Keypoint objects, or empty list if no keypoints were set.
+     */
+    std::vector<SpatialKeypoint> getKeypoints() const;
+
+    /**
+     * Returns a list of spatial coordinates for each keypoint, or empty list if no keypoints were set.
+     */
+    std::vector<dai::Point3f> getKeypointSpatialCoordinates() const;
+
+    /**
+     * Returns a list of edges, each edge is a pair of indices, or empty list if no keypoints were set.
+     */
+    std::vector<Edge> getEdges() const;
+
+    /**
+     * Returns the X coordinate of the center of the bounding box.
+     */
+    float getCenterX() const;
+
+    /**
+     * Returns the Y coordinate of the center of the bounding box.
+     */
+    float getCenterY() const;
+
+    /**
+     * Returns the width of the (rotated) bounding box.
+     */
+    float getWidth() const;
+
+    /**
+     * Returns the height of the (rotated) bounding box.
+     */
+    float getHeight() const;
+
+    /**
+     * Returns the angle of the bounding box.
+     */
+    float getAngle() const;
+    DEPTHAI_SERIALIZE(
+        SpatialImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints, spatialCoordinates, boundingBoxMapping);
 };
+
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */
-class SpatialImgDetections : public Buffer, public ProtoSerializable {
+class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable {
    public:
-    /**
-     * Construct SpatialImgDetections message.
-     */
-    SpatialImgDetections() = default;
-    virtual ~SpatialImgDetections();
+    ~SpatialImgDetections() override;
+    using Base = ImgDetectionsT<SpatialImgDetection>;
+    using Base::Base;
+    using Base::detections;
+    using Base::segmentationMaskHeight;
+    using Base::segmentationMaskWidth;
+    using Base::transformation;
 
-    /**
-     * Detection results.
-     */
-    std::vector<SpatialImgDetection> detections;
-    std::optional<ImgTransformation> transformation;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
@@ -75,7 +186,14 @@ class SpatialImgDetections : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(SpatialImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections, transformation);
+    DEPTHAI_SERIALIZE(SpatialImgDetections,
+                      Base::Buffer::sequenceNum,
+                      Base::Buffer::ts,
+                      Base::Buffer::tsDevice,
+                      detections,
+                      transformation,
+                      segmentationMaskWidth,
+                      segmentationMaskHeight);
 };
 
 }  // namespace dai

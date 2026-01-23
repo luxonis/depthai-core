@@ -69,6 +69,25 @@ class FileGroup {
     friend class EventsManager;
 };
 
+enum class SendSnapCallbackStatus {
+    SUCCESS,
+    FILE_BATCH_PREPARATION_FAILED,
+    GROUP_CONTAINS_REJECTED_FILES,
+    FILE_UPLOAD_FAILED,
+    SEND_EVENT_FAILED,
+    EVENT_REJECTED
+};
+
+struct SendSnapCallbackResult {
+   public:
+    std::string snapName;
+    int64_t snapTimestamp;
+    std::string snapLocalID;
+    std::optional<std::string> snapHubID;
+    std::string snapPayload;
+    SendSnapCallbackStatus uploadStatus;
+};
+
 class EventsManager {
    public:
     explicit EventsManager(bool uploadCachedOnStart = false);
@@ -79,29 +98,29 @@ class EventsManager {
      * @param name Name of the event
      * @param tags List of tags to send
      * @param extras Extra data to send
-     * @param deviceSerialNo Device serial number
      * @param associateFiles List of associate files with ids
-     * @return bool
+     * @return LocalID of the sent Event
      */
-    bool sendEvent(const std::string& name,
-                   const std::vector<std::string>& tags = {},
-                   const std::unordered_map<std::string, std::string>& extras = {},
-                   const std::string& deviceSerialNo = "",
-                   const std::vector<std::string>& associateFiles = {});
+    std::optional<std::string> sendEvent(const std::string& name,
+                                         const std::vector<std::string>& tags = {},
+                                         const std::unordered_map<std::string, std::string>& extras = {},
+                                         const std::vector<std::string>& associateFiles = {});
     /**
      * Send a snap to the events service. Snaps should be used for sending images and other files.
      * @param name Name of the snap
      * @param fileGroup FileGroup containing FileData objects to send
      * @param tags List of tags to send
      * @param extras Extra data to send
-     * @param deviceSerialNo Device serial number
-     * @return bool
+     * @param successCallback Callback to be called when the snap is successfully uploaded to the hub
+     * @param failureCallback Callback to be called if the snap upload is unsuccessful
+     * @return LocalID of the sent Snap
      */
-    bool sendSnap(const std::string& name,
-                  const std::shared_ptr<FileGroup> fileGroup,
-                  const std::vector<std::string>& tags = {},
-                  const std::unordered_map<std::string, std::string>& extras = {},
-                  const std::string& deviceSerialNo = "");
+    std::optional<std::string> sendSnap(const std::string& name,
+                                        const std::shared_ptr<FileGroup> fileGroup,
+                                        const std::vector<std::string>& tags = {},
+                                        const std::unordered_map<std::string, std::string>& extras = {},
+                                        const std::function<void(SendSnapCallbackResult)> successCallback = nullptr,
+                                        const std::function<void(SendSnapCallbackResult)> failureCallback = nullptr);
     /**
      * Send a snap to the events service, with an ImgFrame and ImgDetections pair as files
      * @param name Name of the snap
@@ -110,16 +129,18 @@ class EventsManager {
      * @param imgDetections ImgDetections to sent
      * @param tags List of tags to send
      * @param extras Extra data to send
-     * @param deviceSerialNo Device serial number
-     * @return bool
+     * @param successCallback Callback to be called when the snap is successfully uploaded to the hub
+     * @param failureCallback Callback to be called if the snap upload is unsuccessful
+     * @return LocalID of the sent Snap
      */
-    bool sendSnap(const std::string& name,
-                  const std::optional<std::string>& fileName,
-                  const std::shared_ptr<ImgFrame> imgFrame,
-                  const std::optional<std::shared_ptr<ImgDetections>>& imgDetections = std::nullopt,
-                  const std::vector<std::string>& tags = {},
-                  const std::unordered_map<std::string, std::string>& extras = {},
-                  const std::string& deviceSerialNo = "");
+    std::optional<std::string> sendSnap(const std::string& name,
+                                        const std::optional<std::string>& fileName,
+                                        const std::shared_ptr<ImgFrame> imgFrame,
+                                        const std::optional<std::shared_ptr<ImgDetections>>& imgDetections = std::nullopt,
+                                        const std::vector<std::string>& tags = {},
+                                        const std::unordered_map<std::string, std::string>& extras = {},
+                                        const std::function<void(SendSnapCallbackResult)> successCallback = nullptr,
+                                        const std::function<void(SendSnapCallbackResult)> failureCallback = nullptr);
     /**
      * Set the token for the events service. By default, the token is taken from the environment variable DEPTHAI_HUB_API_KEY
      * @param token Token for the events service
@@ -152,8 +173,15 @@ class EventsManager {
     void setCacheIfCannotSend(bool cacheIfCannotSend);
 
    private:
-    struct SnapData {
+    struct EventData {
+        std::string localID;
         std::shared_ptr<proto::event::Event> event;
+        std::optional<std::function<void(SendSnapCallbackResult)>> onSuccess;
+        std::optional<std::function<void(SendSnapCallbackResult)>> onFailure;
+    };
+
+    struct SnapData {
+        std::shared_ptr<EventData> eventData;
         std::shared_ptr<FileGroup> fileGroup;
     };
 
@@ -216,13 +244,14 @@ class EventsManager {
     std::string url;
     std::string sourceAppId;
     std::string sourceAppIdentifier;
+    std::string sourceSerialNumber;
     float publishInterval;
     bool logResponse;
     bool verifySsl;
     std::string cacheDir;
     bool cacheIfCannotSend;
     std::unique_ptr<std::thread> uploadThread;
-    std::deque<std::shared_ptr<proto::event::Event>> eventBuffer;
+    std::deque<std::shared_ptr<EventData>> eventBuffer;
     std::deque<std::shared_ptr<SnapData>> snapBuffer;
     std::deque<std::future<void>> uploadFileBatchFutures;
     std::mutex eventBufferMutex;
