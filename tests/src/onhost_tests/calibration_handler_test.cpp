@@ -1,7 +1,7 @@
 #include <catch2/catch_all.hpp>
+#include <cmath>
 #include <depthai/device/CalibrationHandler.hpp>
 #include <nlohmann/json.hpp>
-#include <cmath>
 #include <stdexcept>
 #include <vector>
 

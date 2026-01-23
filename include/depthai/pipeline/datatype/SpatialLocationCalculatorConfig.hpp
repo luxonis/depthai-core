@@ -1,12 +1,13 @@
 #pragma once
 
-#include <unordered_map>
 #include <vector>
 
 #include "depthai/common/Rect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {
 
+constexpr int MAX_UPPER_THRESHOLD = std::numeric_limits<uint16_t>::max();
+constexpr int MIN_LOWER_THRESHOLD = 100;
 /**
  * SpatialLocation configuration thresholds structure
  *
@@ -17,11 +18,11 @@ struct SpatialLocationCalculatorConfigThresholds {
     /**
      * Values less or equal than this threshold are not taken into calculation.
      */
-    uint32_t lowerThreshold = 0;
+    uint32_t lowerThreshold = MIN_LOWER_THRESHOLD;
     /**
      * Values greater or equal than this threshold are not taken into calculation.
      */
-    uint32_t upperThreshold = 65535;
+    uint32_t upperThreshold = MAX_UPPER_THRESHOLD;
 };
 DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigThresholds, lowerThreshold, upperThreshold);
 
@@ -79,6 +80,7 @@ DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds,
  * - Calculate spatial keypoints: true
  * - Use segmentation for ImgDetections: true
  * - Segmentation passthrough: true
+ * - Bounding box scale factor: 1.0
  *
  * An optional list of per-ROI configurations is available via `config`. ROI
  * settings override the corresponding global values where specified.
@@ -89,13 +91,14 @@ class SpatialLocationCalculatorConfig : public Buffer {
 
    public:
     int32_t globalStepSize = AUTO;
-    uint32_t globalLowerThreshold = 100;  // less than 100mm is considered too close
-    uint32_t globalUpperThreshold = 65535;
+    uint32_t globalLowerThreshold = MIN_LOWER_THRESHOLD;
+    uint32_t globalUpperThreshold = MAX_UPPER_THRESHOLD;
     SpatialLocationCalculatorAlgorithm globalCalculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
     int32_t globalKeypointRadius = 10;
     bool calculateSpatialKeypoints = true;
     bool useSegmentation = true;
     bool segmentationPassthrough = true;
+    float bBoxScaleFactor = 1.0;
     std::vector<SpatialLocationCalculatorConfigData> config;
 
     /**
@@ -122,7 +125,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
      * @param lowerThreshold Lower threshold in depth units (millimeter by default).
      * @param upperThreshold Upper threshold in depth units (millimeter by default).
      */
-    void setDepthThresholds(uint32_t lowerThreshold = 0, uint32_t upperThreshold = 30000);
+    void setDepthThresholds(uint32_t lowerThreshold = MIN_LOWER_THRESHOLD, uint32_t upperThreshold = MAX_UPPER_THRESHOLD);
 
     /**
      * Set spatial location calculation algorithm. Possible values:
@@ -171,6 +174,12 @@ class SpatialLocationCalculatorConfig : public Buffer {
     void setSegmentationPassthrough(bool passthroughSegmentation);
 
     /**
+     * Set scale factor for bounding boxes used in spatial calculations.
+     * @param scaleFactor Scale factor must be in the interval (0,1].
+     */
+    void setBoundingBoxScaleFactor(float scaleFactor);
+
+    /**
      * Retrieve configuration data for SpatialLocationCalculator
      * @returns Vector of configuration parameters for ROIs (region of interests)
      */
@@ -215,6 +224,11 @@ class SpatialLocationCalculatorConfig : public Buffer {
      */
     bool getSegmentationPassthrough() const;
 
+    /**
+     * Retrieve scale factor for bounding boxes used in spatial calculations.
+     */
+    float getBoundingBoxScaleFactor() const;
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
@@ -230,6 +244,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
                       calculateSpatialKeypoints,
                       useSegmentation,
                       segmentationPassthrough,
+                      bBoxScaleFactor,
                       config);
 };
 

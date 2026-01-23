@@ -2,6 +2,7 @@
 
 // libraries
 #include <algorithm>
+#include <cmath>
 
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Size2f.hpp"

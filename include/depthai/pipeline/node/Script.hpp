@@ -85,6 +85,8 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
     ProcessorType getProcessor() const;
 
     void buildInternal() override;
+
+    void buildStage1() override;
 };
 
 }  // namespace node

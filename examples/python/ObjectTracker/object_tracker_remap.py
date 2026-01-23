@@ -10,7 +10,8 @@ def colorizeDepth(frameDepth):
     try:
         minDepth = np.percentile(frameDepth[frameDepth != 0], 3)
         maxDepth = np.percentile(frameDepth[frameDepth != 0], 95)
-        logDepth = np.log(frameDepth, where=frameDepth != 0)
+        logDepth = np.zeros_like(frameDepth, dtype=np.float32)
+        np.log(frameDepth, where=frameDepth != 0, out=logDepth)
         logMinDepth = np.log(minDepth)
         logMaxDepth = np.log(maxDepth)
         np.nan_to_num(logDepth, copy=False, nan=logMinDepth)
@@ -114,4 +115,3 @@ with dai.Pipeline() as pipeline:
         if cv2.waitKey(1) == ord("q"):
             pipeline.stop()
             break
-
