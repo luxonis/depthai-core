@@ -212,7 +212,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getSourceDFov", &ImgFrame::getSourceDFov, DOC(dai, ImgFrame, getSourceDFov))
         .def("getSourceWidth", &ImgFrame::getSourceWidth, DOC(dai, ImgFrame, getSourceWidth))
         .def("getSourceHeight", &ImgFrame::getSourceHeight, DOC(dai, ImgFrame, getSourceHeight))
-        .def("getTransformation", [](ImgFrame& msg) { return msg.transformation; })
+        .def("getTransformation", &ImgFrame::getTransformation, DOC(dai, ImgFrame, getTransformation))
         .def("validateTransformations", &ImgFrame::validateTransformations, DOC(dai, ImgFrame, validateTransformations))
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -265,7 +265,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("sizer"),
              DOC(dai, ImgFrame, setSize, 2))
         .def("setType", &ImgFrame::setType, py::arg("type"), DOC(dai, ImgFrame, setType))
-        .def("setTransformation", [](ImgFrame& msg, const ImgTransformation& transformation) { msg.transformation = transformation; })
+        .def("setTransformation", &ImgFrame::setTransformation, py::arg("transformation"), DOC(dai, ImgFrame, setTransformation))
         // .def("set", &ImgFrame::set, py::arg("type"), DOC(dai, ImgFrame, set))
         ;
     // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
