@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <cstdlib>
 #include <ctime>
+#include <chrono>
 #include <filesystem>
 #include <thread>
 

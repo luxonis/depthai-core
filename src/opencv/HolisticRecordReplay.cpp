@@ -124,8 +124,6 @@ bool setupHolisticRecord(Pipeline& pipeline,
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
                 recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
-                // TODO - once we allow for a lossless code, conditionally change the file extension
-                // recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(".avi"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
                 if(recordConfig.videoEncoding.enabled) {
                     auto videnc = pipeline.create<dai::node::VideoEncoder>();
@@ -236,9 +234,8 @@ bool setupHolisticReplay(Pipeline& pipeline,
                            tarNodenames.end());
         if(useTar) tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
         for(auto& path : tarNodenames) {
-            auto pathDelim = path.find_last_of("/\\");
-            path = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
-            path = path.substr(0, path.find_last_of('.'));
+            auto pathObj = std::filesystem::path(path);
+            path = pathObj.stem().string();  // Remove extension
         }
 
         std::vector<std::string> nodeNames;
@@ -251,7 +248,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 throw std::runtime_error("Node is listed as a source node but does not implement the SourceNode interface.");
             }
             NodeRecordParams nodeParams = nodeS->getNodeRecordParams();
-            // Needed for muti-device recordings, not yet supported
+            // Needed for multi-device recordings, not yet supported
             // std::string nodeName = (deviceId + "_").append(nodeParams.name);
             nodeNames.push_back(nodeParams.name);
             pipelineFilenames.push_back(nodeParams.name);
@@ -260,8 +257,8 @@ bool setupHolisticReplay(Pipeline& pipeline,
         std::filesystem::path calibrationPath;
         std::vector<std::string> inFiles;
         std::vector<std::filesystem::path> outFiles;
-        inFiles.reserve(sources.size() + 1);
-        outFiles.reserve(sources.size() + 1);
+        inFiles.reserve(sources.size() * 2 + 2);
+        outFiles.reserve(sources.size() * 2 + 2);
         if(allMatch(pipelineFilenames, tarNodenames)) {
             for(auto& nodeName : nodeNames) {
                 // auto filename = (deviceId + "_").append(nodeName);
@@ -277,14 +274,16 @@ bool setupHolisticReplay(Pipeline& pipeline,
             }
             if(useTar) {
                 inFiles.emplace_back(tarRoot + "record_config.json");
-                inFiles.emplace_back(tarRoot + "calibration.json");
+                if(hasCalibration) inFiles.emplace_back(tarRoot + "calibration.json");
             }
             configPath = platform::joinPaths(rootPath, "record_config.json");
             calibrationPath = platform::joinPaths(rootPath, "calibration.json");
             outFiles.push_back(configPath);
-            outFiles.push_back(calibrationPath);
             outFilenames["record_config"] = configPath;
-            outFilenames["calibration"] = calibrationPath;
+            if(hasCalibration) {
+                outFiles.push_back(calibrationPath);
+                outFilenames["calibration"] = calibrationPath;
+            }
             if(useTar) untarFiles(replayPath, inFiles, outFiles);
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
