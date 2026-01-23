@@ -12,5 +12,13 @@ MessageDemux::MessageDemux(const std::shared_ptr<PipelineImpl>& par, int64_t nod
     setOutputMapRefs(&outputs);
 }
 
+void MessageDemux::setProcessor(ProcessorType proc) {
+    properties.processor = proc;
+}
+
+ProcessorType MessageDemux::getProcessor() const {
+    return properties.processor;
+}
+
 }  // namespace node
 }  // namespace dai
