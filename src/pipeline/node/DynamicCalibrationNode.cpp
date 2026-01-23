@@ -72,7 +72,7 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
         currentCalibration.getCameraIntrinsics(boardSocketB, resolutionB.first, resolutionB.second, Point2f(), Point2f(),false),
         currentCalibration.getDistortionCoefficients(boardSocketB),
 	currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB),
-	currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false),
+	currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false, LengthUnit::METER),
 	currentCalibration.getDistortionModel(boardSocketB)
     );
     // clang-format on
@@ -121,7 +121,7 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(con
     }
 
     for(int i = 0; i < 3; ++i) {
-        tvec[i] = static_cast<dcl::scalar_t>(translationVector[i] / 100.0f);  // Convert to m
+        tvec[i] = static_cast<dcl::scalar_t>(translationVector[i]);
     }
 
     dcl::distortion_t dclDistortion;
@@ -527,7 +527,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
 DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime) {
     auto error = ErrorCode::OK;  // Expect everything is ok
-    auto calibrationCommand = inputControl.tryGet<DynamicCalibrationControl>();
+    std::shared_ptr<DynamicCalibrationControl> calibrationCommand = nullptr;
+    {
+        auto blockEvent = this->inputBlockEvent();
+        calibrationCommand = inputControl.tryGet<DynamicCalibrationControl>();
+    }
     if(calibrationCommand) {
         error = evaluateCommand(calibrationCommand);
     }
@@ -576,7 +580,7 @@ void DynamicCalibration::run() {
     auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
     initializePipeline(device);
-    while(isRunning()) {
+    while(mainLoop()) {
         slept = false;
         doWork(previousLoadingTime);
         if(!slept) {

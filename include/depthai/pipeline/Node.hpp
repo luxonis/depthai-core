@@ -20,6 +20,7 @@
 #include "depthai/capabilities/Capability.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
+#include "depthai/utility/PipelineEventDispatcherInterface.hpp"
 
 // libraries
 #include <optional>
@@ -28,6 +29,9 @@ namespace dai {
 // fwd declare Pipeline
 class Pipeline;
 class PipelineImpl;
+namespace utility {
+class PipelineImplHelper;
+}
 
 // fwd declare input queue class
 class InputQueue;
@@ -66,6 +70,7 @@ struct XLinkOutBridge {
 class Node : public std::enable_shared_from_this<Node> {
     friend class Pipeline;
     friend class PipelineImpl;
+    friend class utility::PipelineImplHelper;
     friend class Device;
 
    public:
@@ -110,6 +115,8 @@ class Node : public std::enable_shared_from_this<Node> {
     std::vector<OutputMap*> outputMapRefs;
     std::vector<InputMap*> inputMapRefs;
     std::vector<std::shared_ptr<Node>*> nodeRefs;
+
+    std::unique_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
     // helpers for setting refs
     void setOutputRefs(std::initializer_list<Output*> l);
@@ -157,12 +164,14 @@ class Node : public std::enable_shared_from_this<Node> {
         std::vector<QueueConnection> queueConnections;
         Type type = Type::MSender;  // Slave sender not supported yet
         OutputDescription desc;
+        utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
         std::shared_ptr<dai::node::internal::XLinkOutBridge> xLinkBridge;
 
        public:
         // std::vector<Capability> possibleCapabilities;
 
-        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)) {
+        Output(Node& par, OutputDescription desc, bool ref = true)
+            : parent(par), desc(std::move(desc)), pipelineEventDispatcher(par.pipelineEventDispatcher.get()) {
             // Place oneself to the parents references
             if(ref) {
                 par.setOutputRefs(this);
@@ -384,15 +393,13 @@ class Node : public std::enable_shared_from_this<Node> {
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;
         explicit Input(Node& par, InputDescription desc, bool ref = true)
-            : MessageQueue(std::move(desc.name), desc.queueSize, desc.blocking),
+            : MessageQueue(desc.name.empty() ? par.createUniqueInputName() : desc.name, desc.queueSize, desc.blocking, par.pipelineEventDispatcher.get()),
               parent(par),
               waitForMessage(desc.waitForMessage),
+              group(desc.group),
               possibleDatatypes(std::move(desc.types)) {
             if(ref) {
                 par.setInputRefs(this);
-            }
-            if(getName().empty()) {
-                setName(par.createUniqueInputName());
             }
         }
 

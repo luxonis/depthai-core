@@ -34,7 +34,7 @@ rtabmap::StereoCameraModel CalibrationHandler::getRTABMapCameraModel(CameraBoard
     double fy = newCameraMatrix.at<double>(1, 1);
     double cx = newCameraMatrix.at<double>(0, 2);
     double cy = newCameraMatrix.at<double>(1, 2);
-    double baseline = double(getBaselineDistance(right, left)) / 100.0;
+    double baseline = double(getBaselineDistance(right, left, true, LengthUnit::METER));
 
     return rtabmap::StereoCameraModel(eepromData.boardName, fx, fy, cx, cy, baseline, localTransform, cv::Size(width, height));
 }

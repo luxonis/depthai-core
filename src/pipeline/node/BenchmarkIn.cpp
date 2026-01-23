@@ -55,8 +55,13 @@ void BenchmarkIn::run() {
 
     auto start = steady_clock::now();
 
-    while(isRunning()) {
-        auto inMessage = input.get<dai::Buffer>();
+    while(mainLoop()) {
+        std::shared_ptr<dai::Buffer> inMessage = nullptr;
+        std::shared_ptr<dai::BenchmarkReport> reportMessage = nullptr;
+        {
+            auto blockEvent = this->inputBlockEvent();
+            inMessage = input.get<dai::Buffer>();
+        }
 
         // If this is the first message of the batch, reset counters
         if(messageCount == 0) {
@@ -96,7 +101,7 @@ void BenchmarkIn::run() {
             auto stop = steady_clock::now();
             duration<float> durationS = stop - start;
 
-            auto reportMessage = std::make_shared<dai::BenchmarkReport>();
+            reportMessage = std::make_shared<dai::BenchmarkReport>();
             reportMessage->numMessagesReceived = numMessages;
             reportMessage->timeTotal = durationS.count();
             reportMessage->fps = numMessages / durationS.count();
@@ -121,16 +126,22 @@ void BenchmarkIn::run() {
             logFunc("Messages took {} s", reportMessage->timeTotal);
             logFunc("Average latency: {} s", reportMessage->averageLatency);
 
-            // Send out the report
-            report.send(reportMessage);
-            logger->trace("Sent report message");
-
             // Reset for next batch
             messageCount = 0;
         }
 
-        // Passthrough the message
-        passthrough.send(inMessage);
+        {
+            auto blockEvent = this->outputBlockEvent();
+
+            if(reportMessage) {
+                // Send out the report
+                report.send(reportMessage);
+                logger->trace("Sent report message");
+            }
+
+            // Passthrough the message
+            passthrough.send(inMessage);
+        }
     }
 }
 

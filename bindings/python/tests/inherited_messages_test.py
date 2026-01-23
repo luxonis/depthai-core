@@ -22,7 +22,7 @@ message_types = [
     dai.SpatialLocationCalculatorData,
     dai.StereoDepthConfig,
     dai.SystemInformation,
-    dai.SystemInformationS3,
+    dai.SystemInformationRVC4,
     dai.ToFConfig,
     dai.TrackedFeatures,
     dai.Tracklets

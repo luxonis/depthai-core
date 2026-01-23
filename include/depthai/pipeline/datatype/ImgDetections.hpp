@@ -101,6 +101,16 @@ struct ImgDetection {
     std::vector<Keypoint> getKeypoints() const;
 
     /**
+     * Returns a list of Point2f coordinates of the keypoints, or empty list if no keypoints were set.
+     */
+    std::vector<Point2f> getKeypoints2f() const;
+
+    /**
+     * Returns a list of Point3f coordinates of the keypoints, or empty list if no keypoints were set.
+     */
+    std::vector<Point3f> getKeypoints3f() const;
+
+    /**
      * Sets edges for the keypoints, throws if no keypoints were set beforehand.
      */
     void setEdges(const std::vector<Edge> edges);
@@ -145,7 +155,7 @@ struct ImgDetection {
  */
 class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable {
    public:
-    virtual ~ImgDetections() override;
+    ~ImgDetections() override;
     using Base = ImgDetectionsT<dai::ImgDetection>;
     using Base::Base;
     using Base::detections;

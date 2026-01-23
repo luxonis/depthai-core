@@ -387,7 +387,7 @@ def test_regression_gil_locks():
             self.output = self.createOutput()
 
         def run(self):
-            while self.isRunning():
+            while self.mainLoop():
                 buffer = self.input.get()
                 self.output.send(buffer)
 
@@ -399,7 +399,7 @@ def test_regression_gil_locks():
             self.output = self.createOutput()
 
         def run(self):
-            while self.isRunning():
+            while self.mainLoop():
                 buffer = dai.Buffer()
                 self.output.send(buffer)
                 time.sleep(0.001)
