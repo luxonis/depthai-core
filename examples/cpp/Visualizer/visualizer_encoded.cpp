@@ -36,6 +36,7 @@ class ImgAnnotationsGenerator : public dai::NodeCRTP<dai::node::HostNode, ImgAnn
 
         auto imgAnnt = std::make_shared<dai::ImgAnnotations>();
         imgAnnt->setTimestamp(nnData->getTimestamp());
+        imgAnnt->transformation = nnData->transformation;
 
         dai::ImgAnnotation annotation;
         for(const auto& detection : detections) {
