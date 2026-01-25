@@ -27,19 +27,19 @@ class RGBDData : public Buffer, public ProtoSerializable {
      */
     RGBDData() = default;
 
-    virtual ~RGBDData();
+    ~RGBDData() override;
 
     // Setters
     void setRGBFrame(const FrameVariant& frame);
     void setDepthFrame(const FrameVariant& frame);
 
-    // Getters
+    // Getters: return std::nullopt if no frame is set, otherwise a valid FrameVariant is returned (it's not a nullptr)
     std::optional<FrameVariant> getRGBFrame() const;
     std::optional<FrameVariant> getDepthFrame() const;
 
    private:
-    std::optional<std::shared_ptr<ADatatype>> colorFrame;  // ImgFrame or EncodedFrame are both ADatatype
-    std::optional<std::shared_ptr<ADatatype>> depthFrame;  // ImgFrame or EncodedFrame are both ADatatype
+    std::shared_ptr<ADatatype> colorFrame;  // nullptr if not set; ImgFrame or EncodedFrame are both ADatatype
+    std::shared_ptr<ADatatype> depthFrame;  // nullptr if not set; ImgFrame or EncodedFrame are both ADatatype
 
    public:
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;

@@ -18,42 +18,47 @@ void RGBDData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& data
 // Setters
 void RGBDData::setRGBFrame(const FrameVariant& frame) {
     // Unpack the variant and assign the contained pointer to colorFrame
-    std::visit([&](auto&& arg) { colorFrame = arg; }, frame);
+    std::visit([&](auto&& arg) { this->colorFrame = arg; }, frame);
 }
 
 void RGBDData::setDepthFrame(const FrameVariant& frame) {
-    std::visit([&](auto&& arg) { depthFrame = arg; }, frame);
+    // Unpack the variant and assign the contained pointer to depthFrame
+    std::visit([&](auto&& arg) { this->depthFrame = arg; }, frame);
 }
 
 // Getters
 std::optional<RGBDData::FrameVariant> RGBDData::getRGBFrame() const {
-    if(!colorFrame.has_value()) {
+    if(!colorFrame) {
+        // color frame is not set and we don't know what type it is, so we return std::nullopt
+        // (we don't want to commit to a specific pointer type)
         return std::nullopt;
     }
 
-    auto type = colorFrame.value()->getDatatype();
+    auto type = colorFrame->getDatatype();
     if(type == DatatypeEnum::ImgFrame) {
-        return std::make_optional(std::dynamic_pointer_cast<ImgFrame>(colorFrame.value()));
-    } else if(type == DatatypeEnum::EncodedFrame) {
-        return std::make_optional(std::dynamic_pointer_cast<EncodedFrame>(colorFrame.value()));
-    } else {
-        throw std::runtime_error("Unhandled frame type in RGBDData color frame variant");
+        return std::dynamic_pointer_cast<ImgFrame>(colorFrame);
     }
+    if(type == DatatypeEnum::EncodedFrame) {
+        return std::dynamic_pointer_cast<EncodedFrame>(colorFrame);
+    }
+    throw std::runtime_error("Unhandled frame type in RGBDData color frame variant");
 }
 
 std::optional<RGBDData::FrameVariant> RGBDData::getDepthFrame() const {
-    if(!depthFrame.has_value()) {
+    if(!depthFrame) {
+        // depth frame is not set and we don't know what type it is, so we return std::nullopt
+        // (we don't want to commit to a specific pointer type)
         return std::nullopt;
     }
 
-    auto type = depthFrame.value()->getDatatype();
+    auto type = depthFrame->getDatatype();
     if(type == DatatypeEnum::ImgFrame) {
-        return std::make_optional(std::dynamic_pointer_cast<ImgFrame>(depthFrame.value()));
-    } else if(type == DatatypeEnum::EncodedFrame) {
-        return std::make_optional(std::dynamic_pointer_cast<EncodedFrame>(depthFrame.value()));
-    } else {
-        throw std::runtime_error("Unhandled frame type in RGBDData depth frame variant");
+        return std::dynamic_pointer_cast<ImgFrame>(depthFrame);
     }
+    if(type == DatatypeEnum::EncodedFrame) {
+        return std::dynamic_pointer_cast<EncodedFrame>(depthFrame);
+    }
+    throw std::runtime_error("Unhandled frame type in RGBDData depth frame variant");
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
