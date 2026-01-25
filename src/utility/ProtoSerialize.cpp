@@ -202,6 +202,11 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations*
     tsDevice->set_sec(message->tsDevice.sec);
     tsDevice->set_nsec(message->tsDevice.nsec);
 
+    if(message->transformation.has_value()) {
+        proto::common::ImgTransformation* imgTransformation = imageAnnotations->mutable_transformation();
+        utility::serializeImgTransformation(imgTransformation, message->transformation.value());
+    }
+
     for(const auto& annotation : message->annotations) {
         proto::image_annotations::ImageAnnotation* imageAnnotation = imageAnnotations->add_annotations();
         for(const auto& circle : annotation.circles) {
