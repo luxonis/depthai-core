@@ -10,65 +10,9 @@
 
 #include "archive.h"
 #include "archive_entry.h"
-#include "utility/span.hpp"
-#include "zlib.h"
 
 namespace dai {
 namespace utility {
-
-std::vector<uint8_t> deflate(span<uint8_t>& data, int compressionLevel) {
-    z_stream stream;
-    stream.zalloc = Z_NULL;
-    stream.zfree = Z_NULL;
-    stream.opaque = Z_NULL;
-    int ret = deflateInit(&stream, compressionLevel);
-    if(ret != Z_OK) {
-        throw std::runtime_error("deflateInit failed with error code " + std::to_string(ret) + ".");
-    }
-    std::vector<uint8_t> result(deflateBound(&stream, data.size()));
-    stream.next_out = result.data();
-    stream.avail_out = result.size();
-    stream.next_in = data.data();
-    stream.avail_in = data.size();
-    ret = deflate(&stream, Z_NO_FLUSH);
-    if(ret != Z_OK) {
-        throw std::runtime_error("deflate failed with error code " + std::to_string(ret) + ".");
-    }
-    ret = deflate(&stream, Z_FINISH);
-    if(ret != Z_STREAM_END) {
-        throw std::runtime_error("Could not finish deflation.");
-    }
-    deflateEnd(&stream);
-    result.resize(stream.total_out);
-    return result;
-}
-
-std::vector<uint8_t> inflate(span<uint8_t>& data) {
-    z_stream stream;
-    stream.zalloc = Z_NULL;
-    stream.zfree = Z_NULL;
-    stream.opaque = Z_NULL;
-    int ret = inflateInit(&stream);
-    if(ret != Z_OK) {
-        throw std::runtime_error("inflateInit failed with error code " + std::to_string(ret) + ".");
-    }
-    std::vector<uint8_t> result;
-    stream.next_out = result.data();
-    stream.avail_out = result.size();
-    stream.next_in = data.data();
-    stream.avail_in = data.size();
-    ret = inflate(&stream, Z_NO_FLUSH);
-    if(ret != Z_OK) {
-        throw std::runtime_error("inflate failed with error code " + std::to_string(ret) + ".");
-    }
-    ret = inflate(&stream, Z_FINISH);
-    if(ret != Z_STREAM_END) {
-        throw std::runtime_error("Could not finish inflation.");
-    }
-    inflateEnd(&stream);
-    result.resize(stream.total_out);
-    return result;
-}
 
 void tarFiles(const std::filesystem::path& tarPath, const std::vector<std::filesystem::path>& filesOnDisk, const std::vector<std::string>& filesInTar) {
     assert(filesOnDisk.size() == filesInTar.size());
@@ -79,6 +23,7 @@ void tarFiles(const std::filesystem::path& tarPath, const std::vector<std::files
     std::ifstream fileStream;
 
     a = archive_write_new();
+    archive_write_add_filter_gzip(a);  // compress tar file with gzip
     archive_write_set_format_pax_restricted(a);
 #ifdef _WIN32
     archive_write_open_filename_w(a, tarPath.c_str());

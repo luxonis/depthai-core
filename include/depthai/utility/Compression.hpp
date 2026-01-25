@@ -6,9 +6,6 @@
 namespace dai {
 namespace utility {
 
-std::vector<uint8_t> deflate(uint8_t* data, size_t size, int compressionLevel = 6);
-std::vector<uint8_t> inflate(uint8_t* data, size_t size);
-
 /**
  * Gets a list of filenames contained within a tar archive.
  * @param tarPath Path to the tar file to read
