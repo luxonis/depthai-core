@@ -263,6 +263,18 @@ class DeviceBase {
     virtual ~DeviceBase();
 
     /**
+    * @brief Get the platform of the connected device
+    * @return Platform Platform enum
+    */
+    Platform getPlatform() const;
+
+    /**
+    * @brief Get the platform of the connected device as string
+    * @return std::string String representation of Platform
+    */
+    std::string getPlatformAsString() const;
+
+    /**
      * Gets Bootloader version if it was booted through Bootloader
      *
      * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
@@ -413,7 +425,7 @@ class DeviceBase {
     /**
      * Retrieves crash dump for debugging.
      */
-    dai::CrashDump getCrashDump(bool clearCrashDump = true);
+    CrashDumpRVC2::CrashReportCollection getCrashDump(bool clearCrashDump = true);
 
     /**
      * Retrieves whether the is crash dump stored on device or not.

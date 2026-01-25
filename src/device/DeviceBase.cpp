@@ -40,6 +40,7 @@
 // libraries
 #include "XLink/XLink.h"
 #include "XLink/XLinkTime.h"
+#include "depthai/device/CrashDumpManager.hpp"
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
 #include "spdlog/details/os.h"
@@ -464,8 +465,9 @@ void DeviceBase::closeImpl() {
             crashed = hasCrashDump();
             if(crashed) {
                 connection->setRebootOnDestruction(true);
-                auto dump = getCrashDump();
-                logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
+                dai::CrashDumpManager crashDumpManager(this);
+                auto dump = crashDumpManager.collectCrashDump();
+                logCollection::logCrashDump(pipelineSchema, *dump, deviceInfo);
             } else {
                 bool isRunning = pimpl->rpcCall("isRunning").as<bool>();
                 shouldGetCrashDump = !isRunning;
@@ -523,9 +525,10 @@ void DeviceBase::closeImpl() {
 
     // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
-        auto crashDump = gate->waitForSessionEnd();
+        dai::CrashDumpManager crashDumpManager(this);
+        auto crashDump = crashDumpManager.collectCrashDump();
         if(crashDump) {
-            logCollection::logCrashDump(pipelineSchema, crashDump.value(), deviceInfo);
+            logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
         }
     }
 
@@ -549,8 +552,11 @@ void DeviceBase::closeImpl() {
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
                     crashed = rebootingDevice.hasCrashDump();
                     if(crashed) {
-                        auto dump = rebootingDevice.getCrashDump();
-                        logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
+                        dai::CrashDumpManager crashDumpManager(&rebootingDevice);
+                        auto crashDump = crashDumpManager.collectCrashDump();
+                        if(crashDump) {
+                            logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
+                        }
                     } else {
                         pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
                     }
@@ -1087,9 +1093,10 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(loggingThread.joinable()) loggingThread.join();
             if(profilingThread.joinable()) profilingThread.join();
             if(gate) {
-                auto crashDump = gate->waitForSessionEnd();
+                dai::CrashDumpManager crashDumpManager(this);
+                auto crashDump = crashDumpManager.collectCrashDump();
                 if(crashDump) {
-                    logCollection::logCrashDump(pipelineSchema, crashDump.value(), deviceInfo);
+                    logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
                 }
             }
 
@@ -1112,8 +1119,11 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     crashed = hasCrashDump();
                     if(crashed) {
-                        auto dump = getCrashDump();
-                        logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
+                        dai::CrashDumpManager crashDumpManager(this);
+                        auto crashDump = crashDumpManager.collectCrashDump();
+                        if(crashDump) {
+                            logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
+                        }
                     }
                     auto shared = pipelinePtr.lock();
                     if(!shared) throw std::runtime_error("Pipeline was destroyed");
@@ -1397,8 +1407,8 @@ std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     return pimpl->rpcCall("getIrDrivers");
 }
 
-dai::CrashDump DeviceBase::getCrashDump(bool clearCrashDump) {
-    return pimpl->rpcCall("getCrashDump", clearCrashDump).as<dai::CrashDump>();
+CrashDumpRVC2::CrashReportCollection DeviceBase::getCrashDump(bool clearCrashDump) {
+    return pimpl->rpcCall("getCrashDump", clearCrashDump).as<CrashDumpRVC2::CrashReportCollection>();
 }
 
 bool DeviceBase::hasCrashDump() {
@@ -1740,4 +1750,29 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     return true;
 }
+
+Platform DeviceBase::getPlatform() const {
+    auto platform = getDeviceInfo().platform;
+    switch(platform) {
+        case X_LINK_MYRIAD_X:
+            return Platform::RVC2;
+            break;
+        case X_LINK_RVC3:
+            return Platform::RVC3;
+            break;
+        case X_LINK_RVC4:
+            return Platform::RVC4;
+            break;
+        case X_LINK_ANY_PLATFORM:
+        case X_LINK_MYRIAD_2:
+        default:
+            throw std::runtime_error("Unknown platform");
+            break;
+    }
+}
+
+std::string DeviceBase::getPlatformAsString() const {
+    return platform2string(this->getPlatform());
+}
+
 }  // namespace dai

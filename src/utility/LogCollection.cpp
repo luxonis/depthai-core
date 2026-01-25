@@ -182,7 +182,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 #endif
 }
 
-void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const GenericCrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
+void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const CrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
     auto crashDumpEnvVar = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
     if(crashDumpEnvVar == "0") {
         logger::warn("Crash dump logging disabled");
@@ -202,20 +202,10 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
 
     // Create the crash dump object
     FileWithSHA1 crashDumpData;
-    if(auto* crashDumpPtr = std::get_if<CrashDump>(&crashDump)) {
-        std::string crashDumpJson = crashDumpPtr->serializeToJson().dump();
-        crashDumpData.content = std::move(crashDumpJson);
-        crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
-        crashDumpData.name = "crash_dump.json";
-    } else if(auto* crashDumpPtr = std::get_if<DeviceGate::CrashDump>(&crashDump)) {
-        crashDumpData.content = std::string((char*)(crashDumpPtr->data.data()), crashDumpPtr->data.size());
-        crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
-        crashDumpData.name = crashDumpPtr->filename;
-
-    } else {
-        logger::error("Unknown crash dump type");
-        return;
-    }
+    auto bytes = crashDump.toBytes();
+    crashDumpData.content = std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+    crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
+    crashDumpData.name = "crash_dump.tar.gz";
 
     fs::path logDir = fs::current_path() / ".cache" / "depthai" / "crashdumps";
     fs::path crashDumpPathLocal(dirToStoreCrashDumps);
@@ -235,9 +225,7 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
         return;
     }
 
-    std::ofstream crashDumpFile(crashDumpPathLocal);
-    crashDumpFile << crashDumpData.content;
-    crashDumpFile.close();
+    crashDump.toTar(crashDumpPathLocal);
     logger::error(errorString);
     // Send logs to the server if possible
 #ifdef DEPTHAI_ENABLE_CURL
