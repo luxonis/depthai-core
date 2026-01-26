@@ -9,12 +9,15 @@
 #include <string>
 #include <vector>
 
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 #define REQUIRE_MSG(x, msg)                                         \
     if(!(x)) {                                                      \
@@ -22,7 +25,7 @@
         REQUIRE((x));                                               \
     }
 
-dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline, dai::CameraBoardSocket socket, int sensorFps, dai::ExternalFrameSyncRole role) {
+dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline, dai::CameraBoardSocket socket, float sensorFps, dai::ExternalFrameSyncRole role) {
     std::shared_ptr<dai::node::Camera> cam;
     if(role == dai::ExternalFrameSyncRole::MASTER) {
         cam = pipeline->create<dai::node::Camera>()->build(socket, std::nullopt, sensorFps);
@@ -32,6 +35,133 @@ dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline, dai::
 
     auto output = cam->requestOutput(std::make_pair(640, 480), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH);
     return output;
+}
+
+std::shared_ptr<dai::node::Sync> createSyncNode(std::shared_ptr<dai::Pipeline>& masterPipeline,
+                                                std::map<std::string, dai::Node::Output*>& masterNode,
+                                                std::chrono::nanoseconds syncThreshold,
+                                                std::vector<std::string>& outputNames,
+                                                std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
+                                                std::map<std::string, std::shared_ptr<dai::InputQueue>>& inputQueues) {
+    auto sync = masterPipeline->create<dai::node::Sync>();
+    sync->setRunOnHost(true);
+    sync->setSyncThreshold(syncThreshold);
+    for(auto p : masterNode) {
+        auto name = std::string("master_") + p.first;
+        p.second->link(sync->inputs[name]);
+        outputNames.push_back(name);
+    }
+
+    for(auto& p : slaveQueues) {
+        for(auto& q : p.second) {
+            auto name = std::string("slave_") + p.first + "_" + q.first;
+            outputNames.push_back(name);
+            auto input_queue = sync->inputs[name].createInputQueue();
+            inputQueues.emplace(name, input_queue);
+        }
+    }
+
+    return sync;
+}
+
+void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
+                       dai::CameraBoardSocket socket,
+                       std::string& name,
+                       float targetFps,
+                       dai::ExternalFrameSyncRole role,
+                       std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
+                       std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
+                       std::vector<std::string>& camSockets) {
+    auto outNode = createPipeline(pipeline, socket, targetFps, role);
+
+    if(role == dai::ExternalFrameSyncRole::MASTER) {
+        if(!masterNode.has_value()) {
+            masterNode.emplace();
+        }
+        masterNode.value().emplace(dai::toString(socket), outNode);
+
+    } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
+        if(slaveQueues.find(name) == slaveQueues.end()) {
+            slaveQueues.emplace(name, std::map<std::string, std::shared_ptr<dai::MessageQueue>>());
+        }
+        slaveQueues[name].emplace(dai::toString(socket), outNode->createOutputQueue());
+
+    } else {
+        throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
+    }
+
+    if(std::find(camSockets.begin(), camSockets.end(), dai::toString(socket)) == camSockets.end()) {
+        camSockets.emplace_back(dai::toString(socket));
+    }
+}
+
+void setUpIrLeds(std::shared_ptr<dai::Device> device) {
+    auto drivers = device->getIrDrivers();
+    bool found = false;
+
+    for(auto& driver : drivers) {
+        std::string name;
+        int bus;
+        int addr;
+        std::tie(name, bus, addr) = driver;
+
+        if(name == "stm-dot") {
+            device->setIrLaserDotProjectorIntensity(0.1);
+            found = true;
+        } else if(name == "stm-flood") {
+            device->setIrFloodLightIntensity(0.1);
+            found = true;
+        }
+    }
+
+    if(!found) {
+        std::cout << "No IR drivers found, skipping IR intensity setting" << std::endl;
+    } else {
+        std::cout << "IR intensity set" << std::endl;
+    }
+}
+
+void setupDevice(dai::DeviceInfo& deviceInfo,
+                 std::shared_ptr<dai::Pipeline>& masterPipeline,
+                 std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
+                 std::map<std::string, std::shared_ptr<dai::Pipeline>>& slavePipelines,
+                 std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
+                 std::vector<std::string>& camSockets,
+                 std::vector<std::string>& sockets,
+                 float targetFps) {
+    auto pipeline = std::make_shared<dai::Pipeline>(std::make_shared<dai::Device>(deviceInfo));
+    auto device = pipeline->getDefaultDevice();
+    std::string name = deviceInfo.getXLinkDeviceDesc().name;
+
+    auto role = device->getExternalFrameSyncRole();
+
+    std::cout << "=== Connected to " << deviceInfo.getDeviceId() << std::endl;
+    std::cout << "    Device ID: " << device->getDeviceId() << std::endl;
+    std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
+
+    for(auto socket : device->getConnectedCameras()) {
+        if(std::find(sockets.begin(), sockets.end(), dai::toString(socket)) == sockets.end()) {
+            continue;
+        }
+        setUpCameraSocket(pipeline, socket, name, targetFps, role, masterNode, slaveQueues, camSockets);
+    }
+
+    setUpIrLeds(device);
+
+    if(role == dai::ExternalFrameSyncRole::MASTER) {
+        device->setExternalStrobeEnable(true);
+        std::cout << device->getDeviceId() << " is master" << std::endl;
+
+        if(masterPipeline != nullptr) {
+            throw std::runtime_error("Only one master pipeline is supported");
+        }
+        masterPipeline = pipeline;
+    } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
+        slavePipelines[name] = pipeline;
+        std::cout << device->getDeviceId() << " is slave" << std::endl;
+    } else {
+        throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
+    }
 }
 
 int testFsync(
@@ -62,81 +192,7 @@ int testFsync(
     std::vector<std::string> camSockets;
 
     for(auto deviceInfo : deviceInfos) {
-        auto pipeline = std::make_shared<dai::Pipeline>(std::make_shared<dai::Device>(deviceInfo));
-        auto device = pipeline->getDefaultDevice();
-        std::string name = deviceInfo.getXLinkDeviceDesc().name;
-
-        auto role = device->getExternalFrameSyncRole();
-
-        std::cout << "=== Connected to " << deviceInfo.getDeviceId() << std::endl;
-        std::cout << "    Device ID: " << device->getDeviceId() << std::endl;
-        std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
-
-        for(auto socket : device->getConnectedCameras()) {
-            if(std::find(sockets.begin(), sockets.end(), dai::toString(socket)) == sockets.end()) {
-                continue;
-            }
-            auto outNode = createPipeline(pipeline, socket, targetFps, role);
-
-            if(role == dai::ExternalFrameSyncRole::MASTER) {
-                if(!masterNode.has_value()) {
-                    masterNode.emplace();
-                }
-
-                masterNode.value().emplace(dai::toString(socket), outNode);
-            } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
-                if(slaveQueues.find(name) == slaveQueues.end()) {
-                    slaveQueues.emplace(name, std::map<std::string, std::shared_ptr<dai::MessageQueue>>());
-                }
-
-                slaveQueues[name].emplace(dai::toString(socket), outNode->createOutputQueue());
-            } else {
-                throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
-            }
-
-            if(std::find(camSockets.begin(), camSockets.end(), dai::toString(socket)) == camSockets.end()) {
-                camSockets.emplace_back(dai::toString(socket));
-            }
-        }
-
-        auto drivers = device->getIrDrivers();
-        bool found = false;
-
-        for (auto &driver : drivers) {
-            std::string name;
-            int bus;
-            int addr;
-            std::tie(name, bus, addr) = driver;
-
-            if(name == "stm-dot") {
-                device->setIrLaserDotProjectorIntensity(0.1);
-                found = true;
-            } else if(name == "stm-flood") {
-                device->setIrFloodLightIntensity(0.1);
-                found = true;
-            }
-        }
-
-        if(!found) {
-            std::cout << "No IR drivers found, skipping IR intensity setting" << std::endl;
-        } else {
-            std::cout << "IR intensity set" << std::endl;
-        }
-
-        if(role == dai::ExternalFrameSyncRole::MASTER) {
-            device->setExternalStrobeEnable(true);
-            std::cout << device->getDeviceId() << " is master" << std::endl;
-
-            if(masterPipeline != nullptr) {
-                throw std::runtime_error("Only one master pipeline is supported");
-            }
-            masterPipeline = pipeline;
-        } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
-            slavePipelines[name] = pipeline;
-            std::cout << device->getDeviceId() << " is slave" << std::endl;
-        } else {
-            throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
-        }
+        setupDevice(deviceInfo, masterPipeline, masterNode, slavePipelines, slaveQueues, camSockets, sockets, targetFps);
     }
 
     if(masterPipeline == nullptr || !masterNode.has_value()) {
@@ -146,23 +202,8 @@ int testFsync(
         throw std::runtime_error("No slaves detected!");
     }
 
-    auto sync = masterPipeline->create<dai::node::Sync>();
-    sync->setRunOnHost(true);
-    sync->setSyncThreshold(std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))));
-    for(auto p : *masterNode) {
-        p.second->link(sync->inputs[std::string("master_") + p.first]);
-        outputNames.push_back(std::string("master_") + p.first);
-    }
-
-    for(auto p : slaveQueues) {
-        for(auto q : p.second) {
-            auto name = std::string("slave_") + p.first + "_" + q.first;
-            outputNames.push_back(name);
-            auto input_queue = sync->inputs[name].createInputQueue();
-            inputQueues.emplace(name, input_queue);
-        }
-    }
-
+    auto sync =
+        createSyncNode(masterPipeline, *masterNode, std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))), outputNames, slaveQueues, inputQueues);
     auto queue = sync->out.createOutputQueue();
 
     masterPipeline->start();
@@ -224,14 +265,10 @@ int testFsync(
                 tsValues.emplace(name, frame->getTimestamp(dai::CameraExposureOffset::END));
             }
 
-            auto maxElement =
-                std::max_element(tsValues.begin(), tsValues.end(), [](const std::pair<std::string, ts_type>& p1, const std::pair<std::string, ts_type>& p2) {
-                    return p1.second < p2.second;
-                });
-            auto minElement =
-                std::min_element(tsValues.begin(), tsValues.end(), [](const std::pair<std::string, ts_type>& p1, const std::pair<std::string, ts_type>& p2) {
-                    return p1.second < p2.second;
-                });
+            auto compFunct = [](const std::pair<std::string, ts_type>& p1, const std::pair<std::string, ts_type>& p2) -> bool { return p1.second < p2.second; };
+
+            auto maxElement = std::max_element(tsValues.begin(), tsValues.end(), compFunct);
+            auto minElement = std::min_element(tsValues.begin(), tsValues.end(), compFunct);
 
             auto delta = maxElement->second - minElement->second;
             auto deltaUs = std::chrono::duration_cast<std::chrono::microseconds>(delta).count();

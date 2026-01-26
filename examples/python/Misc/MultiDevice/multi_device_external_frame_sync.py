@@ -12,7 +12,7 @@ import argparse
 import signal
 import numpy as np
 
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ class FPSCounter:
 # ---------------------------------------------------------------------------
 # Pipeline creation (unchanged API – only uses TARGET_FPS constant)
 # ---------------------------------------------------------------------------
-def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensorFps: int, role: dai.ExternalFrameSyncRole):
+def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensorFps: float, role: dai.ExternalFrameSyncRole):
     cam = None
     if role == dai.ExternalFrameSyncRole.MASTER:
         cam = (
@@ -58,6 +58,88 @@ def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensor
         )
     )
     return pipeline, output
+
+def createSyncNode(syncThreshold: datetime.timedelta):
+    global masterPipeline, masterNode, slaveQueues, inputQueues, outputNames
+    sync = masterPipeline.create(dai.node.Sync)
+    sync.setRunOnHost(True)
+    sync.setSyncThreshold(syncThreshold)
+    for k, v in masterNode.items():
+        name = f"master_{k}"
+        v.link(sync.inputs[name])
+        outputNames.append(name)
+
+    for k, v in slaveQueues.items():
+        for k2, v2 in v.items():
+            name = f"slave_{k}_{k2}"
+            outputNames.append(name)
+            input_queue = sync.inputs[name].createInputQueue()
+            inputQueues[name] = input_queue
+    
+    return sync
+
+def setUpCameraSocket(
+        pipeline: dai.Pipeline,
+        socket: dai.CameraBoardSocket,
+        name: str,
+        targetFps: float,
+        role: dai.ExternalFrameSyncRole):
+    global masterNode, slaveQueues, camSockets
+    pipeline, outNode = createPipeline(pipeline, socket, targetFps, role)
+
+    if role == dai.ExternalFrameSyncRole.MASTER:
+        if masterNode is None:
+            masterNode = {}
+        
+        masterNode[socket.name] = outNode
+    elif role == dai.ExternalFrameSyncRole.SLAVE:
+        if slaveQueues.get(name) is None:
+            slaveQueues[name] = {}
+        
+        slaveQueues[name][socket.name] = outNode.createOutputQueue()
+    else:
+        raise RuntimeError(f"Don't know how to handle role {role}")
+    
+    if socket.name not in camSockets:
+        camSockets.append(socket.name)
+
+    return pipeline
+
+def setupDevice(
+        stack: contextlib.ExitStack,
+        deviceInfo: dai.DeviceInfo,
+        sockets: Optional[List[str]],
+        targetFps: float):
+    global masterPipeline, masterNode, slavePipelines, slaveQueues, camSockets
+    pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
+    device = pipeline.getDefaultDevice()
+    name = deviceInfo.getXLinkDeviceDesc().name
+
+    role = device.getExternalFrameSyncRole()
+
+    print("=== Connected to", deviceInfo.getDeviceId())
+    print("    Device ID:", device.getDeviceId())
+    print("    Num of cameras:", len(device.getConnectedCameras()))
+
+    for socket in device.getConnectedCameras():
+        if sockets is not None and socket.name not in sockets:
+            continue
+        pipeline = setUpCameraSocket(pipeline, socket, name, targetFps, role)
+
+    if role == dai.ExternalFrameSyncRole.MASTER:
+        device.setExternalStrobeEnable(True)
+        print(f"{device.getDeviceId()} is master")
+
+        if masterPipeline is not None:
+            raise RuntimeError("Only one master pipeline is supported")
+        
+        masterPipeline = pipeline
+    elif role == dai.ExternalFrameSyncRole.SLAVE:
+        slavePipelines[name] = pipeline
+        print(f"{device.getDeviceId()} is slave")
+    else:
+        raise RuntimeError(f"Don't know how to handle role {role}")
+
 
 running = True
 
@@ -117,49 +199,7 @@ with contextlib.ExitStack() as stack:
     camSockets = []
 
     for idx, deviceInfo in enumerate(deviceInfos):
-        pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
-        device = pipeline.getDefaultDevice()
-        name = deviceInfo.getXLinkDeviceDesc().name
-
-        role = device.getExternalFrameSyncRole()
-
-        print("=== Connected to", deviceInfo.getDeviceId())
-        print("    Device ID:", device.getDeviceId())
-        print("    Num of cameras:", len(device.getConnectedCameras()))
-
-        for socket in device.getConnectedCameras():
-            if sockets is not None and socket.name not in sockets:
-                continue
-            pipeline, outNode = createPipeline(pipeline, socket, targetFps, role)
-
-            if role == dai.ExternalFrameSyncRole.MASTER:
-                if masterNode is None:
-                    masterNode = {}
-                
-                masterNode[socket.name] = outNode
-            elif role == dai.ExternalFrameSyncRole.SLAVE:
-                if slaveQueues.get(name) is None:
-                    slaveQueues[name] = {}
-                
-                slaveQueues[name][socket.name] = outNode.createOutputQueue()
-            else:
-                raise RuntimeError(f"Don't know how to handle role {role}")
-            
-            if socket.name not in camSockets:
-                camSockets.append(socket.name)
-
-        if role == dai.ExternalFrameSyncRole.MASTER:
-            device.setExternalStrobeEnable(True)
-            print(f"{device.getDeviceId()} is master")
-
-            if masterPipeline is not None:
-                raise RuntimeError("Only one master pipeline is supported")
-            masterPipeline = pipeline
-        elif role == dai.ExternalFrameSyncRole.SLAVE:
-            slavePipelines[name] = pipeline
-            print(f"{device.getDeviceId()} is slave")
-        else:
-            raise RuntimeError(f"Don't know how to handle role {role}")
+        setupDevice(stack, deviceInfo, sockets, targetFps)
 
     if masterPipeline is None or masterNode is None:
         raise RuntimeError("No master detected!")
@@ -167,20 +207,7 @@ with contextlib.ExitStack() as stack:
     if len(slavePipelines) < 1:
         raise RuntimeError("No slaves detected!")
 
-    sync = masterPipeline.create(dai.node.Sync)
-    sync.setRunOnHost(True)
-    sync.setSyncThreshold(datetime.timedelta(milliseconds=1000 / (2 * targetFps)))
-    for k, v in masterNode.items():
-        v.link(sync.inputs[f"master_{k}"])
-        outputNames.append(f"master_{k}")
-
-    for k, v in slaveQueues.items():
-        for k2, v2 in v.items():
-            name = f"slave_{k}_{k2}"
-            outputNames.append(name)
-            input_queue = sync.inputs[name].createInputQueue()
-            inputQueues[name] = input_queue
-
+    sync = createSyncNode(datetime.timedelta(milliseconds=1000 / (2 * targetFps)))
     queue = sync.out.createOutputQueue()
 
     masterPipeline.start()
