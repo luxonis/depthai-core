@@ -179,7 +179,7 @@ TEST_CASE("FPS check") {
             REQUIRE(nodeState.outputStates.at("outputAligned").isValid());
             REQUIRE(nodeState.outputStates.at("outputAligned").timing.fps == Catch::Approx(30.0).margin(5.0));
         }
-        if(std::string(node->getName()) == "SpatialDetectionNetwork") {
+        if(std::string(node->getName()) == "SpatialLocationCalculator") {
             ++gotNodes;
             REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
@@ -188,16 +188,15 @@ TEST_CASE("FPS check") {
             REQUIRE(nodeState.inputStates.at("inputDepth").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.inputStates.at("inputDetections").isValid());
             REQUIRE(nodeState.inputStates.at("inputDetections").timing.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.inputStates.at("inputImg").isValid());
-            REQUIRE(nodeState.inputStates.at("inputImg").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("passthroughDepth").isValid());
             REQUIRE(nodeState.outputStates.at("passthroughDepth").timing.fps == Catch::Approx(30.0).margin(5.0));
+            REQUIRE(nodeState.outputStates.at("outputDetections").isValid());
+            REQUIRE(nodeState.outputStates.at("outputDetections").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("out").isValid());
             REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
         }
     }
 
-    REQUIRE(gotNodes == 8);  // 3 cameras, stereo, neural network, detection parser, image align, spatial detection network
-
+    REQUIRE(gotNodes == 8);  // 3 cameras, stereo, neural network, detection parser, image align, spatial location calculator
     pipeline.stop();
 }
