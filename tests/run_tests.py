@@ -87,7 +87,13 @@ if __name__ == "__main__":
         action="store_true",
         required=False,
     )
-    
+
+    parser.add_argument(
+        "--fsync",
+        action="store_true",
+        required=False,
+    )
+
     parser.add_argument(
         "--rvc4rgb",
         action="store_true",
@@ -118,6 +124,11 @@ if __name__ == "__main__":
             "labels": ["rvc4"],
         },
         {
+            "name": "RVC4 - Fsync",
+            "env": {"DEPTHAI_PLATFORM": "rvc4"},
+            "labels": ["rvc4fsync"],
+        },
+        {
             "name": "RVC4 - RGB",
             "env": {"DEPTHAI_PLATFORM": "rvc4"},
             "labels": ["rvc4rgb"],
@@ -138,7 +149,7 @@ if __name__ == "__main__":
     resultThreads = []
 
     # Filter configurations based on command-line arguments
-    if args.rvc4==args.rvc2==args.rvc4rgb:
+    if args.rvc4==args.rvc2==args.rvc4rgb==args.fsync:
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "rvc4" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4:
         test_configs = [config for config in all_configs if "rvc4" in config.get("labels", [])]
@@ -146,6 +157,8 @@ if __name__ == "__main__":
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4rgb:
         test_configs = [config for config in all_configs if "rvc4rgb" in config.get("labels", [])]
+    elif args.fsync:
+        test_configs = [config for config in all_configs if "rvc4fsync" in config.get("labels", [])]
 
 
     for config in test_configs:
