@@ -194,6 +194,11 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     float getLensPositionRaw() const;
 
     /**
+     * Retrieves image transformation data
+     */
+    ImgTransformation& getTransformation();
+
+    /**
      * Instance number relates to the origin of the frame (which camera)
      *
      * @param instance Instance number
@@ -262,6 +267,13 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * @param type Type of image
      */
     ImgFrame& setType(Type type);
+
+    /**
+     * Specifies image transformation data
+     *
+     * @param transformation transformation data
+     */
+    ImgFrame& setTransformation(const ImgTransformation& transformation);
 
     /**
      * Remap a point from the current frame to the source frame

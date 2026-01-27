@@ -1,4 +1,5 @@
 #include <catch2/catch_all.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <thread>
 
@@ -55,4 +56,14 @@ TEST_CASE("New API Test") {
     auto output = out->get<dai::Buffer>();
 
     REQUIRE(output != nullptr);
+}
+
+TEST_CASE("Missing script exception test") {
+    // Create pipeline
+    dai::Pipeline pipeline;
+
+    // Setup script node
+    auto script = pipeline.create<dai::node::Script>();
+
+    REQUIRE_THROWS_AS(pipeline.build(), std::runtime_error);
 }
