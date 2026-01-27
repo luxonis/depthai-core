@@ -129,8 +129,12 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
                  float targetFps) {
     auto pipeline = std::make_shared<dai::Pipeline>(std::make_shared<dai::Device>(deviceInfo));
     auto device = pipeline->getDefaultDevice();
-    std::string name = deviceInfo.getXLinkDeviceDesc().name;
 
+    if(device->getPlatform() != dai::Platform::RVC4) {
+        throw std::runtime_error("This example supports only RVC4 platform!");
+    }
+    
+    std::string name = deviceInfo.getXLinkDeviceDesc().name;
     auto role = device->getExternalFrameSyncRole();
 
     std::cout << "=== Connected to " << deviceInfo.getDeviceId() << std::endl;

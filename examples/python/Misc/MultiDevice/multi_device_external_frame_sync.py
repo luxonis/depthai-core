@@ -113,8 +113,11 @@ def setupDevice(
     global masterPipeline, masterNode, slavePipelines, slaveQueues, camSockets
     pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
     device = pipeline.getDefaultDevice()
-    name = deviceInfo.getXLinkDeviceDesc().name
 
+    if device.getPlatform() != dai.Platform.RVC4:
+        raise RuntimeError("This example supports only RVC4 platform!")
+
+    name = deviceInfo.getXLinkDeviceDesc().name
     role = device.getExternalFrameSyncRole()
 
     print("=== Connected to", deviceInfo.getDeviceId())
