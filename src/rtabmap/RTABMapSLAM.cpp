@@ -1,8 +1,8 @@
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
 
 #include "../utility/PimplImpl.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
 #include "RTABMapConversions.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "pcl/filters/filter.h"
 #include "pcl/point_cloud.h"
 #include "pipeline/ThreadedNodeImpl.hpp"

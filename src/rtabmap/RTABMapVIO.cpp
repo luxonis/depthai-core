@@ -1,8 +1,8 @@
 #include "depthai/rtabmap/RTABMapVIO.hpp"
 
 #include "../utility/PimplImpl.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
 #include "RTABMapConversions.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryInfo.h"
