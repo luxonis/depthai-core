@@ -1371,6 +1371,15 @@ std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     return pimpl->rpcCall("getIrDrivers");
 }
 
+dai::CrashDump DeviceBase::getState() {
+    auto state = pimpl->rpcCall("getState").as<dai::CrashDump>();
+    // There is a small chance retrieving the state may hang,
+    // so it's not auto-cleared in the same call,
+    // allowing to be returned as a crashdump in the next run
+    pimpl->rpcCall("clearCrashDump");
+    return state;
+}
+
 dai::CrashDump DeviceBase::getCrashDump(bool clearCrashDump) {
     return pimpl->rpcCall("getCrashDump", clearCrashDump).as<dai::CrashDump>();
 }

@@ -554,6 +554,13 @@ class DeviceBase {
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
 
     /**
+     * Retrieves current device state in a crash dump format.
+     * It halts the device temporarily and might affect the running pipeline,
+     * it's best to close the device after this operation
+     */
+    dai::CrashDump getState();
+
+    /**
      * Retrieves crash dump for debugging.
      */
     dai::CrashDump getCrashDump(bool clearCrashDump = true);
