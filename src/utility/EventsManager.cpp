@@ -119,7 +119,8 @@ FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileN
                                                                                       {".gif", "image/gif"},
                                                                                       {".svg", "image/svg+xml"},
                                                                                       {".json", "application/json"},
-                                                                                      {".txt", "text/plain"}};
+                                                                                      {".txt", "text/plain"},
+                                                                                      {".annotation", "application/x-protobuf; proto=SnapAnnotation"}};
     // Read the data
     std::ifstream fileStream(filePath, std::ios::binary | std::ios::ate);
     if(!fileStream) {
@@ -141,6 +142,8 @@ FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileN
     static const std::unordered_set<std::string> imageMimeTypes = {"image/jpeg", "image/png", "image/webp", "image/bmp", "image/tiff"};
     if(imageMimeTypes.find(mimeType) != imageMimeTypes.end()) {
         classification = proto::event::PrepareFileUploadClass::IMAGE_COLOR;
+    } else if(mimeType == "application/x-protobuf; proto=SnapAnnotation") {
+        classification = proto::event::PrepareFileUploadClass::ANNOTATION;
     } else {
         classification = proto::event::PrepareFileUploadClass::UNKNOWN_FILE;
     }
@@ -217,7 +220,12 @@ bool FileData::toFile(const std::filesystem::path& inputPath) {
         logger::error("Filename is empty");
         return false;
     }
-    std::string extension = mimeType == "image/jpeg" ? ".jpg" : ".txt";
+    std::string extension;
+    if(mimeType == "image/jpeg") {
+        extension = ".jpg";
+    } else if(mimeType == "application/x-protobuf; proto=SnapAnnotation") {
+        extension = ".annotation";
+    }
     // Choose a unique filename
     std::filesystem::path target = inputPath / (fileName + extension);
     for(int i = 1; std::filesystem::exists(target); ++i) {
@@ -262,18 +270,15 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
     // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
         // Fetch configuration limits when starting the new thread
-        configurationLimitsFetched = fetchConfigurationLimits();
-        auto currentTime = std::chrono::steady_clock::now();
-        auto nextTime = currentTime + std::chrono::hours(1);
+        configurationLimitsFetched = fetchConfigurationLimits(true);
         while(!stopUploadThread) {
-            // Hourly check for fetching configuration and limits
-            currentTime = std::chrono::steady_clock::now();
-            if(currentTime >= nextTime) {
-                fetchConfigurationLimits();
-                nextTime += std::chrono::hours(1);
-                if(remainingStorageBytes <= warningStorageBytes) {
-                    logger::warn("Current remaining storage is running low: {} MB", remainingStorageBytes / (1024 * 1024));
-                }
+            connectionEstablished = fetchConfigurationLimits(false);
+            if(remainingStorageBytes <= warningStorageBytes) {
+                logger::warn("Current remaining storage is running low: {} MB", remainingStorageBytes / (1024 * 1024));
+            }
+            // Add cached snaps (if any) to the snapBuffer
+            if(connectionEstablished) {
+                uploadCachedSnaps();
             }
             // Prepare the batch first to reduce contention
             std::deque<std::shared_ptr<SnapData>> snapBatch;
@@ -301,10 +306,8 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
             eventBufferCondition.wait_for(lock, std::chrono::seconds(static_cast<int>(this->publishInterval)), [this]() { return stopUploadThread.load(); });
         }
     });
-    // Upload or clear previously cached data on start
-    if(uploadCachedOnStart) {
-        uploadCachedData();
-    } else {
+    // If upload on start is not set, clear the previously cached data when starting
+    if(!uploadCachedOnStart) {
         clearCachedData(cacheDir);
     }
 }
@@ -317,7 +320,7 @@ EventsManager::~EventsManager() {
     }
 }
 
-bool EventsManager::fetchConfigurationLimits() {
+bool EventsManager::fetchConfigurationLimits(const bool retryOnFail) {
     logger::info("Fetching configuration limits");
     if(token.empty()) {
         logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
@@ -346,6 +349,10 @@ bool EventsManager::fetchConfigurationLimits() {
                 }));
         if(response.status_code != cpr::status::HTTP_OK) {
             logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
+            // Fetching should be retried indefinetly only on startup
+            if(!retryOnFail) {
+                return false;
+            }
 
             // Apply exponential backoff
             auto factor = std::pow(uploadRetryPolicy.factor, ++retryAttempt);
@@ -606,6 +613,11 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
 }
 
 void EventsManager::uploadEventBatch() {
+    // Add cached events, if any
+    if(connectionEstablished) {
+        uploadCachedEvents();
+    }
+
     auto eventBatch = std::make_unique<proto::event::BatchUploadEvents>();
     {
         std::lock_guard<std::mutex> lock(eventBufferMutex);
@@ -893,8 +905,11 @@ void EventsManager::cacheEvents() {
     logger::info("Caching events");
     std::lock_guard<std::mutex> lock(eventBufferMutex);
     for(const auto& eventData : eventBuffer) {
-        std::filesystem::path path(cacheDir);
-        path = path / ("event_" + eventData->event->name() + "_" + std::to_string(eventData->event->created_at()));
+        std::filesystem::path inputPath(cacheDir);
+        std::filesystem::path path = inputPath / ("event_" + eventData->event->name() + "_" + std::to_string(eventData->event->created_at()));
+        for(int i = 1; std::filesystem::exists(path); ++i) {
+            path = inputPath / ("event_" + eventData->event->name() + "_" + std::to_string(eventData->event->created_at()) + "_" + std::to_string(i));
+        }
         std::string eventDir = path.string();
         logger::info("Caching event to {}", eventDir);
         if(!std::filesystem::exists(cacheDir)) {
@@ -911,8 +926,12 @@ void EventsManager::cacheSnapData(std::deque<std::shared_ptr<SnapData>>& inputSn
     // Create a unique directory and save the snapData
     logger::info("Caching snapData");
     for(const auto& snap : inputSnapBatch) {
-        std::filesystem::path path(cacheDir);
-        path = path / ("snap_" + snap->eventData->event->name() + "_" + std::to_string(snap->eventData->event->created_at()));
+        std::filesystem::path inputPath(cacheDir);
+        std::filesystem::path path = inputPath / ("snap_" + snap->eventData->event->name() + "_" + std::to_string(snap->eventData->event->created_at()));
+        for(int i = 1; std::filesystem::exists(path); ++i) {
+            path =
+                inputPath / ("snap_" + snap->eventData->event->name() + "_" + std::to_string(snap->eventData->event->created_at()) + "_" + std::to_string(i));
+        }
         std::string snapDir = path.string();
         logger::info("Caching snap to {}", snapDir);
         if(!std::filesystem::exists(cacheDir)) {
@@ -927,13 +946,12 @@ void EventsManager::cacheSnapData(std::deque<std::shared_ptr<SnapData>>& inputSn
     }
 }
 
-void EventsManager::uploadCachedData() {
-    // Iterate over the directories in cacheDir, add events and snapsData to buffers
+void EventsManager::uploadCachedEvents() {
+    // Iterate over the directories in cacheDir, add events to eventBuffer
     if(!checkForCachedData()) {
-        logger::warn("Cache directory is empty, no cached data will be uploaded");
         return;
     }
-    logger::info("Uploading cached data");
+    logger::info("Uploading cached events");
 
     for(const auto& entry : std::filesystem::directory_iterator(cacheDir)) {
         if(!entry.is_directory()) {
@@ -945,13 +963,34 @@ void EventsManager::uploadCachedData() {
             auto eventData = std::make_unique<EventData>();
             auto event = std::make_shared<proto::event::Event>();
             event->ParseFromIstream(&eventFile);
+
+            // Cached events should be added only if there is enough space in the upcoming request
             std::lock_guard<std::mutex> lock(eventBufferMutex);
+            if(eventBuffer.size() >= eventsPerRequest) {
+                return;
+            }
+
             eventData->event = event;
             eventBuffer.push_back(std::move(eventData));
             // Clear entries added to the eventBuffer
             clearCachedData(entry.path());
+        }
+    }
+}
 
-        } else if(entry.path().filename().string().rfind("snap", 0) == 0) {
+void EventsManager::uploadCachedSnaps() {
+    // Iterate over the directories in cacheDir, add snaps to snapBuffer
+    if(!checkForCachedData()) {
+        return;
+    }
+    logger::info("Uploading cached snaps");
+
+    for(const auto& entry : std::filesystem::directory_iterator(cacheDir)) {
+        if(!entry.is_directory()) {
+            continue;
+        }
+
+        if(entry.path().filename().string().rfind("snap", 0) == 0) {
             std::ifstream snapFile(entry.path() / "snap.pb", std::ios::binary);
             auto snapData = std::make_unique<SnapData>();
             auto eventData = std::make_shared<EventData>();
@@ -960,14 +999,20 @@ void EventsManager::uploadCachedData() {
             event->ParseFromIstream(&snapFile);
             for(const auto& fileEntry : std::filesystem::directory_iterator(entry.path())) {
                 if(fileEntry.is_regular_file() && fileEntry.path() != entry.path() / "snap.pb") {
-                    auto fileData = std::make_shared<FileData>(fileEntry.path(), fileEntry.path().filename().string());
+                    auto fileData = std::make_shared<FileData>(fileEntry.path(), fileEntry.path().stem().string());
                     fileGroup->fileData.push_back(fileData);
                 }
             }
             snapData->eventData = eventData;
             snapData->eventData->event = event;
             snapData->fileGroup = fileGroup;
+
+            // Cached snaps should be added only if there is enough space in the upcoming request
             std::lock_guard<std::mutex> lock(snapBufferMutex);
+            if(snapBuffer.size() >= maxGroupsPerBatch) {
+                return;
+            }
+
             snapBuffer.push_back(std::move(snapData));
             // Clear entries added to the snapBuffer
             clearCachedData(entry.path());
