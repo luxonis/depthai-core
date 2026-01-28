@@ -7,7 +7,6 @@
 
 // depthai/
 #include "depthai/common/CameraBoardSocket.hpp"
-#include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
@@ -22,6 +21,7 @@
 #include "depthai/common/DetectionParserOptions.hpp"
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/EepromData.hpp"
+#include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/common/FrameEvent.hpp"
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Interpolation.hpp"
@@ -415,7 +415,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("VESA_I", HousingCoordinateSystem::VESA_I)
         .value("VESA_J", HousingCoordinateSystem::VESA_J)
         .value("IMU", HousingCoordinateSystem::IMU);
-    
+
     // ExternalFrameSyncRole enum bindings
     externalFrameSyncRole.value("AUTO_DETECT", ExternalFrameSyncRole::AUTO_DETECT)
         .value("MASTER", ExternalFrameSyncRole::MASTER)
