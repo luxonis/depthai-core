@@ -565,3 +565,50 @@ TEST_CASE("Pipeline event dispatcher tests", "[MessageQueue]") {
         REQUIRE(event2->interval == dai::PipelineEvent::Interval::END);
     }
 }
+
+TEST_CASE("MessageQueue::waitAny Tests", "[MessageQueue]") {
+    auto msg = std::make_shared<ADatatype>();
+
+    SECTION("One queue has nothing, one has a message") {
+        MessageQueue q1("empty_q"), q2("full_q");
+        q2.send(msg);  // Populate q2
+
+        std::vector<std::reference_wrapper<MessageQueue>> queues{q1, q2};
+
+        // Act: Should detect the message in q2 and return immediately
+        bool result = MessageQueue::waitAny(queues);
+
+        REQUIRE(result == true);
+        REQUIRE(q2.getSize() == 1);
+    }
+
+    SECTION("One queue is closed") {
+        MessageQueue q1("empty_1"), q2("empty_2");
+
+        // To prevent waitAny from blocking forever in a test,
+        // we close one queue which triggers the CV logic.
+        q1.close();
+
+        std::vector<std::reference_wrapper<MessageQueue>> queues{q1, q2};
+
+        REQUIRE_THROWS_AS(MessageQueue::waitAny(queues), MessageQueue::QueueException);
+    }
+
+    SECTION("Message arrives after 1 second") {
+        MessageQueue q1("delayed_q");
+        std::vector<std::reference_wrapper<MessageQueue>> queues{q1};
+
+        std::thread producer([&]() {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            q1.send(msg);
+        });
+
+        // Act: This will block until the producer thread sends the message
+        bool result = MessageQueue::waitAny(queues);
+
+        REQUIRE(result == true);
+        REQUIRE(q1.getSize() == 1);
+
+        if(producer.joinable()) producer.join();
+    }
+}

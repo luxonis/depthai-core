@@ -215,6 +215,39 @@ void MessageQueue::notifyCondVars() {
 
 MessageQueue::QueueException::~QueueException() noexcept = default;
 
+bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues) {
+    auto inputsWaitCv = std::make_shared<std::condition_variable>();
+    std::mutex waitMutex;
+
+    // Store IDs so we can unsubscribe later
+    std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> ids;
+
+    // 1. Subscribe to all queues in the vector
+    for(MessageQueue& queue : queues) {
+        ids.push_back({queue, queue.addCondVar(inputsWaitCv)});
+    }
+
+    // 2. Wait until any queue has data or closes
+    std::unique_lock<std::mutex> lock(waitMutex);
+    inputsWaitCv->wait(lock, [&]() {
+        for(MessageQueue& queue : queues) {
+            if(queue.has() || queue.isClosed()) return true;
+        }
+        return false;
+    });
+
+    // 3. Unsubscribe
+    for(auto& pair : ids) {
+        pair.first.removeCondVar(pair.second);
+    }
+
+    // 4. Return true if data is available
+    for(MessageQueue& queue : queues) {
+        if(queue.has()) return true;
+    }
+    return false;
+}
+
 std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                                  std::optional<std::chrono::milliseconds> timeout) {
     std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> condVarIds;
