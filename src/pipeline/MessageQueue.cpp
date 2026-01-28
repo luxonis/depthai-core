@@ -215,7 +215,7 @@ void MessageQueue::notifyCondVars() {
 
 MessageQueue::QueueException::~QueueException() noexcept = default;
 
-std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(std::unordered_map<std::string, MessageQueue&> queues,
+std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                                  std::optional<std::chrono::milliseconds> timeout) {
     std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> condVarIds;
     condVarIds.reserve(queues.size());

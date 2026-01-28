@@ -61,14 +61,14 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
           name(c.name),
           callbacks(c.callbacks),
           uniqueCallbackId(c.uniqueCallbackId),
-          pipelineEventDispatcher(c.pipelineEventDispatcher){};
+          pipelineEventDispatcher(c.pipelineEventDispatcher) {};
     MessageQueue(MessageQueue&& m) noexcept
         : enable_shared_from_this(m),
           queue(std::move(m.queue)),
           name(std::move(m.name)),
           callbacks(std::move(m.callbacks)),
           uniqueCallbackId(m.uniqueCallbackId),
-          pipelineEventDispatcher(m.pipelineEventDispatcher){};
+          pipelineEventDispatcher(m.pipelineEventDispatcher) {};
 
     MessageQueue& operator=(const MessageQueue& c) {
         queue = c.queue;
@@ -88,10 +88,10 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         return *this;
     }
 
-    static std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(std::unordered_map<std::string, MessageQueue&> queues,
+    static std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                               std::optional<std::chrono::milliseconds> timeout = std::nullopt);
     template <typename T>
-    static std::unordered_map<std::string, std::shared_ptr<T>> getAny(std::unordered_map<std::string, MessageQueue&> queues,
+    static std::unordered_map<std::string, std::shared_ptr<T>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                       std::optional<std::chrono::milliseconds> timeout = std::nullopt) {
         auto resultADatatype = getAny(std::move(queues), timeout);
         std::unordered_map<std::string, std::shared_ptr<T>> result;
