@@ -9,6 +9,7 @@ enum class DatatypeEnum : std::int32_t {
     Buffer,
     ImgFrame,
     EncodedFrame,
+    GateControl,
     NNData,
     ImageManipConfig,
     CameraControl,

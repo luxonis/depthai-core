@@ -75,6 +75,7 @@ set(SOURCE_LIST
     src/pipeline/node/MonoCameraBindings.cpp
     src/pipeline/node/StereoDepthBindings.cpp
     src/pipeline/node/NeuralNetworkBindings.cpp
+    src/pipeline/node/GateBindings.cpp
     src/pipeline/node/VideoEncoderBindings.cpp
     src/pipeline/node/ImageManipBindings.cpp
     src/pipeline/node/SPIOutBindings.cpp
@@ -117,6 +118,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/CameraControlBindings.cpp
     src/pipeline/datatype/EdgeDetectorConfigBindings.cpp
     src/pipeline/datatype/FeatureTrackerConfigBindings.cpp
+    src/pipeline/datatype/GateControlBindings.cpp
     src/pipeline/datatype/ThermalConfigBindings.cpp
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp
