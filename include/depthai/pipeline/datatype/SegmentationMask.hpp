@@ -29,6 +29,7 @@ struct SegmentationMaskAccess;
  * The value 255 is treated as background pixels (no class/instance).
  */
 class SegmentationMask : public Buffer, public ProtoSerializable {
+    // Optimization option: if network is bottleneck, implement RLE compression for the mask data
    protected:
     size_t width = 0;
     size_t height = 0;
