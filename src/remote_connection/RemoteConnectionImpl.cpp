@@ -520,7 +520,7 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
                 return response;
             };
         } else {
-            serviceMap[id] = [](foxglove::ServiceResponse request) mutable {
+            serviceMap[id] = [](foxglove::ServiceResponse request) {
                 (void)request;
                 std::string stateStr = R"({"error": "Pipeline debugging disabled. Cannot get pipeline state."})";
                 auto response = foxglove::ServiceResponse();
