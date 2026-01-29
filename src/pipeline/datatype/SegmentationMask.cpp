@@ -10,7 +10,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-#include "utility/ErrorMacros.hpp"
+    #include "utility/ErrorMacros.hpp"
 #endif
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
