@@ -17,12 +17,16 @@ class MapData : public Buffer {
 
     virtual ~MapData();
 
-    dai::ImgFrame map;
     float minX = 0.0;
     float minY = 0.0;
+    std::shared_ptr<dai::ImgFrame> getMap();
+    void setMap(std::shared_ptr<ImgFrame> map);
 
+    private:
+    std::shared_ptr<dai::ADatatype> map;
+public:
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
-    DEPTHAI_SERIALIZE(MapData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, map, minX, minY);
+    DEPTHAI_SERIALIZE(MapData, map, minX, minY, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 
 }  // namespace dai

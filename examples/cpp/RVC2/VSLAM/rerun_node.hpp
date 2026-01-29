@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <rerun/datatypes/color_model.hpp>
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
@@ -97,10 +98,12 @@ class RerunNode : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunNode> {
                 }
 #endif
                 if(mapData != nullptr) {
-                    auto &map = mapData->map;
-                    auto image = map.getCvFrame();
+                    auto map = mapData->getMap();
+
+                    auto image = map->getCvFrame();
+
                     rec.log("map", rerun::Image(reinterpret_cast<const uint8_t*>(image.data),
-                        {static_cast<uint32_t>(map.getWidth()), static_cast<uint32_t>(map.getHeight())}, rerun::datatypes::ColorModel::L));
+                        {static_cast<uint32_t>(map->getWidth()), static_cast<uint32_t>(map->getHeight())}, rerun::datatypes::ColorModel::L));
                 }
             }
         }

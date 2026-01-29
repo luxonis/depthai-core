@@ -51,13 +51,13 @@ class RTABMapSLAM::Impl {
             cv::flip(map8U, map8U, 0);
 
             auto mapMsg = std::make_shared<dai::MapData>();
-            dai::ImgFrame mapImg;
-            mapImg.setTimestamp(std::chrono::steady_clock::now());
-            mapImg.setCvFrame(map8U, ImgFrame::Type::GRAY8);
-            mapMsg->ts = mapImg.ts;
+            auto mapImg = std::make_shared<dai::ImgFrame>();
+            mapImg->setTimestamp(std::chrono::steady_clock::now());
+            mapImg->setCvFrame(map8U, ImgFrame::Type::GRAY8);
+            mapMsg->ts = mapImg->ts;
             mapMsg->minX = xMin;
             mapMsg->minY = yMin;
-            mapMsg->map = mapImg;
+            mapMsg->setMap(mapImg);
 
             occupancyGridMap.send(mapMsg);
         }
