@@ -22,11 +22,13 @@ class BinarySemaphore {
 
     // signal / post / V
     void release() {
+        bool notify = false;
         {
             std::lock_guard<std::mutex> lk(mtx);
             available = true;
+            notify = true;
         }
-        cv.notify_one();
+        if(notify) cv.notify_one();
     }
 
     // wait / P
