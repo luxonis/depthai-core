@@ -73,6 +73,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::SegmentationParserConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
         case DatatypeEnum::AprilTagConfig:
@@ -102,6 +103,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
             break;
     }
@@ -148,6 +150,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::SegmentationParserConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
         case DatatypeEnum::AprilTagConfig:
@@ -177,6 +180,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }

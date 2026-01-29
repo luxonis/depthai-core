@@ -133,7 +133,7 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     if(device->getPlatform() != dai::Platform::RVC4) {
         throw std::runtime_error("This example supports only RVC4 platform!");
     }
-    
+
     std::string name = deviceInfo.getXLinkDeviceDesc().name;
     auto role = device->getExternalFrameSyncRole();
 

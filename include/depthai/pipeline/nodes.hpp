@@ -9,6 +9,7 @@
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
 #include "node/Rectification.hpp"
+#include "node/SegmentationParser.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "node/DynamicCalibrationNode.hpp"
 #endif
