@@ -8,6 +8,7 @@
 #include <iostream>
 #include <random>
 #include <sstream>
+#include <stdexcept>
 #include <utility>
 
 #include "Environment.hpp"
@@ -36,11 +37,17 @@ void FileGroup::addFile(std::string fileName, std::filesystem::path filePath) {
 }
 
 void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgFrame>& imgFrame) {
+    if(!imgFrame) {
+        throw std::invalid_argument("FileGroup::addFile called with null ImgFrame");
+    }
     std::string dataFileName = fileName.value_or("Image");
     addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(dataFileName));
 }
 
 void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<EncodedFrame>& encodedFrame) {
+    if(!encodedFrame) {
+        throw std::invalid_argument("FileGroup::addFile called with null EncodedFrame");
+    }
     std::string dataFileName = fileName.value_or("Image");
     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(dataFileName));
 }
@@ -50,6 +57,9 @@ void FileGroup::addFile(const std::optional<std::string>& fileName, const std::s
 // }
 
 void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgDetections>& imgDetections) {
+    if(!imgDetections) {
+        throw std::invalid_argument("FileGroup::addFile called with null ImgDetections");
+    }
     std::string dataFileName = fileName.value_or("Detections");
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
@@ -57,6 +67,12 @@ void FileGroup::addFile(const std::optional<std::string>& fileName, const std::s
 void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
                                        const std::shared_ptr<ImgFrame>& imgFrame,
                                        const std::shared_ptr<ImgDetections>& imgDetections) {
+    if(!imgFrame) {
+        throw std::invalid_argument("FileGroup::addImageDetectionsPair called with null ImgFrame");
+    }
+    if(!imgDetections) {
+        throw std::invalid_argument("FileGroup::addImageDetectionsPair called with null ImgDetections");
+    }
     std::string dataFileName = fileName.value_or("ImageDetection");
     addToFileData<dai::utility::FileData>(fileData, imgFrame, dataFileName);
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
@@ -65,6 +81,12 @@ void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileNam
 void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
                                        const std::shared_ptr<EncodedFrame>& encodedFrame,
                                        const std::shared_ptr<ImgDetections>& imgDetections) {
+    if(!encodedFrame) {
+        throw std::invalid_argument("FileGroup::addImageDetectionsPair called with null EncodedFrame");
+    }
+    if(!imgDetections) {
+        throw std::invalid_argument("FileGroup::addImageDetectionsPair called with null ImgDetections");
+    }
     std::string dataFileName = fileName.value_or("ImageDetection");
     addToFileData<dai::utility::FileData>(fileData, encodedFrame, dataFileName);
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
