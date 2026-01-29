@@ -51,7 +51,7 @@ NNArchive SegmentationParser::createNNArchive(NNModelDescription& modelDesc) {
     }
     auto path = getModelFromZoo(modelDesc);
     auto modelType = model::readModelType(path);
-    DAI_CHECK(modelType == model::ModelType::NNARCHIVE, "Model from zoo is not NNArchive - it needs to be a NNArchive to use the build function");
+    DAI_CHECK(modelType == model::ModelType::NNARCHIVE, "Model from zoo must be an NNArchive to use the build function");
     auto nnArchive = NNArchive(path);
     return nnArchive;
 }
@@ -116,7 +116,7 @@ void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
         properties.networkOutputName = "";
     } else {
         std::vector<std::string> networkOutputs = *head.outputs;
-        DAI_CHECK_V(networkOutputs.size() <= 1, "SegmentationParser supports only single output.");
+        DAI_CHECK_V(networkOutputs.size() <= 1, "SegmentationParser supports only a single output.");
         properties.networkOutputName = networkOutputs[0];
     }
 

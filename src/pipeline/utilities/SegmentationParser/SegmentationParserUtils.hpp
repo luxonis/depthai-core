@@ -48,8 +48,7 @@ void tensorArgmax(span<std::uint8_t> dstData,
                   std::shared_ptr<spdlog::async_logger>& logger);
 
 /**
- * @brief Specialized function for FP16 data type to avoid template instantiation issues. Optimized for NCHW tensor format as FP16 is associated with RVC2.
- * outputs.
+ * @brief Specialized function for FP16 data type to avoid template instantiation issues. Optimized for NCHW tensor format, as FP16 is associated with RVC2 outputs.
  * @param dst Output segmentation mask data (uint8_t)
  * @param tensorSpan Input tensor data
  * @param tensorInfo Information about the tensor (shape, data type, layout, etc.)
