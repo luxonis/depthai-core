@@ -9,6 +9,10 @@
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#include "utility/ErrorMacros.hpp"
+#endif
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "utility/ProtoSerialize.hpp"
 #endif
@@ -214,7 +218,6 @@ bool SegmentationMask::hasValidMask() const {
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #include "utility/ErrorMacros.hpp"
 void SegmentationMask::setCvMask(cv::Mat mask) {
     if(mask.type() != CV_8UC1) {
         throw std::runtime_error("SetCvSegmentationMask: Mask must be of INT8 type, got opencv type " + cv::typeToString(mask.type()) + ".");
