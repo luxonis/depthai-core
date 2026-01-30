@@ -39,7 +39,7 @@ class CrashDumpManager {
     bool hasCrashDump();
 
    private:
-    DeviceBase* device;
+    DeviceBase* devicePtr;
 };
 
 }  // namespace dai

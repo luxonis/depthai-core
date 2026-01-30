@@ -1,7 +1,9 @@
 #include "depthai/device/CrashDumpManager.hpp"
+#include <stdexcept>
 
 // project
 #include "depthai/build/version.hpp"
+#include "depthai/device/DeviceGate.hpp"
 
 namespace dai {
 
@@ -13,7 +15,7 @@ static std::string getStringTimestamp() {
     return ss.str();
 }
 
-CrashDumpManager::CrashDumpManager(DeviceBase* devicePtr) : device(devicePtr) {
+CrashDumpManager::CrashDumpManager(DeviceBase* devicePtr) : devicePtr(devicePtr) {
     if(devicePtr == nullptr) {
         throw std::invalid_argument("Device pointer cannot be null");
     }
@@ -27,12 +29,12 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
 
     // Collect the correct crash dump based on the platform
     std::unique_ptr<CrashDump> dump;
-    Platform platform = this->device->getPlatform();
+    Platform platform = this->devicePtr->getPlatform();
 
     switch(platform) {
         case Platform::RVC2: {
             auto dumpRVC2 = std::make_unique<CrashDumpRVC2>();
-            dumpRVC2->crashReports = this->device->getCrashDump(clear);
+            dumpRVC2->crashReports = this->devicePtr->getCrashDump(clear);
             dump = std::move(dumpRVC2);
         } break;
 
@@ -42,7 +44,14 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
 
         case Platform::RVC4: {
             auto dumpRVC4 = std::make_unique<CrashDumpRVC4>();
-            // TODO(lnotspotl): add missing data retrieval from device
+            if(!this->devicePtr->gate) {
+                throw std::runtime_error("RVC4 device has no gate, cannot collect crashdump");
+            }
+            auto gateDump = this->devicePtr->gate->getCrashDump();
+            if(gateDump) {
+                dumpRVC4->data = std::move(gateDump->data);
+                dumpRVC4->filename = std::move(gateDump->filename);
+            }
             dump = std::move(dumpRVC4);
         } break;
 
@@ -66,14 +75,16 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
     dump->depthaiDeviceRVC4Version = build::DEVICE_RVC4_VERSION;
 
     // Device
-    dump->deviceId = this->device->getDeviceId();
+    dump->deviceId = this->devicePtr->getDeviceId();
+
+    // Crashdump collection time
     dump->crashdumpTimestamp = getStringTimestamp();
 
     return dump;
 }
 
 bool CrashDumpManager::hasCrashDump() {
-    return this->device->hasCrashDump();
+    return this->devicePtr->hasCrashDump();
 }
 
 }  // namespace dai

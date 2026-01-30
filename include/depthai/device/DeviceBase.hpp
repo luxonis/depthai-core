@@ -42,14 +42,16 @@
 
 namespace dai {
 
-// Forward declare Pipeline
+// Forward declarations
 class Pipeline;
 class PipelineImpl;
+class CrashDumpManager;
 /**
  * The core of depthai device for RAII, connects to device and maintains watchdog, timesync, ...
  */
 class DeviceBase {
-    friend class PipelineImpl;  // Needed for reconnections
+    friend class PipelineImpl;      // Needed for reconnections
+    friend class CrashDumpManager;  // Needed for gate access during crash dump collection
 
    public:
     // constants

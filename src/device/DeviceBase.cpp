@@ -465,8 +465,7 @@ void DeviceBase::closeImpl() {
             crashed = hasCrashDump();
             if(crashed) {
                 connection->setRebootOnDestruction(true);
-                dai::CrashDumpManager crashDumpManager(this);
-                auto dump = crashDumpManager.collectCrashDump();
+                auto dump = dai::CrashDumpManager(this).collectCrashDump();
                 logCollection::logCrashDump(pipelineSchema, *dump, deviceInfo);
             } else {
                 bool isRunning = pimpl->rpcCall("isRunning").as<bool>();
@@ -525,8 +524,7 @@ void DeviceBase::closeImpl() {
 
     // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
-        dai::CrashDumpManager crashDumpManager(this);
-        auto crashDump = crashDumpManager.collectCrashDump();
+        auto crashDump = dai::CrashDumpManager(this).collectCrashDump();
         if(crashDump) {
             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
         }
@@ -552,8 +550,7 @@ void DeviceBase::closeImpl() {
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
                     crashed = rebootingDevice.hasCrashDump();
                     if(crashed) {
-                        dai::CrashDumpManager crashDumpManager(&rebootingDevice);
-                        auto crashDump = crashDumpManager.collectCrashDump();
+                        auto crashDump = dai::CrashDumpManager(&rebootingDevice).collectCrashDump();
                         if(crashDump) {
                             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
                         }
@@ -1093,8 +1090,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(loggingThread.joinable()) loggingThread.join();
             if(profilingThread.joinable()) profilingThread.join();
             if(gate) {
-                dai::CrashDumpManager crashDumpManager(this);
-                auto crashDump = crashDumpManager.collectCrashDump();
+                auto crashDump = dai::CrashDumpManager(this).collectCrashDump();
                 if(crashDump) {
                     logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
                 }
@@ -1119,8 +1115,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     crashed = hasCrashDump();
                     if(crashed) {
-                        dai::CrashDumpManager crashDumpManager(this);
-                        auto crashDump = crashDumpManager.collectCrashDump();
+                        auto crashDump = dai::CrashDumpManager(this).collectCrashDump();
                         if(crashDump) {
                             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
                         }
