@@ -1,4 +1,3 @@
-
 set(_internal_flags_sanitizer "-fno-omit-frame-pointer -fsanitize=thread")
 set(CMAKE_C_FLAGS ${_internal_flags_sanitizer})
 set(CMAKE_CXX_FLAGS ${_internal_flags_sanitizer})
