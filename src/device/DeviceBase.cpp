@@ -1264,6 +1264,22 @@ void DeviceBase::crashDevice() {
     }
 }
 
+std::tuple<bool, std::string> DeviceBase::setExternalFrameSyncRole(ExternalFrameSyncRole role) {
+    return pimpl->rpcClient->call("setExternalFrameSyncRole", role);
+}
+
+ExternalFrameSyncRole DeviceBase::getExternalFrameSyncRole() {
+    return pimpl->rpcClient->call("getExternalFrameSyncRole");
+}
+
+std::tuple<bool, std::string> DeviceBase::setExternalStrobeRelativeLimits(float min, float max) {
+    return pimpl->rpcClient->call("setExternalStrobeRelativeLimits", min, max);
+}
+
+void DeviceBase::setExternalStrobeEnable(bool enable) {
+    pimpl->rpcCall("setExternalStrobeEnable", enable);
+}
+
 dai::Version DeviceBase::getIMUFirmwareVersion() {
     isClosed();
     std::string versionStr = pimpl->rpcCall("getIMUFirmwareVersion").as<std::string>();
@@ -1737,14 +1753,22 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     logCollection::logPipeline(schema, deviceInfo);
     this->pipelineSchema = schema;  // Save the schema so it can be saved alongside the crashdump
 
-    // Build and start the pipeline
     bool success = false;
     std::string errorMsg;
+
+    // Initialize the device (External frame sync slaves need to lock onto the signal first)
+    std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
+
+    if(!success) {
+        throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
+    }
+
+    // Build and start the pipeline
     std::tie(success, errorMsg) = pimpl->rpcCall("buildPipeline").as<std::tuple<bool, std::string>>();
     if(success) {
         pimpl->rpcCall("startPipeline");
     } else {
-        throw std::runtime_error(errorMsg);
+        throw std::runtime_error("Device " + getDeviceId() + " error: " + errorMsg);
         return false;
     }
 

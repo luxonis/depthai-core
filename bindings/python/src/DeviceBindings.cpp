@@ -762,6 +762,38 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("enable"),
             DOC(dai, DeviceBase, setTimesync, 2))
         .def(
+            "setExternalFrameSyncRole",
+            [](DeviceBase& d, ExternalFrameSyncRole role) {
+                py::gil_scoped_release release;
+                return d.setExternalFrameSyncRole(role);
+            },
+            py::arg("role"),
+            DOC(dai, DeviceBase, setExternalFrameSyncRole))
+        .def(
+            "getExternalFrameSyncRole",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getExternalFrameSyncRole();
+            },
+            DOC(dai, DeviceBase, getExternalFrameSyncRole))
+        .def(
+            "setExternalStrobeRelativeLimits",
+            [](DeviceBase& d, float min, float max) {
+                py::gil_scoped_release release;
+                return d.setExternalStrobeRelativeLimits(min, max);
+            },
+            py::arg("min"),
+            py::arg("max"),
+            DOC(dai, DeviceBase, setExternalStrobeRelativeLimits))
+        .def(
+            "setExternalStrobeEnable",
+            [](DeviceBase& d, bool enable) {
+                py::gil_scoped_release release;
+                d.setExternalStrobeEnable(enable);
+            },
+            py::arg("enable"),
+            DOC(dai, DeviceBase, setExternalStrobeEnable))
+        .def(
             "getDeviceName",
             [](DeviceBase& d) {
                 std::string name;

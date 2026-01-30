@@ -1,8 +1,7 @@
 #pragma once
 
-#include <depthai/pipeline/Subnode.hpp>
-
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
@@ -12,11 +11,6 @@
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/node/Sync.hpp"
-#include "rtabmap/core/CameraModel.h"
-#include "rtabmap/core/Odometry.h"
-#include "rtabmap/core/OdometryInfo.h"
-#include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/Transform.h"
 
 namespace dai {
 namespace node {
@@ -27,6 +21,8 @@ namespace node {
 class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
    public:
     constexpr static const char* NAME = "RTABMapVIO";
+    RTABMapVIO();
+    ~RTABMapVIO() override;
 
     std::string rectInputName = "rect";
     std::string depthInputName = "depth";
@@ -77,9 +73,7 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
      */
     void setUseFeatures(bool use);
 
-    void setLocalTransform(std::shared_ptr<TransformData> transform) {
-        localTransform = transform->getRTABMapTransform();
-    }
+    void setLocalTransform(std::shared_ptr<TransformData> transform);
 
     /**
      * Reset Odometry.
@@ -89,18 +83,14 @@ class RTABMapVIO : public NodeCRTP<ThreadedHostNode, RTABMapVIO> {
     void buildInternal() override;
 
    private:
+    // pimpl
+    class Impl;
+    Pimpl<Impl> pimplRtabmap;
     void run() override;
     void syncCB(std::shared_ptr<dai::ADatatype> data);
     Input inSync{*this, {"inSync", DEFAULT_GROUP, DEFAULT_BLOCKING, 15, {{{DatatypeEnum::MessageGroup, true}}}}};
     void imuCB(std::shared_ptr<ADatatype> msg);
     void initialize(Pipeline& pipeline, int instanceNum, int width, int height);
-    rtabmap::StereoCameraModel model;
-    std::unique_ptr<rtabmap::Odometry> odom;
-    rtabmap::Transform localTransform;
-    rtabmap::Transform imuLocalTransform;
-    std::map<std::string, std::string> rtabParams;
-    std::map<double, cv::Vec3f> accBuffer;
-    std::map<double, cv::Vec3f> gyroBuffer;
     std::mutex imuMtx;
     float alphaScaling = -1.0;
     bool initialized = false;

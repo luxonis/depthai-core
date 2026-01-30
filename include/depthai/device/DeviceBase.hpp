@@ -17,6 +17,7 @@
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
+#include "depthai/common/ExternalFrameSyncRoles.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
@@ -822,6 +823,38 @@ class DeviceBase {
      * @param callBack Callback to be called when reconnection is attempted
      */
     void setMaxReconnectionAttempts(int maxAttempts, std::function<void(ReconnectionStatus)> callBack = nullptr);
+
+    /**
+     * Sets external frame sync role for the device
+     * @param role External frame sync role to be set, AUTO_DETECT by default
+     * @returns Tuple of bool and string. Bool specifies if role was set without failures. String is the error message describing the failure reason.
+     */
+    std::tuple<bool, std::string> setExternalFrameSyncRole(ExternalFrameSyncRole role = ExternalFrameSyncRole::AUTO_DETECT);
+
+    /**
+     * Gets external frame sync role for the device
+     * @returns Gets external frame sync role
+     */
+    ExternalFrameSyncRole getExternalFrameSyncRole();
+
+    /**
+     * Sets the relative external strobe limits.
+     * Limits the strobe duty cycle, between 0 and 1, as a fraction of the whole period. 0 means always off, 1 means always on.
+     * The rising edge of the strobe signal is always synced to end of exposure.
+     * The falling edge of the strobe signal is then limited according to the min and max values.
+     * Default values are 0.005 and 0.995
+     * @param min Minimum strobe value
+     * @param max Maximum strobe value
+     * @returns Tuple of bool and string. Bool specifies if role was set without failures. String is the error message describing the failure reason.
+     */
+    std::tuple<bool, std::string> setExternalStrobeRelativeLimits(float min, float max);
+
+    /**
+     * Set whether the external strobe should be enabled.
+     * External strobe signal is low for the duration of exposure, and high for the rest of the frame.
+     * @param enable Enables or disables strobe
+     */
+    void setExternalStrobeEnable(bool enable);
 
    protected:
     std::shared_ptr<XLinkConnection> connection;

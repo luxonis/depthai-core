@@ -413,5 +413,14 @@ std::optional<size_t> Camera::getOutputsMaxSizePool() const {
     return properties.maxSizePoolOutputs;
 }
 
+std::shared_ptr<Camera> Camera::setImageOrientation(CameraImageOrientation imageOrientation) {
+    properties.imageOrientation = imageOrientation;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+CameraImageOrientation Camera::getImageOrientation() const {
+    return properties.imageOrientation;
+}
+
 }  // namespace node
 }  // namespace dai
