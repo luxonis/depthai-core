@@ -33,20 +33,8 @@ TEST_CASE("Camera sensor configs configurations") {
 
     for(const auto& cameraFeatures : connectedCameraFeautres) {
         for(const auto& config : cameraFeatures.configs) {
-            float maxFps = config.maxFps;
-            if(config.maxFps > 240.5f) {
-                std::cout << "Skipping testing high fps on camera " << cameraFeatures.socket << " with max fps " << config.maxFps << " on device "
-                          << connectedDeviceInfo.getDeviceId() << "\n"
-                          << std::flush;
-                continue;
-            }
-            if(config.maxFps > 120.0f) {
-                // round down to nearest integer fps for high fps values to avoid issues with non integer fps settings
-                // TODO(Jakob) - fix this on device side when HFR is implemented
-                maxFps = static_cast<float>(static_cast<int>(config.maxFps));
-            }
             auto minimumFps = connectedDeviceInfo.platform == X_LINK_RVC4 ? std::max(MINIMUM_FPS_RVC4, config.minFps) : config.minFps;
-            for(const auto& fpsVariant : {maxFps, minimumFps}) {
+            for(const auto& fpsVariant : {config.maxFps, minimumFps}) {
                 std::cout << "Testing camera " << cameraFeatures.socket << " with resolution " << config.width << "x" << config.height << " at fps "
                           << fpsVariant << " on device " << connectedDeviceInfo.getDeviceId() << "\n"
                           << std::flush;
