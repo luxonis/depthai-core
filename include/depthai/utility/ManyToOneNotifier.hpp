@@ -63,6 +63,7 @@ class ManyToOneNotifier {
 
             while(!pred()) {
                 if(!semaphore.tryAcquireUntil(deadline)) {
+                    waiting = false;
                     return pred();
                 }
             }

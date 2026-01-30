@@ -75,9 +75,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         queue = c.queue;
         name = c.name;
         callbacks = c.callbacks;
-        notifiers = c.notifiers;
         uniqueCallbackId = c.uniqueCallbackId;
-        uniqueNotifierId = c.uniqueNotifierId;
         pipelineEventDispatcher = c.pipelineEventDispatcher;
         return *this;
     }

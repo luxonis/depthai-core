@@ -243,6 +243,7 @@ bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::option
     };
 
     std::shared_ptr<utility::ManyToOneNotifier> notifier = std::make_shared<utility::ManyToOneNotifier>();
+    bool gotMessage = true;
     try {
         // Add notifier to all queues, if any message arrives from this point, wait should return
         for(auto* input : queues) {
@@ -252,16 +253,17 @@ bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::option
         // Check if any messages already present
         if(!checkForMessages()) {
             if(timeout.has_value()) {
-                return notifier->waitFor(pred, timeout.value());
+                gotMessage = notifier->waitFor(pred, timeout.value());
+            } else {
+                notifier->wait(pred);
             }
-            notifier->wait(pred);
         }
     } catch(...) {
         removeNotifiers();
         throw;
     }
     removeNotifiers();
-    return true;
+    return gotMessage;
 }
 std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                                  std::optional<std::chrono::milliseconds> timeout) {
