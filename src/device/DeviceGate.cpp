@@ -336,7 +336,6 @@ std::optional<DeviceGate::CrashDump> DeviceGate::waitForSessionEnd() {
                 }
                 spdlog::warn("FW crashed - trying to get out the crash dump");
                 std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
-                std::string crashDumpName;
                 spdlog::warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
                 return getCrashDump();
         }

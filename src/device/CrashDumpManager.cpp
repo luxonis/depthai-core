@@ -1,4 +1,5 @@
 #include "depthai/device/CrashDumpManager.hpp"
+
 #include <stdexcept>
 
 // project
@@ -22,20 +23,13 @@ CrashDumpManager::CrashDumpManager(DeviceBase* devicePtr) : devicePtr(devicePtr)
 }
 
 std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
-    // Make sure a crash dump is available
-    if(!hasCrashDump()) {
-        return nullptr;
-    }
-
     // Collect the correct crash dump based on the platform
     std::unique_ptr<CrashDump> dump;
     Platform platform = this->devicePtr->getPlatform();
 
     switch(platform) {
         case Platform::RVC2: {
-            auto dumpRVC2 = std::make_unique<CrashDumpRVC2>();
-            dumpRVC2->crashReports = this->devicePtr->getCrashDump(clear);
-            dump = std::move(dumpRVC2);
+            dump = collectDumpRVC2(clear);
         } break;
 
         case Platform::RVC3: {
@@ -43,16 +37,7 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
         } break;
 
         case Platform::RVC4: {
-            auto dumpRVC4 = std::make_unique<CrashDumpRVC4>();
-            if(!this->devicePtr->gate) {
-                throw std::runtime_error("RVC4 device has no gate, cannot collect crashdump");
-            }
-            auto gateDump = this->devicePtr->gate->getCrashDump();
-            if(gateDump) {
-                dumpRVC4->data = std::move(gateDump->data);
-                dumpRVC4->filename = std::move(gateDump->filename);
-            }
-            dump = std::move(dumpRVC4);
+            dump = collectDumpRVC4();
         } break;
 
         default:
@@ -75,11 +60,32 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
     dump->depthaiDeviceRVC4Version = build::DEVICE_RVC4_VERSION;
 
     // Device
-    dump->deviceId = this->devicePtr->getDeviceId();
+    dump->deviceId = this->devicePtr->deviceInfo.getDeviceId();
 
     // Crashdump collection time
     dump->crashdumpTimestamp = getStringTimestamp();
 
+    return dump;
+}
+
+std::unique_ptr<CrashDump> CrashDumpManager::collectDumpRVC2(bool clear) {
+    auto dump = std::make_unique<CrashDumpRVC2>();
+    if(hasCrashDump()) {
+        dump->crashReports = this->devicePtr->getCrashDump(clear);
+    }
+    return dump;
+}
+
+std::unique_ptr<CrashDump> CrashDumpManager::collectDumpRVC4() {
+    if(!this->devicePtr->gate) {
+        throw std::runtime_error("RVC4 device has no gate, cannot collect crashdump");
+    }
+    auto dump = std::make_unique<CrashDumpRVC4>();
+    auto gateDump = this->devicePtr->gate->getCrashDump();
+    if(gateDump) {
+        dump->data = std::move(gateDump->data);
+        dump->filename = std::move(gateDump->filename);
+    }
     return dump;
 }
 

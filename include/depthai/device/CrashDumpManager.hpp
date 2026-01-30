@@ -39,6 +39,9 @@ class CrashDumpManager {
     bool hasCrashDump();
 
    private:
+    std::unique_ptr<CrashDump> collectDumpRVC2(bool clear);
+    std::unique_ptr<CrashDump> collectDumpRVC4();
+
     DeviceBase* devicePtr;
 };
 
