@@ -13,45 +13,6 @@ The current supported resolutions are:
 * 1280x720 @ 480 FPS
 
 
-## Setup
-To set up the HFR mode both a custom version of this (DepthAI) repository and a custom version of the LuxonisOS are required.
-
-### Installation of LuxonisOS:
-First download the HFR version of the OS [here](https://luxonisos-rvc4.fra1.digitaloceanspaces.com/OTA/full_update_luxonis_ext4-1.17.0-imx+16bc91752168bda919ce87196bf57d18fb9c43ec.zip)
-```
-wget https://luxonisos-rvc4.fra1.digitaloceanspaces.com/OTA/full_update_luxonis_ext4-1.17.0-imx+16bc91752168bda919ce87196bf57d18fb9c43ec.zip
-```
-
-then copy the OS to the device
-
-```
-scp full_update_luxonis_ext4-1.17.0-imx+16bc91752168bda919ce87196bf57d18fb9c43ec.zip root@<device_ip>:/data/hfr_os.zip
-```
-
-ssh into the device and update the OS
-
-```
-ssh root@<device_ip>
-recovery --update_package=/data/hfr_os.zip --wipe_cache && reboot
-```
-
-### DepthAI installation
-Clone this repository and checkout the `feature/imx586_hfr` branch
-
-```
-git clone https://github.com/luxonis/depthai-core.git
-cd depthai-core
-git checkout feature/imx586_hfr
-```
-
-and install requirements
-
-```
-python examples/python/install_requirements.py
-```
-
-The examples can then be found in the `examples/python/RVC4/HFR` directory.
-
 ## Example descriptions
 ### Object Detection
 The object detection [example](hfr_nn.py) demonstrates how to use the HFR mode with a YOLOv6 model for real-time object detection at **480 FPS**.

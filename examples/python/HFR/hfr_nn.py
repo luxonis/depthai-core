@@ -4,6 +4,10 @@ import depthai as dai
 FPS = 480
 
 with dai.Pipeline() as pipeline:
+    platform = pipeline.getDefaultDevice().getPlatform()
+    if platform != dai.Platform.RVC4:
+        raise RuntimeError("This example is only supported on RVC4 devices")
+
     # Download the model
     nnArchivePath = dai.getModelFromZoo(dai.NNModelDescription("yolov6-nano", platform="RVC4"))
     nnArchive = dai.NNArchive(nnArchivePath)

@@ -9,6 +9,10 @@ FPS = 480
 # SIZE = (1920, 1080)
 # FPS = 240
 with dai.Pipeline() as pipeline:
+    platform = pipeline.getDefaultDevice().getPlatform()
+    if platform != dai.Platform.RVC4:
+        raise RuntimeError("This example is only supported on RVC4 devices")
+
     cam = pipeline.create(dai.node.Camera).build()
     benchmarkIn = pipeline.create(dai.node.BenchmarkIn)
     benchmarkIn.setRunOnHost(True)

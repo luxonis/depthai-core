@@ -31,6 +31,10 @@ class VideoSaver(dai.node.HostNode):
         frame.getData().tofile(self.file_handle)
 
 with dai.Pipeline() as pipeline:
+    platform = pipeline.getDefaultDevice().getPlatform()
+    if platform != dai.Platform.RVC4:
+        raise RuntimeError("This example is only supported on RVC4 devices")
+
     camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     output = camRgb.requestOutput(SIZE, fps=FPS)
 
