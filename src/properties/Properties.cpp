@@ -10,6 +10,7 @@
 #include "depthai/properties/DeviceNodeGroupProperties.hpp"
 #include "depthai/properties/EdgeDetectorProperties.hpp"
 #include "depthai/properties/FeatureTrackerProperties.hpp"
+#include "depthai/properties/GateProperties.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/properties/IMUProperties.hpp"
 #include "depthai/properties/ImageAlignProperties.hpp"
@@ -64,6 +65,7 @@ CameraProperties::~CameraProperties() = default;
 ColorCameraProperties::~ColorCameraProperties() = default;
 DetectionParserProperties::~DetectionParserProperties() = default;
 EdgeDetectorProperties::~EdgeDetectorProperties() = default;
+GateProperties::~GateProperties() = default;
 RectificationProperties::~RectificationProperties() = default;
 NeuralDepthProperties::~NeuralDepthProperties() = default;
 FeatureTrackerProperties::~FeatureTrackerProperties() = default;

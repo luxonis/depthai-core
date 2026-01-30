@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dai.proto.rgbd_data;
+
+import "ImgFrame.proto";
+import "EncodedFrame.proto";
+import "common.proto";
+
+message RGBDData {
+    common.Timestamp ts = 1;
+    common.Timestamp tsDevice = 2;
+    int64 sequenceNum = 3;
+
+    // Color frame can be either ImgFrame or EncodedFrame
+    oneof color_frame {
+        img_frame.ImgFrame colorImgFrame = 4;
+        encoded_frame.EncodedFrame colorEncodedFrame = 5;
+    }
+
+    // Depth frame can be either ImgFrame or EncodedFrame
+    oneof depth_frame {
+        img_frame.ImgFrame depthImgFrame = 6;
+        encoded_frame.EncodedFrame depthEncodedFrame = 7;
+    }
+}
