@@ -33,7 +33,6 @@ DetectionNetwork::DetectionNetwork(const std::shared_ptr<Device>& device)
       outNetwork{neuralNetwork->out},
       input{neuralNetwork->input},
       passthrough{neuralNetwork->passthrough} {};
-
 // -------------------------------------------------------------------
 // Neural Network API
 // -------------------------------------------------------------------
