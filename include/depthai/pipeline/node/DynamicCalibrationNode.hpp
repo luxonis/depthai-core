@@ -144,8 +144,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     ErrorCode runCalibration(const dai::CalibrationHandler& calibHandler, const bool force = false);
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     ErrorCode runLoadImage(const bool blocking = false);
-
+#endif
     ErrorCode computeCoverage();
 
     ErrorCode initializePipeline(const std::shared_ptr<dai::Device> daiDevice);
@@ -198,6 +199,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * - Reseting of data
      */
     bool runOnHostVar = true;
+
+    // When old calibration is encountered, issue a warning once
+    bool oldCalibrationWarningIssued = false;
 };
 
 }  // namespace node

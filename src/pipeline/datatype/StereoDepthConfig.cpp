@@ -94,6 +94,15 @@ dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthU
     return algorithmControl.depthUnit;
 }
 
+StereoDepthConfig& StereoDepthConfig::setCustomDepthUnitMultiplier(float multiplier) {
+    algorithmControl.customDepthUnitMultiplier = multiplier;
+    return *this;
+}
+
+float StereoDepthConfig::getCustomDepthUnitMultiplier() const {
+    return algorithmControl.customDepthUnitMultiplier;
+}
+
 StereoDepthConfig& StereoDepthConfig::setDisparityShift(int disparityShift) {
     algorithmControl.disparityShift = disparityShift;
     return *this;

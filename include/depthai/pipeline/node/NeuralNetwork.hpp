@@ -1,5 +1,6 @@
 #pragma once
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
@@ -25,22 +26,49 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
    public:
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    using Model = std::variant<NNModelDescription, NNArchive, std::string>;
 
     ~NeuralNetwork() override;
 
     /**
-     * @brief Build NeuralNetwork node. Connect output to this node's input. Also call setNNArchive() with provided NNArchive.
-     *
+     * @brief Build NeuralNetwork node. Connect output to this node's input and sets up the NNArchive.
      * @param output: Output to link
      * @param nnArchive: Neural network archive
      * @returns Shared pointer to NeuralNetwork node
      */
     std::shared_ptr<NeuralNetwork> build(Node::Output& input, const NNArchive& nnArchive);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, std::optional<float> fps = std::nullopt);
+
+    /**
+     * @brief Build NeuralNetwork node. Connect Camera output to this node's input and configure the inference model.
+     * @param input: Camera node
+     * @param model: Neural network model description, NNArchive or HubAI model id string
+     * @param fps: Desired frames per second
+     * @param resizeMode: Resize mode for input frames
+     *
+     * @returns Shared pointer to NeuralNetwork node
+     */
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input,
+                                         const Model& model,
+                                         std::optional<float> fps = std::nullopt,
+                                         std::optional<dai::ImgResizeMode> resizeMode = dai::ImgResizeMode::CROP);
+    /**
+     * @brief Build NeuralNetwork node. Connect Camera output to this node's input and configure the inference model.
+     * @param input: Camera node
+     * @param model: Neural network model description, NNArchive or HubAI model id string
+     * @param capability: Camera capabilities
+     * @returns Shared pointer to NeuralNetwork node
+     */
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<Camera>& input, const Model& model, const ImgFrameCapability& capability);
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps = std::nullopt);
-    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps = std::nullopt);
+    /**
+     * @brief Build NeuralNetwork node. Connect ReplayVideo output to this node's input and configure the inference model.
+     * @param input: ReplayVideo node
+     * @param model: Neural network model description, NNArchive or HubAI model id string
+     * @param fps: Desired frames per second
+     * @returns Shared pointer to NeuralNetwork node
+     */
+    std::shared_ptr<NeuralNetwork> build(const std::shared_ptr<ReplayVideo>& input, const Model& model, std::optional<float> fps = std::nullopt);
 #endif
 
     /**
@@ -126,6 +154,21 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     void setBlob(const std::filesystem::path& path);
 
     /**
+     * Load network model into assets and use once pipeline is started.
+     *
+     * @param model Network model
+     */
+    void setOtherModelFormat(std::vector<uint8_t> model);
+
+    /**
+     * Load network model into assets and use once pipeline is started.
+     *
+     * @throws Error if file doesn't exist or isn't a valid network model.
+     * @param path Path to the network model
+     */
+    void setOtherModelFormat(const std::filesystem::path& path);
+
+    /**
      * Load network xml and bin files into assets.
      * @param xmlModelPath Path to the neural network model file.
      */
@@ -172,14 +215,22 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
     int getNumInferenceThreads();
-    // TODO add getters for other API
+
+    /**
+     * Set model from Device Model Zoo
+     * @param model DeviceModelZoo model enum
+     * @note Only applicable for RVC4 devices with OS 1.20.5 or higher
+     */
+    void setModelFromDeviceZoo(DeviceModelZoo model);
 
    private:
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-    ImgFrameCapability getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps);
+    void decodeModel(const Model& model);
+
+    ImgFrameCapability getFrameCapability(const NNArchive& nnArchive, std::optional<ImgFrameCapability> expectedCapability = std::nullopt);
     std::optional<NNArchive> nnArchive;
 };
 

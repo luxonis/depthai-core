@@ -21,6 +21,10 @@ class BenchmarkReport : public Buffer {
     ~BenchmarkReport() override;
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::BenchmarkReport;
+    }
+
     DEPTHAI_SERIALIZE(BenchmarkReport, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, fps, timeTotal, numMessagesReceived, averageLatency, latencies);
 };
 

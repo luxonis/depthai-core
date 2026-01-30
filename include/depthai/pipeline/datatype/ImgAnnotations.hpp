@@ -1,6 +1,10 @@
 #pragma once
+#include <optional>
+
 #include "depthai/common/Color.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
@@ -59,8 +63,13 @@ class ImgAnnotations : public Buffer, public ProtoSerializable {
 
     /// Transform
     std::vector<ImgAnnotation> annotations;
+    std::optional<ImgTransformation> transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::ImgAnnotations;
+    }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
@@ -78,7 +87,7 @@ class ImgAnnotations : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, annotations);
+    DEPTHAI_SERIALIZE(ImgAnnotations, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, annotations, transformation);
 };
 
 }  // namespace dai

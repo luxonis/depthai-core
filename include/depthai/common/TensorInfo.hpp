@@ -190,7 +190,7 @@ struct TensorInfo {
             case StorageOrder::NHCW:
                 return dims[2];
             case StorageOrder::NCHW:
-                return dims[3];
+                return dims[1];
             case StorageOrder::HWC:
                 return dims[2];
             case StorageOrder::CHW:

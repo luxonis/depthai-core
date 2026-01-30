@@ -47,12 +47,14 @@ class RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
     RecordVideo& setRecordMetadataFile(const std::filesystem::path& recordFile);
     RecordVideo& setRecordVideoFile(const std::filesystem::path& recordFile);
     RecordVideo& setCompressionLevel(CompressionLevel compressionLevel);
+    RecordVideo& setFps(unsigned int fps);
 
    private:
     std::filesystem::path recordMetadataFile;
     std::filesystem::path recordVideoFile;
-    unsigned int fpsInitLength = 10;
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
+    std::optional<unsigned int> fps;
+    unsigned int fpsInitLength = 10;
 };
 
 /**

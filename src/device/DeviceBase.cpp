@@ -648,14 +648,32 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
     // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), try finding it first
     if(deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) {
+        auto timeout = getDefaultSearchTime();
+        auto startSearchTime = std::chrono::steady_clock::now();
+        constexpr auto SEARCH_INTERVAL = std::chrono::milliseconds(100);
+
         deviceDesc_t foundDesc;
-        auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+        XLinkError_t ret = X_LINK_DEVICE_NOT_FOUND;
+        do {
+            ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+            if(ret == X_LINK_SUCCESS) {
+                pimpl->logger.trace("Found device by given DeviceInfo: {}", deviceInfo.toString());
+                break;
+            }
+            if(timeout < SEARCH_INTERVAL) {
+                std::this_thread::sleep_for(timeout);
+                break;
+            } else {
+                std::this_thread::sleep_for(SEARCH_INTERVAL);
+            }
+        } while(std::chrono::steady_clock::now() - startSearchTime < timeout);
+
         if(ret == X_LINK_SUCCESS) {
             deviceInfo = DeviceInfo(foundDesc);
             pimpl->logger.debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
         } else {
             deviceInfo.state = X_LINK_ANY_STATE;
-            pimpl->logger.debug("Searched, but no actual device found by given DeviceInfo");
+            pimpl->logger.error("Searched, but no actual device found by given DeviceInfo: {}", deviceInfo.toString());
         }
     }
 
@@ -1228,6 +1246,22 @@ void DeviceBase::crashDevice() {
     }
 }
 
+std::tuple<bool, std::string> DeviceBase::setExternalFrameSyncRole(ExternalFrameSyncRole role) {
+    return pimpl->rpcClient->call("setExternalFrameSyncRole", role);
+}
+
+ExternalFrameSyncRole DeviceBase::getExternalFrameSyncRole() {
+    return pimpl->rpcClient->call("getExternalFrameSyncRole");
+}
+
+std::tuple<bool, std::string> DeviceBase::setExternalStrobeRelativeLimits(float min, float max) {
+    return pimpl->rpcClient->call("setExternalStrobeRelativeLimits", min, max);
+}
+
+void DeviceBase::setExternalStrobeEnable(bool enable) {
+    pimpl->rpcCall("setExternalStrobeEnable", enable);
+}
+
 dai::Version DeviceBase::getIMUFirmwareVersion() {
     isClosed();
     std::string versionStr = pimpl->rpcCall("getIMUFirmwareVersion").as<std::string>();
@@ -1297,6 +1331,10 @@ int64_t DeviceBase::getProcessMemoryUsage() {
 
 UsbSpeed DeviceBase::getUsbSpeed() {
     return pimpl->rpcCall("getUsbSpeed").as<UsbSpeed>();
+}
+
+bool DeviceBase::isNeuralDepthSupported() {
+    return pimpl->rpcCall("isNeuralDepthSupported").as<bool>();
 }
 
 std::optional<Version> DeviceBase::getBootloaderVersion() {
@@ -1697,14 +1735,22 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     logCollection::logPipeline(schema, deviceInfo);
     this->pipelineSchema = schema;  // Save the schema so it can be saved alongside the crashdump
 
-    // Build and start the pipeline
     bool success = false;
     std::string errorMsg;
+
+    // Initialize the device (External frame sync slaves need to lock onto the signal first)
+    std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
+
+    if(!success) {
+        throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
+    }
+
+    // Build and start the pipeline
     std::tie(success, errorMsg) = pimpl->rpcCall("buildPipeline").as<std::tuple<bool, std::string>>();
     if(success) {
         pimpl->rpcCall("startPipeline");
     } else {
-        throw std::runtime_error(errorMsg);
+        throw std::runtime_error("Device " + getDeviceId() + " error: " + errorMsg);
         return false;
     }
 

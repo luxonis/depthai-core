@@ -20,6 +20,7 @@
 #include "depthai/capabilities/Capability.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
+#include "depthai/utility/PipelineEventDispatcherInterface.hpp"
 
 // libraries
 #include <optional>
@@ -28,9 +29,40 @@ namespace dai {
 // fwd declare Pipeline
 class Pipeline;
 class PipelineImpl;
+namespace utility {
+class PipelineImplHelper;
+}
 
 // fwd declare input queue class
 class InputQueue;
+
+// fwd declare XLink node classes
+namespace node {
+namespace internal {
+class XLinkIn;
+class XLinkOut;
+class XLinkInHost;
+class XLinkOutHost;
+
+/**
+ * @brief XLink bridge structure for host-to-device communication
+ * Contains pointers to XLinkOutHost and XLinkIn nodes
+ */
+struct XLinkInBridge {
+    std::shared_ptr<dai::node::internal::XLinkOutHost> xLinkOutHost;
+    std::shared_ptr<dai::node::internal::XLinkIn> xLinkIn;
+};
+
+/**
+ * @brief XLink bridge structure for device-to-host communication
+ * Contains pointers to XLinkOut and XLinkInHost nodes
+ */
+struct XLinkOutBridge {
+    std::shared_ptr<dai::node::internal::XLinkOut> xLinkOut;
+    std::shared_ptr<dai::node::internal::XLinkInHost> xLinkInHost;
+};
+}  // namespace internal
+}  // namespace node
 
 /**
  * @brief Abstract Node
@@ -38,6 +70,7 @@ class InputQueue;
 class Node : public std::enable_shared_from_this<Node> {
     friend class Pipeline;
     friend class PipelineImpl;
+    friend class utility::PipelineImplHelper;
     friend class Device;
 
    public:
@@ -82,6 +115,8 @@ class Node : public std::enable_shared_from_this<Node> {
     std::vector<OutputMap*> outputMapRefs;
     std::vector<InputMap*> inputMapRefs;
     std::vector<std::shared_ptr<Node>*> nodeRefs;
+
+    std::unique_ptr<utility::PipelineEventDispatcherInterface> pipelineEventDispatcher;
 
     // helpers for setting refs
     void setOutputRefs(std::initializer_list<Output*> l);
@@ -129,11 +164,14 @@ class Node : public std::enable_shared_from_this<Node> {
         std::vector<QueueConnection> queueConnections;
         Type type = Type::MSender;  // Slave sender not supported yet
         OutputDescription desc;
+        utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
+        std::shared_ptr<dai::node::internal::XLinkOutBridge> xLinkBridge;
 
        public:
         // std::vector<Capability> possibleCapabilities;
 
-        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)) {
+        Output(Node& par, OutputDescription desc, bool ref = true)
+            : parent(par), desc(std::move(desc)), pipelineEventDispatcher(par.pipelineEventDispatcher.get()) {
             // Place oneself to the parents references
             if(ref) {
                 par.setOutputRefs(this);
@@ -288,6 +326,13 @@ class Node : public std::enable_shared_from_this<Node> {
          * @returns True if ALL connected inputs got the message, false otherwise
          */
         bool trySend(const std::shared_ptr<ADatatype>& msg);
+
+        /**
+         * @brief Get XLink bridge associated with this output (only valid for device outputs after pipeline build)
+         *
+         * @return std::shared_ptr<dai::node::internal::XLinkOutBridge>: pointer to the XLink bridge or nullptr if not applicable
+         */
+        std::shared_ptr<dai::node::internal::XLinkOutBridge> getXLinkBridge() const;
     };
 
     struct PairHash {
@@ -327,6 +372,7 @@ class Node : public std::enable_shared_from_this<Node> {
     class Input : public MessageQueue {
         friend class Output;
         friend class OutputMap;
+        friend class PipelineImpl;
 
        public:
         enum class Type { SReceiver, MReceiver };  // TODO(Morato) - refactor, make the MReceiver a separate class (shouldn't inherit from MessageQueue)
@@ -342,19 +388,18 @@ class Node : public std::enable_shared_from_this<Node> {
         bool waitForMessage{false};
         std::string group;
         Type type = Type::SReceiver;
+        std::shared_ptr<dai::node::internal::XLinkInBridge> xLinkBridge;
 
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;
         explicit Input(Node& par, InputDescription desc, bool ref = true)
-            : MessageQueue(std::move(desc.name), desc.queueSize, desc.blocking),
+            : MessageQueue(desc.name.empty() ? par.createUniqueInputName() : desc.name, desc.queueSize, desc.blocking, par.pipelineEventDispatcher.get()),
               parent(par),
               waitForMessage(desc.waitForMessage),
+              group(desc.group),
               possibleDatatypes(std::move(desc.types)) {
             if(ref) {
                 par.setInputRefs(this);
-            }
-            if(getName().empty()) {
-                setName(par.createUniqueInputName());
             }
         }
 
@@ -447,6 +492,13 @@ class Node : public std::enable_shared_from_this<Node> {
          * @return std::shared_ptr<InputQueue>: shared pointer to an input queue
          */
         std::shared_ptr<InputQueue> createInputQueue(unsigned int maxSize = INPUT_QUEUE_DEFAULT_MAX_SIZE, bool blocking = INPUT_QUEUE_DEFAULT_BLOCKING);
+
+        /**
+         * @brief Get XLink bridge associated with this input (only valid for device inputs after pipeline build)
+         *
+         * @return std::shared_ptr<dai::node::internal::XLinkInBridge>: pointer to the XLink bridge or nullptr if not applicable
+         */
+        std::shared_ptr<dai::node::internal::XLinkInBridge> getXLinkBridge() const;
     };
 
     /**

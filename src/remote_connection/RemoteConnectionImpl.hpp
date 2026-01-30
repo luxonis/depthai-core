@@ -30,6 +30,7 @@ class RemoteConnectionImpl {
     bool removeTopic(const std::string& topicName);
     void registerPipeline(const Pipeline& pipeline);
     void registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback);
+    void registerBinaryService(const std::string& serviceName, std::function<std::vector<uint8_t>(const std::vector<uint8_t>&)> callback);
     int waitKey(int delayMs);
 
    private:
@@ -57,6 +58,7 @@ class RemoteConnectionImpl {
     void exposeTopicGroupsService();
     void exposeKeyPressedService();
     void exposePipelineService(const Pipeline& pipeline);
+    void exposeLibraryVersionService();
     void keyPressedCallback(int key);
 
     std::mutex keyMutex;
@@ -75,6 +77,7 @@ class RemoteConnectionImpl {
     std::unique_ptr<httplib::Server> httpServer;
     std::unique_ptr<std::thread> httpServerThread;
     std::map<foxglove::ServiceId, std::function<foxglove::ServiceResponse(foxglove::ServiceResponse)>> serviceMap;
+    std::function<uint8_t(DatatypeEnum)> getMessagePriority;
 };
 
 }  // namespace dai

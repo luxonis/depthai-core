@@ -349,7 +349,7 @@ std::vector<std::uint8_t> Resources::getDeviceRVC3Fwp() const {
 std::vector<std::uint8_t> Resources::getDeviceRVC4Fwp() const {
 // First check if device bootloader fw is enabled
 #ifndef DEPTHAI_ENABLE_DEVICE_RVC4_FW
-    throw std::invalid_argument("DepthAI compiled without support for RVC3 Device FW");
+    throw std::invalid_argument("DepthAI compiled without support for RVC4 Device FW");
 #else
     return getDeviceFwp(CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ, "DEPTHAI_DEVICE_RVC4_FWP");
 #endif
@@ -378,7 +378,7 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
-            throw std::runtime_error(fmt::format("File at path {}{} doesn't exist.", finalFwpPath));
+            throw std::runtime_error(fmt::format("File at path {} doesn't exist.", finalFwpPath));
         }
         // Read the file and return its contents
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});

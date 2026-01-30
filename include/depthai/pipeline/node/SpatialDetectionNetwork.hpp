@@ -1,16 +1,19 @@
 #pragma once
 
-#include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DetectionNetwork.hpp>
 #include <depthai/pipeline/node/ImageAlign.hpp>
+#include <depthai/pipeline/node/SpatialLocationCalculator.hpp>
+#include <variant>
+
+// depth map source nodes
+#include <depthai/pipeline/node/NeuralDepth.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
+#include <depthai/pipeline/node/ToF.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
-
-// standard
-#include <fstream>
 
 // shared
 #include <depthai/properties/SpatialDetectionNetworkProperties.hpp>
@@ -19,91 +22,71 @@ namespace dai {
 namespace node {
 
 /**
+ * @brief Variant type representing different depth sources.
+ * Supported depth sources: StereoDepth, NeuralDepth, ToF
+ */
+using DepthSource = std::variant<std::shared_ptr<StereoDepth>, std::shared_ptr<NeuralDepth>, std::shared_ptr<ToF>>;
+
+/**
  * @brief SpatialDetectionNetwork node. Runs a neural inference on input image and calculates spatial location data.
  */
-class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
+class SpatialDetectionNetwork : public DeviceNodeGroup {
    public:
-    explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
-        : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device)
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-          ,
-          input{neuralNetwork->input},
-          outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough}
-#endif
-    {
-        if(device) {
-            auto platform = device->getPlatform();
-            if(platform == Platform::RVC4) {
-                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
-            }
-        }
-    };
-    SpatialDetectionNetwork(std::unique_ptr<Properties> props)
-        : DeviceNodeCRTP(std::move(props))
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-          ,
-          input{neuralNetwork->input},
-          outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough}
-#endif
-    {
-        auto device = getDevice();
-        if(device) {
-            auto platform = device->getPlatform();
-            if(platform == Platform::RVC4) {
-                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
-            }
-        }
-    };
-    SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
-        : DeviceNodeCRTP(std::move(props), confMode)
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-          ,
-          input{neuralNetwork->input},
-          outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough}
-#endif
-    {
-        auto device = getDevice();
-        if(device) {
-            auto platform = device->getPlatform();
-            if(platform == Platform::RVC4) {
-                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
-            }
-        }
-    };
-    SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
-        : DeviceNodeCRTP(device, std::move(props), confMode)
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-          ,
+    using Properties = SpatialDetectionNetworkProperties;
+    using Model = NeuralNetwork::Model;
 
-          input{neuralNetwork->input},
-          outNetwork{neuralNetwork->out},
-          passthrough{neuralNetwork->passthrough}
-#endif
-    {
-        if(device) {
-            auto platform = device->getPlatform();
-            if(platform == Platform::RVC4) {
-                if(!depthAlign) depthAlign = std::make_unique<Subnode<ImageAlign>>(*this, "depthAlign");
-            }
-        }
-    };
+    explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device);
+
+    static std::shared_ptr<SpatialDetectionNetwork> create(const std::shared_ptr<Device>& device) {
+        auto networkPtr = std::make_shared<SpatialDetectionNetwork>(device);
+        networkPtr->buildInternal();
+        return networkPtr;
+    }
+
+    explicit SpatialDetectionNetwork(std::unique_ptr<Properties> props);
+
+    SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode);
+
+    SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode);
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
-    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
-                                                   const std::shared_ptr<StereoDepth>& stereo,
-                                                   dai::NNModelDescription modelDesc,
-                                                   std::optional<float> fps = std::nullopt);
 
+    Properties& properties;
+
+    /**
+     * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs and configure the
+     * inference model
+     * @param inputRgb Camera node
+     * @param depthSource Depth source node (StereoDepth, NeuralDepth, or ToF)
+     * @param model: Neural network model description, NNArchive or HubAI model id string
+     * @param fps Desired frames per second
+     * @param resizeMode Resize mode for input color frames
+     * @returns Shared pointer to SpatialDetectionNetwork node
+     */
     std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
-                                                   const std::shared_ptr<StereoDepth>& stereo,
-                                                   const dai::NNArchive& nnArchive,
-                                                   std::optional<float> fps = std::nullopt);
+                                                   const DepthSource& depthSource,
+                                                   const Model& model,
+                                                   std::optional<float> fps = std::nullopt,
+                                                   std::optional<dai::ImgResizeMode> resizeMode = std::nullopt);
+
+    /**
+     * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs and configure the
+     * inference model.
+     * @param inputRgb Camera node
+     * @param depthSource Depth source node (StereoDepth, NeuralDepth, or ToF)
+     * @param model: Neural network model description, NNArchive or HubAI model id string
+     * @param capability: Camera capabilities
+     * @returns Shared pointer to SpatialDetectionNetwork node
+     */
+    std::shared_ptr<SpatialDetectionNetwork> build(const std::shared_ptr<Camera>& inputRgb,
+                                                   const DepthSource& depthSource,
+                                                   const Model& model,
+                                                   const ImgFrameCapability& capability);
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
+    Subnode<SpatialLocationCalculator> spatialLocationCalculator{*this, "spatialLocationCalculator"};
+
     std::unique_ptr<Subnode<ImageAlign>> depthAlign;
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -124,48 +107,31 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output& passthrough;
-#endif
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{*this, {"inputDepth", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::ImgFrame, false}}}, true}};
+    Input& inputDepth;
 
-    /**
-     * Input message with image data used to retrieve image transformation from detected object
-     * Default queue is blocking with size 1
-     */
-    Input inputImg{*this, {"inputImg", DEFAULT_GROUP, true, 2, {{{DatatypeEnum::ImgFrame, false}}}, true}};
-
-    /**
-     * Input message with input detections object
-     * Default queue is blocking with size 1
-     */
-    Input inputDetections{*this, {"inputDetections", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::ImgDetections, false}}}, true}};
+    // /**
+    //  * Input SpatialLocationCalculatorConfig message with ability to modify parameters in runtime.
+    //  * Default queue is non-blocking with size 4.
+    //  */
+    // Input& inputConfig;
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
-    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::SpatialImgDetections, false}}}}};
-
-    /**
-     * Outputs mapping of detected bounding boxes relative to depth map
-     * Suitable for when displaying remapped bounding boxes on depth frame
-     */
-    Output boundingBoxMapping{*this, {"boundingBoxMapping", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}}};
+    Output& out;
 
     /**
      * Passthrough message for depth frame on which the spatial location calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{*this, {"passthroughDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output& passthroughDepth;
 
-    /**
-     * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
-     * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
-     */
-    Output spatialLocationCalculatorOutput{*this, {"spatialLocationCalculatorOutput", DEFAULT_GROUP, {{{DatatypeEnum::SpatialLocationCalculatorData, false}}}}};
+#endif
 
     /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
@@ -317,10 +283,14 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     NNArchive createNNArchive(NNModelDescription& modelDesc);
-    void alignDepth(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
 
-   protected:
-    using DeviceNodeCRTP::DeviceNodeCRTP;
+    // Unified depth alignment helper
+    void alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera);
+
+    // Type-specific alignment implementations
+    void alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
+    void alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera);
+    void alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera);
 };
 
 }  // namespace node

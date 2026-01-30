@@ -24,7 +24,7 @@ TEST_CASE("basic rgbd") {
     right->build(dai::CameraBoardSocket::CAM_C);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::DEFAULT);
 
-    auto* out = color->requestOutput(std::pair<int, int>(1280, 800), dai::ImgFrame::Type::RGB888i);
+    auto* out = color->requestOutput(std::pair<int, int>(1280, 800), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
     left->requestOutput(std::pair<int, int>(1280, 800))->link(stereo->left);
     right->requestOutput(std::pair<int, int>(1280, 800))->link(stereo->right);
 
@@ -53,11 +53,11 @@ TEST_CASE("basic rgbd") {
         REQUIRE(pcl->getMinZ() <= pcl->getMaxZ());
         auto rgbdData = rgbdQ->get<dai::RGBDData>();
         auto rgbFrame = rgbdData->getRGBFrame();
-        REQUIRE(rgbFrame != nullptr);
-        REQUIRE(rgbFrame->getData().size() == 1280UL * 800UL * 3UL);
+        REQUIRE(rgbFrame.has_value());
+        REQUIRE(std::get<std::shared_ptr<dai::ImgFrame>>(rgbFrame.value())->getData().size() == 1280UL * 800UL * 3UL);
         auto depthFrame = rgbdData->getDepthFrame();
-        REQUIRE(depthFrame != nullptr);
-        REQUIRE(depthFrame->getData().size() == 1280UL * 800UL * 2UL);
+        REQUIRE(depthFrame.has_value());
+        REQUIRE(std::get<std::shared_ptr<dai::ImgFrame>>(depthFrame.value())->getData().size() == 1280UL * 800UL * 2UL);
     }
 }
 TEST_CASE("rgbd autocreate") {
@@ -80,10 +80,10 @@ TEST_CASE("rgbd autocreate") {
         REQUIRE(pcl->getMinZ() <= pcl->getMaxZ());
         auto rgbdData = rgbdQ->get<dai::RGBDData>();
         auto rgbFrame = rgbdData->getRGBFrame();
-        REQUIRE(rgbFrame != nullptr);
-        REQUIRE(rgbFrame->getData().size() == 640UL * 400UL * 3UL);
+        REQUIRE(rgbFrame.has_value());
+        REQUIRE(std::get<std::shared_ptr<dai::ImgFrame>>(rgbFrame.value())->getData().size() == 640UL * 400UL * 3UL);
         auto depthFrame = rgbdData->getDepthFrame();
-        REQUIRE(depthFrame != nullptr);
-        REQUIRE(depthFrame->getData().size() == 640UL * 400UL * 2UL);
+        REQUIRE(depthFrame.has_value());
+        REQUIRE(std::get<std::shared_ptr<dai::ImgFrame>>(depthFrame.value())->getData().size() == 640UL * 400UL * 2UL);
     }
 }
