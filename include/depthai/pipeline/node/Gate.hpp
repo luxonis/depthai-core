@@ -70,7 +70,7 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
     void run() override;
 
    private:
-    const std::vector<std::reference_wrapper<MessageQueue>> inputs = {inputControl, input};
+    const std::vector<MessageQueue*> inputs = {&inputControl, &input};
     bool runOnHostVar = false;
 
     std::shared_ptr<GateControl> sendMessages();

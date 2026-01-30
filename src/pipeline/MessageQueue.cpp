@@ -263,17 +263,17 @@ bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::option
     removeNotifiers();
     return true;
 }
-std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(std::unordered_map<std::string, MessageQueue&> queues,
+std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                                  std::optional<std::chrono::milliseconds> timeout) {
     std::unordered_map<std::string, std::shared_ptr<ADatatype>> inputs;
     std::vector<MessageQueue*> queuesVec;
     queuesVec.reserve(queues.size());
-    for(auto& kv : queues) {
+    for(const auto& kv : queues) {
         queuesVec.push_back(&kv.second);
     }
     bool gotAny = waitAny(queuesVec, timeout);
     if(gotAny) {
-        for(auto& kv : queues) {
+        for(const auto& kv : queues) {
             auto& input = kv.second;
             if(input.has()) inputs[kv.first] = input.get<ADatatype>();
         }
