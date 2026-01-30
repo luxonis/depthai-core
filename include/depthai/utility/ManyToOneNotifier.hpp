@@ -9,6 +9,12 @@
 namespace dai {
 namespace utility {
 
+/**
+ * @class ManyToOneNotifier
+ * @brief Used to notify a single waiting thread from multiple notifying threads.
+ * Not thread-safe for multiple waiting threads.
+ * Should not be used if there is another thread waiting on any of the notifying queues.
+ */
 class ManyToOneNotifier {
     BinarySemaphore semaphore{false};
     std::atomic<bool> waiting{false};
