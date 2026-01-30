@@ -170,6 +170,7 @@ void bind_rectification(pybind11::module& m, void* pCallstack);
 void bind_neuraldepth(pybind11::module& m, void* pCallstack);
 void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack);
 void bind_vpp(pybind11::module& m, void* pCallstack);
+void bind_gate(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
 void bind_basaltnode(pybind11::module& m, void* pCallstack);
 #endif
@@ -224,6 +225,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_neuraldepth);
     callstack.push_front(bind_neuralassistedstereo);
     callstack.push_front(bind_vpp);
+    callstack.push_front(bind_gate);
 #ifdef DEPTHAI_HAVE_BASALT_SUPPORT
     callstack.push_front(bind_basaltnode);
 #endif
@@ -342,6 +344,13 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getStreamName", &node::internal::XLinkOut::getStreamName, DOC(dai, node, internal, XLinkOut, getStreamName))
         .def("setFpsLimit", &node::internal::XLinkOut::setFpsLimit, py::arg("fps"), DOC(dai, node, internal, XLinkOut, setFpsLimit))
         .def("getFpsLimit", &node::internal::XLinkOut::getFpsLimit, DOC(dai, node, internal, XLinkOut, getFpsLimit))
+        .def("setPacketSize", &node::internal::XLinkOut::setPacketSize, py::arg("packetSize"), DOC(dai, node, internal, XLinkOut, setPacketSize))
+        .def("getPacketSize", &node::internal::XLinkOut::getPacketSize, DOC(dai, node, internal, XLinkOut, getPacketSize))
+        .def("setBytesPerSecondLimit",
+             &node::internal::XLinkOut::setBytesPerSecondLimit,
+             py::arg("bytesPerSecondLimit"),
+             DOC(dai, node, internal, XLinkOut, setBytesPerSecondLimit))
+        .def("getBytesPerSecondLimit", &node::internal::XLinkOut::getBytesPerSecondLimit, DOC(dai, node, internal, XLinkOut, getBytesPerSecondLimit))
         .def("setMetadataOnly", &node::internal::XLinkOut::setMetadataOnly, py::arg("metadataOnly"), DOC(dai, node, internal, XLinkOut, setMetadataOnly))
         .def("getMetadataOnly", &node::internal::XLinkOut::getMetadataOnly, DOC(dai, node, internal, XLinkOut, getMetadataOnly))
         .def_readonly("input", &node::internal::XLinkOut::input, DOC(dai, node, internal, XLinkOut, input));

@@ -18,16 +18,25 @@ struct XLinkOutProperties : PropertiesSerializable<Properties, XLinkOutPropertie
      * Name of stream
      */
     std::string streamName;
-
     /**
      * Whether to transfer data or only object attributes
      */
     bool metadataOnly = false;
 
+    /**
+     * Max bytes per packet (-1 = unlimited)
+     */
+    int packetSize = -1;
+
+    /**
+     * Maximal bytes per second (-1 = unlimited)
+     */
+    int bytesPerSecondLimit = -1;
+
     ~XLinkOutProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(XLinkOutProperties, maxFpsLimit, streamName, metadataOnly);
+DEPTHAI_SERIALIZE_EXT(XLinkOutProperties, maxFpsLimit, streamName, metadataOnly, packetSize, bytesPerSecondLimit);
 
 }  // namespace internal
 }  // namespace dai

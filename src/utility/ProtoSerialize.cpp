@@ -154,6 +154,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
+        case DatatypeEnum::GateControl:
         case DatatypeEnum::ImgDetections:
         case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::SpatialImgDetections:
@@ -190,6 +191,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::PipelineEvent:
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
+        case DatatypeEnum::PacketizedData:
             return false;
     }
     return false;

@@ -56,7 +56,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::DynamicCalibrationResult,
          DatatypeEnum::CoverageData,
          DatatypeEnum::CalibrationQuality,
-
+         DatatypeEnum::PacketizedData,
      }},
     {DatatypeEnum::Buffer,
      {
@@ -97,6 +97,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::ImgAnnotations,
          DatatypeEnum::ImageFiltersConfig,
          DatatypeEnum::VppConfig,
+         DatatypeEnum::GateControl,
          DatatypeEnum::ToFDepthConfidenceFilterConfig,
          DatatypeEnum::MapData,
          DatatypeEnum::ObjectTrackerConfig,
@@ -104,6 +105,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::DynamicCalibrationResult,
          DatatypeEnum::CoverageData,
          DatatypeEnum::CalibrationQuality,
+         DatatypeEnum::PacketizedData,
      }},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
@@ -141,6 +143,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::TransformData, {}},
     {DatatypeEnum::ImgAnnotations, {}},
     {DatatypeEnum::VppConfig, {}},
+    {DatatypeEnum::GateControl, {}},
     {DatatypeEnum::ImageFiltersConfig, {}},
     {DatatypeEnum::ToFDepthConfidenceFilterConfig, {}},
     {DatatypeEnum::MapData, {}},
@@ -149,6 +152,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::DynamicCalibrationResult, {}},
     {DatatypeEnum::CoverageData, {}},
     {DatatypeEnum::CalibrationQuality, {}},
+    {DatatypeEnum::PacketizedData, {}},
 };
 
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children) {
