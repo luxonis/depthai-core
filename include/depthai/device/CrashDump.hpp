@@ -108,7 +108,7 @@ class CrashDump {
     std::string deviceId;
 
     /* Extra information - user-specified additional information */
-    nlohmann::json extra;
+    nlohmann::json extra = nlohmann::json::object();
 
    protected:
     // Writers

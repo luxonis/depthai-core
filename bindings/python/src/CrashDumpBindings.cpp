@@ -5,15 +5,37 @@
 #include "depthai/device/CrashDumpManager.hpp"
 #include "depthai/device/DeviceBase.hpp"
 
+// pybind11_json
+#include "pybind11_json/pybind11_json.hpp"
+
 // std
 #include <filesystem>
+
+// Helpers to allow users to work with the `extra` attribute as if it was a regular python dict
+// The gist of this is to use an extra python dictionary that gets synced with the C++ extra json
+// dict whenever it's needed. This is needed as otherwise the `extra` json dict generally is returned 
+// as a copy (and not a reference)
+
+static void syncExtraToNative(py::handle self, dai::CrashDump& dump) {
+    if(py::hasattr(self, "_extra_dict")) {
+        dump.extra = pyjson::to_json(self.attr("_extra_dict"));
+    }
+}
+
+static py::dict getExtraDict(py::handle self) {
+    if(!py::hasattr(self, "_extra_dict")) {
+        auto& dump = self.cast<dai::CrashDump&>();
+        self.attr("_extra_dict") = pyjson::from_json(dump.extra);
+    }
+    return self.attr("_extra_dict");
+}
 
 void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // Type definitions
-    // Base CrashDump class (abstract)
-    py::class_<CrashDump, std::unique_ptr<CrashDump, py::nodelete>> crashDump(m, "CrashDump", DOC(dai, CrashDump));
+    // Base CrashDump class
+    py::class_<CrashDump, std::unique_ptr<CrashDump, py::nodelete>> crashDump(m, "CrashDump", DOC(dai, CrashDump), py::dynamic_attr());
 
     // CrashDumpRVC2 and its nested types
     py::class_<CrashDumpRVC2, CrashDump, std::unique_ptr<CrashDumpRVC2>> crashDumpRVC2(m, "CrashDumpRVC2", DOC(dai, CrashDumpRVC2));
@@ -50,13 +72,43 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     crashDump
         .def("getPlatform", &CrashDump::getPlatform, DOC(dai, CrashDump, getPlatform))
         .def("getCrashDumpVersion", &CrashDump::getCrashDumpVersion, DOC(dai, CrashDump, getCrashDumpVersion))
-        .def("toTar", &CrashDump::toTar, py::arg("tarPath"), DOC(dai, CrashDump, toTar))
-        .def("fromTar", &CrashDump::fromTar, py::arg("tarPath"), DOC(dai, CrashDump, fromTar))
-        .def("toBytes", &CrashDump::toBytes, DOC(dai, CrashDump, toBytes))
+        .def("toTar", [](py::object self, const std::filesystem::path& tarPath) {
+            auto& dump = self.cast<CrashDump&>();
+            syncExtraToNative(self, dump);
+            dump.toTar(tarPath);
+        }, py::arg("tarPath"), DOC(dai, CrashDump, toTar))
+        .def("fromTar", [](py::object self, const std::filesystem::path& tarPath) {
+            auto& dump = self.cast<CrashDump&>();
+            dump.fromTar(tarPath);
+            // Invalidate cached dict so it gets lazily re-synced from C++ on next access
+            if(py::hasattr(self, "_extra_dict")) py::delattr(self, "_extra_dict");
+        }, py::arg("tarPath"), DOC(dai, CrashDump, fromTar))
+        .def("toBytes", [](py::object self) {
+            auto& dump = self.cast<CrashDump&>();
+            syncExtraToNative(self, dump);
+            return dump.toBytes();
+        }, DOC(dai, CrashDump, toBytes))
         .def_static("fromBytes", &CrashDump::fromBytes, py::arg("bytes"), DOC(dai, CrashDump, fromBytes))
         .def_static("fromTarFile", &CrashDump::fromTarFile, py::arg("tarPath"), DOC(dai, CrashDump, fromTarFile))
-        .def("__getitem__", [](CrashDump& self, const std::string& key) -> nlohmann::json { return self[key]; }, py::arg("key"))
-        .def("__setitem__", [](CrashDump& self, const std::string& key, const nlohmann::json& value) { self[key] = value; }, py::arg("key"), py::arg("value"))
+        .def("__getitem__", [](py::object self, const std::string& key) -> py::object {
+            auto d = getExtraDict(self);
+            if(!d.contains(key)) throw py::key_error(key);
+            return d[py::str(key)];
+        }, py::arg("key"))
+        .def("__setitem__", [](py::object self, const std::string& key, py::handle value) {
+            getExtraDict(self)[py::str(key)] = value;
+        }, py::arg("key"), py::arg("value"))
+        .def("__contains__", [](py::object self, const std::string& key) -> bool {
+            return getExtraDict(self).contains(key);
+        }, py::arg("key"))
+        .def("__delitem__", [](py::object self, const std::string& key) {
+            auto d = getExtraDict(self);
+            if(!d.contains(key)) throw py::key_error(key);
+            PyDict_DelItemString(d.ptr(), key.c_str());
+        }, py::arg("key"))
+        .def("__len__", [](py::object self) -> size_t {
+            return py::len(getExtraDict(self));
+        })
         // Public members
         .def_readwrite("depthaiVersion", &CrashDump::depthaiVersion)
         .def_readwrite("depthaiVersionMajor", &CrashDump::depthaiVersionMajor)
@@ -74,7 +126,9 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("depthaiDeviceRVC4Version", &CrashDump::depthaiDeviceRVC4Version)
         .def_readwrite("crashdumpTimestamp", &CrashDump::crashdumpTimestamp)
         .def_readwrite("deviceId", &CrashDump::deviceId)
-        .def_readwrite("extra", &CrashDump::extra);
+        .def_property("extra",
+            [](py::object self) -> py::dict { return getExtraDict(self); },
+            [](py::object self, py::dict value) { self.attr("_extra_dict") = value; });
 
     // Bind CrashDumpRVC2
     crashDumpRVC2.def(py::init<>())
