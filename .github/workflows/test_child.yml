@@ -61,54 +61,82 @@ jobs:
     - name: Summarize RVC2 tests
       if: always()
       run: |
-        echo "## RVC2 Test Summary" >> "$GITHUB_STEP_SUMMARY"
+        SUMMARY_FILE="summary_rvc2.md"
+        echo "## RVC2 Test Summary" >> "$SUMMARY_FILE"
         if [ -f rvc2_test_output.log ]; then
           PASS_LINE=$(grep -m1 -E "[0-9]+% tests passed" rvc2_test_output.log | sed 's/^.*] //' || true)
           if [ -n "$PASS_LINE" ]; then
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "**CTest summary:** $PASS_LINE" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$SUMMARY_FILE"
+            echo "**CTest summary:** $PASS_LINE" >> "$SUMMARY_FILE"
           fi
 
-          FAILED_TESTS=$(awk '
-            /The following tests FAILED:/ {found=1; next}
-            found {
+          FAILED_TESTS=$(grep -E "\\] [0-9]+ - .* \\(Failed\\)$" rvc2_test_output.log | awk '
+            {
               line=$0
+              config=""
+              if (match(line, /\\[[^]]+\\]/)) {
+                config=substr(line, RSTART+1, RLENGTH-2)
+              }
               sub(/^.*\\] /,"",line)
-              if (line ~ /^Tests failed for configuration/ || line ~ /^Some tests failed/ || line ~ /^$/) {exit}
-              print line
+              sub(/ *\\(Failed\\)$/, "", line)
+              if (config != "") {
+                print config " :: " line
+              } else {
+                print line
+              }
             }
-          ' rvc2_test_output.log)
+          ' || true)
+
+          if [ -z "$FAILED_TESTS" ]; then
+            FAILED_TESTS=$(awk '
+              /The following tests FAILED:/ {found=1; next}
+              found {
+                line=$0
+                sub(/^.*\\] /,"",line)
+                if (line ~ /^Tests failed for configuration/ || line ~ /^Some tests failed/ || line ~ /^$/) {exit}
+                print line
+              }
+            ' rvc2_test_output.log)
+          fi
 
           if [ -z "$FAILED_TESTS" ]; then
             FAILED_TESTS=$(grep -E "Test[[:space:]]*#.*\\*\\*\\*Failed" rvc2_test_output.log | sed 's/^.*] //' | sed 's/^[0-9]\+\/[0-9]\+[[:space:]]*//' || true)
           fi
 
           if [ -n "$FAILED_TESTS" ]; then
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "### Failed tests" >> "$GITHUB_STEP_SUMMARY"
-            echo "| Test |" >> "$GITHUB_STEP_SUMMARY"
-            echo "|------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$SUMMARY_FILE"
+            echo "### Failed tests" >> "$SUMMARY_FILE"
+            echo "| Test |" >> "$SUMMARY_FILE"
+            echo "|------|" >> "$SUMMARY_FILE"
             echo "$FAILED_TESTS" | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-              echo "| $line |" >> "$GITHUB_STEP_SUMMARY"
+              echo "| $line |" >> "$SUMMARY_FILE"
             done
           else
             FAIL_LINES=$( { grep -E "FAILED|ERROR|AssertionError" rvc2_test_output.log || true; } | wc -l | tr -d ' ')
             if [ "$FAIL_LINES" -gt 0 ]; then
-              echo "" >> "$GITHUB_STEP_SUMMARY"
-              echo "Detected $FAIL_LINES failure-related lines (showing up to 50)." >> "$GITHUB_STEP_SUMMARY"
-              echo "" >> "$GITHUB_STEP_SUMMARY"
-              echo "| Log Line |" >> "$GITHUB_STEP_SUMMARY"
-              echo "|----------|" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$SUMMARY_FILE"
+              echo "Detected $FAIL_LINES failure-related lines (showing up to 50)." >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "| Log Line |" >> "$SUMMARY_FILE"
+              echo "|----------|" >> "$SUMMARY_FILE"
               grep -E "FAILED|ERROR|AssertionError" rvc2_test_output.log | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                echo "| $line |" >> "$GITHUB_STEP_SUMMARY"
+                echo "| $line |" >> "$SUMMARY_FILE"
               done
             else
-              echo "✅ All tests passed (no failure patterns detected)." >> "$GITHUB_STEP_SUMMARY"
+              echo "✅ All tests passed (no failure patterns detected)." >> "$SUMMARY_FILE"
             fi
           fi
         else
-          echo "Test log not found; unable to summarize failures." >> "$GITHUB_STEP_SUMMARY"
+          echo "Test log not found; unable to summarize failures." >> "$SUMMARY_FILE"
         fi
+
+    - name: Upload RVC2 summary
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-summary-rvc2
+        path: summary_rvc2.md
+        if-no-files-found: warn
 
   # Testing
  linux_rvc4_test:
@@ -131,54 +159,82 @@ jobs:
       - name: Summarize RVC4 tests
         if: always()
         run: |
-          echo "## RVC4 Test Summary (OS: ${{ matrix.rvc4os }})" >> "$GITHUB_STEP_SUMMARY"
+          SUMMARY_FILE="summary_rvc4_${{ matrix.rvc4os }}.md"
+          echo "## RVC4 Test Summary (OS: ${{ matrix.rvc4os }})" >> "$SUMMARY_FILE"
           if [ -f rvc4_test_output.log ]; then
             PASS_LINE=$(grep -m1 -E "[0-9]+% tests passed" rvc4_test_output.log | sed 's/^.*] //' || true)
             if [ -n "$PASS_LINE" ]; then
-              echo "" >> "$GITHUB_STEP_SUMMARY"
-              echo "**CTest summary:** $PASS_LINE" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$SUMMARY_FILE"
+              echo "**CTest summary:** $PASS_LINE" >> "$SUMMARY_FILE"
             fi
 
-            FAILED_TESTS=$(awk '
-              /The following tests FAILED:/ {found=1; next}
-              found {
+            FAILED_TESTS=$(grep -E "\\] [0-9]+ - .* \\(Failed\\)$" rvc4_test_output.log | awk '
+              {
                 line=$0
+                config=""
+                if (match(line, /\\[[^]]+\\]/)) {
+                  config=substr(line, RSTART+1, RLENGTH-2)
+                }
                 sub(/^.*\\] /,"",line)
-                if (line ~ /^Tests failed for configuration/ || line ~ /^Some tests failed/ || line ~ /^$/) {exit}
-                print line
+                sub(/ *\\(Failed\\)$/, "", line)
+                if (config != "") {
+                  print config " :: " line
+                } else {
+                  print line
+                }
               }
-            ' rvc4_test_output.log)
+            ' || true)
+
+            if [ -z "$FAILED_TESTS" ]; then
+              FAILED_TESTS=$(awk '
+                /The following tests FAILED:/ {found=1; next}
+                found {
+                  line=$0
+                  sub(/^.*\\] /,"",line)
+                  if (line ~ /^Tests failed for configuration/ || line ~ /^Some tests failed/ || line ~ /^$/) {exit}
+                  print line
+                }
+              ' rvc4_test_output.log)
+            fi
 
             if [ -z "$FAILED_TESTS" ]; then
               FAILED_TESTS=$(grep -E "Test[[:space:]]*#.*\\*\\*\\*Failed" rvc4_test_output.log | sed 's/^.*] //' | sed 's/^[0-9]\+\/[0-9]\+[[:space:]]*//' || true)
             fi
 
             if [ -n "$FAILED_TESTS" ]; then
-              echo "" >> "$GITHUB_STEP_SUMMARY"
-              echo "### Failed tests" >> "$GITHUB_STEP_SUMMARY"
-              echo "| Test |" >> "$GITHUB_STEP_SUMMARY"
-              echo "|------|" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$SUMMARY_FILE"
+              echo "### Failed tests" >> "$SUMMARY_FILE"
+              echo "| Test |" >> "$SUMMARY_FILE"
+              echo "|------|" >> "$SUMMARY_FILE"
               echo "$FAILED_TESTS" | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                echo "| $line |" >> "$GITHUB_STEP_SUMMARY"
+                echo "| $line |" >> "$SUMMARY_FILE"
               done
             else
               FAIL_LINES=$( { grep -E "FAILED|ERROR|AssertionError" rvc4_test_output.log || true; } | wc -l | tr -d ' ')
               if [ "$FAIL_LINES" -gt 0 ]; then
-                echo "" >> "$GITHUB_STEP_SUMMARY"
-                echo "Detected $FAIL_LINES failure-related lines (showing up to 50)." >> "$GITHUB_STEP_SUMMARY"
-                echo "" >> "$GITHUB_STEP_SUMMARY"
-                echo "| Log Line |" >> "$GITHUB_STEP_SUMMARY"
-                echo "|----------|" >> "$GITHUB_STEP_SUMMARY"
+                echo "" >> "$SUMMARY_FILE"
+                echo "Detected $FAIL_LINES failure-related lines (showing up to 50)." >> "$SUMMARY_FILE"
+                echo "" >> "$SUMMARY_FILE"
+                echo "| Log Line |" >> "$SUMMARY_FILE"
+                echo "|----------|" >> "$SUMMARY_FILE"
                 grep -E "FAILED|ERROR|AssertionError" rvc4_test_output.log | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                  echo "| $line |" >> "$GITHUB_STEP_SUMMARY"
+                  echo "| $line |" >> "$SUMMARY_FILE"
                 done
               else
-                echo "✅ All tests passed (no failure patterns detected)." >> "$GITHUB_STEP_SUMMARY"
+                echo "✅ All tests passed (no failure patterns detected)." >> "$SUMMARY_FILE"
               fi
             fi
           else
-            echo "Test log not found; unable to summarize failures." >> "$GITHUB_STEP_SUMMARY"
+            echo "Test log not found; unable to summarize failures." >> "$SUMMARY_FILE"
           fi
+
+      - name: Upload RVC4 summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-summary-rvc4-${{ matrix.rvc4os }}
+          path: summary_rvc4_${{ matrix.rvc4os }}.md
+          if-no-files-found: warn
 
  linux_rvc4_rgb_test:
       needs: [build_docker_container]
@@ -200,54 +256,109 @@ jobs:
       - name: Summarize RVC4 RGB tests
         if: always()
         run: |
-          echo "## RVC4 RGB Test Summary (OS: ${{ matrix.rvc4os }})" >> "$GITHUB_STEP_SUMMARY"
+          SUMMARY_FILE="summary_rvc4rgb_${{ matrix.rvc4os }}.md"
+          echo "## RVC4 RGB Test Summary (OS: ${{ matrix.rvc4os }})" >> "$SUMMARY_FILE"
           if [ -f rvc4rgb_test_output.log ]; then
             PASS_LINE=$(grep -m1 -E "[0-9]+% tests passed" rvc4rgb_test_output.log | sed 's/^.*] //' || true)
             if [ -n "$PASS_LINE" ]; then
-              echo "" >> "$GITHUB_STEP_SUMMARY"
-              echo "**CTest summary:** $PASS_LINE" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$SUMMARY_FILE"
+              echo "**CTest summary:** $PASS_LINE" >> "$SUMMARY_FILE"
             fi
 
-            FAILED_TESTS=$(awk '
-              /The following tests FAILED:/ {found=1; next}
-              found {
+            FAILED_TESTS=$(grep -E "\\] [0-9]+ - .* \\(Failed\\)$" rvc4rgb_test_output.log | awk '
+              {
                 line=$0
+                config=""
+                if (match(line, /\\[[^]]+\\]/)) {
+                  config=substr(line, RSTART+1, RLENGTH-2)
+                }
                 sub(/^.*\\] /,"",line)
-                if (line ~ /^Tests failed for configuration/ || line ~ /^Some tests failed/ || line ~ /^$/) {exit}
-                print line
+                sub(/ *\\(Failed\\)$/, "", line)
+                if (config != "") {
+                  print config " :: " line
+                } else {
+                  print line
+                }
               }
-            ' rvc4rgb_test_output.log)
+            ' || true)
+
+            if [ -z "$FAILED_TESTS" ]; then
+              FAILED_TESTS=$(awk '
+                /The following tests FAILED:/ {found=1; next}
+                found {
+                  line=$0
+                  sub(/^.*\\] /,"",line)
+                  if (line ~ /^Tests failed for configuration/ || line ~ /^Some tests failed/ || line ~ /^$/) {exit}
+                  print line
+                }
+              ' rvc4rgb_test_output.log)
+            fi
 
             if [ -z "$FAILED_TESTS" ]; then
               FAILED_TESTS=$(grep -E "Test[[:space:]]*#.*\\*\\*\\*Failed" rvc4rgb_test_output.log | sed 's/^.*] //' | sed 's/^[0-9]\+\/[0-9]\+[[:space:]]*//' || true)
             fi
 
             if [ -n "$FAILED_TESTS" ]; then
-              echo "" >> "$GITHUB_STEP_SUMMARY"
-              echo "### Failed tests" >> "$GITHUB_STEP_SUMMARY"
-              echo "| Test |" >> "$GITHUB_STEP_SUMMARY"
-              echo "|------|" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$SUMMARY_FILE"
+              echo "### Failed tests" >> "$SUMMARY_FILE"
+              echo "| Test |" >> "$SUMMARY_FILE"
+              echo "|------|" >> "$SUMMARY_FILE"
               echo "$FAILED_TESTS" | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                echo "| $line |" >> "$GITHUB_STEP_SUMMARY"
+                echo "| $line |" >> "$SUMMARY_FILE"
               done
             else
               FAIL_LINES=$( { grep -E "FAILED|ERROR|AssertionError" rvc4rgb_test_output.log || true; } | wc -l | tr -d ' ')
               if [ "$FAIL_LINES" -gt 0 ]; then
-                echo "" >> "$GITHUB_STEP_SUMMARY"
-                echo "Detected $FAIL_LINES failure-related lines (showing up to 50)." >> "$GITHUB_STEP_SUMMARY"
-                echo "" >> "$GITHUB_STEP_SUMMARY"
-                echo "| Log Line |" >> "$GITHUB_STEP_SUMMARY"
-                echo "|----------|" >> "$GITHUB_STEP_SUMMARY"
+                echo "" >> "$SUMMARY_FILE"
+                echo "Detected $FAIL_LINES failure-related lines (showing up to 50)." >> "$SUMMARY_FILE"
+                echo "" >> "$SUMMARY_FILE"
+                echo "| Log Line |" >> "$SUMMARY_FILE"
+                echo "|----------|" >> "$SUMMARY_FILE"
                 grep -E "FAILED|ERROR|AssertionError" rvc4rgb_test_output.log | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                  echo "| $line |" >> "$GITHUB_STEP_SUMMARY"
+                  echo "| $line |" >> "$SUMMARY_FILE"
                 done
               else
-                echo "✅ All tests passed (no failure patterns detected)." >> "$GITHUB_STEP_SUMMARY"
+                echo "✅ All tests passed (no failure patterns detected)." >> "$SUMMARY_FILE"
               fi
             fi
           else
-            echo "Test log not found; unable to summarize failures." >> "$GITHUB_STEP_SUMMARY"
+            echo "Test log not found; unable to summarize failures." >> "$SUMMARY_FILE"
           fi
+
+      - name: Upload RVC4 RGB summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-summary-rvc4rgb-${{ matrix.rvc4os }}
+          path: summary_rvc4rgb_${{ matrix.rvc4os }}.md
+          if-no-files-found: warn
+
+ aggregate_test_summaries:
+    needs: [linux_rvc2_test, linux_rvc4_test, linux_rvc4_rgb_test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download test summaries
+      uses: actions/download-artifact@v4
+      continue-on-error: true
+      with:
+        pattern: test-summary-*
+        path: summaries
+        merge-multiple: true
+
+    - name: Publish combined summary
+      run: |
+        echo "## HIL Test Summary" >> "$GITHUB_STEP_SUMMARY"
+        shopt -s nullglob
+        files=(summaries/*.md)
+        if [ ${#files[@]} -gt 0 ]; then
+          for f in "${files[@]}"; do
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            cat "$f" >> "$GITHUB_STEP_SUMMARY"
+          done
+        else
+          echo "No test summaries found." >> "$GITHUB_STEP_SUMMARY"
+        fi
 
 #  linux_rvc4_fsync_test:
 #       needs: [build_docker_container]
