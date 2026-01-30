@@ -29,6 +29,7 @@
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
+#include "device/DeviceGate.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
@@ -483,6 +484,7 @@ void DeviceBase::closeImpl() {
     if(!isRvc2) {
         // Check if the device is still alive and well, if yes, don't wait for gate, crash dump not relevant
         try {
+            crashed = (gate->getState() == DeviceGate::SessionState::CRASHED);
             waitForGate = !pimpl->rpcCall("isRunning").as<bool>();
             pimpl->logger.debug("Will wait for gate: {}", waitForGate);
         } catch(const std::exception& ex) {
@@ -523,7 +525,7 @@ void DeviceBase::closeImpl() {
     if(monitorThread.joinable()) monitorThread.join();
 
     // If the device was operated through gate, wait for the session to end
-    if(gate && waitForGate) {
+    if(gate && crashed) {
         auto crashDump = dai::CrashDumpManager(this).collectCrashDump();
         if(crashDump) {
             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
@@ -548,7 +550,15 @@ void DeviceBase::closeImpl() {
                 if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
                     pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
-                    crashed = rebootingDevice.hasCrashDump();
+                    if(gate) {
+                        if(gate->getState() == DeviceGate::SessionState::CRASHED) {
+                            crashed = true;
+                        } else {
+                            crashed = false;
+                        }
+                    } else {
+                        crashed = rebootingDevice.hasCrashDump();
+                    }
                     if(crashed) {
                         auto crashDump = dai::CrashDumpManager(&rebootingDevice).collectCrashDump();
                         if(crashDump) {
@@ -1090,9 +1100,17 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(loggingThread.joinable()) loggingThread.join();
             if(profilingThread.joinable()) profilingThread.join();
             if(gate) {
-                auto crashDump = dai::CrashDumpManager(this).collectCrashDump();
-                if(crashDump) {
-                    logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
+                // Check whether device has crashed
+                if(gate->getState() == DeviceGate::SessionState::CRASHED) {
+                    crashed = true;
+                }
+
+                // If device has crashed, collect dump
+                if(crashed) {
+                    auto crashDump = dai::CrashDumpManager(this).collectCrashDump();
+                    if(crashDump) {
+                        logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
+                    }
                 }
             }
 
