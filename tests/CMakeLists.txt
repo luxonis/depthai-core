@@ -610,7 +610,7 @@ endif()
 
 # SegmentationParser test
 dai_add_test(segmentation_parser_test src/ondevice_tests/pipeline/node/segmentation_parser_test.cpp)
-dai_set_test_labels(segmentation_parser_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(segmentation_parser_test ondevice rvc4 ci)
 
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)

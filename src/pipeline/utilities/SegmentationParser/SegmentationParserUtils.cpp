@@ -397,23 +397,26 @@ void copySingleLayerMaskData(dai::SegmentationMask& outputMask,
     const size_t maskHeight = static_cast<size_t>(tensorInfo.getHeight());
     const size_t strideH = tensorInfo.getHeightStride();
     const size_t strideW = tensorInfo.getWidthStride();
-    span<uint8_t> dst = outputMask.prepareMask(maskWidth, maskHeight);
+    const int dstWidth = static_cast<int>(maskWidth / stepSize);
+    const int dstHeight = static_cast<int>(maskHeight / stepSize);
+    span<uint8_t> dst = outputMask.prepareMask(dstWidth, dstHeight);
 
     auto nnMemory = nnData.data;
     const auto srcBytes = nnMemory->getData();
     const auto tensorSpan = srcBytes.subspan(tensorInfo.offset, tensorInfo.getTensorSize());
     const uint8_t* tensorBase = tensorSpan.data();
 
-    for(size_t h = 0; h < maskHeight; h += stepSize) {
+    int outY = 0;
+    for(size_t h = 0; h < maskHeight; h += stepSize, ++outY) {
         const size_t rowBase = strideH * h;
-        const size_t outRowBase = h * maskWidth;
-        for(size_t w = 0; w < maskWidth; w += stepSize) {
+        int outX = 0;
+        for(size_t w = 0; w < maskWidth; w += stepSize, ++outX) {
             const size_t idx = rowBase + (strideW * w);
             int32_t v;
             std::memcpy(&v, tensorBase + idx, sizeof(v));
             v = std::max(v, 0);
             v = std::min(v, 255);
-            dst[outRowBase + w] = static_cast<uint8_t>(v);
+            dst[(outY * dstWidth) + outX] = static_cast<uint8_t>(v);
         }
     }
 }

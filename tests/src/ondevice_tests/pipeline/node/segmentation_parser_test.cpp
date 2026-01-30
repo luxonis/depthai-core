@@ -332,14 +332,13 @@ TEST_CASE("SegmentationParser classes-in-one-layer passes through mask") {
     constexpr int kHeight = 2;
 
     const std::vector<uint8_t> expected = {0, 1, 2, 255, 1, 0};
-    auto valueFn = [&](int, int h, int w) { return expected[static_cast<size_t>(h * kWidth + w)]; };
+    auto valueFn = [&](int, int h, int w) { return static_cast<int32_t>(expected[static_cast<size_t>(h * kWidth + w)]); };
 
     dai::SegmentationParserConfig config;
     config.setStepSize(1);
 
-    auto info = makeNCHWTensorInfo("seg", dai::TensorInfo::DataType::INT, 1, kHeight, kWidth, sizeof(uint8_t));
-    auto nnData = createSyntheticNNData<uint8_t>(info, valueFn);
-
+    auto info = makeNCHWTensorInfo("seg", dai::TensorInfo::DataType::INT, 1, kHeight, kWidth);
+    auto nnData = createSyntheticNNData<int32_t>(info, valueFn);
     auto outputs = processSegmentationFrames(config, {nnData}, true, false);
     const size_t maskWidth = static_cast<size_t>(kWidth) / config.getStepSize();
     const size_t maskHeight = static_cast<size_t>(kHeight) / config.getStepSize();
