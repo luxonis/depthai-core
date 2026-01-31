@@ -10,10 +10,8 @@ SUMMARY_RE = re.compile(
     r"\[(?P<config>[^\]]+)\]\s+\d+% tests passed,\s+(?P<failed>\d+) tests failed out of (?P<total>\d+)"
 )
 FAILED_LIST_RE = re.compile(
-    r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+)\s*-\s*(?P<name>.+?)\s*\(Failed\)"
-)
-FAILED_LINE_RE = re.compile(
-    r"\[(?P<config>[^\]]+)\]\s+\d+/\d+\s+Test\s+#(?P<num>\d+):\s+(?P<name>.+?)\s+\.{3,}\*{3}Failed"
+    r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+)\s*-\s*(?P<name>.+?)"
+    r"(?:\s+\((?P<cause>[^)]+)\))?\s*$"
 )
 
 
@@ -59,16 +57,19 @@ def main() -> int:
                 summaries[config] = (passed, failed, total)
 
             failed_match = FAILED_LIST_RE.search(line)
-            if not failed_match:
-                failed_match = FAILED_LINE_RE.search(line)
             if failed_match:
                 config = failed_match.group("config").strip()
                 ensure_config(config)
                 num = failed_match.group("num").strip()
                 name = normalize_name(failed_match.group("name"))
-                failures[config].setdefault(num, name)
+                cause = failed_match.group("cause")
+                cause = normalize_name(cause) if cause else ""
+                if num not in failures[config]:
+                    failures[config][num] = (name, cause)
+                elif not failures[config][num][1] and cause:
+                    failures[config][num] = (name, cause)
 
-    print(f"## Test Summary{header_suffix}")
+    print(f"## Test Summary - {header_suffix}:")
     if not summaries:
         print("No test summary lines found in the log.")
     else:
@@ -82,15 +83,19 @@ def main() -> int:
                 passed, failed, total = summary
                 print(f"| {config} | {passed} | {failed} | {total} |")
 
-    print(f"\n## Failed Tests{header_suffix}")
+    print(f"\n## Failed Tests:")
     any_failed = False
     for config in order:
         config_failures = failures.get(config, {})
-        for num, name in config_failures.items():
-            print(f"- [{config}] #{num} {name}")
+        for num, entry in config_failures.items():
+            name, cause = entry
+            if cause:
+                print(f"- [{config}] #{num} {name} - {cause}")
+            else:
+                print(f"- [{config}] #{num} {name}")
             any_failed = True
     if not any_failed:
-        print("No failed tests found.")
+        print("No tests failed.")
 
     return 0
 
