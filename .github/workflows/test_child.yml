@@ -58,85 +58,14 @@ jobs:
         set -o pipefail
         hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc2" 2>&1 | tee rvc2_test_output.log
 
-    - name: Summarize RVC2 tests
+    - name: Generate test summary
       if: always()
       run: |
-        SUMMARY_FILE="summary_rvc2.md"
-        echo "## RVC2 Test Summary" >> "$SUMMARY_FILE"
-        if [ -f rvc2_test_output.log ]; then
-          PASS_LINE=$(grep -m1 -E "[0-9]+% tests passed" rvc2_test_output.log | sed 's/^.*] //' || true)
-          if [ -n "$PASS_LINE" ]; then
-            echo "" >> "$SUMMARY_FILE"
-            echo "**CTest summary:** $PASS_LINE" >> "$SUMMARY_FILE"
-          fi
-
-          FAILED_TESTS=$(grep -E "\\] [0-9]+ - .* \\(Failed\\)$" rvc2_test_output.log | awk '
-            {
-              line=$0
-              config=""
-              if (match(line, /\\[[^]]+\\]/)) {
-                config=substr(line, RSTART+1, RLENGTH-2)
-              }
-              sub(/^.*\\] /,"",line)
-              sub(/ *\\(Failed\\)$/, "", line)
-              if (config != "") {
-                print config " :: " line
-              } else {
-                print line
-              }
-            }
-          ' || true)
-
-          if [ -z "$FAILED_TESTS" ]; then
-            FAILED_TESTS=$(awk '
-              /The following tests FAILED:/ {found=1; next}
-              found {
-                line=$0
-                sub(/^.*\\] /,"",line)
-                if (line ~ /^Tests failed for configuration/ || line ~ /^Some tests failed/ || line ~ /^$/) {exit}
-                print line
-              }
-            ' rvc2_test_output.log)
-          fi
-
-          if [ -z "$FAILED_TESTS" ]; then
-            FAILED_TESTS=$(grep -E "Test[[:space:]]*#.*\\*\\*\\*Failed" rvc2_test_output.log | sed 's/^.*] //' | sed 's/^[0-9]\+\/[0-9]\+[[:space:]]*//' || true)
-          fi
-
-          if [ -n "$FAILED_TESTS" ]; then
-            echo "" >> "$SUMMARY_FILE"
-            echo "### Failed tests" >> "$SUMMARY_FILE"
-            echo "| Test |" >> "$SUMMARY_FILE"
-            echo "|------|" >> "$SUMMARY_FILE"
-            echo "$FAILED_TESTS" | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-              echo "| $line |" >> "$SUMMARY_FILE"
-            done
-          else
-            FAIL_LINES=$( { grep -E "FAILED|ERROR|AssertionError" rvc2_test_output.log || true; } | wc -l | tr -d ' ')
-            if [ "$FAIL_LINES" -gt 0 ]; then
-              echo "" >> "$SUMMARY_FILE"
-              echo "Detected $FAIL_LINES failure-related lines (showing up to 50)." >> "$SUMMARY_FILE"
-              echo "" >> "$SUMMARY_FILE"
-              echo "| Log Line |" >> "$SUMMARY_FILE"
-              echo "|----------|" >> "$SUMMARY_FILE"
-              grep -E "FAILED|ERROR|AssertionError" rvc2_test_output.log | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                echo "| $line |" >> "$SUMMARY_FILE"
-              done
-            else
-              echo "✅ All tests passed (no failure patterns detected)." >> "$SUMMARY_FILE"
-            fi
-          fi
+        if command -v python3 >/dev/null 2>&1; then
+          python3 scripts/ci/ctest_summary.py rvc2_test_output.log >> "$GITHUB_STEP_SUMMARY"
         else
-          echo "Test log not found; unable to summarize failures." >> "$SUMMARY_FILE"
+          echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
         fi
-
-    - name: Upload RVC2 summary
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-summary-rvc2
-        path: summary_rvc2.md
-        if-no-files-found: warn
 
   # Testing
  linux_rvc4_test:
@@ -156,85 +85,14 @@ jobs:
           set -o pipefail
           hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4" 2>&1 | tee rvc4_test_output.log
 
-      - name: Summarize RVC4 tests
+      - name: Generate test summary
         if: always()
         run: |
-          SUMMARY_FILE="summary_rvc4_${{ matrix.rvc4os }}.md"
-          echo "## RVC4 Test Summary (OS: ${{ matrix.rvc4os }})" >> "$SUMMARY_FILE"
-          if [ -f rvc4_test_output.log ]; then
-            PASS_LINE=$(grep -m1 -E "[0-9]+% tests passed" rvc4_test_output.log | sed 's/^.*] //' || true)
-            if [ -n "$PASS_LINE" ]; then
-              echo "" >> "$SUMMARY_FILE"
-              echo "**CTest summary:** $PASS_LINE" >> "$SUMMARY_FILE"
-            fi
-
-            FAILED_TESTS=$(grep -E "\\] [0-9]+ - .* \\(Failed\\)$" rvc4_test_output.log | awk '
-              {
-                line=$0
-                config=""
-                if (match(line, /\\[[^]]+\\]/)) {
-                  config=substr(line, RSTART+1, RLENGTH-2)
-                }
-                sub(/^.*\\] /,"",line)
-                sub(/ *\\(Failed\\)$/, "", line)
-                if (config != "") {
-                  print config " :: " line
-                } else {
-                  print line
-                }
-              }
-            ' || true)
-
-            if [ -z "$FAILED_TESTS" ]; then
-              FAILED_TESTS=$(awk '
-                /The following tests FAILED:/ {found=1; next}
-                found {
-                  line=$0
-                  sub(/^.*\\] /,"",line)
-                  if (line ~ /^Tests failed for configuration/ || line ~ /^Some tests failed/ || line ~ /^$/) {exit}
-                  print line
-                }
-              ' rvc4_test_output.log)
-            fi
-
-            if [ -z "$FAILED_TESTS" ]; then
-              FAILED_TESTS=$(grep -E "Test[[:space:]]*#.*\\*\\*\\*Failed" rvc4_test_output.log | sed 's/^.*] //' | sed 's/^[0-9]\+\/[0-9]\+[[:space:]]*//' || true)
-            fi
-
-            if [ -n "$FAILED_TESTS" ]; then
-              echo "" >> "$SUMMARY_FILE"
-              echo "### Failed tests" >> "$SUMMARY_FILE"
-              echo "| Test |" >> "$SUMMARY_FILE"
-              echo "|------|" >> "$SUMMARY_FILE"
-              echo "$FAILED_TESTS" | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                echo "| $line |" >> "$SUMMARY_FILE"
-              done
-            else
-              FAIL_LINES=$( { grep -E "FAILED|ERROR|AssertionError" rvc4_test_output.log || true; } | wc -l | tr -d ' ')
-              if [ "$FAIL_LINES" -gt 0 ]; then
-                echo "" >> "$SUMMARY_FILE"
-                echo "Detected $FAIL_LINES failure-related lines (showing up to 50)." >> "$SUMMARY_FILE"
-                echo "" >> "$SUMMARY_FILE"
-                echo "| Log Line |" >> "$SUMMARY_FILE"
-                echo "|----------|" >> "$SUMMARY_FILE"
-                grep -E "FAILED|ERROR|AssertionError" rvc4_test_output.log | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                  echo "| $line |" >> "$SUMMARY_FILE"
-                done
-              else
-                echo "✅ All tests passed (no failure patterns detected)." >> "$SUMMARY_FILE"
-              fi
-            fi
+          if command -v python3 >/dev/null 2>&1; then
+            python3 scripts/ci/ctest_summary.py rvc4_test_output.log "rvc4os=${{ matrix.rvc4os }}" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Test log not found; unable to summarize failures." >> "$SUMMARY_FILE"
+            echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
           fi
-
-      - name: Upload RVC4 summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-summary-rvc4-${{ matrix.rvc4os }}
-          path: summary_rvc4_${{ matrix.rvc4os }}.md
-          if-no-files-found: warn
 
  linux_rvc4_rgb_test:
       needs: [build_docker_container]
@@ -251,114 +109,16 @@ jobs:
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
           set -o pipefail
-          hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb" 2>&1 | tee rvc4rgb_test_output.log
+          hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb" 2>&1 | tee rvc4_rgb_test_output.log
 
-      - name: Summarize RVC4 RGB tests
+      - name: Generate test summary
         if: always()
         run: |
-          SUMMARY_FILE="summary_rvc4rgb_${{ matrix.rvc4os }}.md"
-          echo "## RVC4 RGB Test Summary (OS: ${{ matrix.rvc4os }})" >> "$SUMMARY_FILE"
-          if [ -f rvc4rgb_test_output.log ]; then
-            PASS_LINE=$(grep -m1 -E "[0-9]+% tests passed" rvc4rgb_test_output.log | sed 's/^.*] //' || true)
-            if [ -n "$PASS_LINE" ]; then
-              echo "" >> "$SUMMARY_FILE"
-              echo "**CTest summary:** $PASS_LINE" >> "$SUMMARY_FILE"
-            fi
-
-            FAILED_TESTS=$(grep -E "\\] [0-9]+ - .* \\(Failed\\)$" rvc4rgb_test_output.log | awk '
-              {
-                line=$0
-                config=""
-                if (match(line, /\\[[^]]+\\]/)) {
-                  config=substr(line, RSTART+1, RLENGTH-2)
-                }
-                sub(/^.*\\] /,"",line)
-                sub(/ *\\(Failed\\)$/, "", line)
-                if (config != "") {
-                  print config " :: " line
-                } else {
-                  print line
-                }
-              }
-            ' || true)
-
-            if [ -z "$FAILED_TESTS" ]; then
-              FAILED_TESTS=$(awk '
-                /The following tests FAILED:/ {found=1; next}
-                found {
-                  line=$0
-                  sub(/^.*\\] /,"",line)
-                  if (line ~ /^Tests failed for configuration/ || line ~ /^Some tests failed/ || line ~ /^$/) {exit}
-                  print line
-                }
-              ' rvc4rgb_test_output.log)
-            fi
-
-            if [ -z "$FAILED_TESTS" ]; then
-              FAILED_TESTS=$(grep -E "Test[[:space:]]*#.*\\*\\*\\*Failed" rvc4rgb_test_output.log | sed 's/^.*] //' | sed 's/^[0-9]\+\/[0-9]\+[[:space:]]*//' || true)
-            fi
-
-            if [ -n "$FAILED_TESTS" ]; then
-              echo "" >> "$SUMMARY_FILE"
-              echo "### Failed tests" >> "$SUMMARY_FILE"
-              echo "| Test |" >> "$SUMMARY_FILE"
-              echo "|------|" >> "$SUMMARY_FILE"
-              echo "$FAILED_TESTS" | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                echo "| $line |" >> "$SUMMARY_FILE"
-              done
-            else
-              FAIL_LINES=$( { grep -E "FAILED|ERROR|AssertionError" rvc4rgb_test_output.log || true; } | wc -l | tr -d ' ')
-              if [ "$FAIL_LINES" -gt 0 ]; then
-                echo "" >> "$SUMMARY_FILE"
-                echo "Detected $FAIL_LINES failure-related lines (showing up to 50)." >> "$SUMMARY_FILE"
-                echo "" >> "$SUMMARY_FILE"
-                echo "| Log Line |" >> "$SUMMARY_FILE"
-                echo "|----------|" >> "$SUMMARY_FILE"
-                grep -E "FAILED|ERROR|AssertionError" rvc4rgb_test_output.log | head -n 50 | sed 's/|/\\|/g' | while read -r line; do
-                  echo "| $line |" >> "$SUMMARY_FILE"
-                done
-              else
-                echo "✅ All tests passed (no failure patterns detected)." >> "$SUMMARY_FILE"
-              fi
-            fi
+          if command -v python3 >/dev/null 2>&1; then
+            python3 scripts/ci/ctest_summary.py rvc4_rgb_test_output.log "rvc4os=${{ matrix.rvc4os }}" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Test log not found; unable to summarize failures." >> "$SUMMARY_FILE"
+            echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
           fi
-
-      - name: Upload RVC4 RGB summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-summary-rvc4rgb-${{ matrix.rvc4os }}
-          path: summary_rvc4rgb_${{ matrix.rvc4os }}.md
-          if-no-files-found: warn
-
- aggregate_test_summaries:
-    needs: [linux_rvc2_test, linux_rvc4_test, linux_rvc4_rgb_test]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download test summaries
-      uses: actions/download-artifact@v4
-      continue-on-error: true
-      with:
-        pattern: test-summary-*
-        path: summaries
-        merge-multiple: true
-
-    - name: Publish combined summary
-      run: |
-        echo "## HIL Test Summary" >> "$GITHUB_STEP_SUMMARY"
-        shopt -s nullglob
-        files=(summaries/*.md)
-        if [ ${#files[@]} -gt 0 ]; then
-          for f in "${files[@]}"; do
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            cat "$f" >> "$GITHUB_STEP_SUMMARY"
-          done
-        else
-          echo "No test summaries found." >> "$GITHUB_STEP_SUMMARY"
-        fi
 
 #  linux_rvc4_fsync_test:
 #       needs: [build_docker_container]
