@@ -193,7 +193,7 @@ class EventsManager {
 
     /**
      * Fetch the configuration limits and quotas for snaps & events
-     * @param retryOnFail Retry fetching on failure
+     * @param retryOnFail Retry fetching on failure; when true, keeps retrying until successful
      * @return bool
      */
     bool fetchConfigurationLimits(const bool retryOnFail);

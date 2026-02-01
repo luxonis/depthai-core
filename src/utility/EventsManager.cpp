@@ -221,10 +221,24 @@ bool FileData::toFile(const std::filesystem::path& inputPath) {
         return false;
     }
     std::string extension;
-    if(mimeType == "image/jpeg") {
-        extension = ".jpg";
-    } else if(mimeType == "application/x-protobuf; proto=SnapAnnotation") {
-        extension = ".annotation";
+    static const std::unordered_map<std::string, std::string> mimeTypeToExtensionMap = {
+        {"image/jpeg", ".jpg"},
+        {"image/png", ".png"},
+        {"image/webp", ".webp"},
+        {"image/bmp", ".bmp"},
+        {"image/tiff", ".tiff"},
+        {"image/gif", ".gif"},
+        {"image/svg+xml", ".svg"},
+        {"application/json", ".json"},
+        {"text/plain", ".txt"},
+        {"text/html", ".html"},
+        {"text/css", ".css"},
+        {"application/javascript", ".js"},
+        {"application/x-protobuf; proto=SnapAnnotation", ".annotation"},
+    };
+    auto mimeIt = mimeTypeToExtensionMap.find(mimeType);
+    if(mimeIt != mimeTypeToExtensionMap.end()) {
+        extension = mimeIt->second;
     }
     // Choose a unique filename
     std::filesystem::path target = inputPath / (fileName + extension);
@@ -906,9 +920,9 @@ void EventsManager::cacheEvents() {
     std::lock_guard<std::mutex> lock(eventBufferMutex);
     for(const auto& eventData : eventBuffer) {
         std::filesystem::path inputPath(cacheDir);
-        std::filesystem::path path = inputPath / ("event_" + eventData->event->name() + "_" + std::to_string(eventData->event->created_at()));
+        std::filesystem::path path = inputPath / (fmt::format("event_{}_{}", eventData->event->name(), eventData->event->created_at()));
         for(int i = 1; std::filesystem::exists(path); ++i) {
-            path = inputPath / ("event_" + eventData->event->name() + "_" + std::to_string(eventData->event->created_at()) + "_" + std::to_string(i));
+            path = inputPath / (fmt::format("event_{}_{}_{}", eventData->event->name(), eventData->event->created_at(), i));
         }
         std::string eventDir = path.string();
         logger::info("Caching event to {}", eventDir);
