@@ -80,11 +80,13 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
         case DatatypeEnum::FeatureTrackerConfig:
+        case DatatypeEnum::GateControl:
         case DatatypeEnum::ThermalConfig:
         case DatatypeEnum::ToFConfig:
         case DatatypeEnum::TrackedFeatures:
         case DatatypeEnum::BenchmarkReport:
         case DatatypeEnum::MessageGroup:
+        case DatatypeEnum::MapData:
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
@@ -102,6 +104,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
         case DatatypeEnum::VppConfig:
+        case DatatypeEnum::PacketizedData:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -149,6 +152,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::SpatialLocationCalculatorConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
+        case DatatypeEnum::GateControl:
         case DatatypeEnum::AprilTagConfig:
         case DatatypeEnum::AprilTags:
         case DatatypeEnum::Tracklets:
@@ -159,6 +163,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::TrackedFeatures:
         case DatatypeEnum::BenchmarkReport:
         case DatatypeEnum::MessageGroup:
+        case DatatypeEnum::MapData:
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
@@ -176,6 +181,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
         case DatatypeEnum::VppConfig:
+        case DatatypeEnum::PacketizedData:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};
