@@ -58,14 +58,13 @@ jobs:
         set -o pipefail
         hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc2" 2>&1 | tee rvc2_test_output.log
 
-    - name: Generate test summary
+    - name: Upload test log
       if: always()
-      run: |
-        if command -v python3 >/dev/null 2>&1; then
-          python3 scripts/ci/ctest_summary.py rvc2_test_output.log >> "$GITHUB_STEP_SUMMARY"
-        else
-          echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
-        fi
+      uses: actions/upload-artifact@v3
+      with:
+        name: ctest-log-linux_rvc2_test
+        path: rvc2_test_output.log
+        if-no-files-found: warn
 
   # Testing
  linux_rvc4_test:
@@ -85,14 +84,13 @@ jobs:
           set -o pipefail
           hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4" 2>&1 | tee rvc4_test_output.log
 
-      - name: Generate test summary
+      - name: Upload test log
         if: always()
-        run: |
-          if command -v python3 >/dev/null 2>&1; then
-            python3 scripts/ci/ctest_summary.py rvc4_test_output.log "rvc4os=${{ matrix.rvc4os }}" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
-          fi
+        uses: actions/upload-artifact@v3
+        with:
+          name: ctest-log-linux_rvc4_test-rvc4os=${{ matrix.rvc4os }}
+          path: rvc4_test_output.log
+          if-no-files-found: warn
 
  linux_rvc4_rgb_test:
       needs: [build_docker_container]
@@ -111,14 +109,47 @@ jobs:
           set -o pipefail
           hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb" 2>&1 | tee rvc4_rgb_test_output.log
 
-      - name: Generate test summary
+      - name: Upload test log
         if: always()
-        run: |
-          if command -v python3 >/dev/null 2>&1; then
-            python3 scripts/ci/ctest_summary.py rvc4_rgb_test_output.log "rvc4os=${{ matrix.rvc4os }}" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
-          fi
+        uses: actions/upload-artifact@v3
+        with:
+          name: ctest-log-linux_rvc4_rgb_test-rvc4os=${{ matrix.rvc4os }}
+          path: rvc4_rgb_test_output.log
+          if-no-files-found: warn
+
+ aggregate_test_summary:
+    needs: [linux_rvc2_test, linux_rvc4_test, linux_rvc4_rgb_test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download test logs
+      uses: actions/download-artifact@v3
+      with:
+        path: ctest-logs
+    - name: Generate combined summary
+      run: |
+        if ! command -v python3 >/dev/null 2>&1; then
+          echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        shopt -s nullglob
+        found_logs=0
+        for dir in ctest-logs/ctest-log-*; do
+          [ -d "$dir" ] || continue
+          log_files=("$dir"/*.log)
+          [ ${#log_files[@]} -gt 0 ] || continue
+          found_logs=1
+          context="$(basename "$dir")"
+          context="${context#ctest-log-}"
+          python3 scripts/ci/ctest_summary.py "${log_files[0]}" "$context" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+        done
+
+        if [ "$found_logs" -eq 0 ]; then
+          echo "No test logs found to summarize." >> "$GITHUB_STEP_SUMMARY"
+        fi
 
 #  linux_rvc4_fsync_test:
 #       needs: [build_docker_container]

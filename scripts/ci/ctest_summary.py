@@ -69,7 +69,7 @@ def main() -> int:
                 elif not failures[config][num][1] and cause:
                     failures[config][num] = (name, cause)
 
-    print(f"## Test Summary - {header_suffix}:")
+    print(f"## Test Summary {header_suffix}:")
     if not summaries:
         print("No test summary lines found in the log.")
     else:
