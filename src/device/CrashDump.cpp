@@ -26,14 +26,17 @@ static constexpr const char* RVC4_DATA_FILENAME = "crash_dump.tar.gz";
 
 namespace fs = std::filesystem;
 
-// Helper function to write string to a temporary file and return the path
-static fs::path writeToTempFile(const std::string& content, std::string_view suffix) {
+static fs::path writeToTempFile(const char* content, std::streamsize size, std::string_view suffix) {
     auto tempPath = platform::getTempPath() / fmt::format("crashdump_{}", suffix);
+
+    // Create file
     std::ofstream out(tempPath, std::ios::binary);
     if(!out) {
         throw std::runtime_error(fmt::format("Failed to create temporary file: {}", tempPath));
     }
-    out.write(content.data(), static_cast<std::streamsize>(content.size()));
+
+    // Write to file and close
+    out.write(content, size);
     out.close();
     if(out.fail()) {
         throw std::runtime_error(fmt::format("Failed to write temporary file: {}", tempPath));
@@ -41,19 +44,12 @@ static fs::path writeToTempFile(const std::string& content, std::string_view suf
     return tempPath;
 }
 
-// Helper function to write binary data to a temporary file and return the path
 static fs::path writeToTempFile(const std::vector<uint8_t>& data, std::string_view suffix) {
-    auto tempPath = platform::getTempPath() / fmt::format("crashdump_{}", suffix);
-    std::ofstream out(tempPath, std::ios::binary);
-    if(!out) {
-        throw std::runtime_error(fmt::format("Failed to create temporary file: {}", tempPath));
-    }
-    out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-    out.close();
-    if(out.fail()) {
-        throw std::runtime_error(fmt::format("Failed to write temporary file: {}", tempPath));
-    }
-    return tempPath;
+    return writeToTempFile(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()), suffix);
+}
+
+static fs::path writeToTempFile(const std::string& content, std::string_view suffix) {
+    return writeToTempFile(content.data(), static_cast<std::streamsize>(content.size()), suffix);
 }
 
 // Helper function to read file content as string
@@ -81,7 +77,7 @@ static std::vector<uint8_t> readFileAsBinary(const fs::path& path) {
 }
 
 // Helper function to get value from json or return default value
-static std::string valueOr(const nlohmann::json& json, const std::string& key, const std::string& defaultValue) {
+static std::string fromJson(const nlohmann::json& json, const std::string& key, const std::string& defaultValue) {
     if(json.contains(key) && !json[key].is_null()) {
         return json[key].get<std::string>();
     }
@@ -186,24 +182,24 @@ void CrashDump::writeMetadata(nlohmann::json& json) const {
 
 void CrashDump::readMetadata(const nlohmann::json& json) {
     // depthai
-    depthaiVersion = valueOr(json, "depthaiVersion", "");
-    depthaiVersionMajor = valueOr(json, "depthaiVersionMajor", "");
-    depthaiVersionMinor = valueOr(json, "depthaiVersionMinor", "");
-    depthaiVersionPatch = valueOr(json, "depthaiVersionPatch", "");
-    depthaiVersionPreReleaseType = valueOr(json, "depthaiVersionPreReleaseType", "");
-    depthaiVersionPreReleaseVersion = valueOr(json, "depthaiVersionPreReleaseVersion", "");
-    depthaiVersionBuildInfo = valueOr(json, "depthaiVersionBuildInfo", "");
-    depthaiCommitHash = valueOr(json, "depthaiCommitHash", "");
-    depthaiCommitDatetime = valueOr(json, "depthaiCommitDatetime", "");
-    depthaiBuildDatetime = valueOr(json, "depthaiBuildDatetime", "");
-    depthaiDeviceVersion = valueOr(json, "depthaiDeviceVersion", "");
-    depthaiBootloaderVersion = valueOr(json, "depthaiBootloaderVersion", "");
-    depthaiDeviceRVC3Version = valueOr(json, "depthaiDeviceRVC3Version", "");
-    depthaiDeviceRVC4Version = valueOr(json, "depthaiDeviceRVC4Version", "");
+    depthaiVersion = fromJson(json, "depthaiVersion", "");
+    depthaiVersionMajor = fromJson(json, "depthaiVersionMajor", "");
+    depthaiVersionMinor = fromJson(json, "depthaiVersionMinor", "");
+    depthaiVersionPatch = fromJson(json, "depthaiVersionPatch", "");
+    depthaiVersionPreReleaseType = fromJson(json, "depthaiVersionPreReleaseType", "");
+    depthaiVersionPreReleaseVersion = fromJson(json, "depthaiVersionPreReleaseVersion", "");
+    depthaiVersionBuildInfo = fromJson(json, "depthaiVersionBuildInfo", "");
+    depthaiCommitHash = fromJson(json, "depthaiCommitHash", "");
+    depthaiCommitDatetime = fromJson(json, "depthaiCommitDatetime", "");
+    depthaiBuildDatetime = fromJson(json, "depthaiBuildDatetime", "");
+    depthaiDeviceVersion = fromJson(json, "depthaiDeviceVersion", "");
+    depthaiBootloaderVersion = fromJson(json, "depthaiBootloaderVersion", "");
+    depthaiDeviceRVC3Version = fromJson(json, "depthaiDeviceRVC3Version", "");
+    depthaiDeviceRVC4Version = fromJson(json, "depthaiDeviceRVC4Version", "");
 
     // device
-    crashdumpTimestamp = valueOr(json, "crashdumpTimestamp", "");
-    deviceId = valueOr(json, "deviceId", "");
+    crashdumpTimestamp = fromJson(json, "crashdumpTimestamp", "");
+    deviceId = fromJson(json, "deviceId", "");
 }
 
 CrashDumpRVC2::CrashDumpRVC2(const fs::path& tarFile) {
