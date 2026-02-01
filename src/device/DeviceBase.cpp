@@ -466,7 +466,11 @@ void DeviceBase::closeImpl() {
             crashed = hasCrashDump();
             if(crashed) {
                 connection->setRebootOnDestruction(true);
-                auto dump = dai::CrashDumpManager(this).collectCrashDump();
+                std::shared_ptr<CrashDump> dump = dai::CrashDumpManager(this).collectCrashDump();
+                {
+                    std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
+                    if(crashdumpCallback) crashdumpCallback(dump);
+                }
                 logCollection::logCrashDump(pipelineSchema, *dump, deviceInfo);
             } else {
                 bool isRunning = pimpl->rpcCall("isRunning").as<bool>();
@@ -526,8 +530,12 @@ void DeviceBase::closeImpl() {
 
     // If the device was operated through gate, wait for the session to end
     if(gate && crashed) {
-        auto crashDump = dai::CrashDumpManager(this).collectCrashDump();
+        std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(this).collectCrashDump();
         if(crashDump) {
+            {
+                std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
+                if(crashdumpCallback) crashdumpCallback(crashDump);
+            }
             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
         }
     }
@@ -560,8 +568,12 @@ void DeviceBase::closeImpl() {
                         crashed = rebootingDevice.hasCrashDump();
                     }
                     if(crashed) {
-                        auto crashDump = dai::CrashDumpManager(&rebootingDevice).collectCrashDump();
+                        std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(&rebootingDevice).collectCrashDump();
                         if(crashDump) {
+                            {
+                                std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
+                                if(crashdumpCallback) crashdumpCallback(crashDump);
+                            }
                             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
                         }
                     } else {
@@ -1107,8 +1119,12 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
 
                 // If device has crashed, collect dump
                 if(crashed) {
-                    auto crashDump = dai::CrashDumpManager(this).collectCrashDump();
+                    std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(this).collectCrashDump();
                     if(crashDump) {
+                        {
+                            std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
+                            if(crashdumpCallback) crashdumpCallback(crashDump);
+                        }
                         logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
                     }
                 }
@@ -1133,8 +1149,12 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     crashed = hasCrashDump();
                     if(crashed) {
-                        auto crashDump = dai::CrashDumpManager(this).collectCrashDump();
+                        std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(this).collectCrashDump();
                         if(crashDump) {
+                            {
+                                std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
+                                if(crashdumpCallback) crashdumpCallback(crashDump);
+                            }
                             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
                         }
                     }
@@ -1472,6 +1492,16 @@ bool DeviceBase::removeLogCallback(int callbackId) {
     // Otherwise erase and return true
     logCallbackMap.erase(callbackId);
     return true;
+}
+
+void DeviceBase::registerCrashdumpCallback(std::function<void(std::shared_ptr<CrashDump>)> callback) {
+    std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
+    crashdumpCallback = std::move(callback);
+}
+
+void DeviceBase::removeCrashdumpCallback() {
+    std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
+    crashdumpCallback = nullptr;
 }
 
 void DeviceBase::setTimesync(std::chrono::milliseconds period, int numSamples, bool random) {

@@ -793,6 +793,20 @@ class DeviceBase {
     bool isClosed() const;
 
     /**
+     * Register a callback that will be called when the device crashes.
+     * The callback receives a shared pointer to the CrashDump, which can be modified
+     * before it is stored. Only one callback can be registered at a time.
+     *
+     * @param callback Callback to call when a crash dump is collected
+     */
+    void registerCrashdumpCallback(std::function<void(std::shared_ptr<CrashDump>)> callback);
+
+    /**
+     * Removes the registered crash dump callback
+     */
+    void removeCrashdumpCallback();
+
+    /**
      * Check if the device has crashed
      *
      * @returns True if the device has crashed (watchdog timeout detected), false otherwise
@@ -922,6 +936,10 @@ class DeviceBase {
     int uniqueCallbackId = 0;
     std::mutex logCallbackMapMtx;
     std::unordered_map<int, std::function<void(LogMessage)>> logCallbackMap;
+
+    // Crash dump callback
+    std::mutex crashdumpCallbackMtx;
+    std::function<void(std::shared_ptr<CrashDump>)> crashdumpCallback;
 
     // Watchdog thread
     std::thread watchdogThread;
