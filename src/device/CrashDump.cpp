@@ -12,6 +12,7 @@
 
 // third party
 #include <fmt/format.h>
+#include <fmt/std.h>
 
 #include <nlohmann/json.hpp>
 
@@ -30,10 +31,13 @@ static fs::path writeToTempFile(const std::string& content, std::string_view suf
     auto tempPath = platform::getTempPath() / fmt::format("crashdump_{}", suffix);
     std::ofstream out(tempPath, std::ios::binary);
     if(!out) {
-        throw std::runtime_error("Failed to create temporary file: " + tempPath.string());
+        throw std::runtime_error(fmt::format("Failed to create temporary file: {}", tempPath));
     }
     out.write(content.data(), static_cast<std::streamsize>(content.size()));
     out.close();
+    if(out.fail()) {
+        throw std::runtime_error(fmt::format("Failed to write temporary file: {}", tempPath));
+    }
     return tempPath;
 }
 
@@ -42,10 +46,13 @@ static fs::path writeToTempFile(const std::vector<uint8_t>& data, std::string_vi
     auto tempPath = platform::getTempPath() / fmt::format("crashdump_{}", suffix);
     std::ofstream out(tempPath, std::ios::binary);
     if(!out) {
-        throw std::runtime_error("Failed to create temporary file: " + tempPath.string());
+        throw std::runtime_error(fmt::format("Failed to create temporary file: {}", tempPath));
     }
     out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
     out.close();
+    if(out.fail()) {
+        throw std::runtime_error(fmt::format("Failed to write temporary file: {}", tempPath));
+    }
     return tempPath;
 }
 
@@ -53,7 +60,7 @@ static fs::path writeToTempFile(const std::vector<uint8_t>& data, std::string_vi
 static std::string readFileAsString(const fs::path& path) {
     std::ifstream in(path, std::ios::binary);
     if(!in) {
-        throw std::runtime_error("Failed to open file: " + path.string());
+        throw std::runtime_error(fmt::format("Failed to open file: {}", path));
     }
     std::ostringstream ss;
     ss << in.rdbuf();
@@ -64,7 +71,7 @@ static std::string readFileAsString(const fs::path& path) {
 static std::vector<uint8_t> readFileAsBinary(const fs::path& path) {
     std::ifstream in(path, std::ios::binary | std::ios::ate);
     if(!in) {
-        throw std::runtime_error("Failed to open file: " + path.string());
+        throw std::runtime_error(fmt::format("Failed to open file: {}", path));
     }
     auto size = in.tellg();
     in.seekg(0);
@@ -82,7 +89,7 @@ static std::string valueOr(const nlohmann::json& json, const std::string& key, c
 }
 
 // Factory method implementation
-std::unique_ptr<CrashDump> CrashDump::fromTarFile(const fs::path& tarPath) {
+std::unique_ptr<CrashDump> CrashDump::load(const fs::path& tarPath) {
     // First, extract metadata to determine platform
     auto tempDir = platform::getTempPath() / "crashdump_extract";
     fs::create_directories(tempDir);
@@ -135,7 +142,10 @@ std::unique_ptr<CrashDump> CrashDump::fromBytes(const std::vector<uint8_t>& byte
     std::ofstream out(tempPath, std::ios::binary);
     out.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
     out.close();
-    auto crashDump = fromTarFile(tempPath);
+    if(out.fail()) {
+        throw std::runtime_error(fmt::format("Failed to write temporary file: {}", tempPath));
+    }
+    auto crashDump = load(tempPath);
     fs::remove(tempPath);
     return crashDump;
 }

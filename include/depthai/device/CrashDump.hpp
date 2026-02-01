@@ -85,7 +85,7 @@ class CrashDump {
      * @param tarPath Path to the tar file
      * @return Unique pointer to the CrashDump instance
      */
-    static std::unique_ptr<CrashDump> fromTarFile(const std::filesystem::path& tarPath);
+    static std::unique_ptr<CrashDump> load(const std::filesystem::path& tarPath);
 
     /* Common metadata - from version.hpp */
     std::string depthaiVersion;

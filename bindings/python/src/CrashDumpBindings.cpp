@@ -89,7 +89,7 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
             return py::bytes(reinterpret_cast<const char*>(bytes.data()), bytes.size());
         }, DOC(dai, CrashDump, toBytes))
         .def_static("fromBytes", &CrashDump::fromBytes, py::arg("bytes"), DOC(dai, CrashDump, fromBytes))
-        .def_static("fromTarFile", &CrashDump::fromTarFile, py::arg("tarPath"), DOC(dai, CrashDump, fromTarFile))
+        .def_static("load", &CrashDump::load, py::arg("tarPath"), DOC(dai, CrashDump, load))
         .def("__getitem__", [](py::object self, const std::string& key) -> py::object {
             auto d = getExtraDict(self);
             if(!d.contains(key)) throw py::key_error(key);
@@ -209,7 +209,7 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("filename", &CrashDumpRVC4::filename);
 
     // Bind CrashDumpManager
-    crashDumpManager.def(py::init<DeviceBase*>(), py::arg("device"), DOC(dai, CrashDumpManager, CrashDumpManager))
+    crashDumpManager.def(py::init<DeviceBase*>(), py::arg("device"), py::keep_alive<1, 2>(), DOC(dai, CrashDumpManager, CrashDumpManager))
         .def(
             "collectCrashDump",
             [](CrashDumpManager& self, bool clear) {
