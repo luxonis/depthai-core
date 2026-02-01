@@ -13,9 +13,8 @@
 
 // Helpers to allow users to work with the `extra` attribute as if it was a regular python dict
 // The gist of this is to use an extra python dictionary that gets synced with the C++ extra json
-// dict whenever it's needed. This is needed as otherwise the `extra` json dict generally is returned 
+// dict whenever it's needed. This is needed as otherwise the `extra` json dict generally is returned
 // as a copy (and not a reference)
-
 static void syncExtraToNative(py::handle self, dai::CrashDump& dump) {
     if(py::hasattr(self, "_extra_dict")) {
         dump.extra = pyjson::to_json(self.attr("_extra_dict"));
@@ -35,10 +34,10 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Type definitions
     // Base CrashDump class
-    py::class_<CrashDump, std::unique_ptr<CrashDump, py::nodelete>> crashDump(m, "CrashDump", DOC(dai, CrashDump), py::dynamic_attr());
+    py::class_<CrashDump, std::shared_ptr<CrashDump>> crashDump(m, "CrashDump", DOC(dai, CrashDump), py::dynamic_attr());
 
     // CrashDumpRVC2 and its nested types
-    py::class_<CrashDumpRVC2, CrashDump, std::unique_ptr<CrashDumpRVC2>> crashDumpRVC2(m, "CrashDumpRVC2", DOC(dai, CrashDumpRVC2));
+    py::class_<CrashDumpRVC2, CrashDump, std::shared_ptr<CrashDumpRVC2>> crashDumpRVC2(m, "CrashDumpRVC2", DOC(dai, CrashDumpRVC2));
     py::class_<CrashDumpRVC2::CrashReportCollection> crashReportCollection(crashDumpRVC2, "CrashReportCollection", DOC(dai, CrashDumpRVC2, CrashReportCollection));
     py::class_<CrashDumpRVC2::CrashReport> crashReport(crashDumpRVC2, "CrashReport", DOC(dai, CrashDumpRVC2, CrashReport));
     py::class_<CrashDumpRVC2::CrashReport::ErrorSourceInfo> errorSourceInfo(crashReport, "ErrorSourceInfo", DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo));
@@ -51,7 +50,7 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         threadCallstack, "CallstackContext", DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, CallstackContext));
 
     // CrashDumpRVC4
-    py::class_<CrashDumpRVC4, CrashDump, std::unique_ptr<CrashDumpRVC4>> crashDumpRVC4(m, "CrashDumpRVC4", DOC(dai, CrashDumpRVC4));
+    py::class_<CrashDumpRVC4, CrashDump, std::shared_ptr<CrashDumpRVC4>> crashDumpRVC4(m, "CrashDumpRVC4", DOC(dai, CrashDumpRVC4));
 
     // CrashDumpManager
     py::class_<CrashDumpManager> crashDumpManager(m, "CrashDumpManager", DOC(dai, CrashDumpManager));
@@ -83,10 +82,11 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
             // Invalidate cached dict so it gets lazily re-synced from C++ on next access
             if(py::hasattr(self, "_extra_dict")) py::delattr(self, "_extra_dict");
         }, py::arg("tarPath"), DOC(dai, CrashDump, fromTar))
-        .def("toBytes", [](py::object self) {
+        .def("toBytes", [](py::object self) -> py::bytes {
             auto& dump = self.cast<CrashDump&>();
             syncExtraToNative(self, dump);
-            return dump.toBytes();
+            auto bytes = dump.toBytes();
+            return py::bytes(reinterpret_cast<const char*>(bytes.data()), bytes.size());
         }, DOC(dai, CrashDump, toBytes))
         .def_static("fromBytes", &CrashDump::fromBytes, py::arg("bytes"), DOC(dai, CrashDump, fromBytes))
         .def_static("fromTarFile", &CrashDump::fromTarFile, py::arg("tarPath"), DOC(dai, CrashDump, fromTarFile))
