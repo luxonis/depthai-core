@@ -5,12 +5,14 @@
 #include <fstream>
 #include <sstream>
 #include <string_view>
-#include <thread>
 
 // project
 #include "depthai/utility/Compression.hpp"
+#include "utility/Platform.hpp"
 
 // third party
+#include <fmt/format.h>
+
 #include <nlohmann/json.hpp>
 
 namespace dai {
@@ -25,8 +27,7 @@ namespace fs = std::filesystem;
 
 // Helper function to write string to a temporary file and return the path
 static fs::path writeToTempFile(const std::string& content, std::string_view suffix) {
-    auto tempPath = fs::temp_directory_path()
-                    / (std::string("crashdump_") + std::string(suffix) + "_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+    auto tempPath = platform::getTempPath() / fmt::format("crashdump_{}", suffix);
     std::ofstream out(tempPath, std::ios::binary);
     if(!out) {
         throw std::runtime_error("Failed to create temporary file: " + tempPath.string());
@@ -38,8 +39,7 @@ static fs::path writeToTempFile(const std::string& content, std::string_view suf
 
 // Helper function to write binary data to a temporary file and return the path
 static fs::path writeToTempFile(const std::vector<uint8_t>& data, std::string_view suffix) {
-    auto tempPath = fs::temp_directory_path()
-                    / (std::string("crashdump_") + std::string(suffix) + "_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+    auto tempPath = platform::getTempPath() / fmt::format("crashdump_{}", suffix);
     std::ofstream out(tempPath, std::ios::binary);
     if(!out) {
         throw std::runtime_error("Failed to create temporary file: " + tempPath.string());
@@ -84,7 +84,7 @@ static std::string valueOr(const nlohmann::json& json, const std::string& key, c
 // Factory method implementation
 std::unique_ptr<CrashDump> CrashDump::fromTarFile(const fs::path& tarPath) {
     // First, extract metadata to determine platform
-    auto tempDir = fs::temp_directory_path() / ("crashdump_extract_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+    auto tempDir = platform::getTempPath() / "crashdump_extract";
     fs::create_directories(tempDir);
 
     auto metadataPath = tempDir / METADATA_FILENAME;
@@ -123,7 +123,7 @@ std::unique_ptr<CrashDump> CrashDump::fromTarFile(const fs::path& tarPath) {
 }
 
 std::vector<uint8_t> CrashDump::toBytes() const {
-    fs::path tempPath = fs::temp_directory_path() / ("crashdump_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+    auto tempPath = platform::getTempPath() / "crashdump_tobytes";
     toTar(tempPath);
     std::vector<uint8_t> bytes = readFileAsBinary(tempPath);
     fs::remove(tempPath);
@@ -131,7 +131,7 @@ std::vector<uint8_t> CrashDump::toBytes() const {
 }
 
 std::unique_ptr<CrashDump> CrashDump::fromBytes(const std::vector<uint8_t>& bytes) {
-    fs::path tempPath = fs::temp_directory_path() / ("crashdump_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+    auto tempPath = platform::getTempPath() / "crashdump_frombytes";
     std::ofstream out(tempPath, std::ios::binary);
     out.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
     out.close();
@@ -223,7 +223,7 @@ void CrashDumpRVC2::toTar(const fs::path& tarPath) const {
 }
 
 void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
-    auto tempDir = fs::temp_directory_path() / ("crashdump_rvc2_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+    auto tempDir = platform::getTempPath() / "crashdump_rvc2";
     fs::create_directories(tempDir);
 
     auto metadataPath = tempDir / METADATA_FILENAME;
@@ -293,7 +293,7 @@ void CrashDumpRVC4::toTar(const fs::path& tarPath) const {
 }
 
 void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
-    auto tempDir = fs::temp_directory_path() / ("crashdump_rvc4_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+    auto tempDir = platform::getTempPath() / "crashdump_rvc4";
     fs::create_directories(tempDir);
 
     auto metadataPath = tempDir / METADATA_FILENAME;
