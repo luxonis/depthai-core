@@ -38,14 +38,17 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // CrashDumpRVC2 and its nested types
     py::class_<CrashDumpRVC2, CrashDump, std::shared_ptr<CrashDumpRVC2>> crashDumpRVC2(m, "CrashDumpRVC2", DOC(dai, CrashDumpRVC2));
-    py::class_<CrashDumpRVC2::CrashReportCollection> crashReportCollection(crashDumpRVC2, "CrashReportCollection", DOC(dai, CrashDumpRVC2, CrashReportCollection));
+    py::class_<CrashDumpRVC2::CrashReportCollection> crashReportCollection(
+        crashDumpRVC2, "CrashReportCollection", DOC(dai, CrashDumpRVC2, CrashReportCollection));
     py::class_<CrashDumpRVC2::CrashReport> crashReport(crashDumpRVC2, "CrashReport", DOC(dai, CrashDumpRVC2, CrashReport));
-    py::class_<CrashDumpRVC2::CrashReport::ErrorSourceInfo> errorSourceInfo(crashReport, "ErrorSourceInfo", DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo));
+    py::class_<CrashDumpRVC2::CrashReport::ErrorSourceInfo> errorSourceInfo(
+        crashReport, "ErrorSourceInfo", DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo));
     py::class_<CrashDumpRVC2::CrashReport::ErrorSourceInfo::AssertContext> assertContext(
         errorSourceInfo, "AssertContext", DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo, AssertContext));
     py::class_<CrashDumpRVC2::CrashReport::ErrorSourceInfo::TrapContext> trapContext(
         errorSourceInfo, "TrapContext", DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo, TrapContext));
-    py::class_<CrashDumpRVC2::CrashReport::ThreadCallstack> threadCallstack(crashReport, "ThreadCallstack", DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack));
+    py::class_<CrashDumpRVC2::CrashReport::ThreadCallstack> threadCallstack(
+        crashReport, "ThreadCallstack", DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack));
     py::class_<CrashDumpRVC2::CrashReport::ThreadCallstack::CallstackContext> callstackContext(
         threadCallstack, "CallstackContext", DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, CallstackContext));
 
@@ -173,7 +176,8 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     // Bind CrashDumpRVC2::CrashReportCollection
     crashReportCollection.def(py::init<>())
         .def_readwrite("crashReports", &CrashDumpRVC2::CrashReportCollection::crashReports, DOC(dai, CrashDumpRVC2, CrashReportCollection, crashReports))
-        .def_readwrite("depthaiCommitHash", &CrashDumpRVC2::CrashReportCollection::depthaiCommitHash, DOC(dai, CrashDumpRVC2, CrashReportCollection, depthaiCommitHash))
+        .def_readwrite(
+            "depthaiCommitHash", &CrashDumpRVC2::CrashReportCollection::depthaiCommitHash, DOC(dai, CrashDumpRVC2, CrashReportCollection, depthaiCommitHash))
         .def_readwrite("deviceId", &CrashDumpRVC2::CrashReportCollection::deviceId, DOC(dai, CrashDumpRVC2, CrashReportCollection, deviceId));
 
     // Bind CrashDumpRVC2::CrashReport
@@ -187,7 +191,8 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     errorSourceInfo.def(py::init<>())
         .def_readwrite(
             "assertContext", &CrashDumpRVC2::CrashReport::ErrorSourceInfo::assertContext, DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo, assertContext))
-        .def_readwrite("trapContext", &CrashDumpRVC2::CrashReport::ErrorSourceInfo::trapContext, DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo, trapContext))
+        .def_readwrite(
+            "trapContext", &CrashDumpRVC2::CrashReport::ErrorSourceInfo::trapContext, DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo, trapContext))
         .def_readwrite("errorId", &CrashDumpRVC2::CrashReport::ErrorSourceInfo::errorId, DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo, errorId));
 
     assertContext.def(py::init<>())
@@ -197,8 +202,9 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("functionName",
                        &CrashDumpRVC2::CrashReport::ErrorSourceInfo::AssertContext::functionName,
                        DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo, AssertContext, functionName))
-        .def_readwrite(
-            "line", &CrashDumpRVC2::CrashReport::ErrorSourceInfo::AssertContext::line, DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo, AssertContext, line));
+        .def_readwrite("line",
+                       &CrashDumpRVC2::CrashReport::ErrorSourceInfo::AssertContext::line,
+                       DOC(dai, CrashDumpRVC2, CrashReport, ErrorSourceInfo, AssertContext, line));
 
     trapContext.def(py::init<>())
         .def_readwrite("trapNumber",
@@ -213,14 +219,18 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
 
     threadCallstack.def(py::init<>())
         .def_readwrite("threadId", &CrashDumpRVC2::CrashReport::ThreadCallstack::threadId, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, threadId))
-        .def_readwrite("threadName", &CrashDumpRVC2::CrashReport::ThreadCallstack::threadName, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, threadName))
-        .def_readwrite("stackBottom", &CrashDumpRVC2::CrashReport::ThreadCallstack::stackBottom, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, stackBottom))
+        .def_readwrite(
+            "threadName", &CrashDumpRVC2::CrashReport::ThreadCallstack::threadName, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, threadName))
+        .def_readwrite(
+            "stackBottom", &CrashDumpRVC2::CrashReport::ThreadCallstack::stackBottom, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, stackBottom))
         .def_readwrite("stackTop", &CrashDumpRVC2::CrashReport::ThreadCallstack::stackTop, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, stackTop))
-        .def_readwrite("stackPointer", &CrashDumpRVC2::CrashReport::ThreadCallstack::stackPointer, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, stackPointer))
+        .def_readwrite(
+            "stackPointer", &CrashDumpRVC2::CrashReport::ThreadCallstack::stackPointer, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, stackPointer))
         .def_readwrite("instructionPointer",
                        &CrashDumpRVC2::CrashReport::ThreadCallstack::instructionPointer,
                        DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, instructionPointer))
-        .def_readwrite("threadStatus", &CrashDumpRVC2::CrashReport::ThreadCallstack::threadStatus, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, threadStatus))
+        .def_readwrite(
+            "threadStatus", &CrashDumpRVC2::CrashReport::ThreadCallstack::threadStatus, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, threadStatus))
         .def_readwrite("callStack", &CrashDumpRVC2::CrashReport::ThreadCallstack::callStack, DOC(dai, CrashDumpRVC2, CrashReport, ThreadCallstack, callStack));
 
     callstackContext.def(py::init<>())

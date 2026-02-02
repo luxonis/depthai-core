@@ -69,7 +69,6 @@ std::string protocolToString(XLinkProtocol_t protocol) {
     }
 }
 
-
 std::string calculateSHA1(const std::string& input) {
     SHA1 checksum;
     checksum.update(input);

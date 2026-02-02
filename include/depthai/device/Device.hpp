@@ -38,7 +38,6 @@ class Device : public DeviceBase {
      */
     ~Device() override;
 
-
    private:
     void closeImpl() override;
 };

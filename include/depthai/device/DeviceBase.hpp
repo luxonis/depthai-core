@@ -266,15 +266,15 @@ class DeviceBase {
     virtual ~DeviceBase();
 
     /**
-    * @brief Get the platform of the connected device
-    * @return Platform Platform enum
-    */
+     * @brief Get the platform of the connected device
+     * @return Platform Platform enum
+     */
     Platform getPlatform() const;
 
     /**
-    * @brief Get the platform of the connected device as string
-    * @return std::string String representation of Platform
-    */
+     * @brief Get the platform of the connected device as string
+     * @return std::string String representation of Platform
+     */
     std::string getPlatformAsString() const;
 
     /**
