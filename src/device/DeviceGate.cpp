@@ -5,6 +5,7 @@
 
 // std
 #include <fstream>
+#include <limits>
 #include <optional>
 #include <string>
 
@@ -290,14 +291,15 @@ bool DeviceGate::USBImpl::createSession(
                                         {"library_version", build::VERSION},
                                         {"protected", exclusive}};
 
-    spdlog::debug("DeviceGate createSession: {}", createSessionBody.dump());
+    auto createSessionBodyStr = createSessionBody.dump();
+    spdlog::debug("DeviceGate createSession: {}", createSessionBodyStr);
     USBRequest_t request;
     request.RequestNum = CREATE_SESSION;
-    request.RequestSize = createSessionBody.dump().size();
+    request.RequestSize = static_cast<uint32_t>(createSessionBodyStr.size());
     if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
         return false;
     }
-    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)createSessionBody.dump().c_str(), createSessionBody.dump().size(), timeout) == X_LINK_ERROR) {
+    if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)createSessionBodyStr.c_str(), createSessionBodyStr.size(), timeout) == X_LINK_ERROR) {
         return false;
     }
 
@@ -333,14 +335,31 @@ bool DeviceGate::USBImpl::createSession(
             package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
         }
 
-        nlohmann::json uploadFwpBody = {{"sessionId", sessionId}, {"file", package}};
+        const auto sessionIdLen = static_cast<uint32_t>(sessionId.size());
+        const auto packageSize = static_cast<uint64_t>(package.size());
+        const auto payloadSize = static_cast<uint64_t>(sizeof(uint32_t)) + sessionIdLen + packageSize;
+        if(payloadSize > std::numeric_limits<uint32_t>::max()) {
+            spdlog::error("DeviceGate upload fwp payload too large: {}", payloadSize);
+            return false;
+        }
+
         request.RequestNum = UPLOAD_FWP;
-        request.RequestSize = uploadFwpBody.dump().size();
+        request.RequestSize = static_cast<uint32_t>(payloadSize);
         if(XLinkGateWrite(deviceInfo.name.c_str(), &request, sizeof(USBRequest_t), timeout) == X_LINK_ERROR) {
             return false;
         }
-        if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)uploadFwpBody.dump().c_str(), uploadFwpBody.dump().size(), timeout) == X_LINK_ERROR) {
+        if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)&sessionIdLen, sizeof(sessionIdLen), timeout) == X_LINK_ERROR) {
             return false;
+        }
+        if(sessionIdLen > 0) {
+            if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)sessionId.data(), sessionIdLen, timeout) == X_LINK_ERROR) {
+                return false;
+            }
+        }
+        if(!package.empty()) {
+            if(XLinkGateWrite(deviceInfo.name.c_str(), (void*)package.data(), package.size(), timeout) == X_LINK_ERROR) {
+                return false;
+            }
         }
 
         if(XLinkGateRead(deviceInfo.name.c_str(), &request, sizeof(request), timeout) == X_LINK_ERROR) {
