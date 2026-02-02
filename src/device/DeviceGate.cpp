@@ -338,9 +338,4 @@ std::optional<DeviceGate::CrashDump> DeviceGate::getCrashDump() {
     return std::nullopt;
 }
 
-// TODO(themarpe) - get all sessions, check if only one and not protected
-bool DeviceGate::isBootedNonExclusive() {
-    return true;
-}
-
 }  // namespace dai

@@ -52,8 +52,6 @@ class DeviceGate {
     Version getVersion();
     VersionInfo getAllVersion();
 
-    bool isBootedNonExclusive();
-
    private:
     // private
     DeviceInfo deviceInfo;
