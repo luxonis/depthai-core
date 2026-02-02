@@ -92,7 +92,7 @@ std::unique_ptr<CrashDump> CrashDump::load(const fs::path& tarPath) {
     fs::path tempDir = platform::getTempPath();
 
     fs::path metadataPath = tempDir / METADATA_FILENAME;
-    utility::untarFiles(tarPath, {METADATA_FILENAME}, {metadataPath});
+    utility::extractFiles(tarPath, {METADATA_FILENAME}, {metadataPath});
 
     if(!fs::exists(metadataPath)) {
         fs::remove_all(tempDir);
@@ -231,8 +231,8 @@ void CrashDumpRVC2::toTar(const fs::path& tarPath) const {
 
     // Combine everything into a tar file
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, rvc2dataPath};
-    std::vector<std::string> filesInTar = {METADATA_FILENAME, EXTRA_FILENAME, RVC2_DATA_FILENAME};
-    utility::tarFiles(tarPath, filesOnDisk, filesInTar);
+    std::vector<std::string> filesInArchive = {METADATA_FILENAME, EXTRA_FILENAME, RVC2_DATA_FILENAME};
+    utility::archiveFilesCompressed(tarPath, filesOnDisk, filesInArchive);
 
     // Cleanup temporary folder
     fs::remove_all(tempFolder);
@@ -246,9 +246,9 @@ void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
     fs::path dataPath = tempDir / RVC2_DATA_FILENAME;
 
     // Extract files
-    std::vector<std::string> filesInTar = {METADATA_FILENAME, EXTRA_FILENAME, RVC2_DATA_FILENAME};
+    std::vector<std::string> filesInArchive = {METADATA_FILENAME, EXTRA_FILENAME, RVC2_DATA_FILENAME};
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, dataPath};
-    utility::untarFiles(tarPath, filesInTar, filesOnDisk);
+    utility::extractFiles(tarPath, filesInArchive, filesOnDisk);
 
     // Read metadata
     if(!fs::exists(metadataPath)) {
@@ -310,8 +310,8 @@ void CrashDumpRVC4::toTar(const fs::path& tarPath) const {
 
     // Create tar
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, rvc4dataPath};
-    std::vector<std::string> filesInTar = {METADATA_FILENAME, EXTRA_FILENAME, RVC4_DATA_FILENAME};
-    utility::tarFiles(tarPath, filesOnDisk, filesInTar);
+    std::vector<std::string> filesInArchive = {METADATA_FILENAME, EXTRA_FILENAME, RVC4_DATA_FILENAME};
+    utility::archiveFilesCompressed(tarPath, filesOnDisk, filesInArchive);
 
     // Cleanup temporary folder
     fs::remove_all(tempFolder);
@@ -325,9 +325,9 @@ void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
     fs::path dataPath = tempDir / RVC4_DATA_FILENAME;
 
     // Extract files
-    std::vector<std::string> filesInTar = {METADATA_FILENAME, EXTRA_FILENAME, RVC4_DATA_FILENAME};
+    std::vector<std::string> filesInArchive = {METADATA_FILENAME, EXTRA_FILENAME, RVC4_DATA_FILENAME};
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, dataPath};
-    utility::untarFiles(tarPath, filesInTar, filesOnDisk);
+    utility::extractFiles(tarPath, filesInArchive, filesOnDisk);
 
     // Read metadata
     if(!fs::exists(metadataPath)) {

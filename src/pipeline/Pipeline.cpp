@@ -925,7 +925,7 @@ PipelineImpl::~PipelineImpl() {
         }
         Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
         try {
-            utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
+            utility::archiveFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
         } catch(const std::exception& e) {
             Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
         }

@@ -14,8 +14,11 @@
 namespace dai {
 namespace utility {
 
-void tarFiles(const std::filesystem::path& tarPath, const std::vector<std::filesystem::path>& filesOnDisk, const std::vector<std::string>& filesInTar) {
-    assert(filesOnDisk.size() == filesInTar.size());
+static void archiveFilesImpl(const std::filesystem::path& archivePath,
+                             const std::vector<std::filesystem::path>& filesOnDisk,
+                             const std::vector<std::string>& filesInArchive,
+                             bool gzip) {
+    assert(filesOnDisk.size() == filesInArchive.size());
 
     struct archive* a = nullptr;
     struct archive_entry* entry = nullptr;
@@ -23,16 +26,16 @@ void tarFiles(const std::filesystem::path& tarPath, const std::vector<std::files
     std::ifstream fileStream;
 
     a = archive_write_new();
-    archive_write_add_filter_gzip(a);  // compress tar file with gzip
+    if(gzip) archive_write_add_filter_gzip(a);  // add gzip filter if requested
     archive_write_set_format_pax_restricted(a);
 #ifdef _WIN32
-    archive_write_open_filename_w(a, tarPath.c_str());
+    archive_write_open_filename_w(a, archivePath.c_str());
 #else
-    archive_write_open_filename(a, tarPath.c_str());
+    archive_write_open_filename(a, archivePath.c_str());
 #endif
     for(size_t i = 0; i < filesOnDisk.size(); i++) {
         const auto& file = filesOnDisk[i];
-        const std::string& outFile = filesInTar[i];
+        const std::string& outFile = filesInArchive[i];
         entry = archive_entry_new();
         archive_entry_set_pathname(entry, outFile.c_str());
         archive_entry_set_filetype(entry, AE_IFREG);
@@ -56,19 +59,31 @@ void tarFiles(const std::filesystem::path& tarPath, const std::vector<std::files
     archive_write_free(a);
 }
 
-std::vector<std::string> filenamesInTar(const std::filesystem::path& tarPath) {
+void archiveFiles(const std::filesystem::path& archivePath,
+                  const std::vector<std::filesystem::path>& filesOnDisk,
+                  const std::vector<std::string>& filesInArchive) {
+    archiveFilesImpl(archivePath, filesOnDisk, filesInArchive, false);
+}
+
+void archiveFilesCompressed(const std::filesystem::path& archivePath,
+                            const std::vector<std::filesystem::path>& filesOnDisk,
+                            const std::vector<std::string>& filesInArchive) {
+    archiveFilesImpl(archivePath, filesOnDisk, filesInArchive, true);
+}
+
+std::vector<std::string> filenamesInArchive(const std::filesystem::path& archivePath) {
     std::vector<std::string> result;
 
-    struct archive* a;
-    struct archive_entry* entry;
+    struct archive* a = nullptr;
+    struct archive_entry* entry = nullptr;
 
     a = archive_read_new();
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
 #if defined(_WIN32)
-    int r = archive_read_open_filename_w(a, tarPath.c_str(), 10240);
+    int r = archive_read_open_filename_w(a, archivePath.c_str(), 10240);
 #else
-    int r = archive_read_open_filename(a, tarPath.c_str(), 10240);
+    int r = archive_read_open_filename(a, archivePath.c_str(), 10240);
 #endif
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
@@ -85,7 +100,9 @@ std::vector<std::string> filenamesInTar(const std::filesystem::path& tarPath) {
     return result;
 }
 
-void untarFiles(const std::filesystem::path& tarPath, const std::vector<std::string>& filesInTar, const std::vector<std::filesystem::path>& filesOnDisk) {
+void extractFiles(const std::filesystem::path& archivePath,
+                  const std::vector<std::string>& filesInArchive,
+                  const std::vector<std::filesystem::path>& filesOnDisk) {
     struct archive* a = nullptr;
     struct archive_entry* entry = nullptr;
     std::ofstream outFileStream;
@@ -94,17 +111,17 @@ void untarFiles(const std::filesystem::path& tarPath, const std::vector<std::str
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
 #if defined(_WIN32) && defined(_MSC_VER)
-    int r = archive_read_open_filename_w(a, tarPath.c_str(), 10240);
+    int r = archive_read_open_filename_w(a, archivePath.c_str(), 10240);
 #else
-    int r = archive_read_open_filename(a, tarPath.c_str(), 10240);
+    int r = archive_read_open_filename(a, archivePath.c_str(), 10240);
 #endif
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
     }
-    assert(filesInTar.size() == filesOnDisk.size());
+    assert(filesInArchive.size() == filesOnDisk.size());
     while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-        for(size_t i = 0; i < filesInTar.size(); i++) {
-            const auto& file = filesInTar[i];
+        for(size_t i = 0; i < filesInArchive.size(); i++) {
+            const auto& file = filesInArchive[i];
             if(file == archive_entry_pathname(entry)) {
                 const auto& outFile = filesOnDisk[i];
                 outFileStream.open(outFile, std::ios::binary);
