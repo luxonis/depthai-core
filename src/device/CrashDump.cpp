@@ -24,6 +24,9 @@ static constexpr const char* EXTRA_FILENAME = "extra.json";
 static constexpr const char* RVC2_DATA_FILENAME = "crash_reports.json";
 static constexpr const char* RVC4_DATA_FILENAME = "crash_dump.tar.gz";
 
+// JSON indentation level
+static constexpr int JSON_INDENT = 2;
+
 namespace fs = std::filesystem;
 
 static fs::path writeToTempFile(const char* content, std::streamsize size, std::string_view suffix) {
@@ -212,10 +215,9 @@ void CrashDumpRVC2::toTar(const fs::path& tarPath) const {
     writeMetadata(metadata);
 
     // Write to temporary files
-    constexpr size_t DEFAULT_INDENT = 2;
-    auto metadataPath = writeToTempFile(metadata.dump(DEFAULT_INDENT), "metadata");
-    auto extraPath = writeToTempFile(extra.dump(DEFAULT_INDENT), "extra");
-    auto rvc2dataPath = writeToTempFile(nlohmann::json(crashReports).dump(DEFAULT_INDENT), "data");
+    auto metadataPath = writeToTempFile(metadata.dump(JSON_INDENT), "metadata");
+    auto extraPath = writeToTempFile(extra.dump(JSON_INDENT), "extra");
+    auto rvc2dataPath = writeToTempFile(nlohmann::json(crashReports).dump(JSON_INDENT), "data");
 
     // Combine everything into a tar file
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, rvc2dataPath};
@@ -282,9 +284,8 @@ void CrashDumpRVC4::toTar(const fs::path& tarPath) const {
     metadata["originalFilename"] = filename;
 
     // Write temporary files
-    constexpr size_t DEFAULT_INDENT = 2;
-    auto metadataPath = writeToTempFile(metadata.dump(DEFAULT_INDENT), "metadata");
-    auto extraPath = writeToTempFile(extra.dump(DEFAULT_INDENT), "extra");
+    auto metadataPath = writeToTempFile(metadata.dump(JSON_INDENT), "metadata");
+    auto extraPath = writeToTempFile(extra.dump(JSON_INDENT), "extra");
     auto rvc4dataPath = writeToTempFile(data, "data");
 
     // Create tar
