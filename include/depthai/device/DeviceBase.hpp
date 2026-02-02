@@ -811,7 +811,7 @@ class DeviceBase {
      *
      * @returns True if the device has crashed (watchdog timeout detected), false otherwise
      */
-    bool hasCrashed();
+    bool hasCrashed() const;
 
     /**
      * Crashes the device

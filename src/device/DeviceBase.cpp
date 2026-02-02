@@ -605,7 +605,7 @@ bool DeviceBase::isClosed() const {
     return closed || !watchdogRunning;
 }
 
-bool DeviceBase::hasCrashed() {
+bool DeviceBase::hasCrashed() const {
     return crashed;  // buffered value
 }
 
