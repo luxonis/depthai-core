@@ -17,7 +17,7 @@ with dai.Pipeline() as pipeline:
     benchmarkIn = pipeline.create(dai.node.BenchmarkIn)
     benchmarkIn.setRunOnHost(True)
     benchmarkIn.sendReportEveryNMessages(FPS)
-    
+
     imageManip = pipeline.create(dai.node.ImageManip)
     imageManip.initialConfig.setOutputSize(250, 250)
     imageManip.setMaxOutputFrameSize(int(250* 250 * 1.6))

@@ -13,7 +13,7 @@ with dai.Pipeline() as pipeline:
     nnArchive = dai.NNArchive(nnArchivePath)
     inputSize = nnArchive.getInputSize()
     cameraNode = pipeline.create(dai.node.Camera).build()
-    
+
     # Configure the ImageManip as in HFR mode requesting arbitrary outputs is not yet supported
     cameraOutput = cameraNode.requestOutput((1280, 720), fps=FPS)
     imageManip = pipeline.create(dai.node.ImageManip)
