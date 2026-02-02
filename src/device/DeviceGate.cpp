@@ -137,9 +137,8 @@ Version DeviceGate::HTTPImpl::getVersion() {
     if(res && res->status == 200) {
         auto versionStr = nlohmann::json::parse(res->body)["version_gate"].get<std::string>();
         return Version{versionStr};
-    } else {
-        return Version{0, 0, 0};
     }
+    return Version{0, 0, 0};
 }
 
 Version DeviceGate::USBImpl::getVersion() {
@@ -183,7 +182,6 @@ DeviceGate::VersionInfo DeviceGate::HTTPImpl::getAllVersion() {
         info.os = result.value("version_os", "");
         return info;
     }
-
     return {};
 }
 
@@ -230,53 +228,57 @@ bool DeviceGate::HTTPImpl::createSession(
 
     spdlog::debug("DeviceGate createSession: {}", createSessionBody.dump());
 
-    auto res = pimpl->cli->Post(sessionsEndpoint.c_str(), createSessionBody.dump(), "application/json");
-    // Parse response
-    if(res->status != 200) {
-        spdlog::warn("DeviceGate createSession not successful - status: {}, error: {}", res->status, res->body);
-        return false;
-    }
-    auto resp = nlohmann::json::parse(res->body);
-    spdlog::debug("DeviceGate createSession response: {}", resp.dump());
-
-    // Retrieve sessionId
-    sessionId = resp["id"];
-    bool fwpExists = resp["fwp_exists"].get<bool>();
-
-    if(!fwpExists) {
-        std::vector<uint8_t> package;
-        std::string path;
-        if(!path.empty()) {
-            std::ifstream fwStream(path, std::ios::binary);
-            if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
-            package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
-        } else {
-            package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
-        }
-
-        // TODO(themarpe) - Inefficient
-        httplib::MultipartFormDataItems items = {
-            {"file", std::string(package.begin(), package.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
-        };
-
-        std::string url = fmt::format("{}/{}/fwp", sessionsEndpoint, sessionId);
-        if(auto res = pimpl->cli->Post(url.c_str(), items)) {
-            if(res.value().status == 200) {
-                spdlog::debug("DeviceGate upload fwp successful");
-                sessionCreated = true;
-                return true;
-            } else {
-                spdlog::warn("DeviceGate upload fwp not successful - status: {}, error: {}", res->status, res->body);
-                return false;
-            }
-
-        } else {
-            spdlog::warn("DeviceGate upload fwp not successful - got no response");
+    if(auto res = pimpl->cli->Post(sessionsEndpoint.c_str(), createSessionBody.dump(), "application/json")) {
+        // Parse response
+        if(res->status != 200) {
+            spdlog::warn("DeviceGate createSession not successful - status: {}, error: {}", res->status, res->body);
             return false;
         }
+        auto resp = nlohmann::json::parse(res->body);
+        spdlog::debug("DeviceGate createSession response: {}", resp.dump());
+
+        // Retrieve sessionId
+        sessionId = resp["id"];
+        bool fwpExists = resp["fwp_exists"].get<bool>();
+
+        if(!fwpExists) {
+            std::vector<uint8_t> package;
+            std::string path;
+            if(!path.empty()) {
+                std::ifstream fwStream(path, std::ios::binary);
+                if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
+                package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
+            } else {
+                package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
+            }
+
+            // TODO(themarpe) - Inefficient
+            httplib::MultipartFormDataItems items = {
+                {"file", std::string(package.begin(), package.end()), "depthai-device-kb-fwp.tar.xz", "application/octet-stream"},
+            };
+
+            std::string url = fmt::format("{}/{}/fwp", sessionsEndpoint, sessionId);
+            if(auto res = pimpl->cli->Post(url.c_str(), items)) {
+                if(res.value().status == 200) {
+                    spdlog::debug("DeviceGate upload fwp successful");
+                    sessionCreated = true;
+                    return true;
+                } else {
+                    spdlog::warn("DeviceGate upload fwp not successful - status: {}, error: {}", res->status, res->body);
+                    return false;
+                }
+
+            } else {
+                spdlog::warn("DeviceGate upload fwp not successful - got no response");
+                return false;
+            }
+        }
+        sessionCreated = true;
+        return true;
+    } else {
+        spdlog::warn("DeviceGate createSession not successful - got no response");
     }
-    sessionCreated = true;
-    return true;
+    return false;
 }
 
 bool DeviceGate::USBImpl::createSession(
@@ -358,13 +360,18 @@ bool DeviceGate::startSession() {
 
 bool DeviceGate::HTTPImpl::startSession(std::string sessionId) {
     std::string url = fmt::format("{}/{}/start", sessionsEndpoint, sessionId);
-    auto res = pimpl->cli->Post(url.c_str());
-    if(res->status != 200) {
-        spdlog::warn("DeviceGate start fwp not successful - status: {}, error: {}", res->status, res->body);
-        return false;
+    if(auto res = pimpl->cli->Post(url.c_str())) {
+        if(res->status != 200) {
+            spdlog::warn("DeviceGate start fwp not successful - status: {}, error: {}", res->status, res->body);
+            return false;
+        }
+        spdlog::debug("DeviceGate start fwp successful");
+        return true;
+    } else {
+        spdlog::debug("DeviceGate start fwp not successful - got no response");
     }
-    spdlog::debug("DeviceGate start fwp successful");
-    return true;
+
+    return false;
 }
 
 bool DeviceGate::USBImpl::startSession(std::string sessionId) {
@@ -405,13 +412,18 @@ bool DeviceGate::stopSession() {
 
 bool DeviceGate::HTTPImpl::stopSession(std::string sessionId) {
     std::string url = fmt::format("{}/{}/stop", sessionsEndpoint, sessionId);
-    auto res = pimpl->cli->Post(url.c_str());
-    if(res->status != 200) {
-        spdlog::warn("DeviceGate stopSession not successful - status: {}, error: {}", res->status, res->body);
-        return false;
+    if(auto res = pimpl->cli->Post(url.c_str())) {
+        if(res->status != 200) {
+            spdlog::warn("DeviceGate stopSession not successful - status: {}, error: {}", res->status, res->body);
+            return false;
+        }
+        spdlog::debug("DeviceGate stopSession successful");
+        return true;
+    } else {
+        spdlog::error("DeviceGate stopSession not successful - got no response");
     }
-    spdlog::debug("DeviceGate stopSession successful");
-    return true;
+
+    return false;
 }
 
 bool DeviceGate::USBImpl::stopSession(std::string sessionId) {
@@ -451,13 +463,17 @@ bool DeviceGate::destroySession() {
 
 bool DeviceGate::HTTPImpl::destroySession(std::string sessionId) {
     std::string url = fmt::format("{}/{}/destroy", sessionsEndpoint, sessionId);
-    auto res = pimpl->cli->Post(url.c_str());
-    if(res->status != 200) {
-        spdlog::warn("DeviceGate destroySession not successful - status: {}, error: {}", res->status, res->body);
-        return false;
+    if(auto res = pimpl->cli->Post(url.c_str())) {
+        if(res->status != 200) {
+            spdlog::warn("DeviceGate destroySession not successful - status: {}, error: {}", res->status, res->body);
+            return false;
+        }
+        spdlog::debug("DeviceGate destroySession successful");
+        return true;
+    } else {
+        spdlog::error("DeviceGate destroySession not successful - got no response");
     }
-    spdlog::debug("DeviceGate destroySession successful");
-    return true;
+    return false;
 }
 
 bool DeviceGate::USBImpl::destroySession(std::string sessionId) {
@@ -492,13 +508,17 @@ bool DeviceGate::deleteSession() {
 
 bool DeviceGate::HTTPImpl::deleteSession(std::string sessionId) {
     std::string url = fmt::format("{}/{}", sessionsEndpoint, sessionId);
-    auto res = pimpl->cli->Delete(url.c_str());
-    if(res->status != 200) {
-        spdlog::warn("DeviceGate deleteSession not successful - status: {}, error: {}", res->status, res->body);
-        return false;
+    if(auto res = pimpl->cli->Delete(url.c_str())) {
+        if(res->status != 200) {
+            spdlog::warn("DeviceGate deleteSession not successful - status: {}, error: {}", res->status, res->body);
+            return false;
+        }
+        spdlog::debug("DeviceGate deleteSession successful");
+        return true;
+    } else {
+        spdlog::error("DeviceGate deleteSession not successful - got no response");
     }
-    spdlog::debug("DeviceGate deleteSession successful");
-    return true;
+    return false;
 }
 
 bool DeviceGate::USBImpl::deleteSession(std::string sessionId) {
@@ -534,37 +554,36 @@ DeviceGate::SessionState DeviceGate::getState() {
 DeviceGate::SessionState DeviceGate::HTTPImpl::getState(std::string sessionId) {
     auto sessionState = SessionState::CREATED;
     std::string url = fmt::format("{}/{}", sessionsEndpoint, sessionId);
+    if(auto res = pimpl->cli->Get(url.c_str())) {
+        if(res->status != 200) {
+            spdlog::warn("DeviceGate getState not successful - status: {}, error: {}", res->status, res->body);
+            return SessionState::ERROR_STATE;
+        }
+        auto resp = nlohmann::json::parse(res->body);
+        spdlog::trace("DeviceGate getState response: {}", resp.dump());
 
-    auto res = pimpl->cli->Get(url.c_str());
-
-    if(res->status != 200) {
-        spdlog::warn("DeviceGate getState not successful - status: {}, error: {}", res->status, res->body);
-        return SessionState::ERROR_STATE;
-    }
-
-    auto resp = nlohmann::json::parse(res->body);
-    spdlog::trace("DeviceGate getState response: {}", resp.dump());
-
-    std::string sessionStateStr = resp["state"];
-
-    if(sessionStateStr == "CREATED") {
-        sessionState = SessionState::CREATED;
-    } else if(sessionStateStr == "RUNNING") {
-        sessionState = SessionState::RUNNING;
-    } else if(sessionStateStr == "STOPPED") {
-        sessionState = SessionState::STOPPED;
-    } else if(sessionStateStr == "STOPPING") {
-        sessionState = SessionState::STOPPING;
-    } else if(sessionStateStr == "CRASHED") {
-        sessionState = SessionState::CRASHED;
-    } else if(sessionStateStr == "DESTROYED") {
-        sessionState = SessionState::DESTROYED;
+        std::string sessionStateStr = resp["state"];
+        if(sessionStateStr == "CREATED") {
+            sessionState = SessionState::CREATED;
+        } else if(sessionStateStr == "RUNNING") {
+            sessionState = SessionState::RUNNING;
+        } else if(sessionStateStr == "STOPPED") {
+            sessionState = SessionState::STOPPED;
+        } else if(sessionStateStr == "STOPPING") {
+            sessionState = SessionState::STOPPING;
+        } else if(sessionStateStr == "CRASHED") {
+            sessionState = SessionState::CRASHED;
+        } else if(sessionStateStr == "DESTROYED") {
+            sessionState = SessionState::DESTROYED;
+        } else {
+            spdlog::warn("DeviceGate getState not successful - unknown session state: {}", sessionStateStr);
+            sessionState = SessionState::ERROR_STATE;
+        }
+        return sessionState;
     } else {
-        spdlog::warn("DeviceGate getState not successful - unknown session state: {}", sessionStateStr);
-        sessionState = SessionState::ERROR_STATE;
+        spdlog::warn("DeviceGate getState not successful - got no response");
     }
-
-    return sessionState;
+    return SessionState::ERROR_STATE;
 }
 
 DeviceGate::SessionState DeviceGate::USBImpl::getState(std::string sessionId) {
@@ -622,16 +641,21 @@ std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileU
 }
 
 std::optional<std::vector<uint8_t>> DeviceGate::HTTPImpl::getFile(const std::string& fileUrl, std::string& filename) {
-    auto res = pimpl->cli->Get(fileUrl.c_str());
-    if(res->status == 200) {
-        filename = res->get_header_value("X-Filename");
-        // Convert the response body to a vector of uint8_t
-        std::vector<uint8_t> fileData(res->body.begin(), res->body.end());
+    // Send a GET request to the server
+    if(auto res = pimpl->cli->Get(fileUrl.c_str())) {
+        if(res->status == 200) {
+            filename = res->get_header_value("X-Filename");
+            // Convert the response body to a vector of uint8_t
+            std::vector<uint8_t> fileData(res->body.begin(), res->body.end());
 
-        spdlog::debug("File download successful. Filename: {}", filename);
-        return fileData;
+            spdlog::debug("File download successful. Filename: {}", filename);
+            return fileData;
+        } else {
+            spdlog::warn("File download not successful - status: {}, error: {}", res->status, res->body);
+            return std::nullopt;
+        }
     } else {
-        spdlog::warn("File download not successful - status: {}, error: {}", res->status, res->body);
+        spdlog::warn("File download not successful - got no response");
         return std::nullopt;
     }
 }

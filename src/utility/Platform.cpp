@@ -40,7 +40,7 @@ uint32_t getIPv4AddressAsBinary(std::string address) {
     }
 
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    #if (_WIN32_WINNT <= 0x0501)
+    #if(_WIN32_WINNT <= 0x0501)
     binary = inet_addr(address.c_str());  // for XP
     #else
     inet_pton(AF_INET, address.c_str(), &binary);  // for Vista or higher
@@ -202,7 +202,7 @@ void FSLock::lock() {
         throw std::runtime_error("Failed to open file: " + lockPath.string());
     }
 
-    struct flock fl{};
+    struct flock fl {};
     fl.l_type = F_WRLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
@@ -227,7 +227,7 @@ void FSLock::unlock() {
     CloseHandle(handle);
     handle = INVALID_HANDLE_VALUE;
 #else
-    struct flock fl{};
+    struct flock fl {};
     fl.l_type = F_UNLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
