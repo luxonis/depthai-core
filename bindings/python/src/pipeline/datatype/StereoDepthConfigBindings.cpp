@@ -344,6 +344,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack) {
         .def("getFiltersComputeBackend", &StereoDepthConfig::getFiltersComputeBackend, DOC(dai, StereoDepthConfig, getFiltersComputeBackend));
     m.attr("StereoDepthConfig").attr("AlgorithmControl") = algorithmControl;
     m.attr("StereoDepthConfig").attr("PostProcessing") = postProcessing;
+    m.attr("StereoDepthConfig").attr("PostProcessing").attr("Filter") = filterEnum;
     m.attr("StereoDepthConfig").attr("CensusTransform") = censusTransform;
     m.attr("StereoDepthConfig").attr("CostMatching") = costMatching;
     m.attr("StereoDepthConfig").attr("CostAggregation") = costAggregation;

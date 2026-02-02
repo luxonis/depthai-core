@@ -63,4 +63,4 @@ class RerunNode(dai.node.ThreadedHostNode):
                     points, colors = pclGrndData.getPointsRGB()
                     rr.log("world/ground_pcl", rr.Points3D(points, colors=colors, radii=[0.01]))
                 if mapData is not None:
-                    rr.log("map", rr.Image(mapData.getCvFrame()))
+                    rr.log("map", rr.Image(mapData.map.getCvFrame()))

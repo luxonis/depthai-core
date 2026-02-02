@@ -25,6 +25,7 @@ class ImgAnnotationsGenerator(dai.node.ThreadedHostNode):
             detections = nnData.detections
             imgAnnt = dai.ImgAnnotations()
             imgAnnt.setTimestamp(nnData.getTimestamp())
+            imgAnnt.setTransformation(nnData.getTransformation())
             annotation = dai.ImgAnnotation()
             for detection in detections:
                 pointsAnnotation = dai.PointsAnnotation()
@@ -85,4 +86,3 @@ with dai.Pipeline() as pipeline:
         if remoteConnector.waitKey(1) == ord("q"):
             pipeline.stop()
             break
-
