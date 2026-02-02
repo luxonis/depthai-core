@@ -541,8 +541,11 @@ void DeviceBase::closeImpl() {
     if(monitorThread.joinable()) monitorThread.join();
 
     // If the device was operated through gate, wait for the session to end
-    if(gate && crashed) {
-        collectAndLogCrashDump(this);
+    if(gate && waitForGate) {
+        if(crashed) {
+            collectAndLogCrashDump(this);
+        }
+        gate->waitForSessionEnd();
     }
 
     // Close rpcStream

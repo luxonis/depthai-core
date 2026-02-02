@@ -5,7 +5,11 @@
 // project
 #include "depthai/build/version.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "utility/Environment.hpp"
 #include "utility/Platform.hpp"
+
+// third party
+#include "spdlog/spdlog.h"
 
 namespace dai {
 
@@ -30,6 +34,13 @@ CrashDumpManager::CrashDumpManager(DeviceBase* devicePtr) : devicePtr(devicePtr)
 }
 
 std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
+    // Collect crashdumps only when enabled
+    auto crashDumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
+    if(crashDumpPathStr == "0") {
+        spdlog::warn("Firmware crashed but DEPTHAI_CRASHDUMP is set to 0, the crash dump will not be saved.");
+        return nullptr;
+    }
+
     // Collect the correct crash dump based on the platform
     std::unique_ptr<CrashDump> dump;
     Platform platform = this->devicePtr->getPlatform();
@@ -88,6 +99,8 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectDumpRVC4() {
     if(!this->devicePtr->gate) {
         throw std::runtime_error("RVC4 device has no gate, cannot collect crashdump");
     }
+
+    // Collect the crash dump from the gate
     auto dump = std::make_unique<CrashDumpRVC4>();
     auto gateDump = this->devicePtr->gate->getCrashDump();
     if(gateDump) {
