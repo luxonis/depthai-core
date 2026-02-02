@@ -58,21 +58,23 @@ class ManyToOneNotifier {
             throw std::runtime_error("ManyToOneNotifier: Multiple threads waiting on the same notifier is not supported");
         }
 
+        struct WaitingGuard {
+            std::atomic<bool>& waitingRef;
+            ~WaitingGuard() { waitingRef = false; }
+        } guard{waiting};
+
         try {
             auto deadline = std::chrono::steady_clock::now() + timeout;
 
             while(!pred()) {
                 if(!semaphore.tryAcquireUntil(deadline)) {
-                    waiting = false;
                     return pred();
                 }
             }
             return true;
         } catch(...) {
-            waiting = false;
             throw;
         }
-        waiting = false;
     }
 };
 
