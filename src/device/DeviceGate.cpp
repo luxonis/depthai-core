@@ -224,7 +224,8 @@ bool DeviceGate::HTTPImpl::createSession(
                                         // {"fwp_checksum", fwpChecksum},
                                         {"fwp_version", version},
                                         {"library_version", build::VERSION},
-                                        {"protected", exclusive}};
+                                        {"protected", exclusive},
+                                        {"stop_qmmf_server", true}};
 
     spdlog::debug("DeviceGate createSession: {}", createSessionBody.dump());
 

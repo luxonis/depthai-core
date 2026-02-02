@@ -1,8 +1,11 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
+#include <algorithm>
 #include <magic_enum/magic_enum.hpp>
+#include <optional>
 #include <stdexcept>
 
+#include "capabilities/ImgFrameCapability.hpp"
 #include "common/ModelType.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
@@ -23,23 +26,20 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(Node::Output& input, const N
     return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, NNModelDescription modelDesc, std::optional<float> fps) {
-    // Download model from zoo
-    if(modelDesc.platform.empty()) {
-        DAI_CHECK(getDevice() != nullptr, "Device is not set.");
-        modelDesc.platform = getDevice()->getPlatformAsString();
-    }
-    auto path = getModelFromZoo(modelDesc);
-    auto modelType = dai::model::readModelType(path);
-    DAI_CHECK(modelType == dai::model::ModelType::NNARCHIVE,
-              "Model from zoo is not NNArchive - it needs to be a NNArchive to use build(Camera, NNModelDescription, float) method");
-    auto nnArchive = dai::NNArchive(path);
-    return build(input, nnArchive, fps);
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input,
+                                                    const Model& model,
+                                                    std::optional<float> fps,
+                                                    std::optional<dai::ImgResizeMode> resizeMode) {
+    ImgFrameCapability cap;
+    if(fps.has_value()) cap.fps.value = *fps;
+    if(resizeMode.has_value()) cap.resizeMode = *resizeMode;
+
+    return build(input, model, cap);
 }
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, NNArchive nnArchive, std::optional<float> fps) {
-    setNNArchive(nnArchive);
-    auto cap = getFrameCapability(nnArchive, fps);
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera>& input, const Model& model, const ImgFrameCapability& capability) {
+    decodeModel(model);
+    ImgFrameCapability cap = getFrameCapability(*nnArchive, capability);
     auto* camInput = input->requestOutput(cap, false);
     DAI_CHECK_V(camInput != nullptr, "Camera does not have output with requested capabilities");
     camInput->link(this->input);
@@ -47,14 +47,12 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Camera
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
-    auto nnArchive = createNNArchive(modelDesc);
-    return build(input, nnArchive, fps);
-}
+std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, const Model& model, std::optional<float> fps) {
+    decodeModel(model);
 
-std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
-    setNNArchive(nnArchive);
-    auto cap = getFrameCapability(nnArchive, fps);
+    ImgFrameCapability cap;
+    if(fps.has_value()) cap.fps.value = *fps;
+    cap = getFrameCapability(*nnArchive, cap);
     input->setOutFrameType(cap.type.value());
     if(fps.has_value()) {
         input->setFps(*fps);
@@ -65,7 +63,25 @@ std::shared_ptr<NeuralNetwork> NeuralNetwork::build(const std::shared_ptr<Replay
 }
 #endif
 
-ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, std::optional<float> fps) {
+void NeuralNetwork::decodeModel(const Model& model) {
+    std::optional<NNArchive> nnArchive;
+
+    if(const auto* s = std::get_if<std::string>(&model)) {
+        NNModelDescription description;
+        description.model = *s;
+        nnArchive = createNNArchive(description);
+    } else if(const auto* desc = std::get_if<NNModelDescription>(&model)) {
+        NNModelDescription tmpDesc = *desc;
+        nnArchive = createNNArchive(tmpDesc);
+    } else if(const auto* archive = std::get_if<NNArchive>(&model)) {
+        nnArchive = *archive;
+    }
+
+    DAI_CHECK_V(nnArchive.has_value(), "Unsupported model type passed to NeuralNetwork::build");
+    setNNArchive(*nnArchive);
+}
+
+ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, std::optional<ImgFrameCapability> expectedCapability) {
     const auto& nnArchiveCfg = nnArchive.getVersionedConfig();
 
     DAI_CHECK_V(nnArchiveCfg.getVersion() == NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
@@ -88,9 +104,7 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
     auto inputType = configV1.model.inputs[0].preprocessing.daiType;
     if(inputType.has_value()) {
         auto convertedInputType = magic_enum::enum_cast<ImgFrame::Type>(inputType.value());
-        if(!convertedInputType.has_value()) {
-            DAI_CHECK_V(false, "Unsupported input type: {}", inputType.value());
-        }
+        DAI_CHECK_V(convertedInputType.has_value(), "Unsupported input type: {}", inputType.value());
         type = convertedInputType.value();
     } else {
         if(platform == Platform::RVC2 || platform == Platform::RVC3) {
@@ -102,9 +116,12 @@ ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive,
         }
     }
     auto cap = ImgFrameCapability();
+    if(expectedCapability.has_value()) {
+        cap = *expectedCapability;
+    }
     cap.size.value = std::pair(*inputWidth, *inputHeight);
     cap.type = type;
-    cap.fps.value = fps;
+
     return cap;
 }
 
@@ -187,7 +204,9 @@ void NeuralNetwork::setNNArchiveSuperblob(const NNArchive& nnArchive, int numSha
 }
 
 void NeuralNetwork::setNNArchiveOther(const NNArchive& nnArchive) {
-    setModelPath(nnArchive.getModelPath().value());
+    DAI_CHECK_V(nnArchive.getModelType() == model::ModelType::DLC || nnArchive.getModelType() == model::ModelType::OTHER, "NNArchive type is not DLC or OTHER");
+    DAI_CHECK_V(nnArchive.getOtherModelFormat().has_value(), "Expected model format for DLC/OTHER type");
+    setOtherModelFormat(std::move(nnArchive.getOtherModelFormat().value()));
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
@@ -214,6 +233,18 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     properties.modelSource = Properties::ModelSource::BLOB;
 }
 
+void NeuralNetwork::setOtherModelFormat(std::vector<uint8_t> otherModel) {
+    auto asset = assetManager.set("__model", std::move(otherModel));
+    properties.modelUri = asset->getRelativeUri();
+    properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
+}
+
+void NeuralNetwork::setOtherModelFormat(const std::filesystem::path& path) {
+    auto modelAsset = assetManager.set("__model", path);
+    properties.modelUri = modelAsset->getRelativeUri();
+    properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
+}
+
 void NeuralNetwork::setModelPath(const std::filesystem::path& modelPath) {
     switch(model::readModelType(modelPath)) {
         case model::ModelType::BLOB:
@@ -226,11 +257,9 @@ void NeuralNetwork::setModelPath(const std::filesystem::path& modelPath) {
             setNNArchive(NNArchive(modelPath));
             break;
         case model::ModelType::DLC:
-        case model::ModelType::OTHER: {
-            auto modelAsset = assetManager.set("__model", modelPath);
-            properties.modelUri = modelAsset->getRelativeUri();
-            properties.modelSource = Properties::ModelSource::CUSTOM_MODEL;
-        } break;
+        case model::ModelType::OTHER:
+            setOtherModelFormat(modelPath);
+            break;
     }
 }
 
@@ -260,6 +289,10 @@ void NeuralNetwork::setBackendProperties(std::map<std::string, std::string> prop
 
 int NeuralNetwork::getNumInferenceThreads() {
     return properties.numThreads;
+}
+
+void NeuralNetwork::setModelFromDeviceZoo(DeviceModelZoo model) {
+    properties.deviceModel = model;
 }
 
 }  // namespace node

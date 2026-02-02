@@ -40,8 +40,6 @@ int main() {
             throw std::runtime_error("SuperBlob should not be null for superblob type");
         }
 
-        std::cout << "Superblob path: " << archive.getModelPath().value() << std::endl;
-
         if(archive.getBlob()) {
             throw std::runtime_error("Blob should be null for superblob type");
         }

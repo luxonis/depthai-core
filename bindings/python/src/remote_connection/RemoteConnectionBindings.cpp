@@ -53,6 +53,19 @@ void RemoteConnectionBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, RemoteConnection, removeTopic))
         .def("registerPipeline", &RemoteConnection::registerPipeline, py::arg("pipeline"), DOC(dai, RemoteConnection, registerPipeline))
         .def("registerService", &RemoteConnection::registerService, py::arg("serviceName"), py::arg("callback"), DOC(dai, RemoteConnection, registerService))
+        .def(
+            "registerBinaryService",
+            [](RemoteConnection& self, const std::string& serviceName, py::object callback) {
+                self.registerBinaryService(serviceName, [callback](const std::vector<uint8_t>& data) -> std::vector<uint8_t> {
+                    py::gil_scoped_acquire acquire;
+                    py::object result = callback(py::bytes(reinterpret_cast<const char*>(data.data()), data.size()));
+                    py::buffer_info buf(py::buffer(result).request());
+                    return std::vector<uint8_t>(static_cast<uint8_t*>(buf.ptr), static_cast<uint8_t*>(buf.ptr) + buf.size);
+                });
+            },
+            py::arg("serviceName"),
+            py::arg("callback"),
+            DOC(dai, RemoteConnection, registerBinaryService))
         .def("waitKey", &RemoteConnection::waitKey, py::arg("delay"), py::call_guard<py::gil_scoped_release>(), DOC(dai, RemoteConnection, waitKey));
 #else
     // Define a placeholder class for RemoteConnection

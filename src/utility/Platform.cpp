@@ -5,15 +5,20 @@
 
 // Platform specific
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    #include <iphlpapi.h>
     #include <ws2tcpip.h>
     #ifdef _MSC_VER
         #pragma comment(lib, "Ws2_32.lib")
+        #pragma comment(lib, "IPHLPAPI.lib")
     #endif
 #else
     #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__bsdi__) || defined(__DragonFly__)
         #include <netinet/in.h>
     #endif
     #include <arpa/inet.h>
+    #include <ifaddrs.h>
+
+    #include <cstring>
 #endif
 
 #ifdef __linux__
@@ -62,6 +67,80 @@ std::string getIPv4AddressAsString(std::uint32_t binary) {
 #endif
 
     return {address};
+}
+
+std::string getLocalIpAddress() {
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    std::string result = "127.0.0.1";
+
+    ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER;
+    ULONG outBufLen = 0;
+
+    // First call to get required buffer size
+    GetAdaptersAddresses(AF_INET, flags, nullptr, nullptr, &outBufLen);
+    if(outBufLen == 0) {
+        return result;
+    }
+
+    std::unique_ptr<BYTE[]> buffer(new BYTE[outBufLen]);
+    PIP_ADAPTER_ADDRESSES pAddresses = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(buffer.get());
+
+    if(GetAdaptersAddresses(AF_INET, flags, nullptr, pAddresses, &outBufLen) != NO_ERROR) {
+        return result;
+    }
+
+    for(auto* pCurrAddresses = pAddresses; pCurrAddresses; pCurrAddresses = pCurrAddresses->Next) {
+        // Skip adapters that are not up
+        if(pCurrAddresses->OperStatus != IfOperStatusUp) {
+            continue;
+        }
+
+        // Skip loopback adapters
+        if(pCurrAddresses->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
+            continue;
+        }
+
+        for(auto* pUnicast = pCurrAddresses->FirstUnicastAddress; pUnicast; pUnicast = pUnicast->Next) {
+            auto* addr = pUnicast->Address.lpSockaddr;
+            if(addr->sa_family == AF_INET) {
+                char ipStr[INET_ADDRSTRLEN] = {0};
+                auto* sa_in = reinterpret_cast<sockaddr_in*>(addr);
+                InetNtopA(AF_INET, &(sa_in->sin_addr), ipStr, sizeof(ipStr));
+                std::string ip(ipStr);
+                if(ip != "127.0.0.1") {
+                    return ip;
+                }
+            }
+        }
+    }
+
+    return result;
+#else
+    ifaddrs* ifaddr = nullptr;
+    if(getifaddrs(&ifaddr) == -1) {
+        return "127.0.0.1";
+    }
+
+    std::string result = "127.0.0.1";
+    for(auto* ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
+        if(!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) {
+            continue;
+        }
+
+        auto* sin = reinterpret_cast<sockaddr_in*>(ifa->ifa_addr);
+        char ipStr[INET_ADDRSTRLEN] = {0};
+        inet_ntop(AF_INET, &(sin->sin_addr), ipStr, sizeof(ipStr));
+        std::string ip(ipStr);
+
+        if(ip != "127.0.0.1" && std::strncmp(ifa->ifa_name, "lo", 2) != 0) {
+            result = ip;
+            break;
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    return result;
+#endif
 }
 
 void setThreadName(JoiningThread& thread, const std::string& name) {

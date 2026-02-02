@@ -405,12 +405,21 @@ int Camera::getMaxSizePoolIsp() const {
     return properties.maxSizePoolIsp;
 }
 
-int Camera::getOutputsNumFramesPool() const {
+std::optional<int> Camera::getOutputsNumFramesPool() const {
     return properties.numFramesPoolOutputs;
 }
 
-int Camera::getOutputsMaxSizePool() const {
+std::optional<size_t> Camera::getOutputsMaxSizePool() const {
     return properties.maxSizePoolOutputs;
+}
+
+std::shared_ptr<Camera> Camera::setImageOrientation(CameraImageOrientation imageOrientation) {
+    properties.imageOrientation = imageOrientation;
+    return std::dynamic_pointer_cast<Camera>(shared_from_this());
+}
+
+CameraImageOrientation Camera::getImageOrientation() const {
+    return properties.imageOrientation;
 }
 
 }  // namespace node

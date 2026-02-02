@@ -79,6 +79,10 @@ class ImgFrame : public Buffer, public ProtoSerializable {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::ImgFrame;
+    }
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
      * Serialize message to proto buffer
@@ -190,6 +194,11 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     float getLensPositionRaw() const;
 
     /**
+     * Retrieves image transformation data
+     */
+    ImgTransformation& getTransformation();
+
+    /**
      * Instance number relates to the origin of the frame (which camera)
      *
      * @param instance Instance number
@@ -258,6 +267,13 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * @param type Type of image
      */
     ImgFrame& setType(Type type);
+
+    /**
+     * Specifies image transformation data
+     *
+     * @param transformation transformation data
+     */
+    ImgFrame& setTransformation(const ImgTransformation& transformation);
 
     /**
      * Remap a point from the current frame to the source frame
@@ -410,7 +426,8 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      *
      * Copies cv::Mat data to the ImgFrame buffer and converts to a specific type.
      *
-     * @param frame Input cv::Mat BGR frame from which to copy the data
+     * @param frame Input cv::Mat BGR frame or single channel frame from which to copy the data from.
+     * @param type  Specifies the target image format for the internal buffer, including color space, layout, and bit depth.
      */
     ImgFrame& setCvFrame(cv::Mat frame, Type type);
 

@@ -117,39 +117,41 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &PointCloudData::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &PointCloudData::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &PointCloudData::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setPoints", [](py::object& obj, py::array_t<float>& arr) {
-            if (arr.ndim() != 2 || arr.shape(1) != 3) {
-                throw std::runtime_error("Input must be a 2D numpy array of points with the shape of (N, 3)");
-            }
-            dai::PointCloudData& data = obj.cast<dai::PointCloudData&>();
-            std::vector<Point3f> points;
-            points.reserve(arr.shape(0));
-            auto ra = arr.unchecked();
-            for(int i = 0; i < arr.shape(0); i++) {
-                points.emplace_back(ra(i, 0), ra(i, 1), ra(i, 2));
-            }
-            data.setPoints(points);
-        })
-        .def("setPointsRGB", [](py::object& obj, py::array_t<float>& points, py::array_t<uint8_t>& colors) {
-            if (points.ndim() != 2 || points.shape(1) != 3) {
-                throw std::runtime_error("Points input must be a 2D numpy array of points with the shape of (N, 3)");
-            }
-            if (colors.ndim() != 2 || colors.shape(1) != 4) {
-                throw std::runtime_error("Colors input must be a 2D numpy array of colors with the shape of (N, 4)");
-            }
-            if (points.shape(0) != colors.shape(0)) {
-                throw std::runtime_error("Points and Colors must have the same number of rows");
-            }
-            dai::PointCloudData& data = obj.cast<dai::PointCloudData&>();
-            std::vector<Point3fRGBA> pointsRGBA;
-            pointsRGBA.reserve(points.shape(0));
-            auto ra1 = points.unchecked();
-            auto ra2 = colors.unchecked();
-            for(int i = 0; i < points.shape(0); i++) {
-                pointsRGBA.emplace_back(ra1(i, 0), ra1(i, 1), ra1(i, 2), ra2(i, 0), ra2(i, 1), ra2(i, 2), ra2(i, 3));
-            }
-            data.setPointsRGB(pointsRGBA);
-        })
+        .def("setPoints",
+             [](py::object& obj, py::array_t<float>& arr) {
+                 if(arr.ndim() != 2 || arr.shape(1) != 3) {
+                     throw std::runtime_error("Input must be a 2D numpy array of points with the shape of (N, 3)");
+                 }
+                 dai::PointCloudData& data = obj.cast<dai::PointCloudData&>();
+                 std::vector<Point3f> points;
+                 points.reserve(arr.shape(0));
+                 auto ra = arr.unchecked();
+                 for(int i = 0; i < arr.shape(0); i++) {
+                     points.emplace_back(ra(i, 0), ra(i, 1), ra(i, 2));
+                 }
+                 data.setPoints(points);
+             })
+        .def("setPointsRGB",
+             [](py::object& obj, py::array_t<float>& points, py::array_t<uint8_t>& colors) {
+                 if(points.ndim() != 2 || points.shape(1) != 3) {
+                     throw std::runtime_error("Points input must be a 2D numpy array of points with the shape of (N, 3)");
+                 }
+                 if(colors.ndim() != 2 || colors.shape(1) != 4) {
+                     throw std::runtime_error("Colors input must be a 2D numpy array of colors with the shape of (N, 4)");
+                 }
+                 if(points.shape(0) != colors.shape(0)) {
+                     throw std::runtime_error("Points and Colors must have the same number of rows");
+                 }
+                 dai::PointCloudData& data = obj.cast<dai::PointCloudData&>();
+                 std::vector<Point3fRGBA> pointsRGBA;
+                 pointsRGBA.reserve(points.shape(0));
+                 auto ra1 = points.unchecked();
+                 auto ra2 = colors.unchecked();
+                 for(int i = 0; i < points.shape(0); i++) {
+                     pointsRGBA.emplace_back(ra1(i, 0), ra1(i, 1), ra1(i, 2), ra2(i, 0), ra2(i, 1), ra2(i, 2), ra2(i, 3));
+                 }
+                 data.setPointsRGB(pointsRGBA);
+             })
         .def("setWidth", &PointCloudData::setWidth, DOC(dai, PointCloudData, setWidth))
         .def("setHeight", &PointCloudData::setHeight, DOC(dai, PointCloudData, setHeight))
         .def("setSize",

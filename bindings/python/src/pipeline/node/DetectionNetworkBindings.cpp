@@ -4,6 +4,7 @@
 
 #include "Common.hpp"
 #include "NodeBindings.hpp"
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 #include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -16,6 +17,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
 
     auto detectionNetwork = ADD_NODE_DERIVED(DetectionNetwork, DeviceNodeGroup);
+    detectionNetwork.attr("Model") = daiNodeModule.attr("NeuralNetwork").attr("Model");
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -50,33 +52,80 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             },
             DETECTION_NETWORK_BUILD_PYARGS,
             DETECTION_NETWORK_PYARGS)
-        .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, NNModelDescription, std::optional<float>>(&DetectionNetwork::build),
-             py::arg("input"),
-             py::arg("model"),
-             py::arg("fps") = std::nullopt)
-        .def("build",
-             ([](DetectionNetwork& self, const std::shared_ptr<Camera>& input, std::string model, std::optional<float> fps) {
-                 return self.build(input, NNModelDescription{model}, fps);
-             }),
-             py::arg("input"),
-             py::arg("model"),
-             py::arg("fps") = std::nullopt)
-        .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&, const NNArchive&, std::optional<float>>(&DetectionNetwork::build),
-             py::arg("input"),
-             py::arg("nnArchive"),
-             py::arg("fps") = std::nullopt)
-        .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, NNModelDescription, std::optional<float>>(&DetectionNetwork::build),
-             py::arg("input"),
-             py::arg("model"),
-             py::arg("fps") = std::nullopt)
-        .def("build",
-             py::overload_cast<const std::shared_ptr<ReplayVideo>&, const NNArchive&, std::optional<float>>(&DetectionNetwork::build),
-             py::arg("input"),
-             py::arg("nnArchive"),
-             py::arg("fps") = std::nullopt)
+        .def(
+            "build",
+            [](DetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               NNModelDescription modelDesc,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, DetectionNetwork::Model{std::move(modelDesc)}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, DetectionNetwork, build))
+        .def(
+            "build",
+            [](DetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const NNArchive& nnArchive,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, DetectionNetwork::Model{nnArchive}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("nnArchive"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, DetectionNetwork, build))
+        .def(
+            "build",
+            [](DetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const std::string& model,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, DetectionNetwork::Model{model}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, DetectionNetwork, build))
+        .def(
+            "build",
+            [](DetectionNetwork& self, const std::shared_ptr<Camera>& input, const DetectionNetwork::Model& model, const ImgFrameCapability& capability) {
+                return self.build(input, model, capability);
+            },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("capability"),
+            DOC(dai, node, DetectionNetwork, build, 3))
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        .def(
+            "build",
+            [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, NNModelDescription modelDesc, std::optional<float> fps) {
+                return self.build(input, DetectionNetwork::Model{std::move(modelDesc)}, fps);
+            },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, DetectionNetwork, build, 4))
+        .def(
+            "build",
+            [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, const std::string& model, std::optional<float> fps) {
+                return self.build(input, DetectionNetwork::Model{NNModelDescription{model}}, fps);
+            },
+            py::arg("input"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, DetectionNetwork, build, 4))
+        .def(
+            "build",
+            [](DetectionNetwork& self, const std::shared_ptr<ReplayVideo>& input, const NNArchive& nnArchive, std::optional<float> fps) {
+                return self.build(input, DetectionNetwork::Model{nnArchive}, fps);
+            },
+            py::arg("input"),
+            py::arg("nnArchive"),
+            py::arg("fps") = std::nullopt,
+            DOC(dai, node, DetectionNetwork, build, 4))
+#endif
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
                  auto self = getImplicitPipeline()->create<DetectionNetwork>();
                  self->build(input, nnArchive);
@@ -148,6 +197,16 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             [](const DetectionNetwork& n) { return &n.neuralNetwork->passthrough; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralNetwork, passthrough))
+        .def_property_readonly(
+            "detectionParser",
+            [](DetectionNetwork& n) { return &(*n.detectionParser); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, DetectionNetwork, detectionParser))
+        .def_property_readonly(
+            "neuralNetwork",
+            [](DetectionNetwork& n) { return &(*n.neuralNetwork); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, DetectionNetwork, neuralNetwork))
         .def("setConfidenceThreshold", &DetectionNetwork::setConfidenceThreshold, py::arg("thresh"), DOC(dai, node, DetectionNetwork, setConfidenceThreshold))
         .def("getClasses", &DetectionNetwork::getClasses, DOC(dai, node, DetectionNetwork, getClasses))
         .def("getConfidenceThreshold", &DetectionNetwork::getConfidenceThreshold, DOC(dai, node, DetectionNetwork, getConfidenceThreshold));

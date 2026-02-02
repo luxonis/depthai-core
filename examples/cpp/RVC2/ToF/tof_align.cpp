@@ -143,6 +143,13 @@ int main() {
     cameraOutput->link(align->inputAlignTo);
     auto syncQueue = sync->out.createOutputQueue();
 
+    auto confFilter = pipeline.create<dai::node::ToFDepthConfidenceFilter>();
+    tof->depth.link(confFilter->depth);
+    tof->amplitude.link(confFilter->amplitude);
+    confFilter->setRunOnHost(true);
+
+    auto filteredDepthQ = confFilter->filteredDepth.createOutputQueue();
+
     // Start the pipeline
     pipeline.start();
 
@@ -162,6 +169,13 @@ int main() {
 
         auto frameRgb = messageGroup->get<dai::ImgFrame>("rgb");
         auto frameDepth = messageGroup->get<dai::ImgFrame>("depth_aligned");
+        auto filteredDepthMsg = filteredDepthQ->get<dai::ImgFrame>();
+
+        if(filteredDepthMsg) {
+            cv::Mat filteredDepthMat = filteredDepthMsg->getCvFrame();
+            // Display filtered depth map
+            cv::imshow("Filtered Depth", colorizeDepth(filteredDepthMat));
+        }
 
         if(frameRgb && frameDepth) {
             cv::Mat cvFrame = frameRgb->getCvFrame();

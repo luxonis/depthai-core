@@ -3,9 +3,6 @@
 #include "depthai/common/Quaterniond.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
-#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
-    #include "rtabmap/core/Transform.h"
-#endif
 namespace dai {
 struct Transform {
     std::array<std::array<double, 4>, 4> matrix;
@@ -27,16 +24,16 @@ class TransformData : public Buffer {
     TransformData(double x, double y, double z, double qx, double qy, double qz, double qw);
     TransformData(double x, double y, double z, double roll, double pitch, double yaw);
 
-#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
-    TransformData(const rtabmap::Transform& transformRTABMap);
-    rtabmap::Transform getRTABMapTransform() const;
-#endif
     virtual ~TransformData();
 
     /// Transform
     Transform transform;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::TransformData;
+    }
 
     Point3d getTranslation() const;
     Point3d getRotationEuler() const;

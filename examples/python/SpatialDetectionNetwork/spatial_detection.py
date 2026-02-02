@@ -1,14 +1,28 @@
 #!/usr/bin/env python3
 
+import argparse
 from pathlib import Path
-import sys
 import cv2
 import depthai as dai
 import numpy as np
-import time
 
+NEURAL_FPS = 8
+STEREO_DEFAULT_FPS = 20
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--depthSource", type=str, default="stereo", choices=["stereo", "neural"]
+)
+args = parser.parse_args()
+# For better results on OAK4, use a segmentation model like "luxonis/yolov8-instance-segmentation-large:coco-640x480"
+# for depth estimation over the objects mask instead of the full bounding box.
 modelDescription = dai.NNModelDescription("yolov6-nano")
-FPS = 30
+size = (640, 400)
+
+if args.depthSource == "stereo":
+    fps = STEREO_DEFAULT_FPS
+else:
+    fps = NEURAL_FPS
 
 class SpatialVisualizer(dai.node.HostNode):
     def __init__(self):
@@ -24,13 +38,13 @@ class SpatialVisualizer(dai.node.HostNode):
         self.displayResults(rgbPreview, depthFrameColor, detections.detections)
 
     def processDepthFrame(self, depthFrame):
-        depth_downscaled = depthFrame[::4]
-        if np.all(depth_downscaled == 0):
-            min_depth = 0
+        depthDownscaled = depthFrame[::4]
+        if np.all(depthDownscaled == 0):
+            minDepth = 0
         else:
-            min_depth = np.percentile(depth_downscaled[depth_downscaled != 0], 1)
-        max_depth = np.percentile(depth_downscaled, 99)
-        depthFrameColor = np.interp(depthFrame, (min_depth, max_depth), (0, 255)).astype(np.uint8)
+            minDepth = np.percentile(depthDownscaled[depthDownscaled != 0], 1)
+        maxDepth = np.percentile(depthDownscaled, 99)
+        depthFrameColor = np.interp(depthFrame, (minDepth, maxDepth), (0, 255)).astype(np.uint8)
         return cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_HOT)
 
     def displayResults(self, rgbFrame, depthFrameColor, detections):
@@ -39,8 +53,8 @@ class SpatialVisualizer(dai.node.HostNode):
             self.drawBoundingBoxes(depthFrameColor, detection)
             self.drawDetections(rgbFrame, detection, width, height)
 
-        cv2.imshow("depth", depthFrameColor)
-        cv2.imshow("rgb", rgbFrame)
+        cv2.imshow("Depth frame", depthFrameColor)
+        cv2.imshow("Color frame", rgbFrame)
         if cv2.waitKey(1) == ord('q'):
             self.stopPipeline()
 
@@ -69,29 +83,41 @@ class SpatialVisualizer(dai.node.HostNode):
 # Creates the pipeline and a default device implicitly
 with dai.Pipeline() as p:
     # Define sources and outputs
-    camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-    stereo = p.create(dai.node.StereoDepth)
-    spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(camRgb, stereo, modelDescription, fps=FPS)
+    platform = p.getDefaultDevice().getPlatform()
+
+    camRgb = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A, sensorFps=fps)
+    monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
+    monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
+    if args.depthSource == "stereo":
+        depthSource = p.create(dai.node.StereoDepth)
+        depthSource.setExtendedDisparity(True)
+        monoLeft.requestOutput(size).link(depthSource.left)
+        monoRight.requestOutput(size).link(depthSource.right)
+    elif args.depthSource == "neural":
+        depthSource = p.create(dai.node.NeuralDepth).build(
+            monoLeft.requestFullResolutionOutput(),
+            monoRight.requestFullResolutionOutput(),
+            dai.DeviceModelZoo.NEURAL_DEPTH_LARGE,
+        )
+    else:
+        raise ValueError(f"Invalid depth source: {args.depthSource}")
+
+    spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(
+        camRgb, depthSource, modelDescription
+    )
     visualizer = p.create(SpatialVisualizer)
 
-    # setting node configs
-    stereo.setExtendedDisparity(True)
-    platform = p.getDefaultDevice().getPlatform()
-    if platform == dai.Platform.RVC2:
-        # For RVC2, width must be divisible by 16
-        stereo.setOutputSize(640, 400)
-
+    spatialDetectionNetwork.spatialLocationCalculator.initialConfig.setSegmentationPassthrough(False)
     spatialDetectionNetwork.input.setBlocking(False)
-    spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)
     spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
-    # Linking
-    monoLeft.requestOutput((640, 400)).link(stereo.left)
-    monoRight.requestOutput((640, 400)).link(stereo.right)
+    visualizer.build(
+        spatialDetectionNetwork.passthroughDepth,
+        spatialDetectionNetwork.out,
+        spatialDetectionNetwork.passthrough,
+    )
 
-    visualizer.build(spatialDetectionNetwork.passthroughDepth, spatialDetectionNetwork.out, spatialDetectionNetwork.passthrough)
+    print("Starting pipeline with depth source: ", args.depthSource)
 
     p.run()
