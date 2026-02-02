@@ -16,6 +16,41 @@ std::string generateLocalID(int64_t timestamp) {
     oss << timestamp << "_" << std::setw(6) << std::setfill('0') << counter++;
     return oss.str();
 }
+
+const std::unordered_map<std::string, std::string> extensionToMimeTypeMap = {
+    {".html", "text/html"},
+    {".css", "text/css"},
+    {".js", "application/javascript"},
+    {".png", "image/png"},
+    {".jpg", "image/jpeg"},
+    {".jpeg", "image/jpeg"},
+    {".gif", "image/gif"},
+    {".webp", "image/webp"},
+    {".bmp", "image/bmp"},
+    {".tiff", "image/tiff"},
+    {".svg", "image/svg+xml"},
+    {".json", "application/json"},
+    {".txt", "text/plain"},
+    {".annotation", "application/x-protobuf; proto=SnapAnnotation"},
+    {"", "application/octet-stream"},
+};
+
+const std::unordered_map<std::string, std::string> mimeTypeToExtensionMap = {
+    {"text/html", ".html"},
+    {"text/css", ".css"},
+    {"application/javascript", ".js"},
+    {"image/png", ".png"},
+    {"image/jpeg", ".jpg"},
+    {"image/gif", ".gif"},
+    {"image/webp", ".webp"},
+    {"image/bmp", ".bmp"},
+    {"image/tiff", ".tiff"},
+    {"image/svg+xml", ".svg"},
+    {"application/json", ".json"},
+    {"text/plain", ".txt"},
+    {"application/x-protobuf; proto=SnapAnnotation", ".annotation"},
+    {"application/octet-stream", ""},
+};
 }  // namespace
 
 #include "Environment.hpp"
@@ -109,18 +144,6 @@ FileData::FileData(std::string data, std::string fileName, std::string mimeType)
       classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {}
 
 FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileName(std::move(fileName)) {
-    static const std::unordered_map<std::string, std::string> mimeTypeExtensionMap = {{".html", "text/html"},
-                                                                                      {".htm", "text/html"},
-                                                                                      {".css", "text/css"},
-                                                                                      {".js", "application/javascript"},
-                                                                                      {".png", "image/png"},
-                                                                                      {".jpg", "image/jpeg"},
-                                                                                      {".jpeg", "image/jpeg"},
-                                                                                      {".gif", "image/gif"},
-                                                                                      {".svg", "image/svg+xml"},
-                                                                                      {".json", "application/json"},
-                                                                                      {".txt", "text/plain"},
-                                                                                      {".annotation", "application/x-protobuf; proto=SnapAnnotation"}};
     // Read the data
     std::ifstream fileStream(filePath, std::ios::binary | std::ios::ate);
     if(!fileStream) {
@@ -133,8 +156,8 @@ FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileN
     size = data.size();
     checksum = calculateSHA256Checksum(data);
     // Determine the mime type
-    auto it = mimeTypeExtensionMap.find(filePath.extension().string());
-    if(it != mimeTypeExtensionMap.end()) {
+    auto it = extensionToMimeTypeMap.find(filePath.extension().string());
+    if(it != extensionToMimeTypeMap.end()) {
         mimeType = it->second;
     } else {
         mimeType = "application/octet-stream";
@@ -221,21 +244,6 @@ bool FileData::toFile(const std::filesystem::path& inputPath) {
         return false;
     }
     std::string extension;
-    static const std::unordered_map<std::string, std::string> mimeTypeToExtensionMap = {
-        {"image/jpeg", ".jpg"},
-        {"image/png", ".png"},
-        {"image/webp", ".webp"},
-        {"image/bmp", ".bmp"},
-        {"image/tiff", ".tiff"},
-        {"image/gif", ".gif"},
-        {"image/svg+xml", ".svg"},
-        {"application/json", ".json"},
-        {"text/plain", ".txt"},
-        {"text/html", ".html"},
-        {"text/css", ".css"},
-        {"application/javascript", ".js"},
-        {"application/x-protobuf; proto=SnapAnnotation", ".annotation"},
-    };
     auto mimeIt = mimeTypeToExtensionMap.find(mimeType);
     if(mimeIt != mimeTypeToExtensionMap.end()) {
         extension = mimeIt->second;
