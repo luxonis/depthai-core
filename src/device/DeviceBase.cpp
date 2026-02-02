@@ -456,10 +456,16 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
 void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
     std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(device).collectCrashDump();
     if(crashDump) {
+        decltype(crashdumpCallback) callbackCopy;
+
+        // Create a copy of the callback function to avoid race conditions
+        // (user could set a new callback from within the callback, leading to a deadlock)
         {
             std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
-            if(crashdumpCallback) crashdumpCallback(crashDump);
+            callbackCopy = crashdumpCallback;
         }
+
+        if(callbackCopy) callbackCopy(crashDump);
         logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
     }
 }

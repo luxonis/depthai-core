@@ -550,7 +550,12 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             "registerCrashdumpCallback",
             [](DeviceBase& d, std::function<void(std::shared_ptr<CrashDump>)> callback) {
                 py::gil_scoped_release release;
-                d.registerCrashdumpCallback(callback);
+                // Create a python-compatible callback function that acquires the GIL
+                auto pythonCallback = [callback](std::shared_ptr<CrashDump> dump) {
+                    py::gil_scoped_acquire acquire;
+                    callback(dump);
+                };
+                d.registerCrashdumpCallback(std::move(pythonCallback));
             },
             py::arg("callback"),
             DOC(dai, DeviceBase, registerCrashdumpCallback))
