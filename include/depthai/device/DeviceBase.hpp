@@ -929,6 +929,7 @@ class DeviceBase {
         bool hasPipeline;
     };
     void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
+    void collectAndLogCrashDump(DeviceBase* device);
     DeviceInfo deviceInfo;
     std::optional<Version> bootloaderVersion;
 

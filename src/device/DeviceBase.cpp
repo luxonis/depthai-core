@@ -453,6 +453,17 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     return timeoutMs;
 }
 
+void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
+    std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(device).collectCrashDump();
+    if(crashDump) {
+        {
+            std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
+            if(crashdumpCallback) crashdumpCallback(crashDump);
+        }
+        logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
+    }
+}
+
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     isClosing = true;
@@ -466,12 +477,7 @@ void DeviceBase::closeImpl() {
             crashed = hasCrashDump();
             if(crashed) {
                 connection->setRebootOnDestruction(true);
-                std::shared_ptr<CrashDump> dump = dai::CrashDumpManager(this).collectCrashDump();
-                {
-                    std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
-                    if(crashdumpCallback) crashdumpCallback(dump);
-                }
-                logCollection::logCrashDump(pipelineSchema, *dump, deviceInfo);
+                collectAndLogCrashDump(this);
             } else {
                 bool isRunning = pimpl->rpcCall("isRunning").as<bool>();
                 shouldGetCrashDump = !isRunning;
@@ -530,14 +536,7 @@ void DeviceBase::closeImpl() {
 
     // If the device was operated through gate, wait for the session to end
     if(gate && crashed) {
-        std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(this).collectCrashDump();
-        if(crashDump) {
-            {
-                std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
-                if(crashdumpCallback) crashdumpCallback(crashDump);
-            }
-            logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
-        }
+        collectAndLogCrashDump(this);
     }
 
     // Close rpcStream
@@ -568,14 +567,7 @@ void DeviceBase::closeImpl() {
                         crashed = rebootingDevice.hasCrashDump();
                     }
                     if(crashed) {
-                        std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(&rebootingDevice).collectCrashDump();
-                        if(crashDump) {
-                            {
-                                std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
-                                if(crashdumpCallback) crashdumpCallback(crashDump);
-                            }
-                            logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
-                        }
+                        collectAndLogCrashDump(&rebootingDevice);
                     } else {
                         pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
                     }
@@ -1119,14 +1111,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
 
                 // If device has crashed, collect dump
                 if(crashed) {
-                    std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(this).collectCrashDump();
-                    if(crashDump) {
-                        {
-                            std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
-                            if(crashdumpCallback) crashdumpCallback(crashDump);
-                        }
-                        logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
-                    }
+                    collectAndLogCrashDump(this);
                 }
             }
 
@@ -1149,14 +1134,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     crashed = hasCrashDump();
                     if(crashed) {
-                        std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(this).collectCrashDump();
-                        if(crashDump) {
-                            {
-                                std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
-                                if(crashdumpCallback) crashdumpCallback(crashDump);
-                            }
-                            logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
-                        }
+                        collectAndLogCrashDump(this);
                     }
                     auto shared = pipelinePtr.lock();
                     if(!shared) throw std::runtime_error("Pipeline was destroyed");
