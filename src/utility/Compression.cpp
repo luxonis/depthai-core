@@ -86,8 +86,8 @@ std::vector<std::string> filenamesInTar(const std::filesystem::path& tarPath) {
 }
 
 void untarFiles(const std::filesystem::path& tarPath, const std::vector<std::string>& filesInTar, const std::vector<std::filesystem::path>& filesOnDisk) {
-    struct archive* a;
-    struct archive_entry* entry;
+    struct archive* a = nullptr;
+    struct archive_entry* entry = nullptr;
     std::ofstream outFileStream;
 
     a = archive_read_new();
