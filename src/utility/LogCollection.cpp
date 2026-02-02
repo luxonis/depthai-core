@@ -14,6 +14,7 @@
 #include "sha1.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
+#include "utility/Platform.hpp"
 
 namespace dai {
 namespace logCollection {
@@ -68,17 +69,6 @@ std::string protocolToString(XLinkProtocol_t protocol) {
     }
 }
 
-std::string getOSPlatform() {
-#ifdef _WIN32
-    return "Windows";
-#elif __APPLE__
-    return "MacOS";
-#elif __linux__
-    return "Linux";
-#else
-    return "Other";
-#endif
-}
 
 std::string calculateSHA1(const std::string& input) {
     SHA1 checksum;
@@ -109,7 +99,7 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
 
     multipart.parts.emplace_back("platform", platformToString(deviceInfo.platform));
     multipart.parts.emplace_back("connectionType", protocolToString(deviceInfo.protocol));
-    multipart.parts.emplace_back("osPlatform", getOSPlatform());
+    multipart.parts.emplace_back("osPlatform", platform::getOSPlatform());
     std::string daiVersion = fmt::format("{}-{}", build::VERSION, build::COMMIT);
     multipart.parts.emplace_back("depthAiVersion", std::move(daiVersion));
     multipart.parts.emplace_back("productId", deviceInfo.getDeviceId());

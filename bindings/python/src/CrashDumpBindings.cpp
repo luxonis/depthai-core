@@ -98,8 +98,16 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
                 return py::bytes(reinterpret_cast<const char*>(bytes.data()), bytes.size());
             },
             DOC(dai, CrashDump, toBytes))
-        .def_static("fromBytes", &CrashDump::fromBytes, py::arg("bytes"), DOC(dai, CrashDump, fromBytes))
-        .def_static("load", &CrashDump::load, py::arg("tarPath"), DOC(dai, CrashDump, load))
+        .def_static(
+            "fromBytes",
+            [](const std::vector<uint8_t>& bytes) -> std::shared_ptr<CrashDump> { return CrashDump::fromBytes(bytes); },
+            py::arg("bytes"),
+            DOC(dai, CrashDump, fromBytes))
+        .def_static(
+            "load",
+            [](const std::filesystem::path& tarPath) -> std::shared_ptr<CrashDump> { return CrashDump::load(tarPath); },
+            py::arg("tarPath"),
+            DOC(dai, CrashDump, load))
         .def(
             "__getitem__",
             [](py::object self, const std::string& key) -> py::object {
@@ -144,7 +152,8 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("depthaiDeviceRVC3Version", &CrashDump::depthaiDeviceRVC3Version)
         .def_readwrite("depthaiDeviceRVC4Version", &CrashDump::depthaiDeviceRVC4Version)
         .def_readwrite("crashdumpTimestamp", &CrashDump::crashdumpTimestamp)
-        .def_readwrite("deviceId", &CrashDump::deviceId);
+        .def_readwrite("deviceId", &CrashDump::deviceId)
+        .def_readwrite("osPlatform", &CrashDump::osPlatform);
 
     // Bind CrashDumpRVC2
     crashDumpRVC2.def(py::init<>())
@@ -228,7 +237,7 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     crashDumpManager.def(py::init<DeviceBase*>(), py::arg("device"), py::keep_alive<1, 2>(), DOC(dai, CrashDumpManager, CrashDumpManager))
         .def(
             "collectCrashDump",
-            [](CrashDumpManager& self, bool clear) {
+            [](CrashDumpManager& self, bool clear) -> std::shared_ptr<CrashDump> {
                 py::gil_scoped_release release;
                 return self.collectCrashDump(clear);
             },

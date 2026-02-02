@@ -143,6 +143,18 @@ std::string getLocalIpAddress() {
 #endif
 }
 
+std::string getOSPlatform() {
+#ifdef _WIN32
+    return "Windows";
+#elif __APPLE__
+    return "MacOS";
+#elif __linux__
+    return "Linux";
+#else
+    return "Other";
+#endif
+}
+
 void setThreadName(JoiningThread& thread, const std::string& name) {
 #ifdef __linux__
     auto handle = thread.native_handle();

@@ -102,6 +102,7 @@ class CrashDump {
     std::string depthaiBootloaderVersion;
     std::string depthaiDeviceRVC3Version;
     std::string depthaiDeviceRVC4Version;
+    std::string osPlatform;
 
     /* Device ID and timestamp of crashdump creation */
     std::string crashdumpTimestamp;

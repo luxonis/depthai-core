@@ -177,6 +177,7 @@ void CrashDump::writeMetadata(nlohmann::json& json) const {
     json["depthaiBootloaderVersion"] = depthaiBootloaderVersion;
     json["depthaiDeviceRVC3Version"] = depthaiDeviceRVC3Version;
     json["depthaiDeviceRVC4Version"] = depthaiDeviceRVC4Version;
+    json["osPlatform"] = osPlatform;
 
     // device
     json["crashdumpTimestamp"] = crashdumpTimestamp;
@@ -199,6 +200,7 @@ void CrashDump::readMetadata(const nlohmann::json& json) {
     depthaiBootloaderVersion = fromJson(json, "depthaiBootloaderVersion", "");
     depthaiDeviceRVC3Version = fromJson(json, "depthaiDeviceRVC3Version", "");
     depthaiDeviceRVC4Version = fromJson(json, "depthaiDeviceRVC4Version", "");
+    osPlatform = fromJson(json, "osPlatform", "");
 
     // device
     crashdumpTimestamp = fromJson(json, "crashdumpTimestamp", "");

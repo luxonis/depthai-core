@@ -5,6 +5,7 @@
 // project
 #include "depthai/build/version.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "utility/Platform.hpp"
 
 namespace dai {
 
@@ -64,6 +65,7 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
     dump->depthaiBootloaderVersion = build::BOOTLOADER_VERSION;
     dump->depthaiDeviceRVC3Version = build::DEVICE_RVC3_VERSION;
     dump->depthaiDeviceRVC4Version = build::DEVICE_RVC4_VERSION;
+    dump->osPlatform = platform::getOSPlatform();
 
     // Device
     dump->deviceId = this->devicePtr->deviceInfo.getDeviceId();
