@@ -128,6 +128,8 @@ std::unique_ptr<CrashDump> CrashDump::load(const fs::path& tarPath) {
     return result;
 }
 
+CrashDump::~CrashDump() = default;
+
 std::vector<uint8_t> CrashDump::toBytes() const {
     fs::path tempPath = platform::getTempPath();
     fs::path tarPath = tempPath / "crashdump.tar";

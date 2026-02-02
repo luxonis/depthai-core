@@ -27,7 +27,7 @@ namespace dai {
  */
 class CrashDump {
    public:
-    virtual ~CrashDump() = default;
+    virtual ~CrashDump();
 
     /**
      * @brief Identify the platform that this crashdump corresponds to
