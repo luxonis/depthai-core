@@ -185,8 +185,7 @@ std::filesystem::path getTempPath() {
     if(tmpName == nullptr) {
         tmpPath = "/tmp";
     } else {
-        tmpPath = tmpName;
-        tmpPath += '/';
+        tmpPath = std::string(tmpName) + '/';
     }
     return std::filesystem::path(tmpPath);
 #endif
