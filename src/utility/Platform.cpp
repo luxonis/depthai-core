@@ -167,12 +167,19 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
 }
 
 std::filesystem::path getTempPath() {
-    std::string tmpPath;
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    char tmpPathBuffer[MAX_PATH];
-    GetTempPathA(MAX_PATH, tmpPathBuffer);
-    tmpPath = tmpPathBuffer;
+    std::filesystem::path tmpPath;
+    auto basePath = std::filesystem::temp_directory_path() / L"depthai_XXXXXX";
+    auto baseStr = basePath.wstring();
+    if(_wmktemp_s(baseStr.data(), baseStr.size() + 1) == 0) {
+        std::filesystem::create_directories(baseStr);
+        tmpPath = std::filesystem::path(baseStr);
+    } else {
+        tmpPath = std::filesystem::temp_directory_path();
+    }
+    return tmpPath;
 #else
+    std::string tmpPath;
     char tmpTemplate[] = "/tmp/depthai_XXXXXX";
     char* tmpName = mkdtemp(tmpTemplate);
     if(tmpName == nullptr) {
@@ -181,8 +188,8 @@ std::filesystem::path getTempPath() {
         tmpPath = tmpName;
         tmpPath += '/';
     }
-#endif
     return std::filesystem::path(tmpPath);
+#endif
 }
 
 bool checkPathExists(const std::filesystem::path& path, bool directory) {
