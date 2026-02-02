@@ -20,6 +20,7 @@ with dai.Pipeline() as pipeline:
     imageManip.initialConfig.setOutputSize(inputSize[0], inputSize[1])
     imageManip.setMaxOutputFrameSize(int(inputSize[0] * inputSize[1] * 3))
     imageManip.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888i)
+    imageManip.inputImage.setMaxSize(12)
     cameraOutput.link(imageManip.inputImage)
 
     # Configure the DetectionNetwork

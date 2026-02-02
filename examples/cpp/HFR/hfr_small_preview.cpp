@@ -1,5 +1,5 @@
-#include <optional>
 #include <opencv2/opencv.hpp>
+#include <optional>
 
 #include "depthai/depthai.hpp"
 
@@ -11,7 +11,8 @@ int main() {
 
     auto platform = pipeline.getDefaultDevice()->getPlatform();
     if(platform != dai::Platform::RVC4) {
-        throw std::runtime_error("This example is only supported on RVC4 devices");
+        std::cerr << "This example is only supported on RVC4 devices\n" << std::flush;
+        return -1;
     }
 
     auto cam = pipeline.create<dai::node::Camera>()->build();
@@ -25,7 +26,7 @@ int main() {
 
     // One of the two modes can be selected
     // NOTE: Generic resolutions are not yet supported through camera node when using HFR mode
-    auto output = cam->requestOutput(SIZE, std::nullopt, dai::ImgResizeMode::CROP, static_cast<float>(FPS));
+    auto* output = cam->requestOutput(SIZE, std::nullopt, dai::ImgResizeMode::CROP, static_cast<float>(FPS));
 
     output->link(imageManip->inputImage);
     imageManip->out.link(benchmarkIn->input);

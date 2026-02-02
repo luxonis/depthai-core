@@ -43,6 +43,7 @@ with dai.Pipeline() as pipeline:
     imageManip = pipeline.create(dai.node.ImageManip)
     imageManip.initialConfig.setOutputSize(SIZE[0], SIZE[1] + 10) # To avoid a passthrough
     imageManip.setMaxOutputFrameSize(int(SIZE[0] * (SIZE[1] + 10) * 1.6))
+    imageManip.inputImage.setMaxSize(12)
     output.link(imageManip.inputImage)
     output = imageManip.out
 

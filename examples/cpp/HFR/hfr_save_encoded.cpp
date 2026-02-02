@@ -55,17 +55,19 @@ int main() {
 
     auto platform = pipeline.getDefaultDevice()->getPlatform();
     if(platform != dai::Platform::RVC4) {
-        throw std::runtime_error("This example is only supported on RVC4 devices");
+        std::cerr << "This example is only supported on RVC4 devices\n" << std::flush;
+        return -1;
     }
 
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto output = camRgb->requestOutput(SIZE, std::nullopt, dai::ImgResizeMode::CROP, static_cast<float>(FPS));
+    auto* output = camRgb->requestOutput(SIZE, std::nullopt, dai::ImgResizeMode::CROP, static_cast<float>(FPS));
 
     // ImageManip is added to workaround a limitation with VideoEncoder with native resolutions
     // This limitation will be lifted in the future
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     imageManip->initialConfig->setOutputSize(SIZE.first, SIZE.second + 10);
     imageManip->setMaxOutputFrameSize(static_cast<int>(SIZE.first * (SIZE.second + 10) * 1.6));
+    imageManip->inputImage.setMaxSize(12);
     output->link(imageManip->inputImage);
     auto encodedInput = imageManip->out;
 

@@ -9,7 +9,8 @@ int main() {
 
     auto platform = pipeline.getDefaultDevice()->getPlatform();
     if(platform != dai::Platform::RVC4) {
-        throw std::runtime_error("This example is only supported on RVC4 devices");
+        std::cerr << "This example is only supported on RVC4 devices\n" << std::flush;
+        return -1;
     }
 
     dai::NNModelDescription modelDescription;
@@ -23,16 +24,13 @@ int main() {
     auto cameraNode = pipeline.create<dai::node::Camera>()->build();
 
     // Configure the ImageManip as in HFR mode requesting arbitrary outputs is not yet supported
-    auto cameraOutput = cameraNode->requestOutput(
-        std::make_pair(1280, 720),
-        std::nullopt,
-        dai::ImgResizeMode::CROP,
-        static_cast<float>(FPS));
+    auto* cameraOutput = cameraNode->requestOutput(std::make_pair(1280, 720), std::nullopt, dai::ImgResizeMode::CROP, static_cast<float>(FPS));
 
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     imageManip->initialConfig->setOutputSize(std::get<0>(inputSize), std::get<1>(inputSize));
     imageManip->setMaxOutputFrameSize(static_cast<int>(std::get<0>(inputSize) * std::get<1>(inputSize) * 3));
     imageManip->initialConfig->setFrameType(dai::ImgFrame::Type::BGR888i);
+    imageManip->inputImage.setMaxSize(12);
     cameraOutput->link(imageManip->inputImage);
 
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
