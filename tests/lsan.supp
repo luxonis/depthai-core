@@ -1,3 +1,4 @@
 leak:libGLX_mesa.so
 leak:g_malloc
 leak:g_realloc
+leak:libfontconfig.so
