@@ -485,7 +485,7 @@ TEST_CASE("Wait any sync", "[MessageQueue]") {
     auto msg = std::make_shared<ADatatype>();
     queue1.send(msg);
 
-    std::vector<MessageQueue*> queues{&queue1, &queue2};
+    std::vector<std::reference_wrapper<MessageQueue>> queues{queue1, queue2};
     REQUIRE(MessageQueue::waitAny(queues));
     REQUIRE(queue1.has());
     REQUIRE(queue1.get() == msg);
@@ -495,7 +495,7 @@ TEST_CASE("Wait any async", "[MessageQueue]") {
     MessageQueue queue1(10);
     MessageQueue queue2(10);
 
-    std::vector<MessageQueue*> queues{&queue1, &queue2};
+    std::vector<std::reference_wrapper<MessageQueue>> queues{queue1, queue2};
 
     auto thread = std::thread([&]() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -512,7 +512,7 @@ TEST_CASE("Wait any timeout", "[MessageQueue]") {
     MessageQueue queue1(10);
     MessageQueue queue2(10);
 
-    std::vector<MessageQueue*> queues{&queue1, &queue2};
+    std::vector<std::reference_wrapper<MessageQueue>> queues{queue1, queue2};
     REQUIRE_FALSE(MessageQueue::waitAny(queues, std::chrono::milliseconds(100)));
     REQUIRE_FALSE(queue1.has());
     REQUIRE_FALSE(queue2.has());
@@ -636,7 +636,7 @@ TEST_CASE("MessageQueue::waitAny Tests", "[MessageQueue]") {
         MessageQueue q1("empty_q"), q2("full_q");
         q2.send(msg);  // Populate q2
 
-        std::vector<MessageQueue*> queues{&q1, &q2};
+        std::vector<std::reference_wrapper<MessageQueue>> queues{q1, q2};
 
         // Act: Should detect the message in q2 and return immediately
         bool result = MessageQueue::waitAny(queues);
@@ -650,7 +650,7 @@ TEST_CASE("MessageQueue::waitAny Tests", "[MessageQueue]") {
         q1.send(msg);  // Populate q1
         q2.send(msg);  // Populate q2
 
-        std::vector<MessageQueue*> queues{&q1, &q2};
+        std::vector<std::reference_wrapper<MessageQueue>> queues{q1, q2};
 
         // Act: Should detect the message in q2 and return immediately
         bool result = MessageQueue::waitAny(queues);
@@ -664,7 +664,7 @@ TEST_CASE("MessageQueue::waitAny Tests", "[MessageQueue]") {
         MessageQueue q1("empty_q1");
         MessageQueue q2("closed_q2");
 
-        std::vector<MessageQueue*> queues{&q1, &q2};
+        std::vector<std::reference_wrapper<MessageQueue>> queues{q1, q2};
 
         q2.close();
         std::thread producer([&]() {
@@ -684,7 +684,7 @@ TEST_CASE("MessageQueue::waitAny Tests", "[MessageQueue]") {
     SECTION("Message arrives after 1 second") {
         MessageQueue q1("delayed_q");
         MessageQueue q2("delayed_q");
-        std::vector<MessageQueue*> queues{&q1, &q2};
+        std::vector<std::reference_wrapper<MessageQueue>> queues{q1, q2};
 
         std::thread producer([&]() {
             std::this_thread::sleep_for(std::chrono::seconds(1));

@@ -2,7 +2,9 @@
 
 // std
 #include <boost/algorithm/cxx11/all_of.hpp>
+#include <boost/algorithm/cxx11/any_of.hpp>
 #include <chrono>
+#include <functional>
 #include <iostream>
 
 // project
@@ -217,23 +219,18 @@ void MessageQueue::notifyListeners() {
 
 MessageQueue::QueueException::~QueueException() noexcept = default;
 
-bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::optional<std::chrono::milliseconds> timeout) {
-    std::vector<std::pair<MessageQueue*, MessageQueue::CallbackId>> notifierIds;
+bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues, std::optional<std::chrono::milliseconds> timeout) {
+    std::vector<std::pair<std::reference_wrapper<MessageQueue>, MessageQueue::CallbackId>> notifierIds;
     notifierIds.reserve(queues.size());
 
     auto removeNotifiers = [&]() {
         for(auto& [input, notifierId] : notifierIds) {
-            input->removeNotifier(notifierId);
+            input.get().removeNotifier(notifierId);
         }
     };
-    auto checkAllClosed = [&]() { return boost::algorithm::all_of(queues, [](const MessageQueue* q) { return q->isClosed(); }); };
+    auto checkAllClosed = [&]() { return boost::algorithm::all_of(queues, [](const std::reference_wrapper<MessageQueue> q) { return q.get().isClosed(); }); };
     auto checkForMessages = [&]() {
-        for(const auto& q : queues) {
-            if(!q->isClosed() && q->has()) {
-                return true;
-            }
-        }
-        return false;
+        return boost::algorithm::any_of(queues, [](const std::reference_wrapper<MessageQueue> q) { return !q.get().isClosed() && q.get().has(); });
     };
     auto pred = [&]() {
         if(checkAllClosed()) {
@@ -246,8 +243,8 @@ bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::option
     bool gotMessage = true;
     try {
         // Add notifier to all queues, if any message arrives from this point, wait should return
-        for(auto* input : queues) {
-            auto notifierId = input->addNotifier(notifier);
+        for(auto input : queues) {
+            auto notifierId = input.get().addNotifier(notifier);
             notifierIds.emplace_back(input, notifierId);
         }
         // Check if any messages already present
@@ -269,10 +266,10 @@ bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::option
 std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                                  std::optional<std::chrono::milliseconds> timeout) {
     std::unordered_map<std::string, std::shared_ptr<ADatatype>> inputs;
-    std::vector<MessageQueue*> queuesVec;
+    std::vector<std::reference_wrapper<MessageQueue>> queuesVec;
     queuesVec.reserve(queues.size());
     for(const auto& kv : queues) {
-        queuesVec.push_back(&kv.second);
+        queuesVec.emplace_back(kv.second);
     }
     bool gotAny = waitAny(queuesVec, timeout);
     if(gotAny) {

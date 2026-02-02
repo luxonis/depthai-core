@@ -91,7 +91,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         return *this;
     }
 
-    static bool waitAny(const std::vector<MessageQueue*>& queues, std::optional<std::chrono::milliseconds> timeout = std::nullopt);
+    static bool waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues, std::optional<std::chrono::milliseconds> timeout = std::nullopt);
     static std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                               std::optional<std::chrono::milliseconds> timeout = std::nullopt);
     template <typename T>
