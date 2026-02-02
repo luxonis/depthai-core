@@ -264,7 +264,7 @@ void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
         std::string extraContent;
         readFromFile(extraPath, extraContent);
         extra = nlohmann::json::parse(extraContent);
-        if(extra.is_null()) {  // json was not parsed successfully
+        if(extra.is_null()) {  // json was null
             extra = nlohmann::json::object();
         }
     } else {
@@ -343,7 +343,7 @@ void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
         std::string extraContent;
         readFromFile(extraPath, extraContent);
         extra = nlohmann::json::parse(extraContent);
-        if(extra.is_null()) {  // json was not parsed successfully
+        if(extra.is_null()) {  // json was null
             extra = nlohmann::json::object();
         }
     } else {
