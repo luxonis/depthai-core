@@ -28,6 +28,7 @@
 #include "bspatch.h"
 
 #include <bzlib.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -156,6 +157,7 @@ int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const ui
 
     oldpos = 0;
     newpos = 0;
+    const bool has_extra_block = p_decompressed_block[EXTRA_BLOCK] != NULL;
     while(newpos < newsize) {
         /* Read control data */
         for(i = 0; i <= 2; i++) {
@@ -213,8 +215,10 @@ int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const ui
             }
             return -1;
         }
-        memcpy(new + newpos, p_decompressed_block[EXTRA_BLOCK], ctrl[1]);
-        p_decompressed_block[EXTRA_BLOCK] += ctrl[1];
+        if(has_extra_block) {
+            memcpy(new + newpos, p_decompressed_block[EXTRA_BLOCK], ctrl[1]);
+            p_decompressed_block[EXTRA_BLOCK] += ctrl[1];
+        }
 
         /* Adjust pointers */
         newpos += ctrl[1];

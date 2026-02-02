@@ -46,6 +46,16 @@ class ResultThread(threading.Thread):
 def run_ctest(env_vars, labels, blocking=True, name=""):
     env = os.environ.copy()
     env_vars["DEPTHAI_PIPELINE_DEBUGGING"] = "1"
+    
+    # Add LSAN suppressions if the file exists
+    lsan_supp_path = pathlib.Path(__file__).parent / "lsan.supp"
+    if lsan_supp_path.exists():
+        lsan_supp_path = lsan_supp_path.resolve()
+        if "LSAN_OPTIONS" in env:
+            env["LSAN_OPTIONS"] += f":suppressions={lsan_supp_path}"
+        else:
+            env["LSAN_OPTIONS"] = f"suppressions={lsan_supp_path}"
+            
     env.update(env_vars)
 
     cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release"]
