@@ -23,11 +23,7 @@ int main() {
     auto cameraNode = pipeline.create<dai::node::Camera>()->build();
 
     // Configure the ImageManip as in HFR mode requesting arbitrary outputs is not yet supported
-    auto cameraOutput = cameraNode->requestOutput(
-        std::make_pair(1280, 720),
-        std::nullopt,
-        dai::ImgResizeMode::CROP,
-        static_cast<float>(FPS));
+    auto cameraOutput = cameraNode->requestOutput(std::make_pair(1280, 720), std::nullopt, dai::ImgResizeMode::CROP, static_cast<float>(FPS));
 
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     imageManip->initialConfig->setOutputSize(std::get<0>(inputSize), std::get<1>(inputSize));
