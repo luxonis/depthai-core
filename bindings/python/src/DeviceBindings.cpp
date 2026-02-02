@@ -8,6 +8,9 @@
 #include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
+// pybind11_json
+#include "pybind11_json/pybind11_json.hpp"
+
 // std
 #include <filesystem>
 
@@ -554,6 +557,12 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 auto pythonCallback = [callback](std::shared_ptr<CrashDump> dump) {
                     py::gil_scoped_acquire acquire;
                     callback(dump);
+
+                    // After callback, sync _extra_dict to native extra
+                    py::object pyDump = py::cast(dump);
+                    if(py::hasattr(pyDump, "_extra_dict")) {
+                        dump->extra = pyjson::to_json(pyDump.attr("_extra_dict"));
+                    }
                 };
                 d.registerCrashdumpCallback(std::move(pythonCallback));
             },

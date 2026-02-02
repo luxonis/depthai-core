@@ -133,9 +133,19 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
                 auto d = getExtraDict(self);
                 if(!d.contains(key)) throw py::key_error(key);
                 PyDict_DelItemString(d.ptr(), key.c_str());
+                auto& dump = self.cast<CrashDump&>();
+                syncExtraToNative(self, dump);
             },
             py::arg("key"))
         .def("__len__", [](py::object self) -> size_t { return py::len(getExtraDict(self)); })
+        .def_property(
+            "extra",
+            [](py::object self) -> py::dict { return getExtraDict(self); },
+            [](py::object self, py::dict value) {
+                self.attr("_extra_dict") = value;
+                auto& dump = self.cast<CrashDump&>();
+                syncExtraToNative(self, dump);
+            })
         // Public members
         .def_readwrite("depthaiVersion", &CrashDump::depthaiVersion)
         .def_readwrite("depthaiVersionMajor", &CrashDump::depthaiVersionMajor)
