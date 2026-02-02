@@ -8,11 +8,17 @@
 
 namespace dai {
 
-static std::string getStringTimestamp() {
+static std::string getCurrentTimestamp() {
     auto now = std::chrono::system_clock::now();
-    auto inTime = std::chrono::system_clock::to_time_t(now);
-    std::ostringstream ss;
-    ss << std::put_time(std::localtime(&inTime), "%Y-%m-%d %H:%M:%S");
+    std::time_t inTime = std::chrono::system_clock::to_time_t(now);
+    std::tm localTime{};
+#ifdef _WIN32
+    localtime_s(&localTime, &inTime);  // thread-safe, Windows compliant
+#else
+    localtime_r(&inTime, &localTime);  // thread-safe, POSIX compliant
+#endif
+    std::stringstream ss;
+    ss << std::put_time(&localTime, "%Y-%m-%d %H:%M:%S");
     return ss.str();
 }
 
@@ -63,7 +69,7 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
     dump->deviceId = this->devicePtr->deviceInfo.getDeviceId();
 
     // Crashdump collection time
-    dump->crashdumpTimestamp = getStringTimestamp();
+    dump->crashdumpTimestamp = getCurrentTimestamp();
 
     return dump;
 }
