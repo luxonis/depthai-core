@@ -1,6 +1,7 @@
 #include "depthai/pipeline/MessageQueue.hpp"
 
 // std
+#include <boost/algorithm/cxx11/all_of.hpp>
 #include <chrono>
 #include <iostream>
 
@@ -225,19 +226,18 @@ bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::option
             input->removeNotifier(notifierId);
         }
     };
+    auto checkAllClosed = [&]() { return boost::algorithm::all_of(queues, [](const MessageQueue* q) { return q->isClosed(); }); };
     auto checkForMessages = [&]() {
         for(const auto& q : queues) {
-            if(q->has()) {
+            if(!q->isClosed() && q->has()) {
                 return true;
             }
         }
         return false;
     };
     auto pred = [&]() {
-        for(const auto& q : queues) {
-            if(q->isClosed()) {
-                return true;
-            }
+        if(checkAllClosed()) {
+            return true;
         }
         return checkForMessages();
     };
@@ -251,13 +251,14 @@ bool MessageQueue::waitAny(const std::vector<MessageQueue*>& queues, std::option
             notifierIds.emplace_back(input, notifierId);
         }
         // Check if any messages already present
-        if(!checkForMessages()) {
+        if(!checkAllClosed() && !checkForMessages()) {
             if(timeout.has_value()) {
                 gotMessage = notifier->waitFor(pred, timeout.value());
             } else {
                 notifier->wait(pred);
             }
         }
+        gotMessage = gotMessage && !checkAllClosed();
     } catch(...) {
         removeNotifiers();
         throw;
@@ -277,7 +278,7 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
     if(gotAny) {
         for(const auto& kv : queues) {
             auto& input = kv.second;
-            if(input.has()) inputs[kv.first] = input.get<ADatatype>();
+            if(!input.isClosed() && input.has()) inputs[kv.first] = input.get<ADatatype>();
         }
     }
     return inputs;
