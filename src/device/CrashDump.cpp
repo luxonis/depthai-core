@@ -89,10 +89,9 @@ static std::string fromJson(const nlohmann::json& json, const std::string& key, 
 // Factory method implementation
 std::unique_ptr<CrashDump> CrashDump::load(const fs::path& tarPath) {
     // First, extract metadata to determine platform
-    auto tempDir = platform::getTempPath() / "crashdump_extract";
-    fs::create_directories(tempDir);
+    fs::path tempDir = platform::getTempPath();
 
-    auto metadataPath = tempDir / METADATA_FILENAME;
+    fs::path metadataPath = tempDir / METADATA_FILENAME;
     utility::untarFiles(tarPath, {METADATA_FILENAME}, {metadataPath});
 
     if(!fs::exists(metadataPath)) {
