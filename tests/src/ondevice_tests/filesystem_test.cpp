@@ -339,11 +339,11 @@ TEST_CASE("std::filesystem::path with AssetManager, StereoDepth") {
     CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(path4));
     pipeline.getAssetManager().remove("camTuning");
 
-    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(CameraBoardSocket::CAM_A, string4.c_str()));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, string4.c_str()));
     pipeline.getAssetManager().remove("camTuning_0");
-    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(CameraBoardSocket::CAM_A, string4));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, string4));
     pipeline.getAssetManager().remove("camTuning_0");
-    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(CameraBoardSocket::CAM_A, path4));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, path4));
     pipeline.getAssetManager().remove("camTuning_0");
 
     auto depth = pipeline.create<dai::node::StereoDepth>();
@@ -384,7 +384,7 @@ TEST_CASE("std::filesystem::path with AssetManager, StereoDepth") {
     const auto stdPath4 = std::filesystem::u8path(string4);
     #endif
     CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(stdPath4));
-    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(CameraBoardSocket::CAM_A, stdPath4));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, stdPath4));
     CHECK_NOTHROW(depth->loadMeshFiles(stdPath4, stdPath4));
 #endif
 
