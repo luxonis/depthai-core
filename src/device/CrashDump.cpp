@@ -29,54 +29,53 @@ static constexpr int JSON_INDENT = 2;
 
 namespace fs = std::filesystem;
 
-static fs::path writeToTempFile(const char* content, std::streamsize size, std::string_view suffix) {
-    auto tempPath = platform::getTempPath() / fmt::format("crashdump_{}", suffix);
-
-    // Create file
-    std::ofstream out(tempPath, std::ios::binary);
+static void writeToFile(const fs::path& path, const char* content, const size_t size) {
+    std::ofstream out(path, std::ios::binary);
     if(!out) {
-        throw std::runtime_error(fmt::format("Failed to create temporary file: {}", tempPath));
+        throw std::ios_base::failure(fmt::format("Failed to create file: {}", path));
     }
-
-    // Write to file and close
-    out.write(content, size);
+    out.write(content, static_cast<std::streamsize>(size));
     out.close();
     if(out.fail()) {
-        throw std::runtime_error(fmt::format("Failed to write temporary file: {}", tempPath));
+        throw std::ios_base::failure(fmt::format("Failed to write file: {}", path));
     }
-    return tempPath;
 }
 
-static fs::path writeToTempFile(const std::vector<uint8_t>& data, std::string_view suffix) {
-    return writeToTempFile(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()), suffix);
+static void writeToFile(const fs::path& path, const std::string& content) {
+    writeToFile(path, content.data(), content.size());
 }
 
-static fs::path writeToTempFile(const std::string& content, std::string_view suffix) {
-    return writeToTempFile(content.data(), static_cast<std::streamsize>(content.size()), suffix);
+static void writeToFile(const fs::path& path, const std::vector<uint8_t>& data) {
+    writeToFile(path, reinterpret_cast<const char*>(data.data()), data.size());
 }
 
-// Helper function to read file content as string
-static std::string readFileAsString(const fs::path& path) {
+static void readFromFile(const fs::path& path, std::string& content) {
     std::ifstream in(path, std::ios::binary);
     if(!in) {
-        throw std::runtime_error(fmt::format("Failed to open file: {}", path));
+        throw std::ios_base::failure(fmt::format("Failed to open file: {}", path));
     }
     std::ostringstream ss;
     ss << in.rdbuf();
-    return ss.str();
+    content = ss.str();
+    in.close();
+    if(in.fail()) {
+        throw std::ios_base::failure(fmt::format("Failed to read file: {}", path));
+    }
 }
 
-// Helper function to read file content as binary
-static std::vector<uint8_t> readFileAsBinary(const fs::path& path) {
+static void readFromFile(const fs::path& path, std::vector<uint8_t>& data) {
     std::ifstream in(path, std::ios::binary | std::ios::ate);
     if(!in) {
-        throw std::runtime_error(fmt::format("Failed to open file: {}", path));
+        throw std::ios_base::failure(fmt::format("Failed to open file: {}", path));
     }
     auto size = in.tellg();
     in.seekg(0);
-    std::vector<uint8_t> data(size);
+    data.resize(size);
     in.read(reinterpret_cast<char*>(data.data()), size);
-    return data;
+    in.close();
+    if(in.fail()) {
+        throw std::ios_base::failure(fmt::format("Failed to read file: {}", path));
+    }
 }
 
 // Helper function to get value from json or return default value
@@ -101,7 +100,8 @@ std::unique_ptr<CrashDump> CrashDump::load(const fs::path& tarPath) {
         throw std::runtime_error("Invalid crash dump tar: missing metadata.json");
     }
 
-    std::string metadataContent = readFileAsString(metadataPath);
+    std::string metadataContent;
+    readFromFile(metadataPath, metadataContent);
     nlohmann::json metadata = nlohmann::json::parse(metadataContent);
 
     fs::remove_all(tempDir);
@@ -129,23 +129,21 @@ std::unique_ptr<CrashDump> CrashDump::load(const fs::path& tarPath) {
 }
 
 std::vector<uint8_t> CrashDump::toBytes() const {
-    auto tempPath = platform::getTempPath() / "crashdump_tobytes";
-    toTar(tempPath);
-    std::vector<uint8_t> bytes = readFileAsBinary(tempPath);
-    fs::remove(tempPath);
+    fs::path tempPath = platform::getTempPath();
+    fs::path tarPath = tempPath / "crashdump.tar";
+    toTar(tarPath);
+    std::vector<uint8_t> bytes;
+    readFromFile(tarPath, bytes);
+    fs::remove_all(tempPath);
     return bytes;
 }
 
 std::unique_ptr<CrashDump> CrashDump::fromBytes(const std::vector<uint8_t>& bytes) {
-    auto tempPath = platform::getTempPath() / "crashdump_frombytes";
-    std::ofstream out(tempPath, std::ios::binary);
-    out.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
-    out.close();
-    if(out.fail()) {
-        throw std::runtime_error(fmt::format("Failed to write temporary file: {}", tempPath));
-    }
-    auto crashDump = load(tempPath);
-    fs::remove(tempPath);
+    fs::path tempPath = platform::getTempPath();
+    fs::path tarPath = tempPath / "crashdump.tar";
+    writeToFile(tarPath, bytes);
+    auto crashDump = load(tarPath);
+    fs::remove_all(tempPath);
     return crashDump;
 }
 
@@ -214,29 +212,35 @@ void CrashDumpRVC2::toTar(const fs::path& tarPath) const {
     nlohmann::json metadata;
     writeMetadata(metadata);
 
+    // Create temporary folder
+    fs::path tempFolder = platform::getTempPath();
+
+    fs::path metadataPath = tempFolder / METADATA_FILENAME;
+    fs::path extraPath = tempFolder / EXTRA_FILENAME;
+    fs::path rvc2dataPath = tempFolder / RVC2_DATA_FILENAME;
+
     // Write to temporary files
-    auto metadataPath = writeToTempFile(metadata.dump(JSON_INDENT), "metadata");
-    auto extraPath = writeToTempFile(extra.dump(JSON_INDENT), "extra");
-    auto rvc2dataPath = writeToTempFile(nlohmann::json(crashReports).dump(JSON_INDENT), "data");
+    writeToFile(metadataPath, metadata.dump(JSON_INDENT));
+    writeToFile(extraPath, extra.dump(JSON_INDENT));
+
+    // This takes advantage of the fact the crashreports has DEPTHAI_SERIALIZE macro defined
+    writeToFile(rvc2dataPath, nlohmann::json(crashReports).dump(JSON_INDENT));
 
     // Combine everything into a tar file
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, rvc2dataPath};
     std::vector<std::string> filesInTar = {METADATA_FILENAME, EXTRA_FILENAME, RVC2_DATA_FILENAME};
     utility::tarFiles(tarPath, filesOnDisk, filesInTar);
 
-    // Cleanup temporary files
-    fs::remove(metadataPath);
-    fs::remove(extraPath);
-    fs::remove(rvc2dataPath);
+    // Cleanup temporary folder
+    fs::remove_all(tempFolder);
 }
 
 void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
-    auto tempDir = platform::getTempPath() / "crashdump_rvc2";
-    fs::create_directories(tempDir);
+    fs::path tempDir = platform::getTempPath();
 
-    auto metadataPath = tempDir / METADATA_FILENAME;
-    auto extraPath = tempDir / EXTRA_FILENAME;
-    auto dataPath = tempDir / RVC2_DATA_FILENAME;
+    fs::path metadataPath = tempDir / METADATA_FILENAME;
+    fs::path extraPath = tempDir / EXTRA_FILENAME;
+    fs::path dataPath = tempDir / RVC2_DATA_FILENAME;
 
     // Extract files
     std::vector<std::string> filesInTar = {METADATA_FILENAME, EXTRA_FILENAME, RVC2_DATA_FILENAME};
@@ -247,12 +251,16 @@ void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
     if(!fs::exists(metadataPath)) {
         throw std::runtime_error("Invalid crash dump tar: missing metadata file");
     }
-    nlohmann::json metadata = nlohmann::json::parse(readFileAsString(metadataPath));
+    std::string metadataContent;
+    readFromFile(metadataPath, metadataContent);
+    nlohmann::json metadata = nlohmann::json::parse(metadataContent);
     readMetadata(metadata);
 
     // Read extra
     if(fs::exists(extraPath)) {
-        extra = nlohmann::json::parse(readFileAsString(extraPath));
+        std::string extraContent;
+        readFromFile(extraPath, extraContent);
+        extra = nlohmann::json::parse(extraContent);
         if(extra.is_null()) {  // json was not parsed successfully
             extra = nlohmann::json::object();
         }
@@ -264,7 +272,9 @@ void CrashDumpRVC2::fromTar(const fs::path& tarPath) {
     if(!fs::exists(dataPath)) {
         throw std::runtime_error("Invalid crash dump tar: missing crash_reports.json");
     }
-    nlohmann::json data = nlohmann::json::parse(readFileAsString(dataPath));
+    std::string dataContent;
+    readFromFile(dataPath, dataContent);
+    nlohmann::json data = nlohmann::json::parse(dataContent);
     crashReports = data.get<CrashReportCollection>();
 
     // Cleanup
@@ -283,29 +293,33 @@ void CrashDumpRVC4::toTar(const fs::path& tarPath) const {
     writeMetadata(metadata);
     metadata["originalFilename"] = filename;
 
+    // Create temporary folder
+    fs::path tempFolder = platform::getTempPath();
+
+    fs::path metadataPath = tempFolder / METADATA_FILENAME;
+    fs::path extraPath = tempFolder / EXTRA_FILENAME;
+    fs::path rvc4dataPath = tempFolder / RVC4_DATA_FILENAME;
+
     // Write temporary files
-    auto metadataPath = writeToTempFile(metadata.dump(JSON_INDENT), "metadata");
-    auto extraPath = writeToTempFile(extra.dump(JSON_INDENT), "extra");
-    auto rvc4dataPath = writeToTempFile(data, "data");
+    writeToFile(metadataPath, metadata.dump(JSON_INDENT));
+    writeToFile(extraPath, extra.dump(JSON_INDENT));
+    writeToFile(rvc4dataPath, data);
 
     // Create tar
     std::vector<fs::path> filesOnDisk = {metadataPath, extraPath, rvc4dataPath};
     std::vector<std::string> filesInTar = {METADATA_FILENAME, EXTRA_FILENAME, RVC4_DATA_FILENAME};
     utility::tarFiles(tarPath, filesOnDisk, filesInTar);
 
-    // Cleanup temporary files
-    fs::remove(metadataPath);
-    fs::remove(extraPath);
-    fs::remove(rvc4dataPath);
+    // Cleanup temporary folder
+    fs::remove_all(tempFolder);
 }
 
 void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
-    auto tempDir = platform::getTempPath() / "crashdump_rvc4";
-    fs::create_directories(tempDir);
+    fs::path tempDir = platform::getTempPath();
 
-    auto metadataPath = tempDir / METADATA_FILENAME;
-    auto extraPath = tempDir / EXTRA_FILENAME;
-    auto dataPath = tempDir / RVC4_DATA_FILENAME;
+    fs::path metadataPath = tempDir / METADATA_FILENAME;
+    fs::path extraPath = tempDir / EXTRA_FILENAME;
+    fs::path dataPath = tempDir / RVC4_DATA_FILENAME;
 
     // Extract files
     std::vector<std::string> filesInTar = {METADATA_FILENAME, EXTRA_FILENAME, RVC4_DATA_FILENAME};
@@ -316,12 +330,16 @@ void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
     if(!fs::exists(metadataPath)) {
         throw std::runtime_error("Invalid crash dump tar: missing metadata file");
     }
-    nlohmann::json metadata = nlohmann::json::parse(readFileAsString(metadataPath));
+    std::string metadataContent;
+    readFromFile(metadataPath, metadataContent);
+    nlohmann::json metadata = nlohmann::json::parse(metadataContent);
     readMetadata(metadata);
 
     // Read extra
     if(fs::exists(extraPath)) {
-        extra = nlohmann::json::parse(readFileAsString(extraPath));
+        std::string extraContent;
+        readFromFile(extraPath, extraContent);
+        extra = nlohmann::json::parse(extraContent);
         if(extra.is_null()) {  // json was not parsed successfully
             extra = nlohmann::json::object();
         }
@@ -333,7 +351,7 @@ void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
     if(!fs::exists(dataPath)) {
         throw std::runtime_error("Invalid crash dump tar: missing crash_dump.tar.gz");
     }
-    data = readFileAsBinary(dataPath);
+    readFromFile(dataPath, data);
 
     // Cleanup
     fs::remove_all(tempDir);

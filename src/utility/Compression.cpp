@@ -17,8 +17,8 @@ namespace utility {
 void tarFiles(const std::filesystem::path& tarPath, const std::vector<std::filesystem::path>& filesOnDisk, const std::vector<std::string>& filesInTar) {
     assert(filesOnDisk.size() == filesInTar.size());
 
-    struct archive* a;
-    struct archive_entry* entry;
+    struct archive* a = nullptr;
+    struct archive_entry* entry = nullptr;
     char buff[8192];
     std::ifstream fileStream;
 
@@ -38,11 +38,11 @@ void tarFiles(const std::filesystem::path& tarPath, const std::vector<std::files
         archive_entry_set_filetype(entry, AE_IFREG);
         archive_entry_set_perm(entry, 0644);
 
-        std::filesystem::path filePath(file);
-        archive_entry_set_size(entry, std::filesystem::file_size(filePath));
+        auto entrysize = static_cast<la_int64_t>(std::filesystem::file_size(file));
+        archive_entry_set_size(entry, entrysize);
 
         archive_write_header(a, entry);
-        fileStream.open(filePath, std::ios::binary);
+        fileStream.open(file, std::ios::binary);
         while(fileStream.read(buff, sizeof(buff))) {
             archive_write_data(a, buff, fileStream.gcount());
         }
@@ -107,8 +107,7 @@ void untarFiles(const std::filesystem::path& tarPath, const std::vector<std::str
             const auto& file = filesInTar[i];
             if(file == archive_entry_pathname(entry)) {
                 const auto& outFile = filesOnDisk[i];
-                std::filesystem::path outFilePath(outFile);
-                outFileStream.open(outFilePath, std::ios::binary);
+                outFileStream.open(outFile, std::ios::binary);
                 if(!outFileStream) {
                     throw std::runtime_error(fmt::format("Could not open file {} for writing.", outFile));
                 }
