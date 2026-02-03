@@ -34,11 +34,16 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
     using ApplyCalibration = DCC::Commands::ApplyCalibration;
     using ResetData = DCC::Commands::ResetData;
     using SetPerformanceMode = DCC::Commands::SetPerformanceMode;
+    using ComputeCalibrationMetrics = DCC::Commands::ComputeCalibrationMetrics;
 
     // ---- Commands nested inside DynamicCalibrationControl ----
     py::class_<Calibrate, std::shared_ptr<Calibrate>>(cmds, "Calibrate")
         .def(py::init<bool>(), py::arg("force") = false)
         .def_readwrite("force", &Calibrate::force);
+
+    py::class_<ComputeCalibrationMetrics, std::shared_ptr<ComputeCalibrationMetrics>>(cmds, "ComputeCalibrationMetrics")
+        .def(py::init<dai::CalibrationHandler&>(), py::arg("calibration"))
+        .def_readwrite("calibration", &ComputeCalibrationMetrics::calibration);
 
     py::class_<CalibrationQuality, std::shared_ptr<CalibrationQuality>>(cmds, "CalibrationQuality")
         .def(py::init<bool>(), py::arg("force") = false)
@@ -81,6 +86,11 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
            &DCC::calibrate,
            py::arg("force") = false,
            "Create a DynamicCalibrationControl with a Calibrate command.");
+    cls.def_static(
+           "computeCalibrationMetrics",
+           &DCC::computeCalibrationMetrics,
+           py::arg("calibration"),
+           "Comute metrics on the given calibration.");
     cls.def_static(
            "calibrationQuality",
            &DCC::calibrationQuality,

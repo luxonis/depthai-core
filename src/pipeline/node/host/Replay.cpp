@@ -99,6 +99,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CalibrationMetrics:
         case DatatypeEnum::CoverageData:
         case DatatypeEnum::PipelineEvent:
         case DatatypeEnum::PipelineState:
@@ -178,6 +179,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CalibrationMetrics:
         case DatatypeEnum::CoverageData:
         case DatatypeEnum::PipelineEvent:
         case DatatypeEnum::PipelineState:

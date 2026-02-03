@@ -323,6 +323,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::CalibrationMetrics:
+            return parseDatatype<CalibrationMetrics>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
         case DatatypeEnum::CalibrationQuality:
             return parseDatatype<CalibrationQuality>(metadataStart, serializedObjectSize, data, fd);
             break;

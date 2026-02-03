@@ -131,6 +131,11 @@ struct CalibrationQuality : public Buffer {
     DEPTHAI_SERIALIZE(CalibrationQuality, qualityData, info);
 };
 
+struct CalibrationMetrics : public Buffer {
+    double calibrationConfidence;
+    double dataQuality;
+};
+
 /**
  * @brief Final result of running dynamic calibration.
  *
