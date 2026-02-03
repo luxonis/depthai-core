@@ -193,9 +193,10 @@ class EventsManager {
 
     /**
      * Fetch the configuration limits and quotas for snaps & events
+     * @param retryOnFail Retry fetching on failure; when true, keeps retrying until successful
      * @return bool
      */
-    bool fetchConfigurationLimits();
+    bool fetchConfigurationLimits(const bool retryOnFail);
     /**
      * Prepare a batch of file groups from inputSnapBatch
      */
@@ -227,10 +228,13 @@ class EventsManager {
      */
     void cacheSnapData(std::deque<std::shared_ptr<SnapData>>& inputSnapBatch);
     /**
-     * Upload cached data to the events service
-     * @return void
+     * Upload cached events to the events service
      */
-    void uploadCachedData();
+    void uploadCachedEvents();
+    /**
+     * Upload cached snaps to the events service
+     */
+    void uploadCachedSnaps();
     /**
      * Check if there's any cached data in the filesystem
      */
@@ -259,6 +263,7 @@ class EventsManager {
     std::mutex stopThreadConditionMutex;
     std::atomic<bool> stopUploadThread;
     std::atomic<bool> configurationLimitsFetched;
+    std::atomic<bool> connectionEstablished;
     std::condition_variable eventBufferCondition;
 
     uint64_t maxFileSizeBytes;
