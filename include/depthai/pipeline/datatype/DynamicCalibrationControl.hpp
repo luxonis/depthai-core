@@ -57,6 +57,12 @@ class DynamicCalibrationControl : public Buffer {
             DEPTHAI_SERIALIZE(Calibrate, force);
         };
 
+        struct ComputeCalibrationMetrics {
+            explicit ComputeCalibrationMetrics(dai::CalibrationHandler& calibration) : calibration(calibration) {}
+            dai::CalibrationHandler calibration;
+            DEPTHAI_SERIALIZE(ComputeCalibrationMetrics, calibration);
+        };
+
         /**
          * @brief Command to perform a calibration quality check.
          */
@@ -128,15 +134,16 @@ class DynamicCalibrationControl : public Buffer {
      * Only one command may be active at any time. If no command is present,
      * the variant contains `std::monostate`.
      */
-    using Command = std::variant<std::monostate,                ///< No command
-                                 Commands::Calibrate,           ///< Run calibration
-                                 Commands::CalibrationQuality,  ///< Run calibration quality check
-                                 Commands::StartCalibration,    ///< Start periodic calibration
-                                 Commands::StopCalibration,     ///< Stop calibration
-                                 Commands::LoadImage,           ///< Load an image
-                                 Commands::ApplyCalibration,    ///< Apply calibration data
-                                 Commands::ResetData,           ///< Reset calibration data
-                                 Commands::SetPerformanceMode   ///< Set performance mode
+    using Command = std::variant<std::monostate,                      ///< No command
+                                 Commands::Calibrate,                 ///< Run calibration
+                                 Commands::CalibrationQuality,        ///< Run calibration quality check
+                                 Commands::StartCalibration,          ///< Start periodic calibration
+                                 Commands::StopCalibration,           ///< Stop calibration
+                                 Commands::LoadImage,                 ///< Load an image
+                                 Commands::ApplyCalibration,          ///< Apply calibration data
+                                 Commands::ResetData,                 ///< Reset calibration data
+                                 Commands::SetPerformanceMode,        ///< Set performance mode
+                                 Commands::ComputeCalibrationMetrics  ///< Compute reprojection errot and confidence
                                  >;
 
     Command command{};
@@ -166,6 +173,10 @@ class DynamicCalibrationControl : public Buffer {
      */
     [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> calibrationQuality(bool force = false) {
         return std::make_shared<DynamicCalibrationControl>(Commands::CalibrationQuality{force});
+    }
+
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> computeCalibrationMetrics(dai::CalibrationHandler& calibration) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::ComputeCalibrationMetrics{calibration});
     }
 
     /**
