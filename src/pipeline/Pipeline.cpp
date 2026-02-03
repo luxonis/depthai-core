@@ -79,7 +79,7 @@ GlobalProperties PipelineImpl::getGlobalProperties() const {
 }
 
 void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
-    this->globalProperties = globalProperties;
+    this->globalProperties.setFrom(globalProperties);
 }
 
 std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {

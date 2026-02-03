@@ -79,6 +79,25 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
     uint32_t sippDmaBufferSize = SIPP_DMA_BUFFER_DEFAULT_SIZE;
 
     ~GlobalProperties() override;
+
+    GlobalProperties& setFrom(const GlobalProperties& other) {
+        leonCssFrequencyHz = other.leonCssFrequencyHz;
+        leonMssFrequencyHz = other.leonMssFrequencyHz;
+        pipelineName = other.pipelineName;
+        pipelineVersion = other.pipelineVersion;
+        if(other.calibData) {
+            calibData = other.calibData;
+            eepromId = other.eepromId;
+        }
+        if(cameraTuningBlobSize) cameraTuningBlobSize = other.cameraTuningBlobSize;
+        cameraTuningBlobUri = other.cameraTuningBlobUri;
+        cameraSocketTuningBlobSize = other.cameraSocketTuningBlobSize;
+        cameraSocketTuningBlobUri = other.cameraSocketTuningBlobUri;
+        xlinkChunkSize = other.xlinkChunkSize;
+        sippBufferSize = other.sippBufferSize;
+        sippDmaBufferSize = other.sippDmaBufferSize;
+        return *this;
+    }
 };
 
 DEPTHAI_SERIALIZE_EXT(GlobalProperties,
