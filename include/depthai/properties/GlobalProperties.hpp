@@ -89,7 +89,7 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
             calibData = other.calibData;
             eepromId = other.eepromId;
         }
-        if(cameraTuningBlobSize) cameraTuningBlobSize = other.cameraTuningBlobSize;
+        if(other.cameraTuningBlobSize) cameraTuningBlobSize = other.cameraTuningBlobSize;
         cameraTuningBlobUri = other.cameraTuningBlobUri;
         cameraSocketTuningBlobSize = other.cameraSocketTuningBlobSize;
         cameraSocketTuningBlobUri = other.cameraSocketTuningBlobUri;
