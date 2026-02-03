@@ -20,13 +20,13 @@
 #include "depthai/utility/AtomicBool.hpp"
 
 // shared
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/device/BoardConfig.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
-#include "depthai/common/CameraBoardSocket.hpp"
 
 namespace dai {
 
@@ -446,7 +446,7 @@ class Pipeline {
     void setCameraTuningBlobPath(const fs::path& path) {
         impl()->setCameraTuningBlobPath(path);
     }
-    
+
     /// Set a camera IQ (Image Quality) tuning blob, used for specific board socket
     void setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path) {
         impl()->setCameraTuningBlobPath(socket, path);
