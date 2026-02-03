@@ -39,12 +39,12 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class utility::PipelineImplHelper;
 
    public:
-    PipelineImpl(Pipeline& pipeline, bool createImplicitDevice = true) : assetManager("/pipeline/"), parent(pipeline) {
+    PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
         if(createImplicitDevice) {
             defaultDevice = std::make_shared<Device>();
         }
     }
-    PipelineImpl(Pipeline& pipeline, std::shared_ptr<Device> device) : assetManager("/pipeline/"), parent(pipeline), defaultDevice{std::move(device)} {}
+    PipelineImpl(std::shared_ptr<Device> device) : assetManager("/pipeline/"), defaultDevice{std::move(device)} {}
     PipelineImpl(const PipelineImpl&) = delete;
     PipelineImpl& operator=(const PipelineImpl&) = delete;
     PipelineImpl(PipelineImpl&&) = delete;
@@ -139,9 +139,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
-
-    // parent
-    Pipeline& parent;
 
     // is pipeline running
     AtomicBool running{false};
