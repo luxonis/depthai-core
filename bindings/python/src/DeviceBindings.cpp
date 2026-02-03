@@ -857,12 +857,12 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 py::gil_scoped_release release;
                 return d.isNeuralDepthSupported();
             },
-            DOC(dai, DeviceBase, isNeuralDepthSupported));
+            DOC(dai, DeviceBase, isNeuralDepthSupported))
+        .def("getPlatform", &DeviceBase::getPlatform, DOC(dai, DeviceBase, getPlatform))
+        .def("getPlatformAsString", &DeviceBase::getPlatformAsString, DOC(dai, DeviceBase, getPlatformAsString));
+
     // Bind constructors
     bindConstructors<Device>(device);
-
-    device.def("getPlatform", &Device::getPlatform, DOC(dai, Device, getPlatform))
-        .def("getPlatformAsString", &Device::getPlatformAsString, DOC(dai, Device, getPlatformAsString));
 
     clock.def("now", &Clock::now);
 }
