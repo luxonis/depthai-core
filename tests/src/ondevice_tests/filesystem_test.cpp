@@ -364,9 +364,9 @@ TEST_CASE("std::filesystem::path with AssetManager, StereoDepth") {
     CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(widePath4));
     pipeline.getAssetManager().remove("camTuning");
 
-    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(CameraBoardSocket::CAM_A, widePath4.c_str()));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, widePath4.c_str()));
     pipeline.getAssetManager().remove("camTuning_0");
-    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(CameraBoardSocket::CAM_A, widePath4));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, widePath4));
     pipeline.getAssetManager().remove("camTuning_0");
 
     CHECK_NOTHROW(depth->loadMeshFiles(widePath4.c_str(), widePath4.c_str()));
