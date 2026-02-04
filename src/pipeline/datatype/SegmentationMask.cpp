@@ -46,6 +46,7 @@ void SegmentationMask::setMask(const std::vector<std::uint8_t>& mask, size_t wid
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
+    setTimestamp(std::chrono::steady_clock::now());
     // Possible optimization: Switch to Run Length Encoding (RLE) of segmentation mask.
     setData(mask);
     this->width = width;
@@ -56,6 +57,7 @@ void SegmentationMask::setMask(span<const std::uint8_t> mask, size_t width, size
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
+    setTimestamp(std::chrono::steady_clock::now());
     data->setSize(mask.size());
     std::memcpy(data->getData().data(), mask.data(), mask.size());
     this->width = width;
@@ -74,11 +76,26 @@ void SegmentationMask::setMask(dai::ImgFrame& frame) {
     if(frame.getType() != dai::ImgFrame::Type::GRAY8) {
         throw std::runtime_error("SegmentationMask: ImgFrame type must be GRAY8");
     }
-    auto dataSpan = frame.getData();
-    std::vector<std::uint8_t> vecMask(dataSpan.begin(), dataSpan.end());
-    setData(vecMask);
-    this->width = frame.getWidth();
-    this->height = frame.getHeight();
+    const size_t width = frame.getWidth();
+    const size_t height = frame.getHeight();
+    const size_t stride = frame.getStride();
+    if(stride == width) {
+        setMask(frame.getData(), width, height);
+    } else {  // Need to repack the data
+        auto dataSpan = frame.getData();
+        const size_t packedSize = static_cast<size_t>(width) * static_cast<size_t>(height);
+        const size_t minSourceSize = (static_cast<size_t>(height - 1) * static_cast<size_t>(stride)) + static_cast<size_t>(width);
+        if(dataSpan.size() < minSourceSize) {
+            throw std::runtime_error("SegmentationMask: ImgFrame data size does not match width/height/stride");
+        }
+        data->setSize(packedSize);
+        auto dst = data->getData();
+        for(size_t y = 0; y < height; y++) {
+            const size_t srcOffset = y * static_cast<size_t>(stride);
+            const size_t dstOffset = y * static_cast<size_t>(width);
+            std::memcpy(dst.data() + dstOffset, dataSpan.data() + srcOffset, width);
+        }
+    }
     this->transformation = frame.transformation;
     setTimestamp(frame.getTimestamp());
     setTimestampDevice(frame.getTimestampDevice());
