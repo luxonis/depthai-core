@@ -15,7 +15,7 @@
 namespace dai {
 namespace utility {
 
-void PipelineImplHelper::setupHolisticRecordAndReplay() {
+void PipelineImplHelper::setupHolisticRecordAndReplay(std::weak_ptr<PipelineImpl> pipelineWeak) {
     auto pipeline = pipelineWeak.lock();
 
     // TODO: Refactor this function to reduce complexity
@@ -109,9 +109,7 @@ void PipelineImplHelper::setupHolisticRecordAndReplay() {
         }
     }
 }
-void PipelineImplHelper::finishHolisticRecordAndReplay() {
-    auto pipeline = pipelineWeak.lock();
-
+void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
     if(pipeline->buildingOnHost) {
         if(pipeline->recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
             std::vector<std::filesystem::path> filenames = {pipeline->recordReplayFilenames["record_config"], pipeline->recordReplayFilenames["calibration"]};
@@ -162,7 +160,7 @@ void PipelineImplHelper::finishHolisticRecordAndReplay() {
         }
     }
 }
-void PipelineImplHelper::setupPipelineDebuggingPre() {
+void PipelineImplHelper::setupPipelineDebuggingPre(std::weak_ptr<PipelineImpl> pipelineWeak) {
     auto pipeline = pipelineWeak.lock();
 
     // Create pipeline event aggregator node and link
@@ -229,7 +227,7 @@ void PipelineImplHelper::setupPipelineDebuggingPre() {
         }
     }
 }
-void PipelineImplHelper::setupPipelineDebuggingPost(std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>& bridgesOut,
+void PipelineImplHelper::setupPipelineDebuggingPost(std::weak_ptr<PipelineImpl> pipelineWeak, std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>& bridgesOut,
                                                     std::unordered_map<dai::Node::Input*, node::internal::XLinkInBridge>& bridgesIn) {
     auto pipeline = pipelineWeak.lock();
 

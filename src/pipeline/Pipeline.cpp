@@ -625,7 +625,7 @@ void PipelineImpl::build() {
 
     if(isBuild) return;
 
-    utility::PipelineImplHelper(shared_from_this()).setupHolisticRecordAndReplay();
+    utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
 
     // Run first build stage for all nodes
     for(const auto& node : getAllNodes()) {
@@ -641,7 +641,7 @@ void PipelineImpl::build() {
         node->buildStage3();
     }
 
-    utility::PipelineImplHelper(shared_from_this()).setupPipelineDebuggingPre();
+    utility::PipelineImplHelper::setupPipelineDebuggingPre(shared_from_this());
 
     // Go through all the connections and handle any
     // Host -> Device connections
@@ -784,7 +784,7 @@ void PipelineImpl::build() {
         }
     }
 
-    utility::PipelineImplHelper(shared_from_this()).setupPipelineDebuggingPost(bridgesOut, bridgesIn);
+    utility::PipelineImplHelper::setupPipelineDebuggingPost(shared_from_this(), bridgesOut, bridgesIn);
 
     isBuild = true;
 }
@@ -916,7 +916,7 @@ PipelineImpl::~PipelineImpl() {
     stop();
     wait();
 
-    utility::PipelineImplHelper(shared_from_this()).finishHolisticRecordAndReplay();
+    utility::PipelineImplHelper::finishHolisticRecordAndReplay(this);
 }
 
 void PipelineImpl::run() {
