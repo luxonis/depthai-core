@@ -30,7 +30,7 @@ struct SegmentationMaskAccess;
  */
 class SegmentationMask : public Buffer, public ProtoSerializable {
     // Optimization option: if network is bottleneck, implement RLE compression for the mask data
-   protected:
+   private:
     size_t width = 0;
     size_t height = 0;
     std::vector<std::string> labels;
@@ -38,12 +38,6 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     void setSizeInternal(size_t width, size_t height);
 
    public:
-    using Buffer::getSequenceNum;
-    using Buffer::getTimestamp;
-    using Buffer::getTimestampDevice;
-    using Buffer::setSequenceNum;
-    using Buffer::setTimestamp;
-    using Buffer::setTimestampDevice;
     std::optional<ImgTransformation> transformation;
 
     SegmentationMask();
