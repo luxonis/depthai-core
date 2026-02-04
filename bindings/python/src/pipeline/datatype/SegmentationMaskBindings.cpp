@@ -122,5 +122,5 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
         .def("setTimestamp", &SegmentationMask::setTimestamp, py::arg("ts"), DOC(dai, Buffer, setTimestamp))
         .def("setTimestampDevice", &SegmentationMask::setTimestampDevice, py::arg("ts"), DOC(dai, Buffer, setTimestampDevice))
         .def("setSequenceNum", &SegmentationMask::setSequenceNum, py::arg("seqNum"), DOC(dai, Buffer, setSequenceNum))
-        .def("setTransformation", [](SegmentationMask& msg, const ImgTransformation transformation) { msg.transformation = transformation; });
+        .def("setTransformation", [](SegmentationMask& msg, const ImgTransformation& transformation) { msg.transformation = transformation; });
 }

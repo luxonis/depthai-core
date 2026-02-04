@@ -126,7 +126,6 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
      * Returns a binary mask where pixels belonging to the specified instance/class index are set to 1, others to 0. If mask data is not set, returns an empty
      * vector.
      */
-
     std::vector<std::uint8_t> getMaskByIndex(uint8_t index) const;
 
     /**
