@@ -439,6 +439,12 @@ add_dependencies(platform_test fslock_dummy)
 dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
 dai_set_test_labels(circular_buffer_test onhost ci)
 
+# EventsManager test
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    dai_add_test(events_manager_test src/onhost_tests/utility/events_manager_test.cpp)
+    dai_set_test_labels(events_manager_test onhost ci)
+endif()
+
 # Pipeline debugging tests
 dai_add_test(pipeline_debugging_host_test src/onhost_tests/pipeline_debugging_host_test.cpp)
 dai_set_test_labels(pipeline_debugging_host_test onhost ci)
@@ -450,10 +456,6 @@ dai_set_test_labels(nndata_test onhost ci)
 #ImgDetections tests
 dai_add_test(imgdetections_test src/onhost_tests/pipeline/datatype/imgdetections_test.cpp)
 dai_set_test_labels(imgdetections_test onhost ci)
-
-#Gate tests
-dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_note_tests.cpp)
-dai_set_test_labels(gate_node_test onhost ci)
 
 #ImgFrame tests
 dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
@@ -758,3 +760,7 @@ endif()
 # NeuralAssistedStereo test
 dai_add_test(neural_assisted_stereo_node_test src/ondevice_tests/pipeline/node/neural_assisted_stereo_node_test.cpp)
 dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
+
+# Gate tests
+dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
+dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci)

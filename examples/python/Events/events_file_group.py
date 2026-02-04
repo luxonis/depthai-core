@@ -98,10 +98,10 @@ with dai.Pipeline() as pipeline:
         if len(borderDetectionsList) > 0:
             borderDetections = dai.ImgDetections()
             borderDetections.detections = borderDetectionsList
-            fileName = f"ImageDetection_{counter}"
+            fileTag = f"ImageDetection_{counter}"
 
             fileGroup = dai.FileGroup()
-            fileGroup.addImageDetectionsPair(fileName, inRgb, borderDetections)
+            fileGroup.addImageDetectionsPair(fileTag, inRgb, borderDetections)
             localSnapID = eventMan.sendSnap("LowConfidenceDetection", fileGroup, ["EventsExample", "Python"], {"key_0" : "value_0", "key_1" : "value_1"}, 
                               uploadSuccessCallback, uploadFailureCallback)
             if localSnapID != None:

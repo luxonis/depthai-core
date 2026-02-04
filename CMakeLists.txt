@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 
 include(cmake/depthaiOptions.cmake)
+if(CMAKE_TOOLCHAIN_FILE)
+    message(STATUS "Toolchain file specified: ${CMAKE_TOOLCHAIN_FILE}")
+else()
+    message(STATUS "No toolchain file specified.")
+endif()
 
 if(WIN32)
     add_compile_options(/MP)
@@ -30,6 +35,11 @@ if(POLICY CMP0028)
 endif()
 
 if(DEPTHAI_BOOTSTRAP_VCPKG)
+    if(CMAKE_TOOLCHAIN_FILE AND NOT CMAKE_TOOLCHAIN_FILE MATCHES "generated/toolchain.cmake$")
+        get_filename_component(_abs_toolchain "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE)
+        set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${_abs_toolchain}" CACHE STRING "Toolchain to chainload" FORCE)
+    endif()
+
     message(STATUS "Including vcpkg.cmake")
     include(cmake/vcpkg.cmake)
     include(cmake/depthaiVcpkgFeatures.cmake)
@@ -63,7 +73,6 @@ if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
 else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
-
 
 # Create depthai project
 project(depthai VERSION "3.3.0" LANGUAGES CXX C)
@@ -1146,8 +1155,6 @@ endif()
 # Sanitizers
 ########################
 if(DEPTHAI_SANITIZE)
-    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets.")
-    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets.")
     find_package(Sanitizers)
     add_sanitizers(${TARGET_CORE_NAME})
     if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
