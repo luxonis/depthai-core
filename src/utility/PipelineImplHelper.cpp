@@ -16,6 +16,8 @@ namespace dai {
 namespace utility {
 
 void PipelineImplHelper::setupHolisticRecordAndReplay() {
+    auto pipeline = pipelineWeak.lock();
+
     // TODO: Refactor this function to reduce complexity
     if(pipeline->buildingOnHost) {
         if(pipeline->defaultDevice) {
@@ -50,7 +52,7 @@ void PipelineImplHelper::setupHolisticRecordAndReplay() {
                     } else if(!recordPath.empty()) {
                         if(pipeline->enableHolisticRecordReplay || checkRecordConfig(recordPath, pipeline->recordConfig)) {
                             if(platform::checkWritePermissions(recordPath)) {
-                                if(utility::setupHolisticRecord(pipeline->parent,
+                                if(utility::setupHolisticRecord(dai::Pipeline(pipeline),
                                                                 pipeline->defaultDeviceId,
                                                                 pipeline->recordConfig,
                                                                 pipeline->recordReplayFilenames,
@@ -70,7 +72,7 @@ void PipelineImplHelper::setupHolisticRecordAndReplay() {
                     } else if(!replayPath.empty()) {
                         if(platform::checkPathExists(replayPath)) {
                             if(platform::checkWritePermissions(replayPath)) {
-                                if(utility::setupHolisticReplay(pipeline->parent,
+                                if(utility::setupHolisticReplay(dai::Pipeline(pipeline),
                                                                 replayPath,
                                                                 pipeline->defaultDeviceId,
                                                                 pipeline->recordConfig,
@@ -108,6 +110,8 @@ void PipelineImplHelper::setupHolisticRecordAndReplay() {
     }
 }
 void PipelineImplHelper::finishHolisticRecordAndReplay() {
+    auto pipeline = pipelineWeak.lock();
+
     if(pipeline->buildingOnHost) {
         if(pipeline->recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
             std::vector<std::filesystem::path> filenames = {pipeline->recordReplayFilenames["record_config"], pipeline->recordReplayFilenames["calibration"]};
@@ -159,6 +163,8 @@ void PipelineImplHelper::finishHolisticRecordAndReplay() {
     }
 }
 void PipelineImplHelper::setupPipelineDebuggingPre() {
+    auto pipeline = pipelineWeak.lock();
+
     // Create pipeline event aggregator node and link
     bool envPipelineDebugging = utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
     pipeline->enablePipelineDebugging = pipeline->enablePipelineDebugging || envPipelineDebugging;
@@ -173,11 +179,11 @@ void PipelineImplHelper::setupPipelineDebuggingPre() {
         }
         std::shared_ptr<node::internal::PipelineEventAggregation> hostEventAgg = nullptr;
         std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
-        hostEventAgg = pipeline->parent.create<node::internal::PipelineEventAggregation>();
+        hostEventAgg = pipeline->create<node::internal::PipelineEventAggregation>(pipeline);
         hostEventAgg->setRunOnHost(true);
         hostEventAgg->setTraceOutput(envPipelineDebugging);
         if(hasDeviceNodes) {
-            deviceEventAgg = pipeline->parent.create<node::internal::PipelineEventAggregation>();
+            deviceEventAgg = pipeline->create<node::internal::PipelineEventAggregation>(pipeline);
             deviceEventAgg->setRunOnHost(false);
             deviceEventAgg->setTraceOutput(envPipelineDebugging);
         }
@@ -193,10 +199,10 @@ void PipelineImplHelper::setupPipelineDebuggingPre() {
                 }
             }
         }
-        auto stateMerge = pipeline->parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, true);
+        auto stateMerge = pipeline->create<node::PipelineStateMerge>(pipeline)->build(hasDeviceNodes, true);
         std::shared_ptr<node::PipelineStateMerge> traceStateMerge;
         if(envPipelineDebugging) {
-            traceStateMerge = pipeline->parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, true);
+            traceStateMerge = pipeline->create<node::PipelineStateMerge>(pipeline)->build(hasDeviceNodes, true);
             traceStateMerge->setAllowConfiguration(false);
         }
         if(deviceEventAgg) {
@@ -225,6 +231,8 @@ void PipelineImplHelper::setupPipelineDebuggingPre() {
 }
 void PipelineImplHelper::setupPipelineDebuggingPost(std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>& bridgesOut,
                                                     std::unordered_map<dai::Node::Input*, node::internal::XLinkInBridge>& bridgesIn) {
+    auto pipeline = pipelineWeak.lock();
+
     // Finish setting up pipeline debugging
     if(pipeline->buildingOnHost && pipeline->enablePipelineDebugging) {
         // Enable events on xlink bridges

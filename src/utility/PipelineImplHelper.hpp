@@ -6,10 +6,10 @@ namespace dai {
 namespace utility {
 
 class PipelineImplHelper {
-    PipelineImpl* pipeline;
+    std::weak_ptr<PipelineImpl> pipelineWeak;
 
    public:
-    PipelineImplHelper(PipelineImpl* pipeline) : pipeline(pipeline){};
+    PipelineImplHelper(std::weak_ptr<PipelineImpl> pipeline) : pipelineWeak(pipeline){};
     void setupHolisticRecordAndReplay();
     void finishHolisticRecordAndReplay();
     void setupPipelineDebuggingPre();
