@@ -25,8 +25,7 @@ SegmentationMask::SegmentationMask() {
     setTimestamp(std::chrono::steady_clock::now());
 }
 
-SegmentationMask::SegmentationMask(const std::vector<std::uint8_t>& data, size_t width, size_t height) : SegmentationMask() {
-    setTimestamp(std::chrono::steady_clock::now());
+SegmentationMask::SegmentationMask(const std::vector<std::uint8_t>& data, const size_t width, const size_t height) : SegmentationMask() {
     setMask(data, width, height);
 }
 
@@ -266,7 +265,6 @@ cv::Mat SegmentationMask::getCvMask(cv::MatAllocator* allocator) {
     DAI_CHECK_V(actualSize == requiredSize, "Segmentation mask data size does not match the expected size, required {}, actual {}.", requiredSize, actualSize);
 
     mask = cv::Mat(size, type, data->getData().data());
-    CV_Assert(mask.type() == CV_8UC1);
 
     cv::Mat output;
     if(allocator != nullptr) {

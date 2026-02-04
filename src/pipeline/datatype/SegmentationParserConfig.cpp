@@ -9,7 +9,7 @@ void SegmentationParserConfig::serialize(std::vector<std::uint8_t>& metadata, Da
     datatype = DatatypeEnum::SegmentationParserConfig;
 }
 
-void SegmentationParserConfig::setConfidenceThreshold(float threshold) {
+void SegmentationParserConfig::setConfidenceThreshold(const float threshold) {
     this->confidenceThreshold = threshold;
 }
 
