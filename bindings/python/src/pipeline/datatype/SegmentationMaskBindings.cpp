@@ -66,14 +66,14 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
         .def("getWidth", &SegmentationMask::getWidth, DOC(dai, SegmentationMask, getWidth))
         .def("getHeight", &SegmentationMask::getHeight, DOC(dai, SegmentationMask, getHeight))
         .def("setMask",
-             (void(SegmentationMask::*)(const std::vector<std::uint8_t>&, size_t, size_t)) & SegmentationMask::setMask,
+             (void (SegmentationMask::*)(const std::vector<std::uint8_t>&, size_t, size_t))&SegmentationMask::setMask,
              py::arg("mask"),
              py::arg("width"),
              py::arg("height"),
              DOC(dai, SegmentationMask, setMask))
-        .def("setMask", (void(SegmentationMask::*)(dai::ImgFrame&)) & SegmentationMask::setMask, py::arg("frame"), DOC(dai, SegmentationMask, setMask, 2))
+        .def("setMask", (void (SegmentationMask::*)(dai::ImgFrame&))&SegmentationMask::setMask, py::arg("frame"), DOC(dai, SegmentationMask, setMask, 2))
         .def("setMask",
-             (void(SegmentationMask::*)(dai::span<const std::uint8_t>, size_t, size_t)) & SegmentationMask::setMask,
+             (void (SegmentationMask::*)(dai::span<const std::uint8_t>, size_t, size_t))&SegmentationMask::setMask,
              py::arg("mask"),
              py::arg("width"),
              py::arg("height"),
@@ -119,12 +119,13 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
         .def("getTimestampDevice", &SegmentationMask::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &SegmentationMask::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def(
-            "getTransformation", [](SegmentationMask& msg) { return msg.transformation; }, py::arg("self"))
+            "getTransformation", [](SegmentationMask& msg) { return msg.transformation; }, DOC(dai, Buffer, getTransformation))
         .def("setTimestamp", &SegmentationMask::setTimestamp, py::arg("ts"), DOC(dai, Buffer, setTimestamp))
         .def("setTimestampDevice", &SegmentationMask::setTimestampDevice, py::arg("ts"), DOC(dai, Buffer, setTimestampDevice))
         .def("setSequenceNum", &SegmentationMask::setSequenceNum, py::arg("seqNum"), DOC(dai, Buffer, setSequenceNum))
         .def(
             "setTransformation",
             [](SegmentationMask& msg, const ImgTransformation& transformation) { msg.transformation = transformation; },
-            py::arg("transformation"));
+            py::arg("transformation"),
+            DOC(dai, Buffer, setTransformation));
 }
