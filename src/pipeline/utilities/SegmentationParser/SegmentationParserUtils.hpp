@@ -36,15 +36,13 @@ void computeSegmentationMask(dai::SegmentationMask& outputMask,
  * @param tensorSpan Input tensor data
  * @param tensorInfo Information about the tensor (shape, data type, layout, etc.)
  * @param config SegmentationParserConfig containing parameters like confidenceThreshold and stepSize
- * @param channelStart Index of the starting channel to consider (default is 0, set to 1 if background class is part of the model output)
  * @param logger Logger
  */
-template <typename T>
+template <typename T, bool backgroundClass>
 void tensorArgmax(span<std::uint8_t> dstData,
                   span<const uint8_t> tensorSpan,
                   dai::TensorInfo& tensorInfo,
                   dai::SegmentationParserConfig& config,
-                  int channelStart,
                   std::shared_ptr<spdlog::async_logger>& logger);
 
 /**
@@ -54,14 +52,13 @@ void tensorArgmax(span<std::uint8_t> dstData,
  * @param tensorSpan Input tensor data
  * @param tensorInfo Information about the tensor (shape, data type, layout, etc.)
  * @param config SegmentationParserConfig containing parameters like confidenceThreshold and stepSize
- * @param channelStart Index of the starting channel to consider (default is 0, set to 1 if background class is part of the model output)
  * @param logger Logger
  */
+template <bool backgroundClass>
 void tensorArgmaxFP16(span<std::uint8_t> dst,
                       span<const uint8_t> tensorSpan,
                       dai::TensorInfo& tensorInfo,
                       dai::SegmentationParserConfig& config,
-                      int channelStart,
                       std::shared_ptr<spdlog::async_logger>& logger);
 
 /**
