@@ -39,6 +39,7 @@
 #include "depthai/device/CrashDump.hpp"
 #include "depthai/log/LogLevel.hpp"
 #include "depthai/log/LogMessage.hpp"
+#include "depthai/properties/GlobalProperties.hpp"
 
 namespace dai {
 
@@ -315,6 +316,16 @@ class DeviceBase {
      */
     LogLevel getNodeLogLevel(int64_t id);
 
+    void setProperties(const DeviceProperties& properties);  // TODO
+
+    DeviceProperties getProperties();  // TODO
+
+    void setCameraTuningBlob(const std::string& uri, uint32_t size);  // TODO
+
+    void setCameraSocketTuningBlobs(std::unordered_map<CameraBoardSocket, std::pair<std::string, uint32_t>> blobs);  // TODO
+
+    void setCameraSocketTuningBlob(CameraBoardSocket socket, const std::string& uri, uint32_t size);  // TODO
+
     /**
      * Sets the chunk size for splitting device-sent XLink packets. A larger value could
      * increase performance, and 0 disables chunking. A negative value is ignored.
@@ -330,6 +341,12 @@ class DeviceBase {
      * @returns XLink chunk size in bytes
      */
     int getXLinkChunkSize();
+
+    void setSippBufferSize(int sizeBytes);  // TODO
+
+    void setSippDmaBufferSize(int sizeBytes);  // TODO
+
+    void setBoardConfig(const BoardConfig& board);  // TODO
 
     /**
      * Get the Device Info object o the device which is currently running
@@ -605,6 +622,8 @@ class DeviceBase {
      * @returns True if EEPROM is present on board, false otherwise
      */
     bool isEepromAvailable();
+
+    bool isCalibrationDataAvailable();  // TODO
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM
@@ -944,6 +963,8 @@ class DeviceBase {
 
     std::filesystem::path firmwarePath;
     bool dumpOnly = false;
+
+    std::optional<DeviceProperties> properties;
 
     // Started pipeline
     std::optional<PipelineSchema> pipelineSchema;
