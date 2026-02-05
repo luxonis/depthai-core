@@ -25,6 +25,8 @@
 
 namespace dai {
 
+DeviceGate::GateImpl::~GateImpl() = default;
+
 const std::string API_ROOT{"/api/v1"};
 const auto sessionsEndpoint = API_ROOT + "/sessions";
 const int DEFAULT_PORT{11492};

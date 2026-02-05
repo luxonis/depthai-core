@@ -58,7 +58,7 @@ class DeviceGate {
     // private
     class GateImpl {
        public:
-        virtual ~GateImpl() = default;
+        virtual ~GateImpl();
         virtual bool isOkay() = 0;
         virtual bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) = 0;
         virtual bool startSession(std::string sessionId) = 0;
