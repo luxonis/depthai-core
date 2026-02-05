@@ -37,7 +37,7 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
      * * Default queue size: 4
      * Blocking: False
      */
-    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input input{*this, {"input", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * @brief Main data output.
