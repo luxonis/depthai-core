@@ -34,7 +34,7 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
      * * Accepts arbitrary Buffer messages (e.g., ImgFrame, NNData).
      * If the Gate is Open, messages received here are forwarded to 'output'.
      * If the Gate is Closed, messages received here are discarded/dropped.
-     * * Default queue size: 4
+     * * Default queue size: 1
      * Blocking: False
      */
     Input input{*this, {"input", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
