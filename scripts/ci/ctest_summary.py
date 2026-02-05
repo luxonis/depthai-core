@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import re
 import sys
 from collections import OrderedDict
@@ -19,13 +20,60 @@ def normalize_name(name: str) -> str:
     return " ".join(name.strip().split())
 
 
+def parse_args(argv):
+    if len(argv) < 2:
+        return None, "", "", ""
+
+    log_path = Path(argv[1])
+    context_parts = []
+    log_url = ""
+    log_map_path = ""
+
+    i = 2
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--log-url":
+            i += 1
+            if i < len(argv):
+                log_url = argv[i]
+        elif arg.startswith("--log-url="):
+            log_url = arg.split("=", 1)[1]
+        elif arg == "--log-map":
+            i += 1
+            if i < len(argv):
+                log_map_path = argv[i]
+        elif arg.startswith("--log-map="):
+            log_map_path = arg.split("=", 1)[1]
+        else:
+            context_parts.append(arg)
+        i += 1
+
+    context = " ".join(context_parts).strip()
+    return log_path, context, log_url, log_map_path
+
+
+def load_log_url(log_map_path: str, context: str) -> str:
+    if not log_map_path or not context:
+        return ""
+    try:
+        with open(log_map_path, "r", encoding="utf-8") as handle:
+            mapping = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return ""
+
+    artifact_name = f"ctest-log-{context}"
+    return mapping.get(artifact_name, mapping.get(context, ""))
+
+
 def main() -> int:
-    if len(sys.argv) < 2:
+    log_path, context, log_url, log_map_path = parse_args(sys.argv)
+    if log_path is None:
         print("No log path provided.")
         return 0
 
-    log_path = Path(sys.argv[1])
-    context = " ".join(sys.argv[2:]).strip()
+    if not log_url:
+        log_url = load_log_url(log_map_path, context)
+
     header_suffix = f" ({context})" if context else ""
     if not log_path.exists():
         print(f"Log file not found: {log_path}")
@@ -41,8 +89,10 @@ def main() -> int:
             failures[config] = OrderedDict()
             order.append(config)
 
+    line_no = 0
     with log_path.open("r", errors="ignore") as handle:
         for raw_line in handle:
+            line_no += 1
             line = ANSI_RE.sub("", raw_line.rstrip())
             if not line:
                 continue
@@ -65,9 +115,13 @@ def main() -> int:
                 cause = failed_match.group("cause")
                 cause = normalize_name(cause) if cause else ""
                 if num not in failures[config]:
-                    failures[config][num] = (name, cause)
-                elif not failures[config][num][1] and cause:
-                    failures[config][num] = (name, cause)
+                    failures[config][num] = (name, cause, line_no)
+                else:
+                    prev_name, prev_cause, prev_line = failures[config][num]
+                    if not prev_cause and cause:
+                        failures[config][num] = (name, cause, line_no)
+                    else:
+                        failures[config][num] = (prev_name, prev_cause, prev_line)
 
     print(f"## Test Summary {header_suffix}:")
     if not summaries:
@@ -88,11 +142,17 @@ def main() -> int:
     for config in order:
         config_failures = failures.get(config, {})
         for num, entry in config_failures.items():
-            name, cause = entry
+            name, cause, fail_line = entry
+            extras = []
+            if fail_line:
+                extras.append(f"line {fail_line}")
+            if log_url:
+                extras.append(f"[log]({log_url})")
+            extra_suffix = f" ({', '.join(extras)})" if extras else ""
             if cause:
-                print(f"- [{config}] #{num} {name} - {cause}")
+                print(f"- [{config}] #{num} {name} - {cause}{extra_suffix}")
             else:
-                print(f"- [{config}] #{num} {name}")
+                print(f"- [{config}] #{num} {name}{extra_suffix}")
             any_failed = True
     if not any_failed:
         print("No tests failed.")

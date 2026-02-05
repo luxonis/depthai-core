@@ -128,10 +128,56 @@ jobs:
       with:
         path: ctest-logs
     - name: Generate combined summary
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         if ! command -v python3 >/dev/null 2>&1; then
           echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
           exit 0
+        fi
+
+        log_map_path="ctest-logs/artifact_urls.json"
+        if [ -n "${GITHUB_TOKEN:-}" ]; then
+          LOG_MAP_PATH="$log_map_path" python3 - <<'PY'
+        import json
+        import os
+        import urllib.request
+
+        api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+        server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+        repo = os.environ.get("GITHUB_REPOSITORY")
+        run_id = os.environ.get("GITHUB_RUN_ID")
+        token = os.environ.get("GITHUB_TOKEN")
+        log_map_path = os.environ.get("LOG_MAP_PATH", "ctest-logs/artifact_urls.json")
+
+        if repo and run_id and token:
+            url = f"{api_url}/repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100"
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                },
+            )
+            try:
+                with urllib.request.urlopen(req) as resp:
+                    data = json.load(resp)
+            except Exception:
+                data = {}
+
+            mapping = {}
+            for artifact in data.get("artifacts", []):
+                name = artifact.get("name")
+                artifact_id = artifact.get("id")
+                if not name or not artifact_id:
+                    continue
+                mapping[name] = f"{server_url}/{repo}/actions/runs/{run_id}/artifacts/{artifact_id}"
+
+            if mapping:
+                os.makedirs(os.path.dirname(log_map_path), exist_ok=True)
+                with open(log_map_path, "w", encoding="utf-8") as handle:
+                    json.dump(mapping, handle)
+        PY
         fi
 
         shopt -s nullglob
@@ -143,7 +189,7 @@ jobs:
           found_logs=1
           context="$(basename "$dir")"
           context="${context#ctest-log-}"
-          python3 scripts/ci/ctest_summary.py "${log_files[0]}" "$context" >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/ci/ctest_summary.py "${log_files[0]}" "$context" --log-map "$log_map_path" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
         done
 
