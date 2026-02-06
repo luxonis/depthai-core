@@ -161,8 +161,8 @@ FileData::FileData(std::string data, std::string fileTag, std::string mimeType)
     : mimeType(std::move(mimeType)),
       fileTag(std::move(fileTag)),
       data(std::move(data)),
-      size(data.size()),
-      checksum(calculateSHA256Checksum(data)),
+      size(this->data.size()),
+      checksum(calculateSHA256Checksum(this->data)),
       classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {}
 
 FileData::FileData(std::filesystem::path filePath, std::string fileTag) : fileTag(std::move(fileTag)) {

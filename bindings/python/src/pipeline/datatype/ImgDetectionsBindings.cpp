@@ -66,6 +66,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("setBoundingBox", &ImgDetection::setBoundingBox, py::arg("boundingBox"))
         .def("getBoundingBox", &ImgDetection::getBoundingBox)
         .def("setOuterBoundingBox", &ImgDetection::setOuterBoundingBox, py::arg("xmin"), py::arg("ymin"), py::arg("xmax"), py::arg("ymax"))
+        .def("getOuterBoundingBox", &ImgDetection::getOuterBoundingBox, DOC(dai, ImgDetection, getOuterBoundingBox))
         .def("setKeypoints", py::overload_cast<const KeypointsList>(&ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("setKeypoints", py::overload_cast<const std::vector<Keypoint>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("setKeypoints",
