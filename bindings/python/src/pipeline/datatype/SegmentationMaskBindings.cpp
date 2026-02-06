@@ -122,7 +122,11 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
             py::arg("index"),
             DOC(dai, SegmentationMask, getCvMaskByIndex))
         .def("getContour", &SegmentationMask::getContour, py::arg("index"), DOC(dai, SegmentationMask, getContour))
-        .def("getBoundingBox", &SegmentationMask::getBoundingBox, py::arg("index"), py::arg("useContour") = false, DOC(dai, SegmentationMask, getBoundingBox))
+        .def("getBoundingBoxes",
+             &SegmentationMask::getBoundingBoxes,
+             py::arg("index"),
+             py::arg("calculateRotation") = false,
+             DOC(dai, SegmentationMask, getBoundingBoxes))
 #endif
         .def("getTimestamp", &SegmentationMask::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &SegmentationMask::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))

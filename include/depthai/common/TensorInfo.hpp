@@ -93,7 +93,7 @@ struct TensorInfo {
         }
     }
 
-    const int getWidth() const {
+    int getWidth() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
@@ -125,7 +125,7 @@ struct TensorInfo {
         }
     }
 
-    const int getHeight() const {
+    int getHeight() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
