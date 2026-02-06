@@ -326,7 +326,7 @@ TEST_CASE("DetectionParser replay test") {
         {"yolov8-instance-segmentation-large:coco-640x352:701031f", yoloV8InstanceSegmentationLargeCoco640x352GroundTruth, peopleWalkingVideo},
         {"yolov10-nano:coco-512x288:007b5fe", yoloV10NanoCoco512x288GroundTruth, peopleWalkingVideo},
         {"ppe-detection:640x640:419a4e5", ppeDetection640x640GroundTruth, peopleWalkingVideo},
-        {"yolo-p:bdd100k-320x320:7019bb8", yoloPBdd100k320x320GroundTruth, peopleWalkingVideo},
+        {"luxonis/yolo-p:bdd100k-320x320:e14d3d9", yoloPBdd100k320x320GroundTruth, peopleWalkingVideo},
         {"fire-detection:512x288:4a8263c", fireDetection512x288GroundTruth, fireVideo}};
 
     for(const auto& testCase : testCases) {
