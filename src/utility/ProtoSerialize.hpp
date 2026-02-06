@@ -16,6 +16,7 @@
 #include "depthai/schemas/ImgDetections.pb.h"
 #include "depthai/schemas/ImgFrame.pb.h"
 #include "depthai/schemas/PointCloudData.pb.h"
+#include "depthai/schemas/RGBDData.pb.h"
 #include "depthai/schemas/SpatialImgDetections.pb.h"
 #include "depthai/schemas/common.pb.h"
 #include "utility/ProtoSerializable.hpp"
@@ -48,7 +49,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const T*, bool = fals
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations* message, bool);
 template <>
-std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool);
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetections* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* message, bool);
 template <>
@@ -59,6 +60,8 @@ template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData* message, bool metadataOnly);
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* message, bool metadataOnly);
 
 // Helpers to deserialize messages from protobuf
 template <typename T>
@@ -77,6 +80,8 @@ template <>
 void setProtoMessage(EncodedFrame& obj, const google::protobuf::Message* msg, bool metadataOnly);
 template <>
 void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, bool metadataOnly);
+template <>
+void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool metadataOnly);
 
 };  // namespace utility
 };  // namespace dai

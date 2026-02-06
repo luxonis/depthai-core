@@ -9,13 +9,14 @@ enum class DatatypeEnum : std::int32_t {
     Buffer,
     ImgFrame,
     EncodedFrame,
+    GateControl,
     NNData,
     ImageManipConfig,
     CameraControl,
     ImgDetections,
     SpatialImgDetections,
     SystemInformation,
-    SystemInformationS3,
+    SystemInformationRVC4,
     SpatialLocationCalculatorConfig,
     SpatialLocationCalculatorData,
     EdgeDetectorConfig,
@@ -31,6 +32,7 @@ enum class DatatypeEnum : std::int32_t {
     TrackedFeatures,
     BenchmarkReport,
     MessageGroup,
+    MapData,
     TransformData,
     PointCloudConfig,
     PointCloudData,
@@ -44,6 +46,11 @@ enum class DatatypeEnum : std::int32_t {
     DynamicCalibrationResult,
     CalibrationQuality,
     CoverageData,
+    PipelineEvent,
+    PipelineState,
+    PipelineEventAggregationConfig,
+    VppConfig,
+    PacketizedData
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

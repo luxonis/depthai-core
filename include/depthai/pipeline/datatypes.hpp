@@ -16,6 +16,7 @@
 #include "datatype/ImgDetections.hpp"
 #include "datatype/ImgDetectionsT.hpp"
 #include "datatype/ImgFrame.hpp"
+#include "datatype/MapData.hpp"
 #include "datatype/MessageGroup.hpp"
 #include "datatype/NNData.hpp"
 #include "datatype/NeuralDepthConfig.hpp"
@@ -27,7 +28,7 @@
 #include "datatype/SpatialLocationCalculatorData.hpp"
 #include "datatype/StereoDepthConfig.hpp"
 #include "datatype/SystemInformation.hpp"
-#include "datatype/SystemInformationS3.hpp"
+#include "datatype/SystemInformationRVC4.hpp"
 #include "datatype/ThermalConfig.hpp"
 #include "datatype/ToFConfig.hpp"
 #include "datatype/TrackedFeatures.hpp"
@@ -37,3 +38,4 @@
     #include "datatype/DynamicCalibrationControl.hpp"
     #include "datatype/DynamicCalibrationResults.hpp"
 #endif
+#include "datatype/VppConfig.hpp"

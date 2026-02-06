@@ -5,6 +5,15 @@ enable_testing()
 # Add Catch2 for writing tests
 find_package(Catch2 CONFIG REQUIRED)
 
+# Add Trompeloeil mocking framework
+include(FetchContent)
+FetchContent_Declare(
+    trompeloeil
+    GIT_REPOSITORY https://github.com/rollbear/trompeloeil.git
+    GIT_TAG        v44  # You can update this to the latest version
+)
+FetchContent_MakeAvailable(trompeloeil)
+
 # Print details of the Catch2 package
 message(STATUS "Catch2_FOUND: ${Catch2_FOUND}")
 message(STATUS "Catch2_VERSION: ${Catch2_VERSION}")
@@ -56,7 +65,7 @@ function(dai_add_test test_name test_src)
     if(NOT DEPTHAI_MERGED_TARGET)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
-    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog)
+    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
@@ -364,6 +373,10 @@ endif()
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
 
+# XLInkInHost test 
+dai_add_test(xlink_in_host_test src/onhost_tests/pipeline/node/internal/XLinkInHostTest.cpp)
+dai_set_test_labels(xlink_in_host_test onhost ci)
+
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
@@ -386,6 +399,10 @@ dai_set_test_labels(image_transformations_test onhost ci)
 # Normalization tests
 dai_add_test(normalization_test src/onhost_tests/normalization_test.cpp)
 dai_set_test_labels(normalization_test onhost ci)
+
+# Depth unit tests
+dai_add_test(depth_unit_test src/onhost_tests/depth_unit_test.cpp)
+dai_set_test_labels(depth_unit_test onhost ci)
 
 # MessageQueue tests
 dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
@@ -417,6 +434,20 @@ dai_add_test(platform_test src/onhost_tests/utility/platform_test.cpp)
 dai_set_test_labels(platform_test onhost ci)
 target_compile_definitions(platform_test PRIVATE FSLOCK_DUMMY_PATH="$<TARGET_FILE:fslock_dummy>")
 add_dependencies(platform_test fslock_dummy)
+
+# Circular buffer test
+dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
+dai_set_test_labels(circular_buffer_test onhost ci)
+
+# EventsManager test
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    dai_add_test(events_manager_test src/onhost_tests/utility/events_manager_test.cpp)
+    dai_set_test_labels(events_manager_test onhost ci)
+endif()
+
+# Pipeline debugging tests
+dai_add_test(pipeline_debugging_host_test src/onhost_tests/pipeline_debugging_host_test.cpp)
+dai_set_test_labels(pipeline_debugging_host_test onhost ci)
 
 # Datatype tests
 dai_add_test(nndata_test src/onhost_tests/pipeline/datatype/nndata_test.cpp)
@@ -464,10 +495,14 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(openvino_blob_test ondevice rvc2_all ci)
 endif()
 
+# Vpp node tests
+dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
+dai_set_test_labels(vpp_test ondevice rvc4 ci)
+
 # Dynamic calibration tests
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(dynamic_calibration_test src/ondevice_tests/dynamic_calibration_test.cpp)
-    dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all ci)
+    dai_set_test_labels(dynamic_calibration_test ondevice rvc2_all rvc4 ci)
     target_compile_definitions(dynamic_calibration_test PRIVATE RECORDING_PATH="${dynamic_calibration_test_data}")
 endif()
 
@@ -494,6 +529,14 @@ dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)
 # Pipeline test
 dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
 dai_set_test_labels(pipeline_test ondevice rvc2_all ci)
+
+# Pipeline debugging tests
+dai_add_test(pipeline_debugging_rvc4_test src/ondevice_tests/pipeline_debugging_rvc4_test.cpp)
+dai_set_test_labels(pipeline_debugging_rvc4_test rvc4 ci)
+target_compile_definitions(pipeline_debugging_rvc4_test PRIVATE VIDEO_PATH="${construction_vest}")
+dai_add_test(pipeline_debugging_rvc2_test src/ondevice_tests/pipeline_debugging_rvc2_test.cpp)
+dai_set_test_labels(pipeline_debugging_rvc2_test rvc2 ci)
+target_compile_definitions(pipeline_debugging_rvc2_test PRIVATE VIDEO_PATH="${construction_vest}")
 
 # Device USB Speed and serialization macros test
 dai_add_test(device_usbspeed_test src/ondevice_tests/device_usbspeed_test.cpp)
@@ -614,6 +657,10 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
 dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci)
 
+# Fsync Multi-device test
+dai_add_test(fsync_multi_device_test src/onhost_tests/pipeline/fsync_multi_device.cpp)
+dai_set_test_labels(fsync_multi_device_test ondevice rvc4fsync ci)
+
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
 # Only test on RVC4, as RVC2 is not yet supported to auto-increase the max stream capacity
@@ -644,6 +691,10 @@ endif()
 # Benchmark tests
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
 dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+# SystemLogger test
+dai_add_test(system_logger_test src/ondevice_tests/pipeline/node/system_logger_test.cpp)
+dai_set_test_labels(system_logger_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # Manual focus test
 dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
@@ -701,3 +752,11 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         NEURAL_CALIBRATION_PATH="${test_calib}"
     )
 endif()
+
+# NeuralAssistedStereo test
+dai_add_test(neural_assisted_stereo_node_test src/ondevice_tests/pipeline/node/neural_assisted_stereo_node_test.cpp)
+dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
+
+# Gate tests
+dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
+dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci)

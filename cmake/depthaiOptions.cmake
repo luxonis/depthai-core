@@ -125,3 +125,4 @@ set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootl
 
 # Options for internal use
 option(DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4 "This build is part of the rvc4 firmware build" OFF)
+option(DEPTHAI_GENERATE_HOUSING_COORDS "Generate housing coordinate system data from JSON files" ON)

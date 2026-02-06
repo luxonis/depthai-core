@@ -33,7 +33,7 @@ class HostCamera : public dai::node::CustomThreadedNode<HostCamera> {
             return;
         }
 
-        while(isRunning()) {
+        while(mainLoop()) {
             // Read the frame from the camera
             cv::Mat frame;
             if(!cap.read(frame)) {

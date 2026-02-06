@@ -1,0 +1,5 @@
+project(neural_assested_stereo_examples)
+cmake_minimum_required(VERSION 3.10)
+
+dai_add_example(neural_assisted_stereo neural_assisted_stereo.cpp ON OFF)
+dai_set_example_test_labels(neural_assisted_stereo ondevice rvc4 ci)

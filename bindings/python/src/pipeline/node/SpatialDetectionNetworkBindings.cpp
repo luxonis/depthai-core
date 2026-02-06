@@ -1,8 +1,6 @@
 #include "Common.hpp"
-#include "NodeBindings.hpp"
-#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/Node.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
 
 void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
@@ -13,6 +11,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
     py::class_<SpatialDetectionNetworkProperties, std::shared_ptr<SpatialDetectionNetworkProperties>> spatialDetectionNetworkProperties(
         m, "SpatialDetectionNetworkProperties", DOC(dai, SpatialDetectionNetworkProperties));
     auto spatialDetectionNetwork = ADD_NODE_DERIVED(SpatialDetectionNetwork, DeviceNode);
+    spatialDetectionNetwork.attr("Model") = daiNodeModule.attr("NeuralNetwork").attr("Model");
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -29,48 +28,71 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
 
     // Properties
     spatialDetectionNetworkProperties.def_readwrite("detectedBBScaleFactor", &SpatialDetectionNetworkProperties::detectedBBScaleFactor)
-        .def_readwrite("depthThresholds", &SpatialDetectionNetworkProperties::depthThresholds);
+        .def_readwrite("depthThresholds", &SpatialDetectionNetworkProperties::depthThresholds)
+        .def_readwrite("calculationAlgorithm", &SpatialDetectionNetworkProperties::calculationAlgorithm)
+        .def_readwrite("stepSize", &SpatialDetectionNetworkProperties::stepSize);
 
     // Node
     spatialDetectionNetwork
         // Build methods with DepthSource variant
-        .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&,
-                               const node::DepthSource&,
-                               NNModelDescription,
-                               std::optional<float>,
-                               std::optional<dai::ImgResizeMode>>(&SpatialDetectionNetwork::build),
-             py::arg("input"),
-             py::arg("depthSource"),
-             py::arg("model"),
-             py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-             DOC(dai, node, SpatialDetectionNetwork, build))
-        .def("build",
-             ([](SpatialDetectionNetwork& self,
-                 const std::shared_ptr<Camera>& input,
-                 const node::DepthSource& depthSource,
-                 std::string model,
-                 std::optional<float> fps,
-                 std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, depthSource, NNModelDescription{model}, fps, resizeMode); }),
-             py::arg("input"),
-             py::arg("depthSource"),
-             py::arg("model"),
-             py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-             DOC(dai, node, SpatialDetectionNetwork, build))
-        .def("build",
-             py::overload_cast<const std::shared_ptr<Camera>&,
-                               const node::DepthSource&,
-                               const NNArchive&,
-                               std::optional<float>,
-                               std::optional<dai::ImgResizeMode>>(&SpatialDetectionNetwork::build),
-             py::arg("input"),
-             py::arg("depthSource"),
-             py::arg("nnArchive"),
-             py::arg("fps") = std::nullopt,
-             py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
-             DOC(dai, node, SpatialDetectionNetwork, build, 2))
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
+               NNModelDescription modelDesc,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) {
+                return self.build(input, depthSource, SpatialDetectionNetwork::Model{std::move(modelDesc)}, fps, resizeMode);
+            },
+            py::arg("input"),
+            py::arg("stereo"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, SpatialDetectionNetwork, build))
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
+               const NNArchive& nnArchive,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) {
+                return self.build(input, depthSource, SpatialDetectionNetwork::Model{nnArchive}, fps, resizeMode);
+            },
+            py::arg("input"),
+            py::arg("stereo"),
+            py::arg("nnArchive"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, SpatialDetectionNetwork, build))
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
+               const std::string& model,
+               std::optional<float> fps,
+               std::optional<dai::ImgResizeMode> resizeMode) { return self.build(input, depthSource, SpatialDetectionNetwork::Model{model}, fps, resizeMode); },
+            py::arg("input"),
+            py::arg("stereo"),
+            py::arg("model"),
+            py::arg("fps") = std::nullopt,
+            py::arg_v("resizeMode", dai::ImgResizeMode::CROP, "dai.ImgResizeMode.CROP"),
+            DOC(dai, node, SpatialDetectionNetwork, build))
+        .def(
+            "build",
+            [](SpatialDetectionNetwork& self,
+               const std::shared_ptr<Camera>& input,
+               const node::DepthSource& depthSource,
+               const SpatialDetectionNetwork::Model& model,
+               const ImgFrameCapability& capability) { return self.build(input, depthSource, model, capability); },
+            py::arg("input"),
+            py::arg("stereo"),
+            py::arg("model"),
+            py::arg("capability"),
+            DOC(dai, node, SpatialDetectionNetwork, build, 2))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",
@@ -129,7 +151,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             DOC(dai, node, NeuralNetwork, input))
         .def_property_readonly(
             "out",
-            [](const SpatialDetectionNetwork& n) { return &n.detectionParser->out; },
+            [](const SpatialDetectionNetwork& n) { return &n.spatialLocationCalculator->outputDetections; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, out))
         .def_property_readonly(
@@ -148,18 +170,26 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, detectionParser))
         .def_property_readonly(
+            "spatialLocationCalculator",
+            [](SpatialDetectionNetwork& n) { return &(*n.spatialLocationCalculator); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, SpatialDetectionNetwork, spatialLocationCalculator))
+        .def_property_readonly(
             "neuralNetwork",
             [](SpatialDetectionNetwork& n) { return &(*n.neuralNetwork); },
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, neuralNetwork))
 
-        .def_readonly("inputDepth", &SpatialDetectionNetwork::inputDepth, DOC(dai, node, SpatialDetectionNetwork, inputDepth))
-        .def_readonly("out", &SpatialDetectionNetwork::out, DOC(dai, node, SpatialDetectionNetwork, out))
-        .def_readonly("boundingBoxMapping", &SpatialDetectionNetwork::boundingBoxMapping, DOC(dai, node, SpatialDetectionNetwork, boundingBoxMapping))
-        .def_readonly("passthroughDepth", &SpatialDetectionNetwork::passthroughDepth, DOC(dai, node, SpatialDetectionNetwork, passthroughDepth))
-        .def_readonly("spatialLocationCalculatorOutput",
-                      &SpatialDetectionNetwork::spatialLocationCalculatorOutput,
-                      DOC(dai, node, SpatialDetectionNetwork, spatialLocationCalculatorOutput))
+        .def_property_readonly(
+            "inputDepth",
+            [](SpatialDetectionNetwork& n) { return &n.spatialLocationCalculator->inputDepth; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, SpatialDetectionNetwork, inputDepth))
+        .def_property_readonly(
+            "passthroughDepth",
+            [](SpatialDetectionNetwork& n) { return &n.spatialLocationCalculator->passthroughDepth; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, SpatialDetectionNetwork, passthroughDepth))
 
         .def("setDepthLowerThreshold",
              &SpatialDetectionNetwork::setDepthLowerThreshold,

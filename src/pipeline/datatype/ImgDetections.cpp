@@ -105,6 +105,22 @@ std::vector<Keypoint> ImgDetection::getKeypoints() const {
     }
 }
 
+std::vector<Point2f> ImgDetection::getKeypoints2f() const {
+    if(keypoints.has_value()) {
+        return keypoints->getPoints2f();
+    } else {
+        return {};
+    }
+}
+
+std::vector<Point3f> ImgDetection::getKeypoints3f() const {
+    if(keypoints.has_value()) {
+        return keypoints->getPoints3f();
+    } else {
+        return {};
+    }
+}
+
 void ImgDetection::setEdges(const std::vector<Edge> edges) {
     if(!keypoints.has_value()) {
         throw std::runtime_error("No keypoints set, cannot set edges.");
