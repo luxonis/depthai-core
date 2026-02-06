@@ -42,6 +42,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl(Pipeline& pipeline, bool createImplicitDevice = true) : assetManager("/pipeline/"), parent(pipeline) {
         if(createImplicitDevice) {
             defaultDevice = std::make_shared<Device>();
+            defaultDeviceProperties = &defaultDevice->properties;
+        } else {
+            hostProperties = DeviceProperties();
+            defaultDeviceProperties = &hostProperties.value();
         }
     }
     PipelineImpl(Pipeline& pipeline, std::shared_ptr<Device> device) : assetManager("/pipeline/"), parent(pipeline), defaultDevice{std::move(device)} {}
@@ -88,6 +92,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setXLinkChunkSize(int sizeBytes);
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(GlobalProperties globalProperties);
+    void setDefaultDeviceProperties(DeviceProperties deviceProperties);
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
@@ -157,6 +162,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
+    std::optional<DeviceProperties> hostProperties;
+    DeviceProperties* defaultDeviceProperties = nullptr;
 
     // Queue for tasks
     LockingQueue<std::function<void()>> tasks;
