@@ -16,9 +16,9 @@ def showColoredSegmentationFrame(segMask: dai.SegmentationMask, colorScalingFact
     if len(segMask.getLabels()) > 0:
         for i, labelIndex in enumerate(uniqueLabelIndexes):
             labelStr = segMask.getLabels()[labelIndex]
-            color_value = np.array([[int(labelIndex * colorScalingFactor)]], dtype=np.uint8)
-            text_color = cv2.applyColorMap(color_value, cv2.COLORMAP_JET)[0, 0].tolist()
-            cv2.putText(coloredSegFrame, f"{labelIndex}: {labelStr}", (10, 20 + i * 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, text_color, 1)
+            colorValue = np.array([[int(labelIndex * colorScalingFactor)]], dtype=np.uint8)
+            textColor = cv2.applyColorMap(colorValue, cv2.COLORMAP_JET)[0, 0].tolist()
+            cv2.putText(coloredSegFrame, f"{labelIndex}: {labelStr}", (10, 20 + i * 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, textColor, 1)
     cv2.imshow("Segmentation Mask", coloredSegFrame)
     return coloredSegFrame
 
@@ -34,7 +34,6 @@ with dai.Pipeline(device) as pipeline:
     neuralNetwork = pipeline.create(dai.node.NeuralNetwork).build(cameraNode, modelName)
 
     segParser = pipeline.create(dai.node.SegmentationParser).build(neuralNetwork.out, modelName)
-    segParser.initialConfig.setConfidenceThreshold(0.0)
 
     maskQueue = segParser.out.createOutputQueue()
     frameQueue = neuralNetwork.passthrough.createOutputQueue()

@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -20,10 +21,7 @@
 namespace dai {
 
 SegmentationMask::~SegmentationMask() = default;
-SegmentationMask::SegmentationMask() {
-    // Set timestamp to now
-    setTimestamp(std::chrono::steady_clock::now());
-}
+SegmentationMask::SegmentationMask() = default;
 
 SegmentationMask::SegmentationMask(const std::vector<std::uint8_t>& data, const size_t width, const size_t height) : SegmentationMask() {
     setMask(data, width, height);
@@ -45,18 +43,14 @@ void SegmentationMask::setMask(const std::vector<std::uint8_t>& mask, size_t wid
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
-    setTimestamp(std::chrono::steady_clock::now());
-    // Possible optimization: Switch to Run Length Encoding (RLE) of segmentation mask.
     setData(mask);
     this->width = width;
     this->height = height;
 }
-
 void SegmentationMask::setMask(span<const std::uint8_t> mask, size_t width, size_t height) {
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
-    setTimestamp(std::chrono::steady_clock::now());
     data->setSize(mask.size());
     std::memcpy(data->getData().data(), mask.data(), mask.size());
     this->width = width;
@@ -130,12 +124,12 @@ dai::ImgFrame SegmentationMask::getFrame() const {
     return img;
 }
 
-std::optional<int32_t> SegmentationMask::getArea(uint8_t index) const {
+std::optional<uint32_t> SegmentationMask::getArea(uint8_t index) const {
     std::vector<std::uint8_t> maskData = getMaskData();
     if(maskData.empty()) {
         return std::nullopt;
     }
-    int32_t area = 0;
+    uint32_t area = 0;
     for(const auto& val : maskData) {
         if(val == index) {
             area++;
@@ -306,65 +300,43 @@ std::vector<std::vector<dai::Point2f>> SegmentationMask::getContour(uint8_t inde
     return result;
 }
 
-std::optional<dai::RotatedRect> SegmentationMask::getBoundingBox(uint8_t index, bool useContour) {
-    dai::RotatedRect box;
-    if(useContour) {  // use contours
-        cv::Mat mask = getCvMaskByIndex(index);
-        if(mask.empty()) {
-            return std::nullopt;
-        }
-
-        cv::Mat maskCopy = mask.clone();
-        std::vector<std::vector<cv::Point>> contours;
-        cv::findContours(maskCopy, contours, cv::RetrievalModes::RETR_EXTERNAL, cv::ContourApproximationModes::CHAIN_APPROX_SIMPLE);
-        if(contours.empty()) {
-            return std::nullopt;
-        }
-
-        // Find the largest contour
-        size_t largestContourIdx = 0;
-        double largestArea = 0.0;
-        for(size_t i = 0; i < contours.size(); i++) {
-            double area = cv::contourArea(contours[i]);
-            if(area > largestArea) {
-                largestArea = area;
-                largestContourIdx = i;
-            }
-        }
-        cv::RotatedRect cvBox = cv::minAreaRect(contours[largestContourIdx]);
-        box = dai::RotatedRect(dai::Point2f(cvBox.center.x / static_cast<float>(width), cvBox.center.y / static_cast<float>(height), true),
-                               dai::Size2f(cvBox.size.width / static_cast<float>(width), cvBox.size.height / static_cast<float>(height), true),
-                               cvBox.angle);
-    } else {
-        std::vector<std::uint8_t> maskData = getMaskData();
-        if(maskData.empty()) {
-            return std::nullopt;
-        }
-
-        int minX = static_cast<int>(width);
-        int minY = static_cast<int>(height);
-        int maxX = -1;
-        int maxY = -1;
-        for(size_t y = 0; y < height; y++) {
-            for(size_t x = 0; x < width; x++) {
-                size_t idx = y * width + x;
-                if(maskData[idx] == index) {
-                    minX = std::min(static_cast<int>(x), minX);
-                    minY = std::min(static_cast<int>(y), minY);
-                    maxX = std::max(static_cast<int>(x), maxX);
-                    maxY = std::max(static_cast<int>(y), maxY);
-                }
-            }
-        }
-        if(maxX == -1 || maxY == -1) {
-            return std::nullopt;
-        }
-        dai::Point2f center((minX + maxX) / 2.0f / static_cast<float>(width), (minY + maxY) / 2.0f / static_cast<float>(height), true);
-        dai::Size2f size((maxX - minX) / static_cast<float>(width), (maxY - minY) / static_cast<float>(height), true);
-        box = dai::RotatedRect(center, size, 0.0f);
+std::vector<dai::RotatedRect> SegmentationMask::getBoundingBoxes(uint8_t index, bool calculateRotation) {
+    std::vector<dai::RotatedRect> boxes;
+    cv::Mat mask = getCvMaskByIndex(index);
+    if(mask.empty()) {
+        return {};
     }
 
-    return box;
+    cv::Mat maskCopy = mask.clone();
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(maskCopy, contours, cv::RetrievalModes::RETR_EXTERNAL, cv::ContourApproximationModes::CHAIN_APPROX_SIMPLE);
+    if(contours.empty()) {
+        return {};
+    }
+    const float widthF = static_cast<float>(width);
+    const float heightF = static_cast<float>(height);
+
+    for(const auto& contour : contours) {
+        dai::RotatedRect box;
+        if(calculateRotation) {
+            cv::RotatedRect cvBox = cv::minAreaRect(contour);
+            box = {dai::Point2f(cvBox.center.x / widthF, cvBox.center.y / heightF, true),
+                   dai::Size2f(cvBox.size.width / widthF, cvBox.size.height / heightF, true),
+                   cvBox.angle};
+        } else {
+            cv::Rect boundingRect = cv::boundingRect(contour);
+            if(boundingRect.width == 0 || boundingRect.height == 0) {
+                continue;
+            }
+            box = {dai::Point2f((boundingRect.x + boundingRect.width / 2.0f) / widthF, (boundingRect.y + boundingRect.height / 2.0f) / heightF, true),
+                   dai::Size2f(boundingRect.width / widthF, boundingRect.height / heightF, true),
+                   0.0f};
+        }
+
+        boxes.push_back(box);
+    }
+
+    return boxes;
 }
 
 #endif

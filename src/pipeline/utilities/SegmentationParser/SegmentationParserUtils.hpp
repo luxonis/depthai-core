@@ -22,10 +22,10 @@ namespace SegmentationParserUtils {
  * @param logger Logger
  */
 void computeSegmentationMask(dai::SegmentationMask& outputMask,
-                             dai::NNData& nnData,
-                             dai::TensorInfo& tensorInfo,
-                             dai::SegmentationParserConfig& config,
-                             bool backgroundClass,
+                             const dai::NNData& nnData,
+                             const dai::TensorInfo& tensorInfo,
+                             const dai::SegmentationParserConfig& config,
+                             const bool backgroundClass,
                              std::shared_ptr<spdlog::async_logger>& logger);
 
 /**

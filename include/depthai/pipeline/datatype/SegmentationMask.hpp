@@ -25,7 +25,7 @@ struct SegmentationMaskAccess;
 /**
  * SegmentationMask message.
  *
- * Segmentation mask of an image is stored as a single-channel INT8 array, where each value represents a class or instance index.
+ * Segmentation mask of an image is stored as a single-channel UINT8 array, where each value represents a class or instance index.
  * The value 255 is treated as background pixels (no class/instance).
  */
 class SegmentationMask : public Buffer, public ProtoSerializable {
@@ -103,7 +103,7 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
      * @param index Instance/Class index
      * @note If index is not present in the mask, returns std::nullopt.
      */
-    std::optional<int32_t> getArea(uint8_t index) const;
+    std::optional<uint32_t> getArea(uint8_t index) const;
 
     /**
      * Returns the normalized centroid (x,y) coordinates of the specified instance/class index in the segmentation mask.
@@ -123,14 +123,14 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     std::vector<std::string> getLabels() const;
 
     /**
-     * Returns a binary mask where pixels belonging to the specified instance/class index are set to 1, others to 0. If mask data is not set, returns an empty
-     * vector.
+     * Returns a binary mask where pixels belonging to the specified instance/class index are set to 1, others to 0. If mask data is not set, returns an
+     * empty vector.
      */
     std::vector<std::uint8_t> getMaskByIndex(uint8_t index) const;
 
     /**
-     * Returns a binary mask where pixels belonging to the specified class label are set to 1, others to 0. If labels are not set or label not found, returns an
-     * empty vector.
+     * Returns a binary mask where pixels belonging to the specified class label are set to 1, others to 0. If labels are not set or label not found,
+     * returns an empty vector.
      */
     std::vector<std::uint8_t> getMaskByLabel(const std::string& label) const;
 
@@ -172,12 +172,11 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     std::vector<std::vector<dai::Point2f>> getContour(uint8_t index);
 
     /**
-     * Returns the bounding box of the specified instance/class index.
+     * Returns a bounding box for each continous region with the specified index.
      * @param index class index
-     * @param useContour If true, the rotation of the bounding box is calculated using the opencv functions findContours and minAreaRect, otherwise a fast
-     * calculation of the axis-aligned bounding box is returned.
+     * @param calculateRotation If true, returns rotated bounding boxes, otherwise returns the outer, axis-aligned bounding boxes.
      */
-    std::optional<dai::RotatedRect> getBoundingBox(uint8_t index, bool useContour = false);
+    std::vector<dai::RotatedRect> getBoundingBoxes(uint8_t index, bool calculateRotation = true);
 
 #endif
 

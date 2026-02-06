@@ -79,8 +79,6 @@ int main() {
 
     auto segParser = pipeline.create<dai::node::SegmentationParser>();
     segParser->build(neuralNetwork->out, modelName);
-    segParser->setBackgroundClass(true);
-    segParser->initialConfig->setConfidenceThreshold(0.0f);
 
     auto maskQueue = segParser->out.createOutputQueue();
     auto frameQueue = neuralNetwork->passthrough.createOutputQueue();

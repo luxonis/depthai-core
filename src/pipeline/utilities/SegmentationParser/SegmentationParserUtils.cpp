@@ -59,7 +59,7 @@ T getQuantizedThreshold(const dai::SegmentationParserConfig& config, const dai::
 template <typename T, bool backgroundClass>
 void argmaxNHWCVectorizedTensor(span<uint8_t> dst,
                                 const span<const uint8_t> tensorBase,
-                                dai::TensorInfo& tensorInfo,
+                                const dai::TensorInfo& tensorInfo,
                                 const dai::SegmentationParserConfig& config) {
     const int channels = tensorInfo.getChannels();
     const int width = tensorInfo.getWidth();
@@ -111,7 +111,7 @@ void argmaxNHWCVectorizedTensor(span<uint8_t> dst,
  * Data looks like [h1w1c1, h1w1c2, ..., h1w1cC, h1w2c1, h1w2c2, ..., h1w2cC, ..., hHwWcC]
  */
 template <typename T, bool backgroundClass>
-void parseNHWCTensor(span<uint8_t> dst, const span<const uint8_t> tensorBase, dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config) {
+void parseNHWCTensor(span<uint8_t> dst, const span<const uint8_t> tensorBase, const dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config) {
     const uint8_t* tensorPtr = tensorBase.data();
     const int channels = tensorInfo.getChannels();
     const int width = tensorInfo.getWidth();
@@ -157,7 +157,7 @@ void parseNHWCTensor(span<uint8_t> dst, const span<const uint8_t> tensorBase, da
 }
 
 template <typename T, bool backgroundClass>
-void fillBestVals(std::vector<T>& bestValues, const uint8_t* tensorPtr, dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config) {
+void fillBestVals(std::vector<T>& bestValues, const uint8_t* tensorPtr, const dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config) {
     const int width = tensorInfo.getWidth();
     const int height = tensorInfo.getHeight();
 
@@ -190,7 +190,7 @@ void fillBestVals(std::vector<T>& bestValues, const uint8_t* tensorPtr, dai::Ten
  */
 
 template <typename T, bool backgroundClass>
-void parseNCHWTensor(span<uint8_t> dst, const span<const uint8_t> tensorBase, dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config) {
+void parseNCHWTensor(span<uint8_t> dst, const span<const uint8_t> tensorBase, const dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config) {
     const int channels = tensorInfo.getChannels();
     const int width = tensorInfo.getWidth();
     const int height = tensorInfo.getHeight();
@@ -229,8 +229,8 @@ void parseNCHWTensor(span<uint8_t> dst, const span<const uint8_t> tensorBase, da
 template <typename T, bool backgroundClass>
 void tensorArgmax(span<std::uint8_t> dstData,
                   const span<const uint8_t> tensorSpan,
-                  dai::TensorInfo& tensorInfo,
-                  dai::SegmentationParserConfig& config,
+                  const dai::TensorInfo& tensorInfo,
+                  const dai::SegmentationParserConfig& config,
                   std::shared_ptr<spdlog::async_logger>& logger) {
     /*
      * Should be moved to GPU.
@@ -252,7 +252,10 @@ void tensorArgmax(span<std::uint8_t> dstData,
 }
 
 template <bool backgroundClass>
-void fillFP16BestVals(std::vector<float>& bestValues, const uint8_t* tensorPtr, dai::TensorInfo& tensorInfo, const dai::SegmentationParserConfig& config) {
+void fillFP16BestVals(std::vector<float>& bestValues,
+                      const uint8_t* tensorPtr,
+                      const dai::TensorInfo& tensorInfo,
+                      const dai::SegmentationParserConfig& config) {
     const int width = tensorInfo.getWidth();
     const int height = tensorInfo.getHeight();
 
@@ -282,8 +285,8 @@ void fillFP16BestVals(std::vector<float>& bestValues, const uint8_t* tensorPtr, 
 template <bool backgroundClass>
 void tensorArgmaxFP16(span<std::uint8_t> dst,
                       const span<const uint8_t> tensorSpan,
-                      dai::TensorInfo& tensorInfo,
-                      dai::SegmentationParserConfig& config,
+                      const dai::TensorInfo& tensorInfo,
+                      const dai::SegmentationParserConfig& config,
                       std::shared_ptr<spdlog::async_logger>& logger) {
     logger->trace("Using FP16 NCHW segmentation mask parsing.");
     const uint8_t* tensorBase = tensorSpan.data();
@@ -323,9 +326,9 @@ void tensorArgmaxFP16(span<std::uint8_t> dst,
 }
 
 void computeSegmentationMask(dai::SegmentationMask& outputMask,
-                             dai::NNData& nnData,
-                             dai::TensorInfo& tensorInfo,
-                             dai::SegmentationParserConfig& config,
+                             const dai::NNData& nnData,
+                             const dai::TensorInfo& tensorInfo,
+                             const dai::SegmentationParserConfig& config,
                              const bool backgroundClass,
                              std::shared_ptr<spdlog::async_logger>& logger) {
     span<std::uint8_t> dstData =

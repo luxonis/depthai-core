@@ -38,7 +38,7 @@ struct TensorInfo {
         FP64 = 5,  // Double precision floating point
     };
 
-    void validateStorageOrder() {
+    void validateStorageOrder() const {
         switch(order) {
             case StorageOrder::NHWC:
             case StorageOrder::NHCW:
@@ -75,7 +75,7 @@ struct TensorInfo {
         }
     }
 
-    int getDataTypeSize() {
+    int getDataTypeSize() const {
         switch(dataType) {
             case DataType::U8F:
             case DataType::I8:
@@ -93,7 +93,7 @@ struct TensorInfo {
         }
     }
 
-    int getWidth() {
+    const int getWidth() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
@@ -125,7 +125,7 @@ struct TensorInfo {
         }
     }
 
-    int getHeight() {
+    const int getHeight() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
@@ -157,7 +157,7 @@ struct TensorInfo {
         }
     }
 
-    std::size_t getTensorSize() {
+    std::size_t getTensorSize() const {
         uint32_t i = 0;
 
         // Handle the edge case if all dimensions are 1
@@ -182,7 +182,7 @@ struct TensorInfo {
         return dims[i] * strides[i];
     }
 
-    int getChannels() {
+    int getChannels() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
@@ -216,7 +216,7 @@ struct TensorInfo {
         }
     }
 
-    size_t getChannelStride() {
+    size_t getChannelStride() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
@@ -250,7 +250,7 @@ struct TensorInfo {
         }
     }
 
-    size_t getWidthStride() {
+    size_t getWidthStride() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
@@ -282,7 +282,7 @@ struct TensorInfo {
         }
     }
 
-    size_t getHeightStride() {
+    size_t getHeightStride() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
