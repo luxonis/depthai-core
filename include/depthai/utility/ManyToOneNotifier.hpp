@@ -24,7 +24,7 @@ class ManyToOneNotifier {
 
     /**
      * @brief Notify the waiting thread
-     * Should always be called after the state change that the waiting thread is waiting for
+     * Should always be called after any state change that the waiting thread is waiting for
      */
     void notifyOne() {
         semaphore.release();
@@ -32,6 +32,8 @@ class ManyToOneNotifier {
 
     /**
      * @brief Wait until notified
+     * If the predicate consists of multiple conditions connected by AND, it should be ensured that the state does not change between the conditions.
+     * This can be achieved either by using a mutex or by ensuring that the condition can only be made false by the waiting thread (e.g. notifying thread fills queues and the waiting thread empties them).
      * @arg pred Predicate to check after each notification - IMPORTANT: must be thread-safe
      */
     template <typename Pred>
@@ -50,6 +52,8 @@ class ManyToOneNotifier {
 
     /**
      * @brief Wait until notified or timeout occurs
+     * If the predicate consists of multiple conditions connected by AND, it should be ensured that the state does not change between the conditions.
+     * This can be achieved either by using a mutex or by ensuring that the condition can only be made false by the waiting thread (e.g. notifying thread fills queues and the waiting thread empties them).
      * @arg pred Predicate to check after each notification - IMPORTANT: must be thread-safe
      */
     template <typename Pred, typename Rep, typename Period>
