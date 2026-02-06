@@ -107,12 +107,6 @@ float DepthStats::calculateDepth(SpatialLocationCalculatorAlgorithm algo) {
                         currentCount = 1;
                     }
                 }
-inline bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B) {
-    for(auto i = 0; i < 3; ++i)
-        for(auto j = 0; j < 3; ++j)
-            if(A[i][j] != B[i][j]) return false;
-    return true;
-}
                 if(currentCount > maxCount) {
                     modeValue = validPixels.back();
                 }
