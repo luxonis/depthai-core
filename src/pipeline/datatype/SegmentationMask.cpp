@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include "common/RotatedRect.hpp"
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
