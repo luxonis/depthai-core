@@ -11,7 +11,7 @@ namespace utility {
 
 /**
  * @class WaitAnyNotifier
- * @brief Used to notify a single waiting thread from multiple notifying threads.
+ * @brief Used as a helper struct for waitAny to notify a single waiting thread from multiple notifying threads.
  * Not thread-safe for multiple waiting threads.
  * Should not be used if there is another thread waiting on any of the notifying queues.
  */
@@ -63,6 +63,10 @@ class WaitAnyNotifier {
         }
 
         struct WaitingGuard {
+            WaitingGuard(const WaitingGuard&) = delete;
+            WaitingGuard(WaitingGuard&&) = delete;
+            WaitingGuard& operator=(const WaitingGuard&) = delete;
+            WaitingGuard& operator=(WaitingGuard&&) = delete;
             std::atomic<bool>& waitingRef;
             ~WaitingGuard() { waitingRef = false; }
         } guard{waiting};
