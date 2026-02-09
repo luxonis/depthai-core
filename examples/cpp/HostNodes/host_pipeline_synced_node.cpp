@@ -48,10 +48,10 @@ int main() {
     auto camMono = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
 
     auto syncedDisplay = pipeline.create<SyncedDisplay>();
+    syncedDisplay->sendProcessingToPipeline(true);
     camRgb->requestOutput(std::make_pair(640, 480))->link(syncedDisplay->inputRgb);
     camMono->requestOutput(std::make_pair(640, 480))->link(syncedDisplay->inputMono);
 
-    pipeline.start();
-    pipeline.wait();
+    pipeline.run();
     return 0;
 }
