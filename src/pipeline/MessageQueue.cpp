@@ -1,8 +1,6 @@
 #include "depthai/pipeline/MessageQueue.hpp"
 
 // std
-#include <boost/algorithm/cxx11/all_of.hpp>
-#include <boost/algorithm/cxx11/any_of.hpp>
 #include <chrono>
 #include <functional>
 #include <iostream>
@@ -228,9 +226,11 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
             input.get().removeNotifier(notifierId);
         }
     };
-    auto checkAllClosed = [&]() { return boost::algorithm::all_of(queues, [](const std::reference_wrapper<MessageQueue> q) { return q.get().isClosed(); }); };
+    auto checkAllClosed = [&]() {
+        return std::all_of(queues.begin(), queues.end(), [](const std::reference_wrapper<MessageQueue> q) { return q.get().isClosed(); });
+    };
     auto checkForMessages = [&]() {
-        return boost::algorithm::any_of(queues, [](const std::reference_wrapper<MessageQueue> q) { return !q.get().isClosed() && q.get().has(); });
+        return std::any_of(queues.begin(), queues.end(), [](const std::reference_wrapper<MessageQueue> q) { return !q.get().isClosed() && q.get().has(); });
     };
     auto pred = [&]() {
         try {
