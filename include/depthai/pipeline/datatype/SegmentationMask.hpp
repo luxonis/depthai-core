@@ -18,10 +18,6 @@
 
 namespace dai {
 
-namespace priv {
-struct SegmentationMaskAccess;
-}  // namespace priv
-
 /**
  * SegmentationMask message.
  *
@@ -34,8 +30,6 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     size_t width = 0;
     size_t height = 0;
     std::vector<std::string> labels;
-    friend struct priv::SegmentationMaskAccess;
-    void setSizeInternal(size_t width, size_t height);
 
    public:
     std::optional<ImgTransformation> transformation;
@@ -48,6 +42,13 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::SegmentationMask;
     }
+
+    /**
+     * Sets the size of the segmentation mask.
+     * @note Use with caution as it sets the metadata of the mask without allocating or resizing the underlying data array.
+     */
+    void setSize(size_t width, size_t height);
+
     /**
      * Returns the width of the segmentation mask.
      */
@@ -198,14 +199,5 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
 
     DEPTHAI_SERIALIZE(SegmentationMask, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, transformation, width, height, labels);
 };
-
-// Private access for setting size on RVC2
-namespace priv {
-struct SegmentationMaskAccess {
-    static void setSize(SegmentationMask& mask, size_t width, size_t height) {
-        mask.setSizeInternal(width, height);
-    }
-};
-}  // namespace priv
 
 }  // namespace dai
