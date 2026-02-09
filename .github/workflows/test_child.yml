@@ -139,6 +139,7 @@ jobs:
 
         shopt -s nullglob
         found_logs=0
+        first_summary=1
         mkdir -p ctest-reports
         for dir in ctest-logs/ctest-log-*; do
           [ -d "$dir" ] || continue
@@ -147,6 +148,12 @@ jobs:
           found_logs=1
           context="$(basename "$dir")"
           context="${context#ctest-log-}"
+          if [ "$first_summary" -eq 0 ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "---" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          first_summary=0
           python3 scripts/ci/ctest_summary.py "${log_files[0]}" "$context" >> "$GITHUB_STEP_SUMMARY"
           report_context="${context//\//_}"
           report_context="${report_context// /_}"

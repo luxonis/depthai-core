@@ -160,14 +160,22 @@ def clip_output_lines(lines):
         truncated_lines = True
 
     char_count = 0
-    result = []
+    result_reversed = []
     truncated_chars = False
-    for line in clipped:
-        if char_count + len(line) + 1 > MAX_OUTPUT_CHARS:
+    for line in reversed(clipped):
+        separator = 1 if result_reversed else 0
+        needed = len(line) + separator
+        if char_count + needed > MAX_OUTPUT_CHARS:
             truncated_chars = True
+            if not result_reversed and MAX_OUTPUT_CHARS > 0:
+                # Preserve the tail of very long single lines.
+                fragment = line[-MAX_OUTPUT_CHARS:]
+                if fragment:
+                    result_reversed.append(fragment)
             break
-        result.append(line)
-        char_count += len(line) + 1
+        result_reversed.append(line)
+        char_count += needed
+    result = list(reversed(result_reversed))
     return result, truncated_lines, truncated_chars
 
 
@@ -234,8 +242,27 @@ def write_junit(
         declared_passed = summary[0] if summary else max(declared_total - declared_failed, 0)
 
         suite_failures = max(declared_failed, len(parsed_failures))
-        suite_tests = max(declared_total, suite_failures, 1)
         suite_name = f"{context} / {config}" if context else config
+        if suite_failures <= 0:
+            suite = ET.SubElement(
+                root,
+                "testsuite",
+                name=suite_name,
+                tests="0",
+                failures="0",
+                errors="0",
+                skipped="0",
+                time="0",
+            )
+            props = ET.SubElement(suite, "properties")
+            ET.SubElement(
+                props,
+                "property",
+                name="ctest.summary",
+                value=f"Passed={declared_passed}, Failed={declared_failed}, Total={declared_total}",
+            )
+            continue
+        suite_tests = suite_failures
 
         suite = ET.SubElement(
             root,
@@ -294,16 +321,6 @@ def write_junit(
                 message="Unknown failure",
             )
             failure.text = "CTest reported an extra failure that was not listed by name."
-
-        passed_placeholders = max(suite_tests - suite_failures, 0)
-        for index in range(1, passed_placeholders + 1):
-            ET.SubElement(
-                suite,
-                "testcase",
-                classname=suite_name,
-                name=f"passed placeholder {index}",
-                time="0",
-            )
 
         all_tests += suite_tests
         all_failures += suite_failures

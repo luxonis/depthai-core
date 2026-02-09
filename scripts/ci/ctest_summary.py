@@ -84,14 +84,21 @@ def clip_output_lines(lines):
     if len(clipped) > MAX_SNIPPET_LINES:
         clipped = clipped[-MAX_SNIPPET_LINES:]
 
-    selected = []
+    selected_reversed = []
     chars = 0
-    for line in clipped:
-        if chars + len(line) + 1 > MAX_SNIPPET_CHARS:
+    for line in reversed(clipped):
+        separator = 1 if selected_reversed else 0
+        needed = len(line) + separator
+        if chars + needed > MAX_SNIPPET_CHARS:
+            if not selected_reversed and MAX_SNIPPET_CHARS > 0:
+                # Keep tail of very long single lines.
+                fragment = line[-MAX_SNIPPET_CHARS:]
+                if fragment:
+                    selected_reversed.append(fragment)
             break
-        selected.append(line)
-        chars += len(line) + 1
-    return selected
+        selected_reversed.append(line)
+        chars += needed
+    return list(reversed(selected_reversed))
 
 
 def main() -> int:
