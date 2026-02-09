@@ -22,12 +22,14 @@ def normalize_name(name: str) -> str:
 
 def parse_args(argv):
     if len(argv) < 2:
-        return None, "", "", ""
+        return None, "", "", "", "", 0
 
     log_path = Path(argv[1])
     context_parts = []
     log_url = ""
+    raw_log_url = ""
     log_map_path = ""
+    step_number = 0
 
     i = 2
     while i < len(argv):
@@ -38,41 +40,74 @@ def parse_args(argv):
                 log_url = argv[i]
         elif arg.startswith("--log-url="):
             log_url = arg.split("=", 1)[1]
+        elif arg == "--raw-log-url":
+            i += 1
+            if i < len(argv):
+                raw_log_url = argv[i]
+        elif arg.startswith("--raw-log-url="):
+            raw_log_url = arg.split("=", 1)[1]
         elif arg == "--log-map":
             i += 1
             if i < len(argv):
                 log_map_path = argv[i]
         elif arg.startswith("--log-map="):
             log_map_path = arg.split("=", 1)[1]
+        elif arg == "--step-number":
+            i += 1
+            if i < len(argv):
+                try:
+                    step_number = int(argv[i])
+                except ValueError:
+                    step_number = 0
+        elif arg.startswith("--step-number="):
+            try:
+                step_number = int(arg.split("=", 1)[1])
+            except ValueError:
+                step_number = 0
         else:
             context_parts.append(arg)
         i += 1
 
     context = " ".join(context_parts).strip()
-    return log_path, context, log_url, log_map_path
+    return log_path, context, log_url, raw_log_url, log_map_path, step_number
 
 
-def load_log_url(log_map_path: str, context: str) -> str:
+def load_log_info(log_map_path: str, context: str):
     if not log_map_path or not context:
-        return ""
+        return "", "", 0
     try:
         with open(log_map_path, "r", encoding="utf-8") as handle:
             mapping = json.load(handle)
     except (OSError, json.JSONDecodeError):
-        return ""
+        return "", "", 0
 
     artifact_name = f"ctest-log-{context}"
-    return mapping.get(artifact_name, mapping.get(context, ""))
+    entry = mapping.get(artifact_name, mapping.get(context, ""))
+    if isinstance(entry, str):
+        return entry, "", 0
+    if not isinstance(entry, dict):
+        return "", "", 0
+
+    job_url = entry.get("job_url", entry.get("log_url", ""))
+    raw_log_url = entry.get("raw_log_url", entry.get("raw_url", ""))
+    step_number = entry.get("step_number", entry.get("step", 0))
+    try:
+        step_number = int(step_number)
+    except (TypeError, ValueError):
+        step_number = 0
+    return job_url, raw_log_url, step_number
 
 
 def main() -> int:
-    log_path, context, log_url, log_map_path = parse_args(sys.argv)
+    log_path, context, log_url, raw_log_url, log_map_path, step_number = parse_args(
+        sys.argv
+    )
     if log_path is None:
         print("No log path provided.")
         return 0
 
-    if not log_url:
-        log_url = load_log_url(log_map_path, context)
+    if not log_url and not raw_log_url and not step_number:
+        log_url, raw_log_url, step_number = load_log_info(log_map_path, context)
 
     header_suffix = f" ({context})" if context else ""
     if not log_path.exists():
@@ -146,8 +181,12 @@ def main() -> int:
             extras = []
             if fail_line:
                 extras.append(f"line {fail_line}")
-            if log_url:
+            if log_url and step_number and fail_line:
+                extras.append(f"[log]({log_url}#step:{step_number}:{fail_line})")
+            elif log_url:
                 extras.append(f"[log]({log_url})")
+            if raw_log_url:
+                extras.append(f"[raw logs]({raw_log_url})")
             extra_suffix = f" ({', '.join(extras)})" if extras else ""
             if cause:
                 print(f"- [{config}] #{num} {name} - {cause}{extra_suffix}")
@@ -156,6 +195,7 @@ def main() -> int:
             any_failed = True
     if not any_failed:
         print("No tests failed.")
+    print()
 
     return 0
 
