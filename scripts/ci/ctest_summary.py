@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import json
 import re
 import sys
 from collections import OrderedDict
@@ -14,6 +13,12 @@ FAILED_LIST_RE = re.compile(
     r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+)\s*-\s*(?P<name>.+?)"
     r"(?:\s+\((?P<cause>[^)]+)\))?\s*$"
 )
+TEST_OUTPUT_RE = re.compile(
+    r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):\s*(?P<text>.*)$"
+)
+
+MAX_SNIPPET_LINES = 20
+MAX_SNIPPET_CHARS = 3000
 
 
 def normalize_name(name: str) -> str:
@@ -72,42 +77,30 @@ def parse_args(argv):
     return log_path, context, log_url, raw_log_url, log_map_path, step_number
 
 
-def load_log_info(log_map_path: str, context: str):
-    if not log_map_path or not context:
-        return "", "", 0
-    try:
-        with open(log_map_path, "r", encoding="utf-8") as handle:
-            mapping = json.load(handle)
-    except (OSError, json.JSONDecodeError):
-        return "", "", 0
+def clip_output_lines(lines):
+    clipped = [line for line in lines if line.strip()]
+    if not clipped:
+        return []
+    if len(clipped) > MAX_SNIPPET_LINES:
+        clipped = clipped[-MAX_SNIPPET_LINES:]
 
-    artifact_name = f"ctest-log-{context}"
-    entry = mapping.get(artifact_name, mapping.get(context, ""))
-    if isinstance(entry, str):
-        return entry, "", 0
-    if not isinstance(entry, dict):
-        return "", "", 0
-
-    job_url = entry.get("job_url", entry.get("log_url", ""))
-    raw_log_url = entry.get("raw_log_url", entry.get("raw_url", ""))
-    step_number = entry.get("step_number", entry.get("step", 0))
-    try:
-        step_number = int(step_number)
-    except (TypeError, ValueError):
-        step_number = 0
-    return job_url, raw_log_url, step_number
+    selected = []
+    chars = 0
+    for line in clipped:
+        if chars + len(line) + 1 > MAX_SNIPPET_CHARS:
+            break
+        selected.append(line)
+        chars += len(line) + 1
+    return selected
 
 
 def main() -> int:
-    log_path, context, log_url, raw_log_url, log_map_path, step_number = parse_args(
+    log_path, context, _, _, _, _ = parse_args(
         sys.argv
     )
     if log_path is None:
         print("No log path provided.")
         return 0
-
-    if not log_url and not raw_log_url and not step_number:
-        log_url, raw_log_url, step_number = load_log_info(log_map_path, context)
 
     header_suffix = f" ({context})" if context else ""
     if not log_path.exists():
@@ -117,11 +110,13 @@ def main() -> int:
     order = []
     summaries = {}
     failures = {}
+    test_outputs = {}
 
     def ensure_config(config: str) -> None:
         if config not in summaries:
             summaries[config] = None
             failures[config] = OrderedDict()
+            test_outputs[config] = {}
             order.append(config)
 
     line_no = 0
@@ -140,6 +135,15 @@ def main() -> int:
                 total = int(summary_match.group("total"))
                 passed = total - failed
                 summaries[config] = (passed, failed, total)
+
+            output_match = TEST_OUTPUT_RE.search(line)
+            if output_match:
+                config = output_match.group("config").strip()
+                ensure_config(config)
+                num = output_match.group("num").strip()
+                text = output_match.group("text").rstrip()
+                if text:
+                    test_outputs[config].setdefault(num, []).append(text)
 
             failed_match = FAILED_LIST_RE.search(line)
             if failed_match:
@@ -178,20 +182,18 @@ def main() -> int:
         config_failures = failures.get(config, {})
         for num, entry in config_failures.items():
             name, cause, fail_line = entry
-            extras = []
-            if fail_line:
-                extras.append(f"line {fail_line}")
-            if log_url and step_number and fail_line:
-                extras.append(f"[log]({log_url}#step:{step_number}:{fail_line})")
-            elif log_url:
-                extras.append(f"[log]({log_url})")
-            if raw_log_url:
-                extras.append(f"[raw logs]({raw_log_url})")
-            extra_suffix = f" ({', '.join(extras)})" if extras else ""
+            suffix = f" (line {fail_line})" if fail_line else ""
             if cause:
-                print(f"- [{config}] #{num} {name} - {cause}{extra_suffix}")
+                print(f"- [{config}] #{num} {name} - {cause}{suffix}")
             else:
-                print(f"- [{config}] #{num} {name}{extra_suffix}")
+                print(f"- [{config}] #{num} {name}{suffix}")
+
+            snippet = clip_output_lines(test_outputs.get(config, {}).get(num, []))
+            if snippet:
+                print("```text")
+                for snippet_line in snippet:
+                    print(snippet_line)
+                print("```")
             any_failed = True
     if not any_failed:
         print("No tests failed.")

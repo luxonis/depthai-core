@@ -122,7 +122,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     permissions:
-      actions: read
+      checks: write
       contents: read
     steps:
     - uses: actions/checkout@v3
@@ -131,146 +131,15 @@ jobs:
       with:
         path: ctest-logs
     - name: Generate combined summary
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
       run: |
         if ! command -v python3 >/dev/null 2>&1; then
           echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
-        log_map_path="ctest-logs/log_urls.json"
-        if [ -n "${GITHUB_TOKEN:-}" ]; then
-          LOG_MAP_PATH="$log_map_path" python3 - <<'PY'
-        import json
-        import os
-        import re
-        import urllib.request
-
-        api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-        server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
-        repo = os.environ.get("GITHUB_REPOSITORY")
-        run_id = os.environ.get("GITHUB_RUN_ID")
-        run_attempt = os.environ.get("GITHUB_RUN_ATTEMPT")
-        token = os.environ.get("GITHUB_TOKEN")
-        log_map_path = os.environ.get("LOG_MAP_PATH", "ctest-logs/log_urls.json")
-
-        def normalize(text):
-            return " ".join(str(text).split())
-
-        def find_step_number(steps):
-            for step in steps or []:
-                name = normalize(step.get("name", ""))
-                if name in ("Run RVC2 tests", "Run RVC4 tests"):
-                    return int(step.get("number") or 0)
-            for step in steps or []:
-                name = normalize(step.get("name", ""))
-                if name.startswith("Run "):
-                    return int(step.get("number") or 0)
-            return 0
-
-        def extract_matrix_value(details):
-            text = normalize(details).strip()
-            if not text:
-                return ""
-            match = re.search(r"rvc4os\s*[:=]\s*([^,\s)]+)", text)
-            if match:
-                return match.group(1).strip()
-            if "," not in text and ":" not in text and "=" not in text:
-                return text
-            return ""
-
-        def context_from_job_name(job_name):
-            name = normalize(job_name)
-            segments = [name]
-            if "/" in name:
-                segments.extend(normalize(part) for part in name.split("/") if part.strip())
-            candidates = []
-            for segment in reversed(segments):
-                if segment and segment not in candidates:
-                    candidates.append(segment)
-
-            for candidate in candidates:
-                if re.search(r"\blinux_rvc2_test\b", candidate):
-                    return "linux_rvc2_test"
-                for prefix in ("linux_rvc4_test", "linux_rvc4_rgb_test"):
-                    pattern = rf"\b{re.escape(prefix)}\b(?:\s*\(([^)]*)\))?"
-                    match = re.search(pattern, candidate)
-                    if not match:
-                        continue
-                    matrix_value = extract_matrix_value(match.group(1) or "")
-                    if matrix_value:
-                        return f"{prefix}-rvc4os={matrix_value}"
-                    return prefix
-            return ""
-
-        def request_json(url):
-            req = urllib.request.Request(
-                url,
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Accept": "application/vnd.github+json",
-                },
-            )
-            with urllib.request.urlopen(req) as resp:
-                payload = json.load(resp)
-                link_header = resp.headers.get("Link", "")
-            return payload, link_header
-
-        def parse_next_url(link_header):
-            for chunk in link_header.split(","):
-                part = chunk.strip()
-                if 'rel="next"' not in part:
-                    continue
-                if "<" in part and ">" in part:
-                    return part.split("<", 1)[1].split(">", 1)[0]
-            return ""
-
-        if repo and run_id and token and "/" in repo:
-            owner, repo_name = repo.split("/", 1)
-            mapping = {}
-            page_url = f"{api_url}/repos/{owner}/{repo_name}/actions/runs/{run_id}/jobs?per_page=100"
-            if run_attempt:
-                page_url = (
-                    f"{api_url}/repos/{owner}/{repo_name}/actions/runs/"
-                    f"{run_id}/attempts/{run_attempt}/jobs?per_page=100"
-                )
-            try:
-                while page_url:
-                    data, link_header = request_json(page_url)
-                    for job in data.get("jobs", []):
-                        context = context_from_job_name(job.get("name", ""))
-                        if not context:
-                            continue
-                        job_id = job.get("id")
-                        job_url = job.get("html_url")
-                        if not job_url and job_id:
-                            job_url = f"{server_url}/{repo}/actions/runs/{run_id}/job/{job_id}"
-                        if not job_url:
-                            continue
-                        entry = {"job_url": job_url}
-                        step_number = find_step_number(job.get("steps", []))
-                        if step_number:
-                            entry["step_number"] = step_number
-                        if job_id:
-                            entry["raw_log_url"] = (
-                                f"{server_url}/{repo}/actions/jobs/{job_id}/logs"
-                            )
-                        mapping[context] = entry
-                        mapping[f"ctest-log-{context}"] = entry
-                    page_url = parse_next_url(link_header)
-            except Exception:
-                mapping = {}
-
-            if mapping:
-                os.makedirs(os.path.dirname(log_map_path), exist_ok=True)
-                with open(log_map_path, "w", encoding="utf-8") as handle:
-                    json.dump(mapping, handle)
-        PY
-        fi
-
         shopt -s nullglob
         found_logs=0
+        mkdir -p ctest-reports
         for dir in ctest-logs/ctest-log-*; do
           [ -d "$dir" ] || continue
           log_files=("$dir"/*.log)
@@ -278,13 +147,32 @@ jobs:
           found_logs=1
           context="$(basename "$dir")"
           context="${context#ctest-log-}"
-          python3 scripts/ci/ctest_summary.py "${log_files[0]}" "$context" --log-map "$log_map_path" >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/ci/ctest_summary.py "${log_files[0]}" "$context" >> "$GITHUB_STEP_SUMMARY"
+          report_context="${context//\//_}"
+          report_context="${report_context// /_}"
+          python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
           echo "" >> "$GITHUB_STEP_SUMMARY"
         done
 
         if [ "$found_logs" -eq 0 ]; then
           echo "No test logs found to summarize." >> "$GITHUB_STEP_SUMMARY"
         fi
+    - name: Publish test report
+      if: always() && hashFiles('ctest-reports/*.xml') != ''
+      uses: dorny/test-reporter@v1
+      with:
+        name: HIL tests (${{ inputs.flavor }})
+        path: ctest-reports/*.xml
+        reporter: java-junit
+        list-tests: failed
+        fail-on-error: 'false'
+    - name: Upload JUnit XML reports
+      if: always() && hashFiles('ctest-reports/*.xml') != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-reports-${{ inputs.flavor }}
+        path: ctest-reports/*.xml
+        if-no-files-found: warn
 
 #  linux_rvc4_fsync_test:
 #       needs: [build_docker_container]
