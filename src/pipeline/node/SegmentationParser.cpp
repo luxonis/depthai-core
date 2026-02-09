@@ -260,6 +260,8 @@ void SegmentationParser::run() {
         outMask->setTimestamp(sharedNNData->getTimestamp());
         outMask->setTimestampDevice(sharedNNData->getTimestampDevice());
         outMask->transformation = sharedNNData->transformation;
+        const float invStep = 1.0f / static_cast<float>(inConfig->stepSize);
+        outMask->transformation->addScale(invStep, invStep);
         outMask->transformation->setSize(outMask->getWidth(), outMask->getHeight());
 
         {
