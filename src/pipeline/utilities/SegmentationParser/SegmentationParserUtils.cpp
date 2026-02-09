@@ -44,55 +44,56 @@ T getQuantizedThreshold(const dai::SegmentationParserConfig& config, const dai::
  * @brief Optimized argmax function for NHWC tensors with aligned and typed channel strides.
  * Data looks like [h1w1c1, h1w1c2, ..., h1w1cC, h1w2c1, h1w2c2, ..., h1w2cC, ..., hHwWcC]
  */
-template <typename T, bool backgroundClass>
-void argmaxNHWCVectorizedTensor(span<uint8_t> dst,
-                                const span<const uint8_t> tensorBase,
-                                const dai::TensorInfo& tensorInfo,
-                                const dai::SegmentationParserConfig& config) {
-    const int channels = tensorInfo.getChannels();
-    const int width = tensorInfo.getWidth();
-    const int height = tensorInfo.getHeight();
+// Vectorized implementation if performance is needed.
+// template <typename T, bool backgroundClass>
+// void argmaxNHWCVectorizedTensor(span<uint8_t> dst,
+//                                 const span<const uint8_t> tensorBase,
+//                                 const dai::TensorInfo& tensorInfo,
+//                                 const dai::SegmentationParserConfig& config) {
+//     const int channels = tensorInfo.getChannels();
+//     const int width = tensorInfo.getWidth();
+//     const int height = tensorInfo.getHeight();
 
-    const size_t strideC = tensorInfo.getChannelStride() / sizeof(T);
-    const size_t strideH = tensorInfo.getHeightStride() / sizeof(T);
-    const size_t strideW = tensorInfo.getWidthStride() / sizeof(T);
-    const int step = static_cast<int>(config.stepSize);
-    const int dstWidth = width / step;
+//     const size_t strideC = tensorInfo.getChannelStride() / sizeof(T);
+//     const size_t strideH = tensorInfo.getHeightStride() / sizeof(T);
+//     const size_t strideW = tensorInfo.getWidthStride() / sizeof(T);
+//     const int step = static_cast<int>(config.stepSize);
+//     const int dstWidth = width / step;
 
-    const T* tensorPtr = reinterpret_cast<const T*>(tensorBase.data());
+//     const T* tensorPtr = castPtr<T>(tensorBase.data());
 
-    int outY = 0;
-    uint8_t bestClass = 255;
-    T quantizedThreshold = getQuantizedThreshold<T>(config, tensorInfo);
-    T bestVal = quantizedThreshold;
-    const int cStart = backgroundClass ? 1 : 0;
+//     int outY = 0;
+//     uint8_t bestClass = 255;
+//     T quantizedThreshold = getQuantizedThreshold<T>(config, tensorInfo);
+//     T bestVal = quantizedThreshold;
+//     const int cStart = backgroundClass ? 1 : 0;
 
-    for(int h = 0; h < height; h += step, ++outY) {
-        const size_t rowBase = strideH * static_cast<size_t>(h);
-        const int rowOffset = outY * dstWidth;
+//     for(int h = 0; h < height; h += step, ++outY) {
+//         const size_t rowBase = strideH * static_cast<size_t>(h);
+//         const int rowOffset = outY * dstWidth;
 
-        int outX = 0;
-        for(int w = 0; w < width; w += step, ++outX) {
-            const size_t pixelBase = rowBase + (strideW * static_cast<size_t>(w));
+//         int outX = 0;
+//         for(int w = 0; w < width; w += step, ++outX) {
+//             const size_t pixelBase = rowBase + (strideW * static_cast<size_t>(w));
 
-            bestClass = 255;
-            if constexpr(backgroundClass) {
-                bestVal = std::max(tensorPtr[pixelBase], quantizedThreshold);
-            } else {
-                bestVal = quantizedThreshold;
-            }
-            for(int c = cStart; c < channels; ++c) {
-                const size_t idx = pixelBase + (strideC * static_cast<size_t>(c));
-                T v = tensorPtr[idx];
-                if(v > bestVal) {
-                    bestVal = v;
-                    bestClass = static_cast<uint8_t>(c);
-                }
-            }
-            dst[rowOffset + outX] = bestClass;
-        }
-    }
-}
+//             bestClass = 255;
+//             if constexpr(backgroundClass) {
+//                 bestVal = std::max(tensorPtr[pixelBase], quantizedThreshold);
+//             } else {
+//                 bestVal = quantizedThreshold;
+//             }
+//             for(int c = cStart; c < channels; ++c) {
+//                 const size_t idx = pixelBase + (strideC * static_cast<size_t>(c));
+//                 T v = tensorPtr[idx];
+//                 if(v > bestVal) {
+//                     bestVal = v;
+//                     bestClass = static_cast<uint8_t>(c);
+//                 }
+//             }
+//             dst[rowOffset + outX] = bestClass;
+//         }
+//     }
+// }
 
 /*
  * @brief Parse NHWC formatted tensor to compute segmentation mask.
@@ -223,14 +224,8 @@ void tensorArgmax(span<std::uint8_t> dstData,
     /*
      * Should be moved to GPU.
      */
-    const bool vectorizable = (tensorInfo.getChannelStride() == static_cast<int>(sizeof(T)))
-                              && (tensorInfo.getHeightStride() == tensorInfo.getWidthStride() * tensorInfo.getWidth())
-                              && (tensorInfo.getWidthStride() == static_cast<size_t>(tensorInfo.getChannels()) * static_cast<int>(sizeof(T)));
     const bool isNHWC = (tensorInfo.order == dai::TensorInfo::StorageOrder::NHWC || tensorInfo.order == dai::TensorInfo::StorageOrder::HWC);
-    if(vectorizable && isNHWC) {
-        logger->trace("Using vectorized NHWC segmentation mask parsing.");
-        argmaxNHWCVectorizedTensor<T, backgroundClass>(dstData, tensorSpan, tensorInfo, config);
-    } else if(isNHWC) {
+    if(isNHWC) {
         logger->trace("Using NHWC segmentation mask parsing.");
         parseNHWCTensor<T, backgroundClass>(dstData, tensorSpan, tensorInfo, config);
     } else {
