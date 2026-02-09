@@ -9,7 +9,7 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/LockingQueue.hpp"
-#include "depthai/utility/ManyToOneNotifier.hpp"
+#include "depthai/utility/WaitAnyNotifier.hpp"
 #include "depthai/utility/PipelineEventDispatcherInterface.hpp"
 
 // shared
@@ -35,7 +35,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     std::string name;
 
     std::mutex notifierMtx;
-    std::unordered_map<CallbackId, std::shared_ptr<utility::ManyToOneNotifier>> notifiers;
+    std::unordered_map<CallbackId, std::shared_ptr<utility::WaitAnyNotifier>> notifiers;
     CallbackId uniqueNotifierId{0};
 
    public:
@@ -203,7 +203,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      * @param notifier Notifier to be notified
      * @returns Notifier id
      */
-    CallbackId addNotifier(std::shared_ptr<utility::ManyToOneNotifier> notifier);
+    CallbackId addNotifier(std::shared_ptr<utility::WaitAnyNotifier> notifier);
 
     /**
      * Removes a callback

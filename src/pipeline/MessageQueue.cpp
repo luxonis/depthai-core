@@ -101,7 +101,7 @@ int MessageQueue::addCallback(const std::function<void()>& callback) {
     return addCallback([callback](const std::string&, std::shared_ptr<ADatatype>) { callback(); });
 }
 
-int MessageQueue::addNotifier(std::shared_ptr<utility::ManyToOneNotifier> notifier) {
+int MessageQueue::addNotifier(std::shared_ptr<utility::WaitAnyNotifier> notifier) {
     // Lock first
     std::unique_lock<std::mutex> lock(notifierMtx);
 
@@ -239,7 +239,7 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
         return checkForMessages();
     };
 
-    std::shared_ptr<utility::ManyToOneNotifier> notifier = std::make_shared<utility::ManyToOneNotifier>();
+    std::shared_ptr<utility::WaitAnyNotifier> notifier = std::make_shared<utility::WaitAnyNotifier>();
     bool gotMessage = true;
     try {
         // Add notifier to all queues, if any message arrives from this point, wait should return

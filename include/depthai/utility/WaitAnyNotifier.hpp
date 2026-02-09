@@ -10,17 +10,17 @@ namespace dai {
 namespace utility {
 
 /**
- * @class ManyToOneNotifier
+ * @class WaitAnyNotifier
  * @brief Used to notify a single waiting thread from multiple notifying threads.
  * Not thread-safe for multiple waiting threads.
  * Should not be used if there is another thread waiting on any of the notifying queues.
  */
-class ManyToOneNotifier {
+class WaitAnyNotifier {
     BinarySemaphore semaphore{false};
     std::atomic<bool> waiting{false};
 
    public:
-    ManyToOneNotifier() = default;
+    WaitAnyNotifier() = default;
 
     /**
      * @brief Notify the waiting thread
@@ -39,7 +39,7 @@ class ManyToOneNotifier {
     template <typename Pred>
     void wait(Pred pred) {
         if(waiting.exchange(true)) {
-            throw std::runtime_error("ManyToOneNotifier: Multiple threads waiting on the same notifier is not supported");
+            throw std::runtime_error("WaitAnyNotifier: Multiple threads waiting on the same notifier is not supported");
         }
         try {
             while(!pred()) semaphore.acquire();
@@ -59,7 +59,7 @@ class ManyToOneNotifier {
     template <typename Pred, typename Rep, typename Period>
     bool waitFor(Pred pred, std::chrono::duration<Rep, Period> timeout) {
         if(waiting.exchange(true)) {
-            throw std::runtime_error("ManyToOneNotifier: Multiple threads waiting on the same notifier is not supported");
+            throw std::runtime_error("WaitAnyNotifier: Multiple threads waiting on the same notifier is not supported");
         }
 
         struct WaitingGuard {
