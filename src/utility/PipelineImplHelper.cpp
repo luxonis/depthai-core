@@ -16,6 +16,7 @@ namespace utility {
 
 void PipelineImplHelper::setupHolisticRecordAndReplay() {
     auto pipeline = pipelineWeak.lock();
+    if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
     // TODO: Refactor this function to reduce complexity
     if(pipeline->buildingOnHost) {
@@ -110,6 +111,7 @@ void PipelineImplHelper::setupHolisticRecordAndReplay() {
 }
 void PipelineImplHelper::setupPipelineDebuggingPre() {
     auto pipeline = pipelineWeak.lock();
+    if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
     // Create pipeline event aggregator node and link
     bool envPipelineDebugging = utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
@@ -178,6 +180,7 @@ void PipelineImplHelper::setupPipelineDebuggingPre() {
 void PipelineImplHelper::setupPipelineDebuggingPost(std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>& bridgesOut,
                                                     std::unordered_map<dai::Node::Input*, node::internal::XLinkInBridge>& bridgesIn) {
     auto pipeline = pipelineWeak.lock();
+    if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
     // Finish setting up pipeline debugging
     if(pipeline->buildingOnHost && pipeline->enablePipelineDebugging) {
