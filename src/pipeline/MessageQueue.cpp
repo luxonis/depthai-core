@@ -233,10 +233,12 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
         return boost::algorithm::any_of(queues, [](const std::reference_wrapper<MessageQueue> q) { return !q.get().isClosed() && q.get().has(); });
     };
     auto pred = [&]() {
-        if(checkAllClosed()) {
+        try {
+            return checkAllClosed() || checkForMessages();
+        } catch(QueueException&) {
+            // Unblock on queue exception
             return true;
         }
-        return checkForMessages();
     };
 
     std::shared_ptr<utility::WaitAnyNotifier> notifier = std::make_shared<utility::WaitAnyNotifier>();
@@ -250,12 +252,12 @@ bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue
         // Check if any messages already present
         if(!checkAllClosed() && !checkForMessages()) {
             if(timeout.has_value()) {
-                gotMessage = notifier->waitFor(pred, timeout.value());
+                notifier->waitFor(pred, timeout.value());
             } else {
                 notifier->wait(pred);
             }
         }
-        gotMessage = gotMessage && !checkAllClosed();
+        gotMessage = checkForMessages();
     } catch(...) {
         removeNotifiers();
         throw;
