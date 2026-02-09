@@ -32,18 +32,6 @@ inline T loadT(const uint8_t* p) noexcept {
 }
 
 template <typename T>
-const T* assumeAlignedPtr(const uint8_t* ptr) {
-#if defined(__GNUC__) || defined(__clang__)
-    return static_cast<const T*>(__builtin_assume_aligned(ptr, alignof(T)));
-#elif defined(_MSC_VER)
-    __assume((reinterpret_cast<uintptr_t>(ptr) & (alignof(T) - 1)) == 0);
-    return reinterpret_cast<const T*>(ptr);
-#else
-    return reinterpret_cast<const T*>(ptr);
-#endif
-}
-
-template <typename T>
 T getQuantizedThreshold(const dai::SegmentationParserConfig& config, const dai::TensorInfo& tensorInfo) {
     if(config.confidenceThreshold < 0) {
         // Minimum possible value for int8 and uint8 quantizations
@@ -71,7 +59,7 @@ void argmaxNHWCVectorizedTensor(span<uint8_t> dst,
     const int step = static_cast<int>(config.stepSize);
     const int dstWidth = width / step;
 
-    const T* __restrict tensorPtr = assumeAlignedPtr<T>(tensorBase.data());
+    const T* tensorPtr = reinterpret_cast<const T*>(tensorBase.data());
 
     int outY = 0;
     uint8_t bestClass = 255;
