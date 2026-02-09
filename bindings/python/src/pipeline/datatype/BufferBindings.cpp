@@ -95,8 +95,8 @@ void bind_buffer(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &Buffer::setTimestamp, DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &Buffer::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
-        .def("setSequenceNum", &Buffer::setSequenceNum, DOC(dai, Buffer, setSequenceNum))
+        .def("setTimestamp", &Buffer::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
+        .def("setTimestampDevice", &Buffer::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
+        .def("setSequenceNum", &Buffer::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum))
         .def("getVisualizationMessage", &Buffer::getVisualizationMessage, DOC(dai, Buffer, getVisualizationMessage));
 }

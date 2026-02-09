@@ -6,6 +6,7 @@
 #include "depthai/pipeline/datatype/PipelineState.hpp"
 
 // pybind
+#include <pybind11/cast.h>
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -109,7 +110,7 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &PipelineState::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &PipelineState::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &PipelineState::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &PipelineState::setTimestamp, DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &PipelineState::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
-        .def("setSequenceNum", &PipelineState::setSequenceNum, DOC(dai, Buffer, setSequenceNum));
+        .def("setTimestamp", &PipelineState::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
+        .def("setTimestampDevice", &PipelineState::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
+        .def("setSequenceNum", &PipelineState::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum));
 }

@@ -136,8 +136,13 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("getTransformation", [](ImgDetections& msg) { return msg.transformation; })
-        .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
+        .def(
+            "getTransformation", [](ImgDetections& msg) { return msg.transformation; }, DOC(dai, ImgFrame, getTransformation))
+        .def(
+            "setTransformation",
+            [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; },
+            py::arg("transformation"),
+            DOC(dai, ImgFrame, setTransformation))
         .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetectionsT, getSegmentationMaskWidth))
         .def("getSegmentationMaskHeight", &ImgDetections::getSegmentationMaskHeight, DOC(dai, ImgDetectionsT, getSegmentationMaskHeight))
         .def("setSegmentationMask",
