@@ -17,6 +17,15 @@ message CameraSettings {
     float lensPositionRaw = 5;
 }
 
+message Extrinsics {
+    TransformationMatrix rotationMatrix = 1;
+    Point3f translation = 2;
+    Point3f specTranslation = 3;
+    CameraBoardSocket toCameraSocket = 4;
+    CameraBoardSocket fromCameraSocket = 5;
+    LengthUnit lengthUnit = 6;
+}
+
 message ImgTransformation {
     TransformationMatrix transformationMatrix = 1;
     TransformationMatrix sourceIntrinsicMatrix = 2;
@@ -26,6 +35,9 @@ message ImgTransformation {
     uint32 srcHeight = 6;
     uint32 width = 7;
     uint32 height = 8;
+    Extrinsics extrinsics = 9;
+    repeated RotatedRect srcCrops = 10;
+    uint32 calibrationId = 11;
 }
 
 message TransformationMatrix {
@@ -41,6 +53,31 @@ enum CameraModel {
     FISHEYE = 1;
     EQUIRECTANGULAR = 2;
     RADIALDIVISION = 3;
+}
+
+enum CameraBoardSocket {
+    option allow_alias = true;
+    CAM_A = 0;
+    CAM_B = 1;
+    CAM_C = 2;
+    CAM_D = 3;
+    VERTICAL = 3;
+    CAM_E = 4;
+    CAM_F = 5;
+    CAM_G = 6;
+    CAM_H = 7;
+    CAM_I = 8;
+    CAM_J = 9;
+    AUTO = -1;
+}
+
+enum LengthUnit {
+    METER = 0;
+    CENTIMETER = 1;
+    MILLIMETER = 2;
+    INCH = 3;
+    FOOT = 4;
+    CUSTOM = 5;
 }
 
 message Color {
@@ -101,4 +138,3 @@ message SpatialKeypoint {
     string labelName = 4;
     Point3f spatialCoordinates = 5;
 }
-

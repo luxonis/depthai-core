@@ -54,4 +54,8 @@ constexpr float getSIPrefixMultiplier(SIPrefix unit) {
     }
 }
 
+constexpr float getDistanceUnitScale(LengthUnit targetUnit, LengthUnit sourceUnit) {
+    return getLengthUnitMultiplier(targetUnit) / getLengthUnitMultiplier(sourceUnit);
+}
+
 }  // namespace dai

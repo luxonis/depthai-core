@@ -2,29 +2,99 @@
 
 #include <array>
 #include <stdexcept>
+#include <vector>
+
+#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 namespace matrix {
 
-std::vector<std::vector<float>> matMul(std::vector<std::vector<float>>& firstMatrix, std::vector<std::vector<float>>& secondMatrix) {
-    std::vector<std::vector<float>> res;
+std::vector<float> matVecMul(const std::vector<std::vector<float>>& matrix, const std::vector<float>& vec) {
+    DAI_CHECK_V(!matrix.empty(), "Matrix should not be empty");
+    DAI_CHECK_V(!vec.empty(), "Vector should not be empty");
 
-    if(firstMatrix[0].size() != secondMatrix.size()) {
-        throw std::runtime_error("Number of column of the first matrix should match with the number of rows of the second matrix ");
-        // Return an empty vector
-        return res;
+    std::vector<float> res(matrix.size(), 0.0f);
+    for(size_t i = 0; i < matrix.size(); ++i) {
+        DAI_CHECK_V(matrix[i].size() == vec.size(), "All matrix rows dimentsions need to match the vector size.");
+        for(size_t j = 0; j < matrix[0].size(); ++j) {
+            res[i] += matrix[i][j] * vec[j];
+        }
+    }
+    return res;
+}
+
+std::array<float, 3> matVecMul(const std::array<std::array<float, 3>, 3>& matrix, const std::array<float, 3>& vec) {
+    std::array<float, 3> res = {0.0f, 0.0f, 0.0f};
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            res[i] += matrix[i][j] * vec[j];
+        }
+    }
+    return res;
+}
+
+bool mateq(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B) {
+    DAI_CHECK_V(A.size() == B.size(), "Matrices have different number of rows: {} and {}", A.size(), B.size());
+
+    for(size_t i = 0; i < A.size(); ++i) {
+        DAI_CHECK_V(A[i].size() == B[i].size(), "Matrices have different number of columns in row {}: {} and {}", i, A[i].size(), B[i].size());
+        for(size_t j = 0; j < A[0].size(); ++j) {
+            if(A[i][j] != B[i][j]) return false;
+        }
+    }
+    return true;
+}
+
+bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B) {
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            if(A[i][j] != B[i][j]) return false;
+        }
+    }
+    return true;
+}
+
+std::array<std::array<float, 3>, 3> matMul(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B) {
+    std::array<std::array<float, 3>, 3> res = {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}};
+
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            for(size_t k = 0; k < 3; ++k) {
+                res[i][j] += A[i][k] * B[k][j];
+            }
+        }
     }
 
-    // Initializing elements of matrix mult to 0.
-    for(size_t i = 0; i < firstMatrix.size(); ++i) {
-        std::vector<float> col_vec(secondMatrix[0].size(), 0);
-        res.push_back(col_vec);
+    return res;
+}
+
+std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& firstMatrix, const std::vector<std::vector<float>>& secondMatrix) {
+    DAI_CHECK_V(!firstMatrix.empty(), "First matrix should not be empty");
+    DAI_CHECK_V(!secondMatrix.empty(), "Second matrix should not be empty");
+
+    size_t n = firstMatrix.size();
+    size_t m = firstMatrix[0].size();
+    size_t p = secondMatrix.size();
+    size_t q = secondMatrix[0].size();
+
+    DAI_CHECK_V(m != 0, "First matrix should not have empty rows");
+    for(size_t i = 1; i < firstMatrix.size(); ++i) {
+        DAI_CHECK_V(firstMatrix[i].size() == m, "All rows of the first matrix should have the same number of columns.");
     }
+
+    DAI_CHECK_V(q != 0, "Second matrix should not have empty rows");
+    for(size_t i = 1; i < secondMatrix.size(); ++i) {
+        DAI_CHECK_V(secondMatrix[i].size() == q, "All rows of the second matrix should have the same number of columns.");
+    }
+
+    DAI_CHECK_V(m == p, "Internal matrix dimensions must agree. Got {} and {}.", m, p);
+
+    std::vector<std::vector<float>> res(n, std::vector<float>(q, 0.0f));
 
     // Multiplying matrix firstMatrix and secondMatrix and storing in array mult.
-    for(size_t i = 0; i < firstMatrix.size(); ++i) {
-        for(size_t j = 0; j < secondMatrix[0].size(); ++j) {
-            for(size_t k = 0; k < firstMatrix[0].size(); ++k) {
+    for(size_t i = 0; i < n; ++i) {
+        for(size_t j = 0; j < q; ++j) {
+            for(size_t k = 0; k < m; ++k) {
                 res[i][j] += firstMatrix[i][k] * secondMatrix[k][j];
             }
         }
@@ -272,6 +342,33 @@ std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array
         }
     }
 
+    return inv;
+}
+
+std::vector<std::vector<float>> invertSe3Matrix4x4(const std::vector<std::vector<float>>& matrix) {
+    if(matrix.size() != 4 || matrix[0].size() != 4 || matrix[1].size() != 4 || matrix[2].size() != 4 || matrix[3].size() != 4) {
+        throw std::invalid_argument("Expected a 4x4 matrix.");
+    }
+
+    std::vector<std::vector<float>> inv(4, std::vector<float>(4, 0.0f));
+
+    // Transpose rotation part (R^T)
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            inv[i][j] = matrix[j][i];
+        }
+    }
+
+    // Invert translation: -R^T * t
+    for(int i = 0; i < 3; ++i) {
+        float newTrans = 0.0f;
+        for(int j = 0; j < 3; ++j) {
+            newTrans -= inv[i][j] * matrix[j][3];
+        }
+        inv[i][3] = newTrans;
+    }
+
+    inv[3][3] = 1.0f;
     return inv;
 }
 

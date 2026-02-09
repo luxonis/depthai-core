@@ -13,6 +13,7 @@ namespace dai {
 class PointCloudConfig : public Buffer {
     bool sparse = false;
 
+    // TODO: THIS SHOULD BE MOVED INTO THE EXTRINSICS STRUCT
     std::array<std::array<float, 4>, 4> transformationMatrix = {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
 
    public:

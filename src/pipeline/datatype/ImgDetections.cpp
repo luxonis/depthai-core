@@ -156,7 +156,7 @@ float ImgDetection::getAngle() const noexcept {
     return getBoundingBox().angle;
 }
 
-// ImgDetections functions
+// ImgDetections function
 ImgDetections::~ImgDetections() = default;
 
 void ImgDetections::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {

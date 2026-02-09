@@ -50,9 +50,6 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
     for(int i = 0; i < 3; ++i) mat[i][3] = newTrans[i];
 }
 
-float getDistanceUnitScale(LengthUnit targetUnit, LengthUnit sourceUnit) {
-    return getLengthUnitMultiplier(targetUnit) / getLengthUnitMultiplier(sourceUnit);
-}
 }  // namespace
 
 LengthUnit CalibrationHandler::getEepromTranslationUnits() const {
