@@ -5,6 +5,7 @@
         OAK Platform</description>
 
     <author email="martin@luxonis.com">Martin Peterlin</author>
+    <maintainer email="matevz.morato@luxonis.com">Matevz Morato</maintainer>
 
     <license>MIT</license>
 
