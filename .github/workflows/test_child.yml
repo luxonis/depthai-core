@@ -117,7 +117,8 @@ jobs:
           path: rvc4_rgb_test_output.log
           if-no-files-found: warn
 
- aggregate_test_summary:
+ report_hil_test_results:
+    name: Report HIL test results
     needs: [linux_rvc2_test, linux_rvc4_test, linux_rvc4_rgb_test]
     if: always()
     runs-on: ubuntu-latest

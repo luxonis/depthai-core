@@ -188,10 +188,10 @@ def build_failure_text(cause: str, line_no: int, output_lines):
 
     clipped_lines, truncated_lines, truncated_chars = clip_output_lines(output_lines)
     if clipped_lines:
-        details.append("Relevant test output:")
-        details.extend(clipped_lines)
+        details.append("Relevant test output (tail, newest lines):")
         if truncated_lines or truncated_chars:
-            details.append("[output truncated]")
+            details.append("[older output truncated; showing most recent lines]")
+        details.extend(clipped_lines)
     else:
         details.append("Relevant test output: not captured.")
 
@@ -243,26 +243,7 @@ def write_junit(
 
         suite_failures = max(declared_failed, len(parsed_failures))
         suite_name = f"{context} / {config}" if context else config
-        if suite_failures <= 0:
-            suite = ET.SubElement(
-                root,
-                "testsuite",
-                name=suite_name,
-                tests="0",
-                failures="0",
-                errors="0",
-                skipped="0",
-                time="0",
-            )
-            props = ET.SubElement(suite, "properties")
-            ET.SubElement(
-                props,
-                "property",
-                name="ctest.summary",
-                value=f"Passed={declared_passed}, Failed={declared_failed}, Total={declared_total}",
-            )
-            continue
-        suite_tests = suite_failures
+        suite_tests = max(declared_total, suite_failures)
 
         suite = ET.SubElement(
             root,
@@ -321,6 +302,16 @@ def write_junit(
                 message="Unknown failure",
             )
             failure.text = "CTest reported an extra failure that was not listed by name."
+
+        suite_passed = max(suite_tests - suite_failures, 0)
+        for index in range(1, suite_passed + 1):
+            ET.SubElement(
+                suite,
+                "testcase",
+                classname=suite_name,
+                name=f"passed placeholder {index}",
+                time="0",
+            )
 
         all_tests += suite_tests
         all_failures += suite_failures

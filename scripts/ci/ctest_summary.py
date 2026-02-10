@@ -188,12 +188,11 @@ def main() -> int:
     for config in order:
         config_failures = failures.get(config, {})
         for num, entry in config_failures.items():
-            name, cause, fail_line = entry
-            suffix = f" (line {fail_line})" if fail_line else ""
+            name, cause, _ = entry
             if cause:
-                print(f"- [{config}] #{num} {name} - {cause}{suffix}")
+                print(f"- [{config}] #{num} {name} - {cause}")
             else:
-                print(f"- [{config}] #{num} {name}{suffix}")
+                print(f"- [{config}] #{num} {name}")
 
             snippet = clip_output_lines(test_outputs.get(config, {}).get(num, []))
             if snippet:
