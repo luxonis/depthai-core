@@ -62,7 +62,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: ctest-log-linux_rvc2_test
+        name: ctest-log-${{ inputs.flavor }}-linux_rvc2_test
         path: rvc2_test_output.log
         if-no-files-found: warn
 
@@ -88,7 +88,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ctest-log-linux_rvc4_test-rvc4os=${{ matrix.rvc4os }}
+          name: ctest-log-${{ inputs.flavor }}-linux_rvc4_test-rvc4os=${{ matrix.rvc4os }}
           path: rvc4_test_output.log
           if-no-files-found: warn
 
@@ -113,7 +113,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ctest-log-linux_rvc4_rgb_test-rvc4os=${{ matrix.rvc4os }}
+          name: ctest-log-${{ inputs.flavor }}-linux_rvc4_rgb_test-rvc4os=${{ matrix.rvc4os }}
           path: rvc4_rgb_test_output.log
           if-no-files-found: warn
 
@@ -130,6 +130,7 @@ jobs:
     - name: Download test logs
       uses: actions/download-artifact@v4
       with:
+        pattern: ctest-log-${{ inputs.flavor }}-*
         path: ctest-logs
     - name: Generate combined summary
       run: |
@@ -142,13 +143,14 @@ jobs:
         found_logs=0
         first_summary=1
         mkdir -p ctest-reports
-        for dir in ctest-logs/ctest-log-*; do
+        artifact_prefix="ctest-log-${{ inputs.flavor }}-"
+        for dir in ctest-logs/${artifact_prefix}*; do
           [ -d "$dir" ] || continue
           log_files=("$dir"/*.log)
           [ ${#log_files[@]} -gt 0 ] || continue
           found_logs=1
           context="$(basename "$dir")"
-          context="${context#ctest-log-}"
+          context="${context#${artifact_prefix}}"
           if [ "$first_summary" -eq 0 ]; then
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "---" >> "$GITHUB_STEP_SUMMARY"

@@ -48,7 +48,21 @@ def run_ctest(env_vars, labels, blocking=True, name=""):
     env_vars["DEPTHAI_PIPELINE_DEBUGGING"] = "1"
     env.update(env_vars)
 
-    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release"]
+    cmd = [
+        "ctest",
+        "--no-tests=error",
+        "-VV",
+        "-L",
+        "^ci$",
+        "--timeout",
+        "1000",
+        "-C",
+        "Release",
+        "--test-output-size-failed",
+        "500000",
+        "--test-output-truncation",
+        "tail",
+    ]
 
     if os.name == "nt":
         cmd.extend(["-LE", "^nowindows$"])

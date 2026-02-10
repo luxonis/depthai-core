@@ -17,6 +17,12 @@ FAILED_LIST_RE = re.compile(
 TEST_OUTPUT_RE = re.compile(
     r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):\s*(?P<text>.*)$"
 )
+TEST_DURATION_RE = re.compile(
+    r"\[(?P<config>[^\]]+)\]\s+(?:\d+/\d+\s+)?Test\s+#(?P<num>\d+):.*?(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
+)
+TOTAL_TIME_RE = re.compile(
+    r"\[(?P<config>[^\]]+)\]\s+Total Test time \(real\)\s*=\s*(?P<seconds>\d+(?:\.\d+)?)\s+sec\s*$"
+)
 
 MAX_OUTPUT_LINES = 120
 MAX_OUTPUT_CHARS = 12000
@@ -84,12 +90,15 @@ def parse_log(log_path: Path):
     summaries = {}
     failures = {}
     test_outputs = {}
+    test_durations = {}
+    suite_total_times = {}
 
     def ensure_config(config: str) -> None:
         if config not in summaries:
             summaries[config] = None
             failures[config] = OrderedDict()
             test_outputs[config] = {}
+            test_durations[config] = {}
             order.append(config)
 
     line_no = 0
@@ -108,6 +117,25 @@ def parse_log(log_path: Path):
                 total = int(summary_match.group("total"))
                 passed = total - failed
                 summaries[config] = (passed, failed, total)
+
+            total_time_match = TOTAL_TIME_RE.search(line)
+            if total_time_match:
+                config = total_time_match.group("config").strip()
+                ensure_config(config)
+                try:
+                    suite_total_times[config] = float(total_time_match.group("seconds"))
+                except ValueError:
+                    pass
+
+            duration_match = TEST_DURATION_RE.search(line)
+            if duration_match:
+                config = duration_match.group("config").strip()
+                ensure_config(config)
+                num = duration_match.group("num").strip()
+                try:
+                    test_durations[config][num] = float(duration_match.group("seconds"))
+                except ValueError:
+                    pass
 
             output_match = TEST_OUTPUT_RE.search(line)
             if output_match:
@@ -135,10 +163,10 @@ def parse_log(log_path: Path):
                     else:
                         failures[config][num] = (prev_name, prev_cause, prev_line)
 
-    return order, summaries, failures, test_outputs
+    return order, summaries, failures, test_outputs, test_durations, suite_total_times
 
 
-def iter_configs(order, summaries, failures):
+def iter_configs(order, summaries, failures, test_durations, suite_total_times):
     configs = list(order)
     for config in summaries:
         if config not in configs:
@@ -146,7 +174,27 @@ def iter_configs(order, summaries, failures):
     for config in failures:
         if config not in configs:
             configs.append(config)
+    for config in test_durations:
+        if config not in configs:
+            configs.append(config)
+    for config in suite_total_times:
+        if config not in configs:
+            configs.append(config)
     return configs
+
+
+def format_junit_time(seconds: float) -> str:
+    safe_seconds = max(float(seconds), 0.0)
+    if safe_seconds == 0:
+        return "0"
+    return f"{safe_seconds:.6f}".rstrip("0").rstrip(".")
+
+
+def sort_test_num_key(num: str):
+    try:
+        return (0, int(num))
+    except ValueError:
+        return (1, num)
 
 
 def clip_output_lines(lines):
@@ -205,12 +253,15 @@ def write_junit(
     summaries,
     failures,
     test_outputs,
+    test_durations,
+    suite_total_times,
 ):
     root = ET.Element("testsuites")
     all_tests = 0
     all_failures = 0
+    all_time_seconds = 0.0
 
-    configs = iter_configs(order, summaries, failures)
+    configs = iter_configs(order, summaries, failures, test_durations, suite_total_times)
     if not configs:
         empty_suite = ET.SubElement(
             root,
@@ -220,14 +271,14 @@ def write_junit(
             failures="0",
             errors="0",
             skipped="0",
-            time="0",
+            time=format_junit_time(0),
         )
         empty_case = ET.SubElement(
             empty_suite,
             "testcase",
             classname=f"{context or 'ctest'}",
             name="summary",
-            time="0",
+            time=format_junit_time(0),
         )
         system_out = ET.SubElement(empty_case, "system-out")
         system_out.text = "No CTest summary lines found in the log."
@@ -244,6 +295,13 @@ def write_junit(
         suite_failures = max(declared_failed, len(parsed_failures))
         suite_name = f"{context} / {config}" if context else config
         suite_tests = max(declared_total, suite_failures)
+        config_test_durations = test_durations.get(config, {})
+        suite_time_seconds = suite_total_times.get(config)
+        if suite_time_seconds is None:
+            suite_time_seconds = sum(
+                max(duration, 0.0) for duration in config_test_durations.values()
+            )
+        all_time_seconds += suite_time_seconds
 
         suite = ET.SubElement(
             root,
@@ -253,7 +311,7 @@ def write_junit(
             failures=str(suite_failures),
             errors="0",
             skipped="0",
-            time="0",
+            time=format_junit_time(suite_time_seconds),
         )
 
         props = ET.SubElement(suite, "properties")
@@ -272,7 +330,7 @@ def write_junit(
                 "testcase",
                 classname=suite_name,
                 name=f"#{num} {test_name}",
-                time="0",
+                time=format_junit_time(config_test_durations.get(num, 0.0)),
             )
             failure = ET.SubElement(
                 case,
@@ -293,7 +351,7 @@ def write_junit(
                 "testcase",
                 classname=suite_name,
                 name=f"unknown failure {index}",
-                time="0",
+                time=format_junit_time(0),
             )
             failure = ET.SubElement(
                 case,
@@ -303,14 +361,21 @@ def write_junit(
             )
             failure.text = "CTest reported an extra failure that was not listed by name."
 
+        failed_nums = set(parsed_failures.keys())
+        passed_durations = [
+            duration
+            for test_num, duration in sorted(config_test_durations.items(), key=lambda item: sort_test_num_key(item[0]))
+            if test_num not in failed_nums
+        ]
         suite_passed = max(suite_tests - suite_failures, 0)
         for index in range(1, suite_passed + 1):
+            placeholder_time = passed_durations[index - 1] if index - 1 < len(passed_durations) else 0.0
             ET.SubElement(
                 suite,
                 "testcase",
                 classname=suite_name,
                 name=f"passed placeholder {index}",
-                time="0",
+                time=format_junit_time(placeholder_time),
             )
 
         all_tests += suite_tests
@@ -319,7 +384,7 @@ def write_junit(
     root.set("tests", str(all_tests))
     root.set("failures", str(all_failures))
     root.set("errors", "0")
-    root.set("time", "0")
+    root.set("time", format_junit_time(all_time_seconds))
 
     tree = ET.ElementTree(root)
     if hasattr(ET, "indent"):
@@ -344,7 +409,7 @@ def main() -> int:
         print(f"Log file not found: {log_path}")
         return 0
 
-    order, summaries, failures, test_outputs = parse_log(log_path)
+    order, summaries, failures, test_outputs, test_durations, suite_total_times = parse_log(log_path)
     write_junit(
         junit_path=junit_path,
         context=context,
@@ -352,6 +417,8 @@ def main() -> int:
         summaries=summaries,
         failures=failures,
         test_outputs=test_outputs,
+        test_durations=test_durations,
+        suite_total_times=suite_total_times,
     )
     print(f"Wrote JUnit report: {junit_path}")
     return 0
