@@ -552,6 +552,50 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
     return extrinsics;
 }
 
+Extrinsics CalibrationHandler::getExtrinsicsToLowestSocket(dai::CameraBoardSocket cameraId) const {
+    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
+        throw std::runtime_error("There is no Camera data available corresponding to the requested cameraId");
+    }
+
+    std::vector<std::vector<float>> extrinsics;
+    auto lowestSocket = getCameraWithLowestId();
+    if(cameraId == lowestSocket) {
+        extrinsics = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    } else {
+        extrinsics = computeExtrinsicMatrix(cameraId, lowestSocket, false);
+    }
+    dai::Extrinsics extr;
+    for(unsigned int i = 0; i < 3; i++) {
+        extr.rotationMatrix.push_back(std::vector<float>());
+        for(unsigned int j = 0; j < 3; j++) {
+            extr.rotationMatrix[i].push_back(extrinsics[i][j]);
+        }
+    }
+    extr.translation.x = extrinsics[0][3];
+    extr.translation.y = extrinsics[1][3];
+    extr.translation.z = extrinsics[2][3];
+    extr.toCameraSocket = lowestSocket;
+    if(cameraId != lowestSocket) {
+        std::vector<std::vector<float>> specExtrinsics = computeExtrinsicMatrix(cameraId, lowestSocket, true);
+        extr.specTranslation.x = specExtrinsics[0][3];
+        extr.specTranslation.y = specExtrinsics[1][3];
+        extr.specTranslation.z = specExtrinsics[2][3];
+    }
+    return extr;
+}
+CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
+    // Find the lowest socket in the chain
+    dai::CameraBoardSocket currentCameraId = dai::CameraBoardSocket::CAM_J;
+
+    for(const auto& cameraData : eepromData.cameraData) {
+        // Check if the current cameraId is lower than the current lowest
+        if(static_cast<int>(cameraData.first) < static_cast<int>(currentCameraId)) {
+            currentCameraId = cameraData.first;
+        }
+    }
+    return currentCameraId;
+}
+
 std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
                                                                               bool useSpecTranslation,
                                                                               CameraBoardSocket& originSocket) const {

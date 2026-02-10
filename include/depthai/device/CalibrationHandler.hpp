@@ -210,6 +210,13 @@ class CalibrationHandler {
     CameraModel getDistortionModel(CameraBoardSocket cameraId) const;
 
     /**
+     * Get the Extrinsics object from the given camera to the lowest socket camera
+     * @param srcCamera Camera Id of the camera for which the extrinsics to lowest socket is being calculated
+     * @return a Extrinsics object which contains the rotation and translation from srcCamera to lowest socket camera
+     */
+    dai::Extrinsics getExtrinsicsToLowestSocket(dai::CameraBoardSocket srcCamera) const;
+
+    /**
      * Get the Camera Extrinsics object between two cameras from the calibration data if there is a linked connection
      *  between any two cameras then the relative rotation and translation is returned by this function.
      *
@@ -663,6 +670,12 @@ class CalibrationHandler {
    protected:
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;
     LengthUnit getEepromTranslationUnits() const;
+
+    /**
+     * Get the lowest camera socket
+     * @return the lowest camera socket
+     */
+    dai::CameraBoardSocket getCameraWithLowestId() const;
 };
 
 }  // namespace dai
