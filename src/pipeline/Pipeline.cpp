@@ -7,6 +7,7 @@
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
+#include "properties/GlobalProperties.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -86,6 +87,17 @@ void PipelineImpl::setDefaultDeviceProperties(DeviceProperties deviceProperties)
     if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->setFrom(deviceProperties);
     }
+}
+
+void PipelineImpl::setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties) {
+    defaultDeviceProperties = deviceProperties;
+}
+
+std::optional<DeviceProperties> PipelineImpl::getDefaultDeviceProperties() const {
+    if(defaultDeviceProperties != nullptr) {
+        return *defaultDeviceProperties;
+    }
+    return std::nullopt;
 }
 
 std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {
