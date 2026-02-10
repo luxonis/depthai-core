@@ -503,23 +503,31 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
 
         auto id = ids[2];
 
-        PipelineStateApi pipelineStateApi(pipeline.getPipelineStateOut(), pipeline.getPipelineStateRequest(), pipeline.getAllNodes());
+        if(pipeline.isPipelineDebuggingEnabled()) {
+            PipelineStateApi pipelineStateApi(pipeline.getPipelineStateOut(), pipeline.getPipelineStateRequest(), pipeline.getAllNodes());
 
-        serviceMap[id] = [pipelineStateApi](foxglove::ServiceResponse request) mutable {
-            (void)request;
-            std::string stateStr;
-            try {
-                auto state = pipelineStateApi.nodes().detailed();
-                stateStr = state.toJson().dump();
-            } catch(const dai::MessageQueue::QueueException& ex) {
-                stateStr = R"({"error": "Message queue closed."})";
-            } catch(const std::runtime_error& e) {
-                stateStr = R"({"error": "Pipeline debugging disabled. Cannot get pipeline state."})";
-            }
-            auto response = foxglove::ServiceResponse();
-            response.data = std::vector<uint8_t>(stateStr.begin(), stateStr.end());
-            return response;
-        };
+            serviceMap[id] = [pipelineStateApi](foxglove::ServiceResponse request) mutable {
+                (void)request;
+                std::string stateStr;
+                try {
+                    auto state = pipelineStateApi.nodes().detailed();
+                    stateStr = state.toJson().dump();
+                } catch(const dai::MessageQueue::QueueException& ex) {
+                    stateStr = R"({"error": "Message queue closed."})";
+                }
+                auto response = foxglove::ServiceResponse();
+                response.data = std::vector<uint8_t>(stateStr.begin(), stateStr.end());
+                return response;
+            };
+        } else {
+            serviceMap[id] = [](foxglove::ServiceResponse request) {
+                (void)request;
+                std::string stateStr = R"({"error": "Pipeline debugging disabled. Cannot get pipeline state."})";
+                auto response = foxglove::ServiceResponse();
+                response.data = std::vector<uint8_t>(stateStr.begin(), stateStr.end());
+                return response;
+            };
+        }
     }
 }
 

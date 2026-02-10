@@ -1043,6 +1043,10 @@ void Pipeline::enablePipelineDebugging(bool enable) {
     impl()->enablePipelineDebugging = enable;
 }
 
+bool Pipeline::isPipelineDebuggingEnabled() const {
+    return impl()->enablePipelineDebugging;
+}
+
 std::shared_ptr<MessageQueue> Pipeline::getPipelineStateOut() const {
     return impl()->pipelineStateOut;
 }
