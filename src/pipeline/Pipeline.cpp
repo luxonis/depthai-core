@@ -84,6 +84,9 @@ void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
 }
 
 void PipelineImpl::setDefaultDeviceProperties(DeviceProperties deviceProperties) {
+    if(defaultDevice) {
+        defaultDevice->setProperties(deviceProperties);
+    }
     if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->setFrom(deviceProperties);
     }
