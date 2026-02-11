@@ -45,10 +45,8 @@ def parse_log(log_path: Path):
             test_outputs[config] = {}
             order.append(config)
 
-    line_no = 0
     with log_path.open("r", errors="ignore") as handle:
         for raw_line in handle:
-            line_no += 1
             line = ANSI_RE.sub("", raw_line.rstrip())
             if not line:
                 continue
@@ -80,13 +78,13 @@ def parse_log(log_path: Path):
                 cause = failed_match.group("cause")
                 cause = normalize_name(cause) if cause else ""
                 if num not in failures[config]:
-                    failures[config][num] = (name, cause, line_no)
+                    failures[config][num] = (name, cause)
                 else:
-                    prev_name, prev_cause, prev_line = failures[config][num]
+                    prev_name, prev_cause = failures[config][num]
                     if not prev_cause and cause:
-                        failures[config][num] = (name, cause, line_no)
+                        failures[config][num] = (name, cause)
                     else:
-                        failures[config][num] = (prev_name, prev_cause, prev_line)
+                        failures[config][num] = (prev_name, prev_cause)
 
     return order, summaries, failures, test_outputs
 
@@ -102,21 +100,11 @@ def iter_configs(order, summaries, failures):
     return configs
 
 
-def clip_output_lines(lines):
-    clipped = [line for line in lines if line.strip()]
-    if not clipped:
-        return [], False, False
-    return clipped, False, False
-
-
-def build_failure_text(cause: str, line_no: int, output_lines):
+def build_failure_text(cause: str, output_lines):
     details = []
     if cause:
         details.append(f"Cause: {cause}")
-    if line_no:
-        details.append(f"Failed list line: {line_no}")
-
-    clipped_lines, _, _ = clip_output_lines(output_lines)
+    clipped_lines = [line for line in output_lines if line.strip()]
     if clipped_lines:
         details.append("Relevant test output:")
         details.extend(clipped_lines)
@@ -171,7 +159,8 @@ def write_junit(
 
         suite_failures = max(declared_failed, len(parsed_failures))
         suite_name = f"{context} / {config}" if context else config
-        suite_tests = max(declared_total, suite_failures)
+        # Report only emitted failed/unknown testcases in JUnit.
+        suite_tests = suite_failures
 
         suite = ET.SubElement(
             root,
@@ -193,7 +182,7 @@ def write_junit(
         )
 
         for num, entry in parsed_failures.items():
-            test_name, cause, fail_line = entry
+            test_name, cause = entry
             output_lines = test_outputs.get(config, {}).get(num, [])
             case = ET.SubElement(
                 suite,
@@ -210,7 +199,6 @@ def write_junit(
             )
             failure.text = build_failure_text(
                 cause=cause,
-                line_no=fail_line,
                 output_lines=output_lines,
             )
 

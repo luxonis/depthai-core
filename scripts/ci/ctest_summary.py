@@ -81,10 +81,8 @@ def main() -> int:
             test_outputs[config] = {}
             order.append(config)
 
-    line_no = 0
     with log_path.open("r", errors="ignore") as handle:
         for raw_line in handle:
-            line_no += 1
             line = ANSI_RE.sub("", raw_line.rstrip())
             if not line:
                 continue
@@ -116,15 +114,15 @@ def main() -> int:
                 cause = failed_match.group("cause")
                 cause = normalize_name(cause) if cause else ""
                 if num not in failures[config]:
-                    failures[config][num] = (name, cause, line_no)
+                    failures[config][num] = (name, cause)
                 else:
-                    prev_name, prev_cause, prev_line = failures[config][num]
+                    prev_name, prev_cause = failures[config][num]
                     if not prev_cause and cause:
-                        failures[config][num] = (name, cause, line_no)
+                        failures[config][num] = (name, cause)
                     else:
-                        failures[config][num] = (prev_name, prev_cause, prev_line)
+                        failures[config][num] = (prev_name, prev_cause)
 
-    print(f"## Test Summary {header_suffix}:")
+    print(f"## Test Summary{header_suffix}:")
     if not summaries:
         print("No test summary lines found in the log.")
     else:
@@ -143,7 +141,7 @@ def main() -> int:
     for config in order:
         config_failures = failures.get(config, {})
         for num, entry in config_failures.items():
-            name, cause, _ = entry
+            name, cause = entry
             if cause:
                 print(f"- [{config}] #{num} {name} - {cause}")
             else:
