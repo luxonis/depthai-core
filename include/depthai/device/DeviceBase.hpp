@@ -346,8 +346,6 @@ class DeviceBase {
 
     void setSippDmaBufferSize(int sizeBytes);  // TODO
 
-    void setBoardConfig(const BoardConfig& board);  // TODO
-
     /**
      * Get the Device Info object o the device which is currently running
      *
@@ -623,7 +621,7 @@ class DeviceBase {
      */
     bool isEepromAvailable();
 
-    bool isCalibrationDataAvailable();  // TODO
+    bool isCalibrationAvailable();  // TODO
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM
@@ -650,6 +648,7 @@ class DeviceBase {
      *
      */
     void setCalibration(CalibrationHandler calibrationDataHandler);
+    void setCalibration(const std::optional<EepromData>& eepromData);  // TODO
 
     /**
      * Retrieves the CalibrationHandler object containing the non-persistent calibration

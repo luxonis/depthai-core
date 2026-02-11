@@ -1503,6 +1503,10 @@ bool DeviceBase::isEepromAvailable() {
     return pimpl->rpcCall("isEepromAvailable").as<bool>();
 }
 
+bool DeviceBase::isCalibrationAvailable() {
+    return pimpl->rpcCall("isCalibrationAvailable").as<bool>();
+}
+
 bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
     try {
         flashCalibration(calibrationDataHandler);
@@ -1533,13 +1537,17 @@ void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     }
 }
 
-void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::setCalibration(const std::optional<EepromData>& eepromData) {
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcCall("setCalibration", calibrationDataHandler.getEepromData()).as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcCall("setCalibration", eepromData).as<std::tuple<bool, std::string>>();
     if(!success) {
         throw std::runtime_error(errorMsg);
     }
+}
+
+void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+    setCalibration(calibrationDataHandler.getEepromData());
 }
 
 CalibrationHandler DeviceBase::getCalibration() {
