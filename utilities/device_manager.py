@@ -197,7 +197,7 @@ class SearchDevice:
         else:
             rows = []
             for info in self.infos:
-                if "X_LINK_GATE" == info.state.name: continue # Skip RVC4 devices
+                if "GATE" in info.state.name: continue # Skip RVC4 devices
                 rows.append([info.getDeviceId(), info.name, deviceStateTxt(info.state)])
             self.window['table'].update(values=rows)
 
@@ -270,20 +270,37 @@ def factoryReset(device: dai.DeviceInfo, type: dai.DeviceBootloader.Type):
     try:
         pr = Progress('Preparing and connecting...')
 
-        blBinary = dai.DeviceBootloader.getEmbeddedBootloaderBinary(type)
-        # Clear 1 MiB for USB BL and 8 MiB for NETWORK BL
-        mib = 1 if type == dai.DeviceBootloader.Type.USB else 8
-        blBinary = blBinary + ([0xFF] * ((mib * 1024 * 1024 + 512) - len(blBinary)))
-        tmpBlFw = tempfile.NamedTemporaryFile(delete=False)
-        tmpBlFw.write(bytes(blBinary))
-
         bl = dai.DeviceBootloader(device, True)
-
         progress = lambda p : pr.update(p)
-        success, msg = bl.flashBootloader(progress, tmpBlFw.name)
+        if type == dai.DeviceBootloader.Type.AUTO:
+            type = bl.getType()
+
+        tmpBlFw = None
+        try:
+            blBinary = dai.DeviceBootloader.getEmbeddedBootloaderBinary(type)
+            # Clear 1 MiB for USB BL and 8 MiB for NETWORK BL
+            mib = 1 if type == dai.DeviceBootloader.Type.USB else 8
+            blBinary = blBinary + ([0xFF] * ((mib * 1024 * 1024 + 512) - len(blBinary)))
+            tmpBlFw = tempfile.NamedTemporaryFile(delete=False)
+            tmpBlFw.write(bytes(blBinary))
+            tmpBlFw.flush()
+            success, msg = bl.flashBootloader(progress, tmpBlFw.name)
+        except Exception as ex:
+            # In some depthai Python builds vector<uint8_t> return conversion is unavailable.
+            if "Unable to convert function return value to a Python type" in str(ex):
+                success, msg = bl.flashBootloader(
+                    memory=dai.DeviceBootloader.Memory.FLASH,
+                    type=type,
+                    progressCallback=progress
+                )
+            else:
+                raise
+        finally:
+            if tmpBlFw is not None:
+                tmpBlFw.close()
+
         msg = "Factory reset was successful." if success else f"Factory reset failed. Error: {msg}"
         pr.finish(msg)
-        tmpBlFw.close()
     except Exception as ex:
         PrintException()
         sg.Popup(f'{ex}')
@@ -864,7 +881,8 @@ class DeviceManager:
             else:
                 for deviceInfo in deviceInfos:
                     deviceTxt = deviceInfo.getDeviceId()
-                    if "X_LINK_GATE" == deviceInfo.state.name: continue # Skip RVC4 devices
+                    print(deviceInfo.state.name)
+                    if "GATE" in deviceInfo.state.name: continue # Skip RVC4 devices
                     listedDevices.append(deviceTxt)
                     self.devices[deviceTxt] = deviceInfo
 

@@ -12,10 +12,12 @@
 
 #include "depthai/schemas/PointCloudData.pb.h"
 #include "depthai/schemas/RGBDData.pb.h"
+#include "depthai/schemas/SegmentationMask.pb.h"
 #include "depthai/schemas/common.pb.h"
 #include "pipeline/datatype/DatatypeEnum.hpp"
 #include "pipeline/datatype/ImgDetections.hpp"
 #include "pipeline/datatype/RGBDData.hpp"
+#include "pipeline/datatype/SegmentationMask.hpp"
 
 namespace dai {
 namespace utility {
@@ -118,19 +120,19 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
 }
 
 DatatypeEnum schemaNameToDatatype(const std::string& schemaName) {
-    if(schemaName == proto::encoded_frame::EncodedFrame::descriptor()->full_name()) {
+    if(schemaName == "dai.proto.encoded_frame.EncodedFrame") {
         return DatatypeEnum::EncodedFrame;
-    } else if(schemaName == proto::imu_data::IMUData::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.imu_data.IMUData") {
         return DatatypeEnum::IMUData;
-    } else if(schemaName == proto::image_annotations::ImageAnnotations::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.image_annotations.ImageAnnotations") {
         return DatatypeEnum::ImgAnnotations;
-    } else if(schemaName == proto::img_detections::ImgDetections::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.img_detections.ImgDetections") {
         return DatatypeEnum::ImgDetections;
-    } else if(schemaName == proto::img_frame::ImgFrame::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.img_frame.ImgFrame") {
         return DatatypeEnum::ImgFrame;
-    } else if(schemaName == proto::point_cloud_data::PointCloudData::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.point_cloud_data.PointCloudData") {
         return DatatypeEnum::PointCloudData;
-    } else if(schemaName == proto::spatial_img_detections::SpatialImgDetections::descriptor()->full_name()) {
+    } else if(schemaName == "dai.proto.spatial_img_detections.SpatialImgDetections") {
         return DatatypeEnum::SpatialImgDetections;
     } else if(schemaName == proto::rgbd_data::RGBDData::descriptor()->full_name()) {
         return DatatypeEnum::RGBDData;
@@ -154,10 +156,12 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::CameraControl:
         case DatatypeEnum::GateControl:
         case DatatypeEnum::ImgDetections:
+        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::SegmentationParserConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
         case DatatypeEnum::AprilTagConfig:
@@ -629,6 +633,38 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* messa
     auto imgFrame = std::make_unique<proto::img_frame::ImgFrame>();
     populateImgFrameToProto(imgFrame.get(), message, metadataOnly);
     return imgFrame;
+}
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const SegmentationMask* message, bool metadataOnly) {
+    auto segmentationMask = std::make_unique<proto::segmentation_mask::SegmentationMask>();
+
+    segmentationMask->set_sequencenum(message->sequenceNum);
+
+    auto timestamp = segmentationMask->mutable_ts();
+    timestamp->set_sec(message->ts.sec);
+    timestamp->set_nsec(message->ts.nsec);
+
+    auto timestampDevice = segmentationMask->mutable_tsdevice();
+    timestampDevice->set_sec(message->tsDevice.sec);
+    timestampDevice->set_nsec(message->tsDevice.nsec);
+
+    segmentationMask->set_width(message->getWidth());
+    segmentationMask->set_height(message->getHeight());
+
+    if(message->transformation.has_value()) {
+        serializeImgTransformation(segmentationMask->mutable_transformation(), *message->transformation);
+    }
+
+    const auto labels = message->getLabels();
+    for(const auto& label : labels) {
+        segmentationMask->add_labels(label);
+    }
+
+    if(!metadataOnly) {
+        segmentationMask->set_data(message->data->getData().data(), message->data->getSize());
+    }
+
+    return segmentationMask;
 }
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData* message, bool metadataOnly) {

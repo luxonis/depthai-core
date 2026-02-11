@@ -22,6 +22,7 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
         depth.link(depthInput);
         detections.link(detectionsInput);
         rgb.link(rgbInput);
+        sendProcessingToPipeline(true);
         return std::static_pointer_cast<SpatialVisualizer>(this->shared_from_this());
     }
 
@@ -229,8 +230,7 @@ int main(int argc, char** argv) {
         std::cout << "Pipeline starting with depth source: " << depthSourceArg << '\n';
 
         // Start pipeline
-        pipeline.start();
-        pipeline.wait();
+        pipeline.run();
 
     } catch(const std::exception& e) {
         std::cerr << "Error: " << e.what() << '\n';
