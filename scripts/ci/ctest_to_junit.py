@@ -18,10 +18,6 @@ TEST_OUTPUT_RE = re.compile(
     r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):\s*(?P<text>.*)$"
 )
 
-MAX_OUTPUT_LINES = 120
-MAX_OUTPUT_CHARS = 12000
-
-
 def normalize_name(name: str) -> str:
     return " ".join(name.strip().split())
 
@@ -110,30 +106,7 @@ def clip_output_lines(lines):
     clipped = [line for line in lines if line.strip()]
     if not clipped:
         return [], False, False
-
-    truncated_lines = False
-    if len(clipped) > MAX_OUTPUT_LINES:
-        clipped = clipped[-MAX_OUTPUT_LINES:]
-        truncated_lines = True
-
-    char_count = 0
-    result_reversed = []
-    truncated_chars = False
-    for line in reversed(clipped):
-        separator = 1 if result_reversed else 0
-        needed = len(line) + separator
-        if char_count + needed > MAX_OUTPUT_CHARS:
-            truncated_chars = True
-            if not result_reversed and MAX_OUTPUT_CHARS > 0:
-                # Preserve the tail of very long single lines.
-                fragment = line[-MAX_OUTPUT_CHARS:]
-                if fragment:
-                    result_reversed.append(fragment)
-            break
-        result_reversed.append(line)
-        char_count += needed
-    result = list(reversed(result_reversed))
-    return result, truncated_lines, truncated_chars
+    return clipped, False, False
 
 
 def build_failure_text(cause: str, line_no: int, output_lines):
@@ -143,11 +116,9 @@ def build_failure_text(cause: str, line_no: int, output_lines):
     if line_no:
         details.append(f"Failed list line: {line_no}")
 
-    clipped_lines, truncated_lines, truncated_chars = clip_output_lines(output_lines)
+    clipped_lines, _, _ = clip_output_lines(output_lines)
     if clipped_lines:
-        details.append("Relevant test output (tail, newest lines):")
-        if truncated_lines or truncated_chars:
-            details.append("[older output truncated; showing most recent lines]")
+        details.append("Relevant test output:")
         details.extend(clipped_lines)
     else:
         details.append("Relevant test output: not captured.")
