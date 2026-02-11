@@ -17,8 +17,8 @@ TEST_OUTPUT_RE = re.compile(
     r"\[(?P<config>[^\]]+)\]\s+(?P<num>\d+):\s*(?P<text>.*)$"
 )
 
-MAX_SNIPPET_LINES = 20
-MAX_SNIPPET_CHARS = 3000
+MAX_SNIPPET_LINES = 30
+MAX_SNIPPET_CHARS = 20000
 
 
 def normalize_name(name: str) -> str:
@@ -27,54 +27,11 @@ def normalize_name(name: str) -> str:
 
 def parse_args(argv):
     if len(argv) < 2:
-        return None, "", "", "", "", 0
+        return None, ""
 
     log_path = Path(argv[1])
-    context_parts = []
-    log_url = ""
-    raw_log_url = ""
-    log_map_path = ""
-    step_number = 0
-
-    i = 2
-    while i < len(argv):
-        arg = argv[i]
-        if arg == "--log-url":
-            i += 1
-            if i < len(argv):
-                log_url = argv[i]
-        elif arg.startswith("--log-url="):
-            log_url = arg.split("=", 1)[1]
-        elif arg == "--raw-log-url":
-            i += 1
-            if i < len(argv):
-                raw_log_url = argv[i]
-        elif arg.startswith("--raw-log-url="):
-            raw_log_url = arg.split("=", 1)[1]
-        elif arg == "--log-map":
-            i += 1
-            if i < len(argv):
-                log_map_path = argv[i]
-        elif arg.startswith("--log-map="):
-            log_map_path = arg.split("=", 1)[1]
-        elif arg == "--step-number":
-            i += 1
-            if i < len(argv):
-                try:
-                    step_number = int(argv[i])
-                except ValueError:
-                    step_number = 0
-        elif arg.startswith("--step-number="):
-            try:
-                step_number = int(arg.split("=", 1)[1])
-            except ValueError:
-                step_number = 0
-        else:
-            context_parts.append(arg)
-        i += 1
-
-    context = " ".join(context_parts).strip()
-    return log_path, context, log_url, raw_log_url, log_map_path, step_number
+    context = " ".join(argv[2:]).strip()
+    return log_path, context
 
 
 def clip_output_lines(lines):
@@ -102,9 +59,7 @@ def clip_output_lines(lines):
 
 
 def main() -> int:
-    log_path, context, _, _, _, _ = parse_args(
-        sys.argv
-    )
+    log_path, context = parse_args(sys.argv)
     if log_path is None:
         print("No log path provided.")
         return 0

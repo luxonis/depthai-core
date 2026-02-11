@@ -123,7 +123,6 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     permissions:
-      checks: write
       contents: read
     steps:
     - uses: actions/checkout@v3
@@ -167,15 +166,6 @@ jobs:
         if [ "$found_logs" -eq 0 ]; then
           echo "No test logs found to summarize." >> "$GITHUB_STEP_SUMMARY"
         fi
-    - name: Publish test report
-      if: always() && hashFiles('ctest-reports/*.xml') != ''
-      uses: dorny/test-reporter@v1
-      with:
-        name: HIL tests (${{ inputs.flavor }})
-        path: ctest-reports/*.xml
-        reporter: java-junit
-        list-tests: failed
-        fail-on-error: 'false'
     - name: Upload JUnit XML reports
       if: always() && hashFiles('ctest-reports/*.xml') != ''
       uses: actions/upload-artifact@v4
