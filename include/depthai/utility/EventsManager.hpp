@@ -258,6 +258,7 @@ class EventsManager {
     std::deque<std::shared_ptr<EventData>> eventBuffer;
     std::deque<std::shared_ptr<SnapData>> snapBuffer;
     std::deque<std::future<void>> uploadFileBatchFutures;
+    std::mutex tokenMutex;
     std::mutex eventBufferMutex;
     std::mutex snapBufferMutex;
     std::mutex stopThreadConditionMutex;
@@ -265,6 +266,7 @@ class EventsManager {
     std::atomic<bool> configurationLimitsFetched;
     std::atomic<bool> connectionEstablished;
     std::condition_variable eventBufferCondition;
+    std::condition_variable tokenCondition;
 
     uint64_t maxFileSizeBytes;
     uint64_t remainingStorageBytes;
