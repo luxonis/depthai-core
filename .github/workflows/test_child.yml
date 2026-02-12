@@ -117,8 +117,8 @@ jobs:
           path: rvc4_rgb_test_output.log
           if-no-files-found: warn
 
- report_hil_test_results:
-    name: Report HIL test results
+ report_linux_test_results:
+    name: Report Linux test results (${{ inputs.flavor }})
     needs: [linux_rvc2_test, linux_rvc4_test, linux_rvc4_rgb_test]
     if: always()
     runs-on: ubuntu-latest
