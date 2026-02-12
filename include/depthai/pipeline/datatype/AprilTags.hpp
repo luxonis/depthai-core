@@ -1,9 +1,12 @@
 #pragma once
 
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -74,9 +77,10 @@ class AprilTags : public Buffer {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::AprilTags;
     }
+    std::optional<ImgTransformation> transformation;
 
     std::vector<AprilTag> aprilTags;
-    DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, aprilTags);
+    DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transformation, aprilTags);
 };
 
 }  // namespace dai

@@ -311,7 +311,7 @@ void AprilTag::run() {
         aprilTags->setSequenceNum(inFrame->getSequenceNum());
         aprilTags->setTimestamp(inFrame->getTimestamp());
         aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
-
+        aprilTags->transformation = inFrame->transformation;
         {
             auto blockEvent = this->outputBlockEvent();
 

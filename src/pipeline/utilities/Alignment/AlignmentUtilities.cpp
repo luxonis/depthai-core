@@ -2,6 +2,8 @@
 
 #include <spdlog/async_logger.h>
 
+#include <opencv2/core/types.hpp>
+
 /////////////////////////////////////////// Distortions ///////////////////////////////////////////
 
 std::array<float, 3> applyTilt(float x, float y, float tauX, float tauY) {
@@ -227,7 +229,7 @@ dai::Point2f opencvPointTransformation(dai::Point2f sourcePt, const dai::ImgTran
         case dai::CameraModel::Perspective: {
             cv::Mat dist(1, static_cast<int>(fromDistortionCoeffs.size()), CV_32F);
             std::memcpy(dist.ptr<float>(), fromDistortionCoeffs.data(), fromDistortionCoeffs.size() * sizeof(float));
-            cv::undistortPoints(src, transformed, fromIntrinsicsCv, dist, cv::noArray(), toIntrinsicsCv);
+            cv::undistortPoints(src, transformed, fromIntrinsicsCv, dist, cv::noArray(), toIntrinsicsCv, {cv::TermCriteria::MAX_ITER, 50, 0.01});
             break;
         }
         case dai::CameraModel::Fisheye: {
