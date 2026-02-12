@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import html
 import re
 import sys
 from collections import OrderedDict
@@ -122,7 +123,11 @@ def main() -> int:
                     else:
                         failures[config][num] = (prev_name, prev_cause)
 
-    print(f"## Test Summary{header_suffix}:")
+    title = f"Test Summary{header_suffix}"
+    print("<details>")
+    print(f"<summary><strong>{html.escape(title)}</strong></summary>")
+    print()
+    print(f"## {title}:")
     if not summaries:
         print("No test summary lines found in the log.")
     else:
@@ -156,6 +161,8 @@ def main() -> int:
             any_failed = True
     if not any_failed:
         print("No tests failed.")
+    print()
+    print("</details>")
     print()
 
     return 0
