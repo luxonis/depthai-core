@@ -72,43 +72,43 @@ void addToFileData(std::vector<std::shared_ptr<FileData>>& container, Args&&... 
     }
 }
 
-void FileGroup::addFile(std::string fileName, std::string data, std::string mimeType) {
-    addToFileData<dai::utility::FileData>(fileData, std::move(data), std::move(fileName), std::move(mimeType));
+void FileGroup::addFile(std::string fileTag, std::string data, std::string mimeType) {
+    addToFileData<dai::utility::FileData>(fileData, std::move(data), std::move(fileTag), std::move(mimeType));
 }
 
-void FileGroup::addFile(std::string fileName, std::filesystem::path filePath) {
-    addToFileData<dai::utility::FileData>(fileData, std::move(filePath), std::move(fileName));
+void FileGroup::addFile(std::string fileTag, std::filesystem::path filePath) {
+    addToFileData<dai::utility::FileData>(fileData, std::move(filePath), std::move(fileTag));
 }
 
-void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgFrame>& imgFrame) {
+void FileGroup::addFile(const std::optional<std::string>& fileTag, const std::shared_ptr<ImgFrame>& imgFrame) {
     if(!imgFrame) {
         throw std::invalid_argument("FileGroup::addFile called with null ImgFrame");
     }
-    std::string dataFileName = fileName.value_or("Image");
+    std::string dataFileName = fileTag.value_or("Image");
     addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(dataFileName));
 }
 
-void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<EncodedFrame>& encodedFrame) {
+void FileGroup::addFile(const std::optional<std::string>& fileTag, const std::shared_ptr<EncodedFrame>& encodedFrame) {
     if(!encodedFrame) {
         throw std::invalid_argument("FileGroup::addFile called with null EncodedFrame");
     }
-    std::string dataFileName = fileName.value_or("Image");
+    std::string dataFileName = fileTag.value_or("Image");
     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(dataFileName));
 }
 
-// void FileGroup::addFile(std::string fileName, const std::shared_ptr<NNData>& nnData) {
-//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+// void FileGroup::addFile(std::string fileTag, const std::shared_ptr<NNData>& nnData) {
+//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileTag));
 // }
 
-void FileGroup::addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgDetections>& imgDetections) {
+void FileGroup::addFile(const std::optional<std::string>& fileTag, const std::shared_ptr<ImgDetections>& imgDetections) {
     if(!imgDetections) {
         throw std::invalid_argument("FileGroup::addFile called with null ImgDetections");
     }
-    std::string dataFileName = fileName.value_or("Detections");
+    std::string dataFileName = fileTag.value_or("Detections");
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
 
-void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
+void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileTag,
                                        const std::shared_ptr<ImgFrame>& imgFrame,
                                        const std::shared_ptr<ImgDetections>& imgDetections) {
     if(!imgFrame) {
@@ -117,12 +117,12 @@ void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileNam
     if(!imgDetections) {
         throw std::invalid_argument("FileGroup::addImageDetectionsPair called with null ImgDetections");
     }
-    std::string dataFileName = fileName.value_or("ImageDetection");
+    std::string dataFileName = fileTag.value_or("ImageDetection");
     addToFileData<dai::utility::FileData>(fileData, imgFrame, dataFileName);
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
 
-void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileName,
+void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileTag,
                                        const std::shared_ptr<EncodedFrame>& encodedFrame,
                                        const std::shared_ptr<ImgDetections>& imgDetections) {
     if(!encodedFrame) {
@@ -131,19 +131,19 @@ void FileGroup::addImageDetectionsPair(const std::optional<std::string>& fileNam
     if(!imgDetections) {
         throw std::invalid_argument("FileGroup::addImageDetectionsPair called with null ImgDetections");
     }
-    std::string dataFileName = fileName.value_or("ImageDetection");
+    std::string dataFileName = fileTag.value_or("ImageDetection");
     addToFileData<dai::utility::FileData>(fileData, encodedFrame, dataFileName);
     addToFileData<dai::utility::FileData>(fileData, imgDetections, std::move(dataFileName));
 }
 
-// void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& nnData) {
-//     addToFileData<dai::utility::FileData>(fileData, imgFrame, std::move(fileName));
-//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+// void FileGroup::addImageNNDataPair(std::string fileTag, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& nnData) {
+//     addToFileData<dai::utility::FileData>(fileData, imgFrame, fileTag);
+//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileTag));
 // }
 
-// void FileGroup::addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& nnData) {
-//     addToFileData<dai::utility::FileData>(fileData, encodedFrame, std::move(fileName));
-//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileName));
+// void FileGroup::addImageNNDataPair(std::string fileTag, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& nnData) {
+//     addToFileData<dai::utility::FileData>(fileData, encodedFrame, fileTag);
+//     addToFileData<dai::utility::FileData>(fileData, nnData, std::move(fileTag));
 // }
 
 std::string calculateSHA256Checksum(const std::string& data) {
@@ -157,15 +157,15 @@ std::string calculateSHA256Checksum(const std::string& data) {
     return oss.str();
 }
 
-FileData::FileData(std::string data, std::string fileName, std::string mimeType)
+FileData::FileData(std::string data, std::string fileTag, std::string mimeType)
     : mimeType(std::move(mimeType)),
-      fileName(std::move(fileName)),
+      fileTag(std::move(fileTag)),
       data(std::move(data)),
-      size(data.size()),
-      checksum(calculateSHA256Checksum(data)),
+      size(this->data.size()),
+      checksum(calculateSHA256Checksum(this->data)),
       classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {}
 
-FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileName(std::move(fileName)) {
+FileData::FileData(std::filesystem::path filePath, std::string fileTag) : fileTag(std::move(fileTag)) {
     // Read the data
     std::ifstream fileStream(filePath, std::ios::binary | std::ios::ate);
     if(!fileStream) {
@@ -194,8 +194,8 @@ FileData::FileData(std::filesystem::path filePath, std::string fileName) : fileN
     }
 }
 
-FileData::FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName)
-    : mimeType("image/jpeg"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
+FileData::FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileTag)
+    : mimeType("image/jpeg"), fileTag(std::move(fileTag)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
     // Convert ImgFrame to bytes
     std::vector<uchar> buffer;
     try {
@@ -214,8 +214,8 @@ FileData::FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileNa
     checksum = calculateSHA256Checksum(data);
 }
 
-FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName)
-    : mimeType("image/jpeg"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
+FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileTag)
+    : mimeType("image/jpeg"), fileTag(std::move(fileTag)), classification(proto::event::PrepareFileUploadClass::IMAGE_COLOR) {
     // Convert EncodedFrame to bytes
     if(encodedFrame->getProfile() != EncodedFrame::Profile::JPEG) {
         throw std::runtime_error("Only JPEG encoded frames are supported");
@@ -227,8 +227,8 @@ FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::strin
     checksum = calculateSHA256Checksum(data);
 }
 
-// FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileName)
-//     : mimeType("application/octet-stream"), fileName(std::move(fileName)), classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {
+// FileData::FileData(const std::shared_ptr<NNData>& nnData, std::string fileTag)
+//     : mimeType("application/octet-stream"), fileTag(std::move(fileTag)), classification(proto::event::PrepareFileUploadClass::UNKNOWN_FILE) {
 //     // Convert NNData to bytes
 //     std::stringstream ss;
 //     ss.write((const char*)nnData->data->getData().data(), nnData->data->getData().size());
@@ -237,10 +237,8 @@ FileData::FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::strin
 //     checksum = calculateSHA256Checksum(data);
 // }
 
-FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName)
-    : mimeType("application/x-protobuf; proto=SnapAnnotation"),
-      fileName(std::move(fileName)),
-      classification(proto::event::PrepareFileUploadClass::ANNOTATION) {
+FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileTag)
+    : mimeType("application/x-protobuf; proto=SnapAnnotation"), fileTag(std::move(fileTag)), classification(proto::event::PrepareFileUploadClass::ANNOTATION) {
     // Serialize imgDetections object, add it to SnapAnnotation proto
     proto::event::SnapAnnotations snapAnnotation;
     proto::img_detections::ImgDetections imgDetectionsProto;
@@ -261,8 +259,8 @@ FileData::FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::str
 }
 
 bool FileData::toFile(const std::filesystem::path& inputPath) {
-    if(fileName.empty()) {
-        logger::error("Filename is empty");
+    if(fileTag.empty()) {
+        logger::error("FileTag is empty");
         return false;
     }
     std::string extension;
@@ -270,11 +268,11 @@ bool FileData::toFile(const std::filesystem::path& inputPath) {
     if(mimeIt != mimeTypeToExtensionMap.end()) {
         extension = mimeIt->second;
     }
-    // Choose a unique filename
-    std::filesystem::path target = inputPath / (fileName + extension);
+    // Choose a unique fileTag
+    std::filesystem::path target = inputPath / (fileTag + extension);
     for(int i = 1; std::filesystem::exists(target); ++i) {
         logger::warn("File {} exists, trying a new name", target.string());
-        target = inputPath / (fileName + "_" + std::to_string(i) + extension);
+        target = inputPath / (fileTag + "_" + std::to_string(i) + extension);
     }
     std::ofstream fileStream(target, std::ios::binary);
     if(!fileStream) {
@@ -447,7 +445,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
             addedFile->set_checksum(file->checksum);
             addedFile->set_mime_type(file->mimeType);
             addedFile->set_size(file->size);
-            addedFile->set_filename(file->fileName);
+            addedFile->set_filename(file->fileTag);
             addedFile->set_classification(file->classification);
         }
         fileGroupBatchPrepare->add_groups()->Swap(fileGroup.get());
@@ -616,7 +614,7 @@ bool EventsManager::uploadGroup(std::shared_ptr<SnapData> snapData, dai::proto::
 }
 
 bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string uploadUrl) {
-    logger::info("Uploading file {} to: {}", fileData->fileName, uploadUrl);
+    logger::info("Uploading file {} to: {}", fileData->fileTag, uploadUrl);
     auto header = cpr::Header();
     header["Content-Type"] = fileData->mimeType;
     for(int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread; ++i) {
@@ -638,14 +636,14 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
                     return true;
                 }));
         if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
-            logger::error("Failed to upload file {}, status code: {}", fileData->fileName, response.status_code);
+            logger::error("Failed to upload file {}, status code: {}", fileData->fileTag, response.status_code);
             if(logResponse) {
                 logger::info("Response {}", response.text);
             }
             // Apply exponential backoff
             auto factor = std::pow(uploadRetryPolicy.factor, i + 1);
             std::chrono::milliseconds duration = std::chrono::milliseconds(uploadRetryPolicy.baseDelay.count() * static_cast<int>(factor));
-            logger::info("Retrying upload of file {}, (attempt {}/{}) in {} ms", fileData->fileName, i + 1, uploadRetryPolicy.maxAttempts, duration.count());
+            logger::info("Retrying upload of file {}, (attempt {}/{}) in {} ms", fileData->fileTag, i + 1, uploadRetryPolicy.maxAttempts, duration.count());
 
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock, duration, [this]() { return stopUploadThread.load(); });
@@ -851,7 +849,7 @@ std::optional<std::string> EventsManager::sendSnap(const std::string& name,
         if(file->size >= maxFileSizeBytes) {
             logger::error(
                 "Failed to send snap, file: {} is bigger than the current maximum file size limit: {} kB. To increase your maximum file size, contact support.",
-                file->fileName,
+                file->fileTag,
                 maxFileSizeBytes / 1024);
             return std::nullopt;
         }
@@ -863,7 +861,7 @@ std::optional<std::string> EventsManager::sendSnap(const std::string& name,
 }
 
 std::optional<std::string> EventsManager::sendSnap(const std::string& name,
-                                                   const std::optional<std::string>& fileName,
+                                                   const std::optional<std::string>& fileTag,
                                                    const std::shared_ptr<ImgFrame> imgFrame,
                                                    const std::optional<std::shared_ptr<ImgDetections>>& imgDetections,
                                                    const std::vector<std::string>& tags,
@@ -873,9 +871,9 @@ std::optional<std::string> EventsManager::sendSnap(const std::string& name,
     // Create a FileGroup and send a snap containing it
     auto fileGroup = std::make_shared<dai::utility::FileGroup>();
     if(imgDetections.has_value()) {
-        fileGroup->addImageDetectionsPair(fileName, imgFrame, imgDetections.value());
+        fileGroup->addImageDetectionsPair(fileTag, imgFrame, imgDetections.value());
     } else {
-        fileGroup->addFile(fileName, imgFrame);
+        fileGroup->addFile(fileTag, imgFrame);
     }
 
     return sendSnap(name, fileGroup, tags, extras, successCallback, failureCallback);

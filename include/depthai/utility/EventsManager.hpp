@@ -29,17 +29,17 @@ namespace utility {
 
 class FileData {
    public:
-    FileData(std::string data, std::string fileName, std::string mimeType);
-    explicit FileData(std::filesystem::path filePath, std::string fileName);
-    explicit FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileName);
-    explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileName);
-    // explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileName);
-    explicit FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileName);
+    FileData(std::string data, std::string fileTag, std::string mimeType);
+    explicit FileData(std::filesystem::path filePath, std::string fileTag);
+    explicit FileData(const std::shared_ptr<ImgFrame>& imgFrame, std::string fileTag);
+    explicit FileData(const std::shared_ptr<EncodedFrame>& encodedFrame, std::string fileTag);
+    // explicit FileData(const std::shared_ptr<NNData>& nnData, std::string fileTag);
+    explicit FileData(const std::shared_ptr<ImgDetections>& imgDetections, std::string fileTag);
     bool toFile(const std::filesystem::path& inputPath);
 
    private:
     std::string mimeType;
-    std::string fileName;
+    std::string fileTag;
     std::string data;
     uint64_t size;
     std::string checksum;
@@ -49,20 +49,20 @@ class FileData {
 
 class FileGroup {
    public:
-    void addFile(std::string fileName, std::string data, std::string mimeType);
-    void addFile(std::string fileName, std::filesystem::path filePath);
-    void addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgFrame>& imgFrame);
-    void addFile(const std::optional<std::string>& fileName, const std::shared_ptr<EncodedFrame>& encodedFrame);
-    // void addFile(std::string fileName, const std::shared_ptr<NNData>& nnData);
-    void addFile(const std::optional<std::string>& fileName, const std::shared_ptr<ImgDetections>& imgDetections);
-    void addImageDetectionsPair(const std::optional<std::string>& fileName,
+    void addFile(std::string fileTag, std::string data, std::string mimeType);
+    void addFile(std::string fileTag, std::filesystem::path filePath);
+    void addFile(const std::optional<std::string>& fileTag, const std::shared_ptr<ImgFrame>& imgFrame);
+    void addFile(const std::optional<std::string>& fileTag, const std::shared_ptr<EncodedFrame>& encodedFrame);
+    // void addFile(std::string fileTag, const std::shared_ptr<NNData>& nnData);
+    void addFile(const std::optional<std::string>& fileTag, const std::shared_ptr<ImgDetections>& imgDetections);
+    void addImageDetectionsPair(const std::optional<std::string>& fileTag,
                                 const std::shared_ptr<ImgFrame>& imgFrame,
                                 const std::shared_ptr<ImgDetections>& imgDetections);
-    void addImageDetectionsPair(const std::optional<std::string>& fileName,
+    void addImageDetectionsPair(const std::optional<std::string>& fileTag,
                                 const std::shared_ptr<EncodedFrame>& encodedFrame,
                                 const std::shared_ptr<ImgDetections>& imgDetections);
-    // void addImageNNDataPair(std::string fileName, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& imgDetections);
-    // void addImageNNDataPair(std::string fileName, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& imgDetections);
+    // void addImageNNDataPair(std::string fileTag, const std::shared_ptr<ImgFrame>& imgFrame, const std::shared_ptr<NNData>& imgDetections);
+    // void addImageNNDataPair(std::string fileTag, const std::shared_ptr<EncodedFrame>& encodedFrame, const std::shared_ptr<NNData>& imgDetections);
 
    private:
     std::vector<std::shared_ptr<FileData>> fileData;
@@ -124,7 +124,7 @@ class EventsManager {
     /**
      * Send a snap to the events service, with an ImgFrame and ImgDetections pair as files
      * @param name Name of the snap
-     * @param fileName File name used to create FileData
+     * @param fileTag File tag used to create FileData
      * @param imgFrame ImgFrame to send
      * @param imgDetections ImgDetections to sent
      * @param tags List of tags to send
@@ -134,7 +134,7 @@ class EventsManager {
      * @return LocalID of the sent Snap
      */
     std::optional<std::string> sendSnap(const std::string& name,
-                                        const std::optional<std::string>& fileName,
+                                        const std::optional<std::string>& fileTag,
                                         const std::shared_ptr<ImgFrame> imgFrame,
                                         const std::optional<std::shared_ptr<ImgDetections>>& imgDetections = std::nullopt,
                                         const std::vector<std::string>& tags = {},
