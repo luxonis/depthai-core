@@ -725,8 +725,16 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
 }
 
 void Node::stopPipeline() {
-    auto pipeline = getParentPipeline();
-    pipeline.stop();
+    // FIXME - Not the best solution as the node now owns the pipeline. If it is the last reference to the pipeline, destructor will be called from the same
+    // thread.
+    try {
+        auto pipeline = getParentPipeline();
+        pipeline.stop();
+    } catch(const std::exception& e) {
+        if(e.what() != std::string("Pipeline is null")) {
+            throw;
+        }
+    }
 }
 
 void Node::Output::link(std::shared_ptr<Node> in) {

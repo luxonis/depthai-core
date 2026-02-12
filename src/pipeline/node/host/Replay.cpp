@@ -247,6 +247,7 @@ void ReplayVideo::run() {
                     }
                     continue;
                 }
+                stopPipeline();
                 break;
             } else {
                 hasMetadata = false;
@@ -323,14 +324,6 @@ void ReplayVideo::run() {
         first = false;
     }
     logger->info("Replay finished - stopping the pipeline!");
-    try {
-        stopPipeline();
-    } catch(const std::exception& e) {
-        // FIXME: This is a workaround for a bug in the pipeline
-        if(e.what() != std::string("Pipeline is null")) {
-            throw;
-        }
-    }
 #else
     throw std::runtime_error("ReplayVideo node requires protobuf support");
 #endif
@@ -373,6 +366,7 @@ void ReplayMetadataOnly::run() {
                 bytePlayer.restart();
                 continue;
             }
+            stopPipeline();
             break;
         } else {
             throw std::runtime_error("Metadata file contains no messages");
@@ -398,14 +392,6 @@ void ReplayMetadataOnly::run() {
         prevMsgTs = buffer->getTimestampDevice();
 
         first = false;
-    }
-    try {
-        stopPipeline();
-    } catch(const std::exception& e) {
-        // FIXME: This is a workaround for a bug in the pipeline
-        if(e.what() != std::string("Pipeline is null")) {
-            throw;
-        }
     }
 #else
     throw std::runtime_error("ReplayMetadataOnly node requires protobuf support");
