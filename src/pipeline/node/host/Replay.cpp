@@ -247,6 +247,7 @@ void ReplayVideo::run() {
                     }
                     continue;
                 }
+                // This will stop even if there is still frames in the pipeline
                 stopPipeline();
                 break;
             } else {
@@ -266,6 +267,8 @@ void ReplayVideo::run() {
                     videoPlayer.restart();
                     continue;
                 }
+                // This will stop even if there is still frames in the pipeline
+                stopPipeline();
                 break;
             } else {
                 hasVideo = false;
@@ -366,6 +369,7 @@ void ReplayMetadataOnly::run() {
                 bytePlayer.restart();
                 continue;
             }
+            // This will stop even if there is still frames in the pipeline
             stopPipeline();
             break;
         } else {

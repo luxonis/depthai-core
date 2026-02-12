@@ -726,7 +726,7 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
 
 void Node::stopPipeline() {
     // FIXME - Not the best solution as the node now owns the pipeline. If it is the last reference to the pipeline, destructor will be called from the same
-    // thread.
+    // thread and the pipeline will crash.
     try {
         auto pipeline = getParentPipeline();
         pipeline.stop();

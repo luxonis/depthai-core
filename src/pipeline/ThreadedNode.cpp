@@ -62,7 +62,7 @@ void ThreadedNode::start() {
 }
 
 void ThreadedNode::wait() {
-    if(thread.joinable() && thread.get_id() != std::this_thread::get_id()) thread.join();
+    if(thread.joinable()) thread.join();
 }
 
 void ThreadedNode::stop() {
