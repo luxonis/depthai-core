@@ -63,8 +63,8 @@ void bind_adatatype(pybind11::module& m, void* pCallstack) {
             "Serialize message to bytes (data + metadata)")
         .def_static(
             "deserialize",
-            [](py::buffer data) {
-                std::string bytes = data.cast<std::string>();
+            [](py::bytes data) {
+                std::string bytes = data;
                 streamPacketDesc_t packet{};
                 packet.data = reinterpret_cast<std::uint8_t*>(bytes.data());
                 packet.length = bytes.size();
