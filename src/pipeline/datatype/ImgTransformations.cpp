@@ -426,7 +426,7 @@ dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::P
         point.y *= height;
         point.normalized = false;
     }
-    // Assumes both transformations refer to the same extrinsics frame.
+    // Assumes both transformations refer to the same camera.
     // local frame -> sensor -> normalized ray -> sensor -> target local frame
     auto sourcePointFrom = invTransformPoint(point);                             // is this in px space in the sensor image plane
     auto sourcePointTo = interSourceFrameTransform(sourcePointFrom, *this, to);  // cast to ray then back into other image plane (eg. rectified / distorted)

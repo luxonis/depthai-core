@@ -130,6 +130,13 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("distortionModel"),
              py::arg("distortionCoefficients"),
              DOC(dai, ImgTransformation, ImgTransformation, 5))
+        .def(py::init<size_t, size_t, std::array<std::array<float, 3>, 3>, CameraModel, std::vector<float>, Extrinsics>(),
+             py::arg("width"),
+             py::arg("height"),
+             py::arg("sourceIntrinsicMatrix"),
+             py::arg("distortionModel"),
+             py::arg("distortionCoefficients"),
+             py::arg("extrinsics"))
         .def("__repr__", &ImgTransformation::str)
         .def("transformPoint", &ImgTransformation::transformPoint, py::arg("point"), DOC(dai, ImgTransformation, transformPoint))
         .def("transformRect", &ImgTransformation::transformRect, py::arg("rect"), DOC(dai, ImgTransformation, transformRect))
@@ -137,6 +144,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("invTransformRect", &ImgTransformation::invTransformRect, py::arg("rect"), DOC(dai, ImgTransformation, invTransformRect))
         .def("getSize", &ImgTransformation::getSize, DOC(dai, ImgTransformation, getSize))
         .def("getSourceSize", &ImgTransformation::getSourceSize, DOC(dai, ImgTransformation, getSourceSize))
+        .def("getCalibrationId", &ImgTransformation::getCalibrationId)
         // TODO(Morato) - docstrings don't get generated
         .def("getMatrix", &ImgTransformation::getMatrix)
         .def("getMatrixInv", &ImgTransformation::getMatrixInv)
@@ -146,35 +154,48 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getIntrinsicMatrixInv", &ImgTransformation::getIntrinsicMatrixInv)
         .def("getDistortionModel", &ImgTransformation::getDistortionModel, DOC(dai, ImgTransformation, getDistortionModel))
         .def("getDistortionCoefficients", &ImgTransformation::getDistortionCoefficients, DOC(dai, ImgTransformation, getDistortionCoefficients))
+        .def("getExtrinsics", &ImgTransformation::getExtrinsics)
         .def("getSrcCrops", &ImgTransformation::getSrcCrops, DOC(dai, ImgTransformation, getSrcCrops))
         .def("getSrcMaskPt", &ImgTransformation::getSrcMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getSrcMaskPt))
         .def("getDstMaskPt", &ImgTransformation::getDstMaskPt, py::arg("x"), py::arg("y"), DOC(dai, ImgTransformation, getDstMaskPt))
         .def("getDFov", &ImgTransformation::getDFov, py::arg("source") = false)
         .def("getHFov", &ImgTransformation::getHFov, py::arg("source") = false)
         .def("getVFov", &ImgTransformation::getVFov, py::arg("source") = false)
+        .def("isEqualTransformation", &ImgTransformation::isEqualTransformation, py::arg("other"))
         .def("setIntrinsicMatrix", &ImgTransformation::setIntrinsicMatrix, py::arg("intrinsicMatrix"), DOC(dai, ImgTransformation, setIntrinsicMatrix))
         .def("setDistortionModel", &ImgTransformation::setDistortionModel, py::arg("model"), DOC(dai, ImgTransformation, setDistortionModel))
         .def("setDistortionCoefficients",
              &ImgTransformation::setDistortionCoefficients,
              py::arg("coefficients"),
              DOC(dai, ImgTransformation, setDistortionCoefficients))
+        .def("setExtrinsics", &ImgTransformation::setExtrinsics, py::arg("extrinsics"))
+        .def("setSize", &ImgTransformation::setSize, py::arg("width"), py::arg("height"))
+        .def("setSourceSize", &ImgTransformation::setSourceSize, py::arg("width"), py::arg("height"))
+        .def("setCalibrationId", &ImgTransformation::setCalibrationId, py::arg("id"))
         .def("addTransformation", &ImgTransformation::addTransformation, py::arg("matrix"), DOC(dai, ImgTransformation, addTransformation))
         .def("addCrop", &ImgTransformation::addCrop, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addCrop))
         .def("addPadding",
              &ImgTransformation::addPadding,
-             py::arg("x"),
-             py::arg("y"),
-             py::arg("width"),
-             py::arg("height"),
+             py::arg("top"),
+             py::arg("bottom"),
+             py::arg("left"),
+             py::arg("right"),
              DOC(dai, ImgTransformation, addPadding))
         .def("addFlipVertical", &ImgTransformation::addFlipVertical, DOC(dai, ImgTransformation, addFlipVertical))
         .def("addFlipHorizontal", &ImgTransformation::addFlipHorizontal, DOC(dai, ImgTransformation, addFlipHorizontal))
         .def("addRotation", &ImgTransformation::addRotation, py::arg("angle"), py::arg("rotationPoint"), DOC(dai, ImgTransformation, addRotation))
         .def("addScale", &ImgTransformation::addScale, py::arg("scaleX"), py::arg("scaleY"), DOC(dai, ImgTransformation, addScale))
+        .def("addSrcCrops", &ImgTransformation::addSrcCrops, py::arg("crops"))
         .def("remapPointTo", &ImgTransformation::remapPointTo, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointTo))
-        .def("remapPointFrom", &ImgTransformation::remapPointFrom, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
+        .def("remapPointFrom", &ImgTransformation::remapPointFrom, py::arg("from"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
         .def("remapRectTo", &ImgTransformation::remapRectTo, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
-        .def("remapRectFrom", &ImgTransformation::remapRectFrom, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
+        .def("remapRectFrom", &ImgTransformation::remapRectFrom, py::arg("from"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
+        .def("project3DPoint", &ImgTransformation::project3DPoint, py::arg("point"))
+        .def("project3DPointTo", &ImgTransformation::project3DPointTo, py::arg("to"), py::arg("point"))
+        .def("project3DPointFrom", &ImgTransformation::project3DPointFrom, py::arg("from"), py::arg("point"))
+        .def("remap3DPointTo", &ImgTransformation::remap3DPointTo, py::arg("to"), py::arg("point"))
+        .def("remap3DPointFrom", &ImgTransformation::remap3DPointFrom, py::arg("from"), py::arg("point"))
+        .def("getExtrinsicsTransformationMatrixTo", &ImgTransformation::getExtrinsicsTransformationMatrixTo, py::arg("to"))
         .def("isAlignedTo", &ImgTransformation::isAlignedTo, py::arg("to"), DOC(dai, ImgTransformation, isAlignedTo))
         .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid));
 

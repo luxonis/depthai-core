@@ -513,7 +513,23 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("rotationMatrix", &Extrinsics::rotationMatrix)
         .def_readwrite("translation", &Extrinsics::translation)
         .def_readwrite("specTranslation", &Extrinsics::specTranslation)
-        .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket);
+        .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket)
+        .def_readwrite("fromCameraSocket", &Extrinsics::fromCameraSocket)
+        .def_readwrite("lengthUnit", &Extrinsics::lengthUnit)
+        .def("getTransformationMatrix",
+             &Extrinsics::getTransformationMatrix,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER)
+        .def("getInverseTransformationMatrix",
+             &Extrinsics::getInverseTransformationMatrix,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER)
+        .def("setTransformationMatrix", &Extrinsics::setTransformationMatrix, py::arg("matrix"), py::arg("unit") = LengthUnit::CENTIMETER)
+        .def("getTranslationVector",
+             &Extrinsics::getTranslationVector,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER)
+        .def("isEqualExtrinsics", &Extrinsics::isEqualExtrinsics, py::arg("other"));
 
     // CameraInfo
     cameraInfo.def(py::init<>())
