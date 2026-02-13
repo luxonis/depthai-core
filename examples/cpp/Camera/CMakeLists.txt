@@ -30,3 +30,6 @@ dai_set_example_test_labels(camera_undistortion ondevice rvc2_all rvc4 ci)
 
 dai_add_example(camera_hdr camera_hdr.cpp ON OFF)
 dai_set_example_test_labels(camera_hdr ondevice rvc4 ci)
+
+dai_add_example(camera_isp camera_isp.cpp ON OFF)
+dai_set_example_test_labels(camera_isp ondevice rvc2_all ci)

@@ -73,6 +73,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::SegmentationParserConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
         case DatatypeEnum::AprilTagConfig:
@@ -103,6 +104,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
             break;
@@ -150,6 +152,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
+        case DatatypeEnum::SegmentationParserConfig:
         case DatatypeEnum::SpatialLocationCalculatorData:
         case DatatypeEnum::EdgeDetectorConfig:
         case DatatypeEnum::GateControl:
@@ -180,6 +183,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -243,6 +247,8 @@ void ReplayVideo::run() {
                     }
                     continue;
                 }
+                // This will stop even if there is still frames in the pipeline
+                stopPipeline();
                 break;
             } else {
                 hasMetadata = false;
@@ -261,6 +267,8 @@ void ReplayVideo::run() {
                     videoPlayer.restart();
                     continue;
                 }
+                // This will stop even if there is still frames in the pipeline
+                stopPipeline();
                 break;
             } else {
                 hasVideo = false;
@@ -319,14 +327,6 @@ void ReplayVideo::run() {
         first = false;
     }
     logger->info("Replay finished - stopping the pipeline!");
-    try {
-        stopPipeline();
-    } catch(const std::exception& e) {
-        // FIXME: This is a workaround for a bug in the pipeline
-        if(e.what() != std::string("Pipeline is null")) {
-            throw;
-        }
-    }
 #else
     throw std::runtime_error("ReplayVideo node requires protobuf support");
 #endif
@@ -369,6 +369,8 @@ void ReplayMetadataOnly::run() {
                 bytePlayer.restart();
                 continue;
             }
+            // This will stop even if there is still frames in the pipeline
+            stopPipeline();
             break;
         } else {
             throw std::runtime_error("Metadata file contains no messages");
@@ -394,14 +396,6 @@ void ReplayMetadataOnly::run() {
         prevMsgTs = buffer->getTimestampDevice();
 
         first = false;
-    }
-    try {
-        stopPipeline();
-    } catch(const std::exception& e) {
-        // FIXME: This is a workaround for a bug in the pipeline
-        if(e.what() != std::string("Pipeline is null")) {
-            throw;
-        }
     }
 #else
     throw std::runtime_error("ReplayMetadataOnly node requires protobuf support");
