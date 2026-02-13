@@ -97,7 +97,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     uses: ./.github/workflows/test_child_mac.yml
     with:
-      flavor: "asan-ubsan"
+      flavor: "vanilla"
       luxonis_os_versions_to_test: "['1.23.1']"
     secrets:
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
