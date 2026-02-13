@@ -26,7 +26,6 @@ set(test_env
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=15000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
-    "DEPTHAI_RECORD=./tmp/recordings/"
     )
 
 include(CMakeParseArguments)
