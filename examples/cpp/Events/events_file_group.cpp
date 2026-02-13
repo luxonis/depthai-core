@@ -62,6 +62,7 @@ int main() {
     int counter = 0;
     while(pipeline.isRunning()) {
         if(cv::waitKey(1) == 'q') {
+            pipeline.stop();
             break;
         }
 
@@ -129,6 +130,14 @@ int main() {
 
             counter++;
         }
+    }
+
+    cv::destroyAllWindows();
+    // Wait for pending snaps to be uploaded
+    if(eventsManager->waitForPendingUploads()) {
+        std::cout << "Pending uploads have been successfully uploaded" << std::endl;
+    } else {
+        std::cout << "Pending uploads were discarded, due to timeout or dropped connection" << std::endl;
     }
 
     return EXIT_SUCCESS;

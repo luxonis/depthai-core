@@ -112,6 +112,11 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
              &EventsManager::setCacheIfCannotSend,
              py::arg("cacheIfCannotUpload"),
              DOC(dai, utility, EventsManager, setCacheIfCannotSend))
+        .def("waitForPendingUploads",
+             &EventsManager::waitForPendingUploads,
+             py::arg("timeoutMs") = uint64_t(0),
+             DOC(dai, utility, EventsManager, waitForPendingUploads),
+             py::call_guard<py::gil_scoped_release>())
         .def("sendEvent",
              &EventsManager::sendEvent,
              py::arg("name"),

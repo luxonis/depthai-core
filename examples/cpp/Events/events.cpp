@@ -63,6 +63,7 @@ int main() {
     while(pipeline.isRunning()) {
         auto key = cv::waitKey(1);
         if(key == 'q') {
+            pipeline.stop();
             break;
         }
 
@@ -116,6 +117,14 @@ int main() {
                 std::cout << "Snap was not successfully added to the EventsManager" << std::endl;
             }
         }
+    }
+
+    cv::destroyAllWindows();
+    // Wait for pending snaps to be uploaded
+    if(eventsManager->waitForPendingUploads()) {
+        std::cout << "Pending uploads have been successfully uploaded" << std::endl;
+    } else {
+        std::cout << "Pending uploads were discarded, due to timeout or dropped connection" << std::endl;
     }
 
     return EXIT_SUCCESS;

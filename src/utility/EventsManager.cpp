@@ -295,6 +295,9 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
       cacheIfCannotSend(false),
       stopUploadThread(false),
       configurationLimitsFetched(false),
+      connectionEstablished(false),
+      waitingForPendingUploads(false),
+      pendingUploadsFinished(false),
       warningStorageBytes(52428800) {
     auto appId = utility::getEnvAs<std::string>("OAKAGENT_APP_ID", "");
     auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
@@ -328,25 +331,43 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
             // Prepare the batch first to reduce contention
             std::deque<std::shared_ptr<SnapData>> snapBatch;
             {
-                std::lock_guard<std::mutex> lock(snapBufferMutex);
+                std::scoped_lock lock(snapBufferMutex, uploadFileBatchFuturesMutex);
                 const std::size_t size = std::min<std::size_t>(snapBuffer.size(), maxGroupsPerBatch);
                 snapBatch.insert(snapBatch.end(), std::make_move_iterator(snapBuffer.begin()), std::make_move_iterator(snapBuffer.begin() + size));
                 snapBuffer.erase(snapBuffer.begin(), snapBuffer.begin() + size);
+
+                if(!snapBatch.empty()) {
+                    uploadFileBatchFutures.emplace_back(
+                        std::async(std::launch::async, [&, inputSnapBatch = std::move(snapBatch)]() mutable { uploadFileBatch(std::move(inputSnapBatch)); }));
+                }
             }
 
-            uploadFileBatchFutures.emplace_back(
-                std::async(std::launch::async, [&, inputSnapBatch = std::move(snapBatch)]() mutable { uploadFileBatch(std::move(inputSnapBatch)); }));
             // Clean up finished futures
-            for(auto iterator = uploadFileBatchFutures.begin(); iterator != uploadFileBatchFutures.end();) {
-                if(iterator->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-                    iterator->get();
-                    iterator = uploadFileBatchFutures.erase(iterator);
-                } else {
-                    ++iterator;
+            {
+                std::lock_guard<std::mutex> lock(uploadFileBatchFuturesMutex);
+                for(auto iterator = uploadFileBatchFutures.begin(); iterator != uploadFileBatchFutures.end();) {
+                    if(iterator->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                        iterator->get();
+                        iterator = uploadFileBatchFutures.erase(iterator);
+                    } else {
+                        ++iterator;
+                    }
                 }
             }
 
             uploadEventBatch();
+            // Check for any remaining snaps or events in snapBuffer & eventBuffer. Also check for pending file uploads.
+            if(waitingForPendingUploads) {
+                const bool uploadFinished = checkPendingUploadsFinished();
+                {
+                    std::lock_guard<std::mutex> pendingLock(pendingUploadsMutex);
+                    pendingUploadsFinished.store(uploadFinished);
+                }
+                if(uploadFinished || !connectionEstablished) {
+                    pendingUploadsCondition.notify_all();
+                }
+            }
+
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock, std::chrono::seconds(static_cast<int>(this->publishInterval)), [this]() { return stopUploadThread.load(); });
         }
@@ -363,6 +384,11 @@ EventsManager::~EventsManager() {
     tokenCondition.notify_all();
     if(uploadThread && uploadThread->joinable()) {
         uploadThread->join();
+    }
+    // Check for pending snaps or events. Warn the user of potential discarded data, suggest using waitForPendingUploads() to avoid this in the future
+    if(!checkPendingUploadsFinished()) {
+        logger::warn(
+            "EventsManager stopped. Pending snaps were discarded. To avoid data loss, use waitForPendingUploads() before destructing the EventsManager");
     }
 }
 
@@ -974,6 +1000,53 @@ bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
         return false;
     }
 
+    return true;
+}
+
+bool EventsManager::waitForPendingUploads(uint64_t timeoutMs) {
+    {
+        std::lock_guard<std::mutex> lock(pendingUploadsMutex);
+        pendingUploadsFinished = checkPendingUploadsFinished();
+        if(pendingUploadsFinished) {
+            return true;
+        }
+        waitingForPendingUploads = true;
+    }
+
+    std::unique_lock<std::mutex> lock(pendingUploadsMutex);
+    if(timeoutMs > 0) {
+        pendingUploadsCondition.wait_for(
+            lock, std::chrono::milliseconds(timeoutMs), [this]() { return pendingUploadsFinished.load() || !connectionEstablished; });
+    } else {
+        pendingUploadsCondition.wait(lock, [this]() { return pendingUploadsFinished.load() || !connectionEstablished; });
+    }
+
+    if(!pendingUploadsFinished.load() && !connectionEstablished.load()) {
+        logger::warn("waitForPendingUploads() exited because connection was lost before pending uploads were finished");
+    }
+
+    waitingForPendingUploads = false;
+    return checkPendingUploadsFinished();
+}
+
+bool EventsManager::checkPendingUploadsFinished() {
+    {
+        std::scoped_lock lock(snapBufferMutex, uploadFileBatchFuturesMutex);
+        if(!snapBuffer.empty()) {
+            return false;
+        }
+        for(const auto& future : uploadFileBatchFutures) {
+            if(future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+                return false;
+            }
+        }
+    }
+    {
+        std::lock_guard<std::mutex> eventLock(eventBufferMutex);
+        if(!eventBuffer.empty()) {
+            return false;
+        }
+    }
     return true;
 }
 

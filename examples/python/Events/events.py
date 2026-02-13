@@ -97,3 +97,10 @@ with dai.Pipeline() as pipeline:
                 print(f"Snap with a localID: {localSnapID} has been successfully added to the EventsManager")
             else:
                 print("Snap was not successfully added to the EventsManager")
+
+    cv2.destroyAllWindows()
+    # Wait for pending snaps to be uploaded
+    if eventMan.waitForPendingUploads():
+        print("Pending uploads have been successfully uploaded")
+    else:
+        print("Pending uploads were discarded, due to timeout or dropped connection")

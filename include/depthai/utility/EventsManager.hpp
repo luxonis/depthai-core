@@ -142,6 +142,12 @@ class EventsManager {
                                         const std::function<void(SendSnapCallbackResult)> successCallback = nullptr,
                                         const std::function<void(SendSnapCallbackResult)> failureCallback = nullptr);
     /**
+     * Wait for pending snaps/events to be processed by the background upload thread
+     * @param timeoutMs Timeout in milliseconds. 0 means wait until uploads are finished or the connection is dropped
+     * @return true if the pending data was uploaded before timeout, false if not - either because of timeout or dropped connection
+     */
+    bool waitForPendingUploads(uint64_t timeoutMs = 0);
+    /**
      * Set the token for the events service. By default, the token is taken from the environment variable DEPTHAI_HUB_API_KEY
      * @param token Token for the events service
      * @return void
@@ -214,6 +220,10 @@ class EventsManager {
      */
     void uploadEventBatch();
     /**
+     * Return whether pending uploads are finished
+     */
+    bool checkPendingUploadsFinished();
+    /**
      * Validate the input event by checking that its fields adhere to defined limitations
      * @param inputEvent Input event to be validated
      * @return bool
@@ -255,18 +265,23 @@ class EventsManager {
     std::string cacheDir;
     bool cacheIfCannotSend;
     std::unique_ptr<std::thread> uploadThread;
-    std::deque<std::shared_ptr<EventData>> eventBuffer;
-    std::deque<std::shared_ptr<SnapData>> snapBuffer;
-    std::deque<std::future<void>> uploadFileBatchFutures;
     std::mutex tokenMutex;
     std::mutex eventBufferMutex;
     std::mutex snapBufferMutex;
+    std::mutex uploadFileBatchFuturesMutex;
     std::mutex stopThreadConditionMutex;
+    std::mutex pendingUploadsMutex;
     std::atomic<bool> stopUploadThread;
     std::atomic<bool> configurationLimitsFetched;
     std::atomic<bool> connectionEstablished;
+    std::atomic<bool> waitingForPendingUploads;
+    std::atomic<bool> pendingUploadsFinished;
     std::condition_variable eventBufferCondition;
     std::condition_variable tokenCondition;
+    std::condition_variable pendingUploadsCondition;
+    std::deque<std::shared_ptr<EventData>> eventBuffer;
+    std::deque<std::shared_ptr<SnapData>> snapBuffer;
+    std::deque<std::future<void>> uploadFileBatchFutures;
 
     uint64_t maxFileSizeBytes;
     uint64_t remainingStorageBytes;
