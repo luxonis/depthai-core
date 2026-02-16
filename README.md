@@ -12,6 +12,11 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 >   [`v2_stable` branch](https://github.com/luxonis/depthai-core/tree/v2_stable).
 > * Need to migrate? Follow the step-by-step [v2 → v3 Porting Guide](./V2V3PortinGuide.md).
 
+>  **Important — You’re viewing the `v2.x.y` branch.**
+>
+> * For the latest version with support for RVC4 devices, please switch to the
+>   [`main` branch](https://github.com/luxonis/depthai-core/tree/main).
+
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
@@ -204,6 +209,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_RECONNECT_TIMEOUT | Specifies timeout in milliseconds for reconnecting to a device after a connection loss. If set to 0, reconnect is disabled. |
 | DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: `any`, `usb`, `tcpip`, `tcpshd`. |
 | DEPTHAI_PLATFORM | Restricts default search to the specified platform. Options: `any`, `rvc2`, `rvc3`, `rvc4`. |
+| DEPTHAI_RPC_READ_TIMEOUT | Specifies timeout in milliseconds for reading RPC responses. If 0, wait indefinitely. |
+| DEPTHAI_RPC_WRITE_TIMEOUT | Specifies timeout in milliseconds for writing RPC requests. If 0, wait indefinitely. |
 | DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_ID_LIST | Alias to MXID list. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_NAME_LIST | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR". It also looks for NAMEs outside of the host's subnet in case of tcpip. |

@@ -11,6 +11,7 @@
 #include <optional>
 #include <system_error>
 #include <thread>
+#include <stdexcept>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -36,6 +37,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // libraries
 #include "XLink/XLink.h"
@@ -75,6 +77,7 @@ thread_local std::optional<std::chrono::milliseconds> ScopedRpcTimeout::tlRpcTim
 std::optional<std::chrono::milliseconds> currentRpcTimeout() {
     return ScopedRpcTimeout::tlRpcTimeout;
 }
+
 }  // namespace
 namespace dai {
 
@@ -84,7 +87,8 @@ const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 constexpr int DEVICE_SEARCH_FIRST_TIMEOUT_MS = 30;
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT_MS = 9000;
-const unsigned int RPC_READ_TIMEOUT = 10000;
+const unsigned int DEFAULT_RPC_READ_TIMEOUT = 10000;
+const unsigned int DEFAULT_RPC_WRITE_TIMEOUT = 0;  // 0 means blocking
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
@@ -451,15 +455,52 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     return timeoutMs;
 }
 
+unsigned int getRPCReadTimeout() {
+    auto currentTimeout = currentRpcTimeout();
+    if(currentTimeout) {
+        return static_cast<unsigned int>(currentTimeout->count());
+    }
+
+    std::string timeoutStr = utility::getEnvAs<std::string>("DEPTHAI_RPC_READ_TIMEOUT", "");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr);
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_RPC_READ_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_RPC_READ_TIMEOUT;
+}
+
+unsigned int getRPCWriteTimeout() {
+    std::string timeoutStr = utility::getEnvAs<std::string>("DEPTHAI_RPC_WRITE_TIMEOUT", "");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr);
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_RPC_WRITE_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_RPC_WRITE_TIMEOUT;
+}
+
+std::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
+    std::vector<uint8_t> data;
+    utility::serialize<SerializationType::JSON>(dump, data);
+    auto crashDumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
+    return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
+}
+
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     isClosing = true;
     auto t1 = steady_clock::now();
+    auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
     bool shouldGetCrashDump = false;
     // Check if the device is RVC3 - in case it is, crash dump retrieval is done differently
     bool isRvc2 = deviceInfo.platform == X_LINK_MYRIAD_X;
-    if(!dumpOnly && isRvc2) {
-        pimpl->logger.debug("Device about to be closed...");
+    if(!dumpOnly && isRvc2 && timeout > 0) {
+        pimpl->logger.debug("Crash dump collection enabled - first try to extract an existing crash dump");
         try {
             if(hasCrashDump()) {
                 connection->setRebootOnDestruction(true);
@@ -475,6 +516,8 @@ void DeviceBase::closeImpl() {
             pimpl->logger.debug("shutdown call error: {}", ex.what());
             shouldGetCrashDump = true;
         }
+    } else {
+        pimpl->logger.debug("Crash dump collection disabled - skipping existing crash dump extraction");
     }
 
     bool waitForGate = true;
@@ -533,7 +576,6 @@ void DeviceBase::closeImpl() {
     pimpl->rpcClient = nullptr;
 
     if(!dumpOnly) {
-        auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
         // Get crash dump if needed
         if(shouldGetCrashDump && timeout > 0) {
             pimpl->logger.debug("Getting crash dump...");
@@ -561,6 +603,8 @@ void DeviceBase::closeImpl() {
             }
         } else if(shouldGetCrashDump) {
             pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
+        } else if(timeout == 0) {
+            pimpl->logger.debug("Crash dump collection disabled, skip device reconnection");
         }
 
         pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
@@ -823,14 +867,20 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
         try {
             // Send request to device
-            rpcStream->write(std::move(request));
-
+            auto writeTimeout = getRPCWriteTimeout();
+            if(writeTimeout > 0) {
+                auto success = rpcStream->write(std::move(request), std::chrono::milliseconds(writeTimeout));
+                if(!success) {
+                    throw std::runtime_error("RPC write timed out in " + std::to_string(writeTimeout) + "ms");
+                }
+            } else {
+                rpcStream->write(std::move(request));
+            }
             // Receive response back
             // Send to nanorpc to parse
-            std::chrono::milliseconds timeout =
-                currentRpcTimeout().value_or(std::chrono::milliseconds{RPC_READ_TIMEOUT});  // if no timeout specified, defaults to RPC_READ_TIMEOUT
-            if(timeout.count() > 0) {
-                return rpcStream->read(timeout);
+            auto timeout = getRPCReadTimeout();
+            if(timeout > 0) {
+                return rpcStream->read(std::chrono::milliseconds(timeout));
             }
             logger::trace("Endless wait for RPC client.");
             return rpcStream->read();  // endless wait
@@ -1369,6 +1419,10 @@ int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcCall("getXLinkChunkSize").as<int>();
 }
 
+void DeviceBase::setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize, int waitUs) {
+    pimpl->rpcCall("setXLinkRateLimit", maxRateBytesPerSecond, burstSize, waitUs);
+}
+
 DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
 }
@@ -1403,6 +1457,15 @@ bool DeviceBase::setIrFloodLightIntensity(float intensity, int mask) {
 
 std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     return pimpl->rpcCall("getIrDrivers");
+}
+
+dai::CrashDump DeviceBase::getState() {
+    auto state = pimpl->rpcCall("getState").as<dai::CrashDump>();
+    // There is a small chance retrieving the state may hang,
+    // so it's not auto-cleared in the same call,
+    // allowing to be returned as a crashdump in the next run
+    pimpl->rpcCall("clearCrashDump");
+    return state;
 }
 
 dai::CrashDump DeviceBase::getCrashDump(bool clearCrashDump) {
