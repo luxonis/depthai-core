@@ -59,6 +59,35 @@ try:
     # Add py.typed
     open(f'{DIRECTORY}/depthai/py.typed', 'a').close()
 
+    # Fix the `import MessageQueue` issue in _C.pyi (the C extension stubs).
+    # stubgen emits a bare `import MessageQueue` which confuses IDEs into
+    # treating MessageQueue as a module rather than a class.
+    c_pyi_path = f'{DIRECTORY}/depthai/_C.pyi'
+    if os.path.exists(c_pyi_path):
+        with open(c_pyi_path, 'r+') as file:
+            contents = file.read()
+            lines = contents.split('\n')
+            final_lines = []
+            for line in lines:
+                if line.strip() == 'import MessageQueue':
+                    continue
+                # Fix Pipeline.create return type for better IDE support
+                if 'def create(self, arg0: object, *args, **kwargs) -> Node:' in line:
+                    if includeDocstrings:
+                        ending = 'T:'
+                    else:
+                        ending = 'T: ...'
+                    final_lines.append(line.replace(
+                        'def create(self, arg0: object, *args, **kwargs) -> Node:',
+                        f'def create(self, arg0: Type[T], *args, **kwargs) -> {ending}'))
+                    continue
+                final_lines.append(line)
+            # Add typing imports at the top if Type[T] was used
+            header = 'from typing import Type, TypeVar\nT = TypeVar(\'T\')\n'
+            file.seek(0)
+            file.truncate(0)
+            file.write(header + '\n'.join(final_lines))
+
     # imports and overloads
     with open(f'{DIRECTORY}/depthai/__init__.pyi' ,'r+') as file:
         # Read
@@ -106,30 +135,32 @@ try:
         file.write(final_stubs)
 
     # node fixes
-    with open(f'{DIRECTORY}/depthai/node/__init__.pyi' ,'r+') as file:
-        # Read
-        contents = file.read()
+    node_pyi_path = f'{DIRECTORY}/depthai/node/__init__.pyi'
+    if os.path.exists(node_pyi_path):
+        with open(node_pyi_path ,'r+') as file:
+            # Read
+            contents = file.read()
 
-        # Add imports
-        stubs_import = textwrap.dedent('''
-            from pathlib import Path
-            from typing import Set
-        ''') + contents
+            # Add imports
+            stubs_import = textwrap.dedent('''
+                from pathlib import Path
+                from typing import Set
+            ''') + contents
 
-        # Remove import depthai.*
-        final_stubs = re.sub(r"import depthai\.\S*", "", stubs_import)
+            # Remove import depthai.*
+            final_stubs = re.sub(r"import depthai\.\S*", "", stubs_import)
 
-        for line in final_stubs.split('\n'):
-            final_lines.append(line)
-            if "class HostNode(ThreadedHostNode):" in line:
-                final_lines.append('    def link_args(self, *args) -> None: ...')
-                final_lines.append('    def __init__(self, *args) -> None: ...')
+            for line in final_stubs.split('\n'):
+                final_lines.append(line)
+                if "class HostNode(ThreadedHostNode):" in line:
+                    final_lines.append('    def link_args(self, *args) -> None: ...')
+                    final_lines.append('    def __init__(self, *args) -> None: ...')
 
-        final_stubs = '\n'.join(final_lines)
-        # Writeout changes
-        file.seek(0)
-        file.truncate(0)
-        file.write(final_stubs)
+            final_stubs = '\n'.join(final_lines)
+            # Writeout changes
+            file.seek(0)
+            file.truncate(0)
+            file.write(final_stubs)
 
     # Flush previous stdout
     sys.stdout.flush()
@@ -177,7 +208,7 @@ try:
 
     # Process all __init__.pyi files
     for root, dirs, files in os.walk(f'{DIRECTORY}/{MODULE_NAME}'):
-        if '__init__.pyi':
+        if '__init__.pyi' in files:
             is_depthai_root = (root == f'{DIRECTORY}/{MODULE_NAME}')
             process_init_pyi(os.path.join(root, '__init__.pyi'), is_depthai_root)
 

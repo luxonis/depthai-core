@@ -290,8 +290,12 @@ def _combine_wheels_linux(input_folder, output_folder, strip):
             with zipfile.ZipFile(os.path.join(input_folder, wheel_info.wheel_name), "r") as wheel_zip:
                 wheel_zip.extractall(wheel_extract_dir)
 
-            # Find cpython library
-            cpython_libs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".so") and "cpython" in f]
+            # Find cpython library (may be inside a package directory)
+            cpython_libs = []
+            for _root, _dirs, _files in os.walk(wheel_extract_dir):
+                for _f in _files:
+                    if _f.endswith(".so") and "cpython" in _f:
+                        cpython_libs.append(os.path.relpath(os.path.join(_root, _f), wheel_extract_dir))
             assert len(cpython_libs) == 1, f"Expected 1 .so file with 'cpython' in the name, got {len(cpython_libs)}"
             cpython_lib = cpython_libs[0]
             _logger.debug(f"Found cpython lib: {cpython_lib}")
@@ -488,8 +492,12 @@ def _combine_wheels_macos(input_folder, output_folder, strip):
             with zipfile.ZipFile(os.path.join(input_folder, wheel_info.wheel_name), "r") as wheel_zip:
                 wheel_zip.extractall(wheel_extract_dir)
 
-            # Find cpython library
-            cpython_libs = [f for f in os.listdir(wheel_extract_dir) if f.endswith(".so") and "cpython" in f]
+            # Find cpython library (may be inside a package directory)
+            cpython_libs = []
+            for _root, _dirs, _files in os.walk(wheel_extract_dir):
+                for _f in _files:
+                    if _f.endswith(".so") and "cpython" in _f:
+                        cpython_libs.append(os.path.relpath(os.path.join(_root, _f), wheel_extract_dir))
             assert len(cpython_libs) == 1, f"Expected 1 .so file with 'cpython' in the name, got {len(cpython_libs)}"
             cpython_lib = cpython_libs[0]
             _logger.debug(f"Found cpython lib: {cpython_lib}")
@@ -670,14 +678,22 @@ def _combine_wheels_windows(input_folder, output_folder, strip):
 
             extracted_files = os.listdir(wheel_extract_dir)
 
-            # Find .pyd file (Windows Python extension)
-            pyd_files = [f for f in extracted_files if f.endswith(".pyd")]
+            # Find .pyd file (may be inside a package directory)
+            pyd_files = []
+            for _root, _dirs, _files in os.walk(wheel_extract_dir):
+                for _f in _files:
+                    if _f.endswith(".pyd"):
+                        pyd_files.append(os.path.relpath(os.path.join(_root, _f), wheel_extract_dir))
             assert len(pyd_files) == 1, f"Expected 1 .pyd file, got {len(pyd_files)}"
             cpython_lib = pyd_files[0]
             _logger.debug(f"Found .pyd file: {cpython_lib}")
 
-            # Find python3X.dll
-            python_dlls = [f for f in extracted_files if f.endswith(".dll") and f.startswith("python3")]
+            # Find python3X.dll (may be inside a package directory)
+            python_dlls = []
+            for _root, _dirs, _files in os.walk(wheel_extract_dir):
+                for _f in _files:
+                    if _f.endswith(".dll") and _f.startswith("python3"):
+                        python_dlls.append(os.path.relpath(os.path.join(_root, _f), wheel_extract_dir))
             assert len(python_dlls) == 1, f"Expected 1 python3X.dll file, got {len(python_dlls)}"
             python_dll = python_dlls[0]
             _logger.debug(f"Found python dll: {python_dll}")

@@ -155,7 +155,7 @@ class CMakeBuild(build_ext):
             cmake_args += ['-DDEPTHAI_RTABMAP_SUPPORT=ON']
         if env.get('DEPTHAI_BUILD_KOMPUTE') == 'ON':
             cmake_args += ['-DDEPTHAI_KOMPUTE_SUPPORT=ON']
-        build_args += ['--target=depthai']
+        build_args += ['--target=_C']
 
 
         # Specify output directory and python executable
@@ -275,13 +275,13 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/luxonis/depthai-core/tree/main/bindings/python",
     ext_modules=[
-        CMakeExtension(MODULE_NAME, str(Path(__file__).absolute().parent.parent.parent.absolute())),
+        CMakeExtension(f'{MODULE_NAME}._C', str(Path(__file__).absolute().parent.parent.parent.absolute())),
         Extension(DEPTHAI_CLI_MODULE_NAME, sources=[])
     ],
     cmdclass={
         'build_ext': CMakeBuild,
     },
-    packages=[DEPTHAI_CLI_MODULE_NAME],
+    packages=[MODULE_NAME, DEPTHAI_CLI_MODULE_NAME],
     zip_safe=False,
     classifiers=[
         "Development Status :: 4 - Beta",

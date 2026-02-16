@@ -22,7 +22,8 @@ if(WIN32)
 endif()
 
 # Pybindings project
-set(TARGET_NAME depthai)
+set(TARGET_NAME _C)
+set(PACKAGE_NAME depthai)
 project(depthai VERSION "0") # revision of bindings [depthai-core].[rev]
 
 # Add module paths
@@ -196,6 +197,24 @@ else()
     pybind11_add_module(${TARGET_NAME} ${SOURCE_LIST})
 endif()
 
+# Place the compiled module inside a depthai/ package directory and copy __init__.py
+# Parent directory containing the depthai/ package (for PYTHONPATH)
+set(PYTHON_PACKAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+if(NOT DEPTHAI_PYTHON_EMBEDDED_MODULE)
+    if(CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+        # Building via pip/setup.py: CMAKE_LIBRARY_OUTPUT_DIRECTORY already points to
+        # the depthai/ package dir (e.g. build/lib.../depthai/). Copy __init__.py there
+        # and compute the parent for PYTHONPATH.
+        configure_file("${CMAKE_CURRENT_LIST_DIR}/depthai/__init__.py" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/__init__.py" COPYONLY)
+        get_filename_component(PYTHON_PACKAGE_DIR "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/.." ABSOLUTE)
+    else()
+        # Standalone CMake build: create package structure in build dir
+        set_target_properties(${TARGET_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}")
+    endif()
+    # Always copy __init__.py to the CMake build dir package location
+    configure_file("${CMAKE_CURRENT_LIST_DIR}/depthai/__init__.py" "${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}/__init__.py" COPYONLY)
+endif()
+
 if(WIN32)
     # Copy dlls to target directory - Windows only
     # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
@@ -219,20 +238,15 @@ execute_process(COMMAND "${PYTHON_EXECUTABLE}" "-c" "from mypy import api" RESUL
 if(error OR CMAKE_CROSSCOMPILING)
     message(WARNING "Mypy not available or cross compiling - stubs won't be generated or checked")
 else()
-    get_target_property(bindings_directory ${TARGET_NAME} LIBRARY_OUTPUT_DIRECTORY)
-    if(NOT bindings_directory)
-        set(bindings_directory ${CMAKE_CURRENT_BINARY_DIR})
-    endif()
-
-    message(STATUS "Mypy available, creating and checking stubs. Running with generate_stubs.py ${TARGET_NAME} ${bindings_directory}")
+    message(STATUS "Mypy available, creating and checking stubs. Running with generate_stubs.py ${PACKAGE_NAME} ${PYTHON_PACKAGE_DIR}")
     if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py")
         message(FATAL_ERROR "Cannot add custom build command, ${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py not found")
     endif ()
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND
         ${CMAKE_COMMAND} -E env
-        # Python path (to find compiled module)
-        "PYTHONPATH=$<TARGET_FILE_DIR:${TARGET_NAME}>${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
-        ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py" "${TARGET_NAME}" "$<TARGET_FILE_DIR:${TARGET_NAME}>" "${PIP_TEMP_LIB_FOLDER}"
+        # Python path (parent of depthai/ package so 'import depthai' works)
+        "PYTHONPATH=${PYTHON_PACKAGE_DIR}${SYS_PATH_SEPARATOR}$ENV{PYTHONPATH}"
+        ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_LIST_DIR}/generate_stubs.py" "${PACKAGE_NAME}" "${PYTHON_PACKAGE_DIR}" "${PIP_TEMP_LIB_FOLDER}"
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
 endif()
