@@ -428,6 +428,15 @@ bool EventsManager::fetchConfigurationLimits(const bool retryOnFail) {
             cpr::Url{requestUrl},
             cpr::Header{header},
             cpr::VerifySsl(verifySsl),
+            cpr::DebugCallback{[](cpr::DebugCallback::InfoType type, std::string data, intptr_t) {
+                if(type == cpr::DebugCallback::InfoType::TEXT) {
+                    logger::debug("libcurl debug: TEXT: {}", data);
+                } else if(type == cpr::DebugCallback::InfoType::HEADER_IN) {
+                    logger::debug("libcurl debug: HEADER_IN: {}", data);
+                } else if(type == cpr::DebugCallback::InfoType::HEADER_OUT) {
+                    logger::debug("libcurl debug: HEADER_OUT: {}", data);
+                }
+            }},
             cpr::ProgressCallback(
                 [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
                     (void)userdata;
@@ -440,6 +449,9 @@ bool EventsManager::fetchConfigurationLimits(const bool retryOnFail) {
                     }
                     return true;
                 }));
+        if(response.error) {
+            logger::error("cpr response error - {}: {}", static_cast<int>(response.error.code), response.error.message);
+        }
         if(response.status_code != cpr::status::HTTP_OK) {
             logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
             // Fetching should be retried indefinetly only on startup
