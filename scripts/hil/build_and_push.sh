@@ -66,8 +66,8 @@ if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"
   echo "✅ Local image ${IMAGE_NAME} already exists. Skipping build."
 else
   # Build the image
-    echo "🔨 Building image ${FULL_IMAGE_NAME}..."
-    docker buildx build --builder "${BUILDER_NAME}" -t "${FULL_IMAGE_NAME}" -f tests/Dockerfile . \
+    echo "🔨 Building image ${IMAGE_NAME}..."
+    docker buildx build --builder "${BUILDER_NAME}" -t "${IMAGE_NAME}" -f tests/Dockerfile . \
   --build-arg FLAVOR="${FLAVOR}" \
   --build-arg BRANCH="${BRANCH}" \
   --build-arg GIT_COMMIT="${COMMIT_ID}" \
@@ -75,8 +75,12 @@ else
   --build-arg PULL_REQUEST="${PULL_REQUEST}" \
   "${CACHE_FROM[@]}" \
   "${CACHE_TO[@]}" \
-  --push
+  --load
 fi
 
+# Push the image
+echo "🚀 Tagging and pushing image to ${REGISTRY}..."
+docker tag "${IMAGE_NAME}" "${FULL_IMAGE_NAME}"
+docker push "${FULL_IMAGE_NAME}"
 docker buildx prune --builder "${BUILDER_NAME}" -f --filter "until=12h"
 echo "✅ Done."
