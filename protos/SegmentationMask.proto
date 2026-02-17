@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "common.proto";
+package dai.proto.segmentation_mask;
+
+message SegmentationMask {
+    common.Timestamp ts = 1;
+    common.Timestamp tsDevice = 2;
+    int64 sequenceNum = 3;
+    common.ImgTransformation transformation = 4;
+    int64 width = 5;
+    int64 height = 6;
+    bytes data = 7;
+    repeated string labels = 8;
+}

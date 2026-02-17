@@ -271,7 +271,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("size", &Rect::size, DOC(dai, Rect, size))
         .def("area", &Rect::area, DOC(dai, Rect, area))
         .def("empty", &Rect::empty, DOC(dai, Rect, empty))
-        .def("contains", &Rect::contains, DOC(dai, Rect, contains))
+        .def("contains", &Rect::contains, py::arg("point"), DOC(dai, Rect, contains))
         .def("isNormalized", &Rect::isNormalized, DOC(dai, Rect, isNormalized))
         .def("denormalize", &Rect::denormalize, py::arg("width"), py::arg("height"), DOC(dai, Rect, denormalize))
         .def("normalize", &Rect::normalize, py::arg("width"), py::arg("height"), DOC(dai, Rect, normalize))

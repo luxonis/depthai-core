@@ -79,7 +79,7 @@ GlobalProperties PipelineImpl::getGlobalProperties() const {
 }
 
 void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
-    this->globalProperties = globalProperties;
+    this->globalProperties.setFrom(globalProperties);
 }
 
 std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {
@@ -1077,6 +1077,10 @@ void Pipeline::enablePipelineDebugging(bool enable) {
         throw std::runtime_error("Cannot change pipeline debugging state after pipeline is built");
     }
     impl()->enablePipelineDebugging = enable;
+}
+
+bool Pipeline::isPipelineDebuggingEnabled() const {
+    return impl()->enablePipelineDebugging;
 }
 
 std::shared_ptr<MessageQueue> Pipeline::getPipelineStateOut() const {

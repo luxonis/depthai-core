@@ -542,6 +542,7 @@ class Pipeline {
 
     /// Pipeline debugging
     void enablePipelineDebugging(bool enable = true);
+    bool isPipelineDebuggingEnabled() const;
 
     // Access to pipeline state queues
     std::shared_ptr<MessageQueue> getPipelineStateOut() const;

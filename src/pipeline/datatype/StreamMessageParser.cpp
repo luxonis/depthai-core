@@ -42,6 +42,8 @@
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
+#include "depthai/pipeline/datatype/SegmentationMask.hpp"
+#include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
@@ -167,6 +169,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::SegmentationMask:
+            return parseDatatype<SegmentationMask>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
         case DatatypeEnum::EncodedFrame:
             return parseDatatype<EncodedFrame>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -213,6 +219,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
             return parseDatatype<SpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::SegmentationParserConfig:
+            return parseDatatype<SegmentationParserConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::AprilTags:
