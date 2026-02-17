@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 
 include(cmake/depthaiOptions.cmake)
+if(CMAKE_TOOLCHAIN_FILE)
+    message(STATUS "Toolchain file specified: ${CMAKE_TOOLCHAIN_FILE}")
+else()
+    message(STATUS "No toolchain file specified.")
+endif()
 
 if(WIN32)
     add_compile_options(/MP)
@@ -30,6 +35,11 @@ if(POLICY CMP0028)
 endif()
 
 if(DEPTHAI_BOOTSTRAP_VCPKG)
+    if(CMAKE_TOOLCHAIN_FILE AND NOT CMAKE_TOOLCHAIN_FILE MATCHES "generated/toolchain.cmake$")
+        get_filename_component(_abs_toolchain "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE)
+        set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${_abs_toolchain}" CACHE STRING "Toolchain to chainload" FORCE)
+    endif()
+
     message(STATUS "Including vcpkg.cmake")
     include(cmake/vcpkg.cmake)
     include(cmake/depthaiVcpkgFeatures.cmake)
@@ -63,7 +73,6 @@ if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
 else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
-
 
 # Create depthai project
 project(depthai VERSION "3.3.0" LANGUAGES CXX C)
@@ -233,15 +242,11 @@ set(THIRDPARTY_RTABMAP_LIBRARIES "rtabmap::utilite" CACHE STRING "Optional libra
 set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
 set(TARGET_RTABMAP_ALIAS rtabmap)
 if(DEPTHAI_RTABMAP_SUPPORT)
-    if(${RTABMap_FOUND} AND DEPTHAI_HAVE_PCL_SUPPORT)
+    if(${RTABMap_FOUND})
         set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
-        message(STATUC "RTABMAP found. RTABMAP Support enabled")
+        message(STATUS "RTABMAP found. RTABMAP Support enabled")
     else()
-        if(${RTABMap_FOUND})
-            message(WARNING "RTABMAP found but depthai does not have PCL support. RTABMAP Support disabled")
-        else()
-            message(WARNING "RTABMAP not found. RTABMAP Support disabled")
-        endif()
+        message(WARNING "RTABMAP not found. RTABMAP Support disabled")
     endif()
 endif()
 
@@ -254,7 +259,7 @@ set(TARGET_BASALT_ALIAS basalt)
 if(DEPTHAI_BASALT_SUPPORT)
     if(${basalt_sdk_FOUND})
         set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
-        message(STATUC "Basalt found. Basalt Support enabled")
+        message(STATUS "Basalt found. Basalt Support enabled")
     else()
         message(WARNING "Basalt not found. Basalt Support disabled")
     endif()
@@ -314,8 +319,10 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/node/SegmentationParser.cpp
     src/pipeline/utilities/DetectionParser/DetectionParserUtils.cpp
     src/pipeline/utilities/SpatialLocationCalculator/SpatialUtils.cpp
+    src/pipeline/utilities/SegmentationParser/SegmentationParserUtils.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
@@ -324,6 +331,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/host/HostNode.cpp
     src/pipeline/node/host/RGBD.cpp
     src/pipeline/node/Vpp.cpp
+    src/pipeline/node/Gate.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
@@ -341,6 +349,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetectionsT.cpp
+    src/pipeline/datatype/SegmentationMask.cpp
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
@@ -348,6 +357,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
+    src/pipeline/datatype/SegmentationParserConfig.cpp
     src/pipeline/datatype/AprilTags.cpp
     src/pipeline/datatype/AprilTagConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
@@ -366,12 +376,15 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/PipelineState.cpp
     src/pipeline/datatype/PipelineEventAggregationConfig.cpp
     src/pipeline/datatype/RGBDData.cpp
+    src/pipeline/datatype/MapData.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/ThermalConfig.cpp
     src/pipeline/datatype/TransformData.cpp
+    src/pipeline/datatype/PacketizedData.cpp
     src/properties/Properties.cpp
     src/capabilities/Capabilities.cpp
     src/pipeline/datatype/VppConfig.cpp
+    src/pipeline/datatype/GateControl.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
     src/utility/ObjectTrackerImpl.cpp
@@ -452,9 +465,9 @@ set(TARGET_PCL_SOURCES src/pcl/PointCloudData.cpp)
 set(TARGET_BASALT_SOURCES src/basalt/BasaltVIO.cpp)
 
 set(TARGET_RTABMAP_SOURCES
-    src/rtabmap/CalibrationHandler.cpp
-    src/rtabmap/TransformData.cpp
-    src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+    src/rtabmap/RTABMapConversions.cpp
+    src/rtabmap/RTABMapVIO.cpp
+    src/rtabmap/RTABMapSLAM.cpp
 )
 
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
@@ -599,7 +612,7 @@ endif()
 
 if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND DEPTHAI_MERGED_TARGET) 
     # Link to rtabmap
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC rtabmap::core ${THIRDPARTY_RTABMAP_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE rtabmap::core ${THIRDPARTY_RTABMAP_LIBRARIES})
 
     # add compile defs
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
@@ -609,7 +622,7 @@ endif()
 
 if(DEPTHAI_HAVE_BASALT_SUPPORT AND DEPTHAI_MERGED_TARGET)
     # Link to Basalt
-    target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES})
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE ${THIRDPARTY_BASALT_LIBRARIES})
 
     # add compile defs
     target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
@@ -1043,9 +1056,9 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     endif()
     # Add depthai-rtabmap library and depthai::rtabmap alias
     add_library(${TARGET_RTABMAP_NAME}
-    src/rtabmap/CalibrationHandler.cpp
-    src/rtabmap/TransformData.cpp
-    src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp
+    src/rtabmap/RTABMapConversions.cpp
+    src/rtabmap/RTABMapVIO.cpp 
+    src/rtabmap/RTABMapSLAM.cpp
     )
     add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
     # Specifies name of generated IMPORTED target (set to alias)
@@ -1055,7 +1068,7 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_default_flags(${TARGET_RTABMAP_NAME})
     add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
     # Link to RTABMap (publically)
-    target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} PRIVATE spdlog::spdlog)
+    target_link_libraries(${TARGET_RTABMAP_NAME} PRIVATE rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} spdlog::spdlog)
 
     target_include_directories(${TARGET_RTABMAP_NAME} PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>")
     # Add public compile definition indicating that RTABMap support is available
@@ -1096,7 +1109,7 @@ if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
 
     # Link to Basalt (publically)
-    target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} PRIVATE spdlog::spdlog)
+    target_link_libraries(${TARGET_BASALT_NAME} PRIVATE ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} spdlog::spdlog)
     # Add public compile definition indicating that Basalt support is available
     set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
 
@@ -1142,8 +1155,6 @@ endif()
 # Sanitizers
 ########################
 if(DEPTHAI_SANITIZE)
-    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets.")
-    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets.")
     find_package(Sanitizers)
     add_sanitizers(${TARGET_CORE_NAME})
     if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)

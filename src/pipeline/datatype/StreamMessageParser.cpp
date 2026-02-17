@@ -22,9 +22,11 @@
     #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+#include "PacketizedData.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
+#include "depthai/pipeline/datatype/GateControl.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
@@ -32,6 +34,7 @@
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/MapData.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/NeuralDepthConfig.hpp"
@@ -39,6 +42,8 @@
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/RGBDData.hpp"
+#include "depthai/pipeline/datatype/SegmentationMask.hpp"
+#include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
@@ -67,8 +72,9 @@ namespace dai {
 static constexpr std::array<uint8_t, 16> endOfPacketMarker = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0};
 
 // Reads int from little endian format
-inline int readIntLE(uint8_t* data) {
-    return data[0] + data[1] * 256 + data[2] * 256 * 256 + data[3] * 256 * 256 * 256;
+inline int readIntLE(const uint8_t* data) {
+    return static_cast<int>(static_cast<uint32_t>(data[0]) | (static_cast<uint32_t>(data[1]) << 8) | (static_cast<uint32_t>(data[2]) << 16)
+                            | (static_cast<uint32_t>(data[3]) << 24));
 }
 
 template <class T>
@@ -163,6 +169,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);
             break;
 
+        case DatatypeEnum::SegmentationMask:
+            return parseDatatype<SegmentationMask>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
         case DatatypeEnum::EncodedFrame:
             return parseDatatype<EncodedFrame>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -181,6 +191,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::CameraControl:
             return parseDatatype<CameraControl>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::GateControl:
+            return parseDatatype<GateControl>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::ImgDetections:
@@ -205,6 +219,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
             return parseDatatype<SpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::SegmentationParserConfig:
+            return parseDatatype<SegmentationParserConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::AprilTags:
@@ -257,6 +275,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::PointCloudData:
             return parseDatatype<PointCloudData>(metadataStart, serializedObjectSize, data, fd);
             break;
+        case DatatypeEnum::MapData:
+            return parseDatatype<MapData>(metadataStart, serializedObjectSize, data, fd);
         case DatatypeEnum::PipelineEvent:
             return parseDatatype<PipelineEvent>(metadataStart, serializedObjectSize, data, fd);
             break;
@@ -291,6 +311,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<VppConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
         }
+        case DatatypeEnum::PacketizedData: {
+            return parseDatatype<PacketizedData>(metadataStart, serializedObjectSize, data, fd);
+        } break;
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         case DatatypeEnum::DynamicCalibrationControl:
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);

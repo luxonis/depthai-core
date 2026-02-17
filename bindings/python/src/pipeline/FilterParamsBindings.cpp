@@ -87,6 +87,7 @@ void FilterParamsBindings::bind(pybind11::module& m, void* pCallstack) {
     // Aliases for backward compatibility
     m.attr("MedianFilter") = medianFilter;
     m.attr("StereoDepthConfig").attr("MedianFilter") = medianFilter;
+    m.attr("StereoDepthConfig").attr("PostProcessing").attr("MedianFilter") = medianFilter;
     m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpatialFilter") = spatialFilter;
     m.attr("StereoDepthConfig").attr("PostProcessing").attr("TemporalFilter") = temporalFilter;
     m.attr("StereoDepthConfig").attr("PostProcessing").attr("SpeckleFilter") = speckleFilter;

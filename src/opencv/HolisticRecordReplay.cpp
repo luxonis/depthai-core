@@ -88,7 +88,7 @@ Node::Output* setupHolistiRecordCamera(std::shared_ptr<dai::node::Camera> cam, P
     return cam->requestOutput(std::make_pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
-bool setupHolisticRecord(Pipeline& pipeline,
+bool setupHolisticRecord(Pipeline pipeline,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
                          std::unordered_map<std::string, std::filesystem::path>& outFilenames,
@@ -96,9 +96,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
     auto sources = pipeline.getSourceNodes();
     const std::filesystem::path recordPath = recordConfig.outputDir;
     try {
-        if(!std::filesystem::exists(recordPath)) {
-            std::filesystem::create_directories(recordPath);
-        } else if(!std::filesystem::is_directory(recordPath)) {
+        if(!std::filesystem::is_directory(recordPath)) {
             throw std::runtime_error("Record output path " + recordPath.string() + " is not a directory.");
         }
         for(auto& node : sources) {
@@ -195,7 +193,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
     return true;
 }
 
-bool setupHolisticReplay(Pipeline& pipeline,
+bool setupHolisticReplay(Pipeline pipeline,
                          std::filesystem::path replayPath,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
@@ -337,7 +335,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
             CalibrationHandler calib;
             try {
                 calib = CalibrationHandler::fromJson(jCamInfo["calibration"], true);
-                pipeline.setCalibrationData(calib);
+                pipeline.getDefaultDevice()->setCalibration(calib);
                 std::vector<CameraFeatures> camFeatures = jCamInfo["camera_features"];
                 std::string imu = jCamInfo["imu"];
                 pipeline.getDefaultDevice()->overrideCameraFeatures(camFeatures, imu);

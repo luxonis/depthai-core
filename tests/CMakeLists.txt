@@ -5,6 +5,15 @@ enable_testing()
 # Add Catch2 for writing tests
 find_package(Catch2 CONFIG REQUIRED)
 
+# Add Trompeloeil mocking framework
+include(FetchContent)
+FetchContent_Declare(
+    trompeloeil
+    GIT_REPOSITORY https://github.com/rollbear/trompeloeil.git
+    GIT_TAG        v44  # You can update this to the latest version
+)
+FetchContent_MakeAvailable(trompeloeil)
+
 # Print details of the Catch2 package
 message(STATUS "Catch2_FOUND: ${Catch2_FOUND}")
 message(STATUS "Catch2_VERSION: ${Catch2_VERSION}")
@@ -56,7 +65,7 @@ function(dai_add_test test_name test_src)
     if(NOT DEPTHAI_MERGED_TARGET)
         set(DEPTHAI_TARGET depthai::opencv)
     endif()
-    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog)
+    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
@@ -364,6 +373,10 @@ endif()
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
 
+# XLInkInHost test 
+dai_add_test(xlink_in_host_test src/onhost_tests/pipeline/node/internal/XLinkInHostTest.cpp)
+dai_set_test_labels(xlink_in_host_test onhost ci)
+
 # NNArchive test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(nn_archive_test src/onhost_tests/nn_archive/nn_archive_test.cpp)
@@ -425,6 +438,12 @@ add_dependencies(platform_test fslock_dummy)
 # Circular buffer test
 dai_add_test(circular_buffer_test src/onhost_tests/utility/circular_buffer_test.cpp)
 dai_set_test_labels(circular_buffer_test onhost ci)
+
+# EventsManager test
+if(DEPTHAI_ENABLE_EVENTS_MANAGER)
+    dai_add_test(events_manager_test src/onhost_tests/utility/events_manager_test.cpp)
+    dai_set_test_labels(events_manager_test onhost ci)
+endif()
 
 # Pipeline debugging tests
 dai_add_test(pipeline_debugging_host_test src/onhost_tests/pipeline_debugging_host_test.cpp)
@@ -608,6 +627,10 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     dai_set_test_labels(detection_parser_test ondevice rvc4 ci)
 endif()
 
+# SegmentationParser test
+dai_add_test(segmentation_parser_test src/ondevice_tests/pipeline/node/segmentation_parser_test.cpp)
+dai_set_test_labels(segmentation_parser_test ondevice rvc4 ci)
+
 # Spatial detection network test
 dai_add_test(spatial_detection_network_test src/ondevice_tests/pipeline/node/spatial_detection_network_test.cpp)
 dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
@@ -637,6 +660,10 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 # Fsync test
 dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
 dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci)
+
+# Fsync Multi-device test
+dai_add_test(fsync_multi_device_test src/onhost_tests/pipeline/fsync_multi_device.cpp)
+dai_set_test_labels(fsync_multi_device_test ondevice rvc4fsync ci)
 
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
@@ -733,3 +760,7 @@ endif()
 # NeuralAssistedStereo test
 dai_add_test(neural_assisted_stereo_node_test src/ondevice_tests/pipeline/node/neural_assisted_stereo_node_test.cpp)
 dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
+
+# Gate tests
+dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
+dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci)

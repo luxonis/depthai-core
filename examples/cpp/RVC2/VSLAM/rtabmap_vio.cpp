@@ -17,8 +17,8 @@ int main() {
     auto featureTracker = pipeline.create<dai::node::FeatureTracker>();
     auto odom = pipeline.create<dai::node::RTABMapVIO>();
     auto rerun = pipeline.create<RerunNode>();
-    auto params = rtabmap::ParametersMap();
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), "30"));
+    std::map<std::string, std::string> params{};
+    params.insert(std::make_pair<std::string, std::string>("Odom/ResetCountDown", "30"));
 
     odom->setParams(params);
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
