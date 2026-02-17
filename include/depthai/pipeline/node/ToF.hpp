@@ -44,6 +44,13 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     Input inputConfig{*this,
                       {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ToFConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
+    /**
+     * Input for raw sensor frames (e.g. RAW12 superframes from VD55H1 ToF sensor).
+     * When connected, the node processes incoming raw frames instead of self-capturing.
+     * Default queue is blocking with size 8.
+     */
+    Input rawInput{*this, {"rawInput", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
@@ -86,6 +93,7 @@ class ToF : public DeviceNodeGroup {
           amplitude{tofBase->amplitude},
           intensity{tofBase->intensity},
           phase{tofBase->phase},
+          rawInput{tofBase->rawInput},
           tofBaseInputConfig{tofBase->inputConfig},
           imageFiltersInputConfig{imageFilters->inputConfig},
           tofBaseNode{*tofBase},
@@ -143,6 +151,11 @@ class ToF : public DeviceNodeGroup {
      * Phase output
      */
     Output& phase;
+
+    /**
+     * Input for raw sensor frames
+     */
+    Input& rawInput;
 
     /**
      * Input config for ToF base node

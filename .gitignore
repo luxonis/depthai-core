@@ -50,3 +50,20 @@ install*
 !install_requirements.py
 build*
 depthai_calib_backup.json
+
+# CMake build artifacts (generated when building in-source)
+DartConfiguration.tcl
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cpp-subprocess/
+private_headers/
+generated/
+_install/
+depthaiConfig.cmake
+depthaiConfigVersion.cmake
+depthaiDependencies.cmake
+check.sh
+debug.sh
+release.sh
