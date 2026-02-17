@@ -508,7 +508,8 @@ void DeviceBase::closeImpl() {
     if(!isRvc2) {
         // Check if the device is still alive and well, if yes, don't wait for gate, crash dump not relevant
         try {
-            crashed = (gate->getState() == DeviceGate::SessionState::CRASHED);
+            auto gateState = gate->getState();
+            crashed = (gateState == DeviceGate::SessionState::CRASHED || gateState == DeviceGate::SessionState::DESTROYED);
             waitForGate = !pimpl->rpcCall("isRunning").as<bool>();
             pimpl->logger.debug("Will wait for gate: {}", waitForGate);
         } catch(const std::exception& ex) {
@@ -575,11 +576,8 @@ void DeviceBase::closeImpl() {
                     pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
                     if(gate) {
-                        if(gate->getState() == DeviceGate::SessionState::CRASHED) {
-                            crashed = true;
-                        } else {
-                            crashed = false;
-                        }
+                        auto gateState = gate->getState();
+                        crashed = (gateState == DeviceGate::SessionState::CRASHED || gateState == DeviceGate::SessionState::DESTROYED);
                     } else {
                         crashed = rebootingDevice.hasCrashDump();
                     }
