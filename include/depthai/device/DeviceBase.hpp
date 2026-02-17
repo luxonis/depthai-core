@@ -427,8 +427,10 @@ class DeviceBase {
 
     /**
      * Retrieves crash dump for debugging.
+     * @param clearCrashDump Clear the cached crash dump on device after collection
+     * @return Unique pointer to the CrashDump, or nullptr if no crash dump available
      */
-    CrashDumpRVC2::CrashReportCollection getCrashDump(bool clearCrashDump = true);
+    std::unique_ptr<CrashDump> getCrashDump(bool clearCrashDump = true);
 
     /**
      * Retrieves whether the is crash dump stored on device or not.
@@ -929,7 +931,8 @@ class DeviceBase {
         bool hasPipeline;
     };
     void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
-    void collectAndLogCrashDump(DeviceBase* device);
+    void collectAndLogCrashDump(DeviceBase* device = nullptr);
+    CrashDumpRVC2::CrashReportCollection getCrashReportCollectionRVC2(bool clear = true);
     DeviceInfo deviceInfo;
     std::optional<Version> bootloaderVersion;
 

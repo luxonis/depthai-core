@@ -1,4 +1,4 @@
-#include "depthai/device/CrashDumpManager.hpp"
+#include "device/CrashDumpManager.hpp"
 
 #include <stdexcept>
 
@@ -34,13 +34,6 @@ CrashDumpManager::CrashDumpManager(DeviceBase* devicePtr) : devicePtr(devicePtr)
 }
 
 std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
-    // Collect crashdumps only when enabled
-    auto crashDumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
-    if(crashDumpPathStr == "0") {
-        spdlog::warn("Firmware crashed but DEPTHAI_CRASHDUMP is set to 0, the crash dump will not be saved.");
-        return nullptr;
-    }
-
     // Collect the correct crash dump based on the platform
     std::unique_ptr<CrashDump> dump;
     Platform platform = this->devicePtr->getPlatform();
@@ -90,7 +83,7 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
 std::unique_ptr<CrashDump> CrashDumpManager::collectDumpRVC2(bool clear) {
     auto dump = std::make_unique<CrashDumpRVC2>();
     if(hasCrashDump()) {
-        dump->crashReports = this->devicePtr->getCrashDump(clear);
+        dump->crashReports = this->devicePtr->getCrashReportCollectionRVC2(clear);
     }
     return dump;
 }

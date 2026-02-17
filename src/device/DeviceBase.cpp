@@ -41,7 +41,7 @@
 // libraries
 #include "XLink/XLink.h"
 #include "XLink/XLinkTime.h"
-#include "depthai/device/CrashDumpManager.hpp"
+#include "device/CrashDumpManager.hpp"
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
 #include "spdlog/details/os.h"
@@ -454,6 +454,7 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
 }
 
 void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
+    if(!device) device = this;
     std::shared_ptr<CrashDump> crashDump = dai::CrashDumpManager(device).collectCrashDump();
     if(crashDump) {
         decltype(crashdumpCallback) callbackCopy;
@@ -466,7 +467,14 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
         }
 
         if(callbackCopy) callbackCopy(crashDump);
-        logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
+
+        // Only save/upload the crash dump when not explicitly disabled
+        auto crashDumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
+        if(crashDumpPathStr == "0") {
+            pimpl->logger.warn("Firmware crashed but DEPTHAI_CRASHDUMP is set to 0, the crash dump will not be saved nor uploaded to the Luxonis servers.");
+        } else {
+            logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
+        }
     }
 }
 
@@ -483,7 +491,7 @@ void DeviceBase::closeImpl() {
             crashed = hasCrashDump();
             if(crashed) {
                 connection->setRebootOnDestruction(true);
-                collectAndLogCrashDump(this);
+                collectAndLogCrashDump();
             } else {
                 bool isRunning = pimpl->rpcCall("isRunning").as<bool>();
                 shouldGetCrashDump = !isRunning;
@@ -543,7 +551,7 @@ void DeviceBase::closeImpl() {
     // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
         if(crashed) {
-            collectAndLogCrashDump(this);
+            collectAndLogCrashDump();
         }
         gate->waitForSessionEnd();
     }
@@ -1120,7 +1128,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
 
                 // If device has crashed, collect dump
                 if(crashed) {
-                    collectAndLogCrashDump(this);
+                    collectAndLogCrashDump();
                 }
             }
 
@@ -1143,7 +1151,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     crashed = hasCrashDump();
                     if(crashed) {
-                        collectAndLogCrashDump(this);
+                        collectAndLogCrashDump();
                     }
                     auto shared = pipelinePtr.lock();
                     if(!shared) throw std::runtime_error("Pipeline was destroyed");
@@ -1443,8 +1451,12 @@ std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     return pimpl->rpcCall("getIrDrivers");
 }
 
-CrashDumpRVC2::CrashReportCollection DeviceBase::getCrashDump(bool clearCrashDump) {
-    return pimpl->rpcCall("getCrashDump", clearCrashDump).as<CrashDumpRVC2::CrashReportCollection>();
+std::unique_ptr<CrashDump> DeviceBase::getCrashDump(bool clearCrashDump) {
+    return CrashDumpManager(this).collectCrashDump(clearCrashDump);
+}
+
+CrashDumpRVC2::CrashReportCollection DeviceBase::getCrashReportCollectionRVC2(bool clear) {
+    return pimpl->rpcCall("getCrashDump", clear).as<CrashDumpRVC2::CrashReportCollection>();
 }
 
 bool DeviceBase::hasCrashDump() {

@@ -2,7 +2,6 @@
 
 // depthai
 #include "depthai/device/CrashDump.hpp"
-#include "depthai/device/CrashDumpManager.hpp"
 #include "depthai/device/DeviceBase.hpp"
 
 // pybind11_json
@@ -54,9 +53,6 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // CrashDumpRVC4
     py::class_<CrashDumpRVC4, CrashDump, std::shared_ptr<CrashDumpRVC4>> crashDumpRVC4(m, "CrashDumpRVC4", DOC(dai, CrashDumpRVC4));
-
-    // CrashDumpManager
-    py::class_<CrashDumpManager> crashDumpManager(m, "CrashDumpManager", DOC(dai, CrashDumpManager));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -253,21 +249,4 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("data", &CrashDumpRVC4::data)
         .def_readwrite("filename", &CrashDumpRVC4::filename);
 
-    // Bind CrashDumpManager
-    crashDumpManager.def(py::init<DeviceBase*>(), py::arg("device"), py::keep_alive<1, 2>(), DOC(dai, CrashDumpManager, CrashDumpManager))
-        .def(
-            "collectCrashDump",
-            [](CrashDumpManager& self, bool clear) -> std::shared_ptr<CrashDump> {
-                py::gil_scoped_release release;
-                return self.collectCrashDump(clear);
-            },
-            py::arg("clear") = true,
-            DOC(dai, CrashDumpManager, collectCrashDump))
-        .def(
-            "hasCrashDump",
-            [](CrashDumpManager& self) {
-                py::gil_scoped_release release;
-                return self.hasCrashDump();
-            },
-            DOC(dai, CrashDumpManager, hasCrashDump));
 }

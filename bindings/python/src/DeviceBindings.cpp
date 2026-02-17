@@ -386,7 +386,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBase, getSystemInformationLoggingRate))
         .def(
             "getCrashDump",
-            [](DeviceBase& d, bool clearCrashDump) {
+            [](DeviceBase& d, bool clearCrashDump) -> std::shared_ptr<CrashDump> {
                 py::gil_scoped_release release;
                 return d.getCrashDump(clearCrashDump);
             },
