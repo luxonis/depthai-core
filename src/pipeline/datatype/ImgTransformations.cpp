@@ -490,7 +490,25 @@ dai::Point3f ImgTransformation::remap3DPointFrom(const ImgTransformation& from, 
     return transformPoint3f(transform, point);
 }
 
-std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformationMatrixTo(const ImgTransformation& to) const {
+std::array<std::array<float, 3>, 3> ImgTransformation::getRotationMatrixTo(const ImgTransformation& to) const {
+    const auto transform = getExtrinsicsTransformationMatrixTo(to);
+    std::array<std::array<float, 3>, 3> rotation{};
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            rotation[i][j] = transform[i][j];
+        }
+    }
+    return rotation;
+}
+
+std::array<float, 3> ImgTransformation::getTranslationVectorTo(const ImgTransformation& to, const bool useSpecTranslation, const LengthUnit sourceUnit) const {
+    const auto transform = getExtrinsicsTransformationMatrixTo(to, useSpecTranslation, sourceUnit);
+    return {transform[0][3], transform[1][3], transform[2][3]};
+}
+
+std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
+                                                                                           const bool useSpecTranslation,
+                                                                                           const LengthUnit sourceUnit) const {
     // Calculate the extrinsics from this transformation to the target transformation
     // 1. Verify that the transformations have a common point
     if(to.extrinsics.toCameraSocket != extrinsics.toCameraSocket) {
@@ -498,8 +516,8 @@ std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformati
     }
 
     // 2. Get the transformation matrices
-    auto thisTransformationMatrix = extrinsics.getTransformationMatrix();                 // this -> Common
-    auto toInverseTransformationMatrix = to.extrinsics.getInverseTransformationMatrix();  // inv(to -> Common) == Common -> to
+    auto thisTransformationMatrix = extrinsics.getTransformationMatrix(useSpecTranslation, sourceUnit);                 // this -> Common
+    auto toInverseTransformationMatrix = to.extrinsics.getInverseTransformationMatrix(useSpecTranslation, sourceUnit);  // inv(to -> Common) == Common -> to
 
     // 3. Multiply: (common->to) * (this -> Common)
     auto thisToTransformationMatrix = matrix::matMul(toInverseTransformationMatrix, thisTransformationMatrix);

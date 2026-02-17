@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/Point2f.hpp"
@@ -345,7 +347,23 @@ struct ImgTransformation {
      * @return 4x4 homogeneous transformation matrix representing the extrinsics from this transformation to the target transformation
      * @note Both transformations must have a common toCameraSocket in their extrinsics. Otherwise extrinsics cannot be calculated.
      */
-    std::array<std::array<float, 4>, 4> getExtrinsicsTransformationMatrixTo(const ImgTransformation& to) const;
+    std::array<std::array<float, 4>, 4> getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
+                                                                            const bool useSpecTranslation = false,
+                                                                            const LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+
+    /**
+     * Get the extrinsic rotation matrix from this ImgTransformation to another ImgTransformation.
+     * @param to Transformation to get extrinsics to
+     */
+    std::array<std::array<float, 3>, 3> getRotationMatrixTo(const ImgTransformation& to) const;
+
+    /**
+     * Get the extrinsic translation vector from this ImgTransformation to another ImgTransformation.
+     * @param to Transformation to get extrinsics to
+     */
+    std::array<float, 3> getTranslationVectorTo(const ImgTransformation& to,
+                                                const bool useSpecTranslation = false,
+                                                const LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
     /**
      * Check if the transformations are aligned

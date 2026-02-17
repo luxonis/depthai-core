@@ -195,7 +195,11 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("project3DPointFrom", &ImgTransformation::project3DPointFrom, py::arg("from"), py::arg("point"))
         .def("remap3DPointTo", &ImgTransformation::remap3DPointTo, py::arg("to"), py::arg("point"))
         .def("remap3DPointFrom", &ImgTransformation::remap3DPointFrom, py::arg("from"), py::arg("point"))
-        .def("getExtrinsicsTransformationMatrixTo", &ImgTransformation::getExtrinsicsTransformationMatrixTo, py::arg("to"))
+        .def("getExtrinsicsTransformationMatrixTo",
+             &ImgTransformation::getExtrinsicsTransformationMatrixTo,
+             py::arg("to"),
+             py::arg("useSpecTranslation") = false,
+             py::arg("sourceUnit") = LengthUnit::CENTIMETER)
         .def("isAlignedTo", &ImgTransformation::isAlignedTo, py::arg("to"), DOC(dai, ImgTransformation, isAlignedTo))
         .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid));
 

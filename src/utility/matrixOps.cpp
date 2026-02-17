@@ -227,7 +227,7 @@ void printMatrix(std::vector<std::vector<float>>& matrix) {
     }
 }
 
-std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R) {
+std::vector<float> matrixToVector(const std::vector<std::vector<float>>& R) {
     if(R.size() != 3 || R[0].size() != 3 || R[1].size() != 3 || R[2].size() != 3) {
         throw std::invalid_argument("Expected a 3x3 rotation matrix.");
     }
@@ -260,6 +260,29 @@ std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>&
 
     // Rotation vector = axis * angle
     return {x * angle, y * angle, z * angle};
+}
+std::vector<std::vector<float>> matrix3x3toVectorMatrix(const std::array<std::array<float, 3>, 3>& R) {
+    std::vector<std::vector<float>> vectorR;
+    for(size_t i = 0; i < 3; ++i) {
+        std::vector<float> row;
+        for(size_t j = 0; j < 3; ++j) {
+            row.push_back(R[i][j]);
+        }
+        vectorR.push_back(row);
+    }
+    return vectorR;
+}
+
+std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& R) {
+    std::vector<std::vector<float>> vectorR = matrix3x3toVectorMatrix(R);
+    return matrixToVector(vectorR);
+}
+
+std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 3>, 3>& projection) {
+    std::array<std::array<float, 3>, 3> rotationMatrix = {{{projection[0][0], projection[0][1], projection[0][2]},
+                                                           {projection[1][0], projection[1][1], projection[1][2]},
+                                                           {projection[2][0], projection[2][1], projection[2][2]}}};
+    return rotationMatrix;
 }
 
 std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]) {

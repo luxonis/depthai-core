@@ -52,6 +52,34 @@ struct Extrinsics {
     LengthUnit lengthUnit = LengthUnit::CENTIMETER;
 
     /**
+     * Get the extrinsic rotation matrix in array format. The rotation matrix is 3x3 and represents the rotation from the fromCameraSocket to the
+     * toCameraSocket.
+     * @return 3x3 rotation matrix as a 2D array
+     */
+    std::array<std::array<float, 3>, 3> getRotationMatrix() const {
+        if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3 || rotationMatrix[1].size() != 3 || rotationMatrix[2].size() != 3) {
+            throw std::invalid_argument("Extrinsics rotationMatrix must be 3x3 to be converted to array format.");
+        }
+        std::array<std::array<float, 3>, 3> matrixArray;
+        for(int i = 0; i < 3; ++i) {
+            for(int j = 0; j < 3; ++j) {
+                matrixArray[i][j] = rotationMatrix[i][j];
+            }
+        }
+        return matrixArray;
+    }
+
+    /**
+     * Get the extrinsic rotation matrix inverse in array format. The rotation matrix is 3x3 and represents the rotation from the toCameraSocket to the
+     * fromCameraSocket.
+     * @return 3x3 inverse rotation matrix as a 2D array
+     */
+    std::array<std::array<float, 3>, 3> getInverseRotationMatrix() const {
+        auto rotMatrix = getRotationMatrix();
+        return matrix::getMatrixInverse(rotMatrix);
+    }
+
+    /**
      * Get the Camera Extrinsics object between the fromCameraSocket and toCameraSocket
      *  between any two cameras then the relative rotation and translation is returned by this function.
      * @param useSpecTranslation Set to true to force using spec translation
