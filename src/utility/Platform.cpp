@@ -177,7 +177,7 @@ std::filesystem::path getTempPath() {
     return std::filesystem::path(baseStr);
 #else
     char tmpTemplate[] = "/tmp/depthai_XXXXXX";
-    char* tmpName = mkdtemp(tmpTemplate);
+    char* tmpName = mkdtemp(tmpTemplate);  // mkdtemp creates the directory automatically
     if(tmpName == nullptr) {
         throw std::runtime_error("Failed to create a unique temporary directory");
     }
