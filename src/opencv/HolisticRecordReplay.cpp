@@ -92,7 +92,7 @@ Node::Output* setupHolistiRecordCamera(
     return cam->requestOutput(std::make_pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
-bool setupHolisticRecord(Pipeline& pipeline,
+bool setupHolisticRecord(Pipeline pipeline,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
                          std::unordered_map<std::string, std::filesystem::path>& outFilenames,
@@ -178,7 +178,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
     return true;
 }
 
-bool setupHolisticReplay(Pipeline& pipeline,
+bool setupHolisticReplay(Pipeline pipeline,
                          std::filesystem::path replayPath,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
