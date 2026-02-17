@@ -227,6 +227,10 @@ void printMatrix(std::vector<std::vector<float>>& matrix) {
     }
 }
 
+std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R) {
+    return matrixToVector(R);
+}
+
 std::vector<float> matrixToVector(const std::vector<std::vector<float>>& R) {
     if(R.size() != 3 || R[0].size() != 3 || R[1].size() != 3 || R[2].size() != 3) {
         throw std::invalid_argument("Expected a 3x3 rotation matrix.");

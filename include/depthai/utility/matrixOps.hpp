@@ -23,6 +23,7 @@ std::vector<std::vector<float>> createScalingMatrix(float scaleX, float scaleY);
 std::vector<std::vector<float>> createTranslationMatrix(float dx, float dy);
 std::vector<float> matrixToVector(const std::vector<std::vector<float>>& R);
 std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& R);
+std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
 std::vector<std::vector<float>> matrix3x3toVectorMatrix(const std::array<std::array<float, 3>, 3>& R);
 
 std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 3>, 3>& projection);
