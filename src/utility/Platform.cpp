@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <stdexcept>
 
 // Platform specific
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
@@ -168,26 +169,19 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
 
 std::filesystem::path getTempPath() {
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    std::filesystem::path tmpPath;
     auto basePath = std::filesystem::temp_directory_path() / L"depthai_XXXXXX";
     auto baseStr = basePath.wstring();
-    if(_wmktemp_s(baseStr.data(), baseStr.size() + 1) == 0) {
-        std::filesystem::create_directories(baseStr);
-        tmpPath = std::filesystem::path(baseStr);
-    } else {
-        tmpPath = std::filesystem::temp_directory_path();
+    if(_wmktemp_s(baseStr.data(), baseStr.size() + 1) != 0 || !std::filesystem::create_directories(baseStr)) {
+        throw std::runtime_error("Failed to create a unique temporary directory");
     }
-    return tmpPath;
+    return std::filesystem::path(baseStr);
 #else
-    std::string tmpPath;
     char tmpTemplate[] = "/tmp/depthai_XXXXXX";
     char* tmpName = mkdtemp(tmpTemplate);
     if(tmpName == nullptr) {
-        tmpPath = "/tmp";
-    } else {
-        tmpPath = std::string(tmpName) + '/';
+        throw std::runtime_error("Failed to create a unique temporary directory");
     }
-    return std::filesystem::path(tmpPath);
+    return std::filesystem::path(std::string(tmpName) + '/');
 #endif
 }
 
