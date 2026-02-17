@@ -30,6 +30,7 @@
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
+#include "properties/GlobalProperties.hpp"
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Files.hpp"
@@ -892,6 +893,8 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
             // Sets system inforation logging rate. By default 1s
             setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
+            properties = getProperties();
         } catch(const std::exception&) {
             // close device (cleanup)
             close();
@@ -1361,12 +1364,40 @@ LogLevel DeviceBase::getNodeLogLevel(int64_t id) {
     return pimpl->rpcCall("getNodeLogLevel", id).as<LogLevel>();
 }
 
+void DeviceBase::setProperties(const DeviceProperties& properties) {
+    pimpl->rpcCall("setProperties", properties);
+}
+
+DeviceProperties DeviceBase::getProperties() {
+    return pimpl->rpcCall("getProperties").as<DeviceProperties>();
+}
+
+void DeviceBase::setCameraTuningBlob(const std::string& uri, uint32_t size) {
+    pimpl->rpcCall("setCameraTuningBlob", uri, size);
+}
+
+void DeviceBase::setCameraSocketTuningBlobs(std::unordered_map<CameraBoardSocket, std::pair<std::string, uint32_t>> blobs) {
+    pimpl->rpcCall("setCameraSocketTuningBlobs", blobs);
+}
+
+void DeviceBase::setCameraSocketTuningBlob(CameraBoardSocket socket, const std::string& uri, uint32_t size) {
+    setCameraSocketTuningBlobs({{socket, {uri, size}}});
+}
+
 void DeviceBase::setXLinkChunkSize(int sizeBytes) {
     pimpl->rpcCall("setXLinkChunkSize", sizeBytes);
 }
 
 int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcCall("getXLinkChunkSize").as<int>();
+}
+
+void DeviceBase::setSippBufferSize(int sizeBytes) {
+    pimpl->rpcCall("setSippBufferSize", sizeBytes);
+}
+
+void DeviceBase::setSippDmaBufferSize(int sizeBytes) {
+    pimpl->rpcCall("setSippDmaBufferSize", sizeBytes);
 }
 
 DeviceInfo DeviceBase::getDeviceInfo() const {
@@ -1472,6 +1503,10 @@ bool DeviceBase::isEepromAvailable() {
     return pimpl->rpcCall("isEepromAvailable").as<bool>();
 }
 
+bool DeviceBase::isCalibrationAvailable() {
+    return pimpl->rpcCall("isCalibrationAvailable").as<bool>();
+}
+
 bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
     try {
         flashCalibration(calibrationDataHandler);
@@ -1502,13 +1537,17 @@ void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     }
 }
 
-void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::setCalibration(const std::optional<EepromData>& eepromData) {
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcCall("setCalibration", calibrationDataHandler.getEepromData()).as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcCall("setCalibration", eepromData).as<std::tuple<bool, std::string>>();
     if(!success) {
         throw std::runtime_error(errorMsg);
     }
+}
+
+void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+    setCalibration(calibrationDataHandler.getEepromData());
 }
 
 CalibrationHandler DeviceBase::getCalibration() {

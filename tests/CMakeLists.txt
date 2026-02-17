@@ -548,6 +548,10 @@ dai_set_test_labels(device_usbspeed_test_17 ondevice rvc2 usb ci)
 dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp CXX_STANDARD 20)
 dai_set_test_labels(device_usbspeed_test_20 ondevice rvc2 usb ci)
 
+# Device Properties test
+dai_add_test(device_properties_test src/ondevice_tests/device_properties_test.cpp)
+dai_set_test_labels(device_properties_test ondevice rvc2_all rvc4 ci)
+
 # Filesystem test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp)
