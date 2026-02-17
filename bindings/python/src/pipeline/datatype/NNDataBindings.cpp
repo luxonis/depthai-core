@@ -9,6 +9,7 @@
 #include "depthai/pipeline/datatype/NNData.hpp"
 
 // pybind
+#include <pybind11/cast.h>
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
@@ -83,7 +84,14 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         .def_readwrite("offset", &TensorInfo::offset)
         .def_readwrite("quantization", &TensorInfo::quantization)
         .def_readwrite("qpScale", &TensorInfo::qpScale)
-        .def_readwrite("qpZp", &TensorInfo::qpZp);
+        .def_readwrite("qpZp", &TensorInfo::qpZp)
+        .def("getDataTypeSize", &TensorInfo::getDataTypeSize)
+        .def("getWidth", &TensorInfo::getWidth)
+        .def("getHeight", &TensorInfo::getHeight)
+        .def("getChannels", &TensorInfo::getChannels)
+        .def("getChannelStride", &TensorInfo::getChannelStride)
+        .def("getHeightStride", &TensorInfo::getHeightStride)
+        .def("getWidthStride", &TensorInfo::getWidthStride);
 
     tensorInfoDataType.value("FP16", TensorInfo::DataType::FP16)
         .value("U8F", TensorInfo::DataType::U8F)
@@ -110,7 +118,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
     // Message
 
     nnData.def(py::init<>(), DOC(dai, NNData, NNData))
-        .def(py::init<size_t>(), DOC(dai, NNData, NNData, 2))
+        .def(py::init<size_t>(), py::arg("size"), DOC(dai, NNData, NNData, 2))
         .def("__repr__", &NNData::str)
         // // setters
         // .def("setLayer", [](NNData& obj, const std::string& name,
@@ -172,9 +180,9 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &NNData::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &NNData::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &NNData::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        // .def("setTimestamp", &NNData::setTimestamp, DOC(dai, NNData, setTimestamp))
-        // .def("setTimestampDevice", &NNData::setTimestampDevice, DOC(dai, NNData, setTimestampDevice))
-        // .def("setSequenceNum", &NNData::setSequenceNum, DOC(dai, NNData, setSequenceNum))
+        .def("setTimestamp", &NNData::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
+        .def("setTimestampDevice", &NNData::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
+        .def("setSequenceNum", &NNData::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum))
 
         .def("addTensor",
              static_cast<NNData& (NNData::*)(const std::string&, const std::vector<int>&, TensorInfo::StorageOrder)>(&NNData::addTensor),
@@ -327,5 +335,9 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
         .def("getTensorDatatype", &NNData::getTensorDatatype, py::arg("name"), DOC(dai, NNData, getTensorDatatype))
         .def("getTensorInfo", &NNData::getTensorInfo, py::arg("name"), DOC(dai, NNData, getTensorInfo))
         .def("getTransformation", [](NNData& msg) { return msg.transformation; })
-        .def("setTransformation", [](NNData& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; });
+        .def(
+            "setTransformation",
+            [](NNData& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; },
+            py::arg("transformation"),
+            DOC(dai, ImgFrame, setTransformation));
 }

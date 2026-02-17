@@ -9,6 +9,7 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 
 // pybind
+#include <pybind11/cast.h>
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -47,15 +48,14 @@ void bind_message_group(pybind11::module& m, void* pCallstack) {
             "__iter__",
             [](MessageGroup& msg) { return py::make_iterator(msg.begin(), msg.end()); },
             py::keep_alive<0, 1>() /* Essential: keep object alive while iterator exists */)
-        .def("isSynced", &MessageGroup::isSynced, DOC(dai, MessageGroup, isSynced))
+        .def("isSynced", &MessageGroup::isSynced, py::arg("thresholdNs"), DOC(dai, MessageGroup, isSynced))
         .def("getIntervalNs", &MessageGroup::getIntervalNs, DOC(dai, MessageGroup, getIntervalNs))
         .def("getNumMessages", &MessageGroup::getNumMessages, DOC(dai, MessageGroup, getNumMessages))
         .def("getMessageNames", &MessageGroup::getMessageNames, DOC(dai, MessageGroup, getMessageNames))
         .def("getTimestamp", &MessageGroup::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &MessageGroup::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &MessageGroup::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        // .def("setTimestamp", &MessageGroup::setTimestamp, DOC(dai, MessageGroup, setTimestamp))
-        // .def("setTimestampDevice", &MessageGroup::setTimestampDevice, DOC(dai, MessageGroup, setTimestampDevice))
-        // .def("setSequenceNum", &MessageGroup::setSequenceNum, DOC(dai, MessageGroup, setSequenceNum))
-        ;
+        .def("setTimestamp", &MessageGroup::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
+        .def("setTimestampDevice", &MessageGroup::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
+        .def("setSequenceNum", &MessageGroup::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum));
 }

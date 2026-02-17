@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
 
@@ -55,4 +56,28 @@ TEST_CASE("Test runtime calibration") {
     } catch(const std::exception& e) {
         FAIL("Failed to read back distortion coefficients: " << e.what());
     }
+}
+
+TEST_CASE("Test device setCalibration before pipeline build") {
+    dai::Pipeline p;
+    auto camQ = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A)->requestOutput({640, 480})->createOutputQueue();
+    dai::CalibrationHandler calibHandler = p.getDefaultDevice()->readCalibration();
+    calibHandler.validateCalibrationHandler();
+    calibHandler.setDeviceName("test_device_name");
+    p.getDefaultDevice()->setCalibration(calibHandler);
+
+    auto calibPreBuild = p.getDefaultDevice()->getCalibration();
+    REQUIRE(calibPreBuild.getEepromData().deviceName == "test_device_name");
+
+    p.build();
+
+    auto calibPostBuild = p.getDefaultDevice()->getCalibration();
+    REQUIRE(calibPostBuild.getEepromData().deviceName == "test_device_name");
+
+    p.start();
+
+    auto calibPostStart = p.getDefaultDevice()->getCalibration();
+    REQUIRE(calibPostStart.getEepromData().deviceName == "test_device_name");
+
+    p.stop();
 }

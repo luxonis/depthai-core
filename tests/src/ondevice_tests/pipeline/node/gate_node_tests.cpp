@@ -135,3 +135,56 @@ TEST_CASE("Test Gate N Messages") {
         }
     }
 }
+
+TEST_CASE("Two Queue from one camera") {
+    dai::Pipeline pipeline;
+
+    auto camera = pipeline.create<dai::node::Camera>()->build();
+
+    auto cameraOutGate = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, 30);
+    auto cameraOut = camera->requestOutput(std::make_pair(640, 400), std::nullopt, dai::ImgResizeMode::CROP, 30);
+
+    auto gate = pipeline.create<dai::node::Gate>();
+
+    cameraOutGate->link(gate->input);
+
+    auto cameraGateQueue = gate->output.createOutputQueue(8, false);
+    auto cameraQueue = cameraOut->createOutputQueue();
+
+    auto gateControlQueue = gate->inputControl.createInputQueue();
+
+    gate->initialConfig->open = false;
+    gate->initialConfig->numMessages = -1;
+
+    pipeline.start();
+
+    int msgsFromGateCount = 0;
+    int msgsFromCameraCount = 0;
+
+    const double testDuration = 3.0;  // Run for 3 seconds
+    auto startTime = std::chrono::steady_clock::now();
+
+    while(pipeline.isRunning()) {
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed = now - startTime;
+
+        if(elapsed.count() >= testDuration) {
+            break;
+        }
+
+        auto msgFromGate = cameraGateQueue->tryGet<dai::ImgFrame>();
+        auto msgFromCamera = cameraQueue->tryGet<dai::ImgFrame>();
+
+        if(msgFromGate) {
+            msgsFromGateCount += 1;
+        }
+        if(msgFromCamera) {
+            msgsFromCameraCount += 1;
+        }
+    }
+
+    CHECK(msgsFromGateCount == 0);
+    CHECK(msgsFromCameraCount > 60);
+
+    std::cout << "Gate frames: " << msgsFromGateCount << " | Camera frames: " << msgsFromCameraCount << std::endl;
+}
