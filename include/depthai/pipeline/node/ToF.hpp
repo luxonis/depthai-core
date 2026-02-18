@@ -55,6 +55,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
     Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output phase{*this, {"phase", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
@@ -92,6 +93,7 @@ class ToF : public DeviceNodeGroup {
           depth{imageFilters->output},
           amplitude{tofBase->amplitude},
           intensity{tofBase->intensity},
+          confidence{tofBase->confidence},
           phase{tofBase->phase},
           rawInput{tofBase->rawInput},
           tofBaseInputConfig{tofBase->inputConfig},
@@ -146,6 +148,11 @@ class ToF : public DeviceNodeGroup {
      * Intensity output
      */
     Output& intensity;
+
+    /**
+     * Confidence output
+     */
+    Output& confidence;
 
     /**
      * Phase output
