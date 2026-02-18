@@ -916,6 +916,11 @@ class DeviceBase {
      */
     void setExternalStrobeEnable(bool enable);
 
+    /**
+     * Mock camera features from a recording. Used for holistic record and replay.
+     */
+    void mockCameraFeatures(const std::filesystem::path& replayPath);
+
    protected:
     std::shared_ptr<XLinkConnection> connection;
 
@@ -1034,5 +1039,8 @@ class DeviceBase {
     std::weak_ptr<PipelineImpl> pipelinePtr;
     bool isClosing = false;  // if true, don't attempt to reconnect
     std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
+
+    // Mock features
+    bool hasMockedFeatures = false;
 };
 }  // namespace dai

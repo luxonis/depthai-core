@@ -37,6 +37,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "utility/HolisticRecordReplay.hpp"
 
 // libraries
 #include "XLink/XLink.h"
@@ -895,6 +896,8 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
 
             properties = getProperties();
+
+            mockCameraFeatures(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
         } catch(const std::exception&) {
             // close device (cleanup)
             close();
@@ -1799,4 +1802,11 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     return true;
 }
+
+void DeviceBase::mockCameraFeatures(const std::filesystem::path& replayPath) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    if(!replayPath.empty() && !hasMockedFeatures) hasMockedFeatures = utility::mockCameraFeatures(*this, replayPath);
+#endif
+}
+
 }  // namespace dai

@@ -193,6 +193,66 @@ bool setupHolisticRecord(Pipeline pipeline,
     return true;
 }
 
+bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
+    if(!platform::checkPathExists(replayPath)) {
+        spdlog::warn("Replay path does not exist: {}", replayPath.string());
+        return false;
+    }
+    bool useTar = !platform::checkPathExists(replayPath, true);
+    bool hasCameraInfo = false;
+    std::vector<std::string> tarNodenames;
+    std::string tarRoot = ".";
+    if(useTar)
+        tarNodenames = filenamesInTar(replayPath);
+    else
+        tarNodenames = platform::getFilenamesInDirectory(replayPath);
+    hasCameraInfo = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+        auto pathObj = std::filesystem::path(path);
+        auto filename = pathObj.filename().string();
+        return filename == "camera_info.json";
+    });
+    if(useTar) tarRoot = tarNodenames.empty() ? "." : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
+    if(hasCameraInfo) {
+        std::vector<uint8_t> cameraInfoData;
+        if(useTar) {
+            try {
+                cameraInfoData = readFileInTar(replayPath, tarRoot + "camera_info.json");
+            } catch(const std::exception& e) {
+                spdlog::warn("Error while reading from tar file: {}", e.what());
+                return false;
+            }
+        } else {
+            std::filesystem::path cameraInfoPath = platform::joinPaths(replayPath, "camera_info.json");
+            if(!std::filesystem::exists(cameraInfoPath)) {
+                spdlog::warn("camera_info.json not found in replay path.");
+                return false;
+            }
+
+            std::ifstream cameraInfoFile(cameraInfoPath);
+            if(!cameraInfoFile) {
+                spdlog::warn("Could not open camera_info.json.");
+                return false;
+            }
+            cameraInfoData = std::vector<uint8_t>((std::istreambuf_iterator<char>(cameraInfoFile)), std::istreambuf_iterator<char>());
+        }
+
+        json jCamInfo = json::parse(cameraInfoData);
+        CalibrationHandler calib;
+        try {
+            calib = CalibrationHandler::fromJson(jCamInfo["calibration"], true);
+            device.setCalibration(calib);
+            std::vector<CameraFeatures> camFeatures = jCamInfo["camera_features"];
+            std::string imu = jCamInfo["imu"];
+            device.overrideCameraFeatures(camFeatures, imu);
+        } catch(const std::runtime_error& e) {
+            spdlog::warn("Recorded calibration is invalid: {}", e.what());
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool setupHolisticReplay(Pipeline pipeline,
                          std::filesystem::path replayPath,
                          const std::string& deviceId,
@@ -200,10 +260,16 @@ bool setupHolisticReplay(Pipeline pipeline,
                          std::unordered_map<std::string, std::filesystem::path>& outFilenames,
                          bool legacy) {
     UNUSED(deviceId);
+    if(!platform::checkPathExists(replayPath)) {
+        spdlog::warn("Replay path does not exist: {}", replayPath.string());
+        return false;
+    }
+    
+    pipeline.getDefaultDevice()->mockCameraFeatures(replayPath);
+
     auto sources = pipeline.getSourceNodes();
     try {
         bool useTar = !platform::checkPathExists(replayPath, true);
-        bool hasCameraInfo = false;
         std::vector<std::string> tarNodenames;
         std::string tarRoot = ".";
         std::string videoExt = ".mp4";
@@ -212,11 +278,6 @@ bool setupHolisticReplay(Pipeline pipeline,
             tarNodenames = filenamesInTar(replayPath);
         else
             tarNodenames = platform::getFilenamesInDirectory(replayPath);
-        hasCameraInfo = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
-            auto pathObj = std::filesystem::path(path);
-            auto filename = pathObj.filename().string();
-            return filename == "camera_info.json";
-        });
         bool hasMp4Files = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
             auto pathObj = std::filesystem::path(path);
             return pathObj.extension() == ".mp4";
@@ -239,7 +300,7 @@ bool setupHolisticReplay(Pipeline pipeline,
                                               return pathObj.extension() != ".mcap";
                                           }),
                            tarNodenames.end());
-        if(useTar) tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
+        if(useTar) tarRoot = tarNodenames.empty() ? "." : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
         for(auto& path : tarNodenames) {
             auto pathObj = std::filesystem::path(path);
             path = pathObj.stem().string();  // Remove extension
@@ -261,11 +322,10 @@ bool setupHolisticReplay(Pipeline pipeline,
             pipelineFilenames.push_back(nodeParams.name);
         }
         std::filesystem::path configPath;
-        std::filesystem::path cameraInfoPath;
         std::vector<std::string> inFiles;
         std::vector<std::filesystem::path> outFiles;
-        inFiles.reserve(sources.size() * 2 + 2);
-        outFiles.reserve(sources.size() * 2 + 2);
+        inFiles.reserve(sources.size() * 2 + 1);
+        outFiles.reserve(sources.size() * 2 + 1);
         if(allMatch(pipelineFilenames, tarNodenames)) {
             for(auto& nodeName : nodeNames) {
                 // auto filename = (deviceId + "_").append(nodeName);
@@ -281,16 +341,10 @@ bool setupHolisticReplay(Pipeline pipeline,
             }
             if(useTar) {
                 inFiles.emplace_back(tarRoot + "record_config.json");
-                if(hasCameraInfo) inFiles.emplace_back(tarRoot + "camera_info.json");
             }
             configPath = platform::joinPaths(rootPath, "record_config.json");
-            cameraInfoPath = platform::joinPaths(rootPath, "camera_info.json");
             outFiles.push_back(configPath);
             outFilenames["record_config"] = configPath;
-            if(hasCameraInfo) {
-                outFiles.push_back(cameraInfoPath);
-                outFilenames["camera_info"] = cameraInfoPath;
-            }
             if(useTar) untarFiles(replayPath, inFiles, outFiles);
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
@@ -328,22 +382,6 @@ bool setupHolisticReplay(Pipeline pipeline,
         json j = json::parse(file);
         recordConfig = j.get<RecordConfig>();
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
-
-        if(hasCameraInfo) {
-            std::ifstream camInfoFile(cameraInfoPath);
-            json jCamInfo = json::parse(camInfoFile);
-            CalibrationHandler calib;
-            try {
-                calib = CalibrationHandler::fromJson(jCamInfo["calibration"], true);
-                pipeline.getDefaultDevice()->setCalibration(calib);
-                std::vector<CameraFeatures> camFeatures = jCamInfo["camera_features"];
-                std::string imu = jCamInfo["imu"];
-                pipeline.getDefaultDevice()->overrideCameraFeatures(camFeatures, imu);
-            } catch(const std::runtime_error& e) {
-                spdlog::warn("Recorded calibration is invalid: {}", e.what());
-                hasCameraInfo = false;
-            }
-        }
 
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
