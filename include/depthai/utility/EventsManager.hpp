@@ -90,7 +90,7 @@ struct SendSnapCallbackResult {
 
 class EventsManager {
    public:
-    explicit EventsManager(bool uploadCachedOnStart = false);
+    explicit EventsManager(std::string token = "", bool uploadCachedOnStart = false);
     ~EventsManager();
 
     /**
@@ -148,12 +148,6 @@ class EventsManager {
      */
     bool waitForPendingUploads(uint64_t timeoutMs = 0);
     /**
-     * Set the token for the events service. By default, the token is taken from the environment variable DEPTHAI_HUB_API_KEY
-     * @param token Token for the events service
-     * @return void
-     */
-    void setToken(const std::string& token);
-    /**
      * Set whether to log the responses from the server. By default, logResponse is set to false
      * @param logResponse bool
      * @return void
@@ -199,7 +193,7 @@ class EventsManager {
 
     /**
      * Fetch the configuration limits and quotas for snaps & events
-     * @param retryOnFail Retry fetching on failure; when true, keeps retrying until successful
+     * @param retryOnFail Retry fetching on failure; when true, keeps retrying until successful (except if the token is empty)
      * @return bool
      */
     bool fetchConfigurationLimits(const bool retryOnFail);
@@ -265,7 +259,6 @@ class EventsManager {
     std::string cacheDir;
     bool cacheIfCannotSend;
     std::unique_ptr<std::thread> uploadThread;
-    std::mutex tokenMutex;
     std::mutex eventBufferMutex;
     std::mutex snapBufferMutex;
     std::mutex uploadFileBatchFuturesMutex;
@@ -277,7 +270,6 @@ class EventsManager {
     std::atomic<bool> waitingForPendingUploads;
     std::atomic<bool> pendingUploadsFinished;
     std::condition_variable eventBufferCondition;
-    std::condition_variable tokenCondition;
     std::condition_variable pendingUploadsCondition;
     std::deque<std::shared_ptr<EventData>> eventBuffer;
     std::deque<std::shared_ptr<SnapData>> snapBuffer;

@@ -287,7 +287,7 @@ bool FileData::toFile(const std::filesystem::path& inputPath) {
     return true;
 }
 
-EventsManager::EventsManager(bool uploadCachedOnStart)
+EventsManager::EventsManager(std::string inputToken, bool uploadCachedOnStart)
     : publishInterval(30.0f),
       logResponse(false),
       verifySsl(true),
@@ -311,10 +311,7 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
     // }
     sourceSerialNumber = "";
     url = utility::getEnvAs<std::string>("DEPTHAI_HUB_EVENTS_BASE_URL", "https://events.cloud.luxonis.com");
-    {
-        std::lock_guard<std::mutex> lock(tokenMutex);
-        token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
-    }
+    token = inputToken != "" ? inputToken : utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
         // Fetch configuration limits when starting the new thread
@@ -381,7 +378,6 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
 EventsManager::~EventsManager() {
     stopUploadThread = true;
     eventBufferCondition.notify_all();
-    tokenCondition.notify_all();
     if(uploadThread && uploadThread->joinable()) {
         uploadThread->join();
     }
@@ -394,33 +390,12 @@ EventsManager::~EventsManager() {
 
 bool EventsManager::fetchConfigurationLimits(const bool retryOnFail) {
     logger::info("Fetching configuration limits");
-    std::string tokenCopy;
-    {
-        std::lock_guard<std::mutex> lock(tokenMutex);
-        tokenCopy = token;
-    }
-    if(tokenCopy.empty()) {
-        if(!retryOnFail) {
-            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
-            return false;
-        }
-        std::unique_lock<std::mutex> tokenLock(tokenMutex);
-        // Initial short wait, handling setToken() immediately after eventsManager construction, which is a common use case when DEPTHAI_HUB_API_KEY is not set
-        tokenCondition.wait_for(tokenLock, std::chrono::seconds(1), [this]() { return stopUploadThread.load() || !token.empty(); });
-        if(stopUploadThread) {
-            return false;
-        }
-        if(token.empty()) {
-            logger::warn("Missing token, waiting for it to be set");
-            tokenCondition.wait(tokenLock, [this]() { return stopUploadThread.load() || !token.empty(); });
-            if(stopUploadThread) {
-                return false;
-            }
-        }
-        tokenCopy = token;
+    if(token.empty()) {
+        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or set the token when creating the EventsManager");
+        return false;
     }
     auto header = cpr::Header();
-    header["Authorization"] = "Bearer " + tokenCopy;
+    header["Authorization"] = "Bearer " + token;
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
     int retryAttempt = 0;
     while(!stopUploadThread) {
@@ -496,13 +471,8 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
     if(inputSnapBatch.empty()) {
         return;
     }
-    std::string tokenCopy;
-    {
-        std::lock_guard<std::mutex> lock(tokenMutex);
-        tokenCopy = token;
-    }
-    if(tokenCopy.empty()) {
-        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
+    if(token.empty()) {
+        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or set the token when creating the EventsManager");
         return;
     }
     // Fill the batch with the groups from inputSnapBatch and their corresponding files
@@ -527,7 +497,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
         cpr::Response response = cpr::Post(
             cpr::Url{requestUrl},
             cpr::Body{serializedBatch},
-            cpr::Header{{"Authorization", "Bearer " + tokenCopy}},
+            cpr::Header{{"Authorization", "Bearer " + token}},
             cpr::VerifySsl(verifySsl),
             cpr::ProgressCallback(
                 [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
@@ -728,19 +698,14 @@ void EventsManager::uploadEventBatch() {
         uploadCachedEvents();
     }
 
-    std::string tokenCopy;
-    {
-        std::lock_guard<std::mutex> tokenLock(tokenMutex);
-        if(token.empty()) {
-            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
-            return;
-        }
-        tokenCopy = token;
-    }
     auto eventBatch = std::make_unique<proto::event::BatchUploadEvents>();
     {
         std::lock_guard<std::mutex> lock(eventBufferMutex);
         if(eventBuffer.empty()) {
+            return;
+        }
+        if(token.empty()) {
+            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or set the token when creating the EventsManager");
             return;
         }
         for(size_t i = 0; i < eventBuffer.size() && i < eventsPerRequest; ++i) {
@@ -753,7 +718,7 @@ void EventsManager::uploadEventBatch() {
     cpr::Response response = cpr::Post(
         cpr::Url{requestUrl},
         cpr::Body{serializedBatch},
-        cpr::Header{{"Authorization", "Bearer " + tokenCopy}},
+        cpr::Header{{"Authorization", "Bearer " + token}},
         cpr::VerifySsl(verifySsl),
         cpr::ProgressCallback(
             [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
@@ -1205,16 +1170,6 @@ void EventsManager::clearCachedData(const std::filesystem::path& directory) {
 
 void EventsManager::setCacheDir(const std::string& cacheDir) {
     this->cacheDir = cacheDir;
-}
-
-void EventsManager::setToken(const std::string& token) {
-    {
-        std::lock_guard<std::mutex> lock(tokenMutex);
-        this->token = token;
-    }
-    if(!token.empty()) {
-        tokenCondition.notify_all();
-    }
 }
 
 void EventsManager::setLogResponse(bool logResponse) {

@@ -26,7 +26,7 @@ def uploadFailureCallback(sendSnapResult):
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    # Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or use the EventsManager setToken() method.
+    # Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or pass the token when creating the EventsManager instance.
     eventMan = dai.EventsManager()
 
     cameraNode = pipeline.create(dai.node.Camera).build()
