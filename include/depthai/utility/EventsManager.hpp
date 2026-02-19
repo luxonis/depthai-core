@@ -143,8 +143,8 @@ class EventsManager {
                                         const std::function<void(SendSnapCallbackResult)> failureCallback = nullptr);
     /**
      * Wait for pending snaps/events to be processed by the background upload thread
-     * @param timeoutMs Timeout in milliseconds. 0 means wait until uploads are finished or the connection is dropped
-     * @return true if the pending data was uploaded before timeout, false if not - either because of timeout or dropped connection
+     * @param timeoutMs Timeout in milliseconds. 0 means wait until uploads are finished, connection is dropped, or manager is stopped
+     * @return true if the pending data was uploaded before timeout, false if not - either because of timeout, dropped connection, or shutdown
      */
     bool waitForPendingUploads(uint64_t timeoutMs = 0);
     /**

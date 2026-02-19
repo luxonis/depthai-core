@@ -316,7 +316,7 @@ EventsManager::EventsManager(std::string inputToken, bool uploadCachedOnStart)
     uploadThread = std::make_unique<std::thread>([this]() {
         // Fetch configuration limits when starting the new thread
         configurationLimitsFetched = fetchConfigurationLimits(true);
-        while(!stopUploadThread) {
+        while(!stopUploadThread && configurationLimitsFetched) {
             connectionEstablished = fetchConfigurationLimits(false);
             if(remainingStorageBytes <= warningStorageBytes) {
                 logger::warn("Current remaining storage is running low: {} MB", remainingStorageBytes / (1024 * 1024));
@@ -378,6 +378,7 @@ EventsManager::EventsManager(std::string inputToken, bool uploadCachedOnStart)
 EventsManager::~EventsManager() {
     stopUploadThread = true;
     eventBufferCondition.notify_all();
+    pendingUploadsCondition.notify_all();
     if(uploadThread && uploadThread->joinable()) {
         uploadThread->join();
     }
@@ -992,10 +993,11 @@ bool EventsManager::waitForPendingUploads(uint64_t timeoutMs) {
 
     std::unique_lock<std::mutex> lock(pendingUploadsMutex);
     if(timeoutMs > 0) {
-        pendingUploadsCondition.wait_for(
-            lock, std::chrono::milliseconds(timeoutMs), [this]() { return pendingUploadsFinished.load() || !connectionEstablished; });
+        pendingUploadsCondition.wait_for(lock, std::chrono::milliseconds(timeoutMs), [this]() {
+            return pendingUploadsFinished.load() || !connectionEstablished.load() || stopUploadThread.load();
+        });
     } else {
-        pendingUploadsCondition.wait(lock, [this]() { return pendingUploadsFinished.load() || !connectionEstablished; });
+        pendingUploadsCondition.wait(lock, [this]() { return pendingUploadsFinished.load() || !connectionEstablished.load() || stopUploadThread.load(); });
     }
 
     if(!pendingUploadsFinished.load() && !connectionEstablished.load()) {
@@ -1007,22 +1009,18 @@ bool EventsManager::waitForPendingUploads(uint64_t timeoutMs) {
 }
 
 bool EventsManager::checkPendingUploadsFinished() {
-    {
-        std::scoped_lock lock(snapBufferMutex, uploadFileBatchFuturesMutex);
-        if(!snapBuffer.empty()) {
+    std::scoped_lock lock(snapBufferMutex, uploadFileBatchFuturesMutex, eventBufferMutex);
+    if(!snapBuffer.empty()) {
+        return false;
+    }
+    for(const auto& future : uploadFileBatchFutures) {
+        // Check if any of the async jobs handling file uploads are not yet finished
+        if(future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
             return false;
-        }
-        for(const auto& future : uploadFileBatchFutures) {
-            if(future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-                return false;
-            }
         }
     }
-    {
-        std::lock_guard<std::mutex> eventLock(eventBufferMutex);
-        if(!eventBuffer.empty()) {
-            return false;
-        }
+    if(!eventBuffer.empty()) {
+        return false;
     }
     return true;
 }
