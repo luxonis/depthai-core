@@ -42,7 +42,7 @@ void uploadFailureCallback(dai::utility::SendSnapCallbackResult sendSnapResult) 
 int main() {
     dai::Pipeline pipeline(true);
 
-    // Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or pass the token when creating the EventsManager instance.
+    // Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or pass the key when creating the EventsManager instance.
     auto eventsManager = std::make_shared<dai::utility::EventsManager>("");
 
     auto camRgb = pipeline.create<dai::node::Camera>()->build();

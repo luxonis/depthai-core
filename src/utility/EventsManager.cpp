@@ -287,7 +287,7 @@ bool FileData::toFile(const std::filesystem::path& inputPath) {
     return true;
 }
 
-EventsManager::EventsManager(std::string inputToken, bool uploadCachedOnStart)
+EventsManager::EventsManager(std::string apiKey, bool uploadCachedOnStart)
     : publishInterval(30.0f),
       logResponse(false),
       verifySsl(true),
@@ -311,7 +311,7 @@ EventsManager::EventsManager(std::string inputToken, bool uploadCachedOnStart)
     // }
     sourceSerialNumber = "";
     url = utility::getEnvAs<std::string>("DEPTHAI_HUB_EVENTS_BASE_URL", "https://events.cloud.luxonis.com");
-    token = inputToken != "" ? inputToken : utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
+    token = apiKey != "" ? apiKey : utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
         // Fetch configuration limits when starting the new thread
@@ -392,7 +392,7 @@ EventsManager::~EventsManager() {
 bool EventsManager::fetchConfigurationLimits(const bool retryOnFail) {
     logger::info("Fetching configuration limits");
     if(token.empty()) {
-        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or set the token when creating the EventsManager");
+        logger::warn("Missing API Key, please set DEPTHAI_HUB_API_KEY environment variable or set the key when creating the EventsManager");
         return false;
     }
     auto header = cpr::Header();
@@ -473,7 +473,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
         return;
     }
     if(token.empty()) {
-        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or set the token when creating the EventsManager");
+        logger::warn("Missing API Key, please set DEPTHAI_HUB_API_KEY environment variable or set the key when creating the EventsManager");
         return;
     }
     // Fill the batch with the groups from inputSnapBatch and their corresponding files
@@ -706,7 +706,7 @@ void EventsManager::uploadEventBatch() {
             return;
         }
         if(token.empty()) {
-            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or set the token when creating the EventsManager");
+            logger::warn("Missing API Key, please set DEPTHAI_HUB_API_KEY environment variable or set the key when creating the EventsManager");
             return;
         }
         for(size_t i = 0; i < eventBuffer.size() && i < eventsPerRequest; ++i) {

@@ -90,7 +90,7 @@ struct SendSnapCallbackResult {
 
 class EventsManager {
    public:
-    explicit EventsManager(std::string token = "", bool uploadCachedOnStart = false);
+    explicit EventsManager(std::string apiKey = "", bool uploadCachedOnStart = false);
     ~EventsManager();
 
     /**
@@ -193,7 +193,7 @@ class EventsManager {
 
     /**
      * Fetch the configuration limits and quotas for snaps & events
-     * @param retryOnFail Retry fetching on failure; when true, keeps retrying until successful (except if the token is empty)
+     * @param retryOnFail Retry fetching on failure; when true, keeps retrying until successful (except if the apiKey is empty)
      * @return bool
      */
     bool fetchConfigurationLimits(const bool retryOnFail);
