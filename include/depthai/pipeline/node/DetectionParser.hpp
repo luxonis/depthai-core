@@ -288,6 +288,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      */
     void decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& outDetections, float confidenceThr);
 
+    void buildInternal() override;
+
    private:
     bool runOnHostVar = false;
     void setNNArchiveBlob(const NNArchive& nnArchive);

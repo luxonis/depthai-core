@@ -24,6 +24,17 @@ namespace node {
 
 DetectionParser::~DetectionParser() = default;
 
+void DetectionParser::buildInternal() {
+    auto device = getDevice();
+    if(device) {
+        auto platform = device->getPlatform();
+        if(platform == Platform::RVC2 && properties.parser.decodeSegmentation) {
+            setRunOnHost(true);
+            std::cout << "DetectionParser: YOLO segmentation postprocessing not supported on RVC2. Running parser on host." << std::endl;
+        }
+    }
+}
+
 void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
     switch(nnArchive.getModelType()) {
