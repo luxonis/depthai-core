@@ -203,6 +203,7 @@ void runDetectionParserReplayTest(const std::string& modelName, const std::files
     auto outputQueue = detectionParser->out.createOutputQueue(4, true);
 
     p.start();
+    REQUIRE(p.isRunning());
     for(int i = 0; i < NUM_MSGS; i++) {
         INFO("Frame number: " << i);
         if(!p.isRunning()) break;
