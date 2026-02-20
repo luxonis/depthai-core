@@ -173,9 +173,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     /**
      * Overwrites the internal calibration of DCL with new Calibration data provided by node.
      */
-    // clang-format off
-    void setCalibration(CalibrationHandler& handler);
-    // clang-format on
+    void setCalibration(CalibrationHandler& handler, bool flash);
 
     /**
      * DAI held properties
