@@ -60,8 +60,9 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
 
     py::class_<ApplyCalibration, std::shared_ptr<ApplyCalibration>>(cmds, "ApplyCalibration")
         .def(py::init<>())
-        .def(py::init<const dai::CalibrationHandler&>(), py::arg("calibration"))
-        .def_readwrite("calibration", &ApplyCalibration::calibration);
+        .def(py::init<const dai::CalibrationHandler&, bool>(), py::arg("calibration"), py::arg("flash") = false)
+        .def_readwrite("calibration", &ApplyCalibration::calibration)
+        .def_readwrite("flash", &ApplyCalibration::flash);
 
     py::class_<ResetData, std::shared_ptr<ResetData>>(cmds, "ResetData").def(py::init<>());
 
@@ -114,6 +115,7 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
            "applyCalibration",
            &DCC::applyCalibration,
            py::arg("calibration"),
+           py::arg("flash") = false,
            "Create a DynamicCalibrationControl with an ApplyCalibration command.");
     cls.def_static(
            "resetData",
