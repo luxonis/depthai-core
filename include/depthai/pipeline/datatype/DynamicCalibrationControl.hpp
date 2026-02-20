@@ -105,10 +105,11 @@ class DynamicCalibrationControl : public Buffer {
          */
         struct ApplyCalibration {
             ApplyCalibration() = default;
-            explicit ApplyCalibration(const CalibrationHandler& calibration) : calibration(calibration) {}
+            explicit ApplyCalibration(const CalibrationHandler& calibration, bool flash = false) : calibration(calibration), flash(flash) {}
 
             CalibrationHandler calibration;  ///< Calibration data to apply.
-            DEPTHAI_SERIALIZE(ApplyCalibration, calibration);
+            bool flash;
+            DEPTHAI_SERIALIZE(ApplyCalibration, calibration, flash);
         };
 
         /**
@@ -214,8 +215,8 @@ class DynamicCalibrationControl : public Buffer {
      * @param calibration Calibration data to apply.
      * @return Shared pointer to a DynamicCalibrationControl command.
      */
-    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> applyCalibration(const CalibrationHandler& calibration) {
-        return std::make_shared<DynamicCalibrationControl>(Commands::ApplyCalibration{calibration});
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> applyCalibration(const CalibrationHandler& calibration, bool flash = false) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::ApplyCalibration{calibration, flash});
     }
 
     /**

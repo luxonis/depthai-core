@@ -265,9 +265,13 @@ dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& sr
     return quality;
 }
 
-void DynamicCalibration::setCalibration(CalibrationHandler& handler) {
+void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash) {
     logger->info("Applying calibration to device");
-    device->setCalibration(handler);
+    if(flash) {
+        device->flashCalibration(handler);
+    } else {
+        device->setCalibration(handler);
+    }
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
     pimplDCL->sensorA->setCalibration(calibA);
     pimplDCL->sensorB->setCalibration(calibB);
@@ -515,7 +519,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         const auto& c = std::get<DC::Commands::ApplyCalibration>(cmd);
         logger->info("Received ApplyCalibrationCommand: applying new calibration to device");
         calibrationHandler = c.calibration;
-        setCalibration(calibrationHandler);
+        setCalibration(calibrationHandler, c.flash);
         return ErrorCode::OK;
     }
     // Stop calibration loop
