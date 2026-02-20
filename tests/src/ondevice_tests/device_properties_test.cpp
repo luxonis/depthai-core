@@ -10,13 +10,39 @@
 #include "depthai/depthai.hpp"
 
 namespace {
-std::filesystem::path writeTempFile(const std::string& prefix, const std::vector<std::uint8_t>& data) {
-    auto now = std::chrono::steady_clock::now().time_since_epoch().count();
-    std::filesystem::path path = std::filesystem::temp_directory_path() / (prefix + "_" + std::to_string(now) + ".bin");
-    std::ofstream out(path, std::ios::binary);
-    out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-    out.close();
-    return path;
+class TempFile {
+   public:
+    TempFile(const std::string& prefix, const std::vector<std::uint8_t>& data) {
+        auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+        path = std::filesystem::temp_directory_path() / (prefix + "_" + std::to_string(now) + ".bin");
+        std::ofstream out(path, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+    }
+
+    TempFile(const TempFile&) = delete;
+    TempFile& operator=(const TempFile&) = delete;
+    TempFile(TempFile&&) = delete;
+    TempFile& operator=(TempFile&&) = delete;
+
+    ~TempFile() {
+        std::error_code ec;
+        std::filesystem::remove(path, ec);
+    }
+
+    const std::filesystem::path& getPath() const {
+        return path;
+    }
+
+   private:
+    std::filesystem::path path;
+};
+
+TempFile writeTempFile(const std::string& prefix, const std::vector<std::uint8_t>& data) {
+    return TempFile(prefix, data);
+}
+
+std::uintmax_t getFileSize(const TempFile& file) {
+    return std::filesystem::file_size(file.getPath());
 }
 }  // namespace
 
@@ -38,8 +64,8 @@ TEST_CASE("Test pipeline device property setters apply before start") {
     pipeline.setXLinkChunkSize(xlinkSize);
     pipeline.setSippBufferSize(static_cast<int>(sippSize));
     pipeline.setSippDmaBufferSize(static_cast<int>(sippDmaSize));
-    pipeline.setCameraTuningBlobPath(tuningPath);
-    pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, tuningSocketPath);
+    pipeline.setCameraTuningBlobPath(tuningPath.getPath());
+    pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, tuningSocketPath.getPath());
 
     auto props = device->getProperties();
     REQUIRE(props.xlinkChunkSize == xlinkSize);
@@ -47,12 +73,12 @@ TEST_CASE("Test pipeline device property setters apply before start") {
     REQUIRE(props.sippDmaBufferSize == sippDmaSize);
 
     REQUIRE(props.cameraTuningBlobSize.has_value());
-    REQUIRE(props.cameraTuningBlobSize.value() == std::filesystem::file_size(tuningPath));
+    REQUIRE(props.cameraTuningBlobSize.value() == getFileSize(tuningPath));
     REQUIRE(props.cameraTuningBlobUri == "asset:camTuning");
 
     REQUIRE(props.cameraSocketTuningBlobSize.count(dai::CameraBoardSocket::CAM_A) == 1);
     REQUIRE(props.cameraSocketTuningBlobUri.count(dai::CameraBoardSocket::CAM_A) == 1);
-    REQUIRE(props.cameraSocketTuningBlobSize.at(dai::CameraBoardSocket::CAM_A) == std::filesystem::file_size(tuningSocketPath));
+    REQUIRE(props.cameraSocketTuningBlobSize.at(dai::CameraBoardSocket::CAM_A) == getFileSize(tuningSocketPath));
     REQUIRE(props.cameraSocketTuningBlobUri.at(dai::CameraBoardSocket::CAM_A)
             == "asset:camTuning_" + std::to_string(static_cast<int>(dai::CameraBoardSocket::CAM_A)));
 
@@ -161,8 +187,8 @@ TEST_CASE("Test pipeline device property setters keep device and host properties
     pipeline.setXLinkChunkSize(xlinkSize);
     pipeline.setSippBufferSize(static_cast<int>(sippSize));
     pipeline.setSippDmaBufferSize(static_cast<int>(sippDmaSize));
-    pipeline.setCameraTuningBlobPath(tuningPath);
-    pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, tuningSocketPath);
+    pipeline.setCameraTuningBlobPath(tuningPath.getPath());
+    pipeline.setCameraTuningBlobPath(dai::CameraBoardSocket::CAM_A, tuningSocketPath.getPath());
     checkSync("after pipeline setters");
 
     dai::DeviceProperties props = device->getProperties();

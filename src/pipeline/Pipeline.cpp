@@ -552,6 +552,7 @@ bool PipelineImpl::isCalibrationDataAvailable() const {
         return defaultDevice->isCalibrationAvailable();
     }
     if(defaultDeviceProperties != nullptr) {
+        std::lock_guard<std::mutex> lock(calibMtx);
         return defaultDeviceProperties->calibData.has_value();
     }
     return false;
@@ -562,6 +563,7 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
         throw std::runtime_error("No default device properties set in pipeline");
     }
     if(defaultDeviceProperties->calibData.has_value()) {
+        std::lock_guard<std::mutex> lock(calibMtx);
         return CalibrationHandler(defaultDeviceProperties->calibData.value());
     }
     if(defaultDevice) {
@@ -575,7 +577,7 @@ void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
         defaultDevice->setCalibration(eepromData);
     }
     if(defaultDeviceProperties != nullptr) {
-        std::unique_lock<std::mutex> lock(calibMtx);
+        std::lock_guard<std::mutex> lock(calibMtx);
         defaultDeviceProperties->calibData = eepromData;
         defaultDeviceProperties->eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
     }

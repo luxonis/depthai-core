@@ -374,14 +374,14 @@ class DeviceBase {
     /**
      * Sets the size of the SIPP buffer on the device.
      *
-     * @param sizeBytes SIPP buffer size in bytes. Device default is 2 * 1024 * 1024 bytes
+     * @param sizeBytes SIPP buffer size in bytes. Device default is 18 * 1024 bytes
      */
     void setSippBufferSize(int sizeBytes);
 
     /**
      * Sets the size of the SIPP DMA buffer on the device.
      *
-     * @param sizeBytes SIPP DMA buffer size in bytes. Device default is 2 * 1024 * 1024 bytes
+     * @param sizeBytes SIPP DMA buffer size in bytes. Device default is 16 * 1024 bytes
      */
     void setSippDmaBufferSize(int sizeBytes);
 
