@@ -73,11 +73,17 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
     const std::vector<std::reference_wrapper<MessageQueue>> inputs = {inputControl, input};
     bool runOnHostVar = false;
 
-    std::shared_ptr<GateControl> sendMessages();
+    std::shared_ptr<GateControl> sendMessages(int fps);
 
-    std::shared_ptr<GateControl> sendMessages(int numMessages);
+    std::shared_ptr<GateControl> sendMessages(int numMessages, int fps);
 
     std::shared_ptr<GateControl> waitForCommand();
+
+    std::chrono::time_point<std::chrono::steady_clock> lastSentTime;
+
+    void updateLastSentTime();
+
+    void sleepUntilNextSending(int fps);
 };
 
 }  // namespace node
