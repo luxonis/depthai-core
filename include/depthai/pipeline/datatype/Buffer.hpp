@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -104,6 +105,16 @@ class Buffer : public ADatatype {
      */
     void setSequenceNum(int64_t sequenceNum);
 
+    /**
+     * Retrieves identifier of device that produced this message
+     */
+    std::string getDeviceId() const;
+
+    /**
+     * Sets identifier of device that produced this message
+     */
+    void setDeviceId(const std::string& deviceId);
+
     virtual span<const uint8_t> getRecordData() const;
 
     /**
@@ -114,6 +125,7 @@ class Buffer : public ADatatype {
 
     // TODO(Morato) // Make this private
     int64_t sequenceNum = 0;  // increments for each message
+    std::string deviceId = "";
     Timestamp ts = {};        // generation timestamp, synced to host time
     Timestamp tsDevice = {};  // generation timestamp, direct device monotonic clock
 
