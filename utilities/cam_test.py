@@ -321,10 +321,11 @@ def socket_to_socket_opt(socket: dai.CameraBoardSocket) -> str:
 signal.signal(signal.SIGINT, exit_cleanly)
 
 # Connect to device, so that we can get connected cameras in case of no args
-success, device_info = dai.Device.getDeviceById(args.device)
 dai_device_args = []
-if success:
-    dai_device_args.append(device_info)
+if args.device:
+    success, device_info = dai.Device.getDeviceById(args.device)
+    if success:
+        dai_device_args.append(device_info)
 
 with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
     cam_list = []
