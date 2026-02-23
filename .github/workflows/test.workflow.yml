@@ -55,7 +55,7 @@ jobs:
     with:
       flavor: "vanilla"
       luxonis_os_versions_to_test: "['1.14.1', '1.18.3', '1.25.3']"
-      luxonis_os_versions_to_test_rgb: "['1.23.1']"
+      luxonis_os_versions_to_test_rgb: "['1.25.3']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
