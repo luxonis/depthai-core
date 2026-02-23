@@ -89,6 +89,14 @@ void Buffer::setSequenceNum(int64_t sequenceNum) {
     this->sequenceNum = sequenceNum;
 }
 
+std::string Buffer::getDeviceId() const {
+    return device_id;
+}
+
+void Buffer::setDeviceId(const std::string& deviceId) {
+    device_id = deviceId;
+}
+
 span<const uint8_t> Buffer::getRecordData() const {
     return data->getData();
 }
