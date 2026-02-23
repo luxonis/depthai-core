@@ -368,7 +368,6 @@ TEST_CASE("Missing script exception test") {
     REQUIRE_THROWS_AS(pipeline.build(), std::runtime_error);
 }
 
-
 TEST_CASE("Script bindings smoke: keypoint and spatial detection types") {
     runScriptBindingsSmoke(R"(
 while True:
@@ -484,10 +483,9 @@ TEST_CASE("ImgDetections roundtrip in Script node", "[script][imgdetections]") {
         det.confidence = 0.88F;
         det.setOuterBoundingBox(0.10F, 0.15F, 0.55F, 0.85F);
 
-        std::vector<dai::Keypoint> keypoints{
-            dai::Keypoint(dai::Point3f{0.2F, 0.3F, 0.0F}, 0.95F, 0, "nose"),
-            dai::Keypoint(dai::Point3f{0.3F, 0.4F, 0.0F}, 0.90F, 1, "left_eye"),
-            dai::Keypoint(dai::Point3f{0.4F, 0.4F, 0.0F}, 0.89F, 2, "right_eye")};
+        std::vector<dai::Keypoint> keypoints{dai::Keypoint(dai::Point3f{0.2F, 0.3F, 0.0F}, 0.95F, 0, "nose"),
+                                             dai::Keypoint(dai::Point3f{0.3F, 0.4F, 0.0F}, 0.90F, 1, "left_eye"),
+                                             dai::Keypoint(dai::Point3f{0.4F, 0.4F, 0.0F}, 0.89F, 2, "right_eye")};
         std::vector<dai::Edge> edges{{0, 1}, {0, 2}};
         det.setKeypoints(keypoints, edges);
 
@@ -527,10 +525,7 @@ TEST_CASE("ImgDetections roundtrip in Script node", "[script][imgdetections]") {
         det.setOuterBoundingBox(0.20F, 0.20F, 0.80F, 0.80F);
         input->detections = {det};
 
-        std::vector<uint8_t> mask{
-            0, 0, 1, 1,
-            0, 2, 2, 1,
-            255, 2, 2, 255};
+        std::vector<uint8_t> mask{0, 0, 1, 1, 0, 2, 2, 1, 255, 2, 2, 255};
         input->setSegmentationMask(mask, 4, 3);
 
         auto output = runTypedScriptRoundtrip(input, kImgDetectionsRoundtripScript);
@@ -596,10 +591,7 @@ TEST_CASE("SpatialImgDetections roundtrip in Script node", "[script][spatial_img
         setCommonMessageFields(*input, 203, 3334);
 
         dai::SpatialImgDetection rotated(
-            dai::RotatedRect{dai::Point2f{0.5F, 0.5F, true}, dai::Size2f{0.35F, 0.2F, true}, 15.0F},
-            dai::Point3f{300.0F, 20.0F, 1300.0F},
-            0.82F,
-            13);
+            dai::RotatedRect{dai::Point2f{0.5F, 0.5F, true}, dai::Size2f{0.35F, 0.2F, true}, 15.0F}, dai::Point3f{300.0F, 20.0F, 1300.0F}, 0.82F, 13);
         rotated.labelName = "rot_spatial";
         rotated.boundingBoxMapping = makeMapping();
 
@@ -630,10 +622,7 @@ TEST_CASE("SpatialImgDetections roundtrip in Script node", "[script][spatial_img
         det.boundingBoxMapping = makeMapping();
         input->detections = {det};
 
-        std::vector<uint8_t> mask{
-            0, 0, 0, 1,
-            0, 1, 1, 1,
-            255, 1, 1, 255};
+        std::vector<uint8_t> mask{0, 0, 0, 1, 0, 1, 1, 1, 255, 1, 1, 255};
         input->setSegmentationMask(mask, 4, 3);
 
         auto output = runTypedScriptRoundtrip(input, kSpatialImgDetectionsRoundtripScript);
