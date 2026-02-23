@@ -217,10 +217,6 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
 
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
-        // const auto& node = kv.second;
-        if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) {
-            continue;
-        }
         if(!includePipelineDebugging
            && std::find(pipelineDebuggingNodeIds.begin(), pipelineDebuggingNodeIds.end(), node->id) != pipelineDebuggingNodeIds.end()) {
             continue;
@@ -240,7 +236,11 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         }
         if(deviceNode) {
             deviceNode->getProperties().serialize(info.properties, type);
-            info.logLevel = deviceNode->getLogLevel();
+            try {
+                info.logLevel = deviceNode->getLogLevel();
+            } catch(std::runtime_error&) {
+                info.logLevel = LogLevel::OFF;
+            }
         }
         // Create Io information
         auto inputs = node->getInputs();
@@ -374,7 +374,7 @@ PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, boo
     schema.bridges.clear();
     // Remove host nodes
     for(auto it = schema.nodes.begin(); it != schema.nodes.end();) {
-        if(!it->second.deviceNode) {
+        if(!it->second.deviceNode || it->second.name == "NodeGroup" || it->second.name == "DeviceNodeGroup") {
             it = schema.nodes.erase(it);
         } else {
             ++it;
