@@ -114,7 +114,7 @@ jobs:
         pip install --upgrade pip
         pip install numpy pytest pytest-html
         $buildDir = 'C:/depthai-core/build'
-        $overlay  = 'C:/depthai-core/cmake/triplets/release'  # make it absolute
+        $overlay  = 'C:/depthai-core/cmake/triplets/release'
         $isPR = "${{ github.head_ref }}" -ne ""
         $extraFlags = ""
 
@@ -176,4 +176,70 @@ jobs:
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-windows-${{ matrix.rvc4os }}"
-          exec hil --models "oak4_pro or oak4_d" -os windows --no-shell --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "rmdir /S /Q depthai-core & git clone https://github.com/luxonis/depthai-core.git && cd depthai-core && git fetch origin ${{ github.sha }} && git checkout ${{ github.sha }} && scripts\hil\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\""
+          set -o pipefail
+          hil --models "oak4_pro or oak4_d" -os windows --no-shell --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "rmdir /S /Q depthai-core & git clone https://github.com/luxonis/depthai-core.git && cd depthai-core && git fetch origin ${{ github.sha }} && git checkout ${{ github.sha }} && scripts\hil\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\"" 2>&1 | tee windows_rvc4_test_output.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-windows-rvc4_test-rvc4os=${{ matrix.rvc4os }}
+          path: windows_rvc4_test_output.log
+          if-no-files-found: warn
+
+  report_windows_test_results:
+    name: Report Windows test results
+    needs: [run_windows_tests_rvc4]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download test logs
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ctest-log-windows-*
+        path: ctest-logs
+    - name: Generate combined summary
+      run: |
+        if ! command -v python3 >/dev/null 2>&1; then
+          echo "python3 not available, skipping test summary." >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        shopt -s nullglob
+        found_logs=0
+        first_summary=1
+        mkdir -p ctest-reports
+        artifact_prefix="ctest-log-windows-"
+        for dir in ctest-logs/${artifact_prefix}*; do
+          [ -d "$dir" ] || continue
+          log_files=("$dir"/*.log)
+          [ ${#log_files[@]} -gt 0 ] || continue
+          found_logs=1
+          context="$(basename "$dir")"
+          context="${context#${artifact_prefix}}"
+          if [ "$first_summary" -eq 0 ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "---" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          first_summary=0
+          python3 scripts/ci/ctest_summary.py "${log_files[0]}" "$context" >> "$GITHUB_STEP_SUMMARY"
+          report_context="${context//\//_}"
+          report_context="${report_context// /_}"
+          python3 scripts/ci/ctest_to_junit.py "${log_files[0]}" "ctest-reports/${report_context}.xml" "$context"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+        done
+
+        if [ "$found_logs" -eq 0 ]; then
+          echo "No test logs found to summarize." >> "$GITHUB_STEP_SUMMARY"
+        fi
+    - name: Upload JUnit XML reports
+      if: always() && hashFiles('ctest-reports/*.xml') != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-reports-windows
+        path: ctest-reports/*.xml
+        if-no-files-found: warn

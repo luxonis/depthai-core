@@ -108,9 +108,9 @@ int main() {
 
         // Are there any border detections
         if(borderDetections->detections.size() > 0) {
-            std::string fileName = "ImageDetection_";
+            std::string fileTag = "ImageDetection_";
             std::stringstream ss;
-            ss << fileName << counter;
+            ss << fileTag << counter;
 
             auto fileGroup = std::make_shared<dai::utility::FileGroup>();
             fileGroup->addImageDetectionsPair(ss.str(), inRgb, borderDetections);

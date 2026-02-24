@@ -8,6 +8,7 @@
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
 
 // pybind
+#include <pybind11/cast.h>
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -59,7 +60,7 @@ void bind_pipelineevent(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &PipelineEvent::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &PipelineEvent::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &PipelineEvent::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &PipelineEvent::setTimestamp, DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &PipelineEvent::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
-        .def("setSequenceNum", &PipelineEvent::setSequenceNum, DOC(dai, Buffer, setSequenceNum));
+        .def("setTimestamp", &PipelineEvent::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
+        .def("setTimestampDevice", &PipelineEvent::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
+        .def("setSequenceNum", &PipelineEvent::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum));
 }
