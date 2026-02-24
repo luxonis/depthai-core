@@ -1,3 +1,4 @@
+#include <chrono>
 #define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
@@ -59,6 +60,24 @@ std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::du
             return ts - expTime;
         case CameraExposureOffset::MIDDLE:
             return ts - expTime / 2;
+        case CameraExposureOffset::END:
+        default:
+            return ts;
+    }
+}
+std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> ImgFrame::getTimestampSystem(CameraExposureOffset offset) const {
+    auto ts = getTimestampSystem();
+
+    if (!ts.has_value()) {
+        return std::nullopt;
+    }
+
+    auto expTime = getExposureTime();
+    switch(offset) {
+        case CameraExposureOffset::START:
+            return *ts - expTime;
+        case CameraExposureOffset::MIDDLE:
+            return *ts - expTime / 2;
         case CameraExposureOffset::END:
         default:
             return ts;

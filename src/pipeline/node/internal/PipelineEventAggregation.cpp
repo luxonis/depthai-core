@@ -587,6 +587,7 @@ std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHa
     outState->configSequenceNum = currentConfig.has_value() ? currentConfig->sequenceNum : 0;
     outState->setTimestamp(std::chrono::steady_clock::now());
     outState->tsDevice = outState->ts;
+    outState->setTimestampSystem(std::chrono::system_clock::now());
 
     // Filter state based on current configuration
     if(currentConfig.has_value() && !currentConfig->nodes.empty()) {

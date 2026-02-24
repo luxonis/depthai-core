@@ -130,11 +130,13 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
 #endif
         .def("getTimestamp", &SegmentationMask::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &SegmentationMask::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", &SegmentationMask::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
         .def("getSequenceNum", &SegmentationMask::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def(
             "getTransformation", [](SegmentationMask& msg) { return msg.transformation; }, DOC(dai, ImgFrame, getTransformation))
         .def("setTimestamp", &SegmentationMask::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
         .def("setTimestampDevice", &SegmentationMask::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
+        .def("setTimestampSystem", &SegmentationMask::setTimestampSystem, py::arg("timestampSystem"), DOC(dai, Buffer, setTimestampSystem))
         .def("setSequenceNum", &SegmentationMask::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum))
         .def(
             "setTransformation",
