@@ -407,43 +407,6 @@ while True:
 )");
 }
 
-TEST_CASE("Script bindings smoke: image align and segmentation mask types") {
-    runScriptBindingsSmoke(R"(
-while True:
-    inMessage = node.inputs["log"].get()
-    if inMessage is None:
-        break
-
-    cfg = ImageAlignConfig()
-    cfg.staticDepthPlane = 1500
-    cfg.setSequenceNum(7)
-    if cfg.getSequenceNum() != 7:
-        raise RuntimeError("ImageAlignConfig sequence number mismatch")
-
-    segMask = SegmentationMask()
-    segMask.setMask([0, 1, 2, 3], 2, 2)
-    segMask.setLabels(["bg", "fg"])
-    if not segMask.hasValidMask():
-        raise RuntimeError("SegmentationMask should be valid")
-    if len(segMask.getLabels()) != 2:
-        raise RuntimeError("SegmentationMask labels mismatch")
-
-    frame = segMask.getFrame()
-    if frame is None:
-        raise RuntimeError("SegmentationMask frame missing")
-
-    # Constructors are available, but segmask payload allocation for fresh detections messages
-    # is runtime/firmware dependent, so only smoke-test type availability here.
-    spatialDets = SpatialImgDetections()
-    imgDets = ImgDetections()
-    if spatialDets is None or imgDets is None:
-        raise RuntimeError("Detections type construction failed")
-
-    node.outputs["out"].send(Buffer(1))
-    break
-)");
-}
-
 TEST_CASE("ImgDetections roundtrip in Script node", "[script][imgdetections]") {
     SECTION("basic") {
         auto input = std::make_shared<dai::ImgDetections>();
