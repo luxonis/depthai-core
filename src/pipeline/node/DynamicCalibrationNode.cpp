@@ -273,13 +273,13 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash)
         device->setCalibration(handler);
     }
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
-    pimplDCL->sensorA->setCalibration(calibA);
-    pimplDCL->sensorB->setCalibration(calibB);
+    pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorA, calibA);
+    pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorB, calibB);
 }
 
 void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
-    auto dataQuality = pimplDCL->dynCalibImpl.computeDataQuality(pimplDCL->sensorA, pimplDCL->sensorB);
+    auto dataQuality = pimplDCL->dynCalibImpl.computeDataConfidence(pimplDCL->sensorA, pimplDCL->sensorB);
     auto calibrationConfidence = pimplDCL->dynCalibImpl.computeCalibrationConfidence(calibA, calibB, pimplDCL->sensorA, pimplDCL->sensorB);
     auto metrics = std::make_shared<CalibrationMetrics>();
     if(!dataQuality.passed()) {
