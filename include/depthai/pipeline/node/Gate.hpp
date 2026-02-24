@@ -70,7 +70,10 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
     void run() override;
 
    private:
+    std::chrono::steady_clock::time_point nextTargetTime;
+
     const std::vector<std::reference_wrapper<MessageQueue>> inputs = {inputControl, input};
+
     bool runOnHostVar = false;
 
     std::shared_ptr<GateControl> sendMessages(int fps);
@@ -79,11 +82,7 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
 
     std::shared_ptr<GateControl> waitForCommand();
 
-    std::chrono::time_point<std::chrono::steady_clock> lastSentTime;
-
-    void updateLastSentTime();
-
-    void sleepUntilNextSending(int fps);
+    void sleepUntilNextSending(int fps, bool& started);
 };
 
 }  // namespace node

@@ -22,25 +22,25 @@ Gate::Gate(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, Gate, GateProperties>(std::move(props)),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
-
-void Gate::updateLastSentTime() {
-    lastSentTime = std::chrono::steady_clock::now();
-}
-
-void Gate::sleepUntilNextSending(int fps) {
+void Gate::sleepUntilNextSending(int fps, bool& started) {
     if(fps <= 0) return;
 
-    auto currentTime = std::chrono::steady_clock::now();
     auto interval = std::chrono::nanoseconds(1000000000LL / fps);
-    auto elapsed = currentTime - lastSentTime;
+    auto now = std::chrono::steady_clock::now();
 
-    if(elapsed < interval) {
-        std::this_thread::sleep_for(interval - elapsed);
+    if(!started) {
+        nextTargetTime = now + interval;
+        started = true;
+        return;
     }
+    if(now < nextTargetTime) {
+        std::this_thread::sleep_until(nextTargetTime);
+    }
+    nextTargetTime += interval;
 }
 
-
 std::shared_ptr<GateControl> Gate::sendMessages(int fps) {
+    bool started = false;
     while(mainLoop()) {
         if(MessageQueue::waitAny(inputs)) {
             if(auto inControl = inputControl.tryGet<GateControl>()) {
@@ -48,10 +48,9 @@ std::shared_ptr<GateControl> Gate::sendMessages(int fps) {
             }
             if(auto in = input.tryGet()) {
                 if(fps > 0) {
-                    sleepUntilNextSending(fps);
+                    sleepUntilNextSending(fps, started);
                 }
                 output.send(in);
-                updateLastSentTime();
             }
         }
     }
@@ -59,6 +58,7 @@ std::shared_ptr<GateControl> Gate::sendMessages(int fps) {
 }
 
 std::shared_ptr<GateControl> Gate::sendMessages(int numMessages, int fps) {
+    bool started = false;
     int sentMessages = 0;
     while(sentMessages < numMessages && mainLoop()) {
         if(MessageQueue::waitAny(inputs)) {
@@ -69,10 +69,9 @@ std::shared_ptr<GateControl> Gate::sendMessages(int numMessages, int fps) {
             }
             if(auto in = input.tryGet()) {
                 if(fps > 0) {
-                    sleepUntilNextSending(fps);
+                    sleepUntilNextSending(fps, started);
                 }
                 output.send(in);
-                updateLastSentTime();
                 sentMessages++;
             }
         }
@@ -94,8 +93,6 @@ void Gate::run() {
     auto currentCommand = std::make_shared<GateControl>(*initialConfig);
 
     // Initialize the timer baseline
-    updateLastSentTime();
-
     while(mainLoop()) {
         if(currentCommand->open) {
             if(currentCommand->numMessages >= 0) {
