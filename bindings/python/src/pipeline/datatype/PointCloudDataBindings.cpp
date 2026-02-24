@@ -106,6 +106,7 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
         .def("getWidth", &PointCloudData::getWidth, DOC(dai, PointCloudData, getWidth))
         .def("getHeight", &PointCloudData::getHeight, DOC(dai, PointCloudData, getHeight))
         .def("isSparse", &PointCloudData::isSparse, DOC(dai, PointCloudData, isSparse))
+        .def("getColor", &PointCloudData::isColor, DOC(dai, PointCloudData, isColor))
         .def("isColor", &PointCloudData::isColor, DOC(dai, PointCloudData, isColor))
         .def("getMinX", &PointCloudData::getMinX, DOC(dai, PointCloudData, getMinX))
         .def("getMinY", &PointCloudData::getMinY, DOC(dai, PointCloudData, getMinY))
@@ -169,5 +170,6 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
         .def("setMaxX", &PointCloudData::setMaxX, DOC(dai, PointCloudData, setMaxX))
         .def("setMaxY", &PointCloudData::setMaxY, DOC(dai, PointCloudData, setMaxY))
         .def("setMaxZ", &PointCloudData::setMaxZ, DOC(dai, PointCloudData, setMaxZ))
+        .def("setColor", &PointCloudData::setColor, DOC(dai, PointCloudData, setColor))
         .def("setInstanceNum", &PointCloudData::setInstanceNum, DOC(dai, PointCloudData, setInstanceNum));
 }
