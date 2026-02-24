@@ -236,10 +236,10 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         }
         if(deviceNode) {
             deviceNode->getProperties().serialize(info.properties, type);
-            try {
-                info.logLevel = deviceNode->getLogLevel();
-            } catch(std::runtime_error&) {
+            if(std::string(deviceNode->getName()) == "DeviceNodeGroup") {
                 info.logLevel = LogLevel::OFF;
+            } else {
+                info.logLevel = deviceNode->getLogLevel();
             }
         }
         // Create Io information
@@ -372,7 +372,7 @@ PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, boo
     auto schema = getPipelineSchema(type, includePipelineDebugging);
     // Remove bridge info
     schema.bridges.clear();
-    // Remove host nodes
+    // Remove host and group nodes
     for(auto it = schema.nodes.begin(); it != schema.nodes.end();) {
         if(!it->second.deviceNode || it->second.name == "NodeGroup" || it->second.name == "DeviceNodeGroup") {
             it = schema.nodes.erase(it);
