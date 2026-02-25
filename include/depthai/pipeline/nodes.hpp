@@ -12,6 +12,7 @@
 #include "node/SegmentationParser.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "node/DynamicCalibrationNode.hpp"
+    #include "node/DynamicCalibrationWorker.hpp"
 #endif
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"

@@ -45,6 +45,8 @@ enum class DatatypeEnum : std::int32_t {
     ObjectTrackerConfig,
     DynamicCalibrationControl,
     DynamicCalibrationResult,
+    DynamicCalibrationWorkerConfig,
+    DynamicCalibrationWorkerResult,
     CalibrationQuality,
     CalibrationMetrics,
     CoverageData,
