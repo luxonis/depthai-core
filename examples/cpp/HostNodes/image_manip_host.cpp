@@ -37,7 +37,6 @@ int main(int argc, char** argv) {
     replay->out.link(manip->inputImage);
     auto outputQueue = manip->out.createOutputQueue();
 
-
     pipeline.start();
     while(pipeline.isRunning()) {
         auto imgFrame = outputQueue->get<dai::ImgFrame>();
