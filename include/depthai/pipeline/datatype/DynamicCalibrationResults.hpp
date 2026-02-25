@@ -131,8 +131,25 @@ struct CalibrationQuality : public Buffer {
     DEPTHAI_SERIALIZE(CalibrationQuality, qualityData, info);
 };
 
+/**
+ * @brief Final result of running dynamic calibration.
+ *
+ * Includes metrics evaluating the reliability of the calibration
+ * and the quality of the data used to compute it.
+ *
+ * @ingroup dcl_results
+ */
 struct CalibrationMetrics : public Buffer {
+    /** * @brief Confidence score of the computed calibration.
+     * * A normalized value between 0.0 and 1.0 indicating how much you can
+     * trust the resulting calibration.
+     */
     double calibrationConfidence;
+
+    /** * @brief Quality score of the input data.
+     * * A normalized value between 0.0 and 1.0 indicating how much you can
+     * trust the data.
+     */
     double dataQuality;
 };
 

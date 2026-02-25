@@ -57,6 +57,10 @@ class DynamicCalibrationControl : public Buffer {
             DEPTHAI_SERIALIZE(Calibrate, force);
         };
 
+        /**
+         * @brief Command to compute calibration metrics (e.g., calibrationConfidence and dataQuality).
+         * * Evaluates the provided calibration data and computes relevant quality metrics.
+         */
         struct ComputeCalibrationMetrics {
             explicit ComputeCalibrationMetrics(dai::CalibrationHandler& calibration) : calibration(calibration) {}
             dai::CalibrationHandler calibration;
@@ -175,6 +179,16 @@ class DynamicCalibrationControl : public Buffer {
     [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> calibrationQuality(bool force = false) {
         return std::make_shared<DynamicCalibrationControl>(Commands::CalibrationQuality{force});
     }
+
+    /**
+     * @brief Create a command to compute metrics for a given calibration.
+     *
+     * This command instructs the device to evaluate the supplied calibration data
+     * and compute metrics such as calibrationConfidence and dataQuality.
+     *
+     * @param calibration Calibration data to evaluate.
+     * @return Shared pointer to a DynamicCalibrationControl command.
+     */
 
     [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> computeCalibrationMetrics(dai::CalibrationHandler& calibration) {
         return std::make_shared<DynamicCalibrationControl>(Commands::ComputeCalibrationMetrics{calibration});
