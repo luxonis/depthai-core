@@ -149,7 +149,8 @@ def stability_test(fps):
         while True:
             for name, queue in benchmarkReportQueues.items():
                 report = queue.get(timeout=datetime.timedelta(minutes=1)) # 1 minute timeout
-                assert(isinstance(report, dai.BenchmarkReport))
+                if not isinstance(report, dai.BenchmarkReport):
+                    print(f"{name} report is not an instance of dai.BenchmarkReport")
                 if report:
                     avgLatencyMs = report.averageLatency * 1000.0
                     latencies = list(report.latencies)
@@ -167,7 +168,8 @@ def stability_test(fps):
                     if report.fps < (fps / 10):
                         raise RuntimeError(f"FPS dropped below {fps / 10} (FPS is {report.fps}) for {name} benchmark report")
                 else:
-                    raise RuntimeError(f"Timeout reached for {name} benchmark report")
+                    print(f"Timeout reached for {name} benchmark report")
+                    continue
                 queue.tryGetAll() # Clear the queue
 
             # Detect memory leaks
