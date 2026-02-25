@@ -25,6 +25,7 @@
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
@@ -91,6 +92,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
+    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
+    bool hasDynamiCalibration() const;
+
     BoardConfig getBoardConfig() const;
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
@@ -237,7 +241,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
     bool isBuilt() const;
-    void build();
+    void build(bool buildInternalQueue = false);
     void start();
     void wait();
     void stop();
@@ -504,7 +508,7 @@ class Pipeline {
     }
 
     void build() {
-        impl()->build();
+        impl()->build(false);
     }
     void buildDevice() {
         impl()->buildingOnHost = false;
