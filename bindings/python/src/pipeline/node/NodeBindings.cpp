@@ -198,6 +198,7 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack);
 #endif
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 void bind_dynamic_calibration(pybind11::module& m, void* pCallstack);
+void bind_dynamic_calibration_worker(pybind11::module& m, void* pCallstack);
 #endif
 void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind Node et al
@@ -253,6 +254,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
 #endif
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     callstack.push_front(bind_dynamic_calibration);
+    callstack.push_front(bind_dynamic_calibration_worker);
 #endif
 }
 
