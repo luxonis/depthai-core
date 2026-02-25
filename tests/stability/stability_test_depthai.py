@@ -28,6 +28,11 @@ def stability_test(fps):
         monoLeft = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
         monoRight = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
         neuralAssistedStereo = p.create(dai.node.NeuralAssistedStereo)
+        manip = p.create(dai.node.ImageManip)
+        manip.initialConfig.setFrameType(dai.ImgFrame.Type.GRAY8)
+        manip.initialConfig.setOutputSize(640,640)
+        featureTracker = p.create(dai.node.FeatureTracker)
+        objectTracker = p.create(dai.node.ObjectTracker)
         spatialDetectionNetwork = p.create(dai.node.SpatialDetectionNetwork).build(camRgb, neuralAssistedStereo.stereoDepth, "yolov6-nano", fps=fps)
         encoderMjpeg = p.create(dai.node.VideoEncoder)
         fullResCameraOutput = camRgb.requestFullResolutionOutput()
@@ -44,7 +49,31 @@ def stability_test(fps):
         spatialDetectionNetwork.setDepthLowerThreshold(100)
         spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
+        # Feature Tracker settings
+        featureTracker.initialConfig.setMotionEstimator(True)
+        cornerDetector = dai.FeatureTrackerConfig.CornerDetector()
+        cornerDetector.numMaxFeatures = 256
+        cornerDetector.numTargetFeatures = cornerDetector.numMaxFeatures
+        thresholds = dai.FeatureTrackerConfig.CornerDetector.Thresholds()
+        thresholds.initialValue = 20000
+        cornerDetector.thresholds = thresholds
+        featureTracker.initialConfig.setCornerDetector(cornerDetector)
+
+        # Spatial Detection Network Settings
+        spatialDetectionNetwork.setConfidenceThreshold(0.6)
+        spatialDetectionNetwork.input.setBlocking(False)
+        spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
+        spatialDetectionNetwork.setDepthLowerThreshold(100)
+        spatialDetectionNetwork.setDepthUpperThreshold(5000)
+
         # Linking
+        fullResCameraOutput.link(manip.inputImage)
+        manip.out.link(featureTracker.inputImage)
+        
+        spatialDetectionNetwork.passthrough.link(objectTracker.inputTrackerFrame)
+        spatialDetectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)
+        spatialDetectionNetwork.out.link(objectTracker.inputDetections)
+
         monoLeftOut = monoLeft.requestFullResolutionOutput(fps=fps)
         monoRightOut = monoRight.requestFullResolutionOutput(fps=fps)
 
@@ -79,6 +108,22 @@ def stability_test(fps):
         nasBenchmark.sendReportEveryNMessages(fps*5)
         benchmarkReportQueues["N.A.Stereo"] = nasBenchmark.report.createOutputQueue(blocking=False)
         neuralAssistedStereo.depth.link(nasBenchmark.input)
+
+        # Feature Tracker
+        fTrackerBenchmark = p.create(dai.node.BenchmarkIn)
+        fTrackerBenchmark.logReportsAsWarnings(False)
+        fTrackerBenchmark.measureIndividualLatencies(True)
+        fTrackerBenchmark.sendReportEveryNMessages(fps*5)
+        benchmarkReportQueues["Feat.Tracker"] = fTrackerBenchmark.report.createOutputQueue(blocking=False)
+        featureTracker.outputFeatures.link(fTrackerBenchmark.input)
+
+        # Object Tracker
+        objTrackerBenchmark = p.create(dai.node.BenchmarkIn)
+        objTrackerBenchmark.logReportsAsWarnings(False)
+        objTrackerBenchmark.measureIndividualLatencies(True)
+        objTrackerBenchmark.sendReportEveryNMessages(fps*5)
+        benchmarkReportQueues["Obj.Tracker"] = objTrackerBenchmark.report.createOutputQueue(blocking=False)
+        objectTracker.out.link(objTrackerBenchmark.input)
 
         # IMU
         imu = p.create(dai.node.IMU)
