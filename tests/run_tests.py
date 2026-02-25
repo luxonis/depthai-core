@@ -142,11 +142,11 @@ if __name__ == "__main__":
             "env": {},
             "labels": ["onhost"],
         },
-        {
-            "name": "RVC4",
-            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
-            "labels": ["rvc4"],
-        },
+        # {
+        #     "name": "RVC4",
+        #     "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
+        #     "labels": ["rvc4"],
+        # },
         {
             "name": "RVC4 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "usb"},
