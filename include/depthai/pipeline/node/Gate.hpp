@@ -23,6 +23,8 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
    public:
     Gate(std::unique_ptr<Properties> props);
 
+    Gate() = default;
+
     std::shared_ptr<GateControl> initialConfig = std::make_shared<GateControl>();
 
     constexpr static const char* NAME = "Gate";
