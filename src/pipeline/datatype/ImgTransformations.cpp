@@ -6,7 +6,8 @@
 #include <array>
 #include <cmath>
 #include <cstring>
-#include <utility/matrixOps.hpp>
+#include <depthai/utility/matrixOps.hpp>
+#include <iostream>
 #include <vector>
 
 #include "common/Point3f.hpp"
@@ -65,62 +66,71 @@ inline dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& 
     return {x, y, z};
 }
 
-std::array<float, 3> pixelToRay(const std::array<float, 3>& pxHomogeneous, const dai::ImgTransformation& transformation) {
+std::array<float, 3> pixelToRay(dai::Point2f px, const dai::ImgTransformation& transformation) {
+    std::array<float, 3> ray = {px.x, px.y, 1.0f};
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    ray = opencvUndistortPoint(px, transformation);
+#else
+
+    std::array<float, 3> pxHomogeneous = {px.x, px.y, 1.0f};
     auto intrinsicMatrixInv = transformation.getSourceIntrinsicMatrixInv();
     auto distortionModel = transformation.getDistortionModel();
     auto distortionCoeffs = transformation.getDistortionCoefficients();
 
     std::array<float, 3> pxSensor = matrix::matVecMul(intrinsicMatrixInv, pxHomogeneous);
     std::array<float, 3> undistortedRay = undistortPoint(pxSensor, distortionModel, distortionCoeffs);
-    std::array<float, 3> normalizedUndistortedRay = {undistortedRay[0] / undistortedRay[2], undistortedRay[1] / undistortedRay[2], 1.0f};
-    return normalizedUndistortedRay;
+    ray = {undistortedRay[0] / undistortedRay[2], undistortedRay[1] / undistortedRay[2], 1.0f};
+#endif
+    return ray;
 }
 
-std::array<float, 3> rayToPixel(const std::array<float, 3>& ray, const dai::ImgTransformation& transformation) {
+std::array<float, 3> rectifyRay(const std::array<float, 3>& ray, const dai::ImgTransformation& from, const dai::ImgTransformation& to) {
+    // std::array<float, 3> normalizedUndistortedRay = pixelToRay(pxHomogeneous, from);
+
+    // maybe add  a check regarding same camera socket, etc, etc
+
+    const auto rectificationRotationMatrix = matrix::getRotationMatrixFromProjection4x4(from.getExtrinsicsTransformationMatrixTo(to));
+    const std::array<float, 3> rectifiedRay = matrix::matVecMul(rectificationRotationMatrix, ray);
+
+    return {rectifiedRay[0] / rectifiedRay[2], rectifiedRay[1] / rectifiedRay[2], 1.0f};
+}
+
+dai::Point2f rayToPixel(const std::array<float, 3>& ray, const dai::ImgTransformation& transformation) {
+    dai::Point2f pixelPoint = {ray[0] / ray[2], ray[1] / ray[2]};
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    pixelPoint = opencvDistortRay(ray, transformation);
+
+#else
     auto distortionModel = transformation.getDistortionModel();
     auto distortionCoeffs = transformation.getDistortionCoefficients();
     auto intrinsicMatrix = transformation.getSourceIntrinsicMatrix();
 
     std::array<float, 3> distortedRay = distortPoint(ray, distortionModel, distortionCoeffs);
     std::array<float, 3> pxHomogeneous = matrix::matVecMul(intrinsicMatrix, distortedRay);
-    auto w = pxHomogeneous[2];
-    return {pxHomogeneous[0] / w, pxHomogeneous[1] / w, 1.0f};
+    auto z = pxHomogeneous[2];
+    pixelPoint = {pxHomogeneous[0] / z, pxHomogeneous[1] / z};
+#endif
+    return pixelPoint;
 }
 
 // Transforms a pixel coordinate inside the same source frame but different transformations (e.g. different distortion coefficients, crops, etc).
 dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransformation& from, const ImgTransformation& to) {
-    dai::Point2f transformed = sourcePt;
     if(from.isEqualTransformation(to)) {
-        return transformed;
+        return sourcePt;
     }
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    transformed = opencvPointTransformation(sourcePt, from, to);
-#else
-    std::array<float, 3> pxHomogeneous = {sourcePt.x, sourcePt.y, 1.0f};
 
     // from px -> normalized undistorted ray
-    std::array<float, 3> normalizedUndistortedRay = pixelToRay(pxHomogeneous, from);
+    std::array<float, 3> normalizedUndistortedRay = pixelToRay(sourcePt, from);
 
-    const auto transform = from.getExtrinsicsTransformationMatrixTo(to);
+    // apply extrinsic rectification if available
+    std::array<float, 3> rectifiedRay = rectifyRay(normalizedUndistortedRay, from, to);
 
-    const std::array<std::array<float, 3>, 3> extrinsicRotation = {{transform[0][0], transform[0][1], transform[0][2]},
-                                                                   {transform[1][0], transform[1][1], transform[1][2]},
-                                                                   {transform[2][0], transform[2][1], transform[2][2]}};
-
-    const std::array<float, 3> rotatedRay = matrix::matVecMul(extrinsicRotation, normalizedUndistortedRay);
     // normalized undistorted ray -> to px
-    std::array<float, 3> transformedPx = rayToPixel(rotatedRay, to);
-    transformed = {transformedPx[0], transformedPx[1]};
+    dai::Point2f transformedPx = rayToPixel(rectifiedRay, to);
 
-// auto fromSource = from.getSourceIntrinsicMatrix();
-// auto fromSourceInv = from.getSourceIntrinsicMatrixInv();
-// auto toSource = to.getSourceIntrinsicMatrix();
-// if(mateq(fromSource, toSource)) return sourcePt;
-// auto transformMat = matmul(toSource, fromSourceInv);
-// auto transformed = matvecmul(transformMat, {sourcePt.x, sourcePt.y});
-#endif
-    return transformed;
+    return transformedPx;
 }
+
 dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const ImgTransformation& from, const ImgTransformation& to) {
     if(from.isEqualTransformation(to)) {
         return sourceRect;
@@ -463,10 +473,52 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
     return from.remapRectTo(*this, rect);
 }
 
+// will first take the point from frame coordintates -> sensor coordinates -> undistort to get the ray -> spatial coords -> target spatial coords -> target ray
+// -> distort to target sensor coords -> target frame coordinates
+dai::Point2f ImgTransformation::projectPoint(const ImgTransformation& to, dai::Point2f& point, const float depth) const {
+    bool normalized = point.isNormalized();
+    if(normalized) {
+        point.x *= width;
+        point.y *= height;
+        point.normalized = false;
+    }
+    // Assumes both transformations refer to the same camera.
+    // local frame -> sensor -> normalized ray -> sensor -> target local frame
+
+    auto sourcePointFrom = invTransformPoint(point);
+
+    auto thisRay = pixelToRay(sourcePointFrom, *this);
+
+    // auto undistortedPoint = opencvPointTransformation(
+    //     sourcePointFrom, *this, *this);  // should be undistorted and source sensor coordinates (eg. no crop, no padding, no flip, no rotation)
+
+    // center subtraction (-cx, -cy) and normalization by focal length (fx, fy) is already done in pixelToRay
+    auto z_cm = depth / 10.0f;
+    auto x_cm = thisRay[0] * z_cm;
+    auto y_cm = thisRay[1] * z_cm;
+    // std::cout << "Depth: " << depth << "mm, Point in source frame (cm): (" << x_cm << ", " << y_cm << ", " << z_cm << ")" << std::endl;
+
+    dai::Point3f source3dPoint = {x_cm, y_cm, z_cm};
+    const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to);
+    std::cout << "Extrinsics transformation matrix from source to target:" << std::endl;
+    for(const auto& row : extriniscTransformation) {
+        for(const auto& val : row) {
+            std::cout << val << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    dai::Point3f target3dPoint = transformPoint3f(extriniscTransformation, source3dPoint);
+
+    const auto distortedTargetSourcePoint = rayToPixel({target3dPoint.x / target3dPoint.z, target3dPoint.y / target3dPoint.z, 1.0f}, to);
+    return to.transformPoint(distortedTargetSourcePoint);
+}
+
 dai::Point2f ImgTransformation::project3DPoint(const dai::Point3f& point3f) const {
     const float x = point3f.x / point3f.z;
     const float y = point3f.y / point3f.z;
     const auto distorted = distortPoint({x, y, 1.0f}, distortionModel, distortionCoefficients);
+    // std::array<float, 3> distorted = {x, y, 1.0f};
     const auto projected = matrix::matVecMul(getIntrinsicMatrix(), distorted);
     return {projected[0] / projected[2], projected[1] / projected[2]};
 }
@@ -512,7 +564,7 @@ std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformati
     // Calculate the extrinsics from this transformation to the target transformation
     // 1. Verify that the transformations have a common point
     if(to.extrinsics.toCameraSocket != extrinsics.toCameraSocket) {
-        throw std::runtime_error("Cannot get extrinsics to a transformation with a different camera socket.");
+        throw std::runtime_error("Cannot get extrinsics to a transformation with a different base camera socket.");
     }
 
     // 2. Get the transformation matrices
@@ -556,5 +608,4 @@ bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {
     }
     return true;
 }
-
 };  // namespace dai

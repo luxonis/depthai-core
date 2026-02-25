@@ -237,7 +237,8 @@ void AprilTag::run() {
             frameType = inFrame->getType();
         }
 
-        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::NV12) {
+        if(frameType == ImgFrame::Type::GRAY8 || frameType == ImgFrame::Type::NV12
+           || frameType == ImgFrame::Type::RAW8) {  // i dont like it.. RAW8 could mean fp8 ?
             width = static_cast<int32_t>(inFrame->getWidth());
             height = static_cast<int32_t>(inFrame->getHeight());
             stride = static_cast<int32_t>(inFrame->getStride());

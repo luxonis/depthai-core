@@ -282,7 +282,7 @@ std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& 
     return matrixToVector(vectorR);
 }
 
-std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 3>, 3>& projection) {
+std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 4>, 4>& projection) {
     std::array<std::array<float, 3>, 3> rotationMatrix = {{{projection[0][0], projection[0][1], projection[0][2]},
                                                            {projection[1][0], projection[1][1], projection[1][2]},
                                                            {projection[2][0], projection[2][1], projection[2][2]}}};

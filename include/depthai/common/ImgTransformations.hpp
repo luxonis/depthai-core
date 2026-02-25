@@ -333,6 +333,9 @@ struct ImgTransformation {
      */
     dai::Point3f remap3DPointTo(const ImgTransformation& to, const dai::Point3f& point) const;
 
+    dai::Point2f projectPoint(const ImgTransformation& to, dai::Point2f& point, const float depth) const;
+
+
     /**
      * Remap a 3D point to this transformation from another.
      * @param from Transformation to remap from

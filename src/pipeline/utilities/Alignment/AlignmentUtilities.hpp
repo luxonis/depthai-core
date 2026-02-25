@@ -111,6 +111,11 @@ bool hasNonZeroDistortion(const std::vector<float>& coeffs);
  */
 float coeffAt(const std::vector<float>& coeffs, size_t idx);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
+std::array<float, 3> opencvUndistortPoint(dai::Point2f px, const dai::ImgTransformation& transformation);
+
+dai::Point2f opencvDistortRay(const std::array<float, 3> ray, const dai::ImgTransformation& transformation);
+
 /**
  * Transform a point from one transformation to another using OpenCV functions. This is used when the transformations have different distortion coefficients, as
  * the OpenCV functions can handle the distortion and undistortion in one step, which is more accurate than doing it separately.
