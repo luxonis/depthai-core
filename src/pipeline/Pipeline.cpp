@@ -1106,6 +1106,9 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->recordConfig.outputDir = pathToRecording;
     impl()->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
     impl()->enableHolisticRecordReplay = true;
+    if(getDefaultDevice() != nullptr) {
+        getDefaultDevice()->mockCameraFeatures(pathToRecording);
+    }
 }
 
 void Pipeline::enablePipelineDebugging(bool enable) {
