@@ -150,7 +150,7 @@ if __name__ == "__main__":
         {
             "name": "RVC4 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "usb"},
-            "labels": ["rvc4", "usb"],
+            "labels": ["rvc4"],
         },
         {
             "name": "RVC4 - Fsync",
