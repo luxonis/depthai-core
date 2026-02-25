@@ -1248,17 +1248,17 @@ endif()
 export(TARGETS ${targets_to_export} NAMESPACE ${PROJECT_NAME}:: FILE "${PROJECT_NAME}Targets.cmake")
 
 # Dependencies file
-configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependencies.cmake COPYONLY)
+configure_file("cmake/depthaiDependencies.cmake" ${PROJECT_NAME}Dependencies.cmake COPYONLY)
 
 # Write project version
 write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
 
 # Configure config file (one for exporting build directory, one for installation)
-configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
+configure_file(cmake/depthaiConfig.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
 
 # Config for installation
 set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
-configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
+configure_file(cmake/depthaiConfig.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
 
 # Modify RPath to point to the cmake/depthai/dependencies/lib
 # note: macOS is APPLE and also UNIX!
@@ -1270,7 +1270,7 @@ endif()
 
 # Export to CMake registry if specified
 if(CMAKE_EXPORT_PACKAGE_REGISTRY)
-    export(PACKAGE depthai)
+    export(PACKAGE ${PROJECT_NAME})
 endif()
 
 if(DEPTHAI_INSTALL)
