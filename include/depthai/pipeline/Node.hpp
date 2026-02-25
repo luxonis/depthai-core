@@ -620,6 +620,8 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Stop node execution
     virtual void stop() {};
 
+    virtual void buildInternalQueues() {};
+
     void stopPipeline();
 
     /// Build stages;
