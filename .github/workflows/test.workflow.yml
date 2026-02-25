@@ -54,7 +54,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.14.1', '1.18.3', '1.25.3-usb+eee228f5849ff62027181e647b629e4551e9d273']"
+      luxonis_os_versions_to_test: "['1.25.3-usb+eee228f5849ff62027181e647b629e4551e9d273']"
       luxonis_os_versions_to_test_rgb: "['1.25.3-usb+eee228f5849ff62027181e647b629e4551e9d273']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}

@@ -159,7 +159,7 @@ if __name__ == "__main__":
         },
         {
             "name": "RVC4 - RGB",
-            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "usb"},
             "labels": ["rvc4rgb"],
         },
         {
