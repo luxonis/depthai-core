@@ -267,10 +267,9 @@ dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& sr
 
 void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash) {
     logger->info("Applying calibration to device");
+    device->setCalibration(handler);
     if(flash) {
         device->flashCalibration(handler);
-    } else {
-        device->setCalibration(handler);
     }
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
     pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorA, calibA);
