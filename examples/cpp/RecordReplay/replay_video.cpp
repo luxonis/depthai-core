@@ -3,7 +3,7 @@
 #include "depthai/pipeline/node/host/Replay.hpp"
 
 int main(int argc, char** argv) {
-    std::string vidName = "test_video.mp4";
+    std::string vidName = "test_video.avi";
     if(argc > 1) vidName = argv[1];
     dai::Pipeline pipeline(false);
 
