@@ -58,7 +58,7 @@ class DynamicCalibrationControl : public Buffer {
         };
 
         /**
-         * @brief Command to compute calibration metrics (e.g., calibrationConfidence and dataQuality).
+         * @brief Command to compute calibration metrics (e.g., calibrationConfidence and dataConfidence).
          * * Evaluates the provided calibration data and computes relevant quality metrics.
          */
         struct ComputeCalibrationMetrics {
@@ -184,7 +184,7 @@ class DynamicCalibrationControl : public Buffer {
      * @brief Create a command to compute metrics for a given calibration.
      *
      * This command instructs the device to evaluate the supplied calibration data
-     * and compute metrics such as calibrationConfidence and dataQuality.
+     * and compute metrics such as calibrationConfidence and dataConfidence.
      *
      * @param calibration Calibration data to evaluate.
      * @return Shared pointer to a DynamicCalibrationControl command.

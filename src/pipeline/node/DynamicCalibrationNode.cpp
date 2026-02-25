@@ -278,13 +278,13 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash)
 
 void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
-    auto dataQuality = pimplDCL->dynCalibImpl.computeDataConfidence(pimplDCL->sensorA, pimplDCL->sensorB);
+    auto dataConfidence = pimplDCL->dynCalibImpl.computeDataConfidence(pimplDCL->sensorA, pimplDCL->sensorB);
     auto calibrationConfidence = pimplDCL->dynCalibImpl.computeCalibrationConfidence(calibA, calibB, pimplDCL->sensorA, pimplDCL->sensorB);
     auto metrics = std::make_shared<CalibrationMetrics>();
-    if(!dataQuality.passed()) {
-        metrics->dataQuality = 0.;
+    if(!dataConfidence.passed()) {
+        metrics->dataConfidence = 0.;
     } else {
-        metrics->dataQuality = dataQuality.value;
+        metrics->dataConfidence = dataConfidence.value;
     }
     if(!calibrationConfidence.passed()) {
         metrics->calibrationConfidence = 0.;

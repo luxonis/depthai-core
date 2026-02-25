@@ -150,7 +150,8 @@ struct CalibrationMetrics : public Buffer {
      * * A normalized value between 0.0 and 1.0 indicating how much you can
      * trust the data.
      */
-    double dataQuality;
+    double dataConfidence;
+    DEPTHAI_SERIALIZE(CalibrationMetrics, calibrationConfidence, dataConfidence);
 };
 
 /**
@@ -179,7 +180,9 @@ struct DynamicCalibrationResult : public Buffer {
         /** Per-metric comparison of new vs old calibration. */
         CalibrationQuality::Data calibrationDifference;
 
-        DEPTHAI_SERIALIZE(Data, newCalibration, currentCalibration, calibrationDifference);
+        double dataConfidence = 1.0;
+
+        DEPTHAI_SERIALIZE(Data, newCalibration, currentCalibration, calibrationDifference, dataConfidence);
     };
 
     DynamicCalibrationResult() = default;
