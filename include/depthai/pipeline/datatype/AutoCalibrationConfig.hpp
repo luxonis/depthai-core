@@ -5,13 +5,24 @@
 namespace dai {
 
 struct AutoCalibrationConfig : public Buffer {
-    AutoCalibrationConfig() = default;
-    virtual ~AutoCalibrationConfig();
-
     enum Mode : int {
         ON_START = 1,
         CONTINUOUS = 2,
     };
+
+    AutoCalibrationConfig() = default;
+
+    AutoCalibrationConfig(Mode mode, int sleepingTime, double calConf, double dataConf, unsigned int maxIter, unsigned int maxImg, int valSize, bool flash)
+        : mode(mode),
+          sleepingTime(sleepingTime),
+          calibrationConfidenceThreshold(calConf),
+          dataConfidenceThreshold(dataConf),
+          maxIterations(maxIter),
+          maxImagesPerReacalibration(maxImg),
+          validationSetSize(valSize),
+          flashCalibration(flash) {}
+
+    virtual ~AutoCalibrationConfig();
 
     Mode mode = Mode::ON_START;
 
