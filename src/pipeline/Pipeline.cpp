@@ -3,7 +3,7 @@
 #include <cstring>
 
 #include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/pipeline/node/DynamicCalibrationWorker.hpp"
+#include "depthai/pipeline/node/AutoCalibration.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -623,7 +623,7 @@ bool PipelineImpl::isBuilt() const {
 
 bool PipelineImpl::hasDynamiCalibration() const {
     for(const auto& node : getAllNodes()) {
-        if(node->getName() == dai::node::DynamicCalibration::NAME || node->getName() == dai::node::DynamicCalibrationWorker::NAME) {
+        if(node->getName() == dai::node::DynamicCalibration::NAME || node->getName() == dai::node::AutoCalibration::NAME) {
             return true;
         }
     }
@@ -653,8 +653,8 @@ void PipelineImpl::build(bool buildInternalQueue) {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
             auto stereoPair = getStereoPair();
             if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
-                Logging::getInstance().logger.info("DynamicCalibrationWorker is initialized");
-                create<dai::node::DynamicCalibrationWorker>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+                Logging::getInstance().logger.info("AutoCalibration is initialized");
+                create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
             }
 #endif
         }
