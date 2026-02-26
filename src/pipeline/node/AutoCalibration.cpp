@@ -1,8 +1,9 @@
+#include "depthai/pipeline/node/AutoCalibration.hpp"
+
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <pipeline/datatype/MessageGroup.hpp>
 
 #include "depthai/pipeline/InputQueue.hpp"
-#include "depthai/pipeline/node/AutoCalibration.hpp"
 
 namespace dai {
 namespace node {
@@ -71,12 +72,10 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     gateControlQueue->send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     for(unsigned int i = 0; i < maxNumIteration; i++) {
         dynamicCalibrationCommandQueue->send(DCC::startCalibration());
-        bool dataCollected = false;
-        while(!dataCollected) {
+        for(unsigned int numLoadedImages = 0; numLoadedImages < initialConfig->maxImagesPerReacalibration; numLoadedImages++) {
             auto dynCalibrationResult = dynamicCalibrationQueue->get<dai::DynamicCalibrationResult>();
             coverageQueue->tryGet<dai::CoverageData>();
             if(dynCalibrationResult->calibrationData) {
-                dataCollected = true;
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue->send(dai::GateControl::closeGate());
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);

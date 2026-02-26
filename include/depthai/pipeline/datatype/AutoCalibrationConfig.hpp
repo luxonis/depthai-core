@@ -23,14 +23,23 @@ struct AutoCalibrationConfig : public Buffer {
 
     unsigned int maxIterations = 10;
 
+    unsigned int maxImagesPerReacalibration = 20;
+
     int validationSetSize = 5;
 
     bool flashCalibration = false;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(
-        AutoCalibrationConfig, mode, sleepingTime, calibrationConfidenceThreshold, dataConfidenceThreshold, maxIterations, validationSetSize, flashCalibration);
+    DEPTHAI_SERIALIZE(AutoCalibrationConfig,
+                      mode,
+                      sleepingTime,
+                      calibrationConfidenceThreshold,
+                      dataConfidenceThreshold,
+                      maxIterations,
+                      maxImagesPerReacalibration,
+                      validationSetSize,
+                      flashCalibration);
 };
 
 }  // namespace dai
