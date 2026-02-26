@@ -500,13 +500,13 @@ dai::Point2f ImgTransformation::projectPoint(const ImgTransformation& to, dai::P
 
     dai::Point3f source3dPoint = {x_cm, y_cm, z_cm};
     const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to);
-    std::cout << "Extrinsics transformation matrix from source to target:" << std::endl;
-    for(const auto& row : extriniscTransformation) {
-        for(const auto& val : row) {
-            std::cout << val << " ";
-        }
-        std::cout << std::endl;
-    }
+    // std::cout << "Extrinsics transformation matrix from source to target:" << std::endl;
+    // for(const auto& row : extriniscTransformation) {
+    //     for(const auto& val : row) {
+    //         std::cout << val << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
 
     dai::Point3f target3dPoint = transformPoint3f(extriniscTransformation, source3dPoint);
 

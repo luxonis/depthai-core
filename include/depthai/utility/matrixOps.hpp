@@ -26,7 +26,7 @@ std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& 
 std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
 std::vector<std::vector<float>> matrix3x3toVectorMatrix(const std::array<std::array<float, 3>, 3>& R);
 
-std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 3>, 3>& projection);
+std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 4>, 4>& projection);
 
 std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]);
 std::vector<std::vector<float>> invertSe3Matrix4x4(const std::vector<std::vector<float>>& matrix);

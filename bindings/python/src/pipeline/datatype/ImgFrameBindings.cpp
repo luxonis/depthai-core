@@ -194,6 +194,14 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("project3DPoint", &ImgTransformation::project3DPoint, py::arg("point"))
         .def("project3DPointTo", &ImgTransformation::project3DPointTo, py::arg("to"), py::arg("point"))
         .def("project3DPointFrom", &ImgTransformation::project3DPointFrom, py::arg("from"), py::arg("point"))
+        .def(
+            "projectPoint",
+            [](const ImgTransformation& self, const ImgTransformation& to, dai::Point2f point, float depth) {
+                return self.projectPoint(to, point, depth);
+            },
+            py::arg("to"),
+            py::arg("point"),
+            py::arg("depth"))
         .def("remap3DPointTo", &ImgTransformation::remap3DPointTo, py::arg("to"), py::arg("point"))
         .def("remap3DPointFrom", &ImgTransformation::remap3DPointFrom, py::arg("from"), py::arg("point"))
         .def("getExtrinsicsTransformationMatrixTo",
