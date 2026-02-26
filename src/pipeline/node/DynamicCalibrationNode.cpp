@@ -350,6 +350,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     resultData.newCalibration       = newCalibrationHandler;
     resultData.currentCalibration   = currentHandler;
     resultData.calibrationDifference = qualityData;
+    resultData.dataConfidence = dclResult.value.dataConfidence;
 
     auto result = std::make_shared<DynamicCalibrationResult>(resultData, dclResult.errorMessage());
     // clang-format on
