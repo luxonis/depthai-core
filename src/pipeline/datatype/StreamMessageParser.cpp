@@ -19,10 +19,10 @@
 #include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    #include "depthai/pipeline/datatype/AutoCalibrationConfig.hpp"
+    #include "depthai/pipeline/datatype/AutoCalibrationResult.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
     #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
-    #include "depthai/pipeline/datatype/DynamicCalibrationWorkerConfig.hpp"
-    #include "depthai/pipeline/datatype/DynamicCalibrationWorkerResult.hpp"
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 #include "PacketizedData.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
@@ -321,16 +321,16 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<DynamicCalibrationControl>(metadataStart, serializedObjectSize, data, fd);
             break;
 
-        case DatatypeEnum::DynamicCalibrationWorkerConfig:
-            return parseDatatype<DynamicCalibrationWorkerConfig>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::AutoCalibrationConfig:
+            return parseDatatype<AutoCalibrationConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::DynamicCalibrationResult:
             return parseDatatype<DynamicCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
             break;
 
-        case DatatypeEnum::DynamicCalibrationWorkerResult:
-            return parseDatatype<DynamicCalibrationWorkerResult>(metadataStart, serializedObjectSize, data, fd);
+        case DatatypeEnum::AutoCalibrationResult:
+            return parseDatatype<AutoCalibrationResult>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::CalibrationMetrics:
@@ -348,8 +348,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         // Explicitly enum these in this switch state:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
-        case DatatypeEnum::DynamicCalibrationWorkerConfig:
-        case DatatypeEnum::DynamicCalibrationWorkerResult:
+        case DatatypeEnum::AutoCalibrationConfig:
+        case DatatypeEnum::AutoCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CalibrationMetrics:
         case DatatypeEnum::CoverageData:

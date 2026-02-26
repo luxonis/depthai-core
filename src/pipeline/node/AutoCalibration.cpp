@@ -1,24 +1,23 @@
-#include "depthai/pipeline/node/DynamicCalibrationWorker.hpp"
-
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <pipeline/datatype/MessageGroup.hpp>
 
 #include "depthai/pipeline/InputQueue.hpp"
+#include "depthai/pipeline/node/AutoCalibration.hpp"
 
 namespace dai {
 namespace node {
 
-DynamicCalibrationWorker::~DynamicCalibrationWorker() = default;
+AutoCalibration::~AutoCalibration() = default;
 
-DynamicCalibrationWorker::Properties& DynamicCalibrationWorker::getProperties() {
+AutoCalibration::Properties& AutoCalibration::getProperties() {
     return properties;
 }
 
-void DynamicCalibrationWorker::setRunOnHost(bool runOnHost) {
+void AutoCalibration::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-std::shared_ptr<DynamicCalibrationWorker> DynamicCalibrationWorker::build(const std::shared_ptr<Camera> cameraLeft, const std::shared_ptr<Camera> cameraRight) {
+std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Camera> cameraLeft, const std::shared_ptr<Camera> cameraRight) {
     sync->setRunOnHost(false);
     gate->setRunOnHost(false);
     auto outputCameraLeft = cameraLeft->requestIspOutput(20);
@@ -27,17 +26,17 @@ std::shared_ptr<DynamicCalibrationWorker> DynamicCalibrationWorker::build(const 
     outputCameraRight->link(right);
     sync->out.link(gate->input);
     gate->output.link(dynamicCalibration->syncInput);
-    return std::static_pointer_cast<DynamicCalibrationWorker>(shared_from_this());
+    return std::static_pointer_cast<AutoCalibration>(shared_from_this());
 }
 
 /**
  * Check if the node is set to run on host
  */
-bool DynamicCalibrationWorker::runOnHost() const {
+bool AutoCalibration::runOnHost() const {
     return runOnHostVar;
 }
 
-void DynamicCalibrationWorker::loadData(unsigned int numImages) {
+void AutoCalibration::loadData(unsigned int numImages) {
     coverageQueue->tryGetAll<dai::CoverageData>();
     gateControlQueue->send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     for(unsigned int i = 0; i < numImages; i++) {
@@ -47,12 +46,12 @@ void DynamicCalibrationWorker::loadData(unsigned int numImages) {
     gateControlQueue->send(dai::GateControl::closeGate());
 }
 
-std::shared_ptr<dai::CalibrationMetrics> DynamicCalibrationWorker::getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration) {
+std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration) {
     dynamicCalibrationCommandQueue->send(DCC::computeCalibrationMetrics(*calibration));
     return metricsQueue->get<dai::CalibrationMetrics>();
 }
 
-void DynamicCalibrationWorker::buildInternalQueues() {
+void AutoCalibration::buildInternalQueues() {
     dynamicCalibrationQueue = dynamicCalibration->calibrationOutput.createOutputQueue();
     coverageQueue = dynamicCalibration->coverageOutput.createOutputQueue();
     metricsQueue = dynamicCalibration->metricsOutput.createOutputQueue();
@@ -64,11 +63,11 @@ void DynamicCalibrationWorker::buildInternalQueues() {
     dynamicCalibration->syncInput.setMaxSize(std::max(initialConfig->validationSetSize, 2));
 }
 
-void DynamicCalibrationWorker::buildInternal() {
+void AutoCalibration::buildInternal() {
     logger = pimpl->logger;
 }
 
-std::shared_ptr<dai::CalibrationHandler> DynamicCalibrationWorker::getNewCalibration(unsigned int maxNumIteration) {
+std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration) {
     gateControlQueue->send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     for(unsigned int i = 0; i < maxNumIteration; i++) {
         dynamicCalibrationCommandQueue->send(DCC::startCalibration());
@@ -90,7 +89,7 @@ std::shared_ptr<dai::CalibrationHandler> DynamicCalibrationWorker::getNewCalibra
     return nullptr;
 }
 
-bool DynamicCalibrationWorker::recalibrate(std::shared_ptr<dai::CalibrationHandler> calibration) {
+bool AutoCalibration::recalibrate(std::shared_ptr<dai::CalibrationHandler> calibration) {
     unsigned int numIterations = 0;
     while(numIterations <= initialConfig->maxIterations && isRunning()) {
         dynamicCalibrationCommandQueue->send(DCC::resetData());
@@ -98,7 +97,7 @@ bool DynamicCalibrationWorker::recalibrate(std::shared_ptr<dai::CalibrationHandl
             auto newCalibration = getNewCalibration(5);
             if(newCalibration) {
                 dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
-                auto resultOutput = std::make_shared<DynamicCalibrationWorkerResult>(0., 0., true, *newCalibration);
+                auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
                 output.send(resultOutput);
                 return true;
             }
@@ -108,8 +107,7 @@ bool DynamicCalibrationWorker::recalibrate(std::shared_ptr<dai::CalibrationHandl
             if(metrics->dataConfidence > initialConfig->dataConfidenceThreshold) {
                 if(metrics->calibrationConfidence > initialConfig->calibrationConfidenceThreshold) {
                     dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
-                    auto resultOutput =
-                        std::make_shared<DynamicCalibrationWorkerResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
+                    auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
                     output.send(resultOutput);
                     return true;
                 }
@@ -123,24 +121,24 @@ bool DynamicCalibrationWorker::recalibrate(std::shared_ptr<dai::CalibrationHandl
     }
 
     if(isRunning() && calibration) {
-        auto resultOutput = std::make_shared<DynamicCalibrationWorkerResult>(0., 0., false, *calibration);
+        auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., false, *calibration);
         output.send(resultOutput);
     }
     return false;
 }
 
-void DynamicCalibrationWorker::runContinuousMode() {
+void AutoCalibration::runContinuousMode() {
     while(isRunning()) {
         recalibrate(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
         std::this_thread::sleep_for(std::chrono::seconds(initialConfig->sleepingTime));
     }
 }
 
-void DynamicCalibrationWorker::runOnStartMode() {
+void AutoCalibration::runOnStartMode() {
     recalibrate(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
 }
 
-bool DynamicCalibrationWorker::validateIncomingData() {
+bool AutoCalibration::validateIncomingData() {
     std::chrono::seconds waitingTime(1);
     bool timedout = true;
 
@@ -168,18 +166,18 @@ bool DynamicCalibrationWorker::validateIncomingData() {
     return false;
 }
 
-void DynamicCalibrationWorker::run() {
-    logger->info("DynamicCalibrationWorker started to work!");
+void AutoCalibration::run() {
+    logger->info("AutoCalibration started to work!");
     if(!validateIncomingData()) {
         logger->info("Invalid incoming data autocalibration stopped!");
         return;
     }
     switch(initialConfig->mode) {
-        case DynamicCalibrationWorkerConfig::Mode::CONTINUOUS:
+        case AutoCalibrationConfig::Mode::CONTINUOUS:
             logger->info("Running continuous mode.");
             runContinuousMode();
             break;
-        case DynamicCalibrationWorkerConfig::Mode::ON_START:
+        case AutoCalibrationConfig::Mode::ON_START:
             logger->info("Running on-start mode.");
             runOnStartMode();
             logger->info("On-start mode finished.");

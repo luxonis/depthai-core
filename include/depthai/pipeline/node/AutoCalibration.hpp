@@ -2,13 +2,13 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/datatype/AutoCalibrationResult.hpp>
 #include <depthai/pipeline/datatype/DynamicCalibrationControl.hpp>
 #include <depthai/pipeline/datatype/DynamicCalibrationResults.hpp>
-#include <depthai/pipeline/datatype/DynamicCalibrationWorkerResult.hpp>
 #include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DynamicCalibrationNode.hpp>
 #include <depthai/pipeline/node/Gate.hpp>
-#include <depthai/properties/DynamicCalibrationWorkerProperties.hpp>
+#include <depthai/properties/AutoCalibrationProperties.hpp>
 
 namespace spdlog {
 class async_logger;
@@ -16,7 +16,7 @@ class async_logger;
 namespace dai {
 namespace node {
 
-class DynamicCalibrationWorker : public DeviceNodeCRTP<DeviceNode, DynamicCalibrationWorker, DynamicCalibrationWorkerProperties>, public HostRunnable {
+class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoCalibrationProperties>, public HostRunnable {
    private:
     Subnode<node::DynamicCalibration> dynamicCalibration{*this, "dynamicCalibration"};
 
@@ -32,14 +32,14 @@ class DynamicCalibrationWorker : public DeviceNodeCRTP<DeviceNode, DynamicCalibr
    public:
     using DCC = dai::DynamicCalibrationControl;
 
-    std::shared_ptr<DynamicCalibrationWorker> build(const std::shared_ptr<Camera> cameraLeft, const std::shared_ptr<Camera> cameraRight);
+    std::shared_ptr<AutoCalibration> build(const std::shared_ptr<Camera> cameraLeft, const std::shared_ptr<Camera> cameraRight);
 
-    constexpr static const char* NAME = "DynamicCalibrationWorker";
+    constexpr static const char* NAME = "AutoCalibration";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    ~DynamicCalibrationWorker() override;
+    ~AutoCalibration() override;
 
-    std::shared_ptr<DynamicCalibrationWorkerConfig> initialConfig = std::make_shared<DynamicCalibrationWorkerConfig>();
+    std::shared_ptr<AutoCalibrationConfig> initialConfig = std::make_shared<AutoCalibrationConfig>();
 
     void run() override;
 
@@ -49,7 +49,7 @@ class DynamicCalibrationWorker : public DeviceNodeCRTP<DeviceNode, DynamicCalibr
 
     void buildInternal() override;
 
-    Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::DynamicCalibrationWorkerResult, false}}}}};
+    Output output{*this, {"output", DEFAULT_GROUP, {{{DatatypeEnum::AutoCalibrationResult, false}}}}};
 
    protected:
     Properties& getProperties() override;
@@ -87,7 +87,7 @@ class DynamicCalibrationWorker : public DeviceNodeCRTP<DeviceNode, DynamicCalibr
 
     std::shared_ptr<dai::CalibrationMetrics> getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration);
 
-    DynamicCalibrationWorkerProperties properties;
+    AutoCalibrationProperties properties;
 
     std::shared_ptr<dai::InputQueue> gateControlQueue;
     std::shared_ptr<dai::InputQueue> dynamicCalibrationCommandQueue;

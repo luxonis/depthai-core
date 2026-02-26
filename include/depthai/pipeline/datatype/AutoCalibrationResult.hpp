@@ -4,11 +4,12 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
-struct DynamicCalibrationWorkerResult : public Buffer {
-    DynamicCalibrationWorkerResult() = default;
-    DynamicCalibrationWorkerResult(double dataQuality, double calibrationConfidence, bool passed, CalibrationHandler calibration)
+struct AutoCalibrationResult : public Buffer {
+    AutoCalibrationResult() = default;
+    AutoCalibrationResult(double dataQuality, double calibrationConfidence, bool passed, CalibrationHandler calibration)
         : dataQuality(dataQuality), calibrationConfidence(calibrationConfidence), passed(passed), calibration(calibration) {};
-    virtual ~DynamicCalibrationWorkerResult();
+    virtual ~AutoCalibrationResult();
+
     double dataQuality;
     double calibrationConfidence;
     bool passed;
