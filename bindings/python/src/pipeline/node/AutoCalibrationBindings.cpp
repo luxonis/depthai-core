@@ -2,18 +2,17 @@
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/node/DynamicCalibrationWorker.hpp"
+#include "depthai/pipeline/node/AutoCalibration.hpp"
 
-void bind_dynamic_calibration_worker(pybind11::module& m, void* pCallstack) {
+void bind_auto_calibration(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
     namespace py = pybind11;
 
     // Node and Properties declare upfront
-    py::class_<DynamicCalibrationWorkerProperties> DynamicCalibrationWorkerProperties(
-        m, "DynamicCalibrationWorkerProperties", DOC(dai, DynamicCalibrationWorkerProperties));
+    py::class_<AutoCalibrationProperties> AutoCalibrationProperties(m, "AutoCalibrationProperties", DOC(dai, AutoCalibrationProperties));
 
-    auto dynamicCalibrationWorker = ADD_NODE(DynamicCalibrationWorker);
+    auto dynamicCalibrationWorker = ADD_NODE(AutoCalibration);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -26,18 +25,17 @@ void bind_dynamic_calibration_worker(pybind11::module& m, void* pCallstack) {
 
     // Actual bindings
     ///////////////////////////////////////////////////////////////////////
-    dynamicCalibrationWorker
-        .def("build", &DynamicCalibrationWorker::build, py::arg("cameraLeft"), py::arg("cameraRight"), DOC(dai, node, DynamicCalibrationWorker, build))
-        .def_readonly("output", &DynamicCalibrationWorker::output, DOC(dai, node, DynamicCalibrationWorker, output))
+    dynamicCalibrationWorker.def("build", &AutoCalibration::build, py::arg("cameraLeft"), py::arg("cameraRight"), DOC(dai, node, AutoCalibration, build))
+        .def_readonly("output", &AutoCalibration::output, DOC(dai, node, AutoCalibration, output))
         .def_property(
             "initialConfig",
-            [](DynamicCalibrationWorker& self) -> std::shared_ptr<DynamicCalibrationWorkerConfig> {
+            [](AutoCalibration& self) -> std::shared_ptr<AutoCalibrationConfig> {
                 // Explicitly returning the shared_ptr member
                 return self.initialConfig;
             },
-            [](DynamicCalibrationWorker& self, std::shared_ptr<DynamicCalibrationWorkerConfig> cfg) {
+            [](AutoCalibration& self, std::shared_ptr<AutoCalibrationConfig> cfg) {
                 // Assigning the shared_ptr directly
                 self.initialConfig = cfg;
             },
-            DOC(dai, node, DynamicCalibrationWorker, initialConfig));
+            DOC(dai, node, AutoCalibration, initialConfig));
 }

@@ -4,9 +4,9 @@
 
 namespace dai {
 
-struct DynamicCalibrationWorkerConfig : public Buffer {
-    DynamicCalibrationWorkerConfig() = default;
-    virtual ~DynamicCalibrationWorkerConfig();
+struct AutoCalibrationConfig : public Buffer {
+    AutoCalibrationConfig() = default;
+    virtual ~AutoCalibrationConfig();
 
     enum Mode : int {
         ON_START = 1,
@@ -19,7 +19,7 @@ struct DynamicCalibrationWorkerConfig : public Buffer {
 
     double calibrationConfidenceThreshold = 0.9;
 
-    double dataQualityThreshold = 0.7;
+    double dataConfidenceThreshold = 0.7;
 
     unsigned int maxIterations = 10;
 
@@ -29,14 +29,8 @@ struct DynamicCalibrationWorkerConfig : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(DynamicCalibrationWorkerConfig,
-                      mode,
-                      sleepingTime,
-                      calibrationConfidenceThreshold,
-                      dataConfidenceThreshold,
-                      maxIterations,
-                      validationSetSize,
-                      flashCalibration);
+    DEPTHAI_SERIALIZE(
+        AutoCalibrationConfig, mode, sleepingTime, calibrationConfidenceThreshold, dataConfidenceThreshold, maxIterations, validationSetSize, flashCalibration);
 };
 
 }  // namespace dai
