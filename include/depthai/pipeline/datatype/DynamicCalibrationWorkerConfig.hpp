@@ -15,11 +15,11 @@ struct DynamicCalibrationWorkerConfig : public Buffer {
 
     Mode mode = Mode::ON_START;
 
-    int sleepingTime = 600;  // 10 minutes
+    int sleepingTime = 30;  // seconds to sleep between iterations in continuous mode
 
     double calibrationConfidenceThreshold = 0.9;
 
-    double dataConfidenceThreshold = 0.5;
+    double dataQualityThreshold = 0.7;
 
     unsigned int maxIterations = 10;
 
