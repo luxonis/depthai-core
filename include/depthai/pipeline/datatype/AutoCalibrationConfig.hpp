@@ -27,7 +27,7 @@ struct AutoCalibrationConfig : public Buffer {
 
     int validationSetSize = 5;
 
-    bool flashCalibration = false;
+    bool flashCalibration = true;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
