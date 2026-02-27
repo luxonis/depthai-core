@@ -11,6 +11,7 @@ import argparse
 import signal
 import threading
 import numpy as np
+import os
 
 from typing import Optional, Dict
 
@@ -217,10 +218,14 @@ def setupDevice(
         camSockets.append(STEREO_SOCKET)
 
 running = True
+freeze = False
 
 def interruptHandler(sig, frame):
-    global running
-    if running:
+    global running, freeze
+    if not freeze:
+        freeze = True
+        print("Interrupted! Freezing...")
+    elif running:
         print("Interrupted! Exiting...")
         running = False
     else:
@@ -237,7 +242,11 @@ parser.add_argument("-t2", "--sync-threshold-sec", type=float, default=1e-3, hel
 parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, help="Timeout for synchronization to complete", required=False)
 parser.add_argument("-nn", "--neural-depth", action="store_true", help="Use neural depth instead", required=False)
 parser.add_argument("-s", "--slave-only", action="store_true", help="Run the script without a master device", required=False)
+parser.add_argument("--display", type=str, help="X11 display name")
 args = parser.parse_args()
+
+if args.display:
+    os.environ["DISPLAY"] = args.display
 
 # if user did not specify device IPs, use all available devices
 if len(args.devices) == 0:
@@ -300,6 +309,11 @@ with contextlib.ExitStack() as stack:
     # Sync node groups the frames so that all synced frames are timestamped to within one frame time
     sync = createSyncNode(datetime.timedelta(milliseconds=1000 / (2 * targetFps)))
     queue = sync.out.createOutputQueue()
+
+    benchmarkAll = masterPipeline.create(dai.node.BenchmarkIn)
+    benchmarkAll.setRunOnHost(True)
+    benchmarkAll.sendReportEveryNMessages(100)
+    sync.out.link(benchmarkAll.input)
 
     # Start pipelines
     # The master pipeline will be started first, then the slave pipelines
@@ -396,6 +410,8 @@ with contextlib.ExitStack() as stack:
 
             color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
 
+            if freeze:
+                continue
             # Create a image frame with sync info for each output
             for outputName in outputNames:
 
