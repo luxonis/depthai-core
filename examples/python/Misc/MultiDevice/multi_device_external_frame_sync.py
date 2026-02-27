@@ -210,7 +210,6 @@ if len(args.devices) == 0:
     deviceInfos = dai.Device.getAllAvailableDevices()
 else:
     deviceInfos = [dai.DeviceInfo(ip) for ip in args.devices]
-assert len(deviceInfos) > 1, "At least two devices are required for this example."
 
 targetFps = args.fps
 recvAllTimeoutSec = args.recv_all_timeout_sec
@@ -249,9 +248,6 @@ with contextlib.ExitStack() as stack:
     if not slaveOnly:
         if masterPipeline is None or masterNode is None:
             raise RuntimeError("No master detected!")
-
-    if len(slavePipelines) < 1:
-        raise RuntimeError("No slaves detected!")
 
     # Create sync node
     # Sync node groups the frames so that all synced frames are timestamped to within one frame time
