@@ -4,12 +4,15 @@
 #include <pipeline/datatype/MessageGroup.hpp>
 
 #include "depthai/pipeline/InputQueue.hpp"
+#include "depthai/pipeline/node/internal/XLinkOut.hpp"
 
 namespace dai {
 namespace node {
 
 #define MAX_FAILS_PER_RECALIBRATION_DEFAULT 5
 #define GATE_FPS_DEFAULT 5
+#define BYTES_PES_SECOND_LIMIT_DEFAULT 5000000
+#define PACKET_SIZE_DEFAULT 100000
 
 AutoCalibration::~AutoCalibration() = default;
 
@@ -30,6 +33,8 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
     outputCameraRight->link(right);
     sync->out.link(gate->input);
     gate->output.link(dynamicCalibration->syncInput);
+    cameraLeft->setNumFramesPools(6, 6, 6);
+    cameraRight->setNumFramesPools(6, 6, 6);
     return std::static_pointer_cast<AutoCalibration>(shared_from_this());
 }
 
@@ -38,6 +43,14 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
  */
 bool AutoCalibration::runOnHost() const {
     return runOnHostVar;
+}
+
+void AutoCalibration::postBuildStage() {
+    auto xlinkBridge = gate->output.getXLinkBridge();
+    xlinkBridge->xLinkOut->setBytesPerSecondLimit(BYTES_PES_SECOND_LIMIT_DEFAULT);
+    xlinkBridge->xLinkOut->setPacketSize(PACKET_SIZE_DEFAULT);
+    xlinkBridge->xLinkOut->input.setMaxSize(1);
+    xlinkBridge->xLinkOut->input.setBlocking(false);
 }
 
 void AutoCalibration::loadData(unsigned int numImages) {
@@ -82,6 +95,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             auto dynCalibrationResult = dynamicCalibrationQueue->get<dai::DynamicCalibrationResult>();
             coverageQueue->tryGet<dai::CoverageData>();
             if(dynCalibrationResult->calibrationData) {
+                logger->warn("dynCalibrationResult->calibrationData.value().dataConfidence {}", dynCalibrationResult->calibrationData.value().dataConfidence);
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue->send(dai::GateControl::closeGate());
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);
@@ -116,6 +130,9 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         } else {
             loadData(initialConfig->validationSetSize);
             auto metrics = getMetrics(calibration);
+            logger->warn("metrics->dataConfidence {}", metrics->dataConfidence);
+            logger->warn("initialConfig->dataConfidenceThreshold {}", initialConfig->dataConfidenceThreshold);
+            logger->warn("metrics->calibrationConfidence {}", metrics->calibrationConfidence);
             if(metrics->dataConfidence > initialConfig->dataConfidenceThreshold) {
                 if(metrics->calibrationConfidence > initialConfig->calibrationConfidenceThreshold) {
                     dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
