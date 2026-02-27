@@ -1,2 +1,2 @@
 # "full commit hash of Dynamic calibration library"
-set(DEPTHAI_DYNAMIC_CALIBRATION_VERSION "adf2c313c4d31ab8c73a7e07cdf049f0873d507b")
+set(DEPTHAI_DYNAMIC_CALIBRATION_VERSION "3cb08cdcbf459bc9ce21543d7693652dd15772ec")
