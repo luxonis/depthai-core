@@ -71,6 +71,9 @@ void AutoCalibration::buildInternal() {
     logger = pimpl->logger;
 }
 
+/**
+return calibration from DynamicCalibration node
+**/
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration) {
     gateControlQueue->send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     for(unsigned int i = 0; i < maxNumIteration; i++) {
@@ -91,7 +94,14 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     return nullptr;
 }
 
-bool AutoCalibration::recalibrate(std::shared_ptr<dai::CalibrationHandler> calibration) {
+/**
+1. load data
+2. if data OK -> check calibration
+   if data not OK -> go to 1.
+3. if calibration not OK -> recalibrate; go to 1.
+   if calibration OK -> set calibration
+**/
+bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
     unsigned int numIterations = 0;
     while(numIterations <= initialConfig->maxIterations && isRunning()) {
         dynamicCalibrationCommandQueue->send(DCC::resetData());
@@ -131,13 +141,13 @@ bool AutoCalibration::recalibrate(std::shared_ptr<dai::CalibrationHandler> calib
 
 void AutoCalibration::runContinuousMode() {
     while(isRunning()) {
-        recalibrate(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+        updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
         std::this_thread::sleep_for(std::chrono::seconds(initialConfig->sleepingTime));
     }
 }
 
 void AutoCalibration::runOnStartMode() {
-    recalibrate(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+    updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
 }
 
 bool AutoCalibration::validateIncomingData() {
