@@ -123,6 +123,12 @@ if __name__ == "__main__":
         action="store_true",
         required=False,
     )
+    
+    parser.add_argument(
+        "--rvc4usb",
+        action="store_true",
+        required=False,
+    )
 
     parser.add_argument(
         "--rvc2",
@@ -142,11 +148,11 @@ if __name__ == "__main__":
             "env": {},
             "labels": ["onhost"],
         },
-        # {
-        #     "name": "RVC4",
-        #     "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
-        #     "labels": ["rvc4"],
-        # },
+        {
+            "name": "RVC4",
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
+            "labels": ["rvc4"],
+        },
         {
             "name": "RVC4 - USB",
             "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "usb"},
@@ -159,7 +165,7 @@ if __name__ == "__main__":
         },
         {
             "name": "RVC4 - RGB",
-            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "usb"},
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
             "labels": ["rvc4rgb"],
         },
         {
@@ -182,6 +188,8 @@ if __name__ == "__main__":
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "rvc4" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4:
         test_configs = [config for config in all_configs if "rvc4" in config.get("labels", [])]
+    elif args.rvc4usb:
+        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "usb"]
     elif args.rvc2:
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4rgb:

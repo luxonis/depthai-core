@@ -177,7 +177,7 @@ jobs:
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-windows-${{ matrix.rvc4os }}"
           set -o pipefail
-          hil --models "oak4_pro or oak4_d" -os windows --no-shell --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "rmdir /S /Q depthai-core & git clone https://github.com/luxonis/depthai-core.git && cd depthai-core && git fetch origin ${{ github.sha }} && git checkout ${{ github.sha }} && scripts\hil\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\"" 2>&1 | tee windows_rvc4_test_output.log
+          hil --models "oak4_pro or oak4_d" -os windows --no-shell --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "rmdir /S /Q depthai-core & git clone https://github.com/luxonis/depthai-core.git && cd depthai-core && git fetch origin ${{ github.sha }} && git checkout ${{ github.sha }} && scripts\hil\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\" \"rvc4\"" 2>&1 | tee windows_rvc4_test_output.log
 
       - name: Upload test log
         if: always()
@@ -187,9 +187,32 @@ jobs:
           path: windows_rvc4_test_output.log
           if-no-files-found: warn
 
+  run_windows_tests_rvc4_usb:
+    needs: [build_windows_tests]
+    strategy:
+        matrix:
+          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
+        fail-fast: false
+    runs-on: ['self-hosted', 'testbed-runner']
+    steps:
+      - name: Run RVC4 tests
+        run: |
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-windows-${{ matrix.rvc4os }}"
+          set -o pipefail
+          hil --models "oak4_pro or oak4_d" -os windows --no-shell --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --commands "rmdir /S /Q depthai-core & git clone https://github.com/luxonis/depthai-core.git && cd depthai-core && git fetch origin ${{ github.sha }} && git checkout ${{ github.sha }} && scripts\hil\get_artifacts_and_run_tests.cmd \"${{ github.repository }}\" \"${{ github.token }}\" \"C:\depthai-core\" \"${{ needs.build_windows_tests.outputs.artifact_id }}\" \"rvc4usb\"" 2>&1 | tee windows_rvc4_usb_test_output.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-windows-rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
+          path: windows_rvc4_usb_test_output.log
+          if-no-files-found: warn
+
   report_windows_test_results:
     name: Report Windows test results
-    needs: [run_windows_tests_rvc4]
+    needs: [run_windows_tests_rvc4, run_windows_tests_rvc4_usb]
     if: always()
     runs-on: ubuntu-latest
     permissions:
