@@ -657,12 +657,17 @@ void PipelineImpl::build() {
 
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
-    if(autoCalibtationString == "on" || autoCalibtationString == "ON") {
+    if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
         auto stereoPair = getStereoPair();
         if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
             Logging::getInstance().logger.info("AutoCalibration is initialized");
-            create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+            auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+            if(autoCalibtationString == "CONTINUOUS") {
+                autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
+            } else {
+                autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
+            }
         }
 #endif
     }
