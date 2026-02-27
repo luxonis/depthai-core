@@ -197,7 +197,7 @@ signal.signal(signal.SIGINT, interruptHandler)
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("-f", "--fps", type=float, default=30.0, help="Target FPS", required=False)
-parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs", required=False)
+parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs or IDs", required=False)
 parser.add_argument("-t1", "--recv-all-timeout-sec", type=float, default=10, help="Timeout for receiving the first frame from all devices", required=False)
 parser.add_argument("-t2", "--sync-threshold-sec", type=float, default=1e-3, help="Sync threshold in seconds", required=False)
 parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, help="Timeout for synchronization to complete", required=False)
