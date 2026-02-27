@@ -6,11 +6,11 @@
 namespace dai {
 struct AutoCalibrationResult : public Buffer {
     AutoCalibrationResult() = default;
-    AutoCalibrationResult(double dataQuality, double calibrationConfidence, bool passed, CalibrationHandler calibration)
-        : dataQuality(dataQuality), calibrationConfidence(calibrationConfidence), passed(passed), calibration(calibration) {};
+    AutoCalibrationResult(double dataConfidence, double calibrationConfidence, bool passed, CalibrationHandler calibration)
+        : dataConfidence(dataConfidence), calibrationConfidence(calibrationConfidence), passed(passed), calibration(calibration) {};
     virtual ~AutoCalibrationResult();
 
-    double dataQuality;
+    double dataConfidence;
     double calibrationConfidence;
     bool passed;
     CalibrationHandler calibration;
