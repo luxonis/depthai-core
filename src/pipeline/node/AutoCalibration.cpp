@@ -18,7 +18,7 @@ void AutoCalibration::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
-std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Camera> cameraLeft, const std::shared_ptr<Camera> cameraRight) {
+std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Camera>& cameraLeft, const std::shared_ptr<Camera>& cameraRight) {
     sync->setRunOnHost(false);
     gate->setRunOnHost(false);
     auto outputCameraLeft = cameraLeft->requestIspOutput();
