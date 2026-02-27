@@ -632,15 +632,19 @@ bool PipelineImpl::hasDynamiCalibration() const {
 }
 
 std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
+    auto stereoSockets = defaultDevice->getStereoPairs();
+    if(stereoSockets.size() != 1) {
+        return {nullptr, nullptr};
+    }
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> stereoPair = std::pair(nullptr, nullptr);
     // call this onlt with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
         if(node->getName() == dai::node::Camera::NAME) {
             auto camera = std::static_pointer_cast<dai::node::Camera>(node);
             auto board_socket = camera->getBoardSocket();
-            if(board_socket == dai::CameraBoardSocket::CAM_B) {
+            if(board_socket == stereoSockets[0].left) {
                 stereoPair.first = camera;
-            } else if(board_socket == dai::CameraBoardSocket::CAM_C) {
+            } else if(board_socket == stereoSockets[0].right) {
                 stereoPair.second = camera;
             }
         }
