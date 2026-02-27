@@ -71,7 +71,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     bool validateIncomingData();
 
-    void buildInternalQueues() override;
+    void buildStage1() override;
 
     bool checkCalibration();
 

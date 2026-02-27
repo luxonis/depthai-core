@@ -52,7 +52,7 @@ std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared
     return metricsQueue->get<dai::CalibrationMetrics>();
 }
 
-void AutoCalibration::buildInternalQueues() {
+void AutoCalibration::buildStage1() {
     dynamicCalibrationQueue = dynamicCalibration->calibrationOutput.createOutputQueue();
     coverageQueue = dynamicCalibration->coverageOutput.createOutputQueue();
     metricsQueue = dynamicCalibration->metricsOutput.createOutputQueue();
