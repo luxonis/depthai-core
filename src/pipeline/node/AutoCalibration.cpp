@@ -8,6 +8,9 @@
 namespace dai {
 namespace node {
 
+#define MAX_FAILS_PER_RECALIBRATION_DEFAULT 5
+#define GATE_FPS_DEFAULT 5
+
 AutoCalibration::~AutoCalibration() = default;
 
 AutoCalibration::Properties& AutoCalibration::getProperties() {
@@ -60,7 +63,7 @@ void AutoCalibration::buildStage1() {
     gateControlQueue = gate->inputControl.createInputQueue();
     gateOutput = gate->output.createOutputQueue();
     gate->initialConfig->open = false;
-    gate->initialConfig->fps = 5;
+    gate->initialConfig->fps = GATE_FPS_DEFAULT;
     dynamicCalibration->syncInput.setMaxSize(std::max(initialConfig->validationSetSize, 2));
 }
 
@@ -93,7 +96,7 @@ bool AutoCalibration::recalibrate(std::shared_ptr<dai::CalibrationHandler> calib
     while(numIterations <= initialConfig->maxIterations && isRunning()) {
         dynamicCalibrationCommandQueue->send(DCC::resetData());
         if(initialConfig->validationSetSize == 0) {
-            auto newCalibration = getNewCalibration(5);
+            auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT);
             if(newCalibration) {
                 dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
@@ -110,7 +113,7 @@ bool AutoCalibration::recalibrate(std::shared_ptr<dai::CalibrationHandler> calib
                     output.send(resultOutput);
                     return true;
                 }
-                auto newCalibration = getNewCalibration(5);
+                auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT);
                 if(newCalibration) {
                     calibration = std::move(newCalibration);
                 }
