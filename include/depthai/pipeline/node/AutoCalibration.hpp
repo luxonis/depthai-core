@@ -69,6 +69,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     InputMap& syncedInput = sync->inputs;
 #endif
 
+    void postBuildStage() override;
+
     bool validateIncomingData();
 
     void buildStage1() override;
