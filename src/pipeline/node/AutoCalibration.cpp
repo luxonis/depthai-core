@@ -20,6 +20,23 @@ AutoCalibration::Properties& AutoCalibration::getProperties() {
     return properties;
 }
 
+void AutoCalibration::updateStatus(AutoCalibrationExecutionStatus newStatus) {
+    std::lock_guard<std::mutex> lock(statusMtx);
+    status.status = newStatus;
+}
+
+void AutoCalibration::updateResult(double dataConfidence, double calibrationConfidence, bool calibrationResult) {
+    std::lock_guard<std::mutex> lock(statusMtx);
+    status.dataConfidence = dataConfidence;
+    status.calibrationConfidence = calibrationConfidence;
+    status.calibrationResult = calibrationResult;
+}
+
+AutoCalibrationStatus AutoCalibration::getAutoCalibrationStatus() const {
+    std::lock_guard<std::mutex> lock(statusMtx);
+    return status;
+}
+
 void AutoCalibration::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
@@ -116,6 +133,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
    if calibration OK -> set calibration
 **/
 bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
+    updateStatus(AutoCalibrationExecutionStatus::CALIBRATING);
     unsigned int numIterations = 0;
     while(numIterations <= initialConfig->maxIterations && isRunning()) {
         dynamicCalibrationCommandQueue->send(DCC::resetData());
@@ -125,6 +143,8 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                 dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
                 output.send(resultOutput);
+                updateResult(0.0, 0.0, true);
+                updateStatus(AutoCalibrationExecutionStatus::SUCCEEDED);
                 return true;
             }
         } else {
@@ -138,6 +158,8 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                     dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
                     auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
                     output.send(resultOutput);
+                    updateResult(metrics->dataConfidence, metrics->calibrationConfidence, true);
+                    updateStatus(AutoCalibrationExecutionStatus::SUCCEEDED);
                     return true;
                 }
                 auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT);
@@ -153,6 +175,8 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., false, *calibration);
         output.send(resultOutput);
     }
+    updateResult(0.0, 0.0, false);
+    updateStatus(AutoCalibrationExecutionStatus::FAILED);
     return false;
 }
 
@@ -168,6 +192,7 @@ void AutoCalibration::runOnStartMode() {
 }
 
 bool AutoCalibration::validateIncomingData() {
+    updateStatus(AutoCalibrationExecutionStatus::VALIDATING_INPUT);
     std::chrono::seconds waitingTime(1);
     bool timedout = true;
 
@@ -175,8 +200,14 @@ bool AutoCalibration::validateIncomingData() {
         gateControlQueue->send(dai::GateControl::openGate(1, gate->initialConfig->fps));
         auto messageGroup = gateOutput->get<MessageGroup>(waitingTime, timedout);
 
+        if(timedout) {
+            updateStatus(AutoCalibrationExecutionStatus::TIMEOUT);
+            continue;
+        }
+
         if(!timedout && messageGroup) {
             if(!messageGroup->get<dai::ImgFrame>(leftInputName) || !messageGroup->get<dai::ImgFrame>(rightInputName)) {
+                updateStatus(AutoCalibrationExecutionStatus::INVALID_INPUT);
                 return false;
             }
 
@@ -184,21 +215,27 @@ bool AutoCalibration::validateIncomingData() {
             auto rightImgFrame = messageGroup->get<ImgFrame>(rightInputName);
 
             if(leftImgFrame->getWidth() != rightImgFrame->getWidth() || leftImgFrame->getHeight() != rightImgFrame->getHeight()) {
+                updateStatus(AutoCalibrationExecutionStatus::INVALID_INPUT);
                 return false;
             }
             if(leftImgFrame->getHeight() != 800 || leftImgFrame->getWidth() != 1280) {
+                updateStatus(AutoCalibrationExecutionStatus::INVALID_INPUT);
                 return false;
             }
+            updateStatus(AutoCalibrationExecutionStatus::RUNNING);
             return true;
         }
     }
+    updateStatus(AutoCalibrationExecutionStatus::STOPPED);
     return false;
 }
 
 void AutoCalibration::run() {
     logger->info("AutoCalibration started to work!");
+    updateStatus(AutoCalibrationExecutionStatus::RUNNING);
     if(!validateIncomingData()) {
         logger->info("Invalid incoming data autocalibration stopped!");
+        updateStatus(AutoCalibrationExecutionStatus::INVALID_INPUT);
         return;
     }
     switch(initialConfig->mode) {
@@ -214,6 +251,9 @@ void AutoCalibration::run() {
         default:
             logger->info("Incorrect AutoCalibration mode.");
             break;
+    }
+    if(!isRunning()) {
+        updateStatus(AutoCalibrationExecutionStatus::STOPPED);
     }
 }
 

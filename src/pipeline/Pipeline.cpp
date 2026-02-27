@@ -631,6 +631,26 @@ bool PipelineImpl::hasDynamiCalibration() const {
     return false;
 }
 
+std::optional<AutoCalibrationStatus> PipelineImpl::getAutoCalibrationStatus() const {
+    {
+        std::lock_guard<std::mutex> lock(autoCalibrationNodeMtx);
+        auto cached = autoCalibrationNode.lock();
+        if(cached) {
+            return cached->getAutoCalibrationStatus();
+        }
+    }
+
+    for(const auto& node : getAllNodes()) {
+        auto autoCalibration = std::dynamic_pointer_cast<dai::node::AutoCalibration>(node);
+        if(autoCalibration) {
+            std::lock_guard<std::mutex> lock(autoCalibrationNodeMtx);
+            autoCalibrationNode = autoCalibration;
+            return autoCalibration->getAutoCalibrationStatus();
+        }
+    }
+    return std::nullopt;
+}
+
 std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
     auto stereoSockets = defaultDevice->getStereoPairs();
     if(stereoSockets.size() != 1) {
@@ -662,11 +682,15 @@ void PipelineImpl::build() {
         auto stereoPair = getStereoPair();
         if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
             Logging::getInstance().logger.info("AutoCalibration is initialized");
-            auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+            auto createdAutoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+            {
+                std::lock_guard<std::mutex> autoCalibrationNodeLock(autoCalibrationNodeMtx);
+                autoCalibrationNode = createdAutoCalibrationNode;
+            }
             if(autoCalibtationString == "CONTINUOUS") {
-                autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
+                createdAutoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
             } else {
-                autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
+                createdAutoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
             }
         }
 #endif

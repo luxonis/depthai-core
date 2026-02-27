@@ -17,6 +17,7 @@
 #include "depthai/device/Device.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
+#include "depthai/pipeline/datatype/AutoCalibrationStatus.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 
 // shared
@@ -32,6 +33,9 @@
 namespace dai {
 
 namespace fs = std::filesystem;
+namespace node {
+class AutoCalibration;
+}
 
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
@@ -113,6 +117,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     uint32_t getEepromId() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
+    std::optional<AutoCalibrationStatus> getAutoCalibrationStatus() const;
 
     // Pipeline state getters
     PipelineStateApi getPipelineState();
@@ -155,6 +160,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Calibration mutex
     mutable std::mutex calibMtx;
+    // Cached auto-calibration node for reliable status polling while pipeline is running
+    mutable std::mutex autoCalibrationNodeMtx;
+    mutable std::weak_ptr<node::AutoCalibration> autoCalibrationNode;
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
@@ -505,6 +513,10 @@ class Pipeline {
 
     bool isBuilt() const {
         return impl()->isBuilt();
+    }
+
+    std::optional<AutoCalibrationStatus> getAutoCalibrationStatus() const {
+        return impl()->getAutoCalibrationStatus();
     }
 
     void build() {

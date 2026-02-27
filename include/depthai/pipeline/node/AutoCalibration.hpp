@@ -3,12 +3,14 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/datatype/AutoCalibrationResult.hpp>
+#include <depthai/pipeline/datatype/AutoCalibrationStatus.hpp>
 #include <depthai/pipeline/datatype/DynamicCalibrationControl.hpp>
 #include <depthai/pipeline/datatype/DynamicCalibrationResults.hpp>
 #include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/DynamicCalibrationNode.hpp>
 #include <depthai/pipeline/node/Gate.hpp>
 #include <depthai/properties/AutoCalibrationProperties.hpp>
+#include <mutex>
 
 namespace spdlog {
 class async_logger;
@@ -46,6 +48,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     void setRunOnHost(bool runOnHost);
 
     bool runOnHost() const override;
+
+    AutoCalibrationStatus getAutoCalibrationStatus() const;
 
     void buildInternal() override;
 
@@ -101,6 +105,12 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     bool runOnHostVar = true;
 
     std::shared_ptr<::spdlog::async_logger> logger;
+
+    mutable std::mutex statusMtx;
+    AutoCalibrationStatus status;
+
+    void updateStatus(AutoCalibrationExecutionStatus newStatus);
+    void updateResult(double dataConfidence, double calibrationConfidence, bool calibrationResult);
 };
 
 }  // namespace node

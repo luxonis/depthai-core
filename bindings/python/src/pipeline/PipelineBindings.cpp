@@ -69,6 +69,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<PipelineStateApi> pipelineStateApi(m, "PipelineStateApi", DOC(dai, PipelineStateApi));
     py::class_<NodesStateApi> nodesStateApi(m, "NodesStateApi", DOC(dai, NodesStateApi));
     py::class_<NodeStateApi> nodeStateApi(m, "NodeStateApi", DOC(dai, NodeStateApi));
+    py::enum_<AutoCalibrationExecutionStatus> autoCalibrationExecutionStatus(m, "AutoCalibrationExecutionStatus");
+    py::class_<AutoCalibrationStatus> autoCalibrationStatus(m, "AutoCalibrationStatus");
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
 
     ///////////////////////////////////////////////////////////////////////
@@ -108,6 +110,24 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("outputDir", &RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
         .def_readwrite("videoEncoding", &RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
         .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
+
+    autoCalibrationExecutionStatus
+        .value("IDLE", AutoCalibrationExecutionStatus::IDLE)
+        .value("RUNNING", AutoCalibrationExecutionStatus::RUNNING)
+        .value("VALIDATING_INPUT", AutoCalibrationExecutionStatus::VALIDATING_INPUT)
+        .value("CALIBRATING", AutoCalibrationExecutionStatus::CALIBRATING)
+        .value("TIMEOUT", AutoCalibrationExecutionStatus::TIMEOUT)
+        .value("INVALID_INPUT", AutoCalibrationExecutionStatus::INVALID_INPUT)
+        .value("SUCCEEDED", AutoCalibrationExecutionStatus::SUCCEEDED)
+        .value("FAILED", AutoCalibrationExecutionStatus::FAILED)
+        .value("STOPPED", AutoCalibrationExecutionStatus::STOPPED)
+        .export_values();
+
+    autoCalibrationStatus.def(py::init<>())
+        .def_readwrite("status", &AutoCalibrationStatus::status)
+        .def_readwrite("dataConfidence", &AutoCalibrationStatus::dataConfidence)
+        .def_readwrite("calibrationConfidence", &AutoCalibrationStatus::calibrationConfidence)
+        .def_readwrite("calibrationResult", &AutoCalibrationStatus::calibrationResult);
 
     pipelineStateApi.def("nodes", static_cast<NodesStateApi (PipelineStateApi::*)()>(&PipelineStateApi::nodes), DOC(dai, PipelineStateApi, nodes))
         .def("nodes",
@@ -230,6 +250,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setSippDmaBufferSize", &Pipeline::setSippDmaBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippDmaBufferSize))
         .def("setCalibrationData", &Pipeline::setCalibrationData, py::arg("calibrationDataHandler"), DOC(dai, Pipeline, setCalibrationData))
         .def("getCalibrationData", &Pipeline::getCalibrationData, DOC(dai, Pipeline, getCalibrationData))
+        .def("getAutoCalibrationStatus", &Pipeline::getAutoCalibrationStatus)
         .def("getDeviceConfig", &Pipeline::getDeviceConfig, DOC(dai, Pipeline, getDeviceConfig))
         .def("serializeToJson", &Pipeline::serializeToJson, DOC(dai, Pipeline, serializeToJson))
         .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))
