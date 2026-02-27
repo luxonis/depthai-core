@@ -846,6 +846,10 @@ void PipelineImpl::start() {
     // Implicitly build (if not already)
     build();
 
+    for(const auto& node : getAllNodes()) {
+        node->postBuildStage();
+    }
+
     Logging::getInstance().logger.debug("Full schema dump: {}", ((nlohmann::json)getPipelineSchema(SerializationType::JSON, false)).dump());
 
     // Indicate that pipeline is running
