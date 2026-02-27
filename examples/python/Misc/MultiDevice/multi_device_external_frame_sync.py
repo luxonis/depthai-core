@@ -85,7 +85,7 @@ def createSyncNode(syncThreshold: datetime.timedelta):
     sync.setSyncThreshold(syncThreshold)
 
     # Link master camera outputs to the sync node
-    if not noMaster:
+    if not slaveOnly:
         for socketName, camOutput in masterNode.items():
             name = f"master_{socketName}"
             camOutput.link(sync.inputs[name])
@@ -118,8 +118,8 @@ def setUpCameraSocket(
 
     # Master cameras will be linked to the sync node directly
     if role == dai.ExternalFrameSyncRole.MASTER:
-        if noMaster:
-            raise RuntimeError("No master specified, but master device detected")
+        if slaveOnly:
+            raise RuntimeError("Slave-only specified, but master device detected")
 
         if masterNode is None:
             masterNode = {}
@@ -143,7 +143,7 @@ def setupDevice(
         stack: contextlib.ExitStack,
         deviceInfo: dai.DeviceInfo,
         targetFps: float):
-    global masterPipeline, slavePipelines, slaveQueues, camSockets, noMaster, firstSlaveName
+    global masterPipeline, slavePipelines, slaveQueues, camSockets, slaveOnly, firstSlaveName
 
     # Create pipeline for device
     pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
@@ -163,8 +163,8 @@ def setupDevice(
         pipeline = setUpCameraSocket(pipeline, socket, name, targetFps, role)
 
     if role == dai.ExternalFrameSyncRole.MASTER:
-        if noMaster:
-            raise RuntimeError("No master specified, but master device detected")
+        if slaveOnly:
+            raise RuntimeError("Slave-only specified, but master device detected")
         
         device.setExternalStrobeEnable(True)
         print(f"{device.getDeviceId()} is master")
@@ -177,7 +177,7 @@ def setupDevice(
         slavePipelines[name] = pipeline
         print(f"{device.getDeviceId()} is slave")
 
-        if firstSlaveName is None and noMaster:
+        if firstSlaveName is None and slaveOnly:
             firstSlaveName = name
     else:
         raise RuntimeError(f"Don't know how to handle role {role}")
@@ -201,7 +201,7 @@ parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs o
 parser.add_argument("-t1", "--recv-all-timeout-sec", type=float, default=10, help="Timeout for receiving the first frame from all devices", required=False)
 parser.add_argument("-t2", "--sync-threshold-sec", type=float, default=1e-3, help="Sync threshold in seconds", required=False)
 parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, help="Timeout for synchronization to complete", required=False)
-parser.add_argument("-nm", "--no-master", action="store_true", help="Run the script without a master device", required=False)
+parser.add_argument("-s", "--slave-only", action="store_true", help="Run the script without a master device", required=False)
 args = parser.parse_args()
 
 # if user did not specify device IPs, use all available devices
@@ -216,9 +216,9 @@ recvAllTimeoutSec = args.recv_all_timeout_sec
 syncThresholdSec = args.sync_threshold_sec
 initialSyncTimeoutSec = args.initial_sync_timeout_sec
 
-noMaster = False
-if args.no_master:
-    noMaster = True
+slaveOnly = False
+if args.slave_only:
+    slaveOnly = True
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -245,7 +245,7 @@ with contextlib.ExitStack() as stack:
     for idx, deviceInfo in enumerate(deviceInfos):
         setupDevice(stack, deviceInfo, targetFps)
 
-    if not noMaster:
+    if not slaveOnly:
         if masterPipeline is None or masterNode is None:
             raise RuntimeError("No master detected!")
 
@@ -259,7 +259,7 @@ with contextlib.ExitStack() as stack:
 
     # Start pipelines
     # The master pipeline will be started first, then the slave pipelines
-    if not noMaster:
+    if not slaveOnly:
         masterPipeline.start()
 
     for k, sockets in slavePipelines.items():
