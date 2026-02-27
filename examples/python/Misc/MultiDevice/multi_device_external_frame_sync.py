@@ -72,18 +72,24 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
 # Create synchronization node
 # ---------------------------------------------------------------------------
 def createSyncNode(syncThreshold: datetime.timedelta):
-    global masterPipeline, masterNode, slaveQueues, inputQueues, outputNames
+    global masterPipeline, masterNode, slaveQueues, inputQueues, outputNames, firstSlaveName, slavePipelines
 
-    sync = masterPipeline.create(dai.node.Sync)
+    # If no master is specified, create a sync node on the first slave pipeline
+    if firstSlaveName is None:
+        sync = masterPipeline.create(dai.node.Sync)
+    else:
+        sync = slavePipelines[firstSlaveName].create(dai.node.Sync)
+
     # Sync node will run on the host, since it needs to sync multiple devices
     sync.setRunOnHost(True)
     sync.setSyncThreshold(syncThreshold)
 
     # Link master camera outputs to the sync node
-    for socketName, camOutput in masterNode.items():
-        name = f"master_{socketName}"
-        camOutput.link(sync.inputs[name])
-        outputNames.append(name)
+    if not noMaster:
+        for socketName, camOutput in masterNode.items():
+            name = f"master_{socketName}"
+            camOutput.link(sync.inputs[name])
+            outputNames.append(name)
 
     # For slaves, we must create an input queue for each output
     # We will then manually forward the frames from each input queue to the output queue
@@ -112,6 +118,9 @@ def setUpCameraSocket(
 
     # Master cameras will be linked to the sync node directly
     if role == dai.ExternalFrameSyncRole.MASTER:
+        if noMaster:
+            raise RuntimeError("No master specified, but master device detected")
+
         if masterNode is None:
             masterNode = {}
         masterNode[socket.name] = outNode
@@ -134,7 +143,7 @@ def setupDevice(
         stack: contextlib.ExitStack,
         deviceInfo: dai.DeviceInfo,
         targetFps: float):
-    global masterPipeline, masterNode, slavePipelines, slaveQueues, camSockets
+    global masterPipeline, slavePipelines, slaveQueues, camSockets, noMaster, firstSlaveName
 
     # Create pipeline for device
     pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
@@ -143,7 +152,7 @@ def setupDevice(
     if device.getPlatform() != dai.Platform.RVC4:
         raise RuntimeError("This example supports only RVC4 platform!")
 
-    name = deviceInfo.getXLinkDeviceDesc().name
+    name = deviceInfo.getXLinkDeviceDesc().mxid
     role = device.getExternalFrameSyncRole()
 
     print("=== Connected to", deviceInfo.getDeviceId())
@@ -154,6 +163,9 @@ def setupDevice(
         pipeline = setUpCameraSocket(pipeline, socket, name, targetFps, role)
 
     if role == dai.ExternalFrameSyncRole.MASTER:
+        if noMaster:
+            raise RuntimeError("No master specified, but master device detected")
+        
         device.setExternalStrobeEnable(True)
         print(f"{device.getDeviceId()} is master")
 
@@ -164,6 +176,9 @@ def setupDevice(
     elif role == dai.ExternalFrameSyncRole.SLAVE:
         slavePipelines[name] = pipeline
         print(f"{device.getDeviceId()} is slave")
+
+        if firstSlaveName is None and noMaster:
+            firstSlaveName = name
     else:
         raise RuntimeError(f"Don't know how to handle role {role}")
 
@@ -186,6 +201,7 @@ parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs",
 parser.add_argument("-t1", "--recv-all-timeout-sec", type=float, default=10, help="Timeout for receiving the first frame from all devices", required=False)
 parser.add_argument("-t2", "--sync-threshold-sec", type=float, default=1e-3, help="Sync threshold in seconds", required=False)
 parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, help="Timeout for synchronization to complete", required=False)
+parser.add_argument("-nm", "--no-master", action="store_true", help="Run the script without a master device", required=False)
 args = parser.parse_args()
 
 # if user did not specify device IPs, use all available devices
@@ -200,6 +216,9 @@ recvAllTimeoutSec = args.recv_all_timeout_sec
 syncThresholdSec = args.sync_threshold_sec
 initialSyncTimeoutSec = args.initial_sync_timeout_sec
 
+noMaster = False
+if args.no_master:
+    noMaster = True
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -220,11 +239,15 @@ with contextlib.ExitStack() as stack:
     # keep track of all camera socket names
     camSockets = []
 
+    # keep track of the first slave name if no master is specified
+    firstSlaveName: Optional[str] = None
+
     for idx, deviceInfo in enumerate(deviceInfos):
         setupDevice(stack, deviceInfo, targetFps)
 
-    if masterPipeline is None or masterNode is None:
-        raise RuntimeError("No master detected!")
+    if not noMaster:
+        if masterPipeline is None or masterNode is None:
+            raise RuntimeError("No master detected!")
 
     if len(slavePipelines) < 1:
         raise RuntimeError("No slaves detected!")
@@ -236,7 +259,9 @@ with contextlib.ExitStack() as stack:
 
     # Start pipelines
     # The master pipeline will be started first, then the slave pipelines
-    masterPipeline.start()
+    if not noMaster:
+        masterPipeline.start()
+
     for k, sockets in slavePipelines.items():
         sockets.start()
 
