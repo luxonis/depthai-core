@@ -20,7 +20,7 @@ from typing import Optional, Dict
 
 SET_MANUAL_EXPOSURE = False  # Set to True to use manual exposure settings
 
-STEREO_SOCKET = "STEREO"
+PCL_SOCKET = "PCL"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -168,8 +168,10 @@ def setupDevice(
     else:
         stereo = pipeline.create(dai.node.StereoDepth)
 
+    socketOutputs = {}
     for socket in device.getConnectedCameras():
         pipeline, outNode = setUpCameraSocket(pipeline, socket, name, targetFps, role)
+        socketOutputs[socket] = outNode
 
         # link stereo node
         if socket == dai.CameraBoardSocket.CAM_B:
@@ -181,6 +183,16 @@ def setupDevice(
         stereo.setRectification(True)
         stereo.setExtendedDisparity(True)
         stereo.setLeftRightCheck(True)
+
+    # Create RGBD for point cloud generation
+    if dai.CameraBoardSocket.CAM_A not in socketOutputs:
+        raise RuntimeError("RGBD requires CAM_A to be present for color input")
+    rgbd = pipeline.create(dai.node.RGBD).build()
+    align = pipeline.create(dai.node.ImageAlign)
+    stereo.depth.link(align.input)
+    socketOutputs[dai.CameraBoardSocket.CAM_A].link(align.inputAlignTo)
+    align.outputAligned.link(rgbd.inDepth)
+    socketOutputs[dai.CameraBoardSocket.CAM_A].link(rgbd.inColor)
 
     if role == dai.ExternalFrameSyncRole.MASTER:
         if slaveOnly:
@@ -197,7 +209,7 @@ def setupDevice(
         if masterNode is None:
             masterNode = {}
 
-        masterNode[STEREO_SOCKET] = stereo.disparity
+        masterNode[PCL_SOCKET] = rgbd.pcl
     elif role == dai.ExternalFrameSyncRole.SLAVE:
         slavePipelines[name] = pipeline
         print(f"{device.getDeviceId()} is slave")
@@ -205,15 +217,12 @@ def setupDevice(
         if slaveQueues.get(name) is None:
             slaveQueues[name] = {}
 
-        slaveQueues[name][STEREO_SOCKET] = stereo.disparity.createOutputQueue()
+        slaveQueues[name][PCL_SOCKET] = rgbd.pcl.createOutputQueue()
 
         if firstSlaveName is None and slaveOnly:
             firstSlaveName = name
     else:
         raise RuntimeError(f"Don't know how to handle role {role}")
-    
-    if STEREO_SOCKET not in camSockets:
-        camSockets.append(STEREO_SOCKET)
 
 running = True
 
@@ -260,10 +269,6 @@ if args.neural_depth:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
-colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
-colorMap[0] = [0, 0, 0]  # to make zero-disparity pixels black
-maxDisparity = 1
 
 with contextlib.ExitStack() as stack:
 
@@ -351,7 +356,10 @@ with contextlib.ExitStack() as stack:
             # Get timestamps for each frame
             tsValues = {}
             for name in outputNames:
-                tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
+                if PCL_SOCKET in name:
+                    tsValues[name] = latestFrameGroup[name].getTimestamp().total_seconds()
+                else:
+                    tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
             
             # Build individual image arrays for each camera socket
             imgs = []
@@ -388,25 +396,21 @@ with contextlib.ExitStack() as stack:
             # Create a image frame with sync info for each output
             for outputName in outputNames:
 
+                if PCL_SOCKET in outputName:
+                    continue
+
                 # Find out which camera socket this output belongs to
                 idx = -1
-                isStereo = False
                 for i, name in enumerate(camSockets):
                     if name in outputName:
                         idx = i
-                        isStereo = name == STEREO_SOCKET
                         break
                 if idx == -1:
                     raise RuntimeError(f"Could not find camera socket for {outputName}")
-                
+
                 # Get frame for this output
                 msg = latestFrameGroup[outputName]
-                if isStereo:
-                    npDisparity = msg.getFrame()
-                    maxDisparity = max(maxDisparity, np.max(npDisparity))
-                    frame = cv2.applyColorMap(((npDisparity / maxDisparity) * 255).astype(np.uint8), colorMap)
-                else:
-                    frame = msg.getCvFrame()
+                frame = msg.getCvFrame()
 
                 # Add output name to frame
                 cv2.putText(
