@@ -194,6 +194,9 @@ void AutoCalibration::run() {
             runOnStartMode();
             logger->info("On-start mode finished.");
             break;
+        default:
+            logger->info("Incorrect AutoCalibration mode.");
+            break;
     }
 }
 
