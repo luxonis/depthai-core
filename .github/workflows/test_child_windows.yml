@@ -5,6 +5,10 @@ on:
       luxonis_os_versions_to_test:
         required: true
         type: string
+      luxonis_os_versions_to_test_usb:
+        required: false
+        type: string
+        default: "[]"
     secrets:
       CONTAINER_REGISTRY:
         required: true
