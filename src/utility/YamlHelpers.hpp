@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
-#include <fmt/std.h>
+#include "utility/FmtCompatibility.hpp"
 #include <yaml-cpp/yaml.h>
 
 #include <filesystem>
