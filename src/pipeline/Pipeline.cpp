@@ -641,10 +641,10 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
     for(const auto& node : getAllNodes()) {
         if(node->getName() == dai::node::Camera::NAME) {
             auto camera = std::static_pointer_cast<dai::node::Camera>(node);
-            auto board_socket = camera->getBoardSocket();
-            if(board_socket == stereoSockets[0].left) {
+            auto boardSocket = camera->getBoardSocket();
+            if(boardSocket == stereoSockets[0].left) {
                 stereoPair.first = camera;
-            } else if(board_socket == stereoSockets[0].right) {
+            } else if(boardSocket == stereoSockets[0].right) {
                 stereoPair.second = camera;
             }
         }
