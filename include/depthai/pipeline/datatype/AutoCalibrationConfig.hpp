@@ -12,11 +12,12 @@ struct AutoCalibrationConfig : public Buffer {
 
     AutoCalibrationConfig() = default;
 
-    AutoCalibrationConfig(Mode mode, int sleepingTime, double calConf, double dataConf, unsigned int maxIter, unsigned int maxImg, int valSize, bool flash)
+    AutoCalibrationConfig(
+        Mode mode, int sleepingTime, double calibrationConfidence, double dataConfidence, unsigned int maxIter, unsigned int maxImg, int valSize, bool flash)
         : mode(mode),
           sleepingTime(sleepingTime),
-          calibrationConfidenceThreshold(calConf),
-          dataConfidenceThreshold(dataConf),
+          calibrationConfidenceThreshold(calibrationConfidence),
+          dataConfidenceThreshold(dataConfidence),
           maxIterations(maxIter),
           maxImagesPerReacalibration(maxImg),
           validationSetSize(valSize),
