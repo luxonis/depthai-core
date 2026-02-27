@@ -340,6 +340,7 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::DynamicCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CoverageData:
+        case DatatypeEnum::CalibrationMetrics:
             break;
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
         default:
