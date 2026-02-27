@@ -187,7 +187,7 @@ if __name__ == "__main__":
     if args.rvc4==args.rvc2==args.rvc4rgb==args.fsync:
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "rvc4" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4:
-        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", [])]
+        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "tcpip"]
     elif args.rvc4usb:
         test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "usb"]
     elif args.rvc2:
