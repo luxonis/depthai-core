@@ -32,7 +32,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
    public:
     using DCC = dai::DynamicCalibrationControl;
 
-    std::shared_ptr<AutoCalibration> build(const std::shared_ptr<Camera> cameraLeft, const std::shared_ptr<Camera> cameraRight);
+    std::shared_ptr<AutoCalibration> build(const std::shared_ptr<Camera>& cameraLeft, const std::shared_ptr<Camera>& cameraRight);
 
     constexpr static const char* NAME = "AutoCalibration";
     using DeviceNodeCRTP::DeviceNodeCRTP;
