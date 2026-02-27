@@ -291,6 +291,32 @@ with contextlib.ExitStack() as stack:
                 imgs.append([])
             fps = fpsCounter.getFps()
 
+            # calculate the greatest time difference between all frames
+            delta = max(tsValues.values()) - min(tsValues.values())
+
+            syncStatus = abs(delta) < syncThresholdSec
+            syncStatusStr = "in sync" if syncStatus else "out of sync"
+
+            # Timeout if frames don't get synced in time
+            if not syncStatus and waitingForSync:
+                endTime = datetime.datetime.now()
+                elapsedSec = (endTime - initialSyncTime).total_seconds()
+                if elapsedSec >= initialSyncTimeoutSec:
+                    print("Timeout: Didn't sync frames in time")
+                    running = False
+
+            if syncStatus and waitingForSync:
+                print(f"Sync status: {syncStatusStr}")
+                waitingForSync = False
+
+            # Print warning if delta is too big
+            if not syncStatus and not waitingForSync:
+                print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
+                print("Either the signal is lost or the network is congested.")
+                continue
+
+            color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
+
             # Create a image frame with sync info for each output
             for outputName in outputNames:
 
@@ -332,33 +358,8 @@ with contextlib.ExitStack() as stack:
                 )
 
                 imgs[idx].append(frame)
-
-            # calculate the greatest time difference between all frames
-            delta = max(tsValues.values()) - min(tsValues.values())
-
-            syncStatus = abs(delta) < syncThresholdSec
-            syncStatusStr = "in sync" if syncStatus else "out of sync"
-
-            # Timeout if frames don't get synced in time
-            if not syncStatus and waitingForSync:
-                endTime = datetime.datetime.now()
-                elapsedSec = (endTime - initialSyncTime).total_seconds()
-                if elapsedSec >= initialSyncTimeoutSec:
-                    print("Timeout: Didn't sync frames in time")
-                    running = False
-
-            if syncStatus and waitingForSync:
-                print(f"Sync status: {syncStatusStr}")
-                waitingForSync = False
-
-            # Exit if sync is lost
-            if not syncStatus and not waitingForSync:
-                print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
-                running = False
-
-            color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
             
-            # Add sync status and delta to the frame
+            # Add sync status and delta to the frame for each camera socket
             for i, img in enumerate(imgs):
                 cv2.putText(
                     imgs[i][0],
