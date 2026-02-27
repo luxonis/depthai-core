@@ -660,13 +660,23 @@ void PipelineImpl::build() {
     if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
         auto stereoPair = getStereoPair();
-        if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
+        const bool hasStereoPair = stereoPair.first && stereoPair.second;
+        const bool dynamicCalibrationNodeExists = hasDynamiCalibration();
+        if(hasStereoPair && !dynamicCalibrationNodeExists) {
             Logging::getInstance().logger.info("AutoCalibration is initialized");
             auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
             if(autoCalibtationString == "CONTINUOUS") {
                 autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
             } else {
                 autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
+            }
+        } else {
+            if(!hasStereoPair) {
+                Logging::getInstance().logger.info("AutoCalibration skipped: stereo pair is unavailable in the pipeline");
+            }
+            if(dynamicCalibrationNodeExists) {
+                Logging::getInstance().logger.info(
+                    "AutoCalibration skipped: DynamicCalibration/AutoCalibration node already exists in the pipeline");
             }
         }
 #endif
