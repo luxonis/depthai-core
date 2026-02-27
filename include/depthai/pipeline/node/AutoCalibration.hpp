@@ -79,7 +79,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     void runOnStartMode();
 
-    bool recalibrate(std::shared_ptr<dai::CalibrationHandler> calibration);
+    bool updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration);
 
     std::shared_ptr<dai::CalibrationHandler> getNewCalibration(unsigned int maxNumIteration);
 
