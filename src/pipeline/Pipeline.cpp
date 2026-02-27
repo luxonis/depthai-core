@@ -622,6 +622,7 @@ bool PipelineImpl::isBuilt() const {
 }
 
 bool PipelineImpl::hasDynamiCalibration() const {
+    // call this onlt with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
         if(node->getName() == dai::node::DynamicCalibration::NAME || node->getName() == dai::node::AutoCalibration::NAME) {
             return true;
@@ -632,6 +633,7 @@ bool PipelineImpl::hasDynamiCalibration() const {
 
 std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> stereoPair = std::pair(nullptr, nullptr);
+    // call this onlt with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
         if(node->getName() == dai::node::Camera::NAME) {
             auto camera = std::static_pointer_cast<dai::node::Camera>(node);
@@ -646,30 +648,20 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
     return stereoPair;
 }
 
-void PipelineImpl::build(bool buildInternalQueue) {
-    std::unique_lock<std::mutex> lock(pipelineBuildMutex);
-    if(!isBuild) {
-        if(utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "") == "on") {
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-            auto stereoPair = getStereoPair();
-            if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
-                Logging::getInstance().logger.info("AutoCalibration is initialized");
-                create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
-            }
-#endif
-        }
-    }
-
-    if(buildInternalQueue) {
-        // Starts pipeline, go through all nodes and start them
-        for(const auto& node : getAllNodes()) {
-            if(node->runOnHost()) {
-                node->buildInternalQueues();
-            }
-        }
-    }
-
+void PipelineImpl::build() {
     if(isBuild) return;
+
+    std::unique_lock<std::mutex> lock(pipelineBuildMutex);
+    auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
+    if(autoCalibtationString == "on" || autoCalibtationString == "ON") {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+        auto stereoPair = getStereoPair();
+        if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
+            Logging::getInstance().logger.info("AutoCalibration is initialized");
+            create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+        }
+#endif
+    }
 
     utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
 
@@ -847,14 +839,8 @@ void PipelineImpl::start() {
     // }
 
     // Starts pipeline, go through all nodes and start them
-    for(const auto& node : getAllNodes()) {
-        if(node->runOnHost()) {
-            node->buildInternalQueues();
-        }
-    }
-
     // Implicitly build (if not already)
-    build(true);
+    build();
 
     Logging::getInstance().logger.debug("Full schema dump: {}", ((nlohmann::json)getPipelineSchema(SerializationType::JSON, false)).dump());
 
