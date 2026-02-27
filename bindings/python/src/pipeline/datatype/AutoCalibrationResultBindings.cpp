@@ -16,8 +16,8 @@ void bind_auto_calibration_result(pybind11::module& m, void* pCallstack) {
 
     py::class_<AutoCalibrationResult, Buffer, std::shared_ptr<AutoCalibrationResult>>(m, "AutoCalibrationResult")
         .def(py::init<>())
-        .def(py::init<double, double, bool, CalibrationHandler>(), "dataQuality"_a, "calibrationConfidence"_a, "passed"_a, "calibration"_a)
-        .def_readwrite("dataQuality", &AutoCalibrationResult::dataQuality)
+        .def(py::init<double, double, bool, CalibrationHandler>(), "dataConfidence"_a, "calibrationConfidence"_a, "passed"_a, "calibration"_a)
+        .def_readwrite("dataConfidence", &AutoCalibrationResult::dataConfidence)
         .def_readwrite("calibrationConfidence", &AutoCalibrationResult::calibrationConfidence)
         .def_readwrite("passed", &AutoCalibrationResult::passed)
         .def_readwrite("calibration", &AutoCalibrationResult::calibration);
