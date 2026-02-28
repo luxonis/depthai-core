@@ -54,6 +54,7 @@ void AutoCalibration::postBuildStage() {
 }
 
 void AutoCalibration::loadData(unsigned int numImages) {
+    logger->info("Loading {} image(s) for validation set.", numImages);
     coverageQueue->tryGetAll<dai::CoverageData>();
     gateControlQueue->send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     for(unsigned int i = 0; i < numImages; i++) {
@@ -61,6 +62,7 @@ void AutoCalibration::loadData(unsigned int numImages) {
         coverageQueue->get<dai::CoverageData>();  // wait until the data are loaded
     }
     gateControlQueue->send(dai::GateControl::closeGate());
+    logger->info("Validation set loading complete.");
 }
 
 std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration) {
@@ -88,23 +90,53 @@ void AutoCalibration::buildInternal() {
 return calibration from DynamicCalibration node
 **/
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration) {
+    logger->info(
+        "Starting new calibration search. maxNumIteration={}, maxImagesPerReacalibration={}.", maxNumIteration, initialConfig->maxImagesPerReacalibration);
+    const std::chrono::seconds calibrationResultWaitTime(2);
     gateControlQueue->send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     for(unsigned int i = 0; i < maxNumIteration; i++) {
+        logger->info("Calibration attempt {}/{}.", i + 1, maxNumIteration);
         dynamicCalibrationCommandQueue->send(DCC::startCalibration());
         for(unsigned int numLoadedImages = 0; numLoadedImages < initialConfig->maxImagesPerReacalibration; numLoadedImages++) {
             auto dynCalibrationResult = dynamicCalibrationQueue->get<dai::DynamicCalibrationResult>();
+            if(!dynCalibrationResult) {
+                logger->info("No DynamicCalibrationResult after {} second(s) in attempt {}/{} at image slot {}/{}.",
+                             calibrationResultWaitTime.count(),
+                             i + 1,
+                             maxNumIteration,
+                             numLoadedImages + 1,
+                             initialConfig->maxImagesPerReacalibration);
+            }
+            if(dynCalibrationResult->calibrationData) {
+                logger->info("DynamicCalibrationResult details: info='{}', hasCalibrationData=true, dataConfidence={}.",
+                             dynCalibrationResult->info,
+                             dynCalibrationResult->calibrationData->dataConfidence);
+            } else {
+                logger->info("DynamicCalibrationResult details: info='{}', hasCalibrationData=false.", dynCalibrationResult->info);
+            }
             coverageQueue->tryGet<dai::CoverageData>();
             if(dynCalibrationResult->calibrationData) {
-                logger->warn("dynCalibrationResult->calibrationData.value().dataConfidence {}", dynCalibrationResult->calibrationData.value().dataConfidence);
+                logger->info("dynCalibrationResult->calibrationData.value().dataConfidence {}", dynCalibrationResult->calibrationData.value().dataConfidence);
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue->send(dai::GateControl::closeGate());
+                    logger->info("New calibration found with dataConfidence={} (threshold={}).",
+                                 dynCalibrationResult->calibrationData.value().dataConfidence,
+                                 initialConfig->dataConfidenceThreshold);
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);
                 }
+            } else {
+                logger->info("DynamicCalibrationResult had no calibrationData yet (attempt {}/{}, image slot {}/{}).",
+                             i + 1,
+                             maxNumIteration,
+                             numLoadedImages + 1,
+                             initialConfig->maxImagesPerReacalibration);
             }
         }
         dynamicCalibrationCommandQueue->send(DCC::resetData());
+        logger->info("Calibration attempt {}/{} finished without reaching dataConfidence threshold.", i + 1, maxNumIteration);
     }
     gateControlQueue->send(dai::GateControl::closeGate());
+    logger->info("New calibration search finished without a valid result.");
     return nullptr;
 }
 
@@ -116,8 +148,11 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
    if calibration OK -> set calibration
 **/
 bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
+    logger->info(
+        "Starting calibration update process. maxIterations={}, validationSetSize={}.", initialConfig->maxIterations, initialConfig->validationSetSize);
     unsigned int numIterations = 0;
     while(numIterations <= initialConfig->maxIterations && isRunning()) {
+        logger->info("Calibration update iteration {}/{}.", numIterations + 1, initialConfig->maxIterations + 1);
         dynamicCalibrationCommandQueue->send(DCC::resetData());
         if(initialConfig->validationSetSize == 0) {
             auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT);
@@ -125,6 +160,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                 dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
                 output.send(resultOutput);
+                logger->info("Calibration update process completed successfully using a newly estimated calibration.");
                 return true;
             }
         } else {
@@ -138,11 +174,15 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                     dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
                     auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
                     output.send(resultOutput);
+                    logger->info("Calibration update process completed successfully. dataConfidence={}, calibrationConfidence={}.",
+                                 metrics->dataConfidence,
+                                 metrics->calibrationConfidence);
                     return true;
                 }
                 auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT);
                 if(newCalibration) {
                     calibration = std::move(newCalibration);
+                    logger->info("Replacing current calibration with a newly estimated candidate and continuing validation.");
                 }
             }
         }
@@ -152,19 +192,29 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
     if(isRunning() && calibration) {
         auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., false, *calibration);
         output.send(resultOutput);
+        logger->info("Calibration update process finished without success after {} iteration(s).", numIterations);
+    } else {
+        logger->info("Calibration update process stopped before completion (node is no longer running).");
     }
     return false;
 }
 
 void AutoCalibration::runContinuousMode() {
+    unsigned int cycle = 0;
     while(isRunning()) {
-        updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+        ++cycle;
+        logger->info("Continuous mode cycle {} started.", cycle);
+        const bool updated = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+        logger->info("Continuous mode cycle {} finished with result={} (true=success, false=no update).", cycle, updated);
+        logger->info("Sleeping for {} second(s) before next cycle.", initialConfig->sleepingTime);
         std::this_thread::sleep_for(std::chrono::seconds(initialConfig->sleepingTime));
     }
+    logger->info("Continuous mode stopped.");
 }
 
 void AutoCalibration::runOnStartMode() {
-    updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+    const bool updated = updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+    logger->info("On-start calibration process finished with result={} (true=success, false=no update).", updated);
 }
 
 bool AutoCalibration::validateIncomingData() {
@@ -177,6 +227,7 @@ bool AutoCalibration::validateIncomingData() {
 
         if(!timedout && messageGroup) {
             if(!messageGroup->get<dai::ImgFrame>(leftInputName) || !messageGroup->get<dai::ImgFrame>(rightInputName)) {
+                logger->info("Incoming data validation failed: missing left or right frame.");
                 return false;
             }
 
@@ -184,11 +235,19 @@ bool AutoCalibration::validateIncomingData() {
             auto rightImgFrame = messageGroup->get<ImgFrame>(rightInputName);
 
             if(leftImgFrame->getWidth() != rightImgFrame->getWidth() || leftImgFrame->getHeight() != rightImgFrame->getHeight()) {
+                logger->info("Incoming data validation failed: mismatched frame size. left={}x{}, right={}x{}.",
+                             leftImgFrame->getWidth(),
+                             leftImgFrame->getHeight(),
+                             rightImgFrame->getWidth(),
+                             rightImgFrame->getHeight());
                 return false;
             }
             if(leftImgFrame->getHeight() != 800 || leftImgFrame->getWidth() != 1280) {
+                logger->info(
+                    "Incoming data validation failed: unsupported frame size {}x{} (expected 1280x800).", leftImgFrame->getWidth(), leftImgFrame->getHeight());
                 return false;
             }
+            logger->info("Incoming data validation passed (frame size {}x{}).", leftImgFrame->getWidth(), leftImgFrame->getHeight());
             return true;
         }
     }
