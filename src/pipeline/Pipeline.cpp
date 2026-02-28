@@ -659,7 +659,7 @@ void PipelineImpl::build() {
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     if(isBuild) return;
     // start ---Add AutoCalibration block---
-    auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
+    auto autoCalibtationString = "ON_START";
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
         if(defaultDevice && defaultDevice->tryGetCalibration()) {
