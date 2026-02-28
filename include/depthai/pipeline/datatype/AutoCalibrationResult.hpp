@@ -7,7 +7,7 @@ namespace dai {
 struct AutoCalibrationResult : public Buffer {
     AutoCalibrationResult() = default;
     AutoCalibrationResult(double dataConfidence, double calibrationConfidence, bool passed, CalibrationHandler calibration)
-        : dataConfidence(dataConfidence), calibrationConfidence(calibrationConfidence), passed(passed), calibration(calibration) {};
+        : dataConfidence(dataConfidence), calibrationConfidence(calibrationConfidence), passed(passed), calibration(calibration){};
     virtual ~AutoCalibrationResult();
 
     double dataConfidence;
