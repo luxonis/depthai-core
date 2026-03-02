@@ -55,6 +55,17 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     Properties& getProperties() override;
 
    private:
+    // report for logging purposes
+    struct Report {
+        double dataConfidence = 0.;
+        double calibrationConfidence = 0.;
+        double dataQualityAfterRecalibration = 0.;
+        unsigned int numIterationPerRecalibration = 0;
+        bool recalibrating = false;
+        bool recalibrationPassed = false;
+        bool calibrationUpdated = false;
+        std::array<float, 3> rotationDifference;
+    };
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /**
      * Input left image
@@ -81,7 +92,9 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     bool updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration);
 
-    std::shared_ptr<dai::CalibrationHandler> getNewCalibration(unsigned int maxNumIteration);
+    void loggReport(const Report& report, unsigned int iteration) const;
+
+    std::shared_ptr<dai::CalibrationHandler> getNewCalibration(unsigned int maxNumIteration, Report& report);
 
     void loadData(unsigned int numImages);
 
