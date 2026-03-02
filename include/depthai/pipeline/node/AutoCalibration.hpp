@@ -73,8 +73,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     bool validateIncomingData();
 
-    void buildStage1() override;
-
     bool checkCalibration();
 
     void runContinuousMode();
@@ -91,15 +89,22 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     AutoCalibrationProperties properties;
 
-    std::shared_ptr<dai::InputQueue> gateControlQueue;
-    std::shared_ptr<dai::InputQueue> dynamicCalibrationCommandQueue;
-    std::shared_ptr<dai::MessageQueue> dynamicCalibrationQueue;
-    std::shared_ptr<dai::MessageQueue> metricsQueue;
-    std::shared_ptr<dai::MessageQueue> coverageQueue;
-    std::shared_ptr<dai::MessageQueue> gateOutput;
+    // internal queues
+    Output gateControlQueue{*this, {"gateControlQueue", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, false}}}}};
+
+    Output dynamicCalibrationCommandQueue{*this, {"dynamicCalibrtationCommandQueue", DEFAULT_GROUP, {{{DatatypeEnum::DynamicCalibrationControl, false}}}}};
+
+    Input dynamicCalibrationQueue{*this, {"dynamicCalibrationQueue", DEFAULT_GROUP, false, 1, {{DatatypeEnum::DynamicCalibrationResult, true}}}};
+
+    Input metricsQueue{*this, {"metricsQueue", DEFAULT_GROUP, false, 1, {{DatatypeEnum::CalibrationMetrics, true}}}};
+
+    Input coverageQueue{*this, {"coverageQueue", DEFAULT_GROUP, false, 1, {{DatatypeEnum::CoverageData, true}}}};
+
+    Input gateOutput{*this, {"gateOutput", DEFAULT_GROUP, false, 1, {{DatatypeEnum::Buffer, true}}}};
 
     bool runOnHostVar = true;
 
+    // logger
     std::shared_ptr<::spdlog::async_logger> logger;
 };
 
