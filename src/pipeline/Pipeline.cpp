@@ -638,8 +638,7 @@ bool PipelineImpl::hasValidStereoIntrinsics(const std::shared_ptr<Device>& devic
         calibration.getDefaultIntrinsics(rightSocket);
         calibration.getCameraExtrinsics(leftSocket, rightSocket);
     } catch(const std::exception& ex) {
-        Logging::getInstance().logger.info(
-            "AutoCalibration precheck: calibration source 'getCalibration' is invalid for stereo pair: {}", ex.what());
+        Logging::getInstance().logger.info("AutoCalibration precheck: calibration source 'getCalibration' is invalid for stereo pair: {}", ex.what());
         return false;
     }
 
@@ -691,16 +690,15 @@ void PipelineImpl::build() {
     if(autoCalibrationRequested) {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
         if(!defaultDevice) {
-            Logging::getInstance().logger.info(
-                "DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.", autoCalibrationString);
+            Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
+                                               autoCalibrationString);
         } else {
             auto stereoPair = getStereoPair();
             if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
-                autoCalibrationNode->initialConfig->mode = (autoCalibrationString == "CONTINUOUS")
-                                                               ? dai::AutoCalibrationConfig::Mode::CONTINUOUS
-                                                               : dai::AutoCalibrationConfig::Mode::ON_START;
+                autoCalibrationNode->initialConfig->mode =
+                    (autoCalibrationString == "CONTINUOUS") ? dai::AutoCalibrationConfig::Mode::CONTINUOUS : dai::AutoCalibrationConfig::Mode::ON_START;
             }
         }
 #endif
