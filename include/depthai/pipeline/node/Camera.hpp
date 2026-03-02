@@ -46,6 +46,10 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
                                               bool useHighestResolution = false);
 
     /**
+     * Request output with isp resolution. The fps does not vote.
+     */
+    Node::Output* requestIspOutput(std::optional<float> fps = std::nullopt);
+    /**
      * Build with a specific board socket
      * @param boardSocket Board socket to use
      * @param sensorResolution Sensor resolution to use - by default it's auto-detected from the requested outputs
@@ -71,6 +75,19 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     inline CameraSensorType getSensorType() {
         return getProperties().sensorType;
     }
+
+    /**
+     * Set camera image orientation
+     * @param imageOrientation Image orientation to set
+     * @return Shared pointer to the camera node
+     */
+    std::shared_ptr<Camera> setImageOrientation(CameraImageOrientation imageOrientation);
+
+    /**
+     * Get camera image orientation
+     * @return Image orientation
+     */
+    CameraImageOrientation getImageOrientation() const;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
@@ -109,6 +126,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * Input for mocking 'isp' functionality on RVC2.
      * Default queue is blocking with size 8
      */
+
     Input mockIsp{*this, {"mockIsp", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**

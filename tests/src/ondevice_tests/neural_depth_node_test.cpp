@@ -3,6 +3,11 @@
 
 #include "depthai/depthai.hpp"
 
+// Disable container overflow detection for this test binary (false positive from protobuf)
+extern "C" const char* __asan_default_options() {
+    return "detect_container_overflow=0";
+}
+
 namespace {
 void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
     dai::Pipeline pipeline;
@@ -181,7 +186,7 @@ TEST_CASE("NeuralDepth replay aligns with StereoDepth medians") {
 
     auto stereoDepth = pipeline.create<dai::node::StereoDepth>();
     stereoDepth->build(*leftOutput, *rightOutput);
-    stereoDepth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::FAST_ACCURACY);
+    stereoDepth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::ACCURACY);
 
     auto neuralDepthQueue = neuralDepth->depth.createOutputQueue();
     auto stereoDepthQueue = stereoDepth->depth.createOutputQueue();

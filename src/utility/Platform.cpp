@@ -369,5 +369,18 @@ std::filesystem::path getDirFromPath(const std::filesystem::path& path) {
     return std::filesystem::path(std::filesystem::absolute(path).parent_path());
 }
 
+std::vector<std::string> getFilenamesInDirectory(const std::filesystem::path& path) {
+    std::vector<std::string> filenames;
+    if(!std::filesystem::exists(path) || !std::filesystem::is_directory(path)) {
+        throw std::runtime_error("Path does not exist or is not a directory: " + path.string());
+    }
+    for(const auto& entry : std::filesystem::directory_iterator(path)) {
+        if(entry.is_regular_file()) {
+            filenames.push_back(entry.path().filename().string());
+        }
+    }
+    return filenames;
+}
+
 }  // namespace platform
 }  // namespace dai

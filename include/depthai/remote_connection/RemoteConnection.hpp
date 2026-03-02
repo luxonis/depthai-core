@@ -95,6 +95,14 @@ class RemoteConnection {
      */
     void registerService(const std::string& serviceName, std::function<nlohmann::json(const nlohmann::json&)> callback);
 
+    /**
+     * @brief Registers a binary service with a callback function.
+     *
+     * @param serviceName The name of the service.
+     * @param callback The callback function to handle requests.
+     */
+    void registerBinaryService(const std::string& serviceName, std::function<std::vector<uint8_t>(const std::vector<uint8_t>&)> callback);
+
    private:
     Pimpl<RemoteConnectionImpl> impl;  ///< PIMPL idiom for implementation hiding.
 };

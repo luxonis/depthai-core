@@ -9,6 +9,7 @@
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
 #include "node/Rectification.hpp"
+#include "node/SegmentationParser.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "node/DynamicCalibrationNode.hpp"
 #endif
@@ -37,6 +38,8 @@
 #include "node/Warp.hpp"
 #include "node/host/RGBD.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include "node/NeuralAssistedStereo.hpp"
+    #include "node/Vpp.hpp"
     #include "node/host/Display.hpp"
     #include "node/host/HostCamera.hpp"
     #include "node/host/HostNode.hpp"

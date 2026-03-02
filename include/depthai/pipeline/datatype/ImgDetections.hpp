@@ -40,10 +40,10 @@ struct ImgDetection {
     std::optional<KeypointsList> keypoints;
 
     ImgDetection() = default;
-    ImgDetection(const RotatedRect& boundingBox, float confidence, uint32_t label);
-    ImgDetection(const RotatedRect& boundingBox, std::string labelName, float confidence, uint32_t label);
-    ImgDetection(const RotatedRect& boundingBox, const KeypointsList& keypoints, float confidence, uint32_t label);
-    ImgDetection(const RotatedRect& boundingBox, const KeypointsList& keypoints, std::string labelName, float confidence, uint32_t label);
+    ImgDetection(const RotatedRect& boundingBox, float confidence = 0.f, uint32_t label = 0);
+    ImgDetection(const RotatedRect& boundingBox, std::string labelName, float confidence = 0.f, uint32_t label = 0);
+    ImgDetection(const RotatedRect& boundingBox, const KeypointsList& keypoints, float confidence = 0.f, uint32_t label = 0);
+    ImgDetection(const RotatedRect& boundingBox, const KeypointsList& keypoints, std::string labelName, float confidence = 0.f, uint32_t label = 0);
 
     /**
      * Sets the bounding box and the legacy coordinates of the detection.
@@ -59,6 +59,11 @@ struct ImgDetection {
      * Sets the bounding box and the legacy coordinates of the detection from the top-left and bottom-right points.
      */
     void setOuterBoundingBox(const float xmin, const float ymin, const float xmax, const float ymax);
+
+    /**
+     * Returns the outer bounding box as [minx, miny, maxx, maxy].
+     */
+    std::array<float, 4> getOuterBoundingBox() const;
 
     /**
      * Sets the keypoints of the detection.
@@ -101,6 +106,16 @@ struct ImgDetection {
     std::vector<Keypoint> getKeypoints() const;
 
     /**
+     * Returns a list of Point2f coordinates of the keypoints, or empty list if no keypoints were set.
+     */
+    std::vector<Point2f> getKeypoints2f() const;
+
+    /**
+     * Returns a list of Point3f coordinates of the keypoints, or empty list if no keypoints were set.
+     */
+    std::vector<Point3f> getKeypoints3f() const;
+
+    /**
      * Sets edges for the keypoints, throws if no keypoints were set beforehand.
      */
     void setEdges(const std::vector<Edge> edges);
@@ -113,27 +128,27 @@ struct ImgDetection {
     /**
      * Returns the X coordinate of the center of the bounding box.
      */
-    float getCenterX() const noexcept;
+    float getCenterX() const;
 
     /**
      * Returns the Y coordinate of the center of the bounding box.
      */
-    float getCenterY() const noexcept;
+    float getCenterY() const;
 
     /**
      * Returns the width of the (rotated) bounding box.
      */
-    float getWidth() const noexcept;
+    float getWidth() const;
 
     /**
      * Returns the height of the (rotated) bounding box.
      */
-    float getHeight() const noexcept;
+    float getHeight() const;
 
     /**
      * Returns the angle of the bounding box.
      */
-    float getAngle() const noexcept;
+    float getAngle() const;
 
     DEPTHAI_SERIALIZE(ImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints);
 };
@@ -145,7 +160,7 @@ struct ImgDetection {
  */
 class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable {
    public:
-    virtual ~ImgDetections() override;
+    ~ImgDetections() override;
     using Base = ImgDetectionsT<dai::ImgDetection>;
     using Base::Base;
     using Base::detections;

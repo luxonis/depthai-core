@@ -14,7 +14,7 @@ InputQueue::InputQueueNode::InputQueueNode(unsigned int maxSize, bool blocking) 
 }
 
 void InputQueue::InputQueueNode::run() {
-    while(isRunning()) {
+    while(mainLoop()) {
         output.send(input.get());
     }
 }

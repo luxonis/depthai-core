@@ -36,13 +36,19 @@ void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack) {
     // Message
     neuralDepthConfig.def(py::init<>())
         .def("__repr__", &NeuralDepthConfig::str)
-        .def("setConfidenceThreshold", &NeuralDepthConfig::setConfidenceThreshold, DOC(dai, NeuralDepthConfig, setConfidenceThreshold))
+        .def("setConfidenceThreshold",
+             &NeuralDepthConfig::setConfidenceThreshold,
+             py::arg("confidenceThreshold"),
+             DOC(dai, NeuralDepthConfig, setConfidenceThreshold))
         .def("getConfidenceThreshold", &NeuralDepthConfig::getConfidenceThreshold, DOC(dai, NeuralDepthConfig, getConfidenceThreshold))
-        .def("setEdgeThreshold", &NeuralDepthConfig::setEdgeThreshold, DOC(dai, NeuralDepthConfig, setEdgeThreshold))
+        .def("setEdgeThreshold", &NeuralDepthConfig::setEdgeThreshold, py::arg("edgeThreshold"), DOC(dai, NeuralDepthConfig, setEdgeThreshold))
         .def("getEdgeThreshold", &NeuralDepthConfig::getEdgeThreshold, DOC(dai, NeuralDepthConfig, getEdgeThreshold))
-        .def("setDepthUnit", &NeuralDepthConfig::setDepthUnit, DOC(dai, NeuralDepthConfig, setDepthUnit))
+        .def("setDepthUnit", &NeuralDepthConfig::setDepthUnit, py::arg("depthUnit"), DOC(dai, NeuralDepthConfig, setDepthUnit))
         .def("getDepthUnit", &NeuralDepthConfig::getDepthUnit, DOC(dai, NeuralDepthConfig, getDepthUnit))
-        .def("setCustomDepthUnitMultiplier", &NeuralDepthConfig::setCustomDepthUnitMultiplier, DOC(dai, NeuralDepthConfig, setCustomDepthUnitMultiplier))
+        .def("setCustomDepthUnitMultiplier",
+             &NeuralDepthConfig::setCustomDepthUnitMultiplier,
+             py::arg("customDepthUnitMultiplier"),
+             DOC(dai, NeuralDepthConfig, setCustomDepthUnitMultiplier))
         .def("getCustomDepthUnitMultiplier", &NeuralDepthConfig::getCustomDepthUnitMultiplier, DOC(dai, NeuralDepthConfig, getCustomDepthUnitMultiplier))
         .def_readwrite("postProcessing", &NeuralDepthConfig::postProcessing, DOC(dai, NeuralDepthConfig, postProcessing));
 

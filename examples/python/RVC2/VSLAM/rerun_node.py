@@ -36,7 +36,7 @@ class RerunNode(dai.node.ThreadedHostNode):
         rr.init("", spawn=True)
         rr.log("world", rr.ViewCoordinates.FLU)
         rr.log("world/ground", rr.Boxes3D(half_sizes=[3.0, 3.0, 0.00001])) 
-        while self.isRunning():
+        while self.mainLoop():
             transData = self.inputTrans.get()
             imgFrame = self.inputImg.get()
             if not self.intrinsicsSet:
@@ -63,4 +63,4 @@ class RerunNode(dai.node.ThreadedHostNode):
                     points, colors = pclGrndData.getPointsRGB()
                     rr.log("world/ground_pcl", rr.Points3D(points, colors=colors, radii=[0.01]))
                 if mapData is not None:
-                    rr.log("map", rr.Image(mapData.getCvFrame()))
+                    rr.log("map", rr.Image(mapData.map.getCvFrame()))

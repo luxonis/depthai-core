@@ -89,7 +89,7 @@ int main() {
     auto sync = pipeline.create<dai::node::Sync>();
     auto align = pipeline.create<dai::node::ImageAlign>();
 
-    auto camRgbOut = camRgb->requestOutput(COLOR_RESOLUTION, std::nullopt, dai::ImgResizeMode::CROP, FPS);
+    auto camRgbOut = camRgb->requestOutput(COLOR_RESOLUTION, std::nullopt, dai::ImgResizeMode::CROP, FPS, true);
 
     sync->setSyncThreshold(std::chrono::milliseconds((unsigned int)(3000.f / FPS)));
 

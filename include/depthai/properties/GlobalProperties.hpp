@@ -46,6 +46,15 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
     std::string cameraTuningBlobUri;
 
     /**
+     * Socket specific camera tuning blob size in bytes
+     */
+    std::unordered_map<CameraBoardSocket, std::uint32_t> cameraSocketTuningBlobSize;
+    /**
+     * Socket specific camera tuning blob uri
+     */
+    std::unordered_map<CameraBoardSocket, std::string> cameraSocketTuningBlobUri;
+
+    /**
      * Chunk size for splitting device-sent XLink packets, in bytes. A larger value could
      * increase performance, with 0 disabling chunking. A negative value won't modify the
      * device defaults - configured per protocol, currently 64*1024 for both USB and Ethernet.
@@ -70,6 +79,25 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
     uint32_t sippDmaBufferSize = SIPP_DMA_BUFFER_DEFAULT_SIZE;
 
     ~GlobalProperties() override;
+
+    GlobalProperties& setFrom(const GlobalProperties& other) {
+        leonCssFrequencyHz = other.leonCssFrequencyHz;
+        leonMssFrequencyHz = other.leonMssFrequencyHz;
+        pipelineName = other.pipelineName;
+        pipelineVersion = other.pipelineVersion;
+        if(other.calibData) {
+            calibData = other.calibData;
+            eepromId = other.eepromId;
+        }
+        if(other.cameraTuningBlobSize) cameraTuningBlobSize = other.cameraTuningBlobSize;
+        cameraTuningBlobUri = other.cameraTuningBlobUri;
+        cameraSocketTuningBlobSize = other.cameraSocketTuningBlobSize;
+        cameraSocketTuningBlobUri = other.cameraSocketTuningBlobUri;
+        xlinkChunkSize = other.xlinkChunkSize;
+        sippBufferSize = other.sippBufferSize;
+        sippDmaBufferSize = other.sippDmaBufferSize;
+        return *this;
+    }
 };
 
 DEPTHAI_SERIALIZE_EXT(GlobalProperties,
@@ -79,6 +107,8 @@ DEPTHAI_SERIALIZE_EXT(GlobalProperties,
                       pipelineVersion,
                       cameraTuningBlobSize,
                       cameraTuningBlobUri,
+                      cameraSocketTuningBlobSize,
+                      cameraSocketTuningBlobUri,
                       calibData,
                       eepromId,
                       xlinkChunkSize,

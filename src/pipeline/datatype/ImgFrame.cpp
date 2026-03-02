@@ -131,6 +131,10 @@ unsigned int ImgFrame::getSourceHeight() const {
     return sourceFb.height;
 }
 
+ImgTransformation& ImgFrame::getTransformation() {
+    return transformation;
+}
+
 ImgFrame& ImgFrame::setInstanceNum(unsigned int instanceNum) {
     this->instanceNum = instanceNum;
     return *this;
@@ -177,6 +181,11 @@ ImgFrame& ImgFrame::setSourceSize(std::tuple<unsigned int, unsigned int> size) {
 ImgFrame& ImgFrame::setType(Type type) {
     fb.type = type;
     fb.bytesPP = ImgFrame::typeToBpp(fb.type);
+    return *this;
+}
+
+ImgFrame& ImgFrame::setTransformation(const ImgTransformation& transformation) {
+    this->transformation = transformation;
     return *this;
 }
 

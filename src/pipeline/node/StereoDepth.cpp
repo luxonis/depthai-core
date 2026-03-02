@@ -9,6 +9,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
+#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 namespace node {
@@ -186,9 +187,27 @@ void StereoDepth::setAlphaScaling(float alpha) {
 }
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
-    presetMode = mode;
+    auto device = getDevice();
+    DAI_CHECK_V(device, "Device is not set, cannot set default profile preset");
 
-    switch(presetMode) {
+    // Set profile settings for the current platform
+    switch(device->getPlatform()) {
+        case Platform::RVC2:
+            setRvc2ProfilePreset(mode);
+            break;
+        case Platform::RVC4:
+            setRvc4ProfilePreset(mode);
+            break;
+        case Platform::RVC3:
+        default:
+            DAI_CHECK_V(false, "Unsupported platform: {}", device->getPlatformAsString());
+            break;
+    }
+}
+
+void StereoDepth::setRvc2ProfilePreset(PresetMode mode) {
+    switch(mode) {
+        case PresetMode::ACCURACY:
         case PresetMode::FAST_ACCURACY: {
             initialConfig->setConfidenceThreshold(55);
             initialConfig->setLeftRightCheck(true);
@@ -205,8 +224,9 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->costAggregation.p1Config.defaultValue = 11;
             initialConfig->costAggregation.p1Config.edgeValue = 10;
             initialConfig->costAggregation.p1Config.smoothValue = 22;
-
         } break;
+
+        case PresetMode::DENSITY:
         case PresetMode::FAST_DENSITY: {
             initialConfig->setConfidenceThreshold(15);
             initialConfig->setLeftRightCheck(true);
@@ -232,8 +252,9 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig->costAggregation.p2Config.edgeValue = 90;
             initialConfig->costAggregation.p2Config.smoothValue = 99;
         } break;
+
         case PresetMode::DEFAULT: {
-            setDefaultProfilePreset(PresetMode::FAST_DENSITY);
+            setRvc2ProfilePreset(PresetMode::DENSITY);  // DEFAULT is DENSITY plus settings that follow
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(false);
             initialConfig->setSubpixel(true);
@@ -267,8 +288,9 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
 
             setPostProcessingHardwareResources(3, 3);
         } break;
+
         case PresetMode::FACE: {
-            setDefaultProfilePreset(PresetMode::FAST_DENSITY);
+            setRvc2ProfilePreset(PresetMode::DENSITY);  // FACE is DENSITY plus settings that follow
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(true);
             initialConfig->setSubpixel(true);
@@ -302,8 +324,9 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
 
             setPostProcessingHardwareResources(3, 3);
         } break;
+
         case PresetMode::HIGH_DETAIL: {
-            setDefaultProfilePreset(PresetMode::FAST_ACCURACY);
+            setRvc2ProfilePreset(PresetMode::ACCURACY);  // HIGH_DETAIL is ACCURACY plus settings that follow
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(true);
             initialConfig->setSubpixel(true);
@@ -337,8 +360,9 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
 
             setPostProcessingHardwareResources(3, 3);
         } break;
+
         case PresetMode::ROBOTICS: {
-            setDefaultProfilePreset(PresetMode::FAST_DENSITY);
+            setRvc2ProfilePreset(PresetMode::DENSITY);  // ROBOTICS is DENSITY plus settings that follow
             initialConfig->setLeftRightCheck(true);
             initialConfig->setExtendedDisparity(false);
             initialConfig->setSubpixel(true);
@@ -372,6 +396,94 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
 
             setPostProcessingHardwareResources(3, 3);
         } break;
+
+        default:
+            DAI_CHECK_V(false, "Unsupported preset mode: {}", static_cast<int>(mode));
+            break;
+    }
+}
+
+void StereoDepth::setRvc4ProfilePreset(PresetMode mode) {
+    switch(mode) {
+        case PresetMode::DENSITY:
+        case PresetMode::FAST_DENSITY:
+        case PresetMode::DEFAULT: {
+            initialConfig->algorithmControl.enableSwLeftRightCheck = true;
+
+            initialConfig->censusTransform.noiseThresholdOffset = 0;
+            initialConfig->censusTransform.noiseThresholdScale = -40;
+
+            initialConfig->confidenceMetrics.flatnessConfidenceThreshold = 4;
+            initialConfig->confidenceMetrics.flatnessConfidenceWeight = 4;
+            initialConfig->confidenceMetrics.motionVectorConfidenceWeight = 0;
+            initialConfig->confidenceMetrics.occlusionConfidenceWeight = 28;
+
+            initialConfig->costAggregation.p1Config.defaultValue = 20;
+            initialConfig->costAggregation.p1Config.enableAdaptive = false;
+            initialConfig->costAggregation.p2Config.defaultValue = 85;
+            initialConfig->costAggregation.p2Config.enableAdaptive = false;
+
+            initialConfig->costMatching.enableSwConfidenceThresholding = false;
+
+            initialConfig->postProcessing.adaptiveMedianFilter.enable = true;
+            initialConfig->postProcessing.brightnessFilter.maxBrightness = 256;
+            initialConfig->postProcessing.brightnessFilter.minBrightness = -1;
+            initialConfig->postProcessing.decimationFilter.decimationFactor = 1;
+            initialConfig->postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::PIXEL_SKIPPING;
+            initialConfig->postProcessing.holeFilling.enable = false;
+            initialConfig->postProcessing.spatialFilter.enable = false;
+            initialConfig->postProcessing.speckleFilter.enable = true;
+            initialConfig->postProcessing.speckleFilter.speckleRange = 200;
+
+            initialConfig->setConfidenceThreshold(20);
+            initialConfig->setLeftRightCheckThreshold(4);
+            initialConfig->setMedianFilter(MedianFilter::KERNEL_5x5);
+            initialConfig->setExtendedDisparity(true);
+            initialConfig->setLeftRightCheck(false);
+        } break;
+
+        case PresetMode::ACCURACY:
+        case PresetMode::FAST_ACCURACY:
+        case PresetMode::HIGH_DETAIL:
+        case PresetMode::FACE:
+        case PresetMode::ROBOTICS: {
+            initialConfig->algorithmControl.enableSwLeftRightCheck = false;
+
+            initialConfig->censusTransform.noiseThresholdOffset = 0;
+            initialConfig->censusTransform.noiseThresholdScale = 84;
+
+            initialConfig->confidenceMetrics.flatnessConfidenceThreshold = 4;
+            initialConfig->confidenceMetrics.flatnessConfidenceWeight = 2;
+            initialConfig->confidenceMetrics.motionVectorConfidenceWeight = 16;
+            initialConfig->confidenceMetrics.occlusionConfidenceWeight = 14;
+
+            initialConfig->costAggregation.p1Config.defaultValue = 16;
+            initialConfig->costAggregation.p1Config.enableAdaptive = false;
+            initialConfig->costAggregation.p2Config.defaultValue = 65;
+            initialConfig->costAggregation.p2Config.enableAdaptive = false;
+
+            initialConfig->costMatching.enableSwConfidenceThresholding = false;
+
+            initialConfig->postProcessing.adaptiveMedianFilter.enable = true;
+            initialConfig->postProcessing.decimationFilter.decimationFactor = 1;
+            initialConfig->postProcessing.decimationFilter.decimationMode = StereoDepthConfig::PostProcessing::DecimationFilter::DecimationMode::NON_ZERO_MEAN;
+            initialConfig->postProcessing.holeFilling.enable = true;
+            initialConfig->postProcessing.holeFilling.fillConfidenceThreshold = 251;
+            initialConfig->postProcessing.holeFilling.highConfidenceThreshold = 240;
+            initialConfig->postProcessing.holeFilling.minValidDisparity = 1;
+            initialConfig->postProcessing.spatialFilter.enable = false;
+            initialConfig->postProcessing.speckleFilter.enable = true;
+            initialConfig->postProcessing.speckleFilter.speckleRange = 200;
+
+            initialConfig->setConfidenceThreshold(97);
+            initialConfig->setMedianFilter(MedianFilter::MEDIAN_OFF);
+            initialConfig->setExtendedDisparity(true);
+            initialConfig->setLeftRightCheck(true);
+        } break;
+
+        default:
+            DAI_CHECK_V(false, "Unsupported preset mode: {}", static_cast<int>(mode));
+            break;
     }
 }
 

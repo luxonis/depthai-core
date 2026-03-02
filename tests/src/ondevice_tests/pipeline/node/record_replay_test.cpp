@@ -100,11 +100,11 @@ TEST_CASE("RecordVideo raw color") {
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::BGR888i);
+    auto* camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::BGR888i);
 
     auto recordNode = p.create<dai::node::RecordVideo>();
     recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_color.mcap"));
-    recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_color.mp4"));
+    recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_color.avi"));
 
     camOut->link(recordNode->input);
 
@@ -117,35 +117,34 @@ TEST_CASE("RecordVideo raw color") {
     p.stop();
 
     REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_color.mcap")));
-    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_color.mp4")));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_color.avi")));
 }
 
-// TODO: uncomment when GRAY8 camera output is supported on RVC4
-// TEST_CASE("RecordVideo raw gray") {
-//     TestHelper helper;
-//
-//     dai::Pipeline p;
-//
-//     auto cam = p.create<dai::node::Camera>()->build();
-//     auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::GRAY8);
-//
-//     auto recordNode = p.create<dai::node::RecordVideo>();
-//     recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap"));
-//     recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.mp4"));
-//
-//     camOut->link(recordNode->input);
-//
-//     auto camQ = camOut->createOutputQueue();
-//
-//     p.start();
-//
-//     std::this_thread::sleep_for(5s);
-//
-//     p.stop();
-//
-//     REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap")));
-//     REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.mp4")));
-// }
+TEST_CASE("RecordVideo raw gray") {
+    TestHelper helper;
+
+    dai::Pipeline p;
+
+    auto cam = p.create<dai::node::Camera>()->build();
+    auto* camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::GRAY8);
+
+    auto recordNode = p.create<dai::node::RecordVideo>();
+    recordNode->setRecordMetadataFile(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap"));
+    recordNode->setRecordVideoFile(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.avi"));
+
+    camOut->link(recordNode->input);
+
+    auto camQ = camOut->createOutputQueue();
+
+    p.start();
+
+    std::this_thread::sleep_for(5s);
+
+    p.stop();
+
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("metadata_gray.mcap")));
+    REQUIRE(std::filesystem::exists(std::filesystem::path(helper.testFolder).append("recording_video").append("video_gray.avi")));
+}
 
 TEST_CASE("RecordVideo encoded h264") {
     TestHelper helper;
@@ -153,7 +152,7 @@ TEST_CASE("RecordVideo encoded h264") {
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::NV12);
+    auto* camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();
@@ -183,7 +182,7 @@ TEST_CASE("RecordVideo encoded mjpeg") {
     dai::Pipeline p;
 
     auto cam = p.create<dai::node::Camera>()->build();
-    auto camOut = cam->requestOutput({1280, 960}, dai::ImgFrame::Type::NV12);
+    auto* camOut = cam->requestOutput({1280, 720}, dai::ImgFrame::Type::NV12);
     auto videoEncoder = p.create<dai::node::VideoEncoder>();
 
     auto recordNode = p.create<dai::node::RecordVideo>();
@@ -218,7 +217,7 @@ TEST_CASE("MockIn Camera") {
     replayNode->setLoop(false);
 
     auto cam = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, *replayNode);
-    auto camOut = cam->requestOutput({2016, 1520});
+    auto* camOut = cam->requestOutput({2016, 1520});
 
     auto camQ = camOut->createOutputQueue();
     auto replayQ = replayNode->out.createOutputQueue();

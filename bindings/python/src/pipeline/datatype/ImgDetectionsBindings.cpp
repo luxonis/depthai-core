@@ -66,6 +66,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("setBoundingBox", &ImgDetection::setBoundingBox, py::arg("boundingBox"))
         .def("getBoundingBox", &ImgDetection::getBoundingBox)
         .def("setOuterBoundingBox", &ImgDetection::setOuterBoundingBox, py::arg("xmin"), py::arg("ymin"), py::arg("xmax"), py::arg("ymax"))
+        .def("getOuterBoundingBox", &ImgDetection::getOuterBoundingBox, DOC(dai, ImgDetection, getOuterBoundingBox))
         .def("setKeypoints", py::overload_cast<const KeypointsList>(&ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("setKeypoints", py::overload_cast<const std::vector<Keypoint>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("setKeypoints",
@@ -75,6 +76,8 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("setKeypoints", py::overload_cast<const std::vector<Point3f>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("setKeypoints", py::overload_cast<const std::vector<Point2f>>(&ImgDetection::setKeypoints), py::arg("keypoints"))
         .def("getKeypoints", &ImgDetection::getKeypoints, DOC(dai, ImgDetection, getKeypoints))
+        .def("getKeypoints2f", &ImgDetection::getKeypoints2f, DOC(dai, ImgDetection, getKeypoints2f))
+        .def("getKeypoints3f", &ImgDetection::getKeypoints3f, DOC(dai, ImgDetection, getKeypoints3f))
         .def("setEdges", &ImgDetection::setEdges, py::arg("edges"))
         .def("getEdges", &ImgDetection::getEdges, DOC(dai, ImgDetection, getEdges))
         .def("getCenterX", &dai::ImgDetection::getCenterX)
@@ -133,8 +136,13 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &dai::ImgDetectionsT<dai::ImgDetection>::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("getTransformation", [](ImgDetections& msg) { return msg.transformation; })
-        .def("setTransformation", [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; })
+        .def(
+            "getTransformation", [](ImgDetections& msg) { return msg.transformation; }, DOC(dai, ImgFrame, getTransformation))
+        .def(
+            "setTransformation",
+            [](ImgDetections& msg, const std::optional<ImgTransformation>& transformation) { msg.transformation = transformation; },
+            py::arg("transformation"),
+            DOC(dai, ImgFrame, setTransformation))
         .def("getSegmentationMaskWidth", &ImgDetections::getSegmentationMaskWidth, DOC(dai, ImgDetectionsT, getSegmentationMaskWidth))
         .def("getSegmentationMaskHeight", &ImgDetections::getSegmentationMaskHeight, DOC(dai, ImgDetectionsT, getSegmentationMaskHeight))
         .def("setSegmentationMask",
