@@ -35,6 +35,18 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
     gate->output.link(dynamicCalibration->syncInput);
     cameraLeft->setNumFramesPools(6, 6, 6);
     cameraRight->setNumFramesPools(6, 6, 6);
+
+    dynamicCalibrationCommandQueue.link(dynamicCalibration->inputControl);
+    gateControlQueue.link(gate->inputControl);
+
+    dynamicCalibration->calibrationOutput.link(dynamicCalibrationQueue);
+    dynamicCalibration->coverageOutput.link(coverageQueue);
+    dynamicCalibration->metricsOutput.link(metricsQueue);
+    gate->output.link(gateOutput);
+
+    gate->initialConfig->open = false;
+    gate->initialConfig->fps = GATE_FPS_DEFAULT;
+    dynamicCalibration->syncInput.setMaxSize(std::max(initialConfig->validationSetSize, 2));
     return std::static_pointer_cast<AutoCalibration>(shared_from_this());
 }
 
@@ -54,30 +66,18 @@ void AutoCalibration::postBuildStage() {
 }
 
 void AutoCalibration::loadData(unsigned int numImages) {
-    coverageQueue->tryGetAll<dai::CoverageData>();
-    gateControlQueue->send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
+    gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
+    coverageQueue.tryGetAll<dai::CoverageData>();
     for(unsigned int i = 0; i < numImages; i++) {
-        dynamicCalibrationCommandQueue->send(DCC::loadImage());
-        coverageQueue->get<dai::CoverageData>();  // wait until the data are loaded
+        dynamicCalibrationCommandQueue.send(DCC::loadImage());
+        coverageQueue.get<dai::CoverageData>();  // wait until the data are loaded
     }
-    gateControlQueue->send(dai::GateControl::closeGate());
+    gateControlQueue.send(dai::GateControl::closeGate());
 }
 
 std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration) {
-    dynamicCalibrationCommandQueue->send(DCC::computeCalibrationMetrics(*calibration));
-    return metricsQueue->get<dai::CalibrationMetrics>();
-}
-
-void AutoCalibration::buildStage1() {
-    dynamicCalibrationQueue = dynamicCalibration->calibrationOutput.createOutputQueue();
-    coverageQueue = dynamicCalibration->coverageOutput.createOutputQueue();
-    metricsQueue = dynamicCalibration->metricsOutput.createOutputQueue();
-    dynamicCalibrationCommandQueue = dynamicCalibration->inputControl.createInputQueue();
-    gateControlQueue = gate->inputControl.createInputQueue();
-    gateOutput = gate->output.createOutputQueue();
-    gate->initialConfig->open = false;
-    gate->initialConfig->fps = GATE_FPS_DEFAULT;
-    dynamicCalibration->syncInput.setMaxSize(std::max(initialConfig->validationSetSize, 2));
+    dynamicCalibrationCommandQueue.send(DCC::computeCalibrationMetrics(*calibration));
+    return metricsQueue.get<dai::CalibrationMetrics>();
 }
 
 void AutoCalibration::buildInternal() {
@@ -88,23 +88,23 @@ void AutoCalibration::buildInternal() {
 return calibration from DynamicCalibration node
 **/
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration) {
-    gateControlQueue->send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
+    gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     for(unsigned int i = 0; i < maxNumIteration; i++) {
-        dynamicCalibrationCommandQueue->send(DCC::startCalibration());
+        dynamicCalibrationCommandQueue.send(DCC::startCalibration());
         for(unsigned int numLoadedImages = 0; numLoadedImages < initialConfig->maxImagesPerReacalibration; numLoadedImages++) {
-            auto dynCalibrationResult = dynamicCalibrationQueue->get<dai::DynamicCalibrationResult>();
-            coverageQueue->tryGet<dai::CoverageData>();
+            auto dynCalibrationResult = dynamicCalibrationQueue.get<dai::DynamicCalibrationResult>();
+            coverageQueue.tryGet<dai::CoverageData>();
             if(dynCalibrationResult->calibrationData) {
                 logger->warn("dynCalibrationResult->calibrationData.value().dataConfidence {}", dynCalibrationResult->calibrationData.value().dataConfidence);
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
-                    gateControlQueue->send(dai::GateControl::closeGate());
+                    gateControlQueue.send(dai::GateControl::closeGate());
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);
                 }
             }
         }
-        dynamicCalibrationCommandQueue->send(DCC::resetData());
+        dynamicCalibrationCommandQueue.send(DCC::resetData());
     }
-    gateControlQueue->send(dai::GateControl::closeGate());
+    gateControlQueue.send(dai::GateControl::closeGate());
     return nullptr;
 }
 
@@ -118,11 +118,11 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
 bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
     unsigned int numIterations = 0;
     while(numIterations <= initialConfig->maxIterations && isRunning()) {
-        dynamicCalibrationCommandQueue->send(DCC::resetData());
+        dynamicCalibrationCommandQueue.send(DCC::resetData());
         if(initialConfig->validationSetSize == 0) {
             auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT);
             if(newCalibration) {
-                dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
+                dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
                 output.send(resultOutput);
                 return true;
@@ -135,7 +135,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
             logger->warn("metrics->calibrationConfidence {}", metrics->calibrationConfidence);
             if(metrics->dataConfidence > initialConfig->dataConfidenceThreshold) {
                 if(metrics->calibrationConfidence > initialConfig->calibrationConfidenceThreshold) {
-                    dynamicCalibrationCommandQueue->send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
+                    dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
                     auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
                     output.send(resultOutput);
                     return true;
@@ -172,8 +172,8 @@ bool AutoCalibration::validateIncomingData() {
     bool timedout = true;
 
     while(isRunning()) {
-        gateControlQueue->send(dai::GateControl::openGate(1, gate->initialConfig->fps));
-        auto messageGroup = gateOutput->get<MessageGroup>(waitingTime, timedout);
+        gateControlQueue.send(dai::GateControl::openGate(1, gate->initialConfig->fps));
+        auto messageGroup = gateOutput.get<MessageGroup>(waitingTime, timedout);
 
         if(!timedout && messageGroup) {
             if(!messageGroup->get<dai::ImgFrame>(leftInputName) || !messageGroup->get<dai::ImgFrame>(rightInputName)) {
