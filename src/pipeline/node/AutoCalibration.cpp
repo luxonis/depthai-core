@@ -14,6 +14,34 @@ namespace node {
 #define BYTES_PES_SECOND_LIMIT_DEFAULT GATE_FPS_DEFAULT * 1280 * 800 * 2
 #define PACKET_SIZE_DEFAULT 100000
 
+void AutoCalibration::loggReport(const Report& report, unsigned int iteration) const {
+    // Define a lambda or a small helper to route to the correct spdlog method
+    auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
+
+    log("====== AutoCalibration iteration {} / {} ========", iteration, initialConfig->maxIterations);
+    log("dataConfidence          {:.4f}     {:.2f}", report.dataConfidence, initialConfig->dataConfidenceThreshold);
+    log("calibrationConfidence   {:.4f}     {:.2f}", report.calibrationConfidence, initialConfig->calibrationConfidenceThreshold);
+
+    if(report.calibrationUpdated) {
+        log("Calibration successfully updated");
+        return;
+    }
+
+    if(report.recalibrating) {
+        log("recalibration  {}", report.recalibrationPassed ? "Passed" : "Failed");
+        if(report.recalibrationPassed) {
+            log("    number of iterations  {}", report.numIterationPerRecalibration);
+            log("    rotation difference   {:.4f}  {:.4f}  {:.4f}",
+                report.rotationDifference.at(0),
+                report.rotationDifference.at(1),
+                report.rotationDifference.at(2));
+            log("    dataQuality   {:.4f}", report.dataQualityAfterRecalibration);
+        }
+    } else {
+        log("Recalibration  not triggered");
+    }
+}
+
 AutoCalibration::~AutoCalibration() = default;
 
 AutoCalibration::Properties& AutoCalibration::getProperties() {
@@ -99,7 +127,7 @@ void AutoCalibration::buildInternal() {
 /**
 return calibration from DynamicCalibration node
 **/
-std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration) {
+std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration, Report& report) {
     gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     for(unsigned int i = 0; i < maxNumIteration; i++) {
         dynamicCalibrationCommandQueue.send(DCC::startCalibration());
@@ -107,15 +135,20 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             auto dynCalibrationResult = dynamicCalibrationQueue.get<dai::DynamicCalibrationResult>();
             coverageQueue.tryGet<dai::CoverageData>();
             if(dynCalibrationResult->calibrationData) {
-                logger->warn("dynCalibrationResult->calibrationData.value().dataConfidence {}", dynCalibrationResult->calibrationData.value().dataConfidence);
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue.send(dai::GateControl::closeGate());
+                    report.numIterationPerRecalibration = i;
+                    report.dataQualityAfterRecalibration = dynCalibrationResult->calibrationData.value().dataConfidence;
+                    report.recalibrationPassed = true;
+                    report.rotationDifference = dynCalibrationResult->calibrationData.value().calibrationDifference.rotationChange;
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);
                 }
             }
         }
         dynamicCalibrationCommandQueue.send(DCC::resetData());
     }
+    report.recalibrationPassed = false;
+    report.numIterationPerRecalibration = maxNumIteration;
     gateControlQueue.send(dai::GateControl::closeGate());
     return nullptr;
 }
@@ -130,34 +163,40 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
 bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
     unsigned int numIterations = 0;
     while(numIterations <= initialConfig->maxIterations && isRunning()) {
+        Report report;
         dynamicCalibrationCommandQueue.send(DCC::resetData());
         if(initialConfig->validationSetSize == 0) {
-            auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT);
+            auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT, report);
             if(newCalibration) {
                 dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
                 output.send(resultOutput);
+                report.calibrationUpdated = true;
+                loggReport(report, numIterations);
                 return true;
             }
         } else {
             loadData(initialConfig->validationSetSize);
             auto metrics = getMetrics(calibration);
-            logger->warn("metrics->dataConfidence {}", metrics->dataConfidence);
-            logger->warn("initialConfig->dataConfidenceThreshold {}", initialConfig->dataConfidenceThreshold);
-            logger->warn("metrics->calibrationConfidence {}", metrics->calibrationConfidence);
+            report.dataConfidence = metrics->dataConfidence;
+            report.calibrationConfidence = metrics->calibrationConfidence;
             if(metrics->dataConfidence > initialConfig->dataConfidenceThreshold) {
                 if(metrics->calibrationConfidence > initialConfig->calibrationConfidenceThreshold) {
                     dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
                     auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
                     output.send(resultOutput);
+                    report.calibrationUpdated = true;
+                    loggReport(report, numIterations);
                     return true;
                 }
-                auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT);
+                auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT, report);
+                report.recalibrating = true;
                 if(newCalibration) {
                     calibration = std::move(newCalibration);
                 }
             }
         }
+        loggReport(report, numIterations);
         ++numIterations;
     }
 
