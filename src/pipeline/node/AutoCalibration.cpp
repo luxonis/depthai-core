@@ -24,6 +24,17 @@ void AutoCalibration::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
+void addPoolsForAutoCalibration(const std::shared_ptr<Camera>& camera, int additionalPools) {
+    auto numRawPool = camera->getRawNumFramesPool();
+    auto numIspPool = camera->getIspNumFramesPool();
+    auto numOutputsPool = camera->getOutputsNumFramesPool();
+    if(numOutputsPool) {
+        camera->setNumFramesPools(numRawPool + additionalPools, numIspPool + additionalPools, numOutputsPool.value() + additionalPools);
+    } else {
+        camera->setNumFramesPools(numRawPool + additionalPools, numIspPool + additionalPools, 6);
+    }
+}
+
 std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Camera>& cameraLeft, const std::shared_ptr<Camera>& cameraRight) {
     sync->setRunOnHost(false);
     gate->setRunOnHost(false);
@@ -33,8 +44,9 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
     outputCameraRight->link(right);
     sync->out.link(gate->input);
     gate->output.link(dynamicCalibration->syncInput);
-    cameraLeft->setNumFramesPools(6, 6, 6);
-    cameraRight->setNumFramesPools(6, 6, 6);
+
+    addPoolsForAutoCalibration(cameraLeft, 3);
+    addPoolsForAutoCalibration(cameraRight, 3);
 
     dynamicCalibrationCommandQueue.link(dynamicCalibration->inputControl);
     gateControlQueue.link(gate->inputControl);
