@@ -640,7 +640,6 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
         return {nullptr, nullptr};
     }
 
-    bool validStereoIntrinsics = false;
     auto hasIntrinsicsForPair = [&stereoSockets](const CalibrationHandler& calibration) {
         calibration.getDefaultIntrinsics(stereoSockets[0].left);
         calibration.getDefaultIntrinsics(stereoSockets[0].right);
@@ -649,7 +648,6 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
 
     try {
         hasIntrinsicsForPair(defaultDevice->getCalibration());
-        validStereoIntrinsics = true;
     } catch(const std::exception& ex) {
         Logging::getInstance().logger.info(
             "AutoCalibration precheck: calibration source 'getCalibration' is invalid for stereo pair: {}", ex.what());
