@@ -397,6 +397,15 @@ with contextlib.ExitStack() as stack:
             for outputName in outputNames:
 
                 if PCL_SOCKET in outputName:
+                    ########################################################################
+                    # Do processing of pointclouds here
+                    ########################################################################
+
+                    msg = latestFrameGroup[outputName]
+                    assert isinstance(msg, dai.PointCloudData)
+                    points, colors = msg.getPointsRGB()
+                    # Do something with the point cloud
+                    # For example, we can filter out points that are too close to the camera
                     continue
 
                 # Find out which camera socket this output belongs to
