@@ -3,6 +3,8 @@
 #include <spdlog/spdlog.h>
 
 #include <filesystem>
+#include <cmath>
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 
@@ -12,7 +14,9 @@
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
+#include "depthai/pipeline/node/MessageDemux.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
+#include "depthai/pipeline/node/Sync.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
@@ -44,7 +48,12 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
     return roundDown(numToRound + multiple - 1UL, multiple);
 }
 
-Node::Output* setupHolisticRecordCamera(std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight) {
+Node::Output* setupHolisticRecordCamera(std::shared_ptr<dai::node::Camera> cam,
+                                        Pipeline& pipeline,
+                                        bool legacy,
+                                        float recordingFps,
+                                        size_t& camWidth,
+                                        size_t& camHeight) {
     size_t requestWidth = cam->getMaxRequestedWidth();
     size_t requestHeight = cam->getMaxRequestedHeight();
     size_t width = cam->getMaxWidth();
@@ -85,7 +94,11 @@ Node::Output* setupHolisticRecordCamera(std::shared_ptr<dai::node::Camera> cam, 
     }
     camWidth = width;
     camHeight = height;
-    return cam->requestOutput(std::make_pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
+    if(recordingFps > 0.0f) {
+        return cam->requestOutput(
+            std::pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, recordingFps);
+    }
+    return cam->requestOutput(std::pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
 bool setupHolisticRecord(Pipeline pipeline,
@@ -99,6 +112,37 @@ bool setupHolisticRecord(Pipeline pipeline,
         if(!std::filesystem::is_directory(recordPath)) {
             throw std::runtime_error("Record output path " + recordPath.string() + " is not a directory.");
         }
+        float maxRequestedFps = 0.0f;
+        const bool syncCameraOutputs = recordConfig.syncCameraOutputs;
+        std::shared_ptr<dai::node::Sync> sync = nullptr;
+        std::shared_ptr<dai::node::MessageDemux> demux = nullptr;
+        if(syncCameraOutputs) {
+            for(auto& node : sources) {
+                DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+                auto cameraNode = std::dynamic_pointer_cast<node::Camera>(node);
+                auto colorCameraNode = std::dynamic_pointer_cast<node::ColorCamera>(node);
+                auto monoCameraNode = std::dynamic_pointer_cast<node::MonoCamera>(node);
+                if(cameraNode) {
+                    maxRequestedFps = std::max(maxRequestedFps, cameraNode->getMaxRequestedFps());
+                } else if(colorCameraNode) {
+                    if(colorCameraNode->getFps() > 0.0f) {
+                        maxRequestedFps = std::max(maxRequestedFps, colorCameraNode->getFps());
+                    }
+                } else if(monoCameraNode) {
+                    if(monoCameraNode->getFps() > 0.0f) {
+                        maxRequestedFps = std::max(maxRequestedFps, monoCameraNode->getFps());
+                    }
+                }
+                DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+            }
+            sync = pipeline.create<dai::node::Sync>();
+            demux = pipeline.create<dai::node::MessageDemux>();
+            sync->out.link(demux->input);
+            if(maxRequestedFps > 0.0f) {
+                sync->setSyncThreshold(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(1.5 / (double)maxRequestedFps)));
+            }
+        }
+
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
@@ -115,9 +159,13 @@ bool setupHolisticRecord(Pipeline pipeline,
                 Node::Output* output;
                 size_t camWidth = 1920, camHeight = 1080;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
-                    output = setupHolisticRecordCamera(std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, camWidth, camHeight);
+                    output = setupHolisticRecordCamera(
+                        std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, syncCameraOutputs ? maxRequestedFps : 0.0f, camWidth, camHeight);
                 } else {
                     output = &nodeS->getRecordOutput();
+                }
+                if(syncCameraOutputs) {
+                    output->link(sync->inputs[nodeName]);
                 }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
@@ -135,19 +183,30 @@ bool setupHolisticRecord(Pipeline pipeline,
                             auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
                             maxOutputFrameSize = std::get<0>(cam->getIspSize()) * std::get<1>(cam->getIspSize()) * 3;
                         }
-                        DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
                         auto imageManip = pipeline.create<dai::node::ImageManip>();
                         imageManip->initialConfig->setFrameType(ImgFrame::Type::NV12);
                         imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
 
-                        output->link(imageManip->inputImage);
+                        if(syncCameraOutputs) {
+                            demux->outputs[nodeName].link(imageManip->inputImage);
+                        } else {
+                            output->link(imageManip->inputImage);
+                        }
                         imageManip->out.link(videnc->input);
                     } else {
-                        output->link(videnc->input);
+                        if(syncCameraOutputs) {
+                            demux->outputs[nodeName].link(videnc->input);
+                        } else {
+                            output->link(videnc->input);
+                        }
                     }
                     videnc->out.link(recordNode->input);
                 } else {
-                    output->link(recordNode->input);
+                    if(syncCameraOutputs) {
+                        demux->outputs[nodeName].link(recordNode->input);
+                    } else {
+                        output->link(recordNode->input);
+                    }
                 }
             } else {
                 auto recordNode = pipeline.create<dai::node::RecordMetadataOnly>();
@@ -155,6 +214,7 @@ bool setupHolisticRecord(Pipeline pipeline,
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
                 nodeS->getRecordOutput().link(recordNode->input);
             }
+            DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
         }
         outFilenames["record_config"] = platform::joinPaths(recordPath, deviceId + "_record_config.json");
         outFilenames["camera_info"] = platform::joinPaths(recordPath, deviceId + "_camera_info.json");
