@@ -26,7 +26,7 @@ TEST_CASE("Undistortion disabled on old EEPROM") {
     auto socket = dai::CameraBoardSocket::CAM_B;
 
     // Force <= 85 degrees FOV
-    eeprom.cameraData[socket].intrinsicMatrix[0][0] = 1000000.0f; // huge focal length <=> small fov
+    eeprom.cameraData[socket].intrinsicMatrix[0][0] = 1000000.0f;  // huge focal length <=> small fov
     eeprom.cameraData[socket].width = 640;
     eeprom.cameraData[socket].distortionCoeff = {3.0f, 1.0f, 4.0f, 1.0f, 5.0f, 9.0f, 2.0f, 6.0f, 5.0f, 3.0f, 5.0f, 8.0f, 9.0f, 7.0f};
 

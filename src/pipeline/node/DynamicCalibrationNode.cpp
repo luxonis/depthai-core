@@ -265,24 +265,45 @@ dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& sr
     return quality;
 }
 
-void DynamicCalibration::setCalibration(CalibrationHandler& handler) {
-    logger->info("Applying calibration to device");
+void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash) {
+    logger->trace("Applying calibration to device");
     device->setCalibration(handler);
+    if(flash) {
+        device->flashCalibration(handler);
+    }
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
-    pimplDCL->sensorA->setCalibration(calibA);
-    pimplDCL->sensorB->setCalibration(calibB);
+    pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorA, calibA);
+    pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorB, calibB);
+}
+
+void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
+    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
+    auto dataConfidence = pimplDCL->dynCalibImpl.computeDataConfidence(pimplDCL->sensorA, pimplDCL->sensorB);
+    auto calibrationConfidence = pimplDCL->dynCalibImpl.computeCalibrationConfidence(calibA, calibB, pimplDCL->sensorA, pimplDCL->sensorB);
+    auto metrics = std::make_shared<CalibrationMetrics>();
+    if(!dataConfidence.passed()) {
+        metrics->dataConfidence = 0.;
+    } else {
+        metrics->dataConfidence = dataConfidence.value;
+    }
+    if(!calibrationConfidence.passed()) {
+        metrics->calibrationConfidence = 0.;
+    } else {
+        metrics->calibrationConfidence = calibrationConfidence.value;
+    }
+    metricsOutput.send(metrics);
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool force) {
     dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode);
-    logger->info("Running calibration quality check (force={} mode={})", force, static_cast<int>(pm));
+    logger->trace("Running calibration quality check (force={} mode={})", force, static_cast<int>(pm));
 
     auto dclResult = pimplDCL->dynCalibImpl.checkCalibration(pimplDCL->sensorA, pimplDCL->sensorB, pm);
 
     if(!dclResult.passed()) {
         auto result = std::make_shared<CalibrationQuality>();
         result->info = dclResult.errorMessage();
-        logger->info("WARNING: Quality check failed: {}", dclResult.errorMessage());
+        logger->trace("WARNING: Quality check failed: {}", dclResult.errorMessage());
 
         qualityOutput.send(result);
         return DynamicCalibration::ErrorCode::QUALITY_CHECK_FAILED;
@@ -290,7 +311,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
 
     auto result = std::make_shared<CalibrationQuality>(calibQualityfromDCL(dclResult.value));
     result->info = dclResult.errorMessage();
-    logger->info("Quality check passed.");
+    logger->trace("Quality check passed.");
 
     qualityOutput.send(result);
 
@@ -299,11 +320,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
 
 DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler, const bool force) {
     dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode);
-    logger->info("Running calibration (force={} mode={})", force, static_cast<int>(pm));
+    logger->trace("Running calibration (force={} mode={})", force, static_cast<int>(pm));
     auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(pimplDCL->sensorA, pimplDCL->sensorB, pm);
     if(!dclResult.passed()) {
         auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
-        logger->info("WARNING: Calibration failed: {}", dclResult.errorMessage());
+        logger->trace("WARNING: Calibration failed: {}", dclResult.errorMessage());
 
         calibrationOutput.send(result);
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
@@ -329,10 +350,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     resultData.newCalibration       = newCalibrationHandler;
     resultData.currentCalibration   = currentHandler;
     resultData.calibrationDifference = qualityData;
+    resultData.dataConfidence = dclResult.value.dataConfidence;
 
     auto result = std::make_shared<DynamicCalibrationResult>(resultData, dclResult.errorMessage());
     // clang-format on
-    logger->info(
+    logger->trace(
         "Calibration successful. Rotation Δ=({}, {}, {})", qualityData.rotationChange[0], qualityData.rotationChange[1], qualityData.rotationChange[2]);
     calibrationOutput.send(result);
 
@@ -342,7 +364,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocking) {
     std::shared_ptr<dai::MessageGroup> inSyncGroup;
-    logger->info("Attempting to load stereo image pair (blocking={})", blocking);
+    logger->trace("Attempting to load stereo image pair (blocking={})", blocking);
     if(!blocking) {
         inSyncGroup = syncInput.tryGet<dai::MessageGroup>();
     } else {
@@ -356,7 +378,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     auto rightFrame = inSyncGroup->get<dai::ImgFrame>(rightInputName);
 
     if(!leftFrame || !rightFrame) {
-        logger->info("WARNING: Missing image(s) in MessageGroup (left={}, right={})", leftFrame ? "ok" : "missing", rightFrame ? "ok" : "missing");
+        logger->trace("WARNING: Missing image(s) in MessageGroup (left={}, right={})", leftFrame ? "ok" : "missing", rightFrame ? "ok" : "missing");
         return DynamicCalibration::ErrorCode::MISSING_IMAGE;
     }
 
@@ -364,12 +386,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     cv::Mat leftCvFrame = leftFrame->getCvFrame();
     cv::Mat rightCvFrame = rightFrame->getCvFrame();
 
-    logger->info("Loaded stereo image pair: {}x{} and {}x{} @ timestamp={}",
-                 leftFrame->getWidth(),
-                 leftFrame->getHeight(),
-                 rightFrame->getWidth(),
-                 rightFrame->getHeight(),
-                 timestamp);
+    logger->trace("Loaded stereo image pair: {}x{} and {}x{} @ timestamp={}",
+                  leftFrame->getWidth(),
+                  leftFrame->getHeight(),
+                  rightFrame->getWidth(),
+                  rightFrame->getHeight(),
+                  timestamp);
 
     pimplDCL->dynCalibImpl.loadStereoImagePair(
         DclUtils::cvMatToImageData(leftCvFrame), DclUtils::cvMatToImageData(rightCvFrame), pimplDCL->sensorA, pimplDCL->sensorB, timestamp);
@@ -395,7 +417,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     coverageResult->coverageAcquired = coverage.coverageAcquired;
     coverageResult->dataAcquired = coverage.dataAcquired;
 
-    logger->info("Computing coverage");
+    logger->trace("Computing coverage");
 
     coverageOutput.send(coverageResult);
 
@@ -403,7 +425,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device> daiDevice) {
-    logger->info("Initializing DynamicCalibration pipeline for device: {}", daiDevice->getDeviceId());
+    logger->trace("Initializing DynamicCalibration pipeline for device: {}", daiDevice->getDeviceId());
 
     auto inSyncGroup = syncInput.get<dai::MessageGroup>();
     if(!inSyncGroup) {
@@ -425,13 +447,13 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
 
-    logger->info("Converting dai calibration to dcl");
+    logger->trace("Converting dai calibration to dcl");
 
     calibrationHandler = daiDevice->getCalibration();
     auto eepromData = calibrationHandler.getEepromData();
     auto platform = daiDevice->getPlatform();
     if(platform == dai::Platform::RVC2 && !eepromData.stereoEnableDistortionCorrection && !oldCalibrationWarningIssued) {
-        logger->info("The calibration on the device is old (distortion correction is disabled), for optimal performance full re-calibration is recommended!");
+        logger->trace("The calibration on the device is old (distortion correction is disabled), for optimal performance full re-calibration is recommended!");
         oldCalibrationWarningIssued = true;
     }
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, resolutionA, resolutionB);
@@ -441,7 +463,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     dcl::resolution_t resolutionDclA{static_cast<unsigned>(resolutionA.first), static_cast<unsigned>(resolutionA.second)};
     dcl::resolution_t resolutionDclB{static_cast<unsigned>(resolutionB.first), static_cast<unsigned>(resolutionB.second)};
 
-    logger->info("Added sensors to dynCalibImpl");
+    logger->trace("Added sensors to dynCalibImpl");
 
     pimplDCL->sensorA = pimplDCL->dynCalibImpl.addSensor(pimplDCL->device, calibA, resolutionDclA);
     pimplDCL->sensorB = pimplDCL->dynCalibImpl.addSensor(pimplDCL->device, calibB, resolutionDclB);
@@ -462,20 +484,20 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     // Calibrate
     if(std::holds_alternative<DC::Commands::Calibrate>(cmd)) {
         const auto& c = std::get<DC::Commands::Calibrate>(cmd);
-        logger->info("Received Calibrate Command: force={}", c.force);
+        logger->trace("Received Calibrate Command: force={}", c.force);
         calibrationShouldRun = false;  // stop the calibration if it is running
         return runCalibration(calibrationHandler, c.force);
     }
     // Quality check
     else if(std::holds_alternative<DC::Commands::CalibrationQuality>(cmd)) {
         const auto& c = std::get<DC::Commands::CalibrationQuality>(cmd);
-        logger->info("Received CalibrationQuality Command: force={}", c.force);
+        logger->trace("Received CalibrationQuality Command: force={}", c.force);
         return runQualityCheck(c.force);
     }
     // Start calibration loop
     else if(std::holds_alternative<DC::Commands::StartCalibration>(cmd)) {
         const auto& c = std::get<DC::Commands::StartCalibration>(cmd);
-        logger->info("Received StartCalibration Command");
+        logger->trace("Received StartCalibration Command");
         calibrationShouldRun = true;
         loadImagePeriod = c.loadImagePeriod;
         calibrationPeriod = c.calibrationPeriod;
@@ -483,7 +505,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     }
     // Load a single image
     else if(std::holds_alternative<DC::Commands::LoadImage>(cmd)) {
-        logger->info("Received LoadImage Command: blocking load with coverage computation");
+        logger->trace("Received LoadImage Command: blocking load with coverage computation");
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         auto error = runLoadImage(true);
         computeCoverage();
@@ -495,33 +517,38 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     // Apply calibration
     else if(std::holds_alternative<DC::Commands::ApplyCalibration>(cmd)) {
         const auto& c = std::get<DC::Commands::ApplyCalibration>(cmd);
-        logger->info("Received ApplyCalibrationCommand: applying new calibration to device");
+        logger->trace("Received ApplyCalibrationCommand: applying new calibration to device");
         calibrationHandler = c.calibration;
-        setCalibration(calibrationHandler);
+        setCalibration(calibrationHandler, c.flash);
         return ErrorCode::OK;
     }
     // Stop calibration loop
     else if(std::holds_alternative<DC::Commands::StopCalibration>(cmd)) {
-        logger->info("Received StopCalibrationCommand: stopping calibration");
+        logger->trace("Received StopCalibrationCommand: stopping calibration");
         calibrationShouldRun = false;
         return ErrorCode::OK;
     }
     // Reset/remove accumulated data
     else if(std::holds_alternative<DC::Commands::ResetData>(cmd)) {
-        logger->info("Received RemoveDataCommand: removing the data");
+        logger->trace("Received RemoveDataCommand: removing the data");
         pimplDCL->dynCalibImpl.removeAllData(pimplDCL->sensorA, pimplDCL->sensorB);
         return ErrorCode::OK;
     }
     // Set performance mode
     else if(std::holds_alternative<DC::Commands::SetPerformanceMode>(cmd)) {
         const auto& c = std::get<DC::Commands::SetPerformanceMode>(cmd);
-        logger->info("Received SetPerformanceModeCommand: changing performance mode to {}", static_cast<int>(c.performanceMode));
+        logger->trace("Received SetPerformanceModeCommand: changing performance mode to {}", static_cast<int>(c.performanceMode));
         performanceMode = c.performanceMode;
+        return ErrorCode::OK;
+    } else if(std::holds_alternative<DC::Commands::ComputeCalibrationMetrics>(cmd)) {
+        logger->trace("Received ComputerCalibrationMetrics: calculation metricis");
+        const auto& c = std::get<DC::Commands::ComputeCalibrationMetrics>(cmd);
+        computeMetrics(c.calibration);
         return ErrorCode::OK;
     }
 
     // Fallback
-    logger->info("WARNING: evaluateCommand: Received unknown/unhandled command type");
+    logger->trace("WARNING: evaluateCommand: Received unknown/unhandled command type");
     return ErrorCode::INVALID_COMMAND;
 }
 
@@ -546,7 +573,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     std::chrono::duration<float> elapsed = now - previousLoadingAndCalibrationTime;
     bool loadingAndCalibrationRequired = elapsed.count() > loadImagePeriod;
     if(loadingAndCalibrationRequired) {
-        logger->info("doWork() called. CalibrationRunning={}, elapsed={}s", calibrationShouldRun, elapsed.count());
+        logger->trace("doWork() called. CalibrationRunning={}, elapsed={}s", calibrationShouldRun, elapsed.count());
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         error = runLoadImage(true);
 #else
@@ -575,7 +602,7 @@ void DynamicCalibration::run() {
         return;
     }
 
-    logger->info("DynamicCalibration node started ");
+    logger->trace("DynamicCalibration node started ");
 
     auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
