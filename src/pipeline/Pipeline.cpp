@@ -660,9 +660,10 @@ void PipelineImpl::build() {
 
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
+    bool autoCalibrationRequested = (autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START");
+    if(autoCalibrationRequested) {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
-        if(defaultDevice && defaultDevice->tryGetCalibration()) {
+        if(defaultDevice) {
             auto stereoPair = getStereoPair();
             if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
@@ -674,15 +675,11 @@ void PipelineImpl::build() {
                 }
             }
         } else {
-            if(defaultDevice) {
-                Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
-                                                   autoCalibtationString);
-            } else {
-                Logging::getInstance().logger.info("Device has no initial calibration. Skipping autocalibration.");
-            }
+            Logging::getInstance().logger.info(
+                "DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.", autoCalibtationString);
         }
-    }
 #endif
+    }
 
     utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
 
