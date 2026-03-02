@@ -622,7 +622,7 @@ bool PipelineImpl::isBuilt() const {
 }
 
 bool PipelineImpl::hasDynamiCalibration() const {
-    // call this onlt with locked pipelineBuildMutex
+    // call this only with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
         if(node->getName() == dai::node::DynamicCalibration::NAME || node->getName() == dai::node::AutoCalibration::NAME) {
             return true;
@@ -666,7 +666,7 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
     }
 
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> stereoPair = std::pair(nullptr, nullptr);
-    // call this onlt with locked pipelineBuildMutex
+    // call this only with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
         if(node->getName() == dai::node::Camera::NAME) {
             auto camera = std::static_pointer_cast<dai::node::Camera>(node);
