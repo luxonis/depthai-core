@@ -92,6 +92,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
+    bool hasValidStereoIntrinsics(const std::shared_ptr<Device>& device, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket) const;
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
     bool hasDynamiCalibration() const;
 
@@ -155,6 +156,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Calibration mutex
     mutable std::mutex calibMtx;
+
+    // Protect defaultDevice pointer reads/writes.
+    mutable std::mutex defaultDeviceMtx;
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;

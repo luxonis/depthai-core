@@ -631,30 +631,40 @@ bool PipelineImpl::hasDynamiCalibration() const {
     return false;
 }
 
-std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
-    if(!defaultDevice) {
-        return {nullptr, nullptr};
-    }
-    auto stereoSockets = defaultDevice->getStereoPairs();
-    if(stereoSockets.size() != 1) {
-        return {nullptr, nullptr};
-    }
-
-    auto hasIntrinsicsForPair = [&stereoSockets](const CalibrationHandler& calibration) {
-        calibration.getDefaultIntrinsics(stereoSockets[0].left);
-        calibration.getDefaultIntrinsics(stereoSockets[0].right);
-        calibration.getCameraExtrinsics(stereoSockets[0].left, stereoSockets[0].right);
-    };
-
+bool PipelineImpl::hasValidStereoIntrinsics(const std::shared_ptr<Device>& device, CameraBoardSocket leftSocket, CameraBoardSocket rightSocket) const {
     try {
-        hasIntrinsicsForPair(defaultDevice->getCalibration());
+        const auto& calibration = device->getCalibration();
+        calibration.getDefaultIntrinsics(leftSocket);
+        calibration.getDefaultIntrinsics(rightSocket);
+        calibration.getCameraExtrinsics(leftSocket, rightSocket);
     } catch(const std::exception& ex) {
         Logging::getInstance().logger.info(
             "AutoCalibration precheck: calibration source 'getCalibration' is invalid for stereo pair: {}", ex.what());
-        return {nullptr, nullptr};
+        return false;
     }
 
     Logging::getInstance().logger.info("AutoCalibration precheck passed using 'getCalibration'.");
+    return true;
+}
+
+std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
+    std::shared_ptr<Device> device;
+    {
+        std::lock_guard<std::mutex> lock(defaultDeviceMtx);
+        device = defaultDevice;
+    }
+    if(!device) {
+        return {nullptr, nullptr};
+    }
+    auto stereoSockets = device->getStereoPairs();
+    if(stereoSockets.size() != 1) {
+        return {nullptr, nullptr};
+    }
+    const auto leftSocket = stereoSockets[0].left;
+    const auto rightSocket = stereoSockets[0].right;
+    if(!hasValidStereoIntrinsics(device, leftSocket, rightSocket)) {
+        return {nullptr, nullptr};
+    }
 
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> stereoPair = std::pair(nullptr, nullptr);
     // call this onlt with locked pipelineBuildMutex
@@ -662,9 +672,9 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
         if(node->getName() == dai::node::Camera::NAME) {
             auto camera = std::static_pointer_cast<dai::node::Camera>(node);
             auto boardSocket = camera->getBoardSocket();
-            if(boardSocket == stereoSockets[0].left) {
+            if(boardSocket == leftSocket) {
                 stereoPair.first = camera;
-            } else if(boardSocket == stereoSockets[0].right) {
+            } else if(boardSocket == rightSocket) {
                 stereoPair.second = camera;
             }
         }
@@ -676,24 +686,22 @@ void PipelineImpl::build() {
     if(isBuild) return;
 
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
-    auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
-    bool autoCalibrationRequested = (autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START");
+    const auto autoCalibrationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
+    const bool autoCalibrationRequested = (autoCalibrationString == "CONTINUOUS" || autoCalibrationString == "ON_START");
     if(autoCalibrationRequested) {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-        if(defaultDevice) {
+        if(!defaultDevice) {
+            Logging::getInstance().logger.info(
+                "DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.", autoCalibrationString);
+        } else {
             auto stereoPair = getStereoPair();
             if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
-                if(autoCalibtationString == "CONTINUOUS") {
-                    autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
-                } else {
-                    autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
-                }
+                autoCalibrationNode->initialConfig->mode = (autoCalibrationString == "CONTINUOUS")
+                                                               ? dai::AutoCalibrationConfig::Mode::CONTINUOUS
+                                                               : dai::AutoCalibrationConfig::Mode::ON_START;
             }
-        } else {
-            Logging::getInstance().logger.info(
-                "DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.", autoCalibtationString);
         }
 #endif
     }
