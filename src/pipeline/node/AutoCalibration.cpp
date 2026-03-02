@@ -11,7 +11,7 @@ namespace node {
 
 #define MAX_FAILS_PER_RECALIBRATION_DEFAULT 5
 #define GATE_FPS_DEFAULT 5
-#define BYTES_PES_SECOND_LIMIT_DEFAULT GATE_FPS_DEFAULT * 1280 * 800 * 2
+#define BYTES_PER_SECOND_LIMIT_DEFAULT GATE_FPS_DEFAULT * 1280 * 800 * 2
 #define PACKET_SIZE_DEFAULT 100000
 
 void AutoCalibration::loggReport(const Report& report, unsigned int iteration) const {
@@ -99,7 +99,7 @@ bool AutoCalibration::runOnHost() const {
 
 void AutoCalibration::postBuildStage() {
     auto xlinkBridge = gate->output.getXLinkBridge();
-    xlinkBridge->xLinkOut->setBytesPerSecondLimit(BYTES_PES_SECOND_LIMIT_DEFAULT);
+    xlinkBridge->xLinkOut->setBytesPerSecondLimit(BYTES_PER_SECOND_LIMIT_DEFAULT);
     xlinkBridge->xLinkOut->setPacketSize(PACKET_SIZE_DEFAULT);
     xlinkBridge->xLinkOut->input.setMaxSize(1);
     xlinkBridge->xLinkOut->input.setBlocking(false);
