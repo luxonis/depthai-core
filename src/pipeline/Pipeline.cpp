@@ -639,6 +639,25 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
     if(stereoSockets.size() != 1) {
         return {nullptr, nullptr};
     }
+
+    bool validStereoIntrinsics = false;
+    auto hasIntrinsicsForPair = [&stereoSockets](const CalibrationHandler& calibration) {
+        calibration.getDefaultIntrinsics(stereoSockets[0].left);
+        calibration.getDefaultIntrinsics(stereoSockets[0].right);
+        calibration.getCameraExtrinsics(stereoSockets[0].left, stereoSockets[0].right);
+    };
+
+    try {
+        hasIntrinsicsForPair(defaultDevice->getCalibration());
+        validStereoIntrinsics = true;
+    } catch(const std::exception& ex) {
+        Logging::getInstance().logger.info(
+            "AutoCalibration precheck: calibration source 'getCalibration' is invalid for stereo pair: {}", ex.what());
+        return {nullptr, nullptr};
+    }
+
+    Logging::getInstance().logger.info("AutoCalibration precheck passed using 'getCalibration'.");
+
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> stereoPair = std::pair(nullptr, nullptr);
     // call this onlt with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
