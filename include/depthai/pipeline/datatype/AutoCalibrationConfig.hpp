@@ -47,145 +47,49 @@ struct AutoCalibrationConfig : public Buffer {
 
     virtual ~AutoCalibrationConfig();
 
-    /**
-     * @brief Get the current auto-calibration mode
-     * @return Calibration trigger mode (ON_START or CONTINUOUS)
-     */
-    Mode getMode() const {
-        return mode;
-    }
-
-    /**
-     * @brief Set the auto-calibration trigger mode
-     * @param value Trigger mode to set
-     */
-    void setMode(Mode value) {
-        mode = value;
-    }
-
-    /**
-     * @brief Get sleep time between recalibration attempts in CONTINUOUS mode
-     * @return Time in seconds
-     */
-    int getSleepingTime() const {
-        return sleepingTime;
-    }
-
-    /**
-     * @brief Set sleep time between recalibration attempts in CONTINUOUS mode
-     * @param value Seconds to sleep between calibration cycles
-     */
-    void setSleepingTime(int value) {
-        sleepingTime = value;
-    }
-
-    /**
-     * @brief Get the calibration confidence threshold
-     * @return Confidence threshold (0.0 to 1.0)
-     */
-    double getCalibrationConfidenceThreshold() const {
-        return calibrationConfidenceThreshold;
-    }
-
-    /**
-     * @brief Set the calibration confidence threshold
-     * @param value Minimum confidence score required to apply a new calibration
-     */
-    void setCalibrationConfidenceThreshold(double value) {
-        calibrationConfidenceThreshold = value;
-    }
-
-    /**
-     * @brief Get the data confidence threshold
-     * @return Data quality threshold (0.0 to 1.0)
-     */
-    double getDataConfidenceThreshold() const {
-        return dataConfidenceThreshold;
-    }
-
-    /**
-     * @brief Set the data confidence threshold
-     * @param value Minimum quality threshold for input features to be used
-     */
-    void setDataConfidenceThreshold(double value) {
-        dataConfidenceThreshold = value;
-    }
-
-    /**
-     * @brief Get maximum number of optimization iterations
-     * @return Max iterations
-     */
-    unsigned int getMaxIterations() const {
-        return maxIterations;
-    }
-
-    /**
-     * @brief Set maximum number of optimization iterations
-     * @param value Max number of iterations per calibration cycle
-     */
-    void setMaxIterations(unsigned int value) {
-        maxIterations = value;
-    }
-
-    /**
-     * @brief Get max images per recalibration
-     * @return Number of images
-     */
-    unsigned int getMaxImagesPerReacalibration() const {
-        return maxImagesPerReacalibration;
-    }
-
-    /**
-     * @brief Set maximum images to collect for one recalibration event
-     * @param value Max image count
-     */
-    void setMaxImagesPerReacalibration(unsigned int value) {
-        maxImagesPerReacalibration = value;
-    }
-
-    /**
-     * @brief Get validation set size
-     * @return Number of validation images
-     */
-    int getValidationSetSize() const {
-        return validationSetSize;
-    }
-
-    /**
-     * @brief Set number of images used for validating calibration result
-     * @param value Validation set size
-     */
-    void setValidationSetSize(int value) {
-        validationSetSize = value;
-    }
-
-    /**
-     * @brief Check if results are written to flash
-     * @return True if flash storage is enabled
-     */
-    bool getFlashCalibration() const {
-        return flashCalibration;
-    }
-
-    /**
-     * @brief Enable or disable writing successful calibration to non-volatile memory
-     * @param value True to save to EPROM, false to keep in RAM only
-     */
-    void setFlashCalibration(bool value) {
-        flashCalibration = value;
-    }
-
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    /**
+     * @brief Calibration trigger mode (ON_START or CONTINUOUS).
+     */
     Mode mode = Mode::ON_START;
+
+    /**
+     * @brief Seconds to sleep between calibration cycles in CONTINUOUS mode.
+     */
     int sleepingTime = 30;
+
+    /**
+     * @brief Minimum confidence score (0.0 to 1.0) required to apply a new calibration.
+     */
     double calibrationConfidenceThreshold = 0.9;
+
+    /**
+     * @brief Minimum quality threshold (0.0 to 1.0) for input features to be used.
+     */
     double dataConfidenceThreshold = 0.7;
+
+    /**
+     * @brief Maximum number of optimization iterations per calibration cycle.
+     */
     unsigned int maxIterations = 5;
+
+    /**
+     * @brief Maximum number of images to collect for one recalibration event.
+     */
     unsigned int maxImagesPerReacalibration = 10;
+
+    /**
+     * @brief Number of images used for validating the calibration result.
+     */
     int validationSetSize = 5;
+
+    /**
+     * @brief If true, saves successful calibration to non-volatile memory (EEPROM); otherwise, keeps in RAM only.
+     */
     bool flashCalibration = true;
 
+    // clang-format off
     DEPTHAI_SERIALIZE(AutoCalibrationConfig,
                       mode,
                       sleepingTime,
@@ -195,6 +99,7 @@ struct AutoCalibrationConfig : public Buffer {
                       maxImagesPerReacalibration,
                       validationSetSize,
                       flashCalibration);
+    // clang-format on
 };
 
 }  // namespace dai
