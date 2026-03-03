@@ -87,7 +87,7 @@ class DeviceGate {
         std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) override;
 
        private:
-	DeviceInfo deviceInfo;
+        DeviceInfo deviceInfo;
         int timeout;
     };
 

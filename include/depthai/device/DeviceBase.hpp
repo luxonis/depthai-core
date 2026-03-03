@@ -656,7 +656,7 @@ class DeviceBase {
 
     /**
      * Check if EEPROM is available
-     * 
+     *
      * @returns True if EEPROM is present on board, false otherwise
      */
     bool isEepromAvailable();
@@ -861,7 +861,7 @@ class DeviceBase {
      * @param features Vector of camera features to set
      * @param imu IMU type to set (if any)
      */
-    void overrideCameraFeatures(const std::vector<CameraFeatures>& features, const std::string& imu="");
+    void overrideCameraFeatures(const std::vector<CameraFeatures>& features, const std::string& imu = "");
 
     /**
      * Returns underlying XLinkConnection

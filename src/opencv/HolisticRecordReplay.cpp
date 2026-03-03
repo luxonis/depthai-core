@@ -2,9 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
-#include <filesystem>
-#include <cmath>
 #include <chrono>
+#include <cmath>
+#include <filesystem>
 #include <memory>
 #include <stdexcept>
 
@@ -48,12 +48,8 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
     return roundDown(numToRound + multiple - 1UL, multiple);
 }
 
-Node::Output* setupHolisticRecordCamera(std::shared_ptr<dai::node::Camera> cam,
-                                        Pipeline& pipeline,
-                                        bool legacy,
-                                        float recordingFps,
-                                        size_t& camWidth,
-                                        size_t& camHeight) {
+Node::Output* setupHolisticRecordCamera(
+    std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, float recordingFps, size_t& camWidth, size_t& camHeight) {
     size_t requestWidth = cam->getMaxRequestedWidth();
     size_t requestHeight = cam->getMaxRequestedHeight();
     size_t width = cam->getMaxWidth();
@@ -95,8 +91,7 @@ Node::Output* setupHolisticRecordCamera(std::shared_ptr<dai::node::Camera> cam,
     camWidth = width;
     camHeight = height;
     if(recordingFps > 0.0f) {
-        return cam->requestOutput(
-            std::pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, recordingFps);
+        return cam->requestOutput(std::pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, recordingFps);
     }
     return cam->requestOutput(std::pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
@@ -324,7 +319,7 @@ bool setupHolisticReplay(Pipeline pipeline,
         spdlog::warn("Replay path does not exist: {}", replayPath.string());
         return false;
     }
-    
+
     pipeline.getDefaultDevice()->mockCameraFeatures(replayPath);
 
     auto sources = pipeline.getSourceNodes();

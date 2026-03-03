@@ -34,10 +34,10 @@
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Files.hpp"
+#include "utility/HolisticRecordReplay.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
-#include "utility/HolisticRecordReplay.hpp"
 
 // libraries
 #include "XLink/XLink.h"

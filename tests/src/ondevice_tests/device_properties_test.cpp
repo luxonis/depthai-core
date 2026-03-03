@@ -1,5 +1,4 @@
 #include <catch2/catch_all.hpp>
-
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
