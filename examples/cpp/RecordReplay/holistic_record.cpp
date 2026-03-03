@@ -62,8 +62,6 @@ int main(int argc, char** argv) {
 
     pipeline.start();
 
-    auto start = std::chrono::steady_clock::now();
-
     while(isRunning && pipeline.isRunning()) {
         auto frame = viewFinderQueue->get<dai::ImgFrame>();
         cv::imshow("Video", frame->getCvFrame());

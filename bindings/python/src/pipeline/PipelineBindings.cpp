@@ -108,7 +108,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     recordConfig.def(py::init<>())
         .def_readwrite("outputDir", &RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
         .def_readwrite("videoEncoding", &RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
-        .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
+        .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel))
+        .def_readwrite("syncCameraOutputs", &RecordConfig::syncCameraOutputs, DOC(dai, RecordConfig, syncCameraOutputs));
 
     pipelineStateApi.def("nodes", static_cast<NodesStateApi (PipelineStateApi::*)()>(&PipelineStateApi::nodes), DOC(dai, PipelineStateApi, nodes))
         .def("nodes",
