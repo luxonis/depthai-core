@@ -72,9 +72,10 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
     outputCameraRight->link(right);
     sync->out.link(gate->input);
     gate->output.link(dynamicCalibration->syncInput);
-
-    addPoolsForAutoCalibration(cameraLeft, 3);
-    addPoolsForAutoCalibration(cameraRight, 3);
+    if(device->getPlatform() == Platform::RVC2) {
+        addPoolsForAutoCalibration(cameraLeft, 3);
+        addPoolsForAutoCalibration(cameraRight, 3);
+    }
 
     dynamicCalibrationCommandQueue.link(dynamicCalibration->inputControl);
     gateControlQueue.link(gate->inputControl);
