@@ -133,6 +133,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     for(unsigned int i = 0; i < maxNumIteration; i++) {
         dynamicCalibrationCommandQueue.send(DCC::startCalibration());
         for(unsigned int numLoadedImages = 0; numLoadedImages < initialConfig->maxImagesPerReacalibration; numLoadedImages++) {
+            if(!mainLoop()) return nullptr;
             auto dynCalibrationResult = dynamicCalibrationQueue.get<dai::DynamicCalibrationResult>();
             coverageQueue.tryGet<dai::CoverageData>();
             if(dynCalibrationResult->calibrationData) {
@@ -163,7 +164,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
 **/
 bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
     unsigned int numIterations = 0;
-    while(numIterations <= initialConfig->maxIterations && isRunning()) {
+    while(numIterations <= initialConfig->maxIterations && mainLoop()) {
         Report report;
         dynamicCalibrationCommandQueue.send(DCC::resetData());
         if(initialConfig->validationSetSize == 0) {
@@ -201,7 +202,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         ++numIterations;
     }
 
-    if(isRunning() && calibration) {
+    if(mainLoop() && calibration) {
         auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., false, *calibration);
         output.send(resultOutput);
     }
@@ -209,9 +210,14 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
 }
 
 void AutoCalibration::runContinuousMode() {
-    while(isRunning()) {
+    while(mainLoop()) {
         updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
-        std::this_thread::sleep_for(std::chrono::seconds(initialConfig->sleepingTime));
+        int elapsed = 0;
+        // Continue sleeping only if total time isn't met AND mainLoop is still true
+        while(elapsed < initialConfig->sleepingTime && mainLoop()) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            elapsed += 1;
+        }
     }
 }
 
@@ -223,7 +229,7 @@ bool AutoCalibration::validateIncomingData() {
     std::chrono::seconds waitingTime(1);
     bool timedout = true;
 
-    while(isRunning()) {
+    while(mainLoop()) {
         gateControlQueue.send(dai::GateControl::openGate(1, gate->initialConfig->fps));
         auto messageGroup = gateOutput.get<MessageGroup>(waitingTime, timedout);
 
