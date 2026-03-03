@@ -181,8 +181,8 @@ struct AutoCalibrationConfig : public Buffer {
     int sleepingTime = 30;
     double calibrationConfidenceThreshold = 0.9;
     double dataConfidenceThreshold = 0.7;
-    unsigned int maxIterations = 10;
-    unsigned int maxImagesPerReacalibration = 20;
+    unsigned int maxIterations = 5;
+    unsigned int maxImagesPerReacalibration = 10;
     int validationSetSize = 5;
     bool flashCalibration = true;
 
