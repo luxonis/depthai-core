@@ -53,6 +53,10 @@ class OCSTracker : public Tracker {
     float occlusionRatioThreshold;
     uint32_t trackletMaxLifespan;
     uint32_t trackletBirthThreshold;
+    bool spatialAssociation;
+    float spatialAssociationWeight;
+    float spatialDistanceThreshold;
+    float spatialDepthAwareScale;
 
    public:
     OCSTracker(const ObjectTrackerProperties& properties);

@@ -43,7 +43,9 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
         .def_readwrite("age", &Tracklet::age)
         .def_readwrite("status", &Tracklet::status)
         .def_readwrite("srcImgDetection", &Tracklet::srcImgDetection)
-        .def_readwrite("spatialCoordinates", &Tracklet::spatialCoordinates);
+        .def_readwrite("spatialCoordinates", &Tracklet::spatialCoordinates)
+        .def_readwrite("velocity", &Tracklet::velocity)
+        .def_readwrite("speed", &Tracklet::speed);
 
     trackletTrackingStatus.value("NEW", Tracklet::TrackingStatus::NEW)
         .value("TRACKED", Tracklet::TrackingStatus::TRACKED)
