@@ -230,11 +230,14 @@ void VideoRecorder::close() {
     if(mp4Writer != MP4_INVALID_FILE_HANDLE) {
         // MP4Dump(mp4Writer);
         MP4Close(mp4Writer);
+        mp4Writer = MP4_INVALID_FILE_HANDLE;
+        mp4Track = MP4_INVALID_TRACK_ID;
     }
 #endif
     if(cvWriter && cvWriter->isOpened()) {
         cvWriter->release();
     }
+    initialized = false;
 }
 
 VideoPlayer::~VideoPlayer() {
