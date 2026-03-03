@@ -189,6 +189,7 @@ def setupDevice(
         raise RuntimeError("RGBD requires CAM_A to be present for color input")
     rgbd = pipeline.create(dai.node.RGBD).build()
     align = pipeline.create(dai.node.ImageAlign)
+    align.setRunOnHost(True)
     stereo.depth.link(align.input)
     socketOutputs[dai.CameraBoardSocket.CAM_A].link(align.inputAlignTo)
     align.outputAligned.link(rgbd.inDepth)
