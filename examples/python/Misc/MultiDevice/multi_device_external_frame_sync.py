@@ -9,6 +9,7 @@ import time
 
 import argparse
 import signal
+import threading
 
 from typing import Optional, Dict
 
@@ -275,13 +276,23 @@ with contextlib.ExitStack() as stack:
     initialSyncTime = None
     waitingForSync = True
 
-    while running:
+    def data_collector(deviceName, socketName):
         # Send frames from slave output queues to sync node input queues
-        for deviceName, sockets in slaveQueues.items():
-            for socketName, camOutputQueue in sockets.items():
-                while camOutputQueue.has():
-                    inputQueues[f"slave_{deviceName}_{socketName}"].send(camOutputQueue.get())
+        camOutputQueue = slaveQueues[deviceName][socketName]
+        while running:
+            if camOutputQueue.has():
+                inputQueues[f"slave_{deviceName}_{socketName}"].send(camOutputQueue.get())
+            else:
+                time.sleep(0.001)
 
+    threads = {}
+
+    for deviceName, sockets in slaveQueues.items():
+        for socketName, camOutputQueue in sockets.items():
+            threads[f"slave_{deviceName}_{socketName}"] = threading.Thread(target=data_collector, args=(deviceName, socketName))
+            threads[f"slave_{deviceName}_{socketName}"].start()
+
+    while running:
         # Get frames from sync node output queue
         while queue.has():
             latestFrameGroup = queue.get()
@@ -405,5 +416,8 @@ with contextlib.ExitStack() as stack:
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
+
+    for t in threads.keys():
+        threads[t].join()
 
 cv2.destroyAllWindows()
