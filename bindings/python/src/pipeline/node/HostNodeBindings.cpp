@@ -67,6 +67,11 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
 
     threadedHostNode
         .def(py::init<>([]() {
+            if(!isCreatingNodeFromPipelineCreate()) {
+                PyErr_WarnEx(PyExc_DeprecationWarning,
+                             "Constructing ThreadedHostNode directly is deprecated. Use pipeline.create(...) instead.",
+                             1);
+            }
             auto node = std::make_shared<PyThreadedHostNode>();
             getImplicitPipeline()->add(node);
             return node;
@@ -104,6 +109,9 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
 
     hostNode
         .def(py::init([]() {
+            if(!isCreatingNodeFromPipelineCreate()) {
+                PyErr_WarnEx(PyExc_DeprecationWarning, "Constructing HostNode directly is deprecated. Use pipeline.create(...) instead.", 1);
+            }
             auto node = std::make_shared<PyHostNode>();
             getImplicitPipeline()->add(node);
             return node;
