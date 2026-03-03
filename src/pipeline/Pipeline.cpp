@@ -694,7 +694,7 @@ void PipelineImpl::build() {
                 Logging::getInstance().logger.warn("Device has no valid initial calibration. Skipping autocalibration.");
             }
         }
-    } else if(autoCalibtationString != "OFF") {
+    } else if(autoCalibtationString != "OFF" && autoCalibtationString != "") {
         Logging::getInstance().logger.warn("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibtationString);
     }
 #endif
