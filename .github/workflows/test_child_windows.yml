@@ -195,7 +195,7 @@ jobs:
     needs: [build_windows_tests]
     strategy:
         matrix:
-          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
+          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
         fail-fast: false
     runs-on: ['self-hosted', 'testbed-runner']
     steps:
