@@ -665,7 +665,7 @@ void PipelineImpl::build() {
         if(defaultDevice && defaultDevice->tryGetCalibration()) {
             auto stereoPair = getStereoPair();
 
-            auto hasStereoPairValidCalibration = [this, &stereoPair](const std::shared_ptr<CalibrationHandler>& calibration) -> bool {
+            auto hasStereoPairValidCalibration = [&stereoPair](const std::shared_ptr<CalibrationHandler>& calibration) -> bool {
                 try {
                     calibration->getDefaultIntrinsics(stereoPair.first->getBoardSocket());
                     calibration->getDefaultIntrinsics(stereoPair.second->getBoardSocket());
