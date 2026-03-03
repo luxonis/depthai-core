@@ -632,6 +632,9 @@ bool PipelineImpl::hasDynamiCalibration() const {
 }
 
 std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
+    if(!defaultDevice) {
+        return {nullptr, nullptr};
+    }
     auto stereoSockets = defaultDevice->getStereoPairs();
     if(stereoSockets.size() != 1) {
         return {nullptr, nullptr};
@@ -657,20 +660,25 @@ void PipelineImpl::build() {
 
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
-    if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-        auto stereoPair = getStereoPair();
-        if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
-            Logging::getInstance().logger.info("AutoCalibration is initialized");
-            auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
-            if(autoCalibtationString == "CONTINUOUS") {
-                autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
-            } else {
-                autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
+    if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
+        if(defaultDevice) {
+            auto stereoPair = getStereoPair();
+            if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
+                Logging::getInstance().logger.info("AutoCalibration is initialized");
+                auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+                if(autoCalibtationString == "CONTINUOUS") {
+                    autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
+                } else {
+                    autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
+                }
             }
+        } else {
+            Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
+                                               autoCalibtationString);
         }
-#endif
     }
+#endif
 
     utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
 
