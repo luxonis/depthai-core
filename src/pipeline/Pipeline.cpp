@@ -656,9 +656,9 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
 }
 
 void PipelineImpl::build() {
+    std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     if(isBuild) return;
     // start ---Add AutoCalibration block---
-    std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
