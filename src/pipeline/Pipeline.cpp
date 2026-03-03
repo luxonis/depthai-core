@@ -664,9 +664,22 @@ void PipelineImpl::build() {
     if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
         if(defaultDevice && defaultDevice->tryGetCalibration()) {
             auto stereoPair = getStereoPair();
-            if(stereoPair.first && stereoPair.second && !hasDynamiCalibration()) {
-                Logging::getInstance().logger.info("AutoCalibration is initialized");
+
+            auto hasStereoPairValidCalibration = [this, &stereoPair](const std::shared_ptr<CalibrationHandler>& calibration) -> bool {
+                try {
+                    calibration->getDefaultIntrinsics(stereoPair.first->getBoardSocket());
+                    calibration->getDefaultIntrinsics(stereoPair.second->getBoardSocket());
+                    calibration->getCameraExtrinsics(stereoPair.first->getBoardSocket(), stereoPair.second->getBoardSocket());
+                    return true;
+                } catch(const std::exception& ex) {
+                    return false;
+                }
+                return false;
+            };
+
+            if(stereoPair.first && stereoPair.second && !hasDynamiCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+                Logging::getInstance().logger.info("AutoCalibration is initialized");
                 if(autoCalibtationString == "CONTINUOUS") {
                     autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
                 } else {
@@ -678,9 +691,11 @@ void PipelineImpl::build() {
                 Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
                                                    autoCalibtationString);
             } else {
-                Logging::getInstance().logger.info("Device has no initial calibration. Skipping autocalibration.");
+                Logging::getInstance().logger.warn("Device has no valid initial calibration. Skipping autocalibration.");
             }
         }
+    } else if(autoCalibtationString != "OFF") {
+        Logging::getInstance().logger.warn("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibtationString);
     }
 #endif
 
