@@ -72,6 +72,22 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
      * Tracklet birth threshold. Minimum consecutive tracked frames required to consider a tracklet as a new instance.
      */
     uint32_t trackletBirthThreshold = 3;
+    /**
+     * Whether to use spatial coordinates in association when available.
+     */
+    bool spatialAssociation = true;
+    /**
+     * Weight for spatial distance in association cost [0,1].
+     */
+    float spatialAssociationWeight = 0.5f;
+    /**
+     * Base 3D gating threshold in millimeters used for spatial association.
+     */
+    float spatialDistanceThreshold = 1500.0f;
+    /**
+     * Depth-aware gating scale. Gate grows with depth: gate = base * (1 + scale * depthMeters).
+     */
+    float spatialDepthAwareScale = 0.35f;
 
     ~ObjectTrackerProperties() override;
 };
@@ -85,6 +101,10 @@ DEPTHAI_SERIALIZE_EXT(ObjectTrackerProperties,
                       trackingPerClass,
                       occlusionRatioThreshold,
                       trackletMaxLifespan,
-                      trackletBirthThreshold);
+                      trackletBirthThreshold,
+                      spatialAssociation,
+                      spatialAssociationWeight,
+                      spatialDistanceThreshold,
+                      spatialDepthAwareScale);
 
 }  // namespace dai

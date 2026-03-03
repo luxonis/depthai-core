@@ -52,6 +52,18 @@ void ObjectTracker::setTrackletMaxLifespan(uint32_t trackletMaxLifespan) {
 void ObjectTracker::setTrackletBirthThreshold(uint32_t trackletBirthThreshold) {
     properties.trackletBirthThreshold = trackletBirthThreshold;
 }
+void ObjectTracker::setSpatialAssociation(bool enabled) {
+    properties.spatialAssociation = enabled;
+}
+void ObjectTracker::setSpatialAssociationWeight(float weight) {
+    properties.spatialAssociationWeight = weight;
+}
+void ObjectTracker::setSpatialDistanceThreshold(float thresholdMm) {
+    properties.spatialDistanceThreshold = thresholdMm;
+}
+void ObjectTracker::setSpatialDepthAwareScale(float scale) {
+    properties.spatialDepthAwareScale = scale;
+}
 void ObjectTracker::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
