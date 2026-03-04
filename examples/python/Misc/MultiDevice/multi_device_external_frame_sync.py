@@ -327,7 +327,6 @@ with contextlib.ExitStack() as stack:
             delta = max(tsValues.values()) - min(tsValues.values())
 
             syncStatus = abs(delta) < syncThresholdSec
-            syncStatusStr = "in sync" if syncStatus else "out of sync"
 
             # Timeout if frames don't get synced in time
             if not syncStatus and waitingForSync:
@@ -338,7 +337,7 @@ with contextlib.ExitStack() as stack:
                     running = False
 
             if syncStatus and waitingForSync:
-                print(f"Sync status: {syncStatusStr}")
+                print(f"Frame synced")
                 waitingForSync = False
 
             # Print warning if delta is too big
@@ -346,8 +345,6 @@ with contextlib.ExitStack() as stack:
                 print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
                 print("Either the signal is lost or the network is congested.")
                 continue
-
-            color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
 
             # Create a image frame with sync info for each output
             for outputName in outputNames:
@@ -384,25 +381,12 @@ with contextlib.ExitStack() as stack:
                     (20, 80),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6,
-                    (255, 0, 50),
+                    (0, 255, 0),
                     2,
                     cv2.LINE_AA,
                 )
 
                 imgs[idx].append(frame)
-            
-            # Add sync status and delta to the frame for each camera socket
-            for i, img in enumerate(imgs):
-                cv2.putText(
-                    imgs[i][0],
-                    f"{syncStatusStr} | delta = {delta*1e3:.3f} ms",
-                    (20, 120),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    color,
-                    2,
-                    cv2.LINE_AA,
-                )
 
             # Show the frame
             for i, img in enumerate(imgs):
