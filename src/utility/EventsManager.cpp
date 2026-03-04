@@ -315,14 +315,14 @@ EventsManager::EventsManager(std::string apiKey, bool uploadCachedOnStart)
     // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
         // Fetch configuration limits when starting the new thread
-        configurationLimitsFetched = fetchConfigurationLimits(true);
-        while(!stopUploadThread && configurationLimitsFetched) {
-            connectionEstablished = fetchConfigurationLimits(false);
+        configurationLimitsFetched.store(fetchConfigurationLimits(true));
+        while(!stopUploadThread.load() && configurationLimitsFetched.load()) {
+            connectionEstablished.store(fetchConfigurationLimits(false));
             if(remainingStorageBytes <= warningStorageBytes) {
                 logger::warn("Current remaining storage is running low: {} MB", remainingStorageBytes / (1024 * 1024));
             }
             // Add cached snaps (if any) to the snapBuffer
-            if(connectionEstablished) {
+            if(connectionEstablished.load()) {
                 uploadCachedSnaps();
             }
             // Prepare the batch first to reduce contention
@@ -354,13 +354,13 @@ EventsManager::EventsManager(std::string apiKey, bool uploadCachedOnStart)
 
             uploadEventBatch();
             // Check for any remaining snaps or events in snapBuffer & eventBuffer. Also check for pending file uploads.
-            if(waitingForPendingUploads) {
+            if(waitingForPendingUploads.load()) {
                 const bool uploadFinished = checkPendingUploadsFinished();
                 {
                     std::lock_guard<std::mutex> pendingLock(pendingUploadsMutex);
                     pendingUploadsFinished.store(uploadFinished);
                 }
-                if(uploadFinished || !connectionEstablished) {
+                if(uploadFinished || !connectionEstablished.load()) {
                     pendingUploadsCondition.notify_all();
                 }
             }
@@ -376,7 +376,7 @@ EventsManager::EventsManager(std::string apiKey, bool uploadCachedOnStart)
 }
 
 EventsManager::~EventsManager() {
-    stopUploadThread = true;
+    stopUploadThread.store(true);
     eventBufferCondition.notify_all();
     pendingUploadsCondition.notify_all();
     if(uploadThread && uploadThread->joinable()) {
@@ -399,7 +399,7 @@ bool EventsManager::fetchConfigurationLimits(const bool retryOnFail) {
     header["Authorization"] = "Bearer " + token;
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
     int retryAttempt = 0;
-    while(!stopUploadThread) {
+    while(!stopUploadThread.load()) {
         cpr::Response response = cpr::Get(
             cpr::Url{requestUrl},
             cpr::Header{header},
@@ -420,10 +420,7 @@ bool EventsManager::fetchConfigurationLimits(const bool retryOnFail) {
                     (void)downloadNow;
                     (void)uploadTotal;
                     (void)uploadNow;
-                    if(stopUploadThread) {
-                        return false;
-                    }
-                    return true;
+                    return !stopUploadThread.load();
                 }));
         if(response.error) {
             logger::error("cpr response error - {}: {}", static_cast<int>(response.error.code), response.error.message);
@@ -491,7 +488,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
     }
 
     int retryAttempt = 0;
-    while(!stopUploadThread) {
+    while(!stopUploadThread.load()) {
         std::string serializedBatch;
         fileGroupBatchPrepare->SerializeToString(&serializedBatch);
         cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/files/prepare-batch");
@@ -507,10 +504,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
                     (void)downloadNow;
                     (void)uploadTotal;
                     (void)uploadNow;
-                    if(stopUploadThread) {
-                        return false;
-                    }
-                    return true;
+                    return !stopUploadThread.load();
                 }));
         if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
             logger::error("Failed to prepare a batch of file groups, status code: {}", response.status_code);
@@ -656,7 +650,7 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
     logger::info("Uploading file {} to: {}", fileData->fileTag, uploadUrl);
     auto header = cpr::Header();
     header["Content-Type"] = fileData->mimeType;
-    for(int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread; ++i) {
+    for(int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread.load(); ++i) {
         cpr::Response response = cpr::Put(
             cpr::Url{uploadUrl},
             cpr::Body{fileData->data},
@@ -669,10 +663,7 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
                     (void)downloadNow;
                     (void)uploadTotal;
                     (void)uploadNow;
-                    if(stopUploadThread) {
-                        return false;
-                    }
-                    return true;
+                    return !stopUploadThread.load();
                 }));
         if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
             logger::error("Failed to upload file {}, status code: {}", fileData->fileTag, response.status_code);
@@ -695,7 +686,7 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
 
 void EventsManager::uploadEventBatch() {
     // Add cached events, if any
-    if(connectionEstablished) {
+    if(connectionEstablished.load()) {
         uploadCachedEvents();
     }
 
@@ -728,10 +719,7 @@ void EventsManager::uploadEventBatch() {
                 (void)downloadNow;
                 (void)uploadTotal;
                 (void)uploadNow;
-                if(stopUploadThread) {
-                    return false;
-                }
-                return true;
+                return !stopUploadThread.load();
             }));
     if(response.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event, status code: {}", response.status_code);
@@ -800,7 +788,7 @@ std::optional<std::string> EventsManager::sendEvent(const std::string& name,
                                                     const std::unordered_map<std::string, std::string>& extras,
                                                     const std::vector<std::string>& associateFiles) {
     // Check if the configuration and limits have already been fetched
-    if(!configurationLimitsFetched) {
+    if(!configurationLimitsFetched.load()) {
         logger::error("The configuration and limits have not been successfully fetched, event not sent");
         return std::nullopt;
     }
@@ -845,7 +833,7 @@ std::optional<std::string> EventsManager::sendSnap(const std::string& name,
                                                    const std::function<void(SendSnapCallbackResult)> successCallback,
                                                    const std::function<void(SendSnapCallbackResult)> failureCallback) {
     // Check if the configuration and limits have already been fetched
-    if(!configurationLimitsFetched) {
+    if(!configurationLimitsFetched.load()) {
         logger::error("The configuration and limits have not been successfully fetched, snap not sent");
         return std::nullopt;
     }
@@ -982,29 +970,28 @@ bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
 }
 
 bool EventsManager::waitForPendingUploads(uint64_t timeoutMs) {
+    const bool uploadFinished = checkPendingUploadsFinished();
     {
-        std::lock_guard<std::mutex> lock(pendingUploadsMutex);
-        pendingUploadsFinished = checkPendingUploadsFinished();
-        if(pendingUploadsFinished) {
+        std::unique_lock<std::mutex> lock(pendingUploadsMutex);
+        pendingUploadsFinished.store(uploadFinished);
+        if(uploadFinished) {
             return true;
         }
-        waitingForPendingUploads = true;
-    }
+        waitingForPendingUploads.store(true);
+        if(timeoutMs > 0) {
+            pendingUploadsCondition.wait_for(lock, std::chrono::milliseconds(timeoutMs), [this]() {
+                return pendingUploadsFinished.load() || !connectionEstablished.load() || stopUploadThread.load();
+            });
+        } else {
+            pendingUploadsCondition.wait(lock, [this]() { return pendingUploadsFinished.load() || !connectionEstablished.load() || stopUploadThread.load(); });
+        }
 
-    std::unique_lock<std::mutex> lock(pendingUploadsMutex);
-    if(timeoutMs > 0) {
-        pendingUploadsCondition.wait_for(lock, std::chrono::milliseconds(timeoutMs), [this]() {
-            return pendingUploadsFinished.load() || !connectionEstablished.load() || stopUploadThread.load();
-        });
-    } else {
-        pendingUploadsCondition.wait(lock, [this]() { return pendingUploadsFinished.load() || !connectionEstablished.load() || stopUploadThread.load(); });
-    }
+        if(!pendingUploadsFinished.load() && !connectionEstablished.load()) {
+            logger::warn("waitForPendingUploads() exited because connection was lost before pending uploads were finished");
+        }
 
-    if(!pendingUploadsFinished.load() && !connectionEstablished.load()) {
-        logger::warn("waitForPendingUploads() exited because connection was lost before pending uploads were finished");
+        waitingForPendingUploads.store(false);
     }
-
-    waitingForPendingUploads = false;
     return checkPendingUploadsFinished();
 }
 
@@ -1019,10 +1006,7 @@ bool EventsManager::checkPendingUploadsFinished() {
             return false;
         }
     }
-    if(!eventBuffer.empty()) {
-        return false;
-    }
-    return true;
+    return eventBuffer.empty();
 }
 
 void EventsManager::cacheEvents() {
