@@ -64,6 +64,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
         bool recalibrating = false;
         bool recalibrationPassed = false;
         bool calibrationUpdated = false;
+        double elapsedSeconds = 0.;
+        double elapsedRecalibrationSeconds = 0.;
         std::array<float, 3> rotationDifference;
     };
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -93,6 +95,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     bool updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration);
 
     void loggReport(const Report& report, unsigned int iteration) const;
+
+    void loggConfig() const;
 
     std::shared_ptr<dai::CalibrationHandler> getNewCalibration(unsigned int maxNumIteration, Report& report);
 
