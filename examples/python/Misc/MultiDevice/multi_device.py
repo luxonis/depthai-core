@@ -65,6 +65,9 @@ def createPipeline(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket = dai.C
     )
     if SET_MANUAL_EXPOSURE:
         camRgb.initialControl.setManualExposure(1000, 100)
+    
+    camRgb.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.TIME_PTP)
+
     return pipeline, output
 
 
