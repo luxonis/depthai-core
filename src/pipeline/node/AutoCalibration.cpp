@@ -166,7 +166,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             if(dynCalibrationResult->calibrationData) {
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue.send(dai::GateControl::closeGate());
-                    report.numIterationPerRecalibration = i;
+                    report.numIterationPerRecalibration = i + 1;
                     report.dataQualityAfterRecalibration = dynCalibrationResult->calibrationData.value().dataConfidence;
                     report.recalibrationPassed = true;
                     report.rotationDifference = dynCalibrationResult->calibrationData.value().calibrationDifference.rotationChange;
