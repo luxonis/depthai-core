@@ -10,8 +10,11 @@ import time
 import argparse
 import signal
 import threading
+import numpy as np
 
-from typing import Optional, Dict
+from dataclasses import dataclass
+
+from typing import Optional, Dict, Tuple
 
 # This example shows how to use the external frame sync node to synchronize multiple devices
 # This example assumes that all devices are connected to the same host
@@ -20,7 +23,7 @@ from typing import Optional, Dict
 
 SET_MANUAL_EXPOSURE = False  # Set to True to use manual exposure settings
 
-PCL_SOCKET = "PCL"
+ALIGN_SOCKET = "ALIGN"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -62,7 +65,7 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
     if socket == dai.CameraBoardSocket.CAM_A:
         output = (
             cam.requestOutput(
-                (1920, 1080), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.CROP
+                (1920, 1080), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.CROP, enableUndistortion=True
             )
         )
     else:
@@ -168,32 +171,26 @@ def setupDevice(
     else:
         stereo = pipeline.create(dai.node.StereoDepth)
 
-    socketOutputs = {}
+    colorCamOutput = None
     for socket in device.getConnectedCameras():
         pipeline, outNode = setUpCameraSocket(pipeline, socket, name, targetFps, role)
-        socketOutputs[socket] = outNode
 
         # link stereo node
         if socket == dai.CameraBoardSocket.CAM_B:
             outNode.link(stereo.left)
         elif socket == dai.CameraBoardSocket.CAM_C:
             outNode.link(stereo.right)
+        elif socket == dai.CameraBoardSocket.CAM_A:
+            colorCamOutput = outNode
 
     if not neuralStereo:
         stereo.setRectification(True)
         stereo.setExtendedDisparity(True)
         stereo.setLeftRightCheck(True)
 
-    # Create RGBD for point cloud generation
-    if dai.CameraBoardSocket.CAM_A not in socketOutputs:
-        raise RuntimeError("RGBD requires CAM_A to be present for color input")
-    rgbd = pipeline.create(dai.node.RGBD).build()
     align = pipeline.create(dai.node.ImageAlign)
-    align.setRunOnHost(True)
     stereo.depth.link(align.input)
-    socketOutputs[dai.CameraBoardSocket.CAM_A].link(align.inputAlignTo)
-    align.outputAligned.link(rgbd.inDepth)
-    socketOutputs[dai.CameraBoardSocket.CAM_A].link(rgbd.inColor)
+    colorCamOutput.link(align.inputAlignTo)
 
     if role == dai.ExternalFrameSyncRole.MASTER:
         if slaveOnly:
@@ -210,7 +207,7 @@ def setupDevice(
         if masterNode is None:
             masterNode = {}
 
-        masterNode[PCL_SOCKET] = rgbd.pcl
+        masterNode[ALIGN_SOCKET] = align.outputAligned
     elif role == dai.ExternalFrameSyncRole.SLAVE:
         slavePipelines[name] = pipeline
         print(f"{device.getDeviceId()} is slave")
@@ -218,13 +215,65 @@ def setupDevice(
         if slaveQueues.get(name) is None:
             slaveQueues[name] = {}
 
-        slaveQueues[name][PCL_SOCKET] = rgbd.pcl.createOutputQueue()
+        slaveQueues[name][ALIGN_SOCKET] = align.outputAligned.createOutputQueue()
 
         if firstSlaveName is None and slaveOnly:
             firstSlaveName = name
     else:
         raise RuntimeError(f"Don't know how to handle role {role}")
 
+@dataclass
+class PointCloudContext:
+    fx: np.float32 = 0.0
+    fy: np.float32 = 0.0
+    cx: np.float32 = 0.0
+    cy: np.float32 = 0.0
+    haveIntrinsics: bool = False
+
+    ifx: np.float32 = 0.0
+    ify: np.float32 = 0.0
+
+    u: Optional[np.ndarray] = None
+    v: Optional[np.ndarray] = None
+
+    uu: Optional[np.ndarray] = None
+    vv: Optional[np.ndarray] = None
+    haveConstants: bool = False
+
+def calculatePointCloud(
+    frame: dai.ImgFrame,
+    context: PointCloudContext,
+    dtype=np.float32,
+) -> Tuple[np.ndarray, datetime.timedelta]:
+    if not context.haveIntrinsics:
+        K = frame.getTransformation().getIntrinsicMatrix()
+        context.fx = K[0][0]
+        context.fy = K[1][1]
+        context.cx = K[0][2]
+        context.cy = K[1][2]
+
+        context.ifx = 1/context.fx
+        context.ify = 1/context.fy
+        context.haveIntrinsics = True
+
+    # Depth frame as numpy array (H, W)
+    depth = frame.getFrame().astype(dtype, copy=False) # Z coordinate
+
+    if not context.haveConstants:
+        h, w = depth.shape
+        context.u = np.arange(w, dtype=dtype)[None, :]      # (1, W)
+        context.v = np.arange(h, dtype=dtype)[:, None]      # (H, 1)
+
+        context.uu = (context.u - context.cx) * context.ifx
+        context.vv = (context.v - context.cy) * context.ify
+
+        context.haveConstants = True
+
+    X = context.uu * depth
+    Y = context.vv * depth
+
+    return (X, Y, depth), frame.getTimestamp()
+  
 running = True
 
 def interruptHandler(sig, frame):
@@ -287,6 +336,8 @@ with contextlib.ExitStack() as stack:
 
     # keep track of all camera socket names
     camSockets = []
+
+    pointCloudContexts = {}
 
     # keep track of the first slave name if no master is specified
     firstSlaveName: Optional[str] = None
@@ -367,7 +418,7 @@ with contextlib.ExitStack() as stack:
             # Get timestamps for each frame
             tsValues = {}
             for name in outputNames:
-                if PCL_SOCKET in name:
+                if ALIGN_SOCKET in name:
                     tsValues[name] = latestFrameGroup[name].getTimestamp().total_seconds()
                 else:
                     tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
@@ -407,14 +458,18 @@ with contextlib.ExitStack() as stack:
             # Create a image frame with sync info for each output
             for outputName in outputNames:
 
-                if PCL_SOCKET in outputName:
+                if ALIGN_SOCKET in outputName:
+                    frame = latestFrameGroup[outputName]
+
+                    # this can be done in a separate thread
+                    if outputName not in pointCloudContexts:
+                        pointCloudContexts[outputName] = PointCloudContext()
+                    pcl, timestamp = calculatePointCloud(frame, pointCloudContexts[outputName])
+                    
                     ########################################################################
                     # Do processing of pointclouds here
                     ########################################################################
 
-                    msg = latestFrameGroup[outputName]
-                    assert isinstance(msg, dai.PointCloudData)
-                    points, colors = msg.getPointsRGB()
                     # Do something with the point cloud
                     # For example, we can filter out points that are too close to the camera
                     continue
