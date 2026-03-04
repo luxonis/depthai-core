@@ -19,27 +19,46 @@ void AutoCalibration::loggReport(const Report& report, unsigned int iteration) c
     auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
 
     log("====== AutoCalibration iteration {} / {} ========", iteration, initialConfig->maxIterations);
+    log("Iteration time:         {:.2f}s", report.elapsedSeconds);
     log("dataConfidence          {:.4f}     {:.2f}", report.dataConfidence, initialConfig->dataConfidenceThreshold);
     log("calibrationConfidence   {:.4f}     {:.2f}", report.calibrationConfidence, initialConfig->calibrationConfidenceThreshold);
 
     if(report.calibrationUpdated) {
         log("Calibration successfully updated");
+        log("=================================================");
         return;
     }
 
     if(report.recalibrating) {
         log("recalibration  {}", report.recalibrationPassed ? "Passed" : "Failed");
         if(report.recalibrationPassed) {
+            log("    Recalibration time:   {:.2f}s", report.elapsedRecalibrationSeconds);
             log("    number of iterations  {}", report.numIterationPerRecalibration);
             log("    rotation difference   {:.4f}  {:.4f}  {:.4f}",
                 report.rotationDifference.at(0),
                 report.rotationDifference.at(1),
                 report.rotationDifference.at(2));
-            log("    dataQuality   {:.4f}", report.dataQualityAfterRecalibration);
+            log("    dataQuality           {:.4f}", report.dataQualityAfterRecalibration);
         }
     } else {
         log("Recalibration  not triggered");
     }
+    log("=================================================");
+}
+
+void AutoCalibration::loggConfig() const {
+    auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
+
+    log("====== AutoCalibration Configuration ======");
+    log("Mode:                   {}", initialConfig->mode == AutoCalibrationConfig::CONTINUOUS ? "CONTINUOUS" : "ON_START");
+    log("Sleeping Time:          {}s", initialConfig->sleepingTime);
+    log("Calib. Confidence Thr:  {:.2f}", initialConfig->calibrationConfidenceThreshold);
+    log("Data Confidence Thr:    {:.2f}", initialConfig->dataConfidenceThreshold);
+    log("Max Iterations:         {}", initialConfig->maxIterations);
+    log("Max Images/Recalib:     {}", initialConfig->maxImagesPerReacalibration);
+    log("Validation Set Size:    {}", initialConfig->validationSetSize);
+    log("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
+    log("===========================================");
 }
 
 AutoCalibration::~AutoCalibration() = default;
@@ -129,6 +148,7 @@ void AutoCalibration::buildInternal() {
 return calibration from DynamicCalibration node
 **/
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration, Report& report) {
+    auto startTime = std::chrono::steady_clock::now();  // Start timer
     gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     for(unsigned int i = 0; i < maxNumIteration; i++) {
         dynamicCalibrationCommandQueue.send(DCC::startCalibration());
@@ -143,6 +163,10 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
                     report.dataQualityAfterRecalibration = dynCalibrationResult->calibrationData.value().dataConfidence;
                     report.recalibrationPassed = true;
                     report.rotationDifference = dynCalibrationResult->calibrationData.value().calibrationDifference.rotationChange;
+                    auto endTime = std::chrono::steady_clock::now();
+                    std::chrono::duration<double> elapsed = endTime - startTime;
+                    report.elapsedRecalibrationSeconds = elapsed.count();
+
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);
                 }
             }
@@ -152,6 +176,9 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     report.recalibrationPassed = false;
     report.numIterationPerRecalibration = maxNumIteration;
     gateControlQueue.send(dai::GateControl::closeGate());
+    auto endTime = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed = endTime - startTime;
+    report.elapsedRecalibrationSeconds = elapsed.count();
     return nullptr;
 }
 
@@ -165,6 +192,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
 bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
     unsigned int numIterations = 0;
     while(numIterations <= initialConfig->maxIterations && mainLoop()) {
+        auto startTime = std::chrono::steady_clock::now();  // Start timer
         Report report;
         dynamicCalibrationCommandQueue.send(DCC::resetData());
         if(initialConfig->validationSetSize == 0) {
@@ -174,6 +202,9 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
                 output.send(resultOutput);
                 report.calibrationUpdated = true;
+                auto endTime = std::chrono::steady_clock::now();
+                std::chrono::duration<double> elapsed = endTime - startTime;
+                report.elapsedSeconds = elapsed.count();  // Set duration
                 loggReport(report, numIterations);
                 return true;
             }
@@ -188,6 +219,9 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                     auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
                     output.send(resultOutput);
                     report.calibrationUpdated = true;
+                    auto endTime = std::chrono::steady_clock::now();
+                    std::chrono::duration<double> elapsed = endTime - startTime;
+                    report.elapsedSeconds = elapsed.count();  // Set duration
                     loggReport(report, numIterations);
                     return true;
                 }
@@ -198,6 +232,9 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                 }
             }
         }
+        auto endTime = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed = endTime - startTime;
+        report.elapsedSeconds = elapsed.count();  // Set duration
         loggReport(report, numIterations);
         ++numIterations;
     }
@@ -211,18 +248,26 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
 
 void AutoCalibration::runContinuousMode() {
     while(mainLoop()) {
+        auto startTime = std::chrono::steady_clock::now();
         updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
-        int elapsed = 0;
+        auto endTime = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed = endTime - startTime;
+        logger->info("AutoCalibration update took: {:.2f}s", elapsed.count());
+        int elapsedSleeping = 0;
         // Continue sleeping only if total time isn't met AND mainLoop is still true
-        while(elapsed < initialConfig->sleepingTime && mainLoop()) {
+        while(elapsedSleeping < initialConfig->sleepingTime && mainLoop()) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
-            elapsed += 1;
+            elapsedSleeping += 1;
         }
     }
 }
 
 void AutoCalibration::runOnStartMode() {
+    auto startTime = std::chrono::steady_clock::now();
     updateCalibrationProcess(std::make_shared<dai::CalibrationHandler>(device->getCalibration()));
+    auto endTime = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed = endTime - startTime;
+    logger->info("AutoCalibration update took: {:.2f}s", elapsed.count());
 }
 
 bool AutoCalibration::validateIncomingData() {
@@ -235,6 +280,7 @@ bool AutoCalibration::validateIncomingData() {
 
         if(!timedout && messageGroup) {
             if(!messageGroup->get<dai::ImgFrame>(leftInputName) || !messageGroup->get<dai::ImgFrame>(rightInputName)) {
+                logger->warn("Autocalibratino: Not initialized - Empty message groups.");
                 return false;
             }
 
@@ -242,9 +288,11 @@ bool AutoCalibration::validateIncomingData() {
             auto rightImgFrame = messageGroup->get<ImgFrame>(rightInputName);
 
             if(leftImgFrame->getWidth() != rightImgFrame->getWidth() || leftImgFrame->getHeight() != rightImgFrame->getHeight()) {
+                logger->warn("Autocalibratino: Not initialized - currently supports only sensors with same resolutions.");
                 return false;
             }
             if(leftImgFrame->getHeight() != 800 || leftImgFrame->getWidth() != 1280) {
+                logger->warn("Autocalibratino: Not initialized - currently supports only sensors with 1280x800 resolution.");
                 return false;
             }
             return true;
@@ -256,9 +304,9 @@ bool AutoCalibration::validateIncomingData() {
 void AutoCalibration::run() {
     logger->info("AutoCalibration started to work!");
     if(!validateIncomingData()) {
-        logger->info("Invalid incoming data autocalibration stopped!");
         return;
     }
+    loggConfig();
     switch(initialConfig->mode) {
         case AutoCalibrationConfig::Mode::CONTINUOUS:
             logger->info("Running continuous mode.");
