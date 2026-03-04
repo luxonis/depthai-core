@@ -54,8 +54,9 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.14.1', '1.18.3', '1.25.3']"
+      luxonis_os_versions_to_test: "['1.14.1','1.18.3','1.25.3']"
       luxonis_os_versions_to_test_rgb: "['1.25.3']"
+      luxonis_os_versions_to_test_usb: "['1.27.0-usb+72f1b9e22127abf4f322071739fa5880a7bf2301']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -88,6 +89,7 @@ jobs:
     uses: ./.github/workflows/test_child_windows.yml
     with:
       luxonis_os_versions_to_test: "['1.25.3']"
+      luxonis_os_versions_to_test_usb: ${{ github.event_name != 'pull_request' && '["1.27.0-usb+72f1b9e22127abf4f322071739fa5880a7bf2301"]' || '[]' }}
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -99,5 +101,6 @@ jobs:
     with:
       flavor: "vanilla"
       luxonis_os_versions_to_test: "['1.25.3']"
+      luxonis_os_versions_to_test_usb: ${{ github.event_name != 'pull_request' && '["1.27.0-usb+72f1b9e22127abf4f322071739fa5880a7bf2301"]' || '[]' }}
     secrets:
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
