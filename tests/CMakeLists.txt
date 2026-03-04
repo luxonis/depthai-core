@@ -20,106 +20,6 @@ message(STATUS "Catch2_VERSION: ${Catch2_VERSION}")
 message(STATUS "Catch2_INCLUDE_DIRS: ${Catch2_INCLUDE_DIRS}")
 message(STATUS "Catch2_LIBRARIES: ${Catch2_LIBRARIES}")
 
-set(test_env
-    # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
-    # DepthAI
-    "DEPTHAI_SEARCH_TIMEOUT=15000"
-    "DEPTHAI_RECONNECT_TIMEOUT=0"
-    )
-
-include(CMakeParseArguments)
-
-include_directories(${CMAKE_SOURCE_DIR}/src)
-
-# Function for adding new tests
-function(dai_add_test test_name test_src)
-    # Parse arguments
-    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
-
-    # Create test executable
-    add_executable(${test_name} ${test_src})
-    add_default_flags(${test_name} LEAN)
-
-    # Set compiler C++ standard if specified
-    if(DAT_CXX_STANDARD)
-        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
-    endif()
-
-    # Add conforming preprocessor flags for MSVC if requested
-    if(MSVC AND DAT_CONFORMING)
-        if(MSVC_VERSION LESS 1925)
-            target_compile_options(${test_name} PRIVATE "/experimental:preprocessor")
-        else()
-            target_compile_options(${test_name} PRIVATE "/Zc:preprocessor")
-        endif()
-    endif()
-
-    # Add to clang-format target
-    if(COMMAND target_clangformat_setup)
-        target_clangformat_setup(${test_name} "")
-    endif()
-
-    # Link to core and Catch2 testing framework
-    set(DEPTHAI_TARGET depthai::core)
-    if(NOT DEPTHAI_MERGED_TARGET)
-        set(DEPTHAI_TARGET depthai::opencv)
-    endif()
-    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
-
-    # Add sanitizers for tests as well
-    if(COMMAND add_sanitizers)
-        add_sanitizers(${test_name})
-    endif()
-
-    # Add test
-    add_test(NAME ${test_name} COMMAND ${test_name})
-    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
-
-
-    # Copy over required DLLs (Windows)
-    if(WIN32)
-        # Copy DLLs to target directory - Windows only
-        # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
-        if(CMAKE_VERSION VERSION_LESS "3.21")
-            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
-        else()
-            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${test_name}>")
-        endif()
-        add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
-            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${test_name}>>"
-            COMMAND_EXPAND_LISTS
-            VERBATIM
-        )
-    endif()
-endfunction()
-
-# Function for setting test labels, including label shortcuts
-function(dai_set_test_labels test_name)
-    set(expanded_labels "")
-    foreach(label IN LISTS ARGN)
-        if(label STREQUAL "rvc2_all")
-            list(APPEND expanded_labels "rvc2" "poe" "usb")
-        else()
-            list(APPEND expanded_labels ${label})
-        endif()
-    endforeach()
-    set_tests_properties(${test_name} PROPERTIES LABELS "${expanded_labels}")
-endfunction()
-
-# Function for adding compile definitions to tests
-function(dai_test_compile_definitions)
-    if(TARGET ${ARGV0})
-        target_compile_definitions(${ARGV})
-        if(TARGET ${ARGV0}_conforming)
-            set(ARGV0 ${ARGV0}_conforming)
-            list(REMOVE_AT ARGV 0)
-            list(INSERT ARGV 0 ${ARGV0})
-            target_compile_definitions(${ARGV})
-        endif()
-    endif()
-endfunction()
-
 if(DEPTHAI_FETCH_ARTIFACTS)
     # Mobilenet network
     private_data(
@@ -341,10 +241,10 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     )
 
     private_data(
-        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/test_recording.tar"
-        SHA1 "5f93fba780c07ab858c8d5bef3a591078e021ff5"
-        FILE "test_recording.tar"
-        LOCATION test_recording
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/holistic_recording.tar"
+        SHA1 "1eb1e6b927fbf52d4f9c13e530697503010c5b96"
+        FILE "holistic_recording.tar"
+        LOCATION holistic_recording
     )
 
     private_data(
@@ -354,6 +254,108 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         LOCATION test_calib
     )
 endif()
+
+set(test_env
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_SEARCH_TIMEOUT=15000"
+    "DEPTHAI_RECONNECT_TIMEOUT=0"
+    "DEPTHAI_REPLAY=${holistic_recording}"
+    )
+
+include(CMakeParseArguments)
+
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
+# Function for adding new tests
+function(dai_add_test test_name test_src)
+    # Parse arguments
+    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
+
+    # Create test executable
+    add_executable(${test_name} ${test_src})
+    add_default_flags(${test_name} LEAN)
+
+    # Set compiler C++ standard if specified
+    if(DAT_CXX_STANDARD)
+        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
+    endif()
+
+    # Add conforming preprocessor flags for MSVC if requested
+    if(MSVC AND DAT_CONFORMING)
+        if(MSVC_VERSION LESS 1925)
+            target_compile_options(${test_name} PRIVATE "/experimental:preprocessor")
+        else()
+            target_compile_options(${test_name} PRIVATE "/Zc:preprocessor")
+        endif()
+    endif()
+
+    # Add to clang-format target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${test_name} "")
+    endif()
+
+    # Link to core and Catch2 testing framework
+    set(DEPTHAI_TARGET depthai::core)
+    if(NOT DEPTHAI_MERGED_TARGET)
+        set(DEPTHAI_TARGET depthai::opencv)
+    endif()
+    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
+
+    # Add sanitizers for tests as well
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${test_name})
+    endif()
+
+    # Add test
+    add_test(NAME ${test_name} COMMAND ${test_name})
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
+
+
+    # Copy over required DLLs (Windows)
+    if(WIN32)
+        # Copy DLLs to target directory - Windows only
+        # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
+        if(CMAKE_VERSION VERSION_LESS "3.21")
+            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        else()
+            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${test_name}>")
+        endif()
+        add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
+            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${test_name}>>"
+            COMMAND_EXPAND_LISTS
+            VERBATIM
+        )
+    endif()
+endfunction()
+
+# Function for setting test labels, including label shortcuts
+function(dai_set_test_labels test_name)
+    set(expanded_labels "")
+    foreach(label IN LISTS ARGN)
+        if(label STREQUAL "rvc2_all")
+            list(APPEND expanded_labels "rvc2" "poe" "usb")
+        else()
+            list(APPEND expanded_labels ${label})
+        endif()
+    endforeach()
+    set_tests_properties(${test_name} PROPERTIES LABELS "${expanded_labels}")
+endfunction()
+
+# Function for adding compile definitions to tests
+function(dai_test_compile_definitions)
+    if(TARGET ${ARGV0})
+        target_compile_definitions(${ARGV})
+        if(TARGET ${ARGV0}_conforming)
+            set(ARGV0 ${ARGV0}_conforming)
+            list(REMOVE_AT ARGV 0)
+            list(INSERT ARGV 0 ${ARGV0})
+            target_compile_definitions(${ARGV})
+        endif()
+    endif()
+endfunction()
+
 ### Helper script to wrap the tests with a timeout ############################
 
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
