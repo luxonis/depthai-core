@@ -40,6 +40,12 @@ void AutoCalibration::loggReport(const Report& report, unsigned int iteration) c
                 report.rotationDifference.at(2));
             log("    dataQuality           {:.4f}", report.dataQualityAfterRecalibration);
         }
+        unsigned i = 0;
+        for(const auto& coverageData : report.coveragesAcquired) {
+            log("    recalibration iteration:");
+            log("        {}    coverageAcquired    {:.1f}    dataAcquired    {:.1f}", i, coverageData.first, coverageData.second);
+            i += 1;
+        }
     } else {
         log("Recalibration  not triggered");
     }
@@ -150,12 +156,13 @@ return calibration from DynamicCalibration node
 std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsigned int maxNumIteration, Report& report) {
     auto startTime = std::chrono::steady_clock::now();  // Start timer
     gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
+    std::shared_ptr<CoverageData> coverage;
     for(unsigned int i = 0; i < maxNumIteration; i++) {
         dynamicCalibrationCommandQueue.send(DCC::startCalibration());
         for(unsigned int numLoadedImages = 0; numLoadedImages < initialConfig->maxImagesPerReacalibration; numLoadedImages++) {
             if(!mainLoop()) return nullptr;
             auto dynCalibrationResult = dynamicCalibrationQueue.get<dai::DynamicCalibrationResult>();
-            coverageQueue.tryGet<dai::CoverageData>();
+            coverage = coverageQueue.get<dai::CoverageData>();
             if(dynCalibrationResult->calibrationData) {
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue.send(dai::GateControl::closeGate());
@@ -166,12 +173,18 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
                     auto endTime = std::chrono::steady_clock::now();
                     std::chrono::duration<double> elapsed = endTime - startTime;
                     report.elapsedRecalibrationSeconds = elapsed.count();
-
+                    report.coveragesAcquired.push_back({coverage->coverageAcquired, coverage->dataAcquired});
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);
+                } else {
+                    dynamicCalibrationCommandQueue.send(DCC::resetData());
                 }
             }
         }
-        dynamicCalibrationCommandQueue.send(DCC::resetData());
+        if(coverage) {
+            report.coveragesAcquired.push_back({coverage->coverageAcquired, coverage->dataAcquired});
+        } else {
+            report.coveragesAcquired.push_back({0., 0.});
+        }
     }
     report.recalibrationPassed = false;
     report.numIterationPerRecalibration = maxNumIteration;
