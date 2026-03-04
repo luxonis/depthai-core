@@ -66,6 +66,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
         bool calibrationUpdated = false;
         double elapsedSeconds = 0.;
         double elapsedRecalibrationSeconds = 0.;
+        std::vector<std::pair<double, double>> coveragesAcquired;
         std::array<float, 3> rotationDifference;
     };
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
