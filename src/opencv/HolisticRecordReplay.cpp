@@ -132,6 +132,7 @@ bool setupHolisticRecord(Pipeline pipeline,
             }
             sync = pipeline.create<dai::node::Sync>();
             demux = pipeline.create<dai::node::MessageDemux>();
+            demux->setRunOnHost(true);
             sync->out.link(demux->input);
             if(maxRequestedFps > 0.0f) {
                 sync->setSyncThreshold(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(1.5 / (double)maxRequestedFps)));

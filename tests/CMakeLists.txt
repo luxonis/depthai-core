@@ -574,8 +574,8 @@ dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_ST
 dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # MessageGroup tests
-dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(message_group_frame_test ondevice rvc2_all rvc4 ci)
+dai_add_test(message_group_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
 
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
