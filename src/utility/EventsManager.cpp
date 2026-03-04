@@ -311,7 +311,7 @@ EventsManager::EventsManager(std::string apiKey, bool uploadCachedOnStart)
     // }
     sourceSerialNumber = "";
     url = utility::getEnvAs<std::string>("DEPTHAI_HUB_EVENTS_BASE_URL", "https://events.cloud.luxonis.com");
-    token = apiKey != "" ? apiKey : utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
+    token = !apiKey.empty() ? apiKey : utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
         // Fetch configuration limits when starting the new thread
