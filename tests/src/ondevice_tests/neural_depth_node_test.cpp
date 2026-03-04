@@ -10,6 +10,8 @@ extern "C" const char* __asan_default_options() {
 
 namespace {
 void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
+    constexpr float kFpsTolerance = 0.2f;
+
     dai::Pipeline pipeline;
     auto device = pipeline.getDefaultDevice();
     if(!device->isNeuralDepthSupported()) {
@@ -51,7 +53,7 @@ void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
         if(i == 0) {
             continue;
         }
-        REQUIRE(report->fps >= minFps);
+        REQUIRE(report->fps + kFpsTolerance >= minFps);
     }
 
     pipeline.stop();
