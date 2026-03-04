@@ -27,6 +27,8 @@ option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
 option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
+option(DEPTHAI_HOLOLINK_EMULATION_SUPPORT "Enable optional Hololink HSB emulation support" ON)
+option(DEPTHAI_HOLOLINK_EMULATION_ROCE_SUPPORT "Enable Hololink Linux RoCE transport (requires ZLIB)" ON)
 
 option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
 
@@ -117,6 +119,7 @@ option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries i
 # ---------- Development Aids -------------------
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target" ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
+set(DEPTHAI_CLANG_TIDY OFF CACHE BOOL "Enable clang-tidy checks during compilation" FORCE)
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
 
 # Local override paths
