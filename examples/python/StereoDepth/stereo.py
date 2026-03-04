@@ -33,7 +33,7 @@ with pipeline:
         npDisparity = disparity.getFrame()
         maxDisparity = max(maxDisparity, np.max(npDisparity))
         colorizedDisparity = cv2.applyColorMap(((npDisparity / maxDisparity) * 255).astype(np.uint8), colorMap)
-        cv2.imshow("disparity", colorizedDisparity)
+        cv2.imshow("disparit", colorizedDisparity)
         key = cv2.waitKey(1)
         if key == ord('q'):
             pipeline.stop()
