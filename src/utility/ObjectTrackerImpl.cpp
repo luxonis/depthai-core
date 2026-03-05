@@ -4,6 +4,12 @@
 
 #include <fmt/base.h>
 
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <limits>
+
 #include "eigen3/Eigen/Dense"
 #include "properties/ObjectTrackerProperties.hpp"
 
@@ -40,8 +46,18 @@ float execLapjv(
 std::tuple<Eigen::MatrixXf, Eigen::MatrixXf> speed_direction_batch(const Eigen::MatrixXf& dets, const Eigen::MatrixXf& tracks);
 Eigen::MatrixXf iou_batch(const Eigen::MatrixXf& bboxes1, const Eigen::MatrixXf& bboxes2);
 Eigen::MatrixXf giou_batch(const Eigen::MatrixXf& bboxes1, const Eigen::MatrixXf& bboxes2);
-std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<int>> associate(
-    Eigen::MatrixXf detections, Eigen::MatrixXf trackers, float iou_threshold, Eigen::MatrixXf velocities, Eigen::MatrixXf previous_obs_, float vdc_weight);
+std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<int>> associate(Eigen::MatrixXf detections,
+                                                                                                Eigen::MatrixXf trackers,
+                                                                                                float iou_threshold,
+                                                                                                Eigen::MatrixXf velocities,
+                                                                                                Eigen::MatrixXf previous_obs_,
+                                                                                                float vdc_weight,
+                                                                                                const Eigen::MatrixXf& detection_spatial,
+                                                                                                const Eigen::MatrixXf& tracker_spatial,
+                                                                                                bool use_spatial_association,
+                                                                                                float spatial_weight,
+                                                                                                float spatial_distance_threshold,
+                                                                                                float spatial_depth_aware_scale);
 /**
  * Takes a bounding box in the form [x1,y1,x2,y2] and returns z in the form
 [x,y,s,r] where x,y is the centre of the box and s is the scale/area and r is
@@ -53,6 +69,16 @@ Eigen::VectorXf convert_bbox_to_z(Eigen::VectorXf bbox);
 Eigen::VectorXf speed_direction(Eigen::VectorXf bbox1, Eigen::VectorXf bbox2);
 Eigen::VectorXf convert_x_to_bbox(Eigen::VectorXf x);
 Eigen::VectorXf k_previous_obs(const std::map<int, Eigen::VectorXf>& observations, int cur_age, int k);
+
+constexpr float kSpatialMinDepthMm = 1.0f;
+constexpr float kSpatialInvalidScore = -1000000.f;
+constexpr float kSpatialMinGateMm = 1.0f;
+constexpr float kDefaultFrameDtSec = 1.0f / 30.0f;
+constexpr float kSpatialAccelerationStdMmS2 = 2500.0f;
+constexpr float kSpatialXYMeasurementStdMm = 45.0f;
+constexpr float kSpatialZMeasurementStdMm = 80.0f;
+constexpr float kSpatialProcessNoiseMinPos = 1e-3f;
+constexpr float kSpatialProcessNoiseMinVel = 1e-2f;
 
 Tracker::~Tracker() = default;
 class TrackletExt : public Tracklet {
@@ -82,8 +108,9 @@ class OCSTracker::State {
    public:
     class KalmanFilterNew {
        public:
+        enum class FilterType : uint8_t { boxFilter, spatialFilter };
         KalmanFilterNew() = default;
-        KalmanFilterNew(int dim_x_, int dim_z_);
+        KalmanFilterNew(int dim_x_, int dim_z_, FilterType filterType_);
         void predict();
         void update(Eigen::VectorXf z_);
         void freeze();
@@ -91,40 +118,41 @@ class OCSTracker::State {
         KalmanFilterNew& operator=(const KalmanFilterNew&) = delete;
 
        public:
-        int dim_z = 4;
-        int dim_x = 7;
-        int dim_u = 0;
-        // state: This is the Kalman state variable [7,1].
+        int dim_z;
+        int dim_x;
+        int dim_u;
+        FilterType filterType;
+        // state: This is the Kalman state variable. [7,1] for Box, [6,1] for Spatial.
         Eigen::VectorXf x;
-        // P: Covariance matrix. Initially declared as an identity matrix. Data type is float. [7,7].
+        // P: Covariance matrix. Initially declared as an identity matrix. Data type is float. [7,7] for Box, [6,6] for Spatial.
         Eigen::MatrixXf P;
-        // Q: Process noise covariance matrix. [7,7].
+        // Q: Process noise covariance matrix. [7,7] for Box, [6,6] for Spatial.
         Eigen::MatrixXf Q;
         // B: Control matrix. Not used in target tracking. [n,n].
         Eigen::MatrixXf B;
-        // F: Prediction matrix / state transition matrix. [7,7].
-        Eigen::Matrix<float, 7, 7> F;
-        // H: Observation model / matrix. [4,7].
-        Eigen::Matrix<float, 4, 7> H;
-        // R: Observation noise covariance matrix. [4,4].
-        Eigen::Matrix<float, 4, 4> R;
+        // F: Prediction matrix / state transition matrix. [7,7] for Box, [6,6] for Spatial.
+        Eigen::MatrixXf F;
+        // H: Observation model / matrix. [4,7] for Box, [3,6] for Spatial
+        Eigen::MatrixXf H;
+        // R: Observation noise covariance matrix. [4,4] for Box, [3,3] for Spatial
+        Eigen::MatrixXf R;
         // _alpha_sq: Fading memory control, controlling the update weight. Float.
         float _alpha_sq = 1.0;
-        // M: Measurement matrix, converting state vector x to measurement vector z. [7,4]. It has the opposite effect of matrix H.
+        // M: Measurement matrix, converting state vector x to measurement vector z. [7,4] for Box, [6,3] for Spatial. It has the opposite effect of matrix H.
         Eigen::MatrixXf M;
-        // z: Measurement vector. [4,1].
+        // z: Measurement vector. [4,1] for Box, [3,1] for Spatial.
         Eigen::VectorXf z;
         /* The following variables are intermediate variables used in calculations */
-        // K: Kalman gain. [7,4].
+        // K: Kalman gain. [7,4] for Box, [6,3] for Spatial
         Eigen::MatrixXf K;
-        // y: Measurement residual. [4,1].
+        // y: Measurement residual. [4,1] for Box, [3,1] for Spatial
         Eigen::MatrixXf y;
         // S: Measurement residual covariance.
         Eigen::MatrixXf S;
         // SI: Transpose of measurement residual covariance (simplified for subsequent calculations).
         Eigen::MatrixXf SI;
-        // Identity matrix of size [dim_x,dim_x], used for convenient calculations. This cannot be changed.
-        const Eigen::MatrixXf I = Eigen::MatrixXf::Identity(dim_x, dim_x);
+        // Identity matrix of size [dim_x,dim_x], used for convenient calculations.
+        Eigen::MatrixXf I;
         // There will always be a copy of x, P after predict() is called.
         // If there is a need to assign values between two Eigen matrices, the precondition is that they should be initialized properly, as this ensures that
         // the number of columns and rows are compatible.
@@ -166,17 +194,30 @@ class OCSTracker::State {
         };
         struct Data attr_saved;
     };
+    struct SpatialPosition {
+        Eigen::Vector3f position = Eigen::Vector3f::Zero();
+        bool validPosition = false;
+
+        SpatialPosition() = default;
+        explicit SpatialPosition(const Point3f& point) : validPosition(point.z >= kSpatialMinDepthMm) {
+            position(0) = point.x;
+            position(1) = point.y;
+            position(2) = point.z;
+        }
+    };
     class KalmanBoxTracker {
        public:
         KalmanBoxTracker(){};
-        KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, int delta_t_ = 3);
-        void update(Eigen::Matrix<float, 5, 1>* bbox_, int cls_);
+        KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, const Point3f& spatialPoint_, int delta_t_ = 3);
+        void update(Eigen::Matrix<float, 5, 1>* bbox_, int cls_, const Point3f* spatialPoint_);
+        void update_spatial_model_dt(float dtSeconds);
         Eigen::RowVectorXf predict();
         Eigen::VectorXf get_state();
 
        public:
         Eigen::VectorXf bbox;  // [5,1]
         std::shared_ptr<KalmanFilterNew> kf;
+        std::shared_ptr<KalmanFilterNew> kf_spatial;
         int time_since_update;
         std::vector<Eigen::VectorXf> history;  //  [4,1]
         int hits;
@@ -187,7 +228,11 @@ class OCSTracker::State {
         Eigen::RowVectorXf last_observation = Eigen::RowVectorXf::Zero(5);
         std::map<int, Eigen::VectorXf> observations;
         std::vector<Eigen::VectorXf> history_observations;
-        Eigen::RowVectorXf velocity = Eigen::RowVectorXf::Zero(2);  // [2,1]
+        Eigen::RowVectorXf velocity = Eigen::RowVectorXf::Zero(2);   // [2,1]
+        Eigen::Vector3f spatial_velocity = Eigen::Vector3f::Zero();  // [vx,vy,vz]
+        SpatialPosition spatial_observation;
+        SpatialPosition spatial_prediction;
+        bool has_spatial_state = false;
         int delta_t;
         bool remove = false;
     };
@@ -211,6 +256,12 @@ class OCSTracker::State {
             tracklets.erase(
                 std::remove_if(tracklets.begin(), tracklets.end(), [](const TrackletExt& t) { return t.status == Tracklet::TrackingStatus::REMOVED; }),
                 tracklets.end());
+        }
+        void sync_tracklet_motion(size_t idx) {
+            if(idx >= trackers.size() || idx >= tracklets.size()) return;
+            const auto& spatialVelocity = trackers[idx].spatial_velocity;
+            tracklets[idx].velocity = Point3f(spatialVelocity(0), spatialVelocity(1), spatialVelocity(2));
+            tracklets[idx].speed = spatialVelocity.norm();
         }
         void remove_tracker(size_t idx) {
             if(idx < trackers.size()) {
@@ -251,12 +302,19 @@ class OCSTracker::State {
     std::string asso_func;
     float inertia;
     bool use_byte;
+    bool use_spatial_association;
+    float spatial_association_weight;
+    float spatial_distance_threshold;
+    float spatial_depth_aware_scale;
     uint32_t max_id = 0;
     TrackerIdAssignmentPolicy id_assignment_policy;
     bool track_by_class = false;
     uint32_t max_trackers;
     std::atomic<uint32_t> num_trackers = 0;
     std::unordered_map<uint32_t, ClassState> class_states;
+    float frame_dt = kDefaultFrameDtSec;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> previous_frame_ts;
+    bool has_previous_frame_ts = false;
 
     uint32_t get_next_id() {
         switch(id_assignment_policy) {
@@ -296,7 +354,23 @@ class OCSTracker::State {
           int delta_t_ = 3,
           std::string asso_func_ = "iou",
           float inertia_ = 0.2,
-          bool use_byte_ = false);
+          bool use_byte_ = false,
+          bool use_spatial_association_ = true,
+          float spatial_association_weight_ = 0.5f,
+          float spatial_distance_threshold_ = 1500.0f,
+          float spatial_depth_aware_scale_ = 0.35f);
+
+    void update_frame_timestamp(const ImgFrame& frame) {
+        const auto frameTs = frame.getTimestamp();
+        if(has_previous_frame_ts) {
+            const float dtSec = std::chrono::duration<float>(frameTs - previous_frame_ts).count();
+            if(dtSec > 0.0f) {
+                frame_dt = dtSec;
+            }
+        }
+        previous_frame_ts = frameTs;
+        has_previous_frame_ts = true;
+    }
 
     std::vector<Eigen::RowVectorXf> update(const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData, bool trackOnly = false);
     void remove_tracklets(const std::vector<int32_t>& ids) {
@@ -316,10 +390,10 @@ class OCSTracker::State {
     }
 };
 
-OCSTracker::State::KalmanBoxTracker::KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, int delta_t_) {
+OCSTracker::State::KalmanBoxTracker::KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, const Point3f& spatialPoint_, int delta_t_) {
     bbox = std::move(bbox_);
     delta_t = delta_t_;
-    kf = std::make_shared<KalmanFilterNew>(7, 4);
+    kf = std::make_shared<KalmanFilterNew>(7, 4, KalmanFilterNew::FilterType::boxFilter);
     kf->F << 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1;
     kf->H << 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0;
     kf->R.block(2, 2, 2, 2) *= 10.0;
@@ -328,6 +402,16 @@ OCSTracker::State::KalmanBoxTracker::KalmanBoxTracker(Eigen::VectorXf bbox_, int
     kf->Q.bottomRightCorner(1, 1)(0, 0) *= 0.01f;
     kf->Q.block(4, 4, 3, 3) *= 0.01;
     kf->x.head<4>() = convert_bbox_to_z(bbox);
+
+    kf_spatial = std::make_shared<KalmanFilterNew>(6, 3, KalmanFilterNew::FilterType::spatialFilter);
+    kf_spatial->H = Eigen::MatrixXf::Zero(3, 6);
+    kf_spatial->H(0, 0) = 1.0f;
+    kf_spatial->H(1, 1) = 1.0f;
+    kf_spatial->H(2, 2) = 1.0f;
+    kf_spatial->P.block(3, 3, 3, 3) *= 1000.0f;
+    kf_spatial->P *= 10.0f;
+    update_spatial_model_dt(kDefaultFrameDtSec);
+
     time_since_update = 0;
     history.clear();
     hits = 0;
@@ -339,8 +423,41 @@ OCSTracker::State::KalmanBoxTracker::KalmanBoxTracker(Eigen::VectorXf bbox_, int
     observations.clear();
     history_observations.clear();
     velocity.fill(0);
+    spatial_observation = SpatialPosition(spatialPoint_);
+    spatial_prediction = spatial_observation;
+    has_spatial_state = spatial_observation.validPosition;
+    if(has_spatial_state) {
+        kf_spatial->x(0) = spatial_observation.position(0);
+        kf_spatial->x(1) = spatial_observation.position(1);
+        kf_spatial->x(2) = spatial_observation.position(2);
+    }
 }
-void OCSTracker::State::KalmanBoxTracker::update(Eigen::Matrix<float, 5, 1>* bbox_, int cls_) {
+
+void OCSTracker::State::KalmanBoxTracker::update_spatial_model_dt(float dtSeconds) {
+    if(dtSeconds <= 0.0f) {
+        dtSeconds = kDefaultFrameDtSec;
+    }
+
+    kf_spatial->F = Eigen::MatrixXf::Identity(6, 6);
+    kf_spatial->F(0, 3) = dtSeconds;
+    kf_spatial->F(1, 4) = dtSeconds;
+    kf_spatial->F(2, 5) = dtSeconds;
+
+    const float dt2 = dtSeconds * dtSeconds;
+    const float dt3 = dt2 * dtSeconds;
+    const float dt4 = dt2 * dt2;
+    const float accelVar = kSpatialAccelerationStdMmS2 * kSpatialAccelerationStdMmS2;
+
+    kf_spatial->Q = Eigen::MatrixXf::Zero(6, 6);
+    for(int axis = 0; axis < 3; ++axis) {
+        kf_spatial->Q(axis, axis) = std::max(accelVar * (dt4 * 0.25f), kSpatialProcessNoiseMinPos);
+        kf_spatial->Q(axis, axis + 3) = accelVar * (dt3 * 0.5f);
+        kf_spatial->Q(axis + 3, axis) = accelVar * (dt3 * 0.5f);
+        kf_spatial->Q(axis + 3, axis + 3) = std::max(accelVar * dt2, kSpatialProcessNoiseMinVel);
+    }
+}
+
+void OCSTracker::State::KalmanBoxTracker::update(Eigen::Matrix<float, 5, 1>* bbox_, int cls_, const Point3f* spatialPoint_) {
     if(bbox_ != nullptr) {
         conf = (*bbox_)[4];
         cls = cls_;
@@ -373,6 +490,31 @@ void OCSTracker::State::KalmanBoxTracker::update(Eigen::Matrix<float, 5, 1>* bbo
         kf->update(tmp);
     } else {
         kf->update(Eigen::VectorXf());
+    }
+
+    if(spatialPoint_ != nullptr && spatialPoint_->z >= kSpatialMinDepthMm) {
+        const SpatialPosition spatialMeasurement = SpatialPosition(*spatialPoint_);
+        Eigen::VectorXf spatialZ(3);
+        spatialZ << spatialMeasurement.position(0), spatialMeasurement.position(1), spatialMeasurement.position(2);
+        const float depthFactor = 1.0f + (std::max(spatialMeasurement.position(2), 0.0f) / 4000.0f);
+        const float xyStd = kSpatialXYMeasurementStdMm * depthFactor;
+        const float zStd = kSpatialZMeasurementStdMm * depthFactor;
+        kf_spatial->R = Eigen::MatrixXf::Identity(3, 3);
+        kf_spatial->R(0, 0) = xyStd * xyStd;
+        kf_spatial->R(1, 1) = xyStd * xyStd;
+        kf_spatial->R(2, 2) = zStd * zStd;
+        kf_spatial->update(spatialZ);
+        spatial_observation = spatialMeasurement;
+        spatial_prediction.position.head<3>() = kf_spatial->x.head<3>();
+        spatial_prediction.validPosition = true;
+        spatial_velocity = kf_spatial->x.segment<3>(3);
+        has_spatial_state = true;
+    } else if(has_spatial_state) {
+        kf_spatial->update(Eigen::VectorXf());
+    } else {
+        spatial_observation = SpatialPosition();
+        spatial_prediction = SpatialPosition();
+        spatial_velocity.setZero();
     }
 }
 
@@ -429,8 +571,12 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
     }
 
     prep();
+    for(auto& tracker : trackers) {
+        tracker.update_spatial_model_dt(parent->frame_dt);
+    }
 
     Eigen::Matrix<float, Eigen::Dynamic, 7> dets(detections.size(), 7);
+    Eigen::Matrix<float, Eigen::Dynamic, 4> dets_spatial(detections.size(), 4);
 
     for(size_t i = 0; i < detections.size(); i++) {
         const auto& detection = detections[i];
@@ -442,6 +588,9 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         dets(i, 4) = detection.confidence;  // confidence
         dets(i, 5) = detection.label;       // class_id
         dets(i, 6) = i;
+        const SpatialPosition spatialMeasurement(spatialData[i]);
+        dets_spatial.row(i) << spatialMeasurement.position(0), spatialMeasurement.position(1), spatialMeasurement.position(2),
+            (spatialMeasurement.validPosition ? 1.0f : 0.0f);
     }
 
     frame_count += 1;
@@ -452,26 +601,34 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
     auto inds_low = confs.array() > 0.1;
     auto inds_high = confs.array() < det_thresh;
     auto inds_second = inds_low && inds_high;
-    Eigen::Matrix<float, Eigen::Dynamic, 7> dets_second;
+    Eigen::Matrix<float, Eigen::Dynamic, 7> dets_second(0, 7);
+    Eigen::Matrix<float, Eigen::Dynamic, 4> dets_second_spatial(0, 4);
     Eigen::Matrix<bool, 1, Eigen::Dynamic> remain_inds = (confs.array() > det_thresh);
-    Eigen::Matrix<float, Eigen::Dynamic, 7> dets_first;
+    Eigen::Matrix<float, Eigen::Dynamic, 7> dets_first(0, 7);
+    Eigen::Matrix<float, Eigen::Dynamic, 4> dets_first_spatial(0, 4);
     for(int i = 0; i < output_results.rows(); i++) {
         if(true == inds_second(i)) {
             dets_second.conservativeResize(dets_second.rows() + 1, Eigen::NoChange);
             dets_second.row(dets_second.rows() - 1) = output_results.row(i);
+            dets_second_spatial.conservativeResize(dets_second_spatial.rows() + 1, Eigen::NoChange);
+            dets_second_spatial.row(dets_second_spatial.rows() - 1) = dets_spatial.row(i);
         }
         if(true == remain_inds(i)) {
             dets_first.conservativeResize(dets_first.rows() + 1, Eigen::NoChange);
             dets_first.row(dets_first.rows() - 1) = output_results.row(i);
+            dets_first_spatial.conservativeResize(dets_first_spatial.rows() + 1, Eigen::NoChange);
+            dets_first_spatial.row(dets_first_spatial.rows() - 1) = dets_spatial.row(i);
         }
     }
     /*get predicted locations from existing trackers.*/
     Eigen::MatrixXf trks = Eigen::MatrixXf::Zero(trackers.size(), 5);
-    std::vector<int> to_del;
+    Eigen::MatrixXf trks_spatial = Eigen::MatrixXf::Zero(trackers.size(), 4);
     std::vector<Eigen::RowVectorXf> ret;
     for(int i = 0; i < trks.rows(); i++) {
         Eigen::RowVectorXf pos = trackers[i].predict();
         trks.row(i) << pos(0), pos(1), pos(2), pos(3), 0;
+        trks_spatial.row(i) << trackers[i].spatial_prediction.position(0), trackers[i].spatial_prediction.position(1),
+            trackers[i].spatial_prediction.position(2), (trackers[i].spatial_prediction.validPosition ? 1.0f : 0.0f);
     }
     Eigen::MatrixXf velocities = Eigen::MatrixXf::Zero(trackers.size(), 2);
     Eigen::MatrixXf last_boxes = Eigen::MatrixXf::Zero(trackers.size(), 5);
@@ -487,7 +644,18 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
     std::vector<Eigen::Matrix<int, 1, 2>> matched;
     std::vector<int> unmatched_dets;
     std::vector<int> unmatched_trks;
-    auto result = associate(dets_first, trks, iou_threshold, velocities, k_observations, inertia);
+    auto result = associate(dets_first,
+                            trks,
+                            iou_threshold,
+                            velocities,
+                            k_observations,
+                            inertia,
+                            dets_first_spatial,
+                            trks_spatial,
+                            parent->use_spatial_association,
+                            parent->spatial_association_weight,
+                            parent->spatial_distance_threshold,
+                            parent->spatial_depth_aware_scale);
     matched = std::get<0>(result);
     unmatched_dets = std::get<1>(result);
     unmatched_trks = std::get<2>(result);
@@ -495,9 +663,10 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         Eigen::Matrix<float, 5, 1> tmp_bbox;
         tmp_bbox = dets_first.block<1, 5>(m(0), 0);
         uint32_t index = dets_first(m(0), 6);
-        trackers[m(1)].update(&(tmp_bbox), dets_first(m(0), 5));
+        trackers[m(1)].update(&(tmp_bbox), dets_first(m(0), 5), &spatialData[index]);
         tracklets[m(1)].update(Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)), spatialData[index]);
         tracklets[m(1)].srcImgDetection = detections[index];
+        sync_tracklet_motion(m(1));
         if(tracklets[m(1)].status == Tracklet::TrackingStatus::LOST) {
             tracklets[m(1)].updateStatus(Tracklet::TrackingStatus::TRACKED);
         } else if(tracklets[m(1)].status == Tracklet::TrackingStatus::NEW && tracklets[m(1)].age >= min_hits) {
@@ -546,9 +715,10 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
                 Eigen::Matrix<float, 5, 1> tmp_box;
                 tmp_box = dets_second.block<1, 5>(det_ind, 0);
                 uint32_t index = dets_second(det_ind, 6);
-                trackers[trk_ind].update(&tmp_box, dets_second(det_ind, 5));
+                trackers[trk_ind].update(&tmp_box, dets_second(det_ind, 5), &spatialData[index]);
                 tracklets[trk_ind].update(Rect(tmp_box(0), tmp_box(1), tmp_box(2) - tmp_box(0), tmp_box(3) - tmp_box(1)), spatialData[index]);
                 tracklets[trk_ind].srcImgDetection = detections[index];
+                sync_tracklet_motion(trk_ind);
                 if(tracklets[trk_ind].status == Tracklet::TrackingStatus::LOST) {
                     tracklets[trk_ind].updateStatus(Tracklet::TrackingStatus::TRACKED);
                 } else if(tracklets[trk_ind].status == Tracklet::TrackingStatus::NEW && tracklets[trk_ind].age >= min_hits) {
@@ -612,9 +782,10 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
                 Eigen::Matrix<float, 5, 1> tmp_bbox;
                 tmp_bbox = dets_first.block<1, 5>(det_ind, 0);
                 uint32_t index = dets_first(det_ind, 6);
-                trackers.at(trk_ind).update(&tmp_bbox, dets_first(det_ind, 5));
+                trackers.at(trk_ind).update(&tmp_bbox, dets_first(det_ind, 5), &spatialData[index]);
                 tracklets[trk_ind].update(Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)), spatialData[index]);
                 tracklets[trk_ind].srcImgDetection = detections[index];
+                sync_tracklet_motion(trk_ind);
                 if(tracklets[trk_ind].status == Tracklet::TrackingStatus::LOST) {
                     tracklets[trk_ind].updateStatus(Tracklet::TrackingStatus::TRACKED);
                 } else if(tracklets[trk_ind].status == Tracklet::TrackingStatus::NEW && trackers[trk_ind].hit_streak >= min_hits) {
@@ -641,7 +812,8 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
     }
 
     for(auto m : unmatched_trks) {
-        trackers.at(m).update(nullptr, 0);
+        trackers.at(m).update(nullptr, 0, nullptr);
+        sync_tracklet_motion(m);
         if(!trackOnly) {
             if(tracklets[m].status == Tracklet::TrackingStatus::TRACKED) {
                 tracklets[m].updateStatus(Tracklet::TrackingStatus::LOST);
@@ -658,8 +830,9 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         if(parent->num_trackers < parent->max_trackers) {
             Eigen::RowVectorXf tmp_bbox = dets_first.block(i, 0, 1, 5);
             uint32_t index = dets_first(i, 6);
-            int cls_ = int(dets(i, 5));
-            KalmanBoxTracker trk = KalmanBoxTracker(tmp_bbox, cls_, delta_t);
+            int cls_ = int(dets_first(i, 5));
+            KalmanBoxTracker trk = KalmanBoxTracker(tmp_bbox, cls_, spatialData[index], delta_t);
+            trk.update_spatial_model_dt(parent->frame_dt);
             ++parent->num_trackers;
             trackers.push_back(trk);
             tracklets.push_back(TrackletExt{Tracklet{Rect(tmp_bbox(0), tmp_bbox(1), tmp_bbox(2) - tmp_bbox(0), tmp_bbox(3) - tmp_bbox(1)),
@@ -668,7 +841,10 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
                                                      1,
                                                      Tracklet::TrackingStatus::NEW,
                                                      detections[index],
-                                                     spatialData[index]}});
+                                                     spatialData[index],
+                                                     Point3f(0.0f, 0.0f, 0.0f),
+                                                     0.0f}});
+            sync_tracklet_motion(trackers.size() - 1);
         }
     }
     for(int i = trackers.size() - 1; i >= 0; i--) {
@@ -708,10 +884,11 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::update(const std::vector<ImgD
     for(size_t i = 0; i < detections.size(); i++) {
         uint32_t index = track_by_class ? detections[i].label : 0;
         dets_map[index].first.push_back(detections[i]);
-        if(i <= spatialData.size())
+        if(i < spatialData.size()) {
             dets_map[index].second.push_back(spatialData[i]);
-        else
+        } else {
             dets_map[index].second.push_back(Point3f(0, 0, 0));
+        }
     }
     for(auto& [index, dets] : dets_map) {
         class_states.try_emplace(index, this, det_thresh, max_age, min_hits, iou_threshold, delta_t, asso_func, inertia, use_byte);
@@ -730,7 +907,11 @@ OCSTracker::State::State(float det_thresh_,
                          int delta_t_,
                          std::string asso_func_,
                          float inertia_,
-                         bool use_byte_) {
+                         bool use_byte_,
+                         bool use_spatial_association_,
+                         float spatial_association_weight_,
+                         float spatial_distance_threshold_,
+                         float spatial_depth_aware_scale_) {
     max_age = max_age_;
     min_hits = min_hits_;
     iou_threshold = iou_threshold_;
@@ -742,6 +923,10 @@ OCSTracker::State::State(float det_thresh_,
     asso_func = asso_func_;
     inertia = inertia_;
     use_byte = use_byte_;
+    use_spatial_association = use_spatial_association_;
+    spatial_association_weight = spatial_association_weight_;
+    spatial_distance_threshold = spatial_distance_threshold_;
+    spatial_depth_aware_scale = spatial_depth_aware_scale_;
 }
 
 std::tuple<Eigen::MatrixXf, Eigen::MatrixXf> speed_direction_batch(const Eigen::MatrixXf& dets, const Eigen::MatrixXf& tracks) {
@@ -836,8 +1021,26 @@ Eigen::MatrixXf giou_batch(const Eigen::MatrixXf& bboxes1, const Eigen::MatrixXf
     }
 }
 
-std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<int>> associate(
-    Eigen::MatrixXf detections, Eigen::MatrixXf trackers, float iou_threshold, Eigen::MatrixXf velocities, Eigen::MatrixXf previous_obs_, float vdc_weight) {
+std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<int>> associate(Eigen::MatrixXf detections,
+                                                                                                Eigen::MatrixXf trackers,
+                                                                                                float iou_threshold,
+                                                                                                Eigen::MatrixXf velocities,
+                                                                                                Eigen::MatrixXf previous_obs_,
+                                                                                                float vdc_weight,
+                                                                                                const Eigen::MatrixXf& detection_spatial,
+                                                                                                const Eigen::MatrixXf& tracker_spatial,
+                                                                                                bool use_spatial_association,
+                                                                                                float spatial_weight,
+                                                                                                float spatial_distance_threshold,
+                                                                                                float spatial_depth_aware_scale) {
+    if(detections.rows() == 0) {
+        std::vector<int> unmatched_trks;
+        unmatched_trks.reserve(trackers.rows());
+        for(int i = 0; i < trackers.rows(); i++) {
+            unmatched_trks.push_back(i);
+        }
+        return std::make_tuple(std::vector<Eigen::Matrix<int, 1, 2>>(), std::vector<int>(), unmatched_trks);
+    }
     if(trackers.rows() == 0) {
         std::vector<int> unmatched_dets;
         for(int i = 0; i < detections.rows(); i++) {
@@ -869,43 +1072,63 @@ std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<
     auto valid_float = valid_mask_.cast<float>();
     auto intermediate_result = (valid_float.array() * diff_angle.array() * vdc_weight).transpose();
     angle_diff_cost.noalias() = (intermediate_result.array() * scores.array()).matrix();
+    Eigen::MatrixXf base_score = iou_matrix.array() + angle_diff_cost.array();
+
+    bool spatial_available = use_spatial_association && detection_spatial.rows() == detections.rows() && tracker_spatial.rows() == trackers.rows()
+                             && detection_spatial.cols() >= 4 && tracker_spatial.cols() >= 4;
+    const float alpha = std::clamp(spatial_weight, 0.0f, 1.0f);
+    Eigen::MatrixXf spatial_similarity = Eigen::MatrixXf::Zero(detections.rows(), trackers.rows());
+    Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> spatial_pair_valid =
+        Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic>::Constant(detections.rows(), trackers.rows(), false);
+    Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> spatial_gate_ok =
+        Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic>::Constant(detections.rows(), trackers.rows(), false);
+    Eigen::MatrixXf combined_score = base_score;
+
+    if(spatial_available) {
+        for(int i = 0; i < detections.rows(); i++) {
+            for(int j = 0; j < trackers.rows(); j++) {
+                const bool validPair = detection_spatial(i, 3) > 0.5f && tracker_spatial(j, 3) > 0.5f;
+                if(!validPair) continue;
+
+                spatial_pair_valid(i, j) = true;
+                const float dx = detection_spatial(i, 0) - tracker_spatial(j, 0);
+                const float dy = detection_spatial(i, 1) - tracker_spatial(j, 1);
+                const float dz = detection_spatial(i, 2) - tracker_spatial(j, 2);
+                const float spatialDistance = std::sqrt(dx * dx + dy * dy + dz * dz);
+                const float depthRef = std::max(kSpatialMinDepthMm, 0.5f * (detection_spatial(i, 2) + tracker_spatial(j, 2)));
+                const float depthMeters = std::max(0.0f, depthRef) / 1000.0f;
+                const float gate = std::max(spatial_distance_threshold * (1.0f + spatial_depth_aware_scale * depthMeters), kSpatialMinGateMm);
+                const bool gatePass = spatialDistance <= gate;
+                spatial_gate_ok(i, j) = gatePass;
+                if(!gatePass) {
+                    combined_score(i, j) = kSpatialInvalidScore;
+                    continue;
+                }
+
+                const float normalizedDistance = std::min(spatialDistance / gate, 1.0f);
+                spatial_similarity(i, j) = 1.0f - normalizedDistance;
+                combined_score(i, j) = (1.0f - alpha) * base_score(i, j) + alpha * spatial_similarity(i, j);
+            }
+        }
+    }
 
     Eigen::Matrix<float, Eigen::Dynamic, 2> matched_indices(0, 2);
     if(std::min(iou_matrix.cols(), iou_matrix.rows()) > 0) {
-        Eigen::MatrixXf a = (iou_matrix.array() > iou_threshold).cast<float>();
-        float sum1 = (a.rowwise().sum()).maxCoeff();
-        float sum0 = (a.colwise().sum()).maxCoeff();
-
-        if((fabs((double)sum1 - 1) < 1e-12) && (fabs((double)sum0 - 1) < 1e-12)) {
-            for(int i = 0; i < a.rows(); i++) {
-                for(int j = 0; j < a.cols(); j++) {
-                    if(a(i, j) > 0) {
-                        Eigen::RowVectorXf row(2);
-                        row << i, j;
-                        matched_indices.conservativeResize(matched_indices.rows() + 1, Eigen::NoChange);
-                        matched_indices.row(matched_indices.rows() - 1) = row;
-                    }
-                }
+        std::vector<std::vector<float>> cost_iou_matrix(combined_score.rows(), std::vector<float>(combined_score.cols()));
+        for(int i = 0; i < combined_score.rows(); i++) {
+            for(int j = 0; j < combined_score.cols(); j++) {
+                cost_iou_matrix[i][j] = -combined_score(i, j);
             }
-        } else {
-            Eigen::MatrixXf cost_matrix = iou_matrix.array() + angle_diff_cost.array();
+        }
 
-            std::vector<std::vector<float>> cost_iou_matrix(cost_matrix.rows(), std::vector<float>(cost_matrix.cols()));
-            for(int i = 0; i < cost_matrix.rows(); i++) {
-                for(int j = 0; j < cost_matrix.cols(); j++) {
-                    cost_iou_matrix[i][j] = -cost_matrix(i, j);
-                }
-            }
-
-            std::vector<int> rowsol, colsol;
-            execLapjv(cost_iou_matrix, rowsol, colsol, true, 0.01, true);
-            for(uint32_t i = 0; i < rowsol.size(); i++) {
-                if(rowsol.at(i) >= 0) {
-                    Eigen::RowVectorXf row(2);
-                    row << colsol.at(rowsol.at(i)), rowsol.at(i);
-                    matched_indices.conservativeResize(matched_indices.rows() + 1, Eigen::NoChange);
-                    matched_indices.row(matched_indices.rows() - 1) = row;
-                }
+        std::vector<int> rowsol, colsol;
+        execLapjv(cost_iou_matrix, rowsol, colsol, true, 0.01, true);
+        for(uint32_t i = 0; i < rowsol.size(); i++) {
+            if(rowsol.at(i) >= 0) {
+                Eigen::RowVectorXf row(2);
+                row << colsol.at(rowsol.at(i)), rowsol.at(i);
+                matched_indices.conservativeResize(matched_indices.rows() + 1, Eigen::NoChange);
+                matched_indices.row(matched_indices.rows() - 1) = row;
             }
         }
     } else {
@@ -927,7 +1150,9 @@ std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<
     Eigen::Matrix<int, 1, 2> tmp;
     for(int i = 0; i < matched_indices.rows(); i++) {
         tmp = (matched_indices.row(i)).cast<int>();
-        if(iou_matrix(tmp(0), tmp(1)) < iou_threshold) {
+        const bool hasSpatial = spatial_available && spatial_pair_valid(tmp(0), tmp(1));
+        const bool pairAccepted = hasSpatial ? spatial_gate_ok(tmp(0), tmp(1)) : (iou_matrix(tmp(0), tmp(1)) >= iou_threshold);
+        if(!pairAccepted) {
             unmatched_detections.push_back(tmp(0));
             unmatched_trackers.push_back(tmp(1));
         } else {
@@ -943,6 +1168,15 @@ std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<
 Eigen::RowVectorXf OCSTracker::State::KalmanBoxTracker::predict() {
     if(kf->x[6] + kf->x[2] <= 0) kf->x[6] *= 0.0f;
     kf->predict();
+    if(has_spatial_state) {
+        kf_spatial->predict();
+        spatial_prediction.position.head<3>() = kf_spatial->x.head<3>();
+        spatial_prediction.validPosition = true;
+        spatial_velocity = kf_spatial->x.segment<3>(3);
+    } else {
+        spatial_prediction = SpatialPosition();
+        spatial_velocity.setZero();
+    }
     age += 1;
     if(time_since_update > 0) hit_streak = 0;
     time_since_update += 1;
@@ -955,9 +1189,11 @@ Eigen::VectorXf OCSTracker::State::KalmanBoxTracker::get_state() {
     return convert_x_to_bbox(kf->x);
 }
 
-OCSTracker::State::KalmanFilterNew::KalmanFilterNew(int dim_x_, int dim_z_) {
+OCSTracker::State::KalmanFilterNew::KalmanFilterNew(int dim_x_, int dim_z_, FilterType filterType_) {
     dim_x = dim_x_;
     dim_z = dim_z_;
+    filterType = filterType_;
+    I = Eigen::MatrixXf::Identity(dim_x_, dim_x_);
     x = Eigen::VectorXf::Zero(dim_x_, 1);
     P = Eigen::MatrixXf::Identity(dim_x_, dim_x_);
     Q = Eigen::MatrixXf::Identity(dim_x_, dim_x_);
@@ -973,7 +1209,7 @@ OCSTracker::State::KalmanFilterNew::KalmanFilterNew(int dim_x_, int dim_z_) {
         purposes
     * */
     K = Eigen::MatrixXf::Zero(dim_x_, dim_z_);
-    y = Eigen::VectorXf::Zero(dim_x_, 1);
+    y = Eigen::VectorXf::Zero(dim_z_, 1);
     S = Eigen::MatrixXf::Zero(dim_z_, dim_z_);
     SI = Eigen::MatrixXf::Zero(dim_z_, dim_z_);
 
@@ -1065,6 +1301,7 @@ void OCSTracker::State::KalmanFilterNew::update(Eigen::VectorXf z_) {
     P_post = P;
 }
 void OCSTracker::State::KalmanFilterNew::freeze() {
+    if(filterType != FilterType::boxFilter) return;
     attr_saved.IsInitialized = true;
     attr_saved.x = x;
     attr_saved.P = P;
@@ -1087,6 +1324,7 @@ void OCSTracker::State::KalmanFilterNew::freeze() {
     attr_saved.history_obs = history_obs;
 }
 void OCSTracker::State::KalmanFilterNew::unfreeze() {
+    if(filterType != FilterType::boxFilter) return;
     if(true == attr_saved.IsInitialized) {
         new_history = history_obs;
         x = attr_saved.x;
@@ -1654,9 +1892,13 @@ OCSTracker::OCSTracker(const ObjectTrackerProperties& properties)
       trackingPerClass(properties.trackingPerClass),
       occlusionRatioThreshold(properties.occlusionRatioThreshold),
       trackletMaxLifespan(properties.trackletMaxLifespan),
-      trackletBirthThreshold(properties.trackletBirthThreshold) {}
+      trackletBirthThreshold(properties.trackletBirthThreshold),
+      spatialAssociation(properties.spatialAssociation),
+      spatialAssociationWeight(std::clamp(properties.spatialAssociationWeight, 0.0f, 1.0f)),
+      spatialDistanceThreshold(std::max(properties.spatialDistanceThreshold, kSpatialMinGateMm)),
+      spatialDepthAwareScale(std::max(properties.spatialDepthAwareScale, 0.0f)) {}
 OCSTracker::~OCSTracker() {}
-void OCSTracker::init(const ImgFrame& /* frame */, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
+void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
     this->state = std::make_unique<State>(0.f,
                                           this->trackletMaxLifespan,
                                           this->trackletBirthThreshold,
@@ -1667,19 +1909,26 @@ void OCSTracker::init(const ImgFrame& /* frame */, const std::vector<ImgDetectio
                                           1,
                                           "giou",
                                           0.3941737016672115,
-                                          true);
+                                          true,
+                                          this->spatialAssociation,
+                                          this->spatialAssociationWeight,
+                                          this->spatialDistanceThreshold,
+                                          this->spatialDepthAwareScale);
+    this->state->update_frame_timestamp(frame);
     this->state->update(detections, spatialData);
 }
-void OCSTracker::update(const ImgFrame& /* frame */, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
+void OCSTracker::update(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {
     if(!this->state) {
         throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
     }
+    this->state->update_frame_timestamp(frame);
     this->state->update(detections, spatialData);
 }
-void OCSTracker::track(const ImgFrame& /* frame */) {
+void OCSTracker::track(const ImgFrame& frame) {
     if(!this->state) {
         throw std::runtime_error("OCSTracker is not initialized. Call init() first.");
     }
+    this->state->update_frame_timestamp(frame);
     this->state->update(std::vector<ImgDetection>(), std::vector<Point3f>(), true);
 }
 void OCSTracker::configure(const ObjectTrackerConfig& config) {

@@ -41,7 +41,13 @@ void bind_objecttracker(pybind11::module& m, void* pCallstack) {
         .def_readwrite("detectionLabelsToTrack", &ObjectTrackerProperties::detectionLabelsToTrack, DOC(dai, ObjectTrackerProperties, detectionLabelsToTrack))
         .def_readwrite("trackerType", &ObjectTrackerProperties::trackerType, DOC(dai, ObjectTrackerProperties, trackerType))
         .def_readwrite(
-            "trackerIdAssignmentPolicy", &ObjectTrackerProperties::trackerIdAssignmentPolicy, DOC(dai, ObjectTrackerProperties, trackerIdAssignmentPolicy));
+            "trackerIdAssignmentPolicy", &ObjectTrackerProperties::trackerIdAssignmentPolicy, DOC(dai, ObjectTrackerProperties, trackerIdAssignmentPolicy))
+        .def_readwrite("spatialAssociation", &ObjectTrackerProperties::spatialAssociation, DOC(dai, ObjectTrackerProperties, spatialAssociation))
+        .def_readwrite(
+            "spatialAssociationWeight", &ObjectTrackerProperties::spatialAssociationWeight, DOC(dai, ObjectTrackerProperties, spatialAssociationWeight))
+        .def_readwrite(
+            "spatialDistanceThreshold", &ObjectTrackerProperties::spatialDistanceThreshold, DOC(dai, ObjectTrackerProperties, spatialDistanceThreshold))
+        .def_readwrite("spatialDepthAwareScale", &ObjectTrackerProperties::spatialDepthAwareScale, DOC(dai, ObjectTrackerProperties, spatialDepthAwareScale));
 
     // Node
     objectTracker.def_readonly("inputTrackerFrame", &ObjectTracker::inputTrackerFrame, DOC(dai, node, ObjectTracker, inputTrackerFrame))
@@ -75,6 +81,17 @@ void bind_objecttracker(pybind11::module& m, void* pCallstack) {
         .def("setTrackletBirthThreshold",
              &ObjectTracker::setTrackletBirthThreshold,
              py::arg("trackletBirthThreshold"),
-             DOC(dai, node, ObjectTracker, setTrackletBirthThreshold));
+             DOC(dai, node, ObjectTracker, setTrackletBirthThreshold))
+        .def("setSpatialAssociation", &ObjectTracker::setSpatialAssociation, py::arg("enabled"), DOC(dai, node, ObjectTracker, setSpatialAssociation))
+        .def("setSpatialAssociationWeight",
+             &ObjectTracker::setSpatialAssociationWeight,
+             py::arg("weight"),
+             DOC(dai, node, ObjectTracker, setSpatialAssociationWeight))
+        .def("setSpatialDistanceThreshold",
+             &ObjectTracker::setSpatialDistanceThreshold,
+             py::arg("thresholdMm"),
+             DOC(dai, node, ObjectTracker, setSpatialDistanceThreshold))
+        .def(
+            "setSpatialDepthAwareScale", &ObjectTracker::setSpatialDepthAwareScale, py::arg("scale"), DOC(dai, node, ObjectTracker, setSpatialDepthAwareScale));
     daiNodeModule.attr("ObjectTracker").attr("Properties") = objectTrackerProperties;
 }
