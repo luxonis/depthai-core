@@ -39,7 +39,7 @@ class FPSCounter:
         return (len(self.frameTimes) - 1) / (self.frameTimes[-1] - self.frameTimes[0])
 
 
-def format_time(td: datetime.timedelta) -> str:
+def formatTime(td: datetime.timedelta) -> str:
     hours, remainder_seconds = divmod(td.seconds, 3600)
     minutes, seconds = divmod(remainder_seconds, 60)
     milliseconds, microseconds_remainder = divmod(td.microseconds, 1000)
@@ -80,7 +80,7 @@ with contextlib.ExitStack() as stack:
 
     queues = []
     pipelines = []
-    device_ids = []
+    deviceIds = []
 
     for deviceInfo in DEVICE_INFOS:
         pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
@@ -96,10 +96,10 @@ with contextlib.ExitStack() as stack:
 
         pipelines.append(pipeline)
         queues.append(out_q)
-        device_ids.append(deviceInfo.getXLinkDeviceDesc().name)
+        deviceIds.append(deviceInfo.getXLinkDeviceDesc().name)
 
     # Buffer for latest frames; key = queue index
-    latest_frames = {}
+    latestFrames = {}
     fpsCounters = [FPSCounter() for _ in queues]
     receivedFrames = [False for _ in queues]
     while True:
@@ -108,9 +108,9 @@ with contextlib.ExitStack() as stack:
         # -------------------------------------------------------------------
         for idx, q in enumerate(queues):
             while q.has():
-                latest_frames[idx] = q.get()
+                latestFrames[idx] = q.get()
                 if not receivedFrames[idx]:
-                    print("=== Received frame from", device_ids[idx])
+                    print("=== Received frame from", deviceIds[idx])
                     receivedFrames[idx] = True
                 fpsCounters[idx].tick()
 
@@ -118,18 +118,18 @@ with contextlib.ExitStack() as stack:
         # Synchronise: we need at least one frame from every camera and their
         # timestamps must align within SYNC_THRESHOLD_SEC.
         # -------------------------------------------------------------------
-        if len(latest_frames) == len(queues):
-            ts_values = [f.getTimestamp(dai.CameraExposureOffset.END).total_seconds() for f in latest_frames.values()]
-            if max(ts_values) - min(ts_values) <= SYNC_THRESHOLD_SEC:
+        if len(latestFrames) == len(queues):
+            tsValues = [f.getTimestamp(dai.CameraExposureOffset.END).total_seconds() for f in latestFrames.values()]
+            if max(tsValues) - min(tsValues) <= SYNC_THRESHOLD_SEC:
                 # Build composite image side‑by‑side
                 imgs = []
                 for i in range(len(queues)):
-                    msg = latest_frames[i]
+                    msg = latestFrames[i]
                     frame = msg.getCvFrame()
                     fps = fpsCounters[i].getFps()
                     cv2.putText(
                         frame,
-                        f"{device_ids[i]} | Timestamp: {ts_values[i]} | FPS:{fps:.2f}",
+                        f"{deviceIds[i]} | Timestamp: {tsValues[i]} | FPS:{fps:.2f}",
                         (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.6,
@@ -139,13 +139,13 @@ with contextlib.ExitStack() as stack:
                     )
                     imgs.append(frame)
 
-                sync_status = "in sync" if abs(max(ts_values) - min(ts_values)) < 0.001 else "out of sync"
-                delta = max(ts_values) - min(ts_values)
-                color = (0, 255, 0) if sync_status == "in sync" else (0, 0, 255)
+                syncStatus = "in sync" if abs(max(tsValues) - min(tsValues)) < 0.001 else "out of sync"
+                delta = max(tsValues) - min(tsValues)
+                color = (0, 255, 0) if syncStatus == "in sync" else (0, 0, 255)
                 
                 cv2.putText(
                     imgs[0],
-                    f"{sync_status} | delta = {delta*1e3:.3f} ms",
+                    f"{syncStatus} | delta = {delta*1e3:.3f} ms",
                     (20, 80),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
@@ -155,7 +155,7 @@ with contextlib.ExitStack() as stack:
                 )
 
                 cv2.imshow("synced_view", cv2.hconcat(imgs))
-                latest_frames.clear()  # Wait for next batch
+                latestFrames.clear()  # Wait for next batch
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
