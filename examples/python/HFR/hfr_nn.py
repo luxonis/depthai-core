@@ -1,12 +1,29 @@
 #!/usr/bin/env python3
 import depthai as dai
+import sys
 
 FPS = 480
 
 with dai.Pipeline() as pipeline:
-    platform = pipeline.getDefaultDevice().getPlatform()
+    device = pipeline.getDefaultDevice()
+    platform = device.getPlatform()
     if platform != dai.Platform.RVC4:
-        raise RuntimeError("This example is only supported on RVC4 devices")
+        print("This example is only supported on IMX586 and Luxonis OS 1.20.5 or higher", file=sys.stderr)
+        sys.exit(0)
+
+    # Exit cleanly if the selected HFR mode is not advertised by CAM_A.
+    supportsRequestedFps = False
+    for cameraFeature in device.getConnectedCameraFeatures():
+        if cameraFeature.socket != dai.CameraBoardSocket.CAM_A:
+            continue
+        for config in cameraFeature.configs:
+            if config.width == 1280 and config.height == 720 and config.maxFps >= FPS:
+                supportsRequestedFps = True
+                break
+        break
+    if not supportsRequestedFps:
+        print("This example is only supported on IMX586 and Luxonis OS 1.20.5 or higher", file=sys.stderr)
+        sys.exit(0)
 
     # Download the model
     nnArchivePath = dai.getModelFromZoo(dai.NNModelDescription("yolov6-nano", platform="RVC4"))
