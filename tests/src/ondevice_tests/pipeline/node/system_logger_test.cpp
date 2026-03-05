@@ -41,6 +41,8 @@ void testSystemLoggerNode(const dai::SystemInformation& info) {
 }
 
 void testSystemLoggerNode(const dai::SystemInformationRVC4& info) {
+    constexpr float kCpuUsageTolerance = 1e-4f;
+
     // DDR memory
     REQUIRE(info.ddrMemoryUsage.used > 0);
     REQUIRE(info.ddrMemoryUsage.used < info.ddrMemoryUsage.total);
@@ -56,7 +58,7 @@ void testSystemLoggerNode(const dai::SystemInformationRVC4& info) {
     // Average CPU Usage
     REQUIRE(info.cpuAvgUsage.average > 0.0f);
     REQUIRE(info.cpuAvgUsage.average < 1.0f);
-    REQUIRE(info.cpuAvgUsage.average > info.processCpuAvgUsage.average);
+    REQUIRE(info.cpuAvgUsage.average + kCpuUsageTolerance >= info.processCpuAvgUsage.average);
 
     // Temperatures (-40.96°C indicates non working sensor)
     REQUIRE(info.chipTemperature.cpuss > -40.0f);

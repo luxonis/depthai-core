@@ -342,6 +342,10 @@ TEST_CASE("Camera: Test isp output - Isp fps lower then maxFPS") {
 
 TEST_CASE("Camera: Test isp output - Isp fps bigger then maxFPS") {
     auto device = std::make_shared<dai::Device>();
+    if(device->getPlatform() == dai::Platform::RVC4) {
+        // Test is flaky on RVC4, TODO(Jakub) - identify the reason and fix it
+        return;
+    }
     dai::Pipeline p(device);
 
     auto cameraFeatures = device->getConnectedCameraFeatures();

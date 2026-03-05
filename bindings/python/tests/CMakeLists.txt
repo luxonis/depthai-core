@@ -19,6 +19,7 @@ set(PYBIND11_TEST_FILES
     "imgframe_test.py"
     "inherited_messages_test.py"
     "dynamic_calibration_test.py"
+    "host_node_create_deprecation_test.py"
 )
 
 string(REPLACE ".cpp" ".py" PYBIND11_PYTEST_FILES "${PYBIND11_TEST_FILES}")

@@ -270,7 +270,16 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 }
                 if(isSubclass && !isFromBindings) {
                     setImplicitPipeline(&p);
-                    std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                    setCreatingNodeFromPipelineCreate();
+                    std::shared_ptr<Node> hostNode;
+                    try {
+                        hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                    } catch(...) {
+                        delCreatingNodeFromPipelineCreate();
+                        delImplicitPipeline();
+                        throw;
+                    }
+                    delCreatingNodeFromPipelineCreate();
                     delImplicitPipeline();
                     // Node already adds itself to the pipeline in the constructor
                     // To be sure - check if it is already added
