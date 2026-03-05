@@ -204,7 +204,7 @@ if __name__ == "__main__":
         print(f"Running tests for configuration: {name}")
         resultThread = run_ctest(env_vars, labels, blocking=False, name=name)
         resultThreads.append((name, resultThread))
-    exit(1)
+
     # Process the results
     any_failures = False
     for name, resultThread in resultThreads:
