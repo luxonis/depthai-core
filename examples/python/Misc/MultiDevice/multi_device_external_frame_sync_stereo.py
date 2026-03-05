@@ -383,12 +383,6 @@ with contextlib.ExitStack() as stack:
                 print(f"Frame synced")
                 waitingForSync = False
 
-            # Print warning if delta is too big
-            if not syncStatus and not waitingForSync:
-                print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
-                print("Either the signal is lost or the network is congested.")
-                continue
-
             # Create a image frame with sync info for each output
             for outputName in outputNames:
 
