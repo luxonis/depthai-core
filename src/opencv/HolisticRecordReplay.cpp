@@ -326,7 +326,6 @@ bool setupHolisticReplay(Pipeline pipeline,
     auto sources = pipeline.getSourceNodes();
     try {
         bool useTar = !platform::checkPathExists(replayPath, true);
-        bool hasCalibration = false;
         std::vector<std::string> tarNodenames;
         std::string tarRoot = ".";
         std::string videoExt = ".mp4";
@@ -378,12 +377,10 @@ bool setupHolisticReplay(Pipeline pipeline,
             nodeNames.push_back(nodeParams.name);
             pipelineFilenames.push_back(nodeParams.name);
         }
-        std::filesystem::path configPath;
-        std::filesystem::path calibrationPath;
         std::vector<std::string> inFiles;
         std::vector<std::filesystem::path> outFiles;
-        inFiles.reserve(sources.size() * 2 + 1);
-        outFiles.reserve(sources.size() * 2 + 1);
+        inFiles.reserve(sources.size() * 2);
+        outFiles.reserve(sources.size() * 2);
         if(allMatch(pipelineFilenames, tarNodenames)) {
             for(auto& nodeName : nodeNames) {
                 // auto filename = (deviceId + "_").append(nodeName);
@@ -398,17 +395,8 @@ bool setupHolisticReplay(Pipeline pipeline,
                 outFilenames[nodeName] = filePath;
             }
             if(useTar) {
-                inFiles.emplace_back(tarRoot + "record_config.json");
+                untarFiles(replayPath, inFiles, outFiles);
             }
-            configPath = platform::joinPaths(rootPath, "record_config.json");
-            calibrationPath = platform::joinPaths(rootPath, "calibration.json");
-            outFiles.push_back(configPath);
-            outFilenames["record_config"] = configPath;
-            if(hasCalibration) {
-                outFiles.push_back(calibrationPath);
-                outFilenames["calibration"] = calibrationPath;
-            }
-            if(useTar) untarFiles(replayPath, inFiles, outFiles);
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
             // For multi-device recordings, where devices are not the same
@@ -441,23 +429,7 @@ bool setupHolisticReplay(Pipeline pipeline,
             // untarFiles(replayPath, inFiles, outFiles);
         }
 
-        std::ifstream file(configPath);
-        json j = json::parse(file);
-        recordConfig = j.get<RecordConfig>();
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
-
-        if(hasCalibration) {
-            std::ifstream calibFile(calibrationPath);
-            json jCalib = json::parse(calibFile);
-            CalibrationHandler calib;
-            try {
-                calib = CalibrationHandler::fromJson(jCalib, true);
-                pipeline.getDefaultDevice()->setCalibration(calib);
-            } catch(const std::runtime_error& e) {
-                spdlog::warn("Recorded calibration is invalid: {}", e.what());
-                hasCalibration = false;
-            }
-        }
 
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);

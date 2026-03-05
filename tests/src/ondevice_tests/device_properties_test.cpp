@@ -142,6 +142,7 @@ TEST_CASE("Test pipeline device property setters keep device and host properties
 
     auto device = pipeline.getDefaultDevice();
     REQUIRE(device != nullptr);
+    REQUIRE(pipeline.getDefaultDeviceProperties()->eepromId == 1);
 
     auto checkSync = [&](const std::string& stage) {
         auto deviceProps = device->getProperties();
