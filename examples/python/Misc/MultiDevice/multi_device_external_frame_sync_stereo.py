@@ -445,6 +445,7 @@ with contextlib.ExitStack() as stack:
             latestFrameGroup = None  # Wait for next batch
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
+            running = False
             break
 
     for t in threads.keys():
