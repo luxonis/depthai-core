@@ -78,13 +78,11 @@ void AutoCalibration::setRunOnHost(bool runOnHost) {
 }
 
 void addPoolsForAutoCalibration(const std::shared_ptr<Camera>& camera, int additionalPools) {
-    auto numRawPool = camera->getRawNumFramesPool();
     auto numIspPool = camera->getIspNumFramesPool();
-    auto numOutputsPool = camera->getOutputsNumFramesPool();
-    if(numOutputsPool) {
-        camera->setNumFramesPools(numRawPool + additionalPools, numIspPool + additionalPools, numOutputsPool.value() + additionalPools);
+    if(numIspPool > 0) {
+        camera->setIspNumFramesPool(numIspPool + additionalPools);
     } else {
-        camera->setNumFramesPools(numRawPool + additionalPools, numIspPool + additionalPools, 6);
+        camera->setIspNumFramesPool(6);
     }
 }
 
