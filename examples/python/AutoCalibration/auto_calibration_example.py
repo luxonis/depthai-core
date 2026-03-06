@@ -34,7 +34,7 @@ def showDepth(depthFrame, windowName="Depth", minDistance=500, maxDistance=5000,
 
 
 def botchCalibration(device : dai.Device):
-    calibrationHandler = device.readCalibration() 
+    calibrationHandler = device.readCalibration()
     T = calibrationHandler.getCameraExtrinsics(dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C)
     t = [-7.5, 0, 0]
     R = np.eye(3)
@@ -54,9 +54,9 @@ with dai.Pipeline() as pipeline:
     dcWorker = pipeline.create(dai.node.AutoCalibration).build(camLeft, camRight)
     dcWorker.initialConfig.maxIterations = 2
     dcWorker.initialConfig.sleepingTime = 10
-    dcWorker.initialConfig.flashCalibration = False 
+    dcWorker.initialConfig.flashCalibration = False
     dcWorker.initialConfig.mode = dai.AutoCalibrationConfig.CONTINUOUS  # ON_START
-    dcWorker.initialConfig.validationSetSize = 5 
+    dcWorker.initialConfig.validationSetSize = 5
     dcWorker.initialConfig.dataConfidenceThreshold = 0.7
     workerOutputQueue = dcWorker.output.createOutputQueue()
 
@@ -91,5 +91,5 @@ with dai.Pipeline() as pipeline:
 
         if cv.waitKey(1) == ord("q"):
             break
-        
+
     pipeline.stop()
