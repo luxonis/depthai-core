@@ -1072,6 +1072,10 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
     return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
+std::vector<CameraIspStats> DeviceBase::getCameraStats() {
+    return pimpl->rpcClient->call("getCameraStats").as<std::vector<CameraIspStats>>();
+}
+
 std::vector<StereoPair> DeviceBase::getStereoPairs() {
     return pimpl->rpcClient->call("getStereoPairs").as<std::vector<StereoPair>>();
 }

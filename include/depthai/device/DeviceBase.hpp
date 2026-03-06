@@ -30,6 +30,7 @@
 // shared
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
+#include "depthai-shared/common/CameraIspStats.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/common/StereoPair.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
@@ -585,6 +586,13 @@ class DeviceBase {
      * @returns Map/dictionary with camera sensor names, indexed by socket
      */
     std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
+
+    /**
+     * Get camera/ISP statistics (frame/error count).
+     *
+     * @returns Vector of camera stats per socket
+     */
+    std::vector<CameraIspStats> getCameraStats();
 
     /**
      * Get stereo pairs based on the device type.
