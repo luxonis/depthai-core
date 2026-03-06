@@ -86,8 +86,7 @@ void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
 void PipelineImpl::setDefaultDeviceProperties(DeviceProperties deviceProperties) {
     if(defaultDevice) {
         defaultDevice->setProperties(deviceProperties);
-    }
-    if(defaultDeviceProperties != nullptr) {
+    } else if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->setFrom(deviceProperties);
     }
 }
@@ -431,8 +430,7 @@ void PipelineImpl::setCameraTuningBlobPath(const fs::path& path) {
 
     if(defaultDevice) {
         defaultDevice->setCameraTuningBlob(asset->getRelativeUri(), static_cast<uint32_t>(asset->data.size()));
-    }
-    if(defaultDeviceProperties != nullptr) {
+    } else if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->cameraTuningBlobUri = asset->getRelativeUri();
         defaultDeviceProperties->cameraTuningBlobSize = static_cast<uint32_t>(asset->data.size());
     }
@@ -446,8 +444,7 @@ void PipelineImpl::setCameraTuningBlobPath(CameraBoardSocket socket, const fs::p
 
     if(defaultDevice) {
         defaultDevice->setCameraSocketTuningBlob(socket, asset->getRelativeUri(), static_cast<uint32_t>(asset->data.size()));
-    }
-    if(defaultDeviceProperties != nullptr) {
+    } else if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->cameraSocketTuningBlobUri[socket] = asset->getRelativeUri();
         defaultDeviceProperties->cameraSocketTuningBlobSize[socket] = static_cast<uint32_t>(asset->data.size());
     }
@@ -456,8 +453,7 @@ void PipelineImpl::setCameraTuningBlobPath(CameraBoardSocket socket, const fs::p
 void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     if(defaultDevice) {
         defaultDevice->setXLinkChunkSize(sizeBytes);
-    }
-    if(defaultDeviceProperties != nullptr) {
+    } else if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->xlinkChunkSize = sizeBytes;
     }
 }
@@ -465,8 +461,7 @@ void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
 void PipelineImpl::setSippBufferSize(int sizeBytes) {
     if(defaultDevice) {
         defaultDevice->setSippBufferSize(sizeBytes);
-    }
-    if(defaultDeviceProperties != nullptr) {
+    } else if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->sippBufferSize = sizeBytes;
     }
 }
@@ -474,8 +469,7 @@ void PipelineImpl::setSippBufferSize(int sizeBytes) {
 void PipelineImpl::setSippDmaBufferSize(int sizeBytes) {
     if(defaultDevice) {
         defaultDevice->setSippDmaBufferSize(sizeBytes);
-    }
-    if(defaultDeviceProperties != nullptr) {
+    } else if(defaultDeviceProperties != nullptr) {
         defaultDeviceProperties->sippDmaBufferSize = sizeBytes;
     }
 }
@@ -575,8 +569,7 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
 void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
     if(defaultDevice) {
         defaultDevice->setCalibration(eepromData);
-    }
-    if(defaultDeviceProperties != nullptr) {
+    } else if(defaultDeviceProperties != nullptr) {
         std::lock_guard<std::mutex> lock(calibMtx);
         defaultDeviceProperties->calibData = eepromData;
         defaultDeviceProperties->eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
