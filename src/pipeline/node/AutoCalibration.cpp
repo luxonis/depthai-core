@@ -165,13 +165,13 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             auto dynCalibrationResult = dynamicCalibrationQueue.get<dai::DynamicCalibrationResult>();
             coverage = coverageQueue.get<dai::CoverageData>();
             logger->debug("=== AutoCalibration: MID recalib {}/{} img {}/{} noData info=\"{}\" cov={:.2f} data={:.2f} ===",
-                         i + 1,
-                         maxNumIteration,
-                         numLoadedImages + 1,
-                         initialConfig->maxImagesPerReacalibration,
-                         dynCalibrationResult->info,
-                         coverage ? coverage->coverageAcquired : 0.0f,
-                         coverage ? coverage->dataAcquired : 0.0f);
+                          i + 1,
+                          maxNumIteration,
+                          numLoadedImages + 1,
+                          initialConfig->maxImagesPerReacalibration,
+                          dynCalibrationResult->info,
+                          coverage ? coverage->coverageAcquired : 0.0f,
+                          coverage ? coverage->dataAcquired : 0.0f);
             if(dynCalibrationResult->calibrationData) {
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue.send(dai::GateControl::closeGate());
