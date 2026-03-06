@@ -6,6 +6,7 @@
 #include "pipeline/node/internal/XLinkInHost.hpp"
 #include "pipeline/node/internal/XLinkOut.hpp"
 #include "pipeline/node/internal/XLinkOutHost.hpp"
+#include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/HolisticRecordReplay.hpp"
 #include "utility/Platform.hpp"
@@ -14,7 +15,10 @@
 namespace dai {
 namespace utility {
 
-void PipelineImplHelper::setupHolisticRecordAndReplay() {
+void PipelineImplHelper::setupHolisticRecordAndReplay(std::weak_ptr<PipelineImpl> pipelineWeak) {
+    auto pipeline = pipelineWeak.lock();
+    if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
+
     // TODO: Refactor this function to reduce complexity
     if(pipeline->buildingOnHost) {
         if(pipeline->defaultDevice) {
@@ -49,7 +53,7 @@ void PipelineImplHelper::setupHolisticRecordAndReplay() {
                     } else if(!recordPath.empty()) {
                         if(pipeline->enableHolisticRecordReplay || checkRecordConfig(recordPath, pipeline->recordConfig)) {
                             if(platform::checkWritePermissions(recordPath)) {
-                                if(utility::setupHolisticRecord(pipeline->parent,
+                                if(utility::setupHolisticRecord(dai::Pipeline(pipeline),
                                                                 pipeline->defaultDeviceId,
                                                                 pipeline->recordConfig,
                                                                 pipeline->recordReplayFilenames,
@@ -69,7 +73,7 @@ void PipelineImplHelper::setupHolisticRecordAndReplay() {
                     } else if(!replayPath.empty()) {
                         if(platform::checkPathExists(replayPath)) {
                             if(platform::checkWritePermissions(replayPath)) {
-                                if(utility::setupHolisticReplay(pipeline->parent,
+                                if(utility::setupHolisticReplay(dai::Pipeline(pipeline),
                                                                 replayPath,
                                                                 pipeline->defaultDeviceId,
                                                                 pipeline->recordConfig,
@@ -101,12 +105,66 @@ void PipelineImplHelper::setupHolisticRecordAndReplay() {
                     Logging::getInstance().logger.warn("Could not set up record / replay: {}", e.what());
                 }
             } else if(pipeline->enableHolisticRecordReplay || !recordPath.empty() || !replayPath.empty()) {
-                throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
+                throw std::runtime_error("Holistic record/replay is only supported on RVC2 and RVC4 devices.");
             }
         }
     }
 }
-void PipelineImplHelper::setupPipelineDebuggingPre() {
+void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
+    if(pipeline->buildingOnHost) {
+        if(pipeline->recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
+            std::vector<std::filesystem::path> filenames = {pipeline->recordReplayFilenames["record_config"], pipeline->recordReplayFilenames["calibration"]};
+            std::vector<std::string> outFiles = {"record_config.json", "calibration.json"};
+            filenames.reserve(pipeline->recordReplayFilenames.size() * 2 + 1);
+            outFiles.reserve(pipeline->recordReplayFilenames.size() * 2 + 1);
+            for(auto& rstr : pipeline->recordReplayFilenames) {
+                if(rstr.first != "record_config" && rstr.first != "calibration") {
+                    std::string nodeName = rstr.first.substr(2);
+                    std::filesystem::path filePath = rstr.second;
+                    filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
+                    outFiles.push_back(nodeName + ".mcap");
+                    if(rstr.first[0] == 'v') {
+                        filenames.push_back(std::filesystem::path(filePath).concat(pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
+                        outFiles.push_back(nodeName + (pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
+                    }
+                }
+            }
+            Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
+            try {
+                auto now = std::chrono::system_clock::now();
+                std::time_t t = std::chrono::system_clock::to_time_t(now);
+                std::tm tm{};
+#if defined(_WIN32)
+                localtime_s(&tm, &t);
+#else
+                localtime_r(&t, &tm);
+#endif
+                std::ostringstream oss;
+                oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+
+                utility::tarFiles(platform::joinPaths(pipeline->recordConfig.outputDir, "recording_" + oss.str() + ".tar"), filenames, outFiles);
+            } catch(const std::exception& e) {
+                Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
+            }
+        }
+
+        if(pipeline->removeRecordReplayFiles && pipeline->recordConfig.state != RecordConfig::RecordReplayState::NONE) {
+            Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
+            for(auto& kv : pipeline->recordReplayFilenames) {
+                if(kv.first != "record_config" && kv.first != "calibration") {
+                    std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
+                    std::filesystem::remove(std::filesystem::path(kv.second).concat(pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
+                } else {
+                    std::filesystem::remove(kv.second);
+                }
+            }
+        }
+    }
+}
+void PipelineImplHelper::setupPipelineDebuggingPre(std::weak_ptr<PipelineImpl> pipelineWeak) {
+    auto pipeline = pipelineWeak.lock();
+    if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
+
     // Create pipeline event aggregator node and link
     bool envPipelineDebugging = utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false);
     pipeline->enablePipelineDebugging = pipeline->enablePipelineDebugging || envPipelineDebugging;
@@ -121,11 +179,11 @@ void PipelineImplHelper::setupPipelineDebuggingPre() {
         }
         std::shared_ptr<node::internal::PipelineEventAggregation> hostEventAgg = nullptr;
         std::shared_ptr<node::internal::PipelineEventAggregation> deviceEventAgg = nullptr;
-        hostEventAgg = pipeline->parent.create<node::internal::PipelineEventAggregation>();
+        hostEventAgg = pipeline->create<node::internal::PipelineEventAggregation>(pipeline);
         hostEventAgg->setRunOnHost(true);
         hostEventAgg->setTraceOutput(envPipelineDebugging);
         if(hasDeviceNodes) {
-            deviceEventAgg = pipeline->parent.create<node::internal::PipelineEventAggregation>();
+            deviceEventAgg = pipeline->create<node::internal::PipelineEventAggregation>(pipeline);
             deviceEventAgg->setRunOnHost(false);
             deviceEventAgg->setTraceOutput(envPipelineDebugging);
         }
@@ -141,10 +199,10 @@ void PipelineImplHelper::setupPipelineDebuggingPre() {
                 }
             }
         }
-        auto stateMerge = pipeline->parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, true);
+        auto stateMerge = pipeline->create<node::PipelineStateMerge>(pipeline)->build(hasDeviceNodes, true);
         std::shared_ptr<node::PipelineStateMerge> traceStateMerge;
         if(envPipelineDebugging) {
-            traceStateMerge = pipeline->parent.create<node::PipelineStateMerge>()->build(hasDeviceNodes, true);
+            traceStateMerge = pipeline->create<node::PipelineStateMerge>(pipeline)->build(hasDeviceNodes, true);
             traceStateMerge->setAllowConfiguration(false);
         }
         if(deviceEventAgg) {
@@ -171,8 +229,12 @@ void PipelineImplHelper::setupPipelineDebuggingPre() {
         }
     }
 }
-void PipelineImplHelper::setupPipelineDebuggingPost(std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>& bridgesOut,
+void PipelineImplHelper::setupPipelineDebuggingPost(std::weak_ptr<PipelineImpl> pipelineWeak,
+                                                    std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>& bridgesOut,
                                                     std::unordered_map<dai::Node::Input*, node::internal::XLinkInBridge>& bridgesIn) {
+    auto pipeline = pipelineWeak.lock();
+    if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
+
     // Finish setting up pipeline debugging
     if(pipeline->buildingOnHost && pipeline->enablePipelineDebugging) {
         // Enable events on xlink bridges

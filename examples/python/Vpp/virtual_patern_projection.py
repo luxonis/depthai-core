@@ -46,7 +46,12 @@ def showDepth(depthFrame, windowName="Depth", minDistance=500, maxDistance=5000,
 if __name__ == "__main__":
     fps = 20
 
-    pipeline = dai.Pipeline()
+    device = dai.Device()
+    pipeline = dai.Pipeline(device)
+
+    if not device.isNeuralDepthSupported():
+        print("Exiting Vpp example: device doesn't support NeuralDepth.")
+        exit()
 
     # Left Right cameras
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)

@@ -12,12 +12,12 @@ namespace dai {
 namespace utility {
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-bool setupHolisticRecord(Pipeline& pipeline,
+bool setupHolisticRecord(Pipeline pipeline,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,
                          std::unordered_map<std::string, std::filesystem::path>& outFilenames,
                          bool legacy = false);
-bool setupHolisticReplay(Pipeline& pipeline,
+bool setupHolisticReplay(Pipeline pipeline,
                          std::filesystem::path replayPath,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,

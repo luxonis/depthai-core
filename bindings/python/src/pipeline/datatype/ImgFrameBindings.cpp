@@ -10,6 +10,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "ndarray_converter.h"
 // pybind
+#include <pybind11/cast.h>
 #include <pybind11/chrono.h>
 #include <pybind11/numpy.h>
 
@@ -175,6 +176,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("remapPointFrom", &ImgTransformation::remapPointFrom, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
         .def("remapRectTo", &ImgTransformation::remapRectTo, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
         .def("remapRectFrom", &ImgTransformation::remapRectFrom, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
+        .def("isAlignedTo", &ImgTransformation::isAlignedTo, py::arg("to"), DOC(dai, ImgTransformation, isAlignedTo))
         .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid));
 
     // TODO add RawImgFrame::CameraSettings
@@ -197,7 +199,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getWidth", &ImgFrame::getWidth, DOC(dai, ImgFrame, getWidth))
         .def("getStride", &ImgFrame::getStride, DOC(dai, ImgFrame, getStride))
         .def("getHeight", &ImgFrame::getHeight, DOC(dai, ImgFrame, getHeight))
-        .def("getPlaneStride", &ImgFrame::getPlaneStride, DOC(dai, ImgFrame, getPlaneStride))
+        .def("getPlaneStride", &ImgFrame::getPlaneStride, py::arg("planeIndex"), DOC(dai, ImgFrame, getPlaneStride))
         .def("getPlaneHeight", &ImgFrame::getPlaneHeight, DOC(dai, ImgFrame, getPlaneHeight))
         .def("getType", &ImgFrame::getType, DOC(dai, ImgFrame, getType))
         .def("getBytesPerPixel", &ImgFrame::getBytesPerPixel, DOC(dai, ImgFrame, getBytesPerPixel))
@@ -211,17 +213,17 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getSourceDFov", &ImgFrame::getSourceDFov, DOC(dai, ImgFrame, getSourceDFov))
         .def("getSourceWidth", &ImgFrame::getSourceWidth, DOC(dai, ImgFrame, getSourceWidth))
         .def("getSourceHeight", &ImgFrame::getSourceHeight, DOC(dai, ImgFrame, getSourceHeight))
-        .def("getTransformation", [](ImgFrame& msg) { return msg.transformation; })
+        .def("getTransformation", &ImgFrame::getTransformation, DOC(dai, ImgFrame, getTransformation))
         .def("validateTransformations", &ImgFrame::validateTransformations, DOC(dai, ImgFrame, validateTransformations))
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         // The cast function itself does a copy, so we can avoid two copies by always not copying
         .def(
             "getFrame", [](ImgFrame& self) { return self.getFrame(false); }, DOC(dai, ImgFrame, getFrame))
-        .def("setFrame", &ImgFrame::setFrame, DOC(dai, ImgFrame, setFrame))
+        .def("setFrame", &ImgFrame::setFrame, py::arg("array"), DOC(dai, ImgFrame, setFrame))
         .def(
             "getCvFrame", [](ImgFrame& self) { return self.getCvFrame(&g_numpyAllocator); }, DOC(dai, ImgFrame, getCvFrame))
-        .def("setCvFrame", &ImgFrame::setCvFrame, DOC(dai, ImgFrame, setCvFrame))
+        .def("setCvFrame", &ImgFrame::setCvFrame, py::arg("array"), py::arg("type"), DOC(dai, ImgFrame, setCvFrame))
 #else
         .def(
             "getFrame",
@@ -242,12 +244,18 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
             DOC(dai, ImgFrame, getCvFrame))
         .def(
             "setCvFrame",
-            [](cv::Mat frame) { throw std::runtime_error("OpenCV support is not available. Please recompile with OpenCV support to use this function."); },
+            [](cv::Mat frame, ImgFrame::Type type) {
+                (void)frame;
+                (void)type;
+                throw std::runtime_error("OpenCV support is not available. Please recompile with OpenCV support to use this function.");
+            },
+            py::arg("array"),
+            py::arg("type"),
             DOC(dai, ImgFrame, setCvFrame))
 #endif
         // setters
-        // .def("setTimestamp", &ImgFrame::setTimestamp, py::arg("timestamp"), DOC(dai, ImgFrame, setTimestamp))
-        // .def("setTimestampDevice", &ImgFrame::setTimestampDevice, DOC(dai, ImgFrame, setTimestampDevice))
+        .def("setTimestamp", &ImgFrame::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
+        .def("setTimestampDevice", &ImgFrame::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
         .def("setInstanceNum", &ImgFrame::setInstanceNum, py::arg("instance"), DOC(dai, ImgFrame, setInstanceNum))
         .def("setCategory", &ImgFrame::setCategory, py::arg("category"), DOC(dai, ImgFrame, setCategory))
         // .def("setSequenceNum", &ImgFrame::setSequenceNum, py::arg("seq"), DOC(dai, ImgFrame, setSequenceNum))
@@ -264,7 +272,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("sizer"),
              DOC(dai, ImgFrame, setSize, 2))
         .def("setType", &ImgFrame::setType, py::arg("type"), DOC(dai, ImgFrame, setType))
-        .def("setTransformation", [](ImgFrame& msg, const ImgTransformation& transformation) { msg.transformation = transformation; })
+        .def("setTransformation", &ImgFrame::setTransformation, py::arg("transformation"), DOC(dai, ImgFrame, setTransformation))
         // .def("set", &ImgFrame::set, py::arg("type"), DOC(dai, ImgFrame, set))
         ;
     // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs

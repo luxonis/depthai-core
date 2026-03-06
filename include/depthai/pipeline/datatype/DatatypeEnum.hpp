@@ -9,6 +9,8 @@ enum class DatatypeEnum : std::int32_t {
     Buffer,
     ImgFrame,
     EncodedFrame,
+    SegmentationMask,
+    GateControl,
     NNData,
     ImageManipConfig,
     CameraControl,
@@ -31,6 +33,7 @@ enum class DatatypeEnum : std::int32_t {
     TrackedFeatures,
     BenchmarkReport,
     MessageGroup,
+    MapData,
     TransformData,
     PointCloudConfig,
     PointCloudData,
@@ -43,11 +46,14 @@ enum class DatatypeEnum : std::int32_t {
     DynamicCalibrationControl,
     DynamicCalibrationResult,
     CalibrationQuality,
+    CalibrationMetrics,
     CoverageData,
+    SegmentationParserConfig,
     PipelineEvent,
     PipelineState,
     PipelineEventAggregationConfig,
-    VppConfig
+    VppConfig,
+    PacketizedData
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

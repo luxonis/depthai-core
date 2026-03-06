@@ -14,7 +14,6 @@ int main(int argc, char** argv) {
     dai::Pipeline pipeline(device);
 
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto display = pipeline.create<dai::node::Display>();
     auto manip = pipeline.create<dai::node::ImageManip>();
 
     manip->setMaxOutputFrameSize(4000000);
@@ -27,8 +26,14 @@ int main(int argc, char** argv) {
 
     auto* rgbOut = camRgb->requestOutput({1920, 1080});
     rgbOut->link(manip->inputImage);
-    manip->out.link(display->input);
-
+    auto outputQueue = manip->out.createOutputQueue();
     pipeline.start();
-    pipeline.wait();
+    while(pipeline.isRunning()) {
+        auto imgFrame = outputQueue->get<dai::ImgFrame>();
+        cv::imshow("Manipulated Frame", imgFrame->getCvFrame());
+        int key = cv::waitKey(1);
+        if(key == 'q') {
+            break;
+        }
+    }
 }

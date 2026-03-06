@@ -215,7 +215,39 @@ void MessageQueue::notifyCondVars() {
 
 MessageQueue::QueueException::~QueueException() noexcept = default;
 
-std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(std::unordered_map<std::string, MessageQueue&> queues) {
+bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues) {
+    auto inputsWaitCv = std::make_shared<std::condition_variable>();
+    std::mutex waitMutex;
+
+    // Store IDs so we can unsubscribe later
+    std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> ids;
+
+    // 1. Subscribe to all queues in the vector
+    for(MessageQueue& queue : queues) {
+        ids.push_back({queue, queue.addCondVar(inputsWaitCv)});
+    }
+
+    // 2. Wait until any queue has data or closes
+    std::unique_lock<std::mutex> lock(waitMutex);
+    inputsWaitCv->wait(lock, [&]() {
+        for(MessageQueue& queue : queues) {
+            if(queue.isClosed()) continue;
+            if(queue.has()) {
+                return true;
+            }
+        }
+        return false;
+    });
+
+    // 3. Unsubscribe
+    for(auto& pair : ids) {
+        pair.first.removeCondVar(pair.second);
+    }
+    return true;
+}
+
+std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
+                                                                                 std::optional<std::chrono::milliseconds> timeout) {
     std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> condVarIds;
     condVarIds.reserve(queues.size());
     std::unordered_map<std::string, std::shared_ptr<ADatatype>> inputs;
@@ -228,7 +260,7 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
         for(auto& kv : queues) {
             auto& input = kv.second;
             auto condVarId = input.addCondVar(inputsWaitCv);
-            condVarIds.push_back({input, condVarId});
+            condVarIds.emplace_back(input, condVarId);
         }
 
         // Check if any messages already present
@@ -242,8 +274,7 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
 
         if(!hasAnyMessages) {
             // Wait for any message to arrive
-            std::unique_lock<std::mutex> lock(inputsWaitMutex);
-            inputsWaitCv->wait(lock, [&]() {
+            auto pred = [&]() {
                 for(auto& kv : queues) {
                     if(kv.second.isClosed()) {
                         return true;
@@ -255,7 +286,13 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
                     }
                 }
                 return false;
-            });
+            };
+            std::unique_lock<std::mutex> lock(inputsWaitMutex);
+            if(timeout.has_value()) {
+                inputsWaitCv->wait_for(lock, timeout.value(), pred);
+            } else {
+                inputsWaitCv->wait(lock, pred);
+            }
         }
 
         // Remove condition variables

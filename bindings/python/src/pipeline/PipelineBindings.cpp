@@ -91,6 +91,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion)
         .def_readwrite("cameraTuningBlobSize", &GlobalProperties::cameraTuningBlobSize, DOC(dai, GlobalProperties, cameraTuningBlobSize))
         .def_readwrite("cameraTuningBlobUri", &GlobalProperties::cameraTuningBlobUri, DOC(dai, GlobalProperties, cameraTuningBlobUri))
+        .def_readwrite("cameraSocketTuningBlobSize", &GlobalProperties::cameraSocketTuningBlobSize, DOC(dai, GlobalProperties, cameraSocketTuningBlobSize))
+        .def_readwrite("cameraSocketTuningBlobUri", &GlobalProperties::cameraSocketTuningBlobUri, DOC(dai, GlobalProperties, cameraSocketTuningBlobUri))
         .def_readwrite("xlinkChunkSize", &GlobalProperties::xlinkChunkSize, DOC(dai, GlobalProperties, xlinkChunkSize))
         .def_readwrite("sippBufferSize", &GlobalProperties::sippBufferSize, DOC(dai, GlobalProperties, sippBufferSize))
         .def_readwrite("sippDmaBufferSize", &GlobalProperties::sippDmaBufferSize, DOC(dai, GlobalProperties, sippDmaBufferSize));
@@ -214,7 +216,15 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
              static_cast<AssetManager& (Pipeline::*)()>(&Pipeline::getAssetManager),
              py::return_value_policy::reference_internal,
              DOC(dai, Pipeline, getAssetManager))
-        .def("setCameraTuningBlobPath", &Pipeline::setCameraTuningBlobPath, py::arg("path"), DOC(dai, Pipeline, setCameraTuningBlobPath))
+        .def("setCameraTuningBlobPath",
+             py::overload_cast<const fs::path&>(&Pipeline::setCameraTuningBlobPath),
+             py::arg("path"),
+             DOC(dai, Pipeline, setCameraTuningBlobPath))
+        .def("setCameraTuningBlobPath",
+             py::overload_cast<CameraBoardSocket, const fs::path&>(&Pipeline::setCameraTuningBlobPath),
+             py::arg("socket"),
+             py::arg("path"),
+             DOC(dai, Pipeline, setCameraTuningBlobPath, 2))
         .def("setXLinkChunkSize", &Pipeline::setXLinkChunkSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setXLinkChunkSize))
         .def("setSippBufferSize", &Pipeline::setSippBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippBufferSize))
         .def("setSippDmaBufferSize", &Pipeline::setSippDmaBufferSize, py::arg("sizeBytes"), DOC(dai, Pipeline, setSippDmaBufferSize))
@@ -259,7 +269,16 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                 }
                 if(isSubclass && !isFromBindings) {
                     setImplicitPipeline(&p);
-                    std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                    setCreatingNodeFromPipelineCreate();
+                    std::shared_ptr<Node> hostNode;
+                    try {
+                        hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                    } catch(...) {
+                        delCreatingNodeFromPipelineCreate();
+                        delImplicitPipeline();
+                        throw;
+                    }
+                    delCreatingNodeFromPipelineCreate();
                     delImplicitPipeline();
                     // Node already adds itself to the pipeline in the constructor
                     // To be sure - check if it is already added
