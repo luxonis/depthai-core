@@ -23,12 +23,13 @@ void bind_gate_control(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     gateControl.def(py::init<>())
-        .def(py::init<bool, int>(), "open"_a, "numMessages"_a)
+        .def(py::init<bool, int, int>(), "open"_a, "numMessages"_a, "fps"_a)
         // Member variables
         .def_readwrite("open", &GateControl::open, DOC(dai, GateControl, open))
         .def_readwrite("numMessages", &GateControl::numMessages, DOC(dai, GateControl, numMessages))
+        .def_readwrite("fps", &GateControl::fps, DOC(dai, GateControl, fps))
         // Static factory methods
-        .def_static("openGate", py::overload_cast<int>(&GateControl::openGate), "numMessages"_a, DOC(dai, GateControl, openGate))
+        .def_static("openGate", py::overload_cast<int, int>(&GateControl::openGate), "numMessages"_a, "fps"_a = -1, DOC(dai, GateControl, openGate))
         .def_static("openGate", py::overload_cast<>(&GateControl::openGate), DOC(dai, GateControl, openGate, 2))
         .def_static("closeGate", &GateControl::closeGate, DOC(dai, GateControl, closeGate))
         // Metadata helper

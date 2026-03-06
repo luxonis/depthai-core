@@ -34,10 +34,10 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
      * * Accepts arbitrary Buffer messages (e.g., ImgFrame, NNData).
      * If the Gate is Open, messages received here are forwarded to 'output'.
      * If the Gate is Closed, messages received here are discarded/dropped.
-     * * Default queue size: 4
+     * * Default queue size: 1
      * Blocking: False
      */
-    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+    Input input{*this, {"input", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * @brief Main data output.
@@ -70,14 +70,19 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
     void run() override;
 
    private:
+    std::chrono::steady_clock::time_point nextTargetTime;
+
     const std::vector<std::reference_wrapper<MessageQueue>> inputs = {inputControl, input};
+
     bool runOnHostVar = false;
 
-    std::shared_ptr<GateControl> sendMessages();
+    std::shared_ptr<GateControl> sendMessages(int fps);
 
-    std::shared_ptr<GateControl> sendMessages(int numMessages);
+    std::shared_ptr<GateControl> sendMessages(int numMessages, int fps);
 
     std::shared_ptr<GateControl> waitForCommand();
+
+    void sleepUntilNextSending(int fps, bool& started);
 };
 
 }  // namespace node

@@ -19,23 +19,21 @@ namespace dai {
 
 // ImgDetection functions
 
-ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, float conf = 0.f, uint32_t label = 0) {
+ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, float conf, uint32_t label) {
     setBoundingBox(boundingBox);
     this->confidence = conf;
     this->label = label;
 }
-ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, std::string labelName, float conf = 0.f, uint32_t label = 0)
-    : ImgDetection(boundingBox, conf, label) {
+ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, std::string labelName, float conf, uint32_t label) : ImgDetection(boundingBox, conf, label) {
     this->labelName = std::move(labelName);
 }
 
-ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, const dai::KeypointsList& keypoints, float conf = 0.f, uint32_t label = 0)
+ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, const dai::KeypointsList& keypoints, float conf, uint32_t label)
     : ImgDetection(boundingBox, conf, label) {
     this->keypoints = keypoints;
 }
 
-ImgDetection::ImgDetection(
-    const dai::RotatedRect& boundingBox, const dai::KeypointsList& keypoints, std::string labelName, float conf = 0.f, uint32_t label = 0)
+ImgDetection::ImgDetection(const dai::RotatedRect& boundingBox, const dai::KeypointsList& keypoints, std::string labelName, float conf, uint32_t label)
     : ImgDetection(boundingBox, conf, label) {
     this->keypoints = keypoints;
     this->labelName = std::move(labelName);
@@ -54,7 +52,8 @@ void ImgDetection::setBoundingBox(const RotatedRect boundingBox) {
 RotatedRect ImgDetection::getBoundingBox() const {
     if(boundingBox.has_value()) {
         return boundingBox.value();
-    } else if(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
+    }
+    if(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
         throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
     }
 
@@ -73,6 +72,16 @@ void ImgDetection::setOuterBoundingBox(const float xmin, const float ymin, const
     Point2f bottomRight{xmax, ymax};
 
     this->boundingBox = RotatedRect{Rect{topLeft, bottomRight}};
+}
+
+std::array<float, 4> ImgDetection::getOuterBoundingBox() const {
+    if(boundingBox.has_value()) {
+        return boundingBox->getOuterRect();
+    }
+    if(xmin == 0.f && xmax == 0.f && ymin == 0.f && ymax == 0.f) {
+        throw std::runtime_error("All bounding box values are zero, no bounding box can be built.");
+    }
+    return {xmin, ymin, xmax, ymax};
 }
 
 void ImgDetection::setKeypoints(const KeypointsList kp) {
@@ -100,25 +109,22 @@ void ImgDetection::setKeypoints(const std::vector<Point2f> kps2) {
 std::vector<Keypoint> ImgDetection::getKeypoints() const {
     if(keypoints.has_value()) {
         return keypoints->getKeypoints();
-    } else {
-        return {};
     }
+    return {};
 }
 
 std::vector<Point2f> ImgDetection::getKeypoints2f() const {
     if(keypoints.has_value()) {
         return keypoints->getPoints2f();
-    } else {
-        return {};
     }
+    return {};
 }
 
 std::vector<Point3f> ImgDetection::getKeypoints3f() const {
     if(keypoints.has_value()) {
         return keypoints->getPoints3f();
-    } else {
-        return {};
     }
+    return {};
 }
 
 void ImgDetection::setEdges(const std::vector<Edge> edges) {
@@ -131,28 +137,27 @@ void ImgDetection::setEdges(const std::vector<Edge> edges) {
 std::vector<Edge> ImgDetection::getEdges() const {
     if(keypoints.has_value()) {
         return keypoints->getEdges();
-    } else {
-        return {};
     }
+    return {};
 }
 
-float ImgDetection::getCenterX() const noexcept {
+float ImgDetection::getCenterX() const {
     return getBoundingBox().center.x;
 }
 
-float ImgDetection::getCenterY() const noexcept {
+float ImgDetection::getCenterY() const {
     return getBoundingBox().center.y;
 }
 
-float ImgDetection::getWidth() const noexcept {
+float ImgDetection::getWidth() const {
     return getBoundingBox().size.width;
 }
 
-float ImgDetection::getHeight() const noexcept {
+float ImgDetection::getHeight() const {
     return getBoundingBox().size.height;
 }
 
-float ImgDetection::getAngle() const noexcept {
+float ImgDetection::getAngle() const {
     return getBoundingBox().angle;
 }
 

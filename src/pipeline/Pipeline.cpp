@@ -60,9 +60,9 @@ Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
 
-Pipeline::Pipeline(bool createImplicitDevice) : pimpl(std::make_shared<PipelineImpl>(*this, createImplicitDevice)) {}
+Pipeline::Pipeline(bool createImplicitDevice) : pimpl(std::make_shared<PipelineImpl>(createImplicitDevice)) {}
 
-Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<PipelineImpl>(*this, device)) {}
+Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<PipelineImpl>(device)) {}
 
 Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) : pimpl(std::move(pimpl)) {}
 
@@ -79,7 +79,7 @@ GlobalProperties PipelineImpl::getGlobalProperties() const {
 }
 
 void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
-    this->globalProperties = globalProperties;
+    this->globalProperties.setFrom(globalProperties);
 }
 
 std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {
@@ -217,10 +217,6 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
 
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
-        // const auto& node = kv.second;
-        if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) {
-            continue;
-        }
         if(!includePipelineDebugging
            && std::find(pipelineDebuggingNodeIds.begin(), pipelineDebuggingNodeIds.end(), node->id) != pipelineDebuggingNodeIds.end()) {
             continue;
@@ -240,7 +236,11 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         }
         if(deviceNode) {
             deviceNode->getProperties().serialize(info.properties, type);
-            info.logLevel = deviceNode->getLogLevel();
+            if(std::string(deviceNode->getName()) == "DeviceNodeGroup") {
+                info.logLevel = LogLevel::OFF;
+            } else {
+                info.logLevel = deviceNode->getLogLevel();
+            }
         }
         // Create Io information
         auto inputs = node->getInputs();
@@ -372,9 +372,9 @@ PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, boo
     auto schema = getPipelineSchema(type, includePipelineDebugging);
     // Remove bridge info
     schema.bridges.clear();
-    // Remove host nodes
+    // Remove host and group nodes
     for(auto it = schema.nodes.begin(); it != schema.nodes.end();) {
-        if(!it->second.deviceNode) {
+        if(!it->second.deviceNode || it->second.name == "NodeGroup" || it->second.name == "DeviceNodeGroup") {
             it = schema.nodes.erase(it);
         } else {
             ++it;
@@ -446,7 +446,7 @@ BoardConfig PipelineImpl::getBoardConfig() const {
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
     DAI_CHECK_V(!isBuilt(), "Cannot remove node from pipeline once it is built.");
     DAI_CHECK_V(toRemove->parent.lock() != nullptr, "Cannot remove a node that is not a part of any pipeline");
-    DAI_CHECK_V(toRemove->parent.lock() == parent.pimpl, "Cannot remove a node that is not a part of this pipeline");
+    DAI_CHECK_V(toRemove->parent.lock() == shared_from_this(), "Cannot remove a node that is not a part of this pipeline");
 
     // First remove the node from the pipeline directly
     auto it = std::remove(nodes.begin(), nodes.end(), toRemove);
@@ -592,8 +592,8 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         }
 
         if(curNode->parent.lock() == nullptr) {
-            curNode->parent = parent.pimpl;
-        } else if(curNode->parent.lock() != parent.pimpl) {
+            curNode->parent = shared_from_this();
+        } else if(curNode->parent.lock() != shared_from_this()) {
             throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
         }
 
@@ -625,7 +625,7 @@ void PipelineImpl::build() {
 
     if(isBuild) return;
 
-    utility::PipelineImplHelper(this).setupHolisticRecordAndReplay();
+    utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
 
     // Run first build stage for all nodes
     for(const auto& node : getAllNodes()) {
@@ -641,7 +641,7 @@ void PipelineImpl::build() {
         node->buildStage3();
     }
 
-    utility::PipelineImplHelper(this).setupPipelineDebuggingPre();
+    utility::PipelineImplHelper::setupPipelineDebuggingPre(shared_from_this());
 
     // Go through all the connections and handle any
     // Host -> Device connections
@@ -784,7 +784,7 @@ void PipelineImpl::build() {
         }
     }
 
-    utility::PipelineImplHelper(this).setupPipelineDebuggingPost(bridgesOut, bridgesIn);
+    utility::PipelineImplHelper::setupPipelineDebuggingPost(shared_from_this(), bridgesOut, bridgesIn);
 
     isBuild = true;
 }
@@ -916,43 +916,7 @@ PipelineImpl::~PipelineImpl() {
     stop();
     wait();
 
-    if(recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
-        std::vector<std::filesystem::path> filenames = {recordReplayFilenames["record_config"]};
-        std::vector<std::string> outFiles = {"record_config.json"};
-        filenames.reserve(recordReplayFilenames.size() * 2 + 1);
-        outFiles.reserve(recordReplayFilenames.size() * 2 + 1);
-        for(auto& rstr : recordReplayFilenames) {
-            if(rstr.first != "record_config") {
-                std::string nodeName = rstr.first.substr(2);
-                std::filesystem::path filePath = rstr.second;
-                filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
-                outFiles.push_back(nodeName + ".mcap");
-                if(rstr.first[0] == 'v') {
-                    filenames.push_back(std::filesystem::path(filePath).concat(".mp4"));
-                    outFiles.push_back(nodeName + ".mp4");
-                }
-            }
-        }
-        Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
-        try {
-            utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
-        } catch(const std::exception& e) {
-            Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
-        }
-        std::filesystem::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json"));
-    }
-
-    if(removeRecordReplayFiles && recordConfig.state != RecordConfig::RecordReplayState::NONE) {
-        Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
-        for(auto& kv : recordReplayFilenames) {
-            if(kv.first != "record_config") {
-                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
-                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mp4"));
-            } else {
-                std::filesystem::remove(kv.second);
-            }
-        }
-    }
+    utility::PipelineImplHelper::finishHolisticRecordAndReplay(this);
 }
 
 void PipelineImpl::run() {
@@ -1077,6 +1041,10 @@ void Pipeline::enablePipelineDebugging(bool enable) {
         throw std::runtime_error("Cannot change pipeline debugging state after pipeline is built");
     }
     impl()->enablePipelineDebugging = enable;
+}
+
+bool Pipeline::isPipelineDebuggingEnabled() const {
+    return impl()->enablePipelineDebugging;
 }
 
 std::shared_ptr<MessageQueue> Pipeline::getPipelineStateOut() const {

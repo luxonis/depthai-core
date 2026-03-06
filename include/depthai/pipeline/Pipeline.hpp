@@ -20,13 +20,13 @@
 #include "depthai/utility/AtomicBool.hpp"
 
 // shared
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/device/BoardConfig.hpp"
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
-#include "depthai/common/CameraBoardSocket.hpp"
 
 namespace dai {
 
@@ -39,12 +39,12 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class utility::PipelineImplHelper;
 
    public:
-    PipelineImpl(Pipeline& pipeline, bool createImplicitDevice = true) : assetManager("/pipeline/"), parent(pipeline) {
+    PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
         if(createImplicitDevice) {
             defaultDevice = std::make_shared<Device>();
         }
     }
-    PipelineImpl(Pipeline& pipeline, std::shared_ptr<Device> device) : assetManager("/pipeline/"), parent(pipeline), defaultDevice{std::move(device)} {}
+    PipelineImpl(std::shared_ptr<Device> device) : assetManager("/pipeline/"), defaultDevice{std::move(device)} {}
     PipelineImpl(const PipelineImpl&) = delete;
     PipelineImpl& operator=(const PipelineImpl&) = delete;
     PipelineImpl(PipelineImpl&&) = delete;
@@ -139,9 +139,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
-
-    // parent
-    Pipeline& parent;
 
     // is pipeline running
     AtomicBool running{false};
@@ -446,7 +443,7 @@ class Pipeline {
     void setCameraTuningBlobPath(const fs::path& path) {
         impl()->setCameraTuningBlobPath(path);
     }
-    
+
     /// Set a camera IQ (Image Quality) tuning blob, used for specific board socket
     void setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path) {
         impl()->setCameraTuningBlobPath(socket, path);
@@ -545,6 +542,7 @@ class Pipeline {
 
     /// Pipeline debugging
     void enablePipelineDebugging(bool enable = true);
+    bool isPipelineDebuggingEnabled() const;
 
     // Access to pipeline state queues
     std::shared_ptr<MessageQueue> getPipelineStateOut() const;

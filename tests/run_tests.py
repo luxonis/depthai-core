@@ -58,7 +58,21 @@ def run_ctest(env_vars, labels, blocking=True, name=""):
             
     env.update(env_vars)
 
-    cmd = ["ctest", "--no-tests=error", "-VV", "-L", "^ci$", "--timeout", "1000", "-C", "Release"]
+    cmd = [
+        "ctest",
+        "--no-tests=error",
+        "-VV",
+        "-L",
+        "^ci$",
+        "--timeout",
+        "1000",
+        "-C",
+        "Release",
+        "--test-output-size-failed",
+        "500000",
+        "--test-output-truncation",
+        "tail",
+    ]
 
     if os.name == "nt":
         cmd.extend(["-LE", "^nowindows$"])
@@ -109,6 +123,12 @@ if __name__ == "__main__":
         action="store_true",
         required=False,
     )
+    
+    parser.add_argument(
+        "--rvc4usb",
+        action="store_true",
+        required=False,
+    )
 
     parser.add_argument(
         "--rvc2",
@@ -130,17 +150,22 @@ if __name__ == "__main__":
         },
         {
             "name": "RVC4",
-            "env": {"DEPTHAI_PLATFORM": "rvc4"},
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
+            "labels": ["rvc4"],
+        },
+        {
+            "name": "RVC4 - USB",
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "usb"},
             "labels": ["rvc4"],
         },
         {
             "name": "RVC4 - Fsync",
-            "env": {"DEPTHAI_PLATFORM": "rvc4"},
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
             "labels": ["rvc4fsync"],
         },
         {
             "name": "RVC4 - RGB",
-            "env": {"DEPTHAI_PLATFORM": "rvc4"},
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
             "labels": ["rvc4rgb"],
         },
         {
@@ -159,10 +184,10 @@ if __name__ == "__main__":
     resultThreads = []
 
     # Filter configurations based on command-line arguments
-    if args.rvc4==args.rvc2==args.rvc4rgb==args.fsync:
-        test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "rvc4" in config.get("labels", []) or "onhost" in config.get("labels", [])]
-    elif args.rvc4:
-        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", [])]
+    if args.rvc4:
+        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "tcpip"]
+    elif args.rvc4usb:
+        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "usb"]
     elif args.rvc2:
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4rgb:
@@ -179,7 +204,7 @@ if __name__ == "__main__":
         print(f"Running tests for configuration: {name}")
         resultThread = run_ctest(env_vars, labels, blocking=False, name=name)
         resultThreads.append((name, resultThread))
-
+    exit(1)
     # Process the results
     any_failures = False
     for name, resultThread in resultThreads:
