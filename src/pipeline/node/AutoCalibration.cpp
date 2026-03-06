@@ -14,7 +14,7 @@ namespace node {
 #define BYTES_PER_SECOND_LIMIT_DEFAULT GATE_FPS_DEFAULT * 1280 * 800 * 2
 #define PACKET_SIZE_DEFAULT 100000
 
-void AutoCalibration::loggReport(const Report& report, unsigned int iteration) const {
+void AutoCalibration::logReport(const Report& report, unsigned int iteration) const {
     // Define a lambda or a small helper to route to the correct spdlog method
     auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
 
@@ -52,7 +52,7 @@ void AutoCalibration::loggReport(const Report& report, unsigned int iteration) c
     log("=================================================");
 }
 
-void AutoCalibration::loggConfig() const {
+void AutoCalibration::logConfig() const {
     auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
 
     log("====== AutoCalibration Configuration ======");
@@ -235,7 +235,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                 auto endTime = std::chrono::steady_clock::now();
                 std::chrono::duration<double> elapsed = endTime - startTime;
                 report.elapsedSeconds = elapsed.count();  // Set duration
-                loggReport(report, numIterations);
+                logReport(report, numIterations);
                 return true;
             }
         } else {
@@ -253,7 +253,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                     auto endTime = std::chrono::steady_clock::now();
                     std::chrono::duration<double> elapsed = endTime - startTime;
                     report.elapsedSeconds = elapsed.count();  // Set duration
-                    loggReport(report, numIterations);
+                    logReport(report, numIterations);
                     return true;
                 }
                 auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT, report);
@@ -266,7 +266,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         auto endTime = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed = endTime - startTime;
         report.elapsedSeconds = elapsed.count();  // Set duration
-        loggReport(report, numIterations);
+        logReport(report, numIterations);
         ++numIterations;
     }
 
@@ -337,7 +337,7 @@ void AutoCalibration::run() {
     if(!validateIncomingData()) {
         return;
     }
-    loggConfig();
+    logConfig();
     switch(initialConfig->mode) {
         case AutoCalibrationConfig::Mode::CONTINUOUS:
             logger->info("Running continuous mode.");

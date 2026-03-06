@@ -93,7 +93,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
-    bool hasDynamiCalibration() const;
+    bool hasDynamicCalibration() const;
 
     BoardConfig getBoardConfig() const;
 

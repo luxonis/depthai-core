@@ -621,7 +621,7 @@ bool PipelineImpl::isBuilt() const {
     return isBuild;
 }
 
-bool PipelineImpl::hasDynamiCalibration() const {
+bool PipelineImpl::hasDynamicCalibration() const {
     // call this only with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
         if(node->getName() == dai::node::DynamicCalibration::NAME || node->getName() == dai::node::AutoCalibration::NAME) {
@@ -677,7 +677,7 @@ void PipelineImpl::build() {
                 return false;
             };
 
-            if(stereoPair.first && stereoPair.second && !hasDynamiCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
+            if(stereoPair.first && stereoPair.second && !hasDynamicCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
                 if(autoCalibtationString == "CONTINUOUS") {
