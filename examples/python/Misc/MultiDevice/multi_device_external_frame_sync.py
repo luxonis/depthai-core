@@ -1,5 +1,36 @@
 #!/usr/bin/env python3
 
+# This example shows how to use the external frame sync node to synchronize multiple devices
+# This example can be run on a single host or on multiple hosts.
+# The script identifies the master device and slave devices and then starts the master first
+# This is necessary because otherwise slave devices will not be able to detect the master FSYNC signal
+
+# Run example on a single host:
+#   python multi_device_external_frame_sync.py [-f <FPS>]
+# This will pick up all connected devices.
+# If you have issues with displaying the video, try setting the DISPLAY environment variable.
+
+# If you want to run this example on multiple hosts, you need to provide the device IPs or IDs manually.
+# To do this you can use oakctl command which will show you all connected cameras, their IPs and IDs.
+# In order to run the example on multiple hosts, you need to run it on the host with the master device first.
+
+# Run example on multiple hosts:
+# Host with master device:
+#   python multi_device_external_frame_sync.py [-f <FPS>] -d <IP1,IP2,..>
+# Hosts with slave devices:
+#   python multi_device_external_frame_sync.py [-f <FPS>] -s -d <IP1,IP2,..>
+
+# If you have issues with initial sync, this might be due to network congestion.
+# You can increase the sync threshold to a higher value by using -t2 flag.
+
+# WARNING: This example might not be able to display the video on the same FPS as the cameras are running at.
+# This is because the video is being displayed frame-by-frame using OpenCV.
+# This happens when you have a lot of devices connected to the same host.
+
+# WARNING 2: Timestamps from the video frames are accurate to a few milliseconds.
+# This is enough to group the synced frames together, but not enough to measure the actual time difference between frames.
+# We confirmed that the frames are synced to less than 180 us using a pixelrunner.
+
 import contextlib
 import datetime
 
@@ -12,11 +43,6 @@ import signal
 import threading
 
 from typing import Optional, Dict
-
-# This example shows how to use the external frame sync node to synchronize multiple devices
-# This example assumes that all devices are connected to the same host
-# The script identifies the master device and slave devices and then starts the master first
-# This is necessary because otherwise slave devices will not be able to detect the master FSYNC signal
 
 SET_MANUAL_EXPOSURE = False  # Set to True to use manual exposure settings
 # ---------------------------------------------------------------------------
