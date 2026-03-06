@@ -158,11 +158,20 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     std::shared_ptr<CoverageData> coverage;
     for(unsigned int i = 0; i < maxNumIteration; i++) {
+        logger->info("=== AutoCalibration: START recalib {}/{}", i + 1, maxNumIteration);
         dynamicCalibrationCommandQueue.send(DCC::startCalibration());
         for(unsigned int numLoadedImages = 0; numLoadedImages < initialConfig->maxImagesPerReacalibration; numLoadedImages++) {
             if(!mainLoop()) return nullptr;
             auto dynCalibrationResult = dynamicCalibrationQueue.get<dai::DynamicCalibrationResult>();
             coverage = coverageQueue.get<dai::CoverageData>();
+            logger->debug("=== AutoCalibration: MID recalib {}/{} img {}/{} noData info=\"{}\" cov={:.2f} data={:.2f} ===",
+                         i + 1,
+                         maxNumIteration,
+                         numLoadedImages + 1,
+                         initialConfig->maxImagesPerReacalibration,
+                         dynCalibrationResult->info,
+                         coverage ? coverage->coverageAcquired : 0.0f,
+                         coverage ? coverage->dataAcquired : 0.0f);
             if(dynCalibrationResult->calibrationData) {
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue.send(dai::GateControl::closeGate());
@@ -175,11 +184,15 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
                     report.elapsedRecalibrationSeconds = elapsed.count();
                     report.coveragesAcquired.push_back({coverage->coverageAcquired, coverage->dataAcquired});
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);
-                } else {
-                    dynamicCalibrationCommandQueue.send(DCC::resetData());
                 }
+                dynamicCalibrationCommandQueue.send(DCC::resetData());
+                break;
             }
         }
+
+        // One-shot command semantics: close and reset every attempt.
+        dynamicCalibrationCommandQueue.send(DCC::stopCalibration());
+
         if(coverage) {
             report.coveragesAcquired.push_back({coverage->coverageAcquired, coverage->dataAcquired});
         } else {
@@ -206,6 +219,10 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
     unsigned int numIterations = 0;
     while(numIterations <= initialConfig->maxIterations && mainLoop()) {
         auto startTime = std::chrono::steady_clock::now();  // Start timer
+        logger->info("=== AutoCalibration: update iteration {}/{} (validationSetSize={}) ---",
+                     numIterations,
+                     initialConfig->maxIterations - 1,
+                     initialConfig->validationSetSize);
         Report report;
         dynamicCalibrationCommandQueue.send(DCC::resetData());
         if(initialConfig->validationSetSize == 0) {
@@ -222,6 +239,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                 return true;
             }
         } else {
+            logger->info("=== AutoCalibration: loading validation data ({}) ---", initialConfig->validationSetSize);
             loadData(initialConfig->validationSetSize);
             auto metrics = getMetrics(calibration);
             report.dataConfidence = metrics->dataConfidence;
