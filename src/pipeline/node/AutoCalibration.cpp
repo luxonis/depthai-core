@@ -191,7 +191,6 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
         }
 
         // One-shot command semantics: close and reset every attempt.
-        dynamicCalibrationCommandQueue.send(DCC::stopCalibration());
 
         if(coverage) {
             report.coveragesAcquired.push_back({coverage->coverageAcquired, coverage->dataAcquired});
@@ -199,6 +198,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             report.coveragesAcquired.push_back({0., 0.});
         }
     }
+    dynamicCalibrationCommandQueue.send(DCC::stopCalibration());
     report.recalibrationPassed = false;
     report.numIterationPerRecalibration = maxNumIteration;
     gateControlQueue.send(dai::GateControl::closeGate());
