@@ -45,6 +45,7 @@ jobs:
 
       - name: Run RVC4 tests
         run: |
+            set -o pipefail
             BRANCH_NAME="${{ github.ref_name }}"
             PULL_REQUEST="false"
             if [[ -n "${{ github.head_ref }}" ]]; then
@@ -76,6 +77,7 @@ jobs:
 
       - name: Run RVC4 tests
         run: |
+            set -o pipefail
             BRANCH_NAME="${{ github.ref_name }}"
             PULL_REQUEST="false"
             if [[ -n "${{ github.head_ref }}" ]]; then
