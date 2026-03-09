@@ -39,6 +39,7 @@
 #include "depthai/device/CrashDump.hpp"
 #include "depthai/log/LogLevel.hpp"
 #include "depthai/log/LogMessage.hpp"
+#include "depthai/properties/GlobalProperties.hpp"
 
 namespace dai {
 
@@ -316,6 +317,45 @@ class DeviceBase {
     LogLevel getNodeLogLevel(int64_t id);
 
     /**
+     * Sets properties for the device.
+     *
+     * @param properties DeviceProperties struct with properties to set. Only properties which are supported by the device and have different values than
+     * current ones will be applied. Some properties are only applied before starting the pipeline.
+     */
+    void setProperties(const DeviceProperties& properties);
+
+    /**
+     * Gets current properties set on the device. Some properties might be not supported by the device, in that case they will have default values.
+     *
+     * @returns  DeviceProperties struct with current device properties
+     */
+    DeviceProperties getProperties();
+
+    /**
+     * Sets the camera tuning blob for the device.
+     *
+     * @param uri URI of the tuning blob retrieved using the asset manager
+     * @param size size of the tuning blob in bytes
+     */
+    void setCameraTuningBlob(const std::string& uri, uint32_t size);
+
+    /**
+     * Sets the camera socket specific tuning blobs for the device.
+     *
+     * @param blobs Unordered map of CameraBoardSocket to pair of URI and size of the tuning blob in bytes. The URI should be retrieved using the asset manager
+     */
+    void setCameraSocketTuningBlobs(std::unordered_map<CameraBoardSocket, std::pair<std::string, uint32_t>> blobs);
+
+    /**
+     * Sets the camera socket specific tuning blob for the device.
+     *
+     * @param socket CameraBoardSocket for which the tuning blob will be set
+     * @param uri URI of the tuning blob retrieved using the asset manager
+     * @param size size of the tuning blob in bytes
+     */
+    void setCameraSocketTuningBlob(CameraBoardSocket socket, const std::string& uri, uint32_t size);
+
+    /**
      * Sets the chunk size for splitting device-sent XLink packets. A larger value could
      * increase performance, and 0 disables chunking. A negative value is ignored.
      * Device defaults are configured per protocol, currently 64*1024 for both USB and Ethernet.
@@ -330,6 +370,20 @@ class DeviceBase {
      * @returns XLink chunk size in bytes
      */
     int getXLinkChunkSize();
+
+    /**
+     * Sets the size of the SIPP buffer on the device.
+     *
+     * @param sizeBytes SIPP buffer size in bytes. Device default is 18 * 1024 bytes
+     */
+    void setSippBufferSize(int sizeBytes);
+
+    /**
+     * Sets the size of the SIPP DMA buffer on the device.
+     *
+     * @param sizeBytes SIPP DMA buffer size in bytes. Device default is 16 * 1024 bytes
+     */
+    void setSippDmaBufferSize(int sizeBytes);
 
     /**
      * Get the Device Info object o the device which is currently running
@@ -602,9 +656,17 @@ class DeviceBase {
 
     /**
      * Check if EEPROM is available
+     * 
      * @returns True if EEPROM is present on board, false otherwise
      */
     bool isEepromAvailable();
+
+    /**
+     * Check if Calibration is available on the device
+     *
+     * @returns True if calibration is present on device, false otherwise
+     */
+    bool isCalibrationAvailable();
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM
@@ -631,6 +693,15 @@ class DeviceBase {
      *
      */
     void setCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Sets the Calibration at runtime using EepromData. This is not persistent and will be lost after device reset.
+     *
+     * @throws std::runtime_error if failed to set the calibration
+     * @param eepromData EepromData struct which contains the calibration information.
+     *
+     */
+    void setCalibration(const std::optional<EepromData>& eepromData);
 
     /**
      * Retrieves the CalibrationHandler object containing the non-persistent calibration

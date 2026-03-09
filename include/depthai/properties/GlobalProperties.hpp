@@ -3,6 +3,7 @@
 #include "depthai/common/EepromData.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/properties/Properties.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 namespace dai {
 
@@ -10,6 +11,15 @@ namespace dai {
  * Specify properties which apply for whole pipeline
  */
 struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
+    std::optional<std::string> pipelineName;
+    std::optional<std::string> pipelineVersion;
+    ~GlobalProperties() override;
+};
+
+/**
+ * Specify properties which apply for a device
+ */
+struct DeviceProperties : PropertiesSerializable<Properties, DeviceProperties> {
     constexpr static uint32_t SIPP_BUFFER_DEFAULT_SIZE = 18 * 1024;
     constexpr static uint32_t SIPP_DMA_BUFFER_DEFAULT_SIZE = 16 * 1024;
 
@@ -23,8 +33,6 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
      * draw
      */
     double leonMssFrequencyHz = 700 * 1000 * 1000;
-    std::optional<std::string> pipelineName;
-    std::optional<std::string> pipelineVersion;
     /**
      * Calibration data sent through pipeline
      */
@@ -78,13 +86,11 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
      */
     uint32_t sippDmaBufferSize = SIPP_DMA_BUFFER_DEFAULT_SIZE;
 
-    ~GlobalProperties() override;
+    ~DeviceProperties() override;
 
-    GlobalProperties& setFrom(const GlobalProperties& other) {
+    DeviceProperties& setFrom(const DeviceProperties& other) {
         leonCssFrequencyHz = other.leonCssFrequencyHz;
         leonMssFrequencyHz = other.leonMssFrequencyHz;
-        pipelineName = other.pipelineName;
-        pipelineVersion = other.pipelineVersion;
         if(other.calibData) {
             calibData = other.calibData;
             eepromId = other.eepromId;
@@ -100,11 +106,15 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
     }
 };
 
-DEPTHAI_SERIALIZE_EXT(GlobalProperties,
+DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+
+DEPTHAI_SERIALIZE_EXT(GlobalProperties, pipelineName, pipelineVersion);
+
+DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+
+DEPTHAI_SERIALIZE_EXT(DeviceProperties,
                       leonCssFrequencyHz,
                       leonMssFrequencyHz,
-                      pipelineName,
-                      pipelineVersion,
                       cameraTuningBlobSize,
                       cameraTuningBlobUri,
                       cameraSocketTuningBlobSize,
