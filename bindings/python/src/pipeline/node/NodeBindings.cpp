@@ -27,6 +27,7 @@
 #include "pybind11/stl_bind.h"
 
 std::unordered_map<std::thread::id, std::stack<dai::Pipeline*>> implicitPipelines;
+std::unordered_map<std::thread::id, std::stack<bool>> pipelineCreateNodeGuards;
 dai::Pipeline* getImplicitPipeline() {
     auto rv = implicitPipelines.find(std::this_thread::get_id());
     if(rv == implicitPipelines.end() || rv->second.empty()) throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
@@ -41,6 +42,23 @@ void setImplicitPipeline(dai::Pipeline* pipeline) {
 }
 void delImplicitPipeline() {
     implicitPipelines[std::this_thread::get_id()].pop();
+}
+void setCreatingNodeFromPipelineCreate() {
+    auto stack = pipelineCreateNodeGuards.find(std::this_thread::get_id());
+    if(stack == pipelineCreateNodeGuards.end()) {
+        stack = pipelineCreateNodeGuards.emplace(std::this_thread::get_id(), std::stack<bool>{}).first;
+    }
+    stack->second.push(true);
+}
+void delCreatingNodeFromPipelineCreate() {
+    auto stack = pipelineCreateNodeGuards.find(std::this_thread::get_id());
+    if(stack != pipelineCreateNodeGuards.end() && !stack->second.empty()) {
+        stack->second.pop();
+    }
+}
+bool isCreatingNodeFromPipelineCreate() {
+    auto stack = pipelineCreateNodeGuards.find(std::this_thread::get_id());
+    return stack != pipelineCreateNodeGuards.end() && !stack->second.empty();
 }
 
 // Map of python node classes and call to pipeline to create it

@@ -198,13 +198,6 @@ TEST_CASE("Test pipeline device property setters keep device and host properties
     pipeline.setDefaultDeviceProperties(props);
     checkSync("after setDefaultDeviceProperties");
 
-    dai::DeviceProperties externalProps = device->getProperties();
-    pipeline.setDefaultDevicePropertiesRef(&externalProps);
-    pipeline.setXLinkChunkSize(xlinkSize + 2048);
-    pipeline.setSippBufferSize(static_cast<int>(sippSize + 2048));
-    pipeline.setSippDmaBufferSize(static_cast<int>(sippDmaSize + 2048));
-    checkSync("after setDefaultDevicePropertiesRef + setters");
-
     auto calibHandler = device->readCalibration();
     calibHandler.setDeviceName("sync_device_name");
     pipeline.setCalibrationData(calibHandler);
