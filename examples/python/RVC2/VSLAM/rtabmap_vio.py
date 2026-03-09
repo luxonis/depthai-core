@@ -16,7 +16,7 @@ with dai.Pipeline() as p:
     featureTracker = p.create(dai.node.FeatureTracker)
     odom = p.create(dai.node.RTABMapVIO)
 
-    rerunViewer = RerunNode()
+    rerunViewer = p.create(RerunNode)
     imu.enableIMUSensor([dai.IMUSensor.ACCELEROMETER_RAW, dai.IMUSensor.GYROSCOPE_RAW], 200)
     imu.setBatchReportThreshold(1)
     imu.setMaxBatchReports(10)

@@ -646,6 +646,10 @@ endif()
 dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
 dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
 
+# EEPROM undistortion test (RVC2 only)
+dai_add_test(eeprom_undistortion_test src/ondevice_tests/eeprom_undistortion_test.cpp)
+dai_set_test_labels(eeprom_undistortion_test ondevice rvc2_all ci)
+
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
 dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)

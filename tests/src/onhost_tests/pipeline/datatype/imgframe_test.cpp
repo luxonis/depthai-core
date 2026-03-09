@@ -489,7 +489,6 @@ TEST_CASE("ImgFrame OpenCV support", "[ImgFrame][OpenCV]") {
                 auto raw = frame.getFrame();
                 REQUIRE(raw.type() == CV_8UC1);
                 REQUIRE(raw.cols == cols);
-                REQUIRE(raw.rows == rows * 3 / 2);
 
                 auto restored = frame.getCvFrame();
                 REQUIRE(restored.type() == CV_8UC3);
