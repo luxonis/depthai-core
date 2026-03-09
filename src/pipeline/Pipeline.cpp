@@ -96,7 +96,9 @@ void PipelineImpl::setDefaultDevicePropertiesRef(DeviceProperties* devicePropert
 }
 
 std::optional<DeviceProperties> PipelineImpl::getDefaultDeviceProperties() const {
-    if(defaultDeviceProperties != nullptr) {
+    if(defaultDevice) {
+        return defaultDevice->getProperties();
+    } else if(defaultDeviceProperties != nullptr) {
         return *defaultDeviceProperties;
     }
     return std::nullopt;
