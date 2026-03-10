@@ -64,7 +64,7 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
 # Create synchronization node
 # ---------------------------------------------------------------------------
 def createSyncNode(syncThreshold: datetime.timedelta):
-    global masterPipeline, masterNode, slaveQueues, inputQueues, outputNames, slavePipelines
+    global masterPipeline, masterNode, masterName, slaveQueues, inputQueues, outputNames, slavePipelines
     sync = masterPipeline.create(dai.node.Sync)
 
     # Sync node will run on the host, since it needs to sync multiple devices
@@ -73,7 +73,7 @@ def createSyncNode(syncThreshold: datetime.timedelta):
 
     # Link master camera outputs to the sync node
     for socketName, camOutput in masterNode.items():
-        name = f"master_{socketName}"
+        name = f"master_{masterName}_{socketName}"
         camOutput.link(sync.inputs[name])
         outputNames.append(name)
 
@@ -122,11 +122,18 @@ def setUpCameraSocket(
 
     return pipeline
 
+def getDeviceName(device : dai.Device) -> str:
+    info = device.getDeviceInfo()
+    name = info.deviceId
+    if info.name is not None or info.name != "":
+        name += "[" + info.name + "]"
+    return name
+
 def setupDevice(
         stack: contextlib.ExitStack,
         deviceInfo: dai.DeviceInfo,
         targetFps: float):
-    global masterPipeline, slavePipelines, slaveQueues, camSockets
+    global masterPipeline, masterName, slavePipelines, slaveQueues, camSockets
 
     # Create pipeline for device
     pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
@@ -135,7 +142,7 @@ def setupDevice(
     if device.getPlatform() != dai.Platform.RVC4:
         raise RuntimeError("This example supports only RVC4 platform!")
 
-    name = deviceInfo.getXLinkDeviceDesc().mxid
+    name = getDeviceName(device)
     role = device.getExternalFrameSyncRole()
 
     print("=== Connected to", deviceInfo.getDeviceId())
@@ -153,6 +160,7 @@ def setupDevice(
             raise RuntimeError("Only one master pipeline is supported")
         
         masterPipeline = pipeline
+        masterName = name
     elif role == dai.ExternalFrameSyncRole.SLAVE:
         slavePipelines[name] = pipeline
         print(f"{device.getDeviceId()} is slave")
@@ -202,6 +210,7 @@ with contextlib.ExitStack() as stack:
     # Variables to keep track of master and slave pipelines and outputs
     masterPipeline: Optional[dai.Pipeline] = None
     masterNode: Optional[Dict[str, dai.Node.Output]] = None
+    masterName: Optional[str] = None
 
     slavePipelines: Dict[str, dai.Pipeline] = {}
     slaveQueues: Dict[str, Dict[str, dai.MessageQueue]] = {}
