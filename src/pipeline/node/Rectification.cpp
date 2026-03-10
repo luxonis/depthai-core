@@ -116,13 +116,24 @@ void Rectification::run() {
     std::array<std::array<float, 3>, 3> targetM1, targetM2;
     dai::ImgTransformation output1ImgTransformation;
     dai::ImgTransformation output2ImgTransformation;
+    bool hasAuxDepth = auxDepth.isConnected();
+    bool hasAuxConfidence = auxConfidence.isConnected();
+
     while(mainLoop()) {
         std::shared_ptr<dai::ImgFrame> input1Frame;
         std::shared_ptr<dai::ImgFrame> input2Frame;
+        std::shared_ptr<dai::ImgFrame> auxDepthFrame;
+        std::shared_ptr<dai::ImgFrame> auxConfidenceFrame;
         {
             auto blockEvent = this->inputBlockEvent();
             input1Frame = input1.get<dai::ImgFrame>();
             input2Frame = input2.get<dai::ImgFrame>();
+            if(hasAuxDepth) {
+                auxDepthFrame = auxDepth.get<dai::ImgFrame>();
+            }
+            if(hasAuxConfidence) {
+                auxConfidenceFrame = auxConfidence.get<dai::ImgFrame>();
+            }
         }
         uint32_t output1FrameWidth;
         uint32_t output1FrameHeight;
@@ -271,6 +282,48 @@ void Rectification::run() {
         rectifiedFrame2->transformation = output1ImgTransformation;  // Set both to same for alignment
         rectifiedFrame2->transformation.setDistortionCoefficients({});
 
+        // TODO: aux remap uses cv::remap on CPU -- investigate using HW warp (EVA/GPU) for better performance
+        std::shared_ptr<dai::ImgFrame> rectifiedAuxDepth;
+        std::shared_ptr<dai::ImgFrame> rectifiedAuxConf;
+
+        if(auxDepthFrame) {
+            rectifiedAuxDepth = std::make_shared<dai::ImgFrame>();
+            size_t auxDepthBpp = 2;  // RAW16
+            size_t auxDepthSize = output1FrameWidth * output1FrameHeight * auxDepthBpp;
+            rectifiedAuxDepth->setData(std::vector<uint8_t>(auxDepthSize));
+            rectifiedAuxDepth->setMetadata(*auxDepthFrame);
+            rectifiedAuxDepth->setWidth(output1FrameWidth);
+            rectifiedAuxDepth->setHeight(output1FrameHeight);
+            rectifiedAuxDepth->setType(auxDepthFrame->getType());
+            rectifiedAuxDepth->fb.stride = rectifiedAuxDepth->fb.width * rectifiedAuxDepth->getBytesPerPixel();
+
+            cv::remap(auxDepthFrame->getCvFrame(), rectifiedAuxDepth->getFrame(),
+                      cv_rectificationMap1X, cv_rectificationMap1Y,
+                      cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0));
+
+            rectifiedAuxDepth->transformation = output1ImgTransformation;
+            rectifiedAuxDepth->transformation.setDistortionCoefficients({});
+        }
+
+        if(auxConfidenceFrame) {
+            rectifiedAuxConf = std::make_shared<dai::ImgFrame>();
+            size_t auxConfBpp = auxConfidenceFrame->getBytesPerPixel();
+            size_t auxConfSize = output1FrameWidth * output1FrameHeight * auxConfBpp;
+            rectifiedAuxConf->setData(std::vector<uint8_t>(auxConfSize));
+            rectifiedAuxConf->setMetadata(*auxConfidenceFrame);
+            rectifiedAuxConf->setWidth(output1FrameWidth);
+            rectifiedAuxConf->setHeight(output1FrameHeight);
+            rectifiedAuxConf->setType(auxConfidenceFrame->getType());
+            rectifiedAuxConf->fb.stride = rectifiedAuxConf->fb.width * rectifiedAuxConf->getBytesPerPixel();
+
+            cv::remap(auxConfidenceFrame->getCvFrame(), rectifiedAuxConf->getFrame(),
+                      cv_rectificationMap1X, cv_rectificationMap1Y,
+                      cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0));
+
+            rectifiedAuxConf->transformation = output1ImgTransformation;
+            rectifiedAuxConf->transformation.setDistortionCoefficients({});
+        }
+
         auto end = steady_clock::now();
         auto duration = duration_cast<milliseconds>(end - start).count();
         logger->debug("Rectification took {} ms", duration);
@@ -279,6 +332,13 @@ void Rectification::run() {
             auto blockEvent = this->outputBlockEvent();
             output1.send(rectifiedFrame1);
             output2.send(rectifiedFrame2);
+
+            if(rectifiedAuxDepth) {
+                auxDepthOut.send(rectifiedAuxDepth);
+            }
+            if(rectifiedAuxConf) {
+                auxConfidenceOut.send(rectifiedAuxConf);
+            }
 
             // Passthrough the message
             passthrough1.send(input1Frame);

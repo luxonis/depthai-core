@@ -31,6 +31,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     virtual ~Vpp();
 
     std::shared_ptr<Vpp> build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput);
+    std::shared_ptr<Vpp> buildWithDepth(Output& leftInput, Output& rightInput, Output& depthInput, Output& confidenceInput);
 
     void buildInternal() override;
 
@@ -50,6 +51,7 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
     const std::string rightInputName = "right";
     const std::string disparityName = "disparity";
     const std::string confidenceName = "confidence";
+    const std::string depthName = "depth";
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
 
@@ -71,6 +73,13 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
      * Confidence of the dispatiry (in integers - 16 times bigger).
      */
     Input& confidence{sync->inputs["confidence"]};
+
+    /**
+     * Depth input (RAW16, millimeters). Mutually exclusive with disparity —
+     * connecting both will raise an error at build time.
+     * When connected, depth is internally converted to disparity using baseline and focal length.
+     */
+    Input& depth{sync->inputs["depth"]};
 #endif
 
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{{DatatypeEnum::VppConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};

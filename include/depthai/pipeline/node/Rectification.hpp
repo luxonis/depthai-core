@@ -23,6 +23,18 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     Input input2{*this, {"input2", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
+     * Optional auxiliary depth input. Rectified with the same map as input1, using INTER_NEAREST.
+     * Default queue is non-blocking with size 4.
+     */
+    Input auxDepth{*this, {"auxDepth", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}}}};
+
+    /**
+     * Optional auxiliary confidence input. Rectified with the same map as input1, using INTER_NEAREST.
+     * Default queue is non-blocking with size 4.
+     */
+    Input auxConfidence{*this, {"auxConfidence", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}}}};
+
+    /**
      * Passthrough for input messages (so the node can be placed between other nodes)
      */
     Output passthrough1{*this, {"passthrough1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
@@ -33,6 +45,16 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
      */
     Output output1{*this, {"output1", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     Output output2{*this, {"output2", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    /**
+     * Rectified auxiliary depth. Only sent when auxDepth is connected.
+     */
+    Output auxDepthOut{*this, {"auxDepthOut", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+    /**
+     * Rectified auxiliary confidence. Only sent when auxConfidence is connected.
+     */
+    Output auxConfidenceOut{*this, {"auxConfidenceOut", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     /**
      * Specify whether to run on host or device

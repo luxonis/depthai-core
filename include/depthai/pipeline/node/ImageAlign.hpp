@@ -46,9 +46,24 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
 
     /**
+     * Optional depth input. When connected, this frame drives the 3D remap
+     * (provides intrinsics, distortion, warp mesh) and is itself warped to the
+     * inputAlignTo view, producing outputRemappedDepth.
+     * When not connected, behavior is identical to before (input drives remap).
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputDepth{*this, {"inputDepth", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}}}};
+
+    /**
      * Outputs ImgFrame message that is aligned to inputAlignTo.
      */
     Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}}}};
+
+    /**
+     * Outputs depth remapped to the inputAlignTo view.
+     * Only produced when inputDepth is connected.
+     */
+    Output outputRemappedDepth{*this, {"outputRemappedDepth", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Passthrough message on which the calculation was performed.

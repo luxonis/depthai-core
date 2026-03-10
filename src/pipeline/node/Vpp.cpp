@@ -18,6 +18,16 @@ std::shared_ptr<Vpp> Vpp::build(Output& leftInput, Output& rightInput, Output& d
     return std::static_pointer_cast<Vpp>(shared_from_this());
 }
 
+std::shared_ptr<Vpp> Vpp::buildWithDepth(Output& leftInput, Output& rightInput, Output& depthInput, Output& confidenceInput) {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    leftInput.link(left);
+    rightInput.link(right);
+    depthInput.link(depth);
+    confidenceInput.link(confidence);
+#endif
+    return std::static_pointer_cast<Vpp>(shared_from_this());
+}
+
 Vpp::Vpp(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, Vpp, VppProperties>(std::move(props)),
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
@@ -34,6 +44,23 @@ void Vpp::buildInternal() {
             throw std::runtime_error("Vpp node is supported only on RVC4 devices.");
         }
     }
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    if(depth.isConnected() && disparity.isConnected()) {
+        throw std::runtime_error("Vpp: cannot connect both 'depth' and 'disparity' inputs simultaneously.");
+    }
+    if(!depth.isConnected() && !disparity.isConnected()) {
+        throw std::runtime_error("Vpp: either 'depth' or 'disparity' input must be connected.");
+    }
+    // Remove unconnected optional inputs from sync so it does not block waiting for them
+    for(auto it = sync->inputs.begin(); it != sync->inputs.end();) {
+        const auto& name = it->first.second;
+        if(name != leftInputName && name != rightInputName && !it->second.isConnected()) {
+            it = sync->inputs.erase(it);
+        } else {
+            ++it;
+        }
+    }
+#endif
     sync->out.link(syncedInputs);
 }
 

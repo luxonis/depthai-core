@@ -41,9 +41,11 @@ void bind_imagealign(pybind11::module& m, void* pCallstack) {
         .def_readonly("inputConfig", &ImageAlign::inputConfig, DOC(dai, node, ImageAlign, inputConfig), DOC(dai, node, ImageAlign, inputConfig))
         .def_readonly("input", &ImageAlign::input, DOC(dai, node, ImageAlign, input), DOC(dai, node, ImageAlign, input))
         .def_readonly("inputAlignTo", &ImageAlign::inputAlignTo, DOC(dai, node, ImageAlign, inputAlignTo), DOC(dai, node, ImageAlign, inputAlignTo))
+        .def_readonly("inputDepth", &ImageAlign::inputDepth, DOC(dai, node, ImageAlign, inputDepth), DOC(dai, node, ImageAlign, inputDepth))
         .def_readonly(
             "passthroughInput", &ImageAlign::passthroughInput, DOC(dai, node, ImageAlign, passthroughInput), DOC(dai, node, ImageAlign, passthroughInput))
         .def_readonly("outputAligned", &ImageAlign::outputAligned, DOC(dai, node, ImageAlign, outputAligned), DOC(dai, node, ImageAlign, outputAligned))
+        .def_readonly("outputRemappedDepth", &ImageAlign::outputRemappedDepth, DOC(dai, node, ImageAlign, outputRemappedDepth), DOC(dai, node, ImageAlign, outputRemappedDepth))
         .def("setOutputSize", &ImageAlign::setOutputSize, py::arg("alignWidth"), py::arg("alignHeight"), DOC(dai, node, ImageAlign, setOutputSize))
         .def("setOutKeepAspectRatio", &ImageAlign::setOutKeepAspectRatio, py::arg("keep"), DOC(dai, node, ImageAlign, setOutKeepAspectRatio))
         .def("setInterpolation", &ImageAlign::setInterpolation, py::arg("interp"), DOC(dai, node, ImageAlign, setInterpolation))
