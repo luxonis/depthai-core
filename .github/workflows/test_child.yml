@@ -5,6 +5,10 @@ on:
       flavor:
         required: true
         type: string
+      dcl_mode:
+        required: false
+        type: string
+        default: "OFF"
       luxonis_os_versions_to_test:
         required: true
         type: string
@@ -58,15 +62,15 @@ jobs:
     - name: Run RVC2 tests
       run: |
         source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
-        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.flavor }}"
+        export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.flavor }}-${{ inputs.dcl_mode }}"
         set -o pipefail
-        hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc2" 2>&1 | tee rvc2_test_output.log
+        hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc2 ${{ inputs.dcl_mode }}" 2>&1 | tee rvc2_test_output.log
 
     - name: Upload test log
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: ctest-log-${{ inputs.flavor }}-linux_rvc2_test
+        name: ctest-log-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-linux_rvc2_test
         path: rvc2_test_output.log
         if-no-files-found: warn
 
@@ -84,15 +88,15 @@ jobs:
       - name: Run RVC4 tests
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}"
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-${{ inputs.dcl_mode }}"
           set -o pipefail
-          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4" 2>&1 | tee rvc4_test_output.log
+          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4 ${{ inputs.dcl_mode }}" 2>&1 | tee rvc4_test_output.log
 
       - name: Upload test log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ctest-log-${{ inputs.flavor }}-linux_rvc4_test-rvc4os=${{ matrix.rvc4os }}
+          name: ctest-log-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-linux_rvc4_test-rvc4os=${{ matrix.rvc4os }}
           path: rvc4_test_output.log
           if-no-files-found: warn
 
@@ -109,15 +113,15 @@ jobs:
       - name: Run RVC4 tests
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-usb"
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-usb"
           set -o pipefail
-          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4usb" 2>&1 | tee rvc4_usb_test_output.log
+          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4usb ${{ inputs.dcl_mode }}" 2>&1 | tee rvc4_usb_test_output.log
 
       - name: Upload test log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ctest-log-${{ inputs.flavor }}-linux_rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
+          name: ctest-log-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-linux_rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
           path: rvc4_usb_test_output.log
           if-no-files-found: warn
 
@@ -134,20 +138,20 @@ jobs:
       - name: Run RVC4 tests
         run: |
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
-          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-rgb"
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-rgb"
           set -o pipefail
-          hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb" 2>&1 | tee rvc4_rgb_test_output.log
+          hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb ${{ inputs.dcl_mode }}" 2>&1 | tee rvc4_rgb_test_output.log
 
       - name: Upload test log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ctest-log-${{ inputs.flavor }}-linux_rvc4_rgb_test-rvc4os=${{ matrix.rvc4os }}
+          name: ctest-log-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-linux_rvc4_rgb_test-rvc4os=${{ matrix.rvc4os }}
           path: rvc4_rgb_test_output.log
           if-no-files-found: warn
 
  report_linux_test_results:
-    name: Report Linux test results (${{ inputs.flavor }})
+    name: Report Linux test results (${{ inputs.flavor }}, DCL=${{ inputs.dcl_mode }})
     needs: [linux_rvc2_test, linux_rvc4_test,linux_rvc4_usb_test, linux_rvc4_rgb_test]
     if: always()
     runs-on: ubuntu-latest
@@ -158,7 +162,7 @@ jobs:
     - name: Download test logs
       uses: actions/download-artifact@v4
       with:
-        pattern: ctest-log-${{ inputs.flavor }}-*
+        pattern: ctest-log-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-*
         path: ctest-logs
     - name: Generate combined summary
       run: |
@@ -171,7 +175,7 @@ jobs:
         found_logs=0
         first_summary=1
         mkdir -p ctest-reports
-        artifact_prefix="ctest-log-${{ inputs.flavor }}-"
+        artifact_prefix="ctest-log-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-"
         for dir in ctest-logs/${artifact_prefix}*; do
           [ -d "$dir" ] || continue
           log_files=("$dir"/*.log)
@@ -199,7 +203,7 @@ jobs:
       if: always() && hashFiles('ctest-reports/*.xml') != ''
       uses: actions/upload-artifact@v4
       with:
-        name: junit-reports-${{ inputs.flavor }}
+        name: junit-reports-${{ inputs.flavor }}-${{ inputs.dcl_mode }}
         path: ctest-reports/*.xml
         if-no-files-found: warn
 
