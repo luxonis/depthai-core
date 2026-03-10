@@ -75,6 +75,18 @@ class CalibrationHandler {
     dai::EepromData getEepromData() const;
 
     /**
+     * @brief Returns true when calibration payload contains camera calibration entries.
+     *
+     * This is a lightweight guard for callers that want to avoid exceptions on empty/default handler.
+     */
+    bool hasCalibrationData() const;
+
+    /**
+     * @brief Returns true when calibration contains data for a specific camera socket.
+     */
+    bool hasCameraCalibration(CameraBoardSocket cameraId) const;
+
+    /**
      * Get the Camera Intrinsics object
      *
      * @param cameraId Uses the cameraId to identify which camera intrinsics to return

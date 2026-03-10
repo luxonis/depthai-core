@@ -336,9 +336,66 @@ static CalibrationHandler loadValidHandler() {
     return CalibrationHandler::fromJson(loadValidCalibJson());
 }
 
+static CalibrationHandler loadLegacyHandlerWithCamera() {
+    dai::EepromData data;
+    data.version = 3;
+
+    dai::CameraInfo cam;
+    cam.width = 1920;
+    cam.height = 1080;
+    cam.lensPosition = 120;
+    cam.specHfovDeg = 68.0f;
+    cam.cameraType = CameraModel::Perspective;
+    cam.intrinsicMatrix = {{1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}};
+    cam.extrinsics.rotationMatrix = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    cam.extrinsics.toCameraSocket = CameraBoardSocket::AUTO;
+
+    data.cameraData[CameraBoardSocket::CAM_A] = cam;
+    return CalibrationHandler(data);
+}
+
+TEST_CASE("Calibration availability depends on version and camera entries", "[hasCalibrationData][hasCameraCalibration]") {
+    dai::EepromData data;
+    data.version = 3;
+    data.cameraData[CameraBoardSocket::CAM_A] = dai::CameraInfo{};
+
+    CalibrationHandler legacy(data);
+    REQUIRE_FALSE(legacy.hasCalibrationData());
+    REQUIRE_FALSE(legacy.hasCameraCalibration(CameraBoardSocket::CAM_A));
+
+    data.version = 7;
+    CalibrationHandler valid(data);
+    REQUIRE(valid.hasCalibrationData());
+    REQUIRE(valid.hasCameraCalibration(CameraBoardSocket::CAM_A));
+    REQUIRE_FALSE(valid.hasCameraCalibration(CameraBoardSocket::CAM_B));
+}
+
+TEST_CASE("Legacy calibration version blocks camera-level getters", "[legacyCalibration][getFov][getLensPosition][getDistortionModel][getCameraExtrinsics]") {
+    auto handler = loadLegacyHandlerWithCamera();
+
+    REQUIRE_THROWS_WITH(handler.getFov(CameraBoardSocket::CAM_A, true),
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the the requested cameraID"));
+    REQUIRE_THROWS_WITH(handler.getLensPosition(CameraBoardSocket::CAM_A),
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the the requested cameraID"));
+    REQUIRE_THROWS_WITH(handler.getDistortionModel(CameraBoardSocket::CAM_A),
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the the requested cameraID"));
+    REQUIRE_THROWS_WITH(handler.getCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_A, false),
+                        Catch::Matchers::ContainsSubstring("requested source cameraId"));
+}
+
+TEST_CASE("Missing camera intrinsics reports calibration guidance", "[getCameraIntrinsics]") {
+    dai::EepromData data;
+    data.version = 7;
+    CalibrationHandler handler(data);
+
+    REQUIRE_THROWS_WITH(handler.getCameraIntrinsics(CameraBoardSocket::CAM_A, 640, 480),
+                        Catch::Matchers::ContainsSubstring(
+                            "old calibration which doesn't include Intrinsic data or there is no Camera data available for the requested cameraID"));
+}
+
 TEST_CASE("Invalid camera ID throws", "[getCameraIntrinsics]") {
     auto handler = loadInvalidHandler();
-    REQUIRE_THROWS_AS(handler.getCameraIntrinsics(CameraBoardSocket::CAM_E, 1280, 800), std::out_of_range);
+    REQUIRE_THROWS_AS(handler.getCameraIntrinsics(CameraBoardSocket::CAM_E, 1280, 800), std::runtime_error);
 }
 
 TEST_CASE("Invalid camera resolution", "[getCameraIntrinsics]") {
