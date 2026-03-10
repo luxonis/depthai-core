@@ -1,0 +1,239 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cmake_minimum_required(VERSION 3.17)
+
+option(HSB_EMULATOR_BUILD_PYTHON "When building standalone HSB Emulator, including building the python environment." ON)
+option(HSB_EMULATOR_BUILD_EXAMPLES "Build standalone HSB emulator C++ examples." OFF)
+option(HSB_EMULATOR_BUILD_SENSORS "Build standalone HSB emulator sensor models." ON)
+option(HSB_EMULATOR_ENABLE_CUDA "Enable CUDA acceleration for standalone HSB emulator transports when available." ON)
+set(HSB_EMULATOR_PYTHON_VENV "env" CACHE STRING "relative path (from build directory) to the standalone HSB Emulator's Python virtual environment")
+
+##### Emulation target handling
+
+add_library(emulation STATIC
+    base_transmitter.cpp
+    data_plane.cpp
+    hsb_config.cpp
+    hsb_emulator.cpp
+    mem_register.cpp
+    net.cpp
+    utils.cpp
+)
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    # this is for building emulator-only
+    include(../../../cmake/hololink_deps/dlpack.cmake)
+
+    # configure standalone project (C++ only; CUDA is optional via CUDAToolkit)
+    set(PROJECT_LANGUAGES CXX)
+    project(hololink
+        LANGUAGES ${PROJECT_LANGUAGES})
+    set(HSB_EMULATOR_TOT_BUILD FALSE)
+else()
+    include(hololink_deps/dlpack)
+    # No python environment building because we will use TOT python bindings
+    set(HSB_EMULATOR_CUPY OFF)
+    set(HSB_EMULATOR_BUILD_PYTHON HOLOLINK_BUILD_PYTHON)
+    set(HSB_EMULATOR_TOT_BUILD TRUE)
+endif()
+
+target_include_directories(emulation
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/hololink/emulation>
+)
+target_link_libraries(emulation
+    PUBLIC
+        dlpack::dlpack
+)
+set_property(TARGET emulation PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+add_library(hololink::emulation ALIAS emulation)
+
+install(TARGETS emulation
+    EXPORT HololinkTargets
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    COMPONENT hololink-emulation
+)
+
+# Base includes that are always installed
+set(EMULATION_INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}/base_transmitter.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data_plane.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/hsb_config.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/hsb_emulator.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/i2c_interface.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mem_register.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/net.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils.hpp
+)
+
+##### Transport target handling
+
+find_package(ZLIB QUIET)
+if(HSB_EMULATOR_ENABLE_CUDA)
+    find_package(CUDAToolkit QUIET)
+endif()
+
+if (CUDAToolkit_FOUND)
+    add_library(emulationcoe STATIC
+        coe_data_plane.cpp
+        coe_transmitter.cpp
+    )
+
+    target_include_directories(emulationcoe
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/hololink/emulation>
+    )
+    target_link_libraries(emulationcoe
+        PUBLIC
+            hololink::emulation
+            CUDA::cudart
+    )
+    set_property(TARGET emulationcoe PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+    add_library(hololink::emulation::coe ALIAS emulationcoe)
+    # Append CUDA-specific includes
+    list(APPEND EMULATION_INCLUDES
+        ${CMAKE_CURRENT_SOURCE_DIR}/coe_data_plane.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/coe_transmitter.hpp
+    )
+    install(TARGETS emulationcoe
+        EXPORT HololinkTargets
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        COMPONENT hololink-emulation
+    )
+endif()
+
+if (ZLIB_FOUND)
+    add_library(emulationroce STATIC
+        linux_data_plane.cpp
+        linux_transmitter.cpp
+    )
+
+    target_include_directories(emulationroce
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/hololink/emulation>
+    )
+    target_link_libraries(emulationroce
+        PUBLIC
+            hololink::emulation
+            ${ZLIB_LIBRARIES}
+    )
+
+    if (CUDAToolkit_FOUND)
+        target_link_libraries(emulationroce
+            PUBLIC
+                CUDA::cudart
+        )
+    else()
+        # Build LinuxDataPlane transport without CUDA by providing a lightweight
+        # cuda_runtime shim used only for GPU-device code paths.
+        target_include_directories(emulationroce
+            PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+        )
+    endif()
+
+    set_property(TARGET emulationroce PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+    add_library(hololink::emulation::roce ALIAS emulationroce)
+
+    # Append ZLIB-specific includes
+    list(APPEND EMULATION_INCLUDES
+        ${CMAKE_CURRENT_SOURCE_DIR}/linux_data_plane.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/linux_transmitter.hpp
+    )
+    install(TARGETS emulationroce
+        EXPORT HololinkTargets
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        COMPONENT hololink-emulation)
+endif()
+
+if(HSB_EMULATOR_BUILD_SENSORS)
+    add_subdirectory(sensors)
+endif()
+if(HSB_EMULATOR_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
+##### Standalone python environment handling
+
+if (HSB_EMULATOR_BUILD_PYTHON AND NOT HSB_EMULATOR_TOT_BUILD)
+    # Find pybind11 for Python extension modules when building standalone
+    find_package(pybind11 REQUIRED)
+    add_library(_emulation SHARED python/hololink/emulation/_emulation.cpp)
+
+    target_include_directories(_emulation PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${pybind11_INCLUDE_DIRS})
+
+    # Link _emulation with the core emulation libraries
+    target_link_libraries(_emulation PRIVATE hololink::emulation ${pybind11_LIBRARIES})
+    if (TARGET hololink::emulation::coe)
+        target_link_libraries(_emulation PRIVATE hololink::emulation::coe)
+    endif()
+    if (TARGET hololink::emulation::roce)
+        target_link_libraries(_emulation PRIVATE hololink::emulation::roce)
+    endif()
+
+    # Set target properties for _emulation
+    set_target_properties(_emulation PROPERTIES
+        OUTPUT_NAME "_emulation"
+        PREFIX ""
+        SUFFIX "${PYTHON_MODULE_EXTENSION}"
+    )
+    set_property(TARGET _emulation PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+    if(TARGET hololink::emulation::sensors)
+        # Create _sensors Python extension module (renamed to _emulation_sensors to match Makefile)
+        add_library(_emulation_sensors SHARED python/hololink/emulation/sensors/_sensors.cpp)
+
+        target_include_directories(_emulation_sensors PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${pybind11_INCLUDE_DIRS})
+
+        # Link _sensors with the sensors library and _emulation
+        target_link_libraries(_emulation_sensors PRIVATE hololink::emulation::sensors _emulation ${pybind11_LIBRARIES})
+
+        # Set target properties for _sensors
+        set_target_properties(_emulation_sensors PROPERTIES
+            OUTPUT_NAME "_emulation_sensors"
+            PREFIX ""
+            SUFFIX "${PYTHON_MODULE_EXTENSION}"
+        )
+        set_property(TARGET _emulation_sensors PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+        set(_cuda_major 0)
+        if(CUDAToolkit_VERSION_MAJOR)
+            set(_cuda_major ${CUDAToolkit_VERSION_MAJOR})
+        endif()
+
+        add_custom_command(TARGET _emulation_sensors POST_BUILD
+            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build_pyvenv.sh $<TARGET_FILE_NAME:_emulation> $<TARGET_FILE_NAME:_emulation_sensors> "${CMAKE_CURRENT_SOURCE_DIR}/python" "${CMAKE_BINARY_DIR}/${HSB_EMULATOR_PYTHON_VENV}" ${_cuda_major}
+            COMMENT "Copying _emulation_sensors extension to hololink/emulation/sensors/"
+        )
+    endif()
+
+endif()
+
+install(FILES ${EMULATION_INCLUDES}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hololink/emulation
+    COMPONENT hololink-emulation)

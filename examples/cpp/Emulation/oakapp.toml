@@ -1,0 +1,32 @@
+identifier = "com.example.cpp.camera_stream"
+entrypoint = ["bash", "-c", "/usr/bin/runsvdir -P /etc/service"]
+app_version = "1.0.0"
+
+build_steps = [
+    "git clone --depth 1 --branch 2.5.0-PB6 https://github.com/nvidia-holoscan/holoscan-sensor-bridge.git /deps/hsb",
+    "apt-get update",
+    "apt-get install -y cmake zlib1g-dev",
+    "cp /app/hsb-emulation-CMakeLists.txt /deps/hsb/src/hololink/emulation/CMakeLists.txt",
+    "mkdir -p /deps/hsb/src/hololink/emulation/stubs",
+    "cp /app/hsb-cuda-runtime-stub.h /deps/hsb/src/hololink/emulation/stubs/cuda_runtime.h",
+    "cmake -S /deps/hsb/src/hololink/emulation -B /deps/hsb/build -DHSB_EMULATOR_ENABLE_CUDA=OFF -DHSB_EMULATOR_BUILD_SENSORS=OFF -DHSB_EMULATOR_BUILD_PYTHON=OFF -DHSB_EMULATOR_BUILD_EXAMPLES=OFF",
+    "cmake --build /deps/hsb/build --target emulation emulationroce -j",
+    "sh -lc \"find /deps/hsb/build \\( -name '*.a' -o -name '*.so' \\) | sort\"",
+    "mkdir -p /mounts/depthai-models",
+    "mkdir -p /etc/service/backend",
+    "cp /app/backend-run.sh /etc/service/backend/run",
+    "chmod +x /etc/service/backend/run",
+    "cmake -S /app -B /app/build -DCMAKE_PREFIX_PATH=/usr/local -DEMULATION_BUILD_DIR=/deps/hsb/build -DEMULATION_INCLUDE_DIR=/deps/hsb/src/hololink/emulation -DEMULATION_ROOT_INCLUDE_DIR=/deps/hsb/src -DEMULATION_DLPACK_INCLUDE_DIR=/deps/hsb/build/_deps/dlpack/include",
+    "cmake --build /app/build",
+]
+
+assign_frontend_port = true
+
+[base_image]
+api_url = "https://registry-1.docker.io"
+service = "registry.docker.io"
+oauth_url = "https://auth.docker.io/token"
+auth_type = "repository"
+auth_name = "luxonis/oakapp-base"
+image_name = "luxonis/oakapp-base"
+image_tag = "1.2.6-cpp"

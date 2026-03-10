@@ -1,0 +1,11 @@
+# Runtime dependencies for examples/cpp/Emulation/hololink_emulator.py
+numpy>=1.24
+opencv-python>=4.8
+depthai>=3.3.0
+
+# hololink emulation bindings are installed via:
+#   ./examples/cpp/Emulation/bootstrap_hololink_emulation.sh
+# Reason: upstream full Python package requires Holoscan CMake SDK, while emulator-only
+# package expects prebuilt native extension binaries.
+
+# LinuxDataPlane uses raw sockets; runtime also needs CAP_NET_RAW on the Python binary.

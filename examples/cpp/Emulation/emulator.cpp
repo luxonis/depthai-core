@@ -10,8 +10,10 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
+#include <optional>
 #include <utility>
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "hsb_emulator.hpp"
@@ -21,13 +23,14 @@
 using namespace hololink::emulation;
 
 int main() {
-    IPAddress emulatorIp = IPAddress_from_string("10.12.101.183");
+    IPAddress emulatorIp = IPAddress_from_string("10.12.101.193");
 
     std::cout << "IPAddress: " << emulatorIp.if_name << ", " << inet_ntoa(*(in_addr*)&emulatorIp.ip_address) << ", "
               << inet_ntoa(*(in_addr*)&emulatorIp.subnet_mask) << ", " << inet_ntoa(*(in_addr*)&emulatorIp.broadcast_address) << ", " << std::hex
-              << emulatorIp.mac[0] << ":" << std::hex << emulatorIp.mac[1] << ":" << std::hex << emulatorIp.mac[2] << ":" << std::hex << emulatorIp.mac[3]
-              << ":" << std::hex << emulatorIp.mac[4] << ":" << std::hex << emulatorIp.mac[5] << std::dec << ", port: " << emulatorIp.port
-              << ", flags: " << static_cast<int>(emulatorIp.flags) << std::endl;
+              << static_cast<unsigned>(emulatorIp.mac[0]) << ":" << static_cast<unsigned>(emulatorIp.mac[1]) << ":" << static_cast<unsigned>(emulatorIp.mac[2])
+              << ":" << static_cast<unsigned>(emulatorIp.mac[3]) << ":" << static_cast<unsigned>(emulatorIp.mac[4]) << ":"
+              << static_cast<unsigned>(emulatorIp.mac[5]) << std::dec << ", port: " << emulatorIp.port << ", flags: " << static_cast<int>(emulatorIp.flags)
+              << std::endl;
 
     auto device = std::make_shared<dai::Device>();
 
@@ -37,25 +40,22 @@ int main() {
     // Create and configure camera node
     auto cameraNode = pipeline.create<dai::node::Camera>();
     cameraNode->build();
-    auto cameraOut = cameraNode->requestOutput(std::make_pair(1920, 1080));
+    auto cameraOut = cameraNode->requestOutput(std::make_pair(1920, 1080), std::nullopt, dai::ImgResizeMode::CROP, 30);
 
     auto qRgb = cameraOut->createOutputQueue();
 
-    auto startTime = std::chrono::steady_clock::now();
-    int counter = 0;
-
     HSBEmulator hsb;
-    uint8_t data_plane_id = 0;
-    uint8_t sensor_id = 0;
-    LinuxDataPlane linux_data_plane(hsb, emulatorIp, data_plane_id, sensor_id);
     constexpr uint32_t kHifAddressBase = 0x02000300;
     constexpr uint32_t kHifAddressStep = 0x00010000;
     constexpr uint32_t kVpAddressBase = 0x00001000;
     constexpr uint32_t kVpAddressStep = 0x00000040;
-    constexpr uint32_t kDefaultPacketPages = 1;
+    constexpr uint32_t kDefaultPacketPages = 11;
     constexpr uint32_t kDefaultQp = 1;
     constexpr uint32_t kDefaultRkey = 1;
 
+    uint8_t data_plane_id = 0;
+    uint8_t sensor_id = 0;
+    LinuxDataPlane linux_data_plane(hsb, emulatorIp, data_plane_id, sensor_id);
     const auto hifAddress = kHifAddressBase + kHifAddressStep * data_plane_id;
     const auto sif0Index = static_cast<uint8_t>(sensor_id * HSB_EMULATOR_CONFIG.sifs_per_sensor);
     const auto vpAddress = kVpAddressBase + kVpAddressStep * sif0Index;
@@ -69,6 +69,12 @@ int main() {
     hsb.write(vpAddress + hololink::DP_BUFFER_MASK, 0x1u);
     hsb.write(vpAddress + hololink::DP_ADDRESS_0, 0u);
 
+    auto printPacketSize = [&]() {
+        const uint32_t pages = hsb.read(hifAddress + hololink::DP_PACKET_SIZE);
+        std::cout << "DP_PACKET_SIZE pages=" << pages << " payload_bytes=" << (pages * hololink::core::PAGE_SIZE) << std::endl;
+    };
+    printPacketSize();
+
     pipeline.start();
     hsb.start();
 
@@ -80,11 +86,11 @@ int main() {
         }
 
         cv::Mat cvFrame = inRgb->getCvFrame();
-        cv::imshow("RGB Frame", cvFrame);
-        auto key = cv::waitKey(1);
-        if(key == 'q') {
-            break;
-        }
+        // cv::imshow("RGB Frame", cvFrame);
+        // auto key = cv::waitKey(1);
+        // if(key == 'q') {
+        //     break;
+        // }
         if(cvFrame.empty()) {
             std::cerr << "Empty frame payload. Skipping frame." << std::endl;
             continue;
@@ -142,6 +148,7 @@ int main() {
         tensor.byte_offset = 0;
 
         const int64_t sentBytes = linux_data_plane.send(tensor);
+        printPacketSize();
         if(sentBytes <= 0) {
             std::cerr << "Frame not sent yet (waiting for destination configuration)." << std::endl;
         } else {
