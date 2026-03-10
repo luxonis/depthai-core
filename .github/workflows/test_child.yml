@@ -64,7 +64,7 @@ jobs:
         source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
         export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc2-${{ inputs.flavor }}-${{ inputs.dcl_mode }}"
         set -o pipefail
-        hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "DEPTHAI_AUTOCALIBRATION=${{ inputs.dcl_mode }} ./tests/run_tests_entrypoint.sh rvc2" 2>&1 | tee rvc2_test_output.log
+        hil_runner --capabilities depthai-core-hil --platforms 'rvc2 and rvc2' --reservation-name $RESERVATION_NAME --wait --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc2 ${{ inputs.dcl_mode }}" 2>&1 | tee rvc2_test_output.log
 
     - name: Upload test log
       if: always()
@@ -90,7 +90,7 @@ jobs:
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-${{ inputs.dcl_mode }}"
           set -o pipefail
-          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "DEPTHAI_AUTOCALIBRATION=${{ inputs.dcl_mode }} ./tests/run_tests_entrypoint.sh rvc4" 2>&1 | tee rvc4_test_output.log
+          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4 ${{ inputs.dcl_mode }}" 2>&1 | tee rvc4_test_output.log
 
       - name: Upload test log
         if: always()
@@ -115,7 +115,7 @@ jobs:
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-usb"
           set -o pipefail
-          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "DEPTHAI_AUTOCALIBRATION=${{ inputs.dcl_mode }} ./tests/run_tests_entrypoint.sh rvc4usb" 2>&1 | tee rvc4_usb_test_output.log
+          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4usb ${{ inputs.dcl_mode }}" 2>&1 | tee rvc4_usb_test_output.log
 
       - name: Upload test log
         if: always()
@@ -140,7 +140,7 @@ jobs:
           source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
           export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-${{ inputs.dcl_mode }}-rgb"
           set -o pipefail
-          hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "DEPTHAI_AUTOCALIBRATION=${{ inputs.dcl_mode }} ./tests/run_tests_entrypoint.sh rvc4rgb" 2>&1 | tee rvc4_rgb_test_output.log
+          hil_runner --models "oak4_s" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4rgb ${{ inputs.dcl_mode }}" 2>&1 | tee rvc4_rgb_test_output.log
 
       - name: Upload test log
         if: always()
