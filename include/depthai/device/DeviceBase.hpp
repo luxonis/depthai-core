@@ -1029,8 +1029,6 @@ class DeviceBase {
     std::filesystem::path firmwarePath;
     bool dumpOnly = false;
 
-    DeviceProperties properties;
-
     // Started pipeline
     std::optional<PipelineSchema> pipelineSchema;
 

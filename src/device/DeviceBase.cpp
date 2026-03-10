@@ -894,9 +894,6 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
             // Sets system inforation logging rate. By default 1s
             setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
-
-            properties = getProperties();
-
             mockCameraFeatures(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
         } catch(const std::exception&) {
             // close device (cleanup)
@@ -1369,7 +1366,6 @@ LogLevel DeviceBase::getNodeLogLevel(int64_t id) {
 
 void DeviceBase::setProperties(const DeviceProperties& properties) {
     pimpl->rpcCall("setProperties", properties);
-    this->properties = getProperties();
 }
 
 DeviceProperties DeviceBase::getProperties() {
@@ -1378,12 +1374,10 @@ DeviceProperties DeviceBase::getProperties() {
 
 void DeviceBase::setCameraTuningBlob(const std::string& uri, uint32_t size) {
     pimpl->rpcCall("setCameraTuningBlob", uri, size);
-    this->properties = getProperties();
 }
 
 void DeviceBase::setCameraSocketTuningBlobs(std::unordered_map<CameraBoardSocket, std::pair<std::string, uint32_t>> blobs) {
     pimpl->rpcCall("setCameraSocketTuningBlobs", blobs);
-    this->properties = getProperties();
 }
 
 void DeviceBase::setCameraSocketTuningBlob(CameraBoardSocket socket, const std::string& uri, uint32_t size) {
@@ -1392,7 +1386,6 @@ void DeviceBase::setCameraSocketTuningBlob(CameraBoardSocket socket, const std::
 
 void DeviceBase::setXLinkChunkSize(int sizeBytes) {
     pimpl->rpcCall("setXLinkChunkSize", sizeBytes);
-    this->properties = getProperties();
 }
 
 int DeviceBase::getXLinkChunkSize() {
@@ -1401,12 +1394,10 @@ int DeviceBase::getXLinkChunkSize() {
 
 void DeviceBase::setSippBufferSize(int sizeBytes) {
     pimpl->rpcCall("setSippBufferSize", sizeBytes);
-    this->properties = getProperties();
 }
 
 void DeviceBase::setSippDmaBufferSize(int sizeBytes) {
     pimpl->rpcCall("setSippDmaBufferSize", sizeBytes);
-    this->properties = getProperties();
 }
 
 DeviceInfo DeviceBase::getDeviceInfo() const {
@@ -1553,8 +1544,6 @@ void DeviceBase::setCalibration(const std::optional<EepromData>& eepromData) {
     if(!success) {
         throw std::runtime_error(errorMsg);
     }
-    // Get properties to update calib and eepromId
-    this->properties = getProperties();
 }
 
 void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {

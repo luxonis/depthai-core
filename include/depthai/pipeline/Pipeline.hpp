@@ -43,14 +43,12 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
         if(createImplicitDevice) {
             defaultDevice = std::make_shared<Device>();
-            defaultDeviceProperties = &defaultDevice->properties;
         } else {
             hostProperties = DeviceProperties();
             defaultDeviceProperties = &hostProperties.value();
         }
     }
-    PipelineImpl(std::shared_ptr<Device> device)
-        : assetManager("/pipeline/"), defaultDevice{std::move(device)}, defaultDeviceProperties(&defaultDevice->properties) {}
+    PipelineImpl(std::shared_ptr<Device> device) : assetManager("/pipeline/"), defaultDevice{std::move(device)} {}
     PipelineImpl(const PipelineImpl&) = delete;
     PipelineImpl& operator=(const PipelineImpl&) = delete;
     PipelineImpl(PipelineImpl&&) = delete;
