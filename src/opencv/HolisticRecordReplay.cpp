@@ -229,10 +229,7 @@ bool setupHolisticRecord(Pipeline pipeline,
         file.close();
         // Camera info
         std::filesystem::path pathCamInfo = platform::joinPaths(recordPath, deviceId + "_camera_info.json");
-        auto calibData = pipeline.getCalibrationData().eepromToJson();
-        if(!pipeline.getEepromData().has_value()) {
-            calibData = pipeline.getDefaultDevice()->readCalibration().eepromToJson();
-        }
+        auto calibData = pipeline.getDefaultDevice()->getCalibration().eepromToJson();
         auto cameraFeatures = pipeline.getDefaultDevice()->getConnectedCameraFeatures();
         auto imu = pipeline.getDefaultDevice()->getConnectedIMU();
         nlohmann::json cameraInfo;
@@ -304,9 +301,10 @@ bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
             spdlog::warn("Recorded calibration is invalid: {}", e.what());
             return false;
         }
-    }
 
-    return true;
+        return true;
+    }
+    return false;
 }
 
 bool setupHolisticReplay(Pipeline pipeline,

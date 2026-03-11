@@ -588,6 +588,9 @@ std::optional<EepromData> PipelineImpl::getEepromData() const {
 }
 
 uint32_t PipelineImpl::getEepromId() const {
+    if(defaultDevice) {
+        return defaultDevice->getProperties().eepromId;
+    }
     if(defaultDeviceProperties != nullptr) {
         std::unique_lock<std::mutex> lock(calibMtx);
         return defaultDeviceProperties->eepromId;
