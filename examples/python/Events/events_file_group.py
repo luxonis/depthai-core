@@ -22,7 +22,7 @@ def uploadFailureCallback(sendSnapResult):
     elif status == dai.SendSnapCallbackStatus.FILE_UPLOAD_FAILED:
         print("File upload was unsuccessful!")
     elif status == dai.SendSnapCallbackStatus.SEND_EVENT_FAILED:
-        print("Snap could not been sent to the hub, following successful file upload!")
+        print("Snap could not be sent to the hub, following successful file upload!")
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
