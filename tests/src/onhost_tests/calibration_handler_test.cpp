@@ -253,6 +253,61 @@ static CalibrationHandler loadHandlerWithHousingRotation() {
     return CalibrationHandler::fromJson(calibJson);
 }
 
+// Same camera chain as loadHandlerWithHousing (identity camera rotations, OAK-4-D-AF database)
+// but with a non-identity housing rotation Rz(90°) to exercise the database rotation path.
+static CalibrationHandler loadHandlerWithHousingRotationAndDB() {
+    nlohmann::json calibJson = {
+        {"productName", "OAK-4-D-AF"},
+        {"cameraData",
+         {{2,
+           {{"cameraType", 0},
+            {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+            {"extrinsics",
+             {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+              {"specTranslation", {{"x", 3.75}, {"y", 0.0}, {"z", 0.0}}},
+              {"toCameraSocket", 0},
+              {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+            {"height", 800},
+            {"intrinsicMatrix", {{796.0, 0.0, 648.5}, {0.0, 796.0, 410.7}, {0.0, 0.0, 1.0}}},
+            {"lensPosition", 0},
+            {"specHfovDeg", 71.86},
+            {"width", 1280}}},
+          {0,
+           {{"cameraType", 0},
+            {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+            {"extrinsics",
+             {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+              {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
+              {"toCameraSocket", -1},
+              {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+            {"height", 2160},
+            {"intrinsicMatrix", {{3088.5, 0.0, 1964.4}, {0.0, 3087.1, 1032.4}, {0.0, 0.0, 1.0}}},
+            {"lensPosition", 0},
+            {"specHfovDeg", 68.79},
+            {"width", 3840}}},
+          {1,
+           {{"cameraType", 0},
+            {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+            {"extrinsics",
+             {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
+              {"specTranslation", {{"x", -7.5}, {"y", 0.0}, {"z", 0.0}}},
+              {"toCameraSocket", 2},
+              {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
+            {"height", 800},
+            {"intrinsicMatrix", {{785.9, 0.0, 665.3}, {0.0, 785.9, 409.4}, {0.0, 0.0, 1.0}}},
+            {"lensPosition", 0},
+            {"specHfovDeg", 71.86},
+            {"width", 1280}}}}},
+        {"housingExtrinsics",
+         {// Rz(90°)
+          {"rotationMatrix", {{0.0, -1.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 1.0}}},
+          {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
+          {"toCameraSocket", 2},
+          {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}}};
+
+    return CalibrationHandler::fromJson(calibJson);
+}
+
 static CalibrationHandler loadHandlerWithImuExtrinsics() {
     dai::EepromData data;
     data.cameraData[CameraBoardSocket::CAM_A];
@@ -1016,6 +1071,31 @@ TEST_CASE("getHousingCalibration - all cameras with specTranslation", "[housingD
             requireMatrixApproxEqual(result, expected);
         }
     }
+}
+
+TEST_CASE("getHousingCalibration - database with non-identity housing rotation", "[housingDatabase]") {
+    auto handler = loadHandlerWithHousingRotationAndDB();
+
+    // Housing rotation is Rz(90°), so the database translations must be rotated
+    // into the housing-origin frame. Without the rotation, translations would be wrong.
+
+    // CAM_A → FRONT_CAM_A
+    auto camAResult = handler.getHousingCalibration(CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
+    std::vector<std::vector<float>> expectedCamA = {
+        {0.0f, 1.0f, 0.0f, 3.75f}, {-1.0f, 0.0f, 0.0f, 3.75f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    requireMatrixApproxEqual(camAResult, expectedCamA, 1e-3);
+
+    // CAM_C → FRONT_CAM_A
+    auto camCResult = handler.getHousingCalibration(CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
+    std::vector<std::vector<float>> expectedCamC = {
+        {0.0f, 1.0f, 0.0f, 3.75f}, {-1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    requireMatrixApproxEqual(camCResult, expectedCamC, 1e-3);
+
+    // CAM_B → FRONT_CAM_A
+    auto camBResult = handler.getHousingCalibration(CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
+    std::vector<std::vector<float>> expectedCamB = {
+        {0.0f, 1.0f, 0.0f, 3.75f}, {-1.0f, 0.0f, 0.0f, 7.5f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    requireMatrixApproxEqual(camBResult, expectedCamB, 1e-3);
 }
 
 TEST_CASE("getHousingCalibration - All cameras to housing with specTranslation", "[getHousingCalibration]") {
