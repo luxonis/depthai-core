@@ -1060,6 +1060,81 @@ def overlay_depth_on_frame(frame_bgr: np.ndarray, depth_mm: np.ndarray, alpha: f
     return out
 
 
+def printTransformation(label, transformation: dai.ImgTransformation):
+    print(f"{label} transformation:")
+    
+    extrinsics: dai.Extrinsics = transformation.getExtrinsics()
+    rotation = extrinsics.rotationMatrix
+    translation = extrinsics.getTranslationVector()
+    unit = extrinsics.lengthUnit
+    
+    extrinsics_matrix = [
+        [rotation[0][0], rotation[0][1], rotation[0][2], translation[0]],
+        [rotation[1][0], rotation[1][1], rotation[1][2], translation[1]],
+        [rotation[2][0], rotation[2][1], rotation[2][2], translation[2]],
+        [0, 0, 0, 1]
+    ]
+    
+    
+    print("Extrinsics matrix:")
+    for row in extrinsics_matrix:
+        print("    ",row)
+    print(f"Units: {unit}")
+    print("toCameraSocket: ", extrinsics.toCameraSocket)
+    print("\n")
+    
+    transformationMatrix = transformation.getTransformationMatrix()
+    print(f"Transformation matrix")
+    for row in transformationMatrix:
+        print("    ", row)
+    print("\n")
+    
+    sourceIntrinsics = transformation.getSourceIntrinsicMatrix()
+    print(f"Source intrinsics matrix")
+    for row in sourceIntrinsics:
+        print("    ", row)
+    print("\n")
+    
+    transformationMatrix = transformation.getTransformationMatrix()
+    
+    intrinsics = transformation.getIntrinsicMatrix()
+    print(f"Intrinsics matrix = sourceIntrinsicMatrix @ TransformationMatrix)")
+    for row in intrinsics:
+        print("    ", row)
+    print("\n")
+    
+    print("Source matrix inverse:")
+    sourceIntrinsicsInv = transformation.getSourceIntrinsicMatrixInv()
+    for row in sourceIntrinsicsInv:
+        print("    ", row)
+    print("\n")
+    
+    print("intrinsics inverse:")
+    intrinsicsInv = transformation.getIntrinsicMatrixInv()
+    for row in intrinsicsInv:
+        print("    ", row)
+    print("\n")
+    
+    print("Transformation matrix inverse:")
+    transformationMatrixInv = transformation.getTransformationMatrixInv()
+    for row in transformationMatrixInv:
+        print("    ", row)
+    print("\n")
+    
+    print(f"Distortion coefficients: {transformation.getDistortionCoefficients()}")
+    
+    
+    source_width, source_height = transformation.getSourceSize()
+    width, height = transformation.getSize()
+    print(f"Source size: {source_width}x{source_height}")
+    print(f"Size: {width}x{height}")
+    
+    
+    print("==================================================================================================================\n")
+
+
+
+
 def main() -> None:
     if os.environ.get("DISPLAY", "") == "":
         raise RuntimeError("DISPLAY is not set. This script uses cv2.imshow and must run in a GUI session.")
@@ -1199,6 +1274,11 @@ def main() -> None:
                 target_msg = frames[target_replay_input.stream_id]
                 ref_transform = reference_msg.getTransformation()
                 target_transform = target_msg.getTransformation()
+                # print ref and target transform details for debugging
+                printTransformation("Target", target_transform)
+                printTransformation("Reference", ref_transform)
+                
+                
                 ref_w = int(reference_msg.getWidth())
                 ref_h = int(reference_msg.getHeight())
                 ref_device_ts_ns = to_ns(reference_msg.getTimestampDevice())

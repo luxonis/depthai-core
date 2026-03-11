@@ -1049,6 +1049,8 @@ def main():
                 enableUndistortion=ref_camera_undistortion,
                 resizeMode=ref_camera_resize_mode,
             )
+            # reference_camera_output = reference_camera.requestFullResolutionOutput()
+            
 
             stereo = pipeline.create(dai.node.StereoDepth).build(camera_b_output, camera_c_output, presetMode=dai.node.StereoDepth.PresetMode.FAST_DENSITY)
             # reference_camera_output.link(stereo.inputAlignTo)
@@ -1108,6 +1110,7 @@ def main():
                 f"{output_path}_{target_camera_name}{rectified_suffix}_target",
                 fps=fps,
             )
+            pipeline.enableHolisticReplay("recordings/recording_2026-03-11_16-51-20.tar")
 
             sync_output_queue = sync_node.out.createOutputQueue(maxSize=1, blocking=True)
             print(f"Writing ChArUco points to: {ref_points_mcap_path}")

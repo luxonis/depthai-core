@@ -12,31 +12,24 @@ args = parser.parse_args()
 with dai.Pipeline(True) as pipeline:
     # Define source and output
     camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    camRgbOut = camRgb.requestOutput((1920, 1080), fps = 30)
-
-    imu = pipeline.create(dai.node.IMU)
-    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 500);
-    imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_RAW, 400);
-    imu.setBatchReportThreshold(100)
+    camRgbOut = camRgb.requestOutput((1280, 800), fps=30, enableUndistortion=True, resizeMode=dai.ImgResizeMode.CROP)
+    camb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+    cambOutput = camb.requestOutput((1280, 800), fps=30, enableUndistortion=True, resizeMode=dai.ImgResizeMode.CROP)
 
     pipeline.enableHolisticReplay(args.source)
 
     videoQueue = camRgbOut.createOutputQueue()
-    imuQueue = imu.out.createOutputQueue()
+    cambQueue = cambOutput.createOutputQueue()
 
     # Connect to device and start pipeline
     pipeline.start()
     while pipeline.isRunning():
         videoIn : dai.ImgFrame = videoQueue.get()
-        imuData : dai.IMUData = imuQueue.get()
+        cambIn : dai.ImgFrame = cambQueue.get()
 
         # Get BGR frame from NV12 encoded video frame to show with opencv
         # Visualizing the frame on slower hosts might have overhead
         cv2.imshow("video", videoIn.getCvFrame())
-
-        for packet in imuData.packets:
-            print(f"IMU Accelerometer: {packet.acceleroMeter}")
-            print(f"IMU Gyroscope: {packet.gyroscope}")
-
+        cv2.imshow("camb", cambIn.getCvFrame())
         if cv2.waitKey(1) == ord('q'):
             break

@@ -100,10 +100,10 @@ std::array<float, 3> rectifyRay(const std::array<float, 3>& ray, const dai::ImgT
 
 dai::Point2f rayToPixel(const std::array<float, 3>& ray, const dai::ImgTransformation& transformation) {
     dai::Point2f pixelPoint = {ray[0] / ray[2], ray[1] / ray[2]};
-    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        pixelPoint = opencvDistortRay(ray, transformation);
+    // #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    //     pixelPoint = opencvDistortRay(ray, transformation);
 
-    #else
+    // #else
     auto distortionModel = transformation.getDistortionModel();
     auto distortionCoeffs = transformation.getDistortionCoefficients();
     auto intrinsicMatrix = transformation.getSourceIntrinsicMatrix();
@@ -117,11 +117,18 @@ dai::Point2f rayToPixel(const std::array<float, 3>& ray, const dai::ImgTransform
 
     std::cout << "[rayToPixel] distModel: " << (int)distortionModel << std::endl;
 
-    std::array<float, 3> distortedRay = distortPoint(ray, distortionModel, distortionCoeffs);
+    // std::array<float, 3> distortedRay = distortPoint(ray, distortionModel, distortionCoeffs);
+    std::cout << "[rayToPixel] TRANSFORMATION DIST COEFFS: ";
+    for(const auto& coeff : distortionCoeffs) {
+        std::cout << coeff << " ";
+    }
+    std::cout << std::endl;
+
+    std::array<float, 3> distortedRay = {ray[0] / ray[2], ray[1] / ray[2], 1.0f};
     std::array<float, 3> pxHomogeneous = matrix::matVecMul(intrinsicMatrix, distortedRay);
     auto z = pxHomogeneous[2];
     pixelPoint = {pxHomogeneous[0] / z, pxHomogeneous[1] / z};
-    #endif
+    // #endif
     return pixelPoint;
 }
 
