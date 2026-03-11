@@ -49,3 +49,4 @@ with dai.Pipeline() as pipeline:
             print(f"Accelerometer [m/s^2]: x: {imuF.format(acceleroValues.x)} y: {imuF.format(acceleroValues.y)} z: {imuF.format(acceleroValues.z)}")
             print(f"Gyroscope timestamp: {gyroTs}")
             print(f"Gyroscope [rad/s]: x: {imuF.format(gyroValues.x)} y: {imuF.format(gyroValues.y)} z: {imuF.format(gyroValues.z)} ")
+            print()
