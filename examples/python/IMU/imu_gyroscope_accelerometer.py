@@ -28,7 +28,10 @@ with dai.Pipeline() as pipeline:
     pipeline.start()
     baseTs = None
     while pipeline.isRunning():
-        imuData = imuQueue.get()
+        try:
+            imuData = imuQueue.get()
+        except KeyboardInterrupt:
+            break
         assert isinstance(imuData, dai.IMUData)
         imuPackets = imuData.packets
         for imuPacket in imuPackets:
