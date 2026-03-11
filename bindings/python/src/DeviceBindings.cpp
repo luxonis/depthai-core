@@ -698,6 +698,37 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getXLinkChunkSize();
             },
             DOC(dai, DeviceBase, getXLinkChunkSize))
+        .def(
+            "setProperties",
+            [](DeviceBase& d, const DeviceProperties& properties) {
+                py::gil_scoped_release release;
+                d.setProperties(properties);
+            },
+            py::arg("properties"),
+            DOC(dai, DeviceBase, setProperties))
+        .def(
+            "getProperties",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getProperties();
+            },
+            DOC(dai, DeviceBase, getProperties))
+        .def(
+            "setSippBufferSize",
+            [](DeviceBase& d, int sizeBytes) {
+                py::gil_scoped_release release;
+                d.setSippBufferSize(sizeBytes);
+            },
+            py::arg("sizeBytes"),
+            DOC(dai, DeviceBase, setSippBufferSize))
+        .def(
+            "setSippDmaBufferSize",
+            [](DeviceBase& d, int sizeBytes) {
+                py::gil_scoped_release release;
+                d.setSippDmaBufferSize(sizeBytes);
+            },
+            py::arg("sizeBytes"),
+            DOC(dai, DeviceBase, setSippDmaBufferSize))
 
         .def(
             "setIrLaserDotProjectorIntensity",

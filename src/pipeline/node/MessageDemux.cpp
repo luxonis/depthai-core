@@ -1,6 +1,6 @@
 #include "depthai/pipeline/node/MessageDemux.hpp"
-#include "depthai/pipeline/datatype/MessageGroup.hpp"
 
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {

@@ -88,7 +88,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     // Bind global properties
     globalProperties.def_readwrite("pipelineName", &GlobalProperties::pipelineName).def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion);
 
-    deviceProperties.def_readwrite("leonCssFrequencyHz", &DeviceProperties::leonCssFrequencyHz)
+    deviceProperties.def(py::init<>())
+        .def_readwrite("leonCssFrequencyHz", &DeviceProperties::leonCssFrequencyHz)
         .def_readwrite("leonMssFrequencyHz", &DeviceProperties::leonMssFrequencyHz)
         .def_readwrite("cameraTuningBlobSize", &DeviceProperties::cameraTuningBlobSize, DOC(dai, DeviceProperties, cameraTuningBlobSize))
         .def_readwrite("cameraTuningBlobUri", &DeviceProperties::cameraTuningBlobUri, DOC(dai, DeviceProperties, cameraTuningBlobUri))
@@ -197,6 +198,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         //.def(py::init<const Pipeline&>())
         .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
+        .def("setDefaultDeviceProperties", &Pipeline::setDefaultDeviceProperties, py::arg("deviceProperties"), DOC(dai, Pipeline, setDefaultDeviceProperties))
+        .def("getDefaultDeviceProperties", &Pipeline::getDefaultDeviceProperties, DOC(dai, Pipeline, getDefaultDeviceProperties))
         //.def("create", &Pipeline::create<node::XLinkIn>)
         .def("remove", &Pipeline::remove, py::arg("node"), DOC(dai, Pipeline, remove))
         .def("getAllNodes", static_cast<std::vector<std::shared_ptr<Node>> (Pipeline::*)() const>(&Pipeline::getAllNodes), DOC(dai, Pipeline, getAllNodes))
