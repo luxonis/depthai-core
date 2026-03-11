@@ -261,8 +261,15 @@ set(test_env
     # DepthAI
     "DEPTHAI_SEARCH_TIMEOUT=15000"
     "DEPTHAI_RECONNECT_TIMEOUT=0"
-    "DEPTHAI_REPLAY=${holistic_recording}"
-    )
+)
+
+if(DEPTHAI_TESTS_ENABLE_REPLAY)
+    if(DEPTHAI_FETCH_ARTIFACTS)
+        list(APPEND test_env "DEPTHAI_REPLAY=${holistic_recording}")
+    else()
+        message(WARNING "DEPTHAI_TESTS_ENABLE_REPLAY is enabled, but DEPTHAI_FETCH_ARTIFACTS is OFF. DEPTHAI_REPLAY will not be set.")
+    endif()
+endif()
 
 include(CMakeParseArguments)
 
