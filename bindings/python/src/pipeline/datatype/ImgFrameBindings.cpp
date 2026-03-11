@@ -138,6 +138,8 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("distortionModel"),
              py::arg("distortionCoefficients"),
              py::arg("extrinsics"))
+
+        .def("getTransformationMatrix", &ImgTransformation::getTransformationMatrix, DOC(dai, ImgTransformation, getTransformationMatrix))
         .def("__repr__", &ImgTransformation::str)
         .def("transformPoint", &ImgTransformation::transformPoint, py::arg("point"), DOC(dai, ImgTransformation, transformPoint))
         .def("transformRect", &ImgTransformation::transformRect, py::arg("rect"), DOC(dai, ImgTransformation, transformRect))
@@ -153,6 +155,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getSourceIntrinsicMatrixInv", &ImgTransformation::getSourceIntrinsicMatrixInv)
         .def("getIntrinsicMatrix", &ImgTransformation::getIntrinsicMatrix)
         .def("getIntrinsicMatrixInv", &ImgTransformation::getIntrinsicMatrixInv)
+        .def("getTransformationMatrixInv", &ImgTransformation::getTransformationMatrixInv)
         .def("getDistortionModel", &ImgTransformation::getDistortionModel, DOC(dai, ImgTransformation, getDistortionModel))
         .def("getDistortionCoefficients", &ImgTransformation::getDistortionCoefficients, DOC(dai, ImgTransformation, getDistortionCoefficients))
         .def("getExtrinsics", &ImgTransformation::getExtrinsics)
@@ -196,9 +199,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("project3DPointFrom", &ImgTransformation::project3DPointFrom, py::arg("from"), py::arg("point"))
         .def(
             "projectPoint",
-            [](const ImgTransformation& self, const ImgTransformation& to, dai::Point2f point, float depth) {
-                return self.projectPoint(to, point, depth);
-            },
+            [](const ImgTransformation& self, const ImgTransformation& to, dai::Point2f point, float depth) { return self.projectPoint(to, point, depth); },
             py::arg("to"),
             py::arg("point"),
             py::arg("depth"))

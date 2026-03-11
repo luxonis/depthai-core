@@ -357,7 +357,7 @@ std::array<float, 3> opencvUndistortPoint(dai::Point2f px, const dai::ImgTransfo
         case dai::CameraModel::RadialDivision:
         case dai::CameraModel::Equirectangular:
         default:
-            // this is a bug, it need to firs cast to source frame coordinates as currently it doesnt do that??
+            // this is a bug, it need to first cast to source frame coordinates as currently it doesnt do that??
             return undistortPoint({px.x, px.y, 1.0f}, distortionModel, distortionCoeffsVec);
     }
     if(undistorted.empty()) return {px.x, px.y, 1.0f};
@@ -486,9 +486,9 @@ dai::Point2f opencvPointTransformation(dai::Point2f sourcePt, const dai::ImgTran
         std::vector<cv::Point2f> undistorted;
         switch(fromModel) {
             case dai::CameraModel::Perspective:
+                cv::undistortPoints(src, undistorted, fromIntrinsicsCv, makePerspectiveDist(fromDistortionCoeffs), cv::noArray(), cv::noArray());
                 break;
             case dai::CameraModel::Fisheye:
-                cv::undistortPoints(src, undistorted, fromIntrinsicsCv, makePerspectiveDist(fromDistortionCoeffs), cv::noArray(), cv::noArray());
                 cv::fisheye::undistortPoints(src, undistorted, fromIntrinsicsCv, makeFisheyeDist(fromDistortionCoeffs), cv::noArray(), cv::noArray());
                 break;
             case dai::CameraModel::RadialDivision:

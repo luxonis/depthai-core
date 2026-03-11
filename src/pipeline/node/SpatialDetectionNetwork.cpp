@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
+#include <iostream>
 
 #include "../../utility/ErrorMacros.hpp"
 #include "depthai/modelzoo/Zoo.hpp"

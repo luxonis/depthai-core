@@ -160,6 +160,14 @@ struct ImgTransformation {
      */
     bool isEqualTransformation(const ImgTransformation& other) const;
 
+    std::array<std::array<float, 3>, 3> getTransformationMatrix() const {
+        return transformationMatrix;
+    }
+
+    std::array<std::array<float, 3>, 3> getTransformationMatrixInv() const {
+        return transformationMatrixInv;
+    }
+
     /**
      * Retrieve the total intrinsic matrix calculated from transform * intrinsic.
      * @return total intrinsic matrix
@@ -316,6 +324,8 @@ struct ImgTransformation {
      */
     dai::Point2f project3DPointTo(const ImgTransformation& to, const dai::Point3f& point) const;
 
+    dai::Point2f projectPoint(const ImgTransformation& to, dai::Point2f& point, const float depth) const;
+
     /**
      * Project a 3D point from the source frame to the current frame. This takes into account extrinsics and distortion.
      * @param from Transformation to project from
@@ -332,9 +342,6 @@ struct ImgTransformation {
      * @return Remapped 3D point in the target transformation
      */
     dai::Point3f remap3DPointTo(const ImgTransformation& to, const dai::Point3f& point) const;
-
-    dai::Point2f projectPoint(const ImgTransformation& to, dai::Point2f& point, const float depth) const;
-
 
     /**
      * Remap a 3D point to this transformation from another.

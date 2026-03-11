@@ -514,7 +514,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("translation", &Extrinsics::translation)
         .def_readwrite("specTranslation", &Extrinsics::specTranslation)
         .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket)
-        .def_readwrite("fromCameraSocket", &Extrinsics::fromCameraSocket)
         .def_readwrite("lengthUnit", &Extrinsics::lengthUnit)
         .def("getTransformationMatrix",
              &Extrinsics::getTransformationMatrix,

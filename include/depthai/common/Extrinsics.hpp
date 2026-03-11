@@ -45,10 +45,6 @@ struct Extrinsics {
     // For scenario to go from camB to camC, you would calculate the transformation matrix that goes from camB to camA, then camA to camC
     CameraBoardSocket toCameraSocket = CameraBoardSocket::AUTO;
 
-    // this is the camera from which the extrinsics are defined
-    // having both from and to camera sockets helps in verifying the extrinsics direction
-    CameraBoardSocket fromCameraSocket = CameraBoardSocket::AUTO;
-
     LengthUnit lengthUnit = LengthUnit::CENTIMETER;
 
     /**
@@ -164,9 +160,6 @@ struct Extrinsics {
     }
 
     bool isEqualExtrinsics(const Extrinsics& other) const {
-        if(toCameraSocket != other.toCameraSocket || fromCameraSocket != other.fromCameraSocket || lengthUnit != other.lengthUnit) {
-            return false;
-        }
         if(!matrix::mateq(rotationMatrix, other.rotationMatrix)) {
             return false;
         }
@@ -181,7 +174,7 @@ struct Extrinsics {
         return true;
     }
 
-    DEPTHAI_SERIALIZE(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, fromCameraSocket, lengthUnit);
+    DEPTHAI_SERIALIZE(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit);
 };
 
 }  // namespace dai

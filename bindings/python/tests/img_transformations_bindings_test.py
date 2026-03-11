@@ -7,7 +7,6 @@ def _identity_extrinsics(from_socket=dai.CameraBoardSocket.CAM_A):
     extr.translation = dai.Point3f(0.0, 0.0, 0.0)
     extr.specTranslation = dai.Point3f(0.0, 0.0, 0.0)
     extr.toCameraSocket = dai.CameraBoardSocket.AUTO
-    extr.fromCameraSocket = from_socket
     extr.lengthUnit = dai.LengthUnit.CENTIMETER
     return extr
 
@@ -24,7 +23,6 @@ def _build_transformation(from_socket=dai.CameraBoardSocket.CAM_A):
 
 def test_extrinsics_extended_bindings_roundtrip():
     extr = _identity_extrinsics()
-    assert extr.fromCameraSocket == dai.CameraBoardSocket.CAM_A
     assert extr.toCameraSocket == dai.CameraBoardSocket.AUTO
     assert extr.lengthUnit == dai.LengthUnit.CENTIMETER
     assert len(extr.getTransformationMatrix()) == 4
@@ -38,7 +36,6 @@ def test_img_transformation_extended_bindings_smoke():
 
     tr.setCalibrationId(42)
     assert tr.getCalibrationId() == 42
-    assert tr.getExtrinsics().fromCameraSocket == dai.CameraBoardSocket.CAM_A
 
     tr.addSrcCrops([])
     assert tr.isValid()
