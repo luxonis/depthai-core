@@ -798,6 +798,18 @@ dai::CameraBoardSocket CalibrationHandler::getStereoRightCameraId() const {
     return eepromData.stereoRectificationData.rightCameraSocket;
 }
 
+std::vector<float> CalibrationHandler::getAccCalibParams() const {
+    return eepromData.accCalibParams;
+}
+
+std::vector<float> CalibrationHandler::getGyroCalibParams() const {
+    return eepromData.gyroCalibParams;
+}
+
+dai::ImuModelParams CalibrationHandler::getImuModelParams() const {
+    return eepromData.imuModelParams;
+}
+
 bool CalibrationHandler::eepromToJsonFile(std::filesystem::path destPath) const {
     nlohmann::json j = eepromData;
     std::ofstream ob(destPath);
@@ -1129,6 +1141,22 @@ bool CalibrationHandler::validateCameraArray() const {
     } else {
         return true;  // Considering this would be bw1093 device
     }
+}
+
+void CalibrationHandler::setAccCalibParams(const std::vector<float>& accCalibParams) {
+    constexpr size_t kExpectedParams = 12;
+    if(accCalibParams.size() > kExpectedParams) {
+        throw std::runtime_error("Accelerometer calibration parameter array size should be at most 12");
+    }
+    eepromData.accCalibParams = accCalibParams;
+}
+
+void CalibrationHandler::setGyroCalibParams(const std::vector<float>& gyroCalibParams) {
+    constexpr size_t kExpectedParams = 12;
+    if(gyroCalibParams.size() > kExpectedParams) {
+        throw std::runtime_error("Gyroscope calibration parameter array size should be at most 12");
+    }
+    eepromData.gyroCalibParams = gyroCalibParams;
 }
 
 bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) const {

@@ -545,7 +545,10 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("housingExtrinsics", &EepromData::housingExtrinsics)
         .def_readwrite("stereoUseSpecTranslation", &EepromData::stereoUseSpecTranslation)
         .def_readwrite("stereoEnableDistortionCorrection", &EepromData::stereoEnableDistortionCorrection)
-        .def_readwrite("verticalCameraSocket", &EepromData::verticalCameraSocket);
+        .def_readwrite("verticalCameraSocket", &EepromData::verticalCameraSocket)
+        .def_readwrite("accCalibParams", &EepromData::accCalibParams)
+        .def_readwrite("gyroCalibParams", &EepromData::gyroCalibParams)
+        .def_readwrite("imuModelParams", &EepromData::imuModelParams);
     // UsbSpeed
     usbSpeed.value("UNKNOWN", UsbSpeed::UNKNOWN)
         .value("LOW", UsbSpeed::LOW)
