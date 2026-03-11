@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 import depthai as dai
 
+
+def timeDeltaToMilliS(delta) -> float:
+    return delta.total_seconds()*1000
+
+
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
@@ -22,9 +27,6 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
     baseTs = None
-    def timeDeltaToMilliS(delta) -> float:
-        return delta.total_seconds()*1000
-
     while pipeline.isRunning():
         imuData = imuQueue.get()
         assert isinstance(imuData, dai.IMUData)
