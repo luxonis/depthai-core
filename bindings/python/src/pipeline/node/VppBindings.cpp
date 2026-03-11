@@ -43,8 +43,9 @@ void bind_vpp(pybind11::module& m, void* pCallstack) {
             "confidence", [](Vpp& node) { return node.confidence; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "depth", [](Vpp& node) { return node.depth; }, py::return_value_policy::reference_internal)
-        .def("build", &Vpp::build, py::arg("leftInput"), py::arg("rightInput"), py::arg("disparity"), py::arg("confidence"), DOC(dai, node, Vpp, build))
-        .def("buildWithDepth", &Vpp::buildWithDepth, py::arg("leftInput"), py::arg("rightInput"), py::arg("depth"), py::arg("confidence"), DOC(dai, node, Vpp, buildWithDepth))
+        .def("build", [](Vpp& self, Node::Output& left, Node::Output& right, Node::Output* depth, Node::Output* disparity, Node::Output& confidence) {
+            return self.build(left, right, depth, disparity, confidence);
+        }, py::arg("leftInput"), py::arg("rightInput"), py::arg("depth") = nullptr, py::arg("disparity") = nullptr, py::arg("confidence"), DOC(dai, node, Vpp, build))
 #endif
         .def_readonly("syncedInputs", &Vpp::syncedInputs, DOC(dai, node, Vpp, syncedInputs))
         .def_readonly("leftOut", &Vpp::leftOut, DOC(dai, node, Vpp, leftOut))

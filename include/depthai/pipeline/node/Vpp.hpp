@@ -30,8 +30,8 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
 
     virtual ~Vpp();
 
+    std::shared_ptr<Vpp> build(Output& leftInput, Output& rightInput, Output* depthInput, Output* disparityInput, Output& confidenceInput);
     std::shared_ptr<Vpp> build(Output& leftInput, Output& rightInput, Output& disparityInput, Output& confidenceInput);
-    std::shared_ptr<Vpp> buildWithDepth(Output& leftInput, Output& rightInput, Output& depthInput, Output& confidenceInput);
 
     void buildInternal() override;
 
@@ -93,6 +93,11 @@ class Vpp : public DeviceNodeCRTP<DeviceNode, Vpp, VppProperties> {
      * Output ImgFrame message that carries the processed right image with virtual projection pattern applied.
      */
     Output rightOut{*this, {"rightOut", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+   private:
+    void validateAndPruneSync();
+#endif
 };
 
 }  // namespace node
