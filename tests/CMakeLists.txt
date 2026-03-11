@@ -794,3 +794,7 @@ dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
 # Gate tests
 dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
 dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci)
+
+# AutoCalibration test
+dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)
+dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)

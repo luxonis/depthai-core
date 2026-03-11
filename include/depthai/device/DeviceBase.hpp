@@ -704,6 +704,13 @@ class DeviceBase {
     void setCalibration(const std::optional<EepromData>& eepromData);
 
     /**
+     * Retrieves the CalibrationHandler shared pointer; If can not get calibration returns nullptr
+     *
+     * @returns The CalibrationHandler object containing the non-persistent calibration
+     */
+    std::shared_ptr<CalibrationHandler> tryGetCalibration();
+
+    /**
      * Retrieves the CalibrationHandler object containing the non-persistent calibration
      *
      * @throws std::runtime_exception if failed to get the calibration

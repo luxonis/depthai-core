@@ -26,6 +26,7 @@
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
@@ -98,6 +99,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
+    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
+    bool hasDynamicCalibration() const;
+
     BoardConfig getBoardConfig() const;
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
