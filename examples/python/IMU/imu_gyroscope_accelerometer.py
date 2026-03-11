@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 import depthai as dai
 
+
+def timeDeltaToMilliS(delta) -> float:
+    return delta.total_seconds()*1000
+
+
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
@@ -22,11 +27,11 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
     baseTs = None
-    def timeDeltaToMilliS(delta) -> float:
-        return delta.total_seconds()*1000
-
     while pipeline.isRunning():
-        imuData = imuQueue.get()
+        try:
+            imuData = imuQueue.get()
+        except KeyboardInterrupt:
+            break
         assert isinstance(imuData, dai.IMUData)
         imuPackets = imuData.packets
         for imuPacket in imuPackets:
@@ -44,3 +49,4 @@ with dai.Pipeline() as pipeline:
             print(f"Accelerometer [m/s^2]: x: {imuF.format(acceleroValues.x)} y: {imuF.format(acceleroValues.y)} z: {imuF.format(acceleroValues.z)}")
             print(f"Gyroscope timestamp: {gyroTs}")
             print(f"Gyroscope [rad/s]: x: {imuF.format(gyroValues.x)} y: {imuF.format(gyroValues.y)} z: {imuF.format(gyroValues.z)} ")
+            print()
