@@ -32,7 +32,7 @@ void uploadFailureCallback(dai::utility::SendSnapCallbackResult sendSnapResult) 
             std::cout << "File upload was unsuccessful!" << std::endl;
             break;
         case dai::utility::SendSnapCallbackStatus::SEND_EVENT_FAILED:
-            std::cout << "Snap could not been sent to the hub, following successful file upload!" << std::endl;
+            std::cout << "Snap could not be sent to the hub, following successful file upload!" << std::endl;
             break;
         default:
             break;

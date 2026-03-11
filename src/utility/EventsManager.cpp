@@ -546,7 +546,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
             for(auto& uploadResult : groupUploadResults) {
                 if(!uploadResult.valid() || !uploadResult.get()) {
                     logger::info("Failed to upload all of the groups in the given batch");
-                    // File upload was unsuccesful, cache if enabled
+                    // File upload was unsuccessful, cache if enabled
                     if(cacheIfCannotSend) {
                         cacheSnapData(inputSnapBatch);
                     } else {

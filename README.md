@@ -161,7 +161,7 @@ cmake --build build
 
 <!-- ### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
 
-To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
+To integrate into a different build system than CMake, the preferred way is compiling as dynamic library and setting correct build options.
 1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
 2. Then install: [Installing](#installing)
 
@@ -308,4 +308,3 @@ You can do this by passing the `--parallel` flag with a lower number of jobs to 
 ```
 cmake --build build --parallel 2
 ```
-
