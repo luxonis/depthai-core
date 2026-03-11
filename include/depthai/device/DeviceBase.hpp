@@ -680,7 +680,7 @@ class DeviceBase {
     /**
      * Stores the Calibration and Device information to the Device EEPROM
      *
-     * @throws std::runtime_exception if failed to flash the calibration
+     * @throws std::runtime_error if failed to flash the calibration
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      */
     void flashCalibration(CalibrationHandler calibrationDataHandler);
@@ -713,7 +713,7 @@ class DeviceBase {
     /**
      * Retrieves the CalibrationHandler object containing the non-persistent calibration
      *
-     * @throws std::runtime_exception if failed to get the calibration
+     * @throws std::runtime_error if failed to get the calibration
      * @returns The CalibrationHandler object containing the non-persistent calibration
      */
     CalibrationHandler getCalibration();
@@ -729,7 +729,7 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      *
-     * @throws std::runtime_exception if no calibration is flashed
+     * @throws std::runtime_error if no calibration is flashed
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
     CalibrationHandler readCalibration2();
@@ -745,7 +745,7 @@ class DeviceBase {
     /**
      * Factory reset EEPROM data if factory backup is available.
      *
-     * @throws std::runtime_exception If factory reset was unsuccessful
+     * @throws std::runtime_error If factory reset was unsuccessful
      */
     void factoryResetCalibration();
 
@@ -753,7 +753,7 @@ class DeviceBase {
      * Stores the Calibration and Device information to the Device EEPROM in Factory area
      * To perform this action, correct env variable must be set
      *
-     * @throws std::runtime_exception if failed to flash the calibration
+     * @throws std::runtime_error if failed to flash the calibration
      * @return True on successful flash, false on failure
      */
     void flashFactoryCalibration(CalibrationHandler calibrationHandler);
@@ -762,7 +762,7 @@ class DeviceBase {
      * Destructive action, deletes User area EEPROM contents
      * Requires PROTECTED permissions
      *
-     * @throws std::runtime_exception if failed to flash the calibration
+     * @throws std::runtime_error if failed to flash the calibration
      * @return True on successful flash, false on failure
      */
     void flashEepromClear();
@@ -771,7 +771,7 @@ class DeviceBase {
      * Destructive action, deletes Factory area EEPROM contents
      * Requires FACTORY PROTECTED permissions
      *
-     * @throws std::runtime_exception if failed to flash the calibration
+     * @throws std::runtime_error if failed to flash the calibration
      * @return True on successful flash, false on failure
      */
     void flashFactoryEepromClear();
@@ -779,7 +779,7 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
      *
-     * @throws std::runtime_exception if no calibration is flashed
+     * @throws std::runtime_error if no calibration is flashed
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
      */
     CalibrationHandler readFactoryCalibration();
@@ -795,7 +795,7 @@ class DeviceBase {
     /**
      * Fetches the raw EEPROM data from User area
      *
-     * @throws std::runtime_exception if any error occurred
+     * @throws std::runtime_error if any error occurred
      * @returns Binary dump of User area EEPROM data
      */
     std::vector<std::uint8_t> readCalibrationRaw();
@@ -803,7 +803,7 @@ class DeviceBase {
     /**
      * Fetches the raw EEPROM data from Factory area
      *
-     * @throws std::runtime_exception if any error occurred
+     * @throws std::runtime_error if any error occurred
      * @returns Binary dump of Factory area EEPROM data
      */
     std::vector<std::uint8_t> readFactoryCalibrationRaw();

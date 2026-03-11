@@ -361,7 +361,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("RIGHT", CameraBoardSocket::RIGHT, "**Deprecated:** Use CAM_C or address camera by name instead")
         .value("CENTER", CameraBoardSocket::CENTER, "**Deprecated:** Use CAM_A or address camera by name instead")
 
-        // Deprecated overriden
+        // Deprecated overridden
         .def_property_readonly_static("RGB",
                                       [](py::object) {
                                           PyErr_WarnEx(PyExc_DeprecationWarning, "RGB is deprecated, use CAM_A or address camera by name instead.", 1);
