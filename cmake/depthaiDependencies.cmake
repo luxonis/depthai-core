@@ -130,7 +130,7 @@ if(NOT DEPTHAI_JSON_EXTERNAL)
         GIT_REPOSITORY https://github.com/nlohmann/json.git
         GIT_TAG        v3.12.0
     )
-    # Json is a public dependancy, so it has to be installed
+    # Json is a public dependency, so it has to be installed
     set(JSON_Install ON CACHE BOOL "Install nlohmann_json" FORCE)
 
     FetchContent_MakeAvailable(nlohmann_json)
@@ -187,7 +187,7 @@ else()
     FetchContent_Declare(
         XLink
         GIT_REPOSITORY https://github.com/luxonis/XLink.git
-        GIT_TAG        0958262cc5a45b25296ce87f552a7701d1fb8fb5
+        GIT_TAG        f001d710be6a4010db913510da08caaa3a58466c
     )
 
     FetchContent_MakeAvailable(

@@ -3,6 +3,7 @@
 
 // standard
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
@@ -25,6 +26,7 @@
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
@@ -42,6 +44,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
         if(createImplicitDevice) {
             defaultDevice = std::make_shared<Device>();
+        } else {
+            hostProperties = DeviceProperties();
+            defaultDeviceProperties = &hostProperties.value();
         }
     }
     PipelineImpl(std::shared_ptr<Device> device) : assetManager("/pipeline/"), defaultDevice{std::move(device)} {}
@@ -88,9 +93,15 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setXLinkChunkSize(int sizeBytes);
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(GlobalProperties globalProperties);
+    void setDefaultDeviceProperties(DeviceProperties deviceProperties);
+    void setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties);
+    std::optional<DeviceProperties> getDefaultDeviceProperties() const;
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
+    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
+    bool hasDynamicCalibration() const;
+
     BoardConfig getBoardConfig() const;
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
@@ -154,6 +165,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
+    std::optional<DeviceProperties> hostProperties;
+    DeviceProperties* defaultDeviceProperties = nullptr;
 
     // Queue for tasks
     LockingQueue<std::function<void()>> tasks;
@@ -302,6 +315,27 @@ class Pipeline {
      */
     void setGlobalProperties(GlobalProperties globalProperties) {
         impl()->setGlobalProperties(globalProperties);
+    }
+
+    /**
+     * Sets default device properties
+     */
+    void setDefaultDeviceProperties(DeviceProperties deviceProperties) {
+        impl()->setDefaultDeviceProperties(deviceProperties);
+    }
+
+    /**
+     * Sets default device properties reference. The properties should live at least as long as the pipeline.
+     */
+    void setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties) {
+        impl()->setDefaultDevicePropertiesRef(deviceProperties);
+    }
+
+    /**
+     * Gets a copy of default device properties. If pipeline is in host only mode, returns host properties, otherwise returns device properties
+     */
+    std::optional<DeviceProperties> getDefaultDeviceProperties() const {
+        return impl()->getDefaultDeviceProperties();
     }
 
     /**

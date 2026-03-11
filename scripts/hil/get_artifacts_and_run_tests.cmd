@@ -8,15 +8,18 @@ set "REPO=%~1"
 set "GH_TOKEN=%~2"
 set "DEST=%~3"
 set "ARTIFACT_ID=%~4"
+set "TEST_ARG=%~5"
 
 if "%REPO%"==""       ( echo [!] REPO required & exit /b 2 )
 if "%GH_TOKEN%"==""   ( echo [!] GH_TOKEN required & exit /b 2 )
 if "%DEST%"==""       ( echo [!] DEST required & exit /b 2 )
 if "%ARTIFACT_ID%"=="" ( echo [!] ARTIFACT_ID required & exit /b 2 )
+if "%TEST_ARG%"==""    ( echo [!] TEST_ARG required & exit /b 2 )
 
 echo [*] REPO=%REPO%
 echo [*] DEST =%DEST%
 echo [*] ARTIFACT_ID=%ARTIFACT_ID%
+echo [*] TEST_ARG=%TEST_ARG%
 
 echo [*] Recreating %DEST%
 rmdir /S /Q "%DEST%" 2>nul
@@ -39,7 +42,7 @@ python -c "import sys; print(sys.executable)"
 if exist "%DEST%\tests" (
   echo [*] Running tests from %DEST%\tests
   cd "%DEST%\tests"
-  python run_tests.py --rvc4
+  python run_tests.py --%TEST_ARG%
 ) else (
   echo [*] No tests directory at %DEST%\tests — skipping test phase.
   exit /b 1

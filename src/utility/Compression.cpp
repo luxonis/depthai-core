@@ -140,6 +140,51 @@ std::vector<std::string> filenamesInTar(const std::filesystem::path& tarPath) {
     return result;
 }
 
+std::vector<uint8_t> readFileInTar(const std::filesystem::path& tarPath, const std::string& fileInTar) {
+    struct archive* a;
+    struct archive_entry* entry;
+
+    a = archive_read_new();
+    archive_read_support_filter_all(a);
+    archive_read_support_format_all(a);
+#if defined(_WIN32)
+    int r = archive_read_open_filename_w(a, tarPath.c_str(), 10240);
+#else
+    int r = archive_read_open_filename(a, tarPath.c_str(), 10240);
+#endif
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not open archive.");
+    }
+
+    while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        if(fileInTar == archive_entry_pathname(entry)) {
+            std::vector<uint8_t> result;
+            char buff[8192];
+            la_ssize_t bytesRead = 0;
+            while((bytesRead = archive_read_data(a, buff, sizeof(buff))) > 0) {
+                result.insert(result.end(), buff, buff + bytesRead);
+            }
+            if(bytesRead < 0) {
+                archive_read_free(a);
+                throw std::runtime_error(fmt::format("Could not read file {} from archive {}.", fileInTar, tarPath));
+            }
+
+            r = archive_read_free(a);
+            if(r != ARCHIVE_OK) {
+                throw std::runtime_error("Could not free archive.");
+            }
+            return result;
+        }
+        archive_read_data_skip(a);
+    }
+
+    r = archive_read_free(a);
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not free archive.");
+    }
+    throw std::runtime_error(fmt::format("File {} not found in archive {}.", fileInTar, tarPath));
+}
+
 void untarFiles(const std::filesystem::path& tarPath, const std::vector<std::string>& filesInTar, const std::vector<std::filesystem::path>& filesOnDisk) {
     struct archive* a;
     struct archive_entry* entry;

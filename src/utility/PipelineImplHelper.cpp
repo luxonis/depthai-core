@@ -113,12 +113,12 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(std::weak_ptr<PipelineImpl
 void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
     if(pipeline->buildingOnHost) {
         if(pipeline->recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
-            std::vector<std::filesystem::path> filenames = {pipeline->recordReplayFilenames["record_config"], pipeline->recordReplayFilenames["calibration"]};
-            std::vector<std::string> outFiles = {"record_config.json", "calibration.json"};
+            std::vector<std::filesystem::path> filenames = {pipeline->recordReplayFilenames["record_config"], pipeline->recordReplayFilenames["camera_info"]};
+            std::vector<std::string> outFiles = {"record_config.json", "camera_info.json"};
             filenames.reserve(pipeline->recordReplayFilenames.size() * 2 + 1);
             outFiles.reserve(pipeline->recordReplayFilenames.size() * 2 + 1);
             for(auto& rstr : pipeline->recordReplayFilenames) {
-                if(rstr.first != "record_config" && rstr.first != "calibration") {
+                if(rstr.first != "record_config" && rstr.first != "camera_info") {
                     std::string nodeName = rstr.first.substr(2);
                     std::filesystem::path filePath = rstr.second;
                     filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
@@ -151,7 +151,7 @@ void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
         if(pipeline->removeRecordReplayFiles && pipeline->recordConfig.state != RecordConfig::RecordReplayState::NONE) {
             Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
             for(auto& kv : pipeline->recordReplayFilenames) {
-                if(kv.first != "record_config" && kv.first != "calibration") {
+                if(kv.first != "record_config" && kv.first != "camera_info") {
                     std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
                     std::filesystem::remove(std::filesystem::path(kv.second).concat(pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
                 } else {

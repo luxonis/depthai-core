@@ -3,10 +3,12 @@
 #include <cstring>
 
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/pipeline/node/AutoCalibration.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "depthai/pipeline/node/internal/XLinkOutHost.hpp"
+#include "properties/GlobalProperties.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -79,7 +81,28 @@ GlobalProperties PipelineImpl::getGlobalProperties() const {
 }
 
 void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
-    this->globalProperties.setFrom(globalProperties);
+    this->globalProperties = globalProperties;
+}
+
+void PipelineImpl::setDefaultDeviceProperties(DeviceProperties deviceProperties) {
+    if(defaultDevice) {
+        defaultDevice->setProperties(deviceProperties);
+    } else if(defaultDeviceProperties != nullptr) {
+        defaultDeviceProperties->setFrom(deviceProperties);
+    }
+}
+
+void PipelineImpl::setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties) {
+    defaultDeviceProperties = deviceProperties;
+}
+
+std::optional<DeviceProperties> PipelineImpl::getDefaultDeviceProperties() const {
+    if(defaultDevice) {
+        return defaultDevice->getProperties();
+    } else if(defaultDeviceProperties != nullptr) {
+        return *defaultDeviceProperties;
+    }
+    return std::nullopt;
 }
 
 std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {
@@ -408,8 +431,12 @@ void PipelineImpl::setCameraTuningBlobPath(const fs::path& path) {
 
     auto asset = assetManager.set(assetKey, path);
 
-    globalProperties.cameraTuningBlobUri = asset->getRelativeUri();
-    globalProperties.cameraTuningBlobSize = static_cast<uint32_t>(asset->data.size());
+    if(defaultDevice) {
+        defaultDevice->setCameraTuningBlob(asset->getRelativeUri(), static_cast<uint32_t>(asset->data.size()));
+    } else if(defaultDeviceProperties != nullptr) {
+        defaultDeviceProperties->cameraTuningBlobUri = asset->getRelativeUri();
+        defaultDeviceProperties->cameraTuningBlobSize = static_cast<uint32_t>(asset->data.size());
+    }
 }
 
 void PipelineImpl::setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path) {
@@ -418,20 +445,36 @@ void PipelineImpl::setCameraTuningBlobPath(CameraBoardSocket socket, const fs::p
 
     auto asset = assetManager.set(assetKey, path);
 
-    globalProperties.cameraSocketTuningBlobUri[socket] = asset->getRelativeUri();
-    globalProperties.cameraSocketTuningBlobSize[socket] = static_cast<uint32_t>(asset->data.size());
+    if(defaultDevice) {
+        defaultDevice->setCameraSocketTuningBlob(socket, asset->getRelativeUri(), static_cast<uint32_t>(asset->data.size()));
+    } else if(defaultDeviceProperties != nullptr) {
+        defaultDeviceProperties->cameraSocketTuningBlobUri[socket] = asset->getRelativeUri();
+        defaultDeviceProperties->cameraSocketTuningBlobSize[socket] = static_cast<uint32_t>(asset->data.size());
+    }
 }
 
 void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
-    globalProperties.xlinkChunkSize = sizeBytes;
+    if(defaultDevice) {
+        defaultDevice->setXLinkChunkSize(sizeBytes);
+    } else if(defaultDeviceProperties != nullptr) {
+        defaultDeviceProperties->xlinkChunkSize = sizeBytes;
+    }
 }
 
 void PipelineImpl::setSippBufferSize(int sizeBytes) {
-    globalProperties.sippBufferSize = sizeBytes;
+    if(defaultDevice) {
+        defaultDevice->setSippBufferSize(sizeBytes);
+    } else if(defaultDeviceProperties != nullptr) {
+        defaultDeviceProperties->sippBufferSize = sizeBytes;
+    }
 }
 
 void PipelineImpl::setSippDmaBufferSize(int sizeBytes) {
-    globalProperties.sippDmaBufferSize = sizeBytes;
+    if(defaultDevice) {
+        defaultDevice->setSippDmaBufferSize(sizeBytes);
+    } else if(defaultDeviceProperties != nullptr) {
+        defaultDeviceProperties->sippDmaBufferSize = sizeBytes;
+    }
 }
 
 void PipelineImpl::setBoardConfig(BoardConfig boardCfg) {
@@ -502,30 +545,57 @@ void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler)
 }
 
 bool PipelineImpl::isCalibrationDataAvailable() const {
-    return globalProperties.calibData.has_value();
+    if(defaultDevice) {
+        return defaultDevice->isCalibrationAvailable();
+    }
+    if(defaultDeviceProperties != nullptr) {
+        std::lock_guard<std::mutex> lock(calibMtx);
+        return defaultDeviceProperties->calibData.has_value();
+    }
+    return false;
 }
 
 CalibrationHandler PipelineImpl::getCalibrationData() const {
-    if(globalProperties.calibData) {
-        return CalibrationHandler(globalProperties.calibData.value());
-    } else {
-        return CalibrationHandler();
+    if(defaultDevice) {
+        return defaultDevice->getCalibration();
     }
+    if(defaultDeviceProperties != nullptr && defaultDeviceProperties->calibData.has_value()) {
+        std::lock_guard<std::mutex> lock(calibMtx);
+        return CalibrationHandler(defaultDeviceProperties->calibData.value());
+    }
+    throw std::runtime_error("No default device properties set in pipeline");
 }
 
 void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
-    std::unique_lock<std::mutex> lock(calibMtx);
-    globalProperties.calibData = eepromData;
-    globalProperties.eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
+    if(defaultDevice) {
+        defaultDevice->setCalibration(eepromData);
+    } else if(defaultDeviceProperties != nullptr) {
+        std::lock_guard<std::mutex> lock(calibMtx);
+        defaultDeviceProperties->calibData = eepromData;
+        defaultDeviceProperties->eepromId += 1;  // Increment eepromId to indicate that eeprom data has changed
+    }
 }
 
 std::optional<EepromData> PipelineImpl::getEepromData() const {
-    return globalProperties.calibData;
+    if(defaultDevice) {
+        return defaultDevice->getCalibration().getEepromData();
+    }
+    if(defaultDeviceProperties != nullptr) {
+        std::unique_lock<std::mutex> lock(calibMtx);
+        return defaultDeviceProperties->calibData;
+    }
+    return std::nullopt;
 }
 
 uint32_t PipelineImpl::getEepromId() const {
-    std::unique_lock<std::mutex> lock(calibMtx);
-    return globalProperties.eepromId;
+    if(defaultDevice) {
+        return defaultDevice->getProperties().eepromId;
+    }
+    if(defaultDeviceProperties != nullptr) {
+        std::unique_lock<std::mutex> lock(calibMtx);
+        return defaultDeviceProperties->eepromId;
+    }
+    return 0;
 }
 
 bool PipelineImpl::isHostOnly() const {
@@ -620,10 +690,84 @@ bool PipelineImpl::isBuilt() const {
     return isBuild;
 }
 
+bool PipelineImpl::hasDynamicCalibration() const {
+    // call this only with locked pipelineBuildMutex
+    for(const auto& node : getAllNodes()) {
+        if(node->getName() == dai::node::DynamicCalibration::NAME || node->getName() == dai::node::AutoCalibration::NAME) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
+    if(!defaultDevice) {
+        return {nullptr, nullptr};
+    }
+    auto stereoSockets = defaultDevice->getStereoPairs();
+    if(stereoSockets.size() != 1) {
+        return {nullptr, nullptr};
+    }
+    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> stereoPair = std::pair(nullptr, nullptr);
+    // call this only with locked pipelineBuildMutex
+    for(const auto& node : getAllNodes()) {
+        if(node->getName() == dai::node::Camera::NAME) {
+            auto camera = std::static_pointer_cast<dai::node::Camera>(node);
+            auto boardSocket = camera->getBoardSocket();
+            if(boardSocket == stereoSockets[0].left) {
+                stereoPair.first = camera;
+            } else if(boardSocket == stereoSockets[0].right) {
+                stereoPair.second = camera;
+            }
+        }
+    }
+    return stereoPair;
+}
+
 void PipelineImpl::build() {
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
-
     if(isBuild) return;
+    // start ---Add AutoCalibration block---
+    auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
+        if(defaultDevice && defaultDevice->tryGetCalibration()) {
+            auto stereoPair = getStereoPair();
+
+            auto hasStereoPairValidCalibration = [&stereoPair](const std::shared_ptr<CalibrationHandler>& calibration) -> bool {
+                try {
+                    calibration->getDefaultIntrinsics(stereoPair.first->getBoardSocket());
+                    calibration->getDefaultIntrinsics(stereoPair.second->getBoardSocket());
+                    calibration->getCameraExtrinsics(stereoPair.first->getBoardSocket(), stereoPair.second->getBoardSocket());
+                    return true;
+                } catch(const std::exception& ex) {
+                    return false;
+                }
+                return false;
+            };
+
+            if(stereoPair.first && stereoPair.second && !hasDynamicCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
+                auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+                Logging::getInstance().logger.info("AutoCalibration is initialized");
+                if(autoCalibtationString == "CONTINUOUS") {
+                    autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
+                } else {
+                    autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
+                }
+            }
+        } else {
+            if(defaultDevice) {
+                Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
+                                                   autoCalibtationString);
+            } else {
+                Logging::getInstance().logger.warn("Device has no valid initial calibration. Skipping autocalibration.");
+            }
+        }
+    } else if(autoCalibtationString != "OFF" && autoCalibtationString != "") {
+        Logging::getInstance().logger.warn("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibtationString);
+    }
+#endif
+    // end of ---Add AutoCalibration block---
 
     utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
 
@@ -800,8 +944,13 @@ void PipelineImpl::start() {
     //     }
     // }
 
+    // Starts pipeline, go through all nodes and start them
     // Implicitly build (if not already)
     build();
+
+    for(const auto& node : getAllNodes()) {
+        node->postBuildStage();
+    }
 
     Logging::getInstance().logger.debug("Full schema dump: {}", ((nlohmann::json)getPipelineSchema(SerializationType::JSON, false)).dump());
 
@@ -1034,6 +1183,9 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     impl()->recordConfig.outputDir = pathToRecording;
     impl()->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
     impl()->enableHolisticRecordReplay = true;
+    if(getDefaultDevice() != nullptr) {
+        getDefaultDevice()->mockCameraFeatures(pathToRecording);
+    }
 }
 
 void Pipeline::enablePipelineDebugging(bool enable) {

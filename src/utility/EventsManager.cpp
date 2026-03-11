@@ -287,7 +287,7 @@ bool FileData::toFile(const std::filesystem::path& inputPath) {
     return true;
 }
 
-EventsManager::EventsManager(bool uploadCachedOnStart)
+EventsManager::EventsManager(std::string apiKey, bool uploadCachedOnStart)
     : publishInterval(30.0f),
       logResponse(false),
       verifySsl(true),
@@ -295,6 +295,9 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
       cacheIfCannotSend(false),
       stopUploadThread(false),
       configurationLimitsFetched(false),
+      connectionEstablished(false),
+      waitingForPendingUploads(false),
+      pendingUploadsFinished(false),
       warningStorageBytes(52428800) {
     auto appId = utility::getEnvAs<std::string>("OAKAGENT_APP_ID", "");
     auto containerId = utility::getEnvAs<std::string>("OAKAGENT_CONTAINER_ID", "");
@@ -308,42 +311,60 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
     // }
     sourceSerialNumber = "";
     url = utility::getEnvAs<std::string>("DEPTHAI_HUB_EVENTS_BASE_URL", "https://events.cloud.luxonis.com");
-    token = utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
+    token = !apiKey.empty() ? apiKey : utility::getEnvAs<std::string>("DEPTHAI_HUB_API_KEY", "");
     // Thread handling preparation and uploads
     uploadThread = std::make_unique<std::thread>([this]() {
         // Fetch configuration limits when starting the new thread
-        configurationLimitsFetched = fetchConfigurationLimits(true);
-        while(!stopUploadThread) {
-            connectionEstablished = fetchConfigurationLimits(false);
+        configurationLimitsFetched.store(fetchConfigurationLimits(true));
+        while(!stopUploadThread.load() && configurationLimitsFetched.load()) {
+            connectionEstablished.store(fetchConfigurationLimits(false));
             if(remainingStorageBytes <= warningStorageBytes) {
                 logger::warn("Current remaining storage is running low: {} MB", remainingStorageBytes / (1024 * 1024));
             }
             // Add cached snaps (if any) to the snapBuffer
-            if(connectionEstablished) {
+            if(connectionEstablished.load()) {
                 uploadCachedSnaps();
             }
             // Prepare the batch first to reduce contention
             std::deque<std::shared_ptr<SnapData>> snapBatch;
             {
-                std::lock_guard<std::mutex> lock(snapBufferMutex);
+                std::scoped_lock lock(snapBufferMutex, uploadFileBatchFuturesMutex);
                 const std::size_t size = std::min<std::size_t>(snapBuffer.size(), maxGroupsPerBatch);
                 snapBatch.insert(snapBatch.end(), std::make_move_iterator(snapBuffer.begin()), std::make_move_iterator(snapBuffer.begin() + size));
                 snapBuffer.erase(snapBuffer.begin(), snapBuffer.begin() + size);
+
+                if(!snapBatch.empty()) {
+                    uploadFileBatchFutures.emplace_back(
+                        std::async(std::launch::async, [&, inputSnapBatch = std::move(snapBatch)]() mutable { uploadFileBatch(std::move(inputSnapBatch)); }));
+                }
             }
 
-            uploadFileBatchFutures.emplace_back(
-                std::async(std::launch::async, [&, inputSnapBatch = std::move(snapBatch)]() mutable { uploadFileBatch(std::move(inputSnapBatch)); }));
             // Clean up finished futures
-            for(auto iterator = uploadFileBatchFutures.begin(); iterator != uploadFileBatchFutures.end();) {
-                if(iterator->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-                    iterator->get();
-                    iterator = uploadFileBatchFutures.erase(iterator);
-                } else {
-                    ++iterator;
+            {
+                std::lock_guard<std::mutex> lock(uploadFileBatchFuturesMutex);
+                for(auto iterator = uploadFileBatchFutures.begin(); iterator != uploadFileBatchFutures.end();) {
+                    if(iterator->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                        iterator->get();
+                        iterator = uploadFileBatchFutures.erase(iterator);
+                    } else {
+                        ++iterator;
+                    }
                 }
             }
 
             uploadEventBatch();
+            // Check for any remaining snaps or events in snapBuffer & eventBuffer. Also check for pending file uploads.
+            if(waitingForPendingUploads.load()) {
+                const bool uploadFinished = checkPendingUploadsFinished();
+                {
+                    std::lock_guard<std::mutex> pendingLock(pendingUploadsMutex);
+                    pendingUploadsFinished.store(uploadFinished);
+                }
+                if(uploadFinished || !connectionEstablished.load()) {
+                    pendingUploadsCondition.notify_all();
+                }
+            }
+
             std::unique_lock<std::mutex> lock(stopThreadConditionMutex);
             eventBufferCondition.wait_for(lock, std::chrono::seconds(static_cast<int>(this->publishInterval)), [this]() { return stopUploadThread.load(); });
         }
@@ -355,28 +376,43 @@ EventsManager::EventsManager(bool uploadCachedOnStart)
 }
 
 EventsManager::~EventsManager() {
-    stopUploadThread = true;
+    stopUploadThread.store(true);
     eventBufferCondition.notify_all();
+    pendingUploadsCondition.notify_all();
     if(uploadThread && uploadThread->joinable()) {
         uploadThread->join();
+    }
+    // Check for pending snaps or events. Warn the user of potential discarded data, suggest using waitForPendingUploads() to avoid this in the future
+    if(!checkPendingUploadsFinished()) {
+        logger::warn(
+            "EventsManager stopped. Pending snaps were discarded. To avoid data loss, use waitForPendingUploads() before destructing the EventsManager");
     }
 }
 
 bool EventsManager::fetchConfigurationLimits(const bool retryOnFail) {
     logger::info("Fetching configuration limits");
     if(token.empty()) {
-        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
+        logger::warn("Missing API Key, please set DEPTHAI_HUB_API_KEY environment variable or set the key when creating the EventsManager");
         return false;
     }
     auto header = cpr::Header();
     header["Authorization"] = "Bearer " + token;
     cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/api-usage");
     int retryAttempt = 0;
-    while(!stopUploadThread) {
+    while(!stopUploadThread.load()) {
         cpr::Response response = cpr::Get(
             cpr::Url{requestUrl},
             cpr::Header{header},
             cpr::VerifySsl(verifySsl),
+            cpr::DebugCallback{[](cpr::DebugCallback::InfoType type, std::string data, intptr_t) {
+                if(type == cpr::DebugCallback::InfoType::TEXT) {
+                    logger::debug("libcurl debug: TEXT: {}", data);
+                } else if(type == cpr::DebugCallback::InfoType::HEADER_IN) {
+                    logger::debug("libcurl debug: HEADER_IN: {}", data);
+                } else if(type == cpr::DebugCallback::InfoType::HEADER_OUT) {
+                    logger::debug("libcurl debug: HEADER_OUT: {}", data);
+                }
+            }},
             cpr::ProgressCallback(
                 [&](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata) -> bool {
                     (void)userdata;
@@ -384,11 +420,11 @@ bool EventsManager::fetchConfigurationLimits(const bool retryOnFail) {
                     (void)downloadNow;
                     (void)uploadTotal;
                     (void)uploadNow;
-                    if(stopUploadThread) {
-                        return false;
-                    }
-                    return true;
+                    return !stopUploadThread.load();
                 }));
+        if(response.error) {
+            logger::error("cpr response error - {}: {}", static_cast<int>(response.error.code), response.error.message);
+        }
         if(response.status_code != cpr::status::HTTP_OK) {
             logger::error("Failed to fetch configuration limits, status code: {}", response.status_code);
             // Fetching should be retried indefinetly only on startup
@@ -434,7 +470,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
         return;
     }
     if(token.empty()) {
-        logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
+        logger::warn("Missing API Key, please set DEPTHAI_HUB_API_KEY environment variable or set the key when creating the EventsManager");
         return;
     }
     // Fill the batch with the groups from inputSnapBatch and their corresponding files
@@ -452,7 +488,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
     }
 
     int retryAttempt = 0;
-    while(!stopUploadThread) {
+    while(!stopUploadThread.load()) {
         std::string serializedBatch;
         fileGroupBatchPrepare->SerializeToString(&serializedBatch);
         cpr::Url requestUrl = static_cast<cpr::Url>(this->url + "/v2/files/prepare-batch");
@@ -468,10 +504,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
                     (void)downloadNow;
                     (void)uploadTotal;
                     (void)uploadNow;
-                    if(stopUploadThread) {
-                        return false;
-                    }
-                    return true;
+                    return !stopUploadThread.load();
                 }));
         if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
             logger::error("Failed to prepare a batch of file groups, status code: {}", response.status_code);
@@ -546,7 +579,7 @@ void EventsManager::uploadFileBatch(std::deque<std::shared_ptr<SnapData>> inputS
             for(auto& uploadResult : groupUploadResults) {
                 if(!uploadResult.valid() || !uploadResult.get()) {
                     logger::info("Failed to upload all of the groups in the given batch");
-                    // File upload was unsuccesful, cache if enabled
+                    // File upload was unsuccessful, cache if enabled
                     if(cacheIfCannotSend) {
                         cacheSnapData(inputSnapBatch);
                     } else {
@@ -617,7 +650,7 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
     logger::info("Uploading file {} to: {}", fileData->fileTag, uploadUrl);
     auto header = cpr::Header();
     header["Content-Type"] = fileData->mimeType;
-    for(int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread; ++i) {
+    for(int i = 0; i < uploadRetryPolicy.maxAttempts && !stopUploadThread.load(); ++i) {
         cpr::Response response = cpr::Put(
             cpr::Url{uploadUrl},
             cpr::Body{fileData->data},
@@ -630,10 +663,7 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
                     (void)downloadNow;
                     (void)uploadTotal;
                     (void)uploadNow;
-                    if(stopUploadThread) {
-                        return false;
-                    }
-                    return true;
+                    return !stopUploadThread.load();
                 }));
         if(response.status_code != cpr::status::HTTP_OK && response.status_code != cpr::status::HTTP_CREATED) {
             logger::error("Failed to upload file {}, status code: {}", fileData->fileTag, response.status_code);
@@ -656,7 +686,7 @@ bool EventsManager::uploadFile(std::shared_ptr<FileData> fileData, std::string u
 
 void EventsManager::uploadEventBatch() {
     // Add cached events, if any
-    if(connectionEstablished) {
+    if(connectionEstablished.load()) {
         uploadCachedEvents();
     }
 
@@ -667,7 +697,7 @@ void EventsManager::uploadEventBatch() {
             return;
         }
         if(token.empty()) {
-            logger::warn("Missing token, please set DEPTHAI_HUB_API_KEY environment variable or use the setToken method");
+            logger::warn("Missing API Key, please set DEPTHAI_HUB_API_KEY environment variable or set the key when creating the EventsManager");
             return;
         }
         for(size_t i = 0; i < eventBuffer.size() && i < eventsPerRequest; ++i) {
@@ -689,10 +719,7 @@ void EventsManager::uploadEventBatch() {
                 (void)downloadNow;
                 (void)uploadTotal;
                 (void)uploadNow;
-                if(stopUploadThread) {
-                    return false;
-                }
-                return true;
+                return !stopUploadThread.load();
             }));
     if(response.status_code != cpr::status::HTTP_OK) {
         logger::error("Failed to send event, status code: {}", response.status_code);
@@ -761,7 +788,7 @@ std::optional<std::string> EventsManager::sendEvent(const std::string& name,
                                                     const std::unordered_map<std::string, std::string>& extras,
                                                     const std::vector<std::string>& associateFiles) {
     // Check if the configuration and limits have already been fetched
-    if(!configurationLimitsFetched) {
+    if(!configurationLimitsFetched.load()) {
         logger::error("The configuration and limits have not been successfully fetched, event not sent");
         return std::nullopt;
     }
@@ -806,7 +833,7 @@ std::optional<std::string> EventsManager::sendSnap(const std::string& name,
                                                    const std::function<void(SendSnapCallbackResult)> successCallback,
                                                    const std::function<void(SendSnapCallbackResult)> failureCallback) {
     // Check if the configuration and limits have already been fetched
-    if(!configurationLimitsFetched) {
+    if(!configurationLimitsFetched.load()) {
         logger::error("The configuration and limits have not been successfully fetched, snap not sent");
         return std::nullopt;
     }
@@ -940,6 +967,46 @@ bool EventsManager::validateEvent(const proto::event::Event& inputEvent) {
     }
 
     return true;
+}
+
+bool EventsManager::waitForPendingUploads(uint64_t timeoutMs) {
+    const bool uploadFinished = checkPendingUploadsFinished();
+    {
+        std::unique_lock<std::mutex> lock(pendingUploadsMutex);
+        pendingUploadsFinished.store(uploadFinished);
+        if(uploadFinished) {
+            return true;
+        }
+        waitingForPendingUploads.store(true);
+        if(timeoutMs > 0) {
+            pendingUploadsCondition.wait_for(lock, std::chrono::milliseconds(timeoutMs), [this]() {
+                return pendingUploadsFinished.load() || !connectionEstablished.load() || stopUploadThread.load();
+            });
+        } else {
+            pendingUploadsCondition.wait(lock, [this]() { return pendingUploadsFinished.load() || !connectionEstablished.load() || stopUploadThread.load(); });
+        }
+
+        if(!pendingUploadsFinished.load() && !connectionEstablished.load()) {
+            logger::warn("waitForPendingUploads() exited because connection was lost before pending uploads were finished");
+        }
+
+        waitingForPendingUploads.store(false);
+    }
+    return checkPendingUploadsFinished();
+}
+
+bool EventsManager::checkPendingUploadsFinished() {
+    std::scoped_lock lock(snapBufferMutex, uploadFileBatchFuturesMutex, eventBufferMutex);
+    if(!snapBuffer.empty()) {
+        return false;
+    }
+    for(const auto& future : uploadFileBatchFutures) {
+        // Check if any of the async jobs handling file uploads are not yet finished
+        if(future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+            return false;
+        }
+    }
+    return eventBuffer.empty();
 }
 
 void EventsManager::cacheEvents() {
@@ -1085,10 +1152,6 @@ void EventsManager::clearCachedData(const std::filesystem::path& directory) {
 
 void EventsManager::setCacheDir(const std::string& cacheDir) {
     this->cacheDir = cacheDir;
-}
-
-void EventsManager::setToken(const std::string& token) {
-    this->token = token;
 }
 
 void EventsManager::setLogResponse(bool logResponse) {

@@ -46,6 +46,7 @@
     #include "depthai/properties/ImageFiltersProperties.hpp"
 
     #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        #include "depthai/properties/AutoCalibrationProperties.hpp"
         #include "depthai/properties/DynamicCalibrationProperties.hpp"
     #endif
 #endif
@@ -95,6 +96,7 @@ UVCProperties::~UVCProperties() = default;
 VideoEncoderProperties::~VideoEncoderProperties() = default;
 WarpProperties::~WarpProperties() = default;
 GlobalProperties::~GlobalProperties() = default;
+DeviceProperties::~DeviceProperties() = default;
 CastProperties::~CastProperties() = default;
 VppProperties::~VppProperties() = default;
 
@@ -106,6 +108,7 @@ ToFDepthConfidenceFilterProperties::~ToFDepthConfidenceFilterProperties() = defa
 
     #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 DynamicCalibrationProperties::~DynamicCalibrationProperties() = default;
+AutoCalibrationProperties::~AutoCalibrationProperties() = default;
     #endif
 
 #endif

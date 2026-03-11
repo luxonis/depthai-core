@@ -103,7 +103,7 @@ class StereoDepthConfig : public Buffer {
          * from camera extrinsics when depth alignment to camera is enabled.
          * Center alignment is achieved by shifting the obtained disparity map by a scale factor.
          * It's used to align to a different camera that is on the same horizontal baseline as the two stereo cameras.
-         * E.g. if we have a device with 10 cm stereo baseline, and we have another camera inbetween,
+         * E.g. if we have a device with 10 cm stereo baseline, and we have another camera in between,
          * 9cm from the LEFT camera and 1 cm from the RIGHT camera we can align the obtained disparity map using a scale factor of 0.9.
          * Note that aligning disparity map to a different camera involves 2 steps:
          * 1. Shifting obtained disparity map.
