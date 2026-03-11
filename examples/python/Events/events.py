@@ -27,8 +27,8 @@ def uploadFailureCallback(sendSnapResult):
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    # Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or use the EventsManager setToken() method.
-    eventMan = dai.EventsManager()
+    # Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or pass the key when creating the EventsManager instance.
+    eventMan = dai.EventsManager("")
 
     cameraNode = pipeline.create(dai.node.Camera).build()
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
@@ -97,3 +97,10 @@ with dai.Pipeline() as pipeline:
                 print(f"Snap with a localID: {localSnapID} has been successfully added to the EventsManager")
             else:
                 print("Snap was not successfully added to the EventsManager")
+
+    cv2.destroyAllWindows()
+    # Wait for pending snaps to be uploaded
+    if eventMan.waitForPendingUploads():
+        print("Pending uploads have been successfully uploaded")
+    else:
+        print("Pending uploads were discarded, due to timeout or dropped connection")

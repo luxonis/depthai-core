@@ -102,9 +102,7 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readonly("uploadStatus", &SendSnapCallbackResult::uploadStatus);
 
     py::class_<EventsManager>(m, "EventsManager")
-        .def(py::init<>())
-        .def(py::init<bool>(), py::arg("uploadCachedOnStart") = false)
-        .def("setToken", &EventsManager::setToken, py::arg("token"), DOC(dai, utility, EventsManager, setToken))
+        .def(py::init<std::string, bool>(), py::arg("apiKey") = "", py::arg("uploadCachedOnStart") = false)
         .def("setLogResponse", &EventsManager::setLogResponse, py::arg("logResponse"), DOC(dai, utility, EventsManager, setLogResponse))
         .def("setVerifySsl", &EventsManager::setVerifySsl, py::arg("verifySsl"), DOC(dai, utility, EventsManager, setVerifySsl))
         .def("setCacheDir", &EventsManager::setCacheDir, py::arg("cacheDir"), DOC(dai, utility, EventsManager, setCacheDir))
@@ -112,6 +110,11 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
              &EventsManager::setCacheIfCannotSend,
              py::arg("cacheIfCannotUpload"),
              DOC(dai, utility, EventsManager, setCacheIfCannotSend))
+        .def("waitForPendingUploads",
+             &EventsManager::waitForPendingUploads,
+             py::arg("timeoutMs") = uint64_t(0),
+             DOC(dai, utility, EventsManager, waitForPendingUploads),
+             py::call_guard<py::gil_scoped_release>())
         .def("sendEvent",
              &EventsManager::sendEvent,
              py::arg("name"),
