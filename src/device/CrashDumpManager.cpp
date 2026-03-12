@@ -99,6 +99,8 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectDumpRVC4() {
     if(gateDump) {
         dump->data = std::move(gateDump->data);
         dump->filename = std::move(gateDump->filename);
+    } else {
+        spdlog::warn("RVC4 crash detected but gate returned no crash dump");
     }
     return dump;
 }

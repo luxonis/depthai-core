@@ -163,8 +163,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
     pipelineData.content = std::move(pipelineJsonStr);
     pipelineData.sha1Hash = std::move(pipelineSHA1);
     pipelineData.name = "pipeline.json";
-    auto success = sendLogsToServer(pipelineData, std::nullopt, deviceInfo);
-    if(!success) {
+    if(!sendLogsToServer(pipelineData, std::nullopt, deviceInfo)) {
         // Keep at info level to not spam in case of no internet connection
         logger::info("Failed to send pipeline logs to server");
     } else {
@@ -231,16 +230,16 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
     }
 
     // Check if logging is explicitly disabled
-    auto loggingDisabled = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "");
-    if(loggingDisabled.empty()) {
+    if(!utility::getEnvAs<bool>("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", false)) {
         logger::info("Logging enabled");
-        auto success = sendLogsToServer(pipelineData, crashDumpData, deviceInfo);
-        if(!success) {
+        if(!sendLogsToServer(pipelineData, crashDumpData, deviceInfo)) {
             // Keep at info level to not spam in case of no internet connection
             logger::warn("Failed to send crash dump logs to the server.");
+        } else {
+            logger::info("Crash dump logs sent to server");
         }
     } else {
-        logger::info("Logging disabled");
+        logger::info("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION is set, not uploading crash dump logs.");
     }
 #else
     (void)pipelineSchema;

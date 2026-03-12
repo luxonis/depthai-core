@@ -752,6 +752,7 @@ std::optional<DeviceGate::CrashDump> DeviceGate::getCrashDump() {
     if(fileData) {
         return CrashDump{std::move(*fileData), filename};
     }
+    spdlog::warn("Could not retrieve file from the device gate");
     return std::nullopt;
 }
 

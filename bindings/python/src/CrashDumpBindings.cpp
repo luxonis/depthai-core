@@ -248,5 +248,4 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(py::init<const std::filesystem::path&>(), py::arg("tarFile"))
         .def_readwrite("data", &CrashDumpRVC4::data)
         .def_readwrite("filename", &CrashDumpRVC4::filename);
-
 }
