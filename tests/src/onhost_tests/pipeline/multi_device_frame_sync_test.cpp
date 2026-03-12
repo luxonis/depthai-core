@@ -394,5 +394,5 @@ TEST_CASE("Test Multi-device PTP frame sync with different FPS values", "[fsync]
     // auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f, 120.0f, 240.0f, 300.0f, 600.0f);
     auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f);
     CAPTURE(fps);
-    testFsync(fps, 1e-3, 60, 15, 30, SyncType::PTP);
+    testFsync(fps, 1e-3, 60, 15, 60, SyncType::PTP);
 }
