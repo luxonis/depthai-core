@@ -775,4 +775,4 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
-dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4)
+dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci)
