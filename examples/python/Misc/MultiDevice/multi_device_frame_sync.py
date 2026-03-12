@@ -13,6 +13,7 @@ import signal
 import threading
 
 from typing import Optional, Dict
+from enum import Enum
 
 SET_MANUAL_EXPOSURE = False  # Set to True to use manual exposure settings
 # ---------------------------------------------------------------------------
@@ -33,15 +34,19 @@ class FPSCounter:
         # Calculate the FPS
         return (len(self.frameTimes) - 1) / (self.frameTimes[-1] - self.frameTimes[0])
 
+class SyncType(Enum):
+    EXTERNAL = 0
+    PTP = 1
 
 # ---------------------------------------------------------------------------
 # Create camera outputs
 # ---------------------------------------------------------------------------
 def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensorFps: float, role: dai.ExternalFrameSyncRole):
+    global syncType
     cam = None
 
     # Only specify FPS if camera is master
-    if role == dai.ExternalFrameSyncRole.MASTER:
+    if role == dai.ExternalFrameSyncRole.MASTER or syncType == SyncType.PTP:
         cam = (
             pipeline.create(dai.node.Camera)
             .build(socket, sensorFps=sensorFps)
@@ -58,6 +63,11 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
             (640, 480), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
         )
     )
+
+    if syncType == SyncType.PTP:
+        cam.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.TIME_PTP)
+        print(f"Setting PTP for {socket.name}")
+
     return pipeline, output
 
 # ---------------------------------------------------------------------------
@@ -98,23 +108,35 @@ def setUpCameraSocket(
         deviceName: str,
         targetFps: float,
         role: dai.ExternalFrameSyncRole):
-    global masterNode, slaveQueues, camSockets
+    global masterNode, slaveQueues, camSockets, syncType
     pipeline, outNode = createCameraOutputs(pipeline, socket, targetFps, role)
 
-    # Master cameras will be linked to the sync node directly
-    if role == dai.ExternalFrameSyncRole.MASTER:
+    if syncType == SyncType.EXTERNAL:
+        # Master cameras will be linked to the sync node directly
+        if role == dai.ExternalFrameSyncRole.MASTER:
+            if masterNode is None:
+                masterNode = {}
+            
+            masterNode[socket.name] = outNode
+        
+        # Gather all slave camera outputs
+        elif role == dai.ExternalFrameSyncRole.SLAVE:
+            if slaveQueues.get(deviceName) is None:
+                slaveQueues[deviceName] = {}
+            slaveQueues[deviceName][socket.name] = outNode.createOutputQueue()
+        else:
+            raise RuntimeError(f"Don't know how to handle role {role}")
+    elif syncType == SyncType.PTP:
+        # For PTP just put the first camera in master
+        # Actual PTP master might be different, but it doesn't matter for this example
         if masterNode is None:
             masterNode = {}
-        
-        masterNode[socket.name] = outNode
-    
-    # Gather all slave camera outputs
-    elif role == dai.ExternalFrameSyncRole.SLAVE:
-        if slaveQueues.get(deviceName) is None:
-            slaveQueues[deviceName] = {}
-        slaveQueues[deviceName][socket.name] = outNode.createOutputQueue()
-    else:
-        raise RuntimeError(f"Don't know how to handle role {role}")
+            masterNode[socket.name] = outNode
+        else:
+            if slaveQueues.get(deviceName) is None:
+                slaveQueues[deviceName] = {}
+            slaveQueues[deviceName][socket.name] = outNode.createOutputQueue()
+
     
     # Keep track of all camera socket names
     if socket.name not in camSockets:
@@ -133,7 +155,7 @@ def setupDevice(
         stack: contextlib.ExitStack,
         deviceInfo: dai.DeviceInfo,
         targetFps: float):
-    global masterPipeline, masterName, slavePipelines, slaveQueues, camSockets
+    global masterPipeline, masterName, slavePipelines, slaveQueues, camSockets, syncType
 
     # Create pipeline for device
     pipeline = stack.enter_context(dai.Pipeline(dai.Device(deviceInfo)))
@@ -143,7 +165,9 @@ def setupDevice(
         raise RuntimeError("This example supports only RVC4 platform!")
 
     name = getDeviceName(device)
-    role = device.getExternalFrameSyncRole()
+    role = None
+    if syncType == SyncType.EXTERNAL:
+        role = device.getExternalFrameSyncRole()
 
     print("=== Connected to", deviceInfo.getDeviceId())
     print("    Device ID:", device.getDeviceId())
@@ -152,20 +176,29 @@ def setupDevice(
     for socket in device.getConnectedCameras():
         pipeline = setUpCameraSocket(pipeline, socket, name, targetFps, role)
 
-    if role == dai.ExternalFrameSyncRole.MASTER:
-        device.setExternalStrobeEnable(True)
-        print(f"{device.getDeviceId()} is master")
+    if syncType == SyncType.EXTERNAL:
+        if role == dai.ExternalFrameSyncRole.MASTER:
+            device.setExternalStrobeEnable(True)
+            print(f"{device.getDeviceId()} is master")
 
-        if masterPipeline is not None:
-            raise RuntimeError("Only one master pipeline is supported")
-        
-        masterPipeline = pipeline
-        masterName = name
-    elif role == dai.ExternalFrameSyncRole.SLAVE:
-        slavePipelines[name] = pipeline
-        print(f"{device.getDeviceId()} is slave")
-    else:
-        raise RuntimeError(f"Don't know how to handle role {role}")
+            if masterPipeline is not None:
+                raise RuntimeError("Only one master pipeline is supported")
+            
+            masterPipeline = pipeline
+            masterName = name
+        elif role == dai.ExternalFrameSyncRole.SLAVE:
+            slavePipelines[name] = pipeline
+            print(f"{device.getDeviceId()} is slave")
+        else:
+            raise RuntimeError(f"Don't know how to handle role {role}")
+    elif syncType == SyncType.PTP:
+        # For PTP just put the first camera in master
+        # Actual PTP master might be different, but it doesn't matter for this example
+        if masterPipeline is None:
+            masterPipeline = pipeline
+            masterName = name
+        else:
+            slavePipelines[name] = pipeline
 
 
 running = True
@@ -187,6 +220,9 @@ parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs o
 parser.add_argument("-t1", "--recv-all-timeout-sec", type=float, default=10, help="Timeout for receiving the first frame from all devices", required=False)
 parser.add_argument("-t2", "--sync-threshold-sec", type=float, default=1e-3, help="Sync threshold in seconds", required=False)
 parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, help="Timeout for synchronization to complete", required=False)
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument("--external-sync", action="store_true", help="Use external sync")
+group.add_argument("--ptp-sync", action="store_true", help="Use PTP sync")
 args = parser.parse_args()
 
 # if user did not specify device IPs, use all available devices
@@ -202,6 +238,13 @@ recvAllTimeoutSec = args.recv_all_timeout_sec
 
 syncThresholdSec = args.sync_threshold_sec
 initialSyncTimeoutSec = args.initial_sync_timeout_sec
+if args.external_sync:
+    syncType = SyncType.EXTERNAL
+elif args.ptp_sync:
+    syncType = SyncType.PTP
+    print("Master camera does not match PTP master, instead it signifies the sync pipeline")
+else:
+    raise RuntimeError("Must specify sync type")
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -320,6 +363,7 @@ with contextlib.ExitStack() as stack:
                 waitingForSync = False
 
             if not syncStatus and not waitingForSync:
+                print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
                 continue
 
             color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
