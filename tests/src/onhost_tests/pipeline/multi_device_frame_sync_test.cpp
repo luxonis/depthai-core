@@ -27,12 +27,40 @@
         REQUIRE((x));                                               \
     }
 
-dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline, dai::CameraBoardSocket socket, float sensorFps, dai::ExternalFrameSyncRole role) {
+namespace {
+    enum class SyncType {
+        EXTERNAL,
+        PTP,
+    };
+
+    std::string toString(SyncType syncType) {
+        if(syncType == SyncType::EXTERNAL) {
+            return "external";
+        } else if(syncType == SyncType::PTP) {
+            return "PTP";
+        } else {
+            throw std::runtime_error("Unknown sync type");
+        }
+    }
+}
+
+dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline,
+                                  dai::CameraBoardSocket socket,
+                                  float sensorFps,
+                                  SyncType syncType,
+                                  std::optional<dai::ExternalFrameSyncRole> role) {
     std::shared_ptr<dai::node::Camera> cam;
-    if(role == dai::ExternalFrameSyncRole::MASTER) {
+    if(syncType == SyncType::PTP || role == dai::ExternalFrameSyncRole::MASTER) {
         cam = pipeline->create<dai::node::Camera>()->build(socket, std::nullopt, sensorFps);
-    } else {
+    } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
         cam = pipeline->create<dai::node::Camera>()->build(socket, std::nullopt);
+    } else {
+        throw std::runtime_error("Don't know how to handle role");
+    }
+
+    if(syncType == SyncType::PTP) {
+        cam->initialControl.setFrameSyncMode(dai::CameraControl::FrameSyncMode::TIME_PTP);
+        std::cout << "Setting PTP for " << dai::toString(socket) << std::endl;
     }
 
     auto output = cam->requestOutput(std::make_pair(640, 480), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH);
@@ -71,26 +99,41 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
                        dai::CameraBoardSocket socket,
                        std::string& name,
                        float targetFps,
-                       dai::ExternalFrameSyncRole role,
+                       SyncType syncType,
+                       std::optional<dai::ExternalFrameSyncRole> role,
                        std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
                        std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
                        std::vector<std::string>& camSockets) {
-    auto outNode = createPipeline(pipeline, socket, targetFps, role);
+    auto outNode = createPipeline(pipeline, socket, targetFps, syncType, role);
 
-    if(role == dai::ExternalFrameSyncRole::MASTER) {
+    if(syncType == SyncType::EXTERNAL) {
+        if(role == dai::ExternalFrameSyncRole::MASTER) {
+            if(!masterNode.has_value()) {
+                masterNode.emplace();
+            }
+            masterNode.value().emplace(dai::toString(socket), outNode);
+
+        } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
+            if(slaveQueues.find(name) == slaveQueues.end()) {
+                slaveQueues.emplace(name, std::map<std::string, std::shared_ptr<dai::MessageQueue>>());
+            }
+            slaveQueues[name].emplace(dai::toString(socket), outNode->createOutputQueue());
+
+        } else {
+            throw std::runtime_error("Don't know how to handle role");
+        }
+    } else if(syncType == SyncType::PTP) {
+        // For PTP just put the first camera in master.
+        // Actual PTP master might be different, but it doesn't matter for this test.
         if(!masterNode.has_value()) {
             masterNode.emplace();
+            masterNode.value().emplace(dai::toString(socket), outNode);
+        } else {
+            if(slaveQueues.find(name) == slaveQueues.end()) {
+                slaveQueues.emplace(name, std::map<std::string, std::shared_ptr<dai::MessageQueue>>());
+            }
+            slaveQueues[name].emplace(dai::toString(socket), outNode->createOutputQueue());
         }
-        masterNode.value().emplace(dai::toString(socket), outNode);
-
-    } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
-        if(slaveQueues.find(name) == slaveQueues.end()) {
-            slaveQueues.emplace(name, std::map<std::string, std::shared_ptr<dai::MessageQueue>>());
-        }
-        slaveQueues[name].emplace(dai::toString(socket), outNode->createOutputQueue());
-
-    } else {
-        throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
     }
 
     if(std::find(camSockets.begin(), camSockets.end(), dai::toString(socket)) == camSockets.end()) {
@@ -131,7 +174,8 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
                  std::map<std::string, std::shared_ptr<dai::Pipeline>>& slavePipelines,
                  std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
                  std::vector<std::string>& camSockets,
-                 float targetFps) {
+                 float targetFps,
+                 SyncType syncType) {
     auto pipeline = std::make_shared<dai::Pipeline>(std::make_shared<dai::Device>(deviceInfo));
     auto device = pipeline->getDefaultDevice();
 
@@ -140,38 +184,53 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     }
 
     std::string name = deviceInfo.getXLinkDeviceDesc().name;
-    auto role = device->getExternalFrameSyncRole();
+    std::optional<dai::ExternalFrameSyncRole> role = std::nullopt;
+    if(syncType == SyncType::EXTERNAL) {
+        role = device->getExternalFrameSyncRole();
+    }
 
     std::cout << "=== Connected to " << deviceInfo.getDeviceId() << std::endl;
     std::cout << "    Device ID: " << device->getDeviceId() << std::endl;
     std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
     for(auto socket : device->getConnectedCameras()) {
-        setUpCameraSocket(pipeline, socket, name, targetFps, role, masterNode, slaveQueues, camSockets);
+        setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets);
     }
 
     setUpIrLeds(device);
 
-    if(role == dai::ExternalFrameSyncRole::MASTER) {
-        device->setExternalStrobeEnable(true);
-        std::cout << device->getDeviceId() << " is master" << std::endl;
+    if(syncType == SyncType::EXTERNAL) {
+        if(role == dai::ExternalFrameSyncRole::MASTER) {
+            device->setExternalStrobeEnable(true);
+            std::cout << device->getDeviceId() << " is master" << std::endl;
 
-        if(masterPipeline != nullptr) {
-            throw std::runtime_error("Only one master pipeline is supported");
+            if(masterPipeline != nullptr) {
+                throw std::runtime_error("Only one master pipeline is supported");
+            }
+            masterPipeline = pipeline;
+            masterName = name;
+        } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
+            slavePipelines[name] = pipeline;
+            std::cout << device->getDeviceId() << " is slave" << std::endl;
+        } else {
+            throw std::runtime_error("Don't know how to handle role");
         }
-        masterPipeline = pipeline;
-        masterName = name;
-    } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
-        slavePipelines[name] = pipeline;
-        std::cout << device->getDeviceId() << " is slave" << std::endl;
-    } else {
-        throw std::runtime_error("Don't know how to handle role " + dai::toString(role));
+    } else if(syncType == SyncType::PTP) {
+        // For PTP just put the first camera in master.
+        // Actual PTP master might be different, but it doesn't matter for this test.
+        if(masterPipeline == nullptr) {
+            masterPipeline = pipeline;
+            masterName = name;
+        } else {
+            slavePipelines[name] = pipeline;
+        }
     }
 }
 
 int testFsync(
-    float targetFps, double syncThresholdSec, uint64_t testDurationSec, int recvAllTimeoutSec, int initialSyncTimeoutSec) {
+    float targetFps, double syncThresholdSec, uint64_t testDurationSec, int recvAllTimeoutSec, int initialSyncTimeoutSec, SyncType syncType) {
     std::cout << "=================================\x1B[1;32mTest started\x1B[0m================================" << std::endl;
+    std::cout << "Sync type: " << toString(syncType) << std::endl;
     std::cout << "FPS: " << targetFps << std::endl;
     std::cout << "SYNC_THRESHOLD_SEC: " << syncThresholdSec << std::endl;
     std::cout << "RECV_ALL_TIMEOUT_SEC: " << recvAllTimeoutSec << std::endl;
@@ -192,7 +251,7 @@ int testFsync(
     std::vector<std::string> camSockets;
 
     for(auto deviceInfo : deviceInfos) {
-        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps);
+        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps, syncType);
     }
 
     if(masterPipeline == nullptr || !masterNode.has_value() || !masterName.has_value()) {
@@ -322,10 +381,18 @@ int testFsync(
     return 0;
 }
 
-TEST_CASE("Test Multi-device Fsync with different FPS values", "[fsync]") {
+TEST_CASE("Test Multi-device external frame sync with different FPS values", "[fsync]") {
     // Specify a list of FPS values to test with.
     // auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f, 120.0f, 240.0f, 300.0f, 600.0f);
     auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f);
     CAPTURE(fps);
-    testFsync(fps, 1e-3, 60, 10, 4);
+    testFsync(fps, 1e-3, 60, 10, 4, SyncType::EXTERNAL);
+}
+
+TEST_CASE("Test Multi-device PTP frame sync with different FPS values", "[fsync]") {
+    // Specify a list of FPS values to test with.
+    // auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f, 120.0f, 240.0f, 300.0f, 600.0f);
+    auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f);
+    CAPTURE(fps);
+    testFsync(fps, 1e-3, 60, 15, 30, SyncType::PTP);
 }
