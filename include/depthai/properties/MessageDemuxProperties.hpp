@@ -1,19 +1,22 @@
 #pragma once
 
+#include "depthai/common/ProcessorType.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
 
 /**
- * MessageDemux does not have any properties to set
+ * Specify properties for MessageDemux.
  */
 struct MessageDemuxProperties : PropertiesSerializable<Properties, MessageDemuxProperties> {
-    // Needed for serialization
-    char dummy = 0;
+    /**
+     * Which processor should execute the node.
+     */
+    ProcessorType processor = ProcessorType::LEON_CSS;
 
     ~MessageDemuxProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(MessageDemuxProperties, dummy);
+DEPTHAI_SERIALIZE_EXT(MessageDemuxProperties, processor);
 
 }  // namespace dai

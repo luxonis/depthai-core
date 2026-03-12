@@ -204,6 +204,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_RECONNECT_TIMEOUT | Specifies timeout in milliseconds for reconnecting to a device after a connection loss. If set to 0, reconnect is disabled. |
 | DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: `any`, `usb`, `tcpip`, `tcpshd`. |
 | DEPTHAI_PLATFORM | Restricts default search to the specified platform. Options: `any`, `rvc2`, `rvc3`, `rvc4`. |
+| DEPTHAI_RPC_READ_TIMEOUT | Specifies timeout in milliseconds for reading RPC responses. If 0, wait indefinitely. |
+| DEPTHAI_RPC_WRITE_TIMEOUT | Specifies timeout in milliseconds for writing RPC requests. If 0, wait indefinitely. |
 | DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_ID_LIST | Alias to MXID list. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_NAME_LIST | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR". It also looks for NAMEs outside of the host's subnet in case of tcpip. |

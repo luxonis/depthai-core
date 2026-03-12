@@ -481,6 +481,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, hasCrashDump))
         .def(
+            "getState",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getState();
+            },
+            DOC(dai, DeviceBase, getState))
+        .def(
             "getConnectedCameras",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
