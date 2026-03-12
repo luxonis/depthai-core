@@ -506,9 +506,7 @@ int main(int argc, char** argv) {
             }
 
             if(!syncStatus && !waitingForInitialSync) {
-                std::cout << "Sync error: Sync lost, threshold exceeded " << std::chrono::duration_cast<std::chrono::microseconds>(delta).count() << " us"
-                          << std::endl;
-                running.store(false);
+                continue;
             }
 
             // Add absolute maximum time difference between all frames
