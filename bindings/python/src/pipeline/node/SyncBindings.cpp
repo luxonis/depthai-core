@@ -27,7 +27,9 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
-    syncProperties.def_readwrite("syncThresholdNs", &SyncProperties::syncThresholdNs).def_readwrite("syncAttempts", &SyncProperties::syncAttempts);
+    syncProperties.def_readwrite("syncThresholdNs", &SyncProperties::syncThresholdNs, DOC(dai, SyncProperties, syncThresholdNs))
+        .def_readwrite("syncAttempts", &SyncProperties::syncAttempts, DOC(dai, SyncProperties, syncAttempts))
+        .def_readwrite("processor", &SyncProperties::processor, DOC(dai, SyncProperties, processor));
 
     // Node
     sync.def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
