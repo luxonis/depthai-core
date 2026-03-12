@@ -1,5 +1,5 @@
-#include <opencv2/opencv.hpp>
 #include <iostream>
+#include <opencv2/opencv.hpp>
 #include <optional>
 
 #include "depthai/depthai.hpp"
@@ -34,23 +34,15 @@ int main() {
         return 0;
     }
 
-    auto cam = pipeline.create<dai::node::Camera>()->build();
+    auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::AUTO, std::nullopt, static_cast<float>(FPS));
     auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
     benchmarkIn->setRunOnHost(true);
     benchmarkIn->sendReportEveryNMessages(FPS);
 
-    auto imageManip = pipeline.create<dai::node::ImageManip>();
-    imageManip->initialConfig->setOutputSize(250, 250);
-    imageManip->setMaxOutputFrameSize(static_cast<int>(250 * 250 * 1.6));
+    auto* output = cam->requestOutput(std::make_pair(250U, 250U));
+    output->link(benchmarkIn->input);
 
-    // One of the two modes can be selected
-    // NOTE: Generic resolutions are not yet supported through camera node when using HFR mode
-    auto* output = cam->requestOutput(SIZE, std::nullopt, dai::ImgResizeMode::CROP, static_cast<float>(FPS));
-
-    output->link(imageManip->inputImage);
-    imageManip->out.link(benchmarkIn->input);
-
-    auto outputQueue = imageManip->out.createOutputQueue();
+    auto outputQueue = output->createOutputQueue();
 
     pipeline.start();
 

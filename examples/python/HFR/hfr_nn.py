@@ -25,25 +25,10 @@ with dai.Pipeline() as pipeline:
         print("This example is only supported on IMX586 and Luxonis OS 1.20.5 or higher", file=sys.stderr)
         sys.exit(0)
 
-    # Download the model
-    nnArchivePath = dai.getModelFromZoo(dai.NNModelDescription("yolov6-nano", platform="RVC4"))
-    nnArchive = dai.NNArchive(nnArchivePath)
-    inputSize = nnArchive.getInputSize()
-    cameraNode = pipeline.create(dai.node.Camera).build()
-
-    # Configure the ImageManip as in HFR mode requesting arbitrary outputs is not yet supported
-    cameraOutput = cameraNode.requestOutput((1280, 720), fps=FPS)
-    imageManip = pipeline.create(dai.node.ImageManip)
-    imageManip.initialConfig.setOutputSize(inputSize[0], inputSize[1])
-    imageManip.setMaxOutputFrameSize(int(inputSize[0] * inputSize[1] * 3))
-    imageManip.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888i)
-    imageManip.inputImage.setMaxSize(12)
-    cameraOutput.link(imageManip.inputImage)
+    cameraNode = pipeline.create(dai.node.Camera).build(sensorFps=FPS)
 
     # Configure the DetectionNetwork
-    detectionNetwork = pipeline.create(dai.node.DetectionNetwork)
-    detectionNetwork.setNNArchive(nnArchive)
-    imageManip.out.link(detectionNetwork.input)
+    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))
 
     benchmarkIn = pipeline.create(dai.node.BenchmarkIn)
     benchmarkIn.setRunOnHost(True)

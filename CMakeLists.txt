@@ -449,6 +449,9 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/node/DynamicCalibrationNode.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
         src/pipeline/datatype/DynamicCalibrationControl.cpp
+        src/pipeline/node/AutoCalibration.cpp
+        src/pipeline/datatype/AutoCalibrationResult.cpp
+        src/pipeline/datatype/AutoCalibrationConfig.cpp
     )
 endif()
 
@@ -591,7 +594,7 @@ endif()
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
-    # Link to OpenCV (publically)
+    # Link to OpenCV (publicly)
     target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
@@ -600,7 +603,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
 
 endif()
 if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
-    # Link to PCL (publically)
+    # Link to PCL (publicly)
     target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${PCL_LIBRARIES})
 
     # Specify that we are building target pcl
@@ -993,7 +996,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Add default flags
     add_default_flags(${TARGET_OPENCV_NAME})
 
-    # Link to OpenCV (publically)
+    # Link to OpenCV (publicly)
     target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
@@ -1025,7 +1028,7 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         # Add default flags
         add_default_flags(${TARGET_PCL_NAME})
 
-        # Link to PCL (publically)
+        # Link to PCL (publicly)
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARIES})
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC pcl_io_ply)
 
@@ -1070,7 +1073,7 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Add default flags
     add_default_flags(${TARGET_RTABMAP_NAME})
     add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
-    # Link to RTABMap (publically)
+    # Link to RTABMap (publicly)
     target_link_libraries(${TARGET_RTABMAP_NAME} PRIVATE rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} spdlog::spdlog)
 
     target_include_directories(${TARGET_RTABMAP_NAME} PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>")
@@ -1111,7 +1114,7 @@ if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_default_flags(${TARGET_BASALT_NAME})
     add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
 
-    # Link to Basalt (publically)
+    # Link to Basalt (publicly)
     target_link_libraries(${TARGET_BASALT_NAME} PRIVATE ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} spdlog::spdlog)
     # Add public compile definition indicating that Basalt support is available
     set(DEPTHAI_HAVE_BASALT_SUPPORT ON)

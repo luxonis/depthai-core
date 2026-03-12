@@ -201,12 +201,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     bool slept = false;
 
     /**
-     * Calibration state machine, which holds the state of Node and provide stabile enviroment;
+     * Calibration state machine, which holds the state of Node and provides a stable environment;
      * - Initialization of pipeline,
      * - Loading images in DCL,
      * - Starting Calibration Check,
      * - Starting of Calibration
-     * - Reseting of data
+     * - Resetting of data
      */
     bool runOnHostVar = true;
 
