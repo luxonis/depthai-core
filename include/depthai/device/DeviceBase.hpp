@@ -424,7 +424,8 @@ class DeviceBase {
     /**
      * Retrieves current device state in a crash dump format.
      * It halts the device temporarily and might affect the running pipeline,
-     * it's best to close the device after this operation
+     * it's best to close the device after this operation.
+     * Supported only on RVC2.
      */
     dai::CrashDump getState();
 

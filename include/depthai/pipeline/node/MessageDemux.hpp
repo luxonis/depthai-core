@@ -22,7 +22,7 @@ class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemu
     OutputMap outputs{*this, "outputs", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
 
     /**
-     * Set on which processor the node should run
+     * Specify on which processor the node should run. RVC2 only.
      * @param type Processor type - Leon CSS or Leon MSS
      */
     void setProcessor(ProcessorType type);
