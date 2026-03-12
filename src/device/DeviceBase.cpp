@@ -79,6 +79,7 @@ std::optional<std::chrono::milliseconds> currentRpcTimeout() {
 }
 
 }  // namespace
+
 namespace dai {
 
 const std::string MAGIC_PROTECTED_FLASHING_VALUE = "235539980";

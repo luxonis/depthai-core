@@ -1,4 +1,4 @@
-project(auto_reconnect_examples)
+project(crash_dump_examples)
 cmake_minimum_required(VERSION 3.10)
 
 ## function: dai_add_example(example_name example_src enable_test use_pcl)
