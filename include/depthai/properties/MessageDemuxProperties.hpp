@@ -6,14 +6,13 @@
 namespace dai {
 
 /**
- * MessageDemux does not have any properties to set
+ * Specify properties for MessageDemux.
  */
 struct MessageDemuxProperties : PropertiesSerializable<Properties, MessageDemuxProperties> {
     /**
      * Which processor should execute the node.
      */
     ProcessorType processor = ProcessorType::LEON_CSS;
-
 
     ~MessageDemuxProperties() override;
 };

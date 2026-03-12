@@ -9,9 +9,9 @@
 #include <iostream>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <system_error>
 #include <thread>
-#include <stdexcept>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -51,7 +51,6 @@
 #include "spdlog/spdlog.h"
 #include "utility/LogCollection.hpp"
 #include "utility/Logging.hpp"
-#include "utility/spdlog-fmt.hpp"
 
 namespace {
 
@@ -462,34 +461,11 @@ unsigned int getRPCReadTimeout() {
         return static_cast<unsigned int>(currentTimeout->count());
     }
 
-    std::string timeoutStr = utility::getEnvAs<std::string>("DEPTHAI_RPC_READ_TIMEOUT", "");
-    if(!timeoutStr.empty()) {
-        try {
-            return std::stoi(timeoutStr);
-        } catch(const std::invalid_argument& e) {
-            logger::warn("DEPTHAI_RPC_READ_TIMEOUT value invalid: {}", e.what());
-        }
-    }
-    return DEFAULT_RPC_READ_TIMEOUT;
+    return utility::getEnvAs<unsigned int>("DEPTHAI_RPC_READ_TIMEOUT", DEFAULT_RPC_READ_TIMEOUT);
 }
 
 unsigned int getRPCWriteTimeout() {
-    std::string timeoutStr = utility::getEnvAs<std::string>("DEPTHAI_RPC_WRITE_TIMEOUT", "");
-    if(!timeoutStr.empty()) {
-        try {
-            return std::stoi(timeoutStr);
-        } catch(const std::invalid_argument& e) {
-            logger::warn("DEPTHAI_RPC_WRITE_TIMEOUT value invalid: {}", e.what());
-        }
-    }
-    return DEFAULT_RPC_WRITE_TIMEOUT;
-}
-
-std::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
-    std::vector<uint8_t> data;
-    utility::serialize<SerializationType::JSON>(dump, data);
-    auto crashDumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
-    return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
+    return utility::getEnvAs<unsigned int>("DEPTHAI_RPC_WRITE_TIMEOUT", DEFAULT_RPC_WRITE_TIMEOUT);
 }
 
 void DeviceBase::closeImpl() {
@@ -517,7 +493,7 @@ void DeviceBase::closeImpl() {
             pimpl->logger.debug("shutdown call error: {}", ex.what());
             shouldGetCrashDump = true;
         }
-    } else {
+    } else if(!dumpOnly && isRvc2) {
         pimpl->logger.debug("Crash dump collection disabled - skipping existing crash dump extraction");
     }
 
