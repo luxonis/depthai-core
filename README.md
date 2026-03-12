@@ -12,11 +12,6 @@ DepthAI library for interfacing with Luxonis DepthAI hardware. It's written in C
 >   [`v2_stable` branch](https://github.com/luxonis/depthai-core/tree/v2_stable).
 > * Need to migrate? Follow the step-by-step [v2 → v3 Porting Guide](./V2V3PortinGuide.md).
 
->  **Important — You’re viewing the `v2.x.y` branch.**
->
-> * For the latest version with support for RVC4 devices, please switch to the
->   [`main` branch](https://github.com/luxonis/depthai-core/tree/main).
-
 ## Documentation
 Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/software-v3/depthai/)
 
