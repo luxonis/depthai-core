@@ -320,8 +320,7 @@ with contextlib.ExitStack() as stack:
                 waitingForSync = False
 
             if not syncStatus and not waitingForSync:
-                print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
-                running = False
+                continue
 
             color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
 
