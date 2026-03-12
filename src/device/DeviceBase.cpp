@@ -32,6 +32,9 @@
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "device/DeviceGate.hpp"
 #include "pipeline/Pipeline.hpp"
+#include "pipeline/PipelineSchema.hpp"
+#include "depthai/properties/CameraProperties.hpp"
+#include "pipeline/datatype/CameraControl.hpp"
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Files.hpp"
@@ -77,6 +80,26 @@ thread_local std::optional<std::chrono::milliseconds> ScopedRpcTimeout::tlRpcTim
 
 std::optional<std::chrono::milliseconds> currentRpcTimeout() {
     return ScopedRpcTimeout::tlRpcTimeout;
+}
+
+bool isPtpUsed(dai::PipelineSchema &schema) {
+    // find all camera nodes
+    for (const auto &[id, nodeInfo] : schema.nodes) {
+        try {
+            if(nodeInfo.name == "Camera") {
+                dai::CameraProperties props;
+                dai::utility::deserialize(nodeInfo.properties, props);  // LIBNOP by default
+                if (props.initialControl.getCommand(dai::CameraControl::Command::FRAME_SYNC)) {
+                    if (props.initialControl.frameSyncMode == dai::CameraControl::FrameSyncMode::TIME_PTP) {
+                        return true;
+                    }
+                }
+            }
+        } catch(const std::exception& e) {
+            dai::logger::error("Exception during deserializing properties: {}", e.what());
+        }
+    }
+    return false;
 }
 
 }  // namespace
@@ -1858,11 +1881,13 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     bool success = false;
     std::string errorMsg;
 
-    // Initialize the device (External frame sync slaves need to lock onto the signal first)
-    std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
+    if (!isPtpUsed(schema)) {
+        // Initialize the device (External frame sync slaves need to lock onto the signal first)
+        std::tie(success, errorMsg) = pimpl->rpcCall(std::chrono::seconds(60), "waitForDeviceReady").as<std::tuple<bool, std::string>>();
 
-    if(!success) {
-        throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
+        if(!success) {
+            throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
+        }
     }
 
     // Build and start the pipeline
