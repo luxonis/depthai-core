@@ -110,7 +110,7 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
 
     gate->initialConfig->open = false;
     gate->initialConfig->fps = GATE_FPS_DEFAULT;
-    dynamicCalibration->syncInput.setMaxSize(std::max(initialConfig->validationSetSize, 2));
+    dynamicCalibration->syncInput.setMaxSize(1);
     return std::static_pointer_cast<AutoCalibration>(shared_from_this());
 }
 
@@ -137,6 +137,7 @@ void AutoCalibration::loadData(unsigned int numImages) {
         coverageQueue.get<dai::CoverageData>();  // wait until the data are loaded
     }
     gateControlQueue.send(dai::GateControl::closeGate());
+    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
 }
 
 std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration) {
@@ -173,6 +174,8 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             if(dynCalibrationResult->calibrationData) {
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue.send(dai::GateControl::closeGate());
+                    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+                    dynamicCalibrationCommandQueue.send(DCC::resetData());
                     report.numIterationPerRecalibration = i + 1;
                     report.dataQualityAfterRecalibration = dynCalibrationResult->calibrationData.value().dataConfidence;
                     report.recalibrationPassed = true;
@@ -200,6 +203,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     report.recalibrationPassed = false;
     report.numIterationPerRecalibration = maxNumIteration;
     gateControlQueue.send(dai::GateControl::closeGate());
+    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
     report.elapsedRecalibrationSeconds = elapsed.count();
