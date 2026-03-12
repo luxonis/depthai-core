@@ -2,6 +2,7 @@
 
 #include <sys/types.h>
 
+#include "depthai/common/ProcessorType.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
@@ -20,9 +21,14 @@ struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
      */
     int32_t syncAttempts = -1;
 
+    /**
+     * Which processor should execute the node.
+     */
+    ProcessorType processor = ProcessorType::LEON_CSS;
+
     ~SyncProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts);
+DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts, processor);
 
 }  // namespace dai

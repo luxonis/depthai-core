@@ -175,7 +175,11 @@ class CrashDumpRVC2 final : public CrashDump {
         };
 
         std::vector<ThreadCallstack> threadCallstack;
-        DEPTHAI_SERIALIZE(CrashReport, processor, errorSource, crashedThreadId, errorSourceInfo, threadCallstack);
+        std::vector<std::string> prints;
+        uint64_t uptimeNs = 0;
+        uint64_t timerRaw = 0;
+        uint64_t statusFlags = 0;
+        DEPTHAI_SERIALIZE(CrashReport, processor, errorSource, crashedThreadId, errorSourceInfo, threadCallstack, prints, uptimeNs, timerRaw, statusFlags);
     };
 
     struct CrashReportCollection {
