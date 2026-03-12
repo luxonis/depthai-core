@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <iostream>
@@ -7,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -39,6 +41,7 @@ dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline, dai::
 
 std::shared_ptr<dai::node::Sync> createSyncNode(std::shared_ptr<dai::Pipeline>& masterPipeline,
                                                 std::map<std::string, dai::Node::Output*>& masterNode,
+                                                const std::string& masterName,
                                                 std::chrono::nanoseconds syncThreshold,
                                                 std::vector<std::string>& outputNames,
                                                 std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
@@ -47,7 +50,7 @@ std::shared_ptr<dai::node::Sync> createSyncNode(std::shared_ptr<dai::Pipeline>& 
     sync->setRunOnHost(true);
     sync->setSyncThreshold(syncThreshold);
     for(auto p : masterNode) {
-        auto name = std::string("master_") + p.first;
+        auto name = std::string("master_") + masterName + "_" + p.first;
         p.second->link(sync->inputs[name]);
         outputNames.push_back(name);
     }
@@ -124,10 +127,10 @@ void setUpIrLeds(std::shared_ptr<dai::Device> device) {
 void setupDevice(dai::DeviceInfo& deviceInfo,
                  std::shared_ptr<dai::Pipeline>& masterPipeline,
                  std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
+                 std::optional<std::string>& masterName,
                  std::map<std::string, std::shared_ptr<dai::Pipeline>>& slavePipelines,
                  std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
                  std::vector<std::string>& camSockets,
-                 std::vector<std::string>& sockets,
                  float targetFps) {
     auto pipeline = std::make_shared<dai::Pipeline>(std::make_shared<dai::Device>(deviceInfo));
     auto device = pipeline->getDefaultDevice();
@@ -144,9 +147,6 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
     for(auto socket : device->getConnectedCameras()) {
-        if(std::find(sockets.begin(), sockets.end(), dai::toString(socket)) == sockets.end()) {
-            continue;
-        }
         setUpCameraSocket(pipeline, socket, name, targetFps, role, masterNode, slaveQueues, camSockets);
     }
 
@@ -160,6 +160,7 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
             throw std::runtime_error("Only one master pipeline is supported");
         }
         masterPipeline = pipeline;
+        masterName = name;
     } else if(role == dai::ExternalFrameSyncRole::SLAVE) {
         slavePipelines[name] = pipeline;
         std::cout << device->getDeviceId() << " is slave" << std::endl;
@@ -169,24 +170,19 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
 }
 
 int testFsync(
-    float targetFps, double syncThresholdSec, uint64_t testDurationSec, int recvAllTimeoutSec, int initialSyncTimeoutSec, std::vector<std::string> sockets) {
+    float targetFps, double syncThresholdSec, uint64_t testDurationSec, int recvAllTimeoutSec, int initialSyncTimeoutSec) {
     std::cout << "=================================\x1B[1;32mTest started\x1B[0m================================" << std::endl;
     std::cout << "FPS: " << targetFps << std::endl;
     std::cout << "SYNC_THRESHOLD_SEC: " << syncThresholdSec << std::endl;
     std::cout << "RECV_ALL_TIMEOUT_SEC: " << recvAllTimeoutSec << std::endl;
     std::cout << "INITIAL_SYNC_TIMEOUT_SEC: " << initialSyncTimeoutSec << std::endl;
-    std::cout << "SOCKETS: ";
-    for(auto s : sockets) {
-        std::cout << s << " ";
-    }
-    std::cout << std::endl;
-
     std::vector<dai::DeviceInfo> deviceInfos = dai::Device::getAllAvailableDevices();
 
     REQUIRE_MSG(deviceInfos.size() >= 2, "At least two devices are required for this test.");
 
     std::shared_ptr<dai::Pipeline> masterPipeline;
     std::optional<std::map<std::string, dai::Node::Output*>> masterNode;
+    std::optional<std::string> masterName;
 
     std::map<std::string, std::shared_ptr<dai::Pipeline>> slavePipelines;
     std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>> slaveQueues;
@@ -196,10 +192,10 @@ int testFsync(
     std::vector<std::string> camSockets;
 
     for(auto deviceInfo : deviceInfos) {
-        setupDevice(deviceInfo, masterPipeline, masterNode, slavePipelines, slaveQueues, camSockets, sockets, targetFps);
+        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps);
     }
 
-    if(masterPipeline == nullptr || !masterNode.has_value()) {
+    if(masterPipeline == nullptr || !masterNode.has_value() || !masterName.has_value()) {
         throw std::runtime_error("No master detected!");
     }
     if(slavePipelines.size() < 1) {
@@ -207,7 +203,7 @@ int testFsync(
     }
 
     auto sync =
-        createSyncNode(masterPipeline, *masterNode, std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))), outputNames, slaveQueues, inputQueues);
+        createSyncNode(masterPipeline, *masterNode, *masterName, std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))), outputNames, slaveQueues, inputQueues);
     auto queue = sync->out.createOutputQueue();
 
     masterPipeline->start();
@@ -223,16 +219,42 @@ int testFsync(
     std::optional<std::chrono::time_point<std::chrono::steady_clock>> initialSyncTime;
 
     bool waitingForInitialSync = true;
+    std::atomic_bool running{true};
 
-    while(true) {
-        for(auto p : slaveQueues) {
-            for(auto q : p.second) {
-                while(q.second->has()) {
-                    inputQueues[std::string("slave_") + p.first + "_" + q.first]->send(q.second->get());
+    auto dataCollector = [&](const std::string& deviceName, const std::string& socketName) {
+        const auto queueName = std::string("slave_") + deviceName + "_" + socketName;
+        auto camOutputQueue = slaveQueues.at(deviceName).at(socketName);
+        auto inputQueue = inputQueues.at(queueName);
+        while(running.load()) {
+            if(camOutputQueue->has()) {
+                inputQueue->send(camOutputQueue->get());
+            } else {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+    };
+
+    std::vector<std::thread> threads;
+    for(const auto& slaveEntry : slaveQueues) {
+        for(const auto& socketEntry : slaveEntry.second) {
+            threads.emplace_back(dataCollector, slaveEntry.first, socketEntry.first);
+        }
+    }
+
+    struct ThreadsGuard {
+        std::atomic_bool& running;
+        std::vector<std::thread>& threads;
+        ~ThreadsGuard() {
+            running.store(false);
+            for(auto& thread : threads) {
+                if(thread.joinable()) {
+                    thread.join();
                 }
             }
         }
+    } threadsGuard{running, threads};
 
+    while(true) {
         while(queue->has()) {
             auto syncData = queue->get();
             REQUIRE_MSG(syncData != nullptr, "Sync node failed to receive message");
@@ -254,6 +276,7 @@ int testFsync(
 
         if(totalElapsedSec >= testDurationSec) {
             std::cout << "Timeout: Test finished after " << totalElapsedSec << " sec" << std::endl;
+            running.store(false);
             break;
         }
 
@@ -304,5 +327,5 @@ TEST_CASE("Test Multi-device Fsync with different FPS values", "[fsync]") {
     // auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f, 120.0f, 240.0f, 300.0f, 600.0f);
     auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 60.0f);
     CAPTURE(fps);
-    testFsync(fps, 1e-3, 60, 10, 4, {"CAM_B"});
+    testFsync(fps, 1e-3, 60, 10, 4);
 }
