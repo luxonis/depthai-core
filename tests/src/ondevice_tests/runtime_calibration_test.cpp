@@ -81,3 +81,19 @@ TEST_CASE("Test device setCalibration before pipeline build") {
 
     p.stop();
 }
+
+TEST_CASE("Test pipeline setCalibration before pipeline build") {
+    dai::Pipeline p;
+    auto camQ = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A)->requestOutput({640, 480})->createOutputQueue();
+    dai::CalibrationHandler calibHandler = p.getDefaultDevice()->readCalibration();
+    calibHandler.validateCalibrationHandler();
+    calibHandler.setDeviceName("test_device_name");
+    p.setCalibrationData(calibHandler);
+
+    p.start();
+
+    auto calibPostStart = p.getDefaultDevice()->getCalibration();
+    REQUIRE(calibPostStart.getEepromData().deviceName == "test_device_name");
+
+    p.stop();
+}

@@ -32,7 +32,7 @@ void uploadFailureCallback(dai::utility::SendSnapCallbackResult sendSnapResult) 
             std::cout << "File upload was unsuccessful!" << std::endl;
             break;
         case dai::utility::SendSnapCallbackStatus::SEND_EVENT_FAILED:
-            std::cout << "Snap could not been sent to the hub, following successful file upload!" << std::endl;
+            std::cout << "Snap could not be sent to the hub, following successful file upload!" << std::endl;
             break;
         default:
             break;
@@ -42,8 +42,8 @@ void uploadFailureCallback(dai::utility::SendSnapCallbackResult sendSnapResult) 
 int main() {
     dai::Pipeline pipeline(true);
 
-    // Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or use the EventsManager setToken() method.
-    auto eventsManager = std::make_shared<dai::utility::EventsManager>();
+    // Set your Hub team's api-key using the environment variable DEPTHAI_HUB_API_KEY. Or pass the key when creating the EventsManager instance.
+    auto eventsManager = std::make_shared<dai::utility::EventsManager>("");
 
     auto camRgb = pipeline.create<dai::node::Camera>()->build();
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
@@ -63,6 +63,7 @@ int main() {
     while(pipeline.isRunning()) {
         auto key = cv::waitKey(1);
         if(key == 'q') {
+            pipeline.stop();
             break;
         }
 
@@ -116,6 +117,14 @@ int main() {
                 std::cout << "Snap was not successfully added to the EventsManager" << std::endl;
             }
         }
+    }
+
+    cv::destroyAllWindows();
+    // Wait for pending snaps to be uploaded
+    if(eventsManager->waitForPendingUploads()) {
+        std::cout << "Pending uploads have been successfully uploaded" << std::endl;
+    } else {
+        std::cout << "Pending uploads were discarded, due to timeout or dropped connection" << std::endl;
     }
 
     return EXIT_SUCCESS;

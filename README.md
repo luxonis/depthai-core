@@ -166,7 +166,7 @@ cmake --build build
 
 <!-- ### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
 
-To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
+To integrate into a different build system than CMake, the preferred way is compiling as dynamic library and setting correct build options.
 1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
 2. Then install: [Installing](#installing)
 
@@ -234,6 +234,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
 | DEPTHAI_PROFILING | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print. |
 | DEPTHAI_PIPELINE_DEBUGGING | Enables pipeline debugging with state dumps. DEPTHAI_LEVEL=trace is required to print the state dumps. |
+| DEPTHAI_AUTOCALIBRATION | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). DEPTHAI_AUTOCALIBRATION=CONTINUOUS: runs check repetitively; DEPTHAI_AUTOCALIBRATION=ON_START: runs calibration only at the start of the pipeline; DEPTHAI_AUTOCALIBRATION=OFF: no recalibration. |
 
 ## Running tests
 
@@ -314,4 +315,3 @@ You can do this by passing the `--parallel` flag with a lower number of jobs to 
 ```
 cmake --build build --parallel 2
 ```
-

@@ -173,7 +173,7 @@ class SegmentationMask : public Buffer, public ProtoSerializable {
     std::vector<std::vector<dai::Point2f>> getContour(uint8_t index);
 
     /**
-     * Returns a bounding box for each continous region with the specified index.
+     * Returns a bounding box for each continuous region with the specified index.
      * @param index class index
      * @param calculateRotation If true, returns rotated bounding boxes, otherwise returns the outer, axis-aligned bounding boxes.
      */

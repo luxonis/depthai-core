@@ -1,3 +1,4 @@
+#include <iostream>
 #include <opencv2/opencv.hpp>
 #include <optional>
 
@@ -9,29 +10,39 @@ constexpr int FPS = 480;
 int main() {
     dai::Pipeline pipeline;
 
-    auto platform = pipeline.getDefaultDevice()->getPlatform();
+    auto device = pipeline.getDefaultDevice();
+    auto platform = device->getPlatform();
     if(platform != dai::Platform::RVC4) {
-        std::cerr << "This example is only supported on RVC4 devices\n" << std::flush;
-        return -1;
+        std::cerr << "This example is only supported on IMX586 and Luxonis OS 1.20.5 or higher\n" << std::flush;
+        return 0;
     }
 
-    auto cam = pipeline.create<dai::node::Camera>()->build();
+    // Exit cleanly if the selected HFR mode is not advertised by CAM_A.
+    bool supportsRequestedFps = false;
+    for(const auto& cameraFeature : device->getConnectedCameraFeatures()) {
+        if(cameraFeature.socket != dai::CameraBoardSocket::CAM_A) continue;
+        for(const auto& config : cameraFeature.configs) {
+            if(config.width == SIZE.first && config.height == SIZE.second && config.maxFps >= static_cast<float>(FPS)) {
+                supportsRequestedFps = true;
+                break;
+            }
+        }
+        break;
+    }
+    if(!supportsRequestedFps) {
+        std::cerr << "This example is only supported on IMX586 and Luxonis OS 1.20.5 or higher\n" << std::flush;
+        return 0;
+    }
+
+    auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::AUTO, std::nullopt, static_cast<float>(FPS));
     auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
     benchmarkIn->setRunOnHost(true);
     benchmarkIn->sendReportEveryNMessages(FPS);
 
-    auto imageManip = pipeline.create<dai::node::ImageManip>();
-    imageManip->initialConfig->setOutputSize(250, 250);
-    imageManip->setMaxOutputFrameSize(static_cast<int>(250 * 250 * 1.6));
+    auto* output = cam->requestOutput(std::make_pair(250U, 250U));
+    output->link(benchmarkIn->input);
 
-    // One of the two modes can be selected
-    // NOTE: Generic resolutions are not yet supported through camera node when using HFR mode
-    auto* output = cam->requestOutput(SIZE, std::nullopt, dai::ImgResizeMode::CROP, static_cast<float>(FPS));
-
-    output->link(imageManip->inputImage);
-    imageManip->out.link(benchmarkIn->input);
-
-    auto outputQueue = imageManip->out.createOutputQueue();
+    auto outputQueue = output->createOutputQueue();
 
     pipeline.start();
 

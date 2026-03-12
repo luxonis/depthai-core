@@ -661,7 +661,7 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const std::filesystem
 }
 
 void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect) {
-    // Initalize depthai library if not already
+    // Initialize depthai library if not already
     if(!dumpOnly) initialize();
 
     // Save previous state in case of a reconnection attempt
@@ -1059,7 +1059,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
         // Below can throw - make sure to gracefully exit threads
         try {
-            // Starts and waits for inital timesync
+            // Starts and waits for initial timesync
             setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
         } catch(const std::exception&) {
             // close device (cleanup)
@@ -1572,6 +1572,17 @@ void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
     if(!success) {
         throw std::runtime_error(errorMsg);
     }
+}
+
+std::shared_ptr<CalibrationHandler> DeviceBase::tryGetCalibration() {
+    bool success;
+    std::string errorMsg;
+    dai::EepromData eepromData;
+    std::tie(success, errorMsg, eepromData) = pimpl->rpcCall("getCalibration").as<std::tuple<bool, std::string, dai::EepromData>>();
+    if(!success) {
+        return nullptr;
+    }
+    return std::make_shared<CalibrationHandler>(eepromData);
 }
 
 CalibrationHandler DeviceBase::getCalibration() {

@@ -646,6 +646,10 @@ endif()
 dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
 dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
 
+# EEPROM undistortion test (RVC2 only)
+dai_add_test(eeprom_undistortion_test src/ondevice_tests/eeprom_undistortion_test.cpp)
+dai_set_test_labels(eeprom_undistortion_test ondevice rvc2_all ci)
+
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
 dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
@@ -764,3 +768,7 @@ dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
 # Gate tests
 dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
 dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci)
+
+# AutoCalibration test
+dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)
+dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)

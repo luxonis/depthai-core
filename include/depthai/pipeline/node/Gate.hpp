@@ -23,6 +23,8 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
    public:
     Gate(std::unique_ptr<Properties> props);
 
+    Gate() = default;
+
     std::shared_ptr<GateControl> initialConfig = std::make_shared<GateControl>();
 
     constexpr static const char* NAME = "Gate";
@@ -70,14 +72,19 @@ class Gate : public DeviceNodeCRTP<DeviceNode, Gate, GateProperties> {
     void run() override;
 
    private:
+    std::chrono::steady_clock::time_point nextTargetTime;
+
     const std::vector<std::reference_wrapper<MessageQueue>> inputs = {inputControl, input};
+
     bool runOnHostVar = false;
 
-    std::shared_ptr<GateControl> sendMessages();
+    std::shared_ptr<GateControl> sendMessages(int fps);
 
-    std::shared_ptr<GateControl> sendMessages(int numMessages);
+    std::shared_ptr<GateControl> sendMessages(int numMessages, int fps);
 
     std::shared_ptr<GateControl> waitForCommand();
+
+    void sleepUntilNextSending(int fps, bool& started);
 };
 
 }  // namespace node

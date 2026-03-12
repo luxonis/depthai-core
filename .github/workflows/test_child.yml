@@ -12,6 +12,10 @@ on:
         required: false
         type: string
         default: "[]"
+      luxonis_os_versions_to_test_usb:
+        required: false
+        type: string
+        default: "[]"
     secrets:
       CONTAINER_REGISTRY:
         required: true
@@ -92,6 +96,31 @@ jobs:
           path: rvc4_test_output.log
           if-no-files-found: warn
 
+ linux_rvc4_usb_test:
+      needs: [build_docker_container]
+      strategy:
+        matrix:
+          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
+        fail-fast: false
+      runs-on: ['self-hosted', 'testbed-runner']
+      steps:
+      - uses: actions/checkout@v3
+
+      - name: Run RVC4 tests
+        run: |
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-usb"
+          set -o pipefail
+          hil_runner --models "oak4_pro or oak4_d" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4usb" 2>&1 | tee rvc4_usb_test_output.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-${{ inputs.flavor }}-linux_rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
+          path: rvc4_usb_test_output.log
+          if-no-files-found: warn
+
  linux_rvc4_rgb_test:
       needs: [build_docker_container]
       strategy:
@@ -119,7 +148,7 @@ jobs:
 
  report_linux_test_results:
     name: Report Linux test results (${{ inputs.flavor }})
-    needs: [linux_rvc2_test, linux_rvc4_test, linux_rvc4_rgb_test]
+    needs: [linux_rvc2_test, linux_rvc4_test,linux_rvc4_usb_test, linux_rvc4_rgb_test]
     if: always()
     runs-on: ubuntu-latest
     permissions:
