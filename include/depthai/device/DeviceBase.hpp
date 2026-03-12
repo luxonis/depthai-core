@@ -386,6 +386,16 @@ class DeviceBase {
     void setSippDmaBufferSize(int sizeBytes);
 
     /**
+     * Sets the maximum transmission rate for the XLink connection on device side,
+     * using a simple token bucket algorithm. Useful for bandwidth throttling
+     *
+     * @param maxRateBytesPerSecond Rate limit in Bytes/second
+     * @param burstSize Size in Bytes for how much to attempt to send once, 0 = auto
+     * @param waitUs Time in microseconds to wait for replenishing tokens, 0 = auto
+     */
+    void setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize = 0, int waitUs = 0);
+
+    /**
      * Get the Device Info object o the device which is currently running
      *
      * @return DeviceInfo of the current device in execution
@@ -464,6 +474,14 @@ class DeviceBase {
      * For OAK-D-Pro it should be `[{"LM3644", 2, 0x63}]`
      */
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
+
+    /**
+     * Retrieves current device state in a crash dump format.
+     * It halts the device temporarily and might affect the running pipeline,
+     * it's best to close the device after this operation.
+     * Supported only on RVC2.
+     */
+    dai::CrashDump getState();
 
     /**
      * Retrieves crash dump for debugging.

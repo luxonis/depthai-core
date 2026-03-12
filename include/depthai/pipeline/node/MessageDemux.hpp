@@ -36,6 +36,18 @@ class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemu
     bool runOnHost() const override;
 
     void run() override;
+
+    /**
+     * Specify on which processor the node should run. RVC2 only.
+     * @param type Processor type - Leon CSS or Leon MSS
+     */
+    void setProcessor(ProcessorType type);
+
+    /**
+     * Get on which processor the node should run
+     * @returns Processor type - Leon CSS or Leon MSS
+     */
+    ProcessorType getProcessor() const;
 };
 
 }  // namespace node
