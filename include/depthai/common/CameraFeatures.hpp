@@ -18,8 +18,10 @@ struct CameraSensorConfig {
     /// Sensor active view area in physical area [pixels]
     Rect fov;
     CameraSensorType type;
+    bool hdr = false;
+    bool hfr = false;
 };
-DEPTHAI_SERIALIZE_EXT(CameraSensorConfig, width, height, minFps, maxFps, fov, type);
+DEPTHAI_SERIALIZE_EXT(CameraSensorConfig, width, height, minFps, maxFps, fov, type, hdr, hfr);
 
 /**
  * CameraFeatures structure
@@ -134,6 +136,8 @@ inline std::ostream& operator<<(std::ostream& out, const dai::CameraSensorConfig
     out << "y: " << config.fov.y << ", ";
     out << "width: " << config.fov.width << ", ";
     out << "height: " << config.fov.height << "}";
+    out << ", hdr: " << config.hdr << ", ";
+    out << "hfr: " << config.hfr;
     out << "}";
     return out;
 }
