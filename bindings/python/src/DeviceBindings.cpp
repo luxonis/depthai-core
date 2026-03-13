@@ -1,18 +1,13 @@
 #include "DeviceBindings.hpp"
 
 // depthai
+#include "depthai/device/CrashDump.hpp"
 #include "depthai/device/Device.hpp"
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Clock.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
-
-// pybind11_json
-#include "pybind11_json/pybind11_json.hpp"
-
-// std
-#include <filesystem>
 
 // std::chrono bindings
 #include <pybind11/chrono.h>
@@ -134,6 +129,16 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<DeviceBase, std::shared_ptr<DeviceBase>> deviceBase(m, "DeviceBase", DOC(dai, DeviceBase));
     py::class_<Device, DeviceBase, std::shared_ptr<Device>> device(m, "Device", DOC(dai, Device));
     py::class_<Device::Config> deviceConfig(device, "Config", DOC(dai, DeviceBase, Config));
+    py::class_<CrashDump> crashDump(m, "CrashDump", DOC(dai, CrashDump));
+    py::class_<CrashDump::CrashReport> crashReport(crashDump, "CrashReport", DOC(dai, CrashDump, CrashReport));
+    py::class_<CrashDump::CrashReport::ErrorSourceInfo> errorSourceInfo(crashReport, "ErrorSourceInfo", DOC(dai, CrashDump, CrashReport, ErrorSourceInfo));
+    py::class_<CrashDump::CrashReport::ErrorSourceInfo::AssertContext> assertContext(
+        errorSourceInfo, "AssertContext", DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, AssertContext));
+    py::class_<CrashDump::CrashReport::ErrorSourceInfo::TrapContext> trapContext(
+        errorSourceInfo, "TrapContext", DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, TrapContext));
+    py::class_<CrashDump::CrashReport::ThreadCallstack> threadCallstack(crashReport, "ThreadCallstack", DOC(dai, CrashDump, CrashReport, ThreadCallstack));
+    py::class_<CrashDump::CrashReport::ThreadCallstack::CallstackContext> callstackContext(
+        threadCallstack, "CallstackContext", DOC(dai, CrashDump, CrashReport, ThreadCallstack, CallstackContext));
     py::class_<BoardConfig> boardConfig(m, "BoardConfig", DOC(dai, BoardConfig));
     py::class_<BoardConfig::USB> boardConfigUsb(boardConfig, "USB", DOC(dai, BoardConfig, USB));
     py::class_<BoardConfig::Network> boardConfigNetwork(boardConfig, "Network", DOC(dai, BoardConfig, Network));
@@ -146,6 +151,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<BoardConfig::GPIO::Drive> boardConfigGpioDrive(boardConfigGpio, "Drive", DOC(dai, BoardConfig, GPIO, Drive));
     py::class_<BoardConfig::UART> boardConfigUart(boardConfig, "UART", DOC(dai, BoardConfig, UART));
     py::class_<BoardConfig::UVC> boardConfigUvc(boardConfig, "UVC", DOC(dai, BoardConfig, UVC));
+    py::enum_<Platform> platform(m, "Platform", DOC(dai, Platform));
     struct PyClock {};
     py::class_<PyClock> clock(m, "Clock");
 
@@ -248,10 +254,19 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("frameType", &BoardConfig::UVC::frameType)
         .def_readwrite("enable", &BoardConfig::UVC::enable);
 
+    // Bind Platform
+    platform.value("RVC2", Platform::RVC2, DOC(dai, Platform, RVC2))
+        .value("RVC3", Platform::RVC3, DOC(dai, Platform, RVC3))
+        .value("RVC4", Platform::RVC4, DOC(dai, Platform, RVC4));
+
     // Bind Device::ReconnectionStatus
     enumReconnectionStatus.value("RECONNECT_FAILED", Device::ReconnectionStatus::RECONNECT_FAILED);
     enumReconnectionStatus.value("RECONNECTED", Device::ReconnectionStatus::RECONNECTED);
     enumReconnectionStatus.value("RECONNECTING", Device::ReconnectionStatus::RECONNECTING);
+
+    // Platform - string conversion
+    m.def("platform2string", &platform2string, DOC(dai, platform2string));
+    m.def("string2platform", &string2platform, DOC(dai, string2platform));
 
     // Bind BoardConfig
     boardConfig.def(py::init<>())
@@ -280,6 +295,73 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("outputLogLevel", &Device::Config::outputLogLevel)
         .def_readwrite("logLevel", &Device::Config::logLevel);
 
+    // Bind CrashDump
+    crashDump.def(py::init<>())
+        .def("serializeToJson", &CrashDump::serializeToJson, DOC(dai, CrashDump, serializeToJson))
+
+        .def_readwrite("crashReports", &CrashDump::crashReports, DOC(dai, CrashDump, crashReports))
+        .def_readwrite("depthaiCommitHash", &CrashDump::depthaiCommitHash, DOC(dai, CrashDump, depthaiCommitHash))
+        .def_readwrite("deviceId", &CrashDump::deviceId, DOC(dai, CrashDump, deviceId));
+
+    crashReport.def(py::init<>())
+        .def_readwrite("processor", &CrashDump::CrashReport::processor, DOC(dai, CrashDump, CrashReport, processor))
+        .def_readwrite("errorSource", &CrashDump::CrashReport::errorSource, DOC(dai, CrashDump, CrashReport, errorSource))
+        .def_readwrite("crashedThreadId", &CrashDump::CrashReport::crashedThreadId, DOC(dai, CrashDump, CrashReport, crashedThreadId))
+        .def_readwrite("threadCallstack", &CrashDump::CrashReport::threadCallstack, DOC(dai, CrashDump, CrashReport, threadCallstack));
+
+    errorSourceInfo.def(py::init<>())
+        .def_readwrite(
+            "assertContext", &CrashDump::CrashReport::ErrorSourceInfo::assertContext, DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, assertContext))
+        .def_readwrite("trapContext", &CrashDump::CrashReport::ErrorSourceInfo::trapContext, DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, trapContext))
+        .def_readwrite("errorId", &CrashDump::CrashReport::ErrorSourceInfo::errorId, DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, errorId));
+
+    assertContext.def(py::init<>())
+        .def_readwrite("fileName",
+                       &CrashDump::CrashReport::ErrorSourceInfo::AssertContext::fileName,
+                       DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, AssertContext, fileName))
+        .def_readwrite("functionName",
+                       &CrashDump::CrashReport::ErrorSourceInfo::AssertContext::functionName,
+                       DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, AssertContext, functionName))
+        .def_readwrite(
+            "line", &CrashDump::CrashReport::ErrorSourceInfo::AssertContext::line, DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, AssertContext, line));
+
+    trapContext.def(py::init<>())
+        .def_readwrite("trapNumber",
+                       &CrashDump::CrashReport::ErrorSourceInfo::TrapContext::trapNumber,
+                       DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, TrapContext, trapNumber))
+        .def_readwrite("trapAddress",
+                       &CrashDump::CrashReport::ErrorSourceInfo::TrapContext::trapAddress,
+                       DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, TrapContext, trapAddress))
+        .def_readwrite("trapName",
+                       &CrashDump::CrashReport::ErrorSourceInfo::TrapContext::trapName,
+                       DOC(dai, CrashDump, CrashReport, ErrorSourceInfo, TrapContext, trapName));
+
+    threadCallstack.def(py::init<>())
+        .def_readwrite("threadId", &CrashDump::CrashReport::ThreadCallstack::threadId, DOC(dai, CrashDump, CrashReport, ThreadCallstack, threadId))
+        .def_readwrite("threadName", &CrashDump::CrashReport::ThreadCallstack::threadName, DOC(dai, CrashDump, CrashReport, ThreadCallstack, threadName))
+        .def_readwrite("stackBottom", &CrashDump::CrashReport::ThreadCallstack::stackBottom, DOC(dai, CrashDump, CrashReport, ThreadCallstack, stackBottom))
+        .def_readwrite("stackTop", &CrashDump::CrashReport::ThreadCallstack::stackTop, DOC(dai, CrashDump, CrashReport, ThreadCallstack, stackTop))
+        .def_readwrite("stackPointer", &CrashDump::CrashReport::ThreadCallstack::stackPointer, DOC(dai, CrashDump, CrashReport, ThreadCallstack, stackPointer))
+        .def_readwrite("instructionPointer",
+                       &CrashDump::CrashReport::ThreadCallstack::instructionPointer,
+                       DOC(dai, CrashDump, CrashReport, ThreadCallstack, instructionPointer))
+        .def_readwrite("threadStatus", &CrashDump::CrashReport::ThreadCallstack::threadStatus, DOC(dai, CrashDump, CrashReport, ThreadCallstack, threadStatus))
+        .def_readwrite("callStack", &CrashDump::CrashReport::ThreadCallstack::callStack, DOC(dai, CrashDump, CrashReport, ThreadCallstack, callStack));
+
+    callstackContext.def(py::init<>())
+        .def_readwrite("callSite",
+                       &CrashDump::CrashReport::ThreadCallstack::CallstackContext::callSite,
+                       DOC(dai, CrashDump, CrashReport, ThreadCallstack, CallstackContext, callSite))
+        .def_readwrite("calledTarget",
+                       &CrashDump::CrashReport::ThreadCallstack::CallstackContext::calledTarget,
+                       DOC(dai, CrashDump, CrashReport, ThreadCallstack, CallstackContext, calledTarget))
+        .def_readwrite("framePointer",
+                       &CrashDump::CrashReport::ThreadCallstack::CallstackContext::framePointer,
+                       DOC(dai, CrashDump, CrashReport, ThreadCallstack, CallstackContext, framePointer))
+        .def_readwrite("context",
+                       &CrashDump::CrashReport::ThreadCallstack::CallstackContext::context,
+                       DOC(dai, CrashDump, CrashReport, ThreadCallstack, CallstackContext, context));
+
     // Bind constructors
     bindConstructors<DeviceBase>(deviceBase);
     // Bind the rest
@@ -305,7 +387,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.isClosed();
             },
             DOC(dai, DeviceBase, isClosed))
-        .def("hasCrashed", &DeviceBase::hasCrashed, DOC(dai, DeviceBase, hasCrashed))
         .def("setMaxReconnectionAttempts",
              &DeviceBase::setMaxReconnectionAttempts,
              py::arg("maxAttempts"),
@@ -386,7 +467,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBase, getSystemInformationLoggingRate))
         .def(
             "getCrashDump",
-            [](DeviceBase& d, bool clearCrashDump) -> std::shared_ptr<CrashDump> {
+            [](DeviceBase& d, bool clearCrashDump) {
                 py::gil_scoped_release release;
                 return d.getCrashDump(clearCrashDump);
             },
@@ -401,7 +482,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBase, hasCrashDump))
         .def(
             "getState",
-            [](DeviceBase& d) -> std::shared_ptr<CrashDump> {
+            [](DeviceBase& d) {
                 py::gil_scoped_release release;
                 return d.getState();
             },
@@ -556,32 +637,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             py::arg("callbackId"),
             DOC(dai, DeviceBase, removeLogCallback))
-        .def(
-            "registerCrashdumpCallback",
-            [](DeviceBase& d, std::function<void(std::shared_ptr<CrashDump>)> callback) {
-                py::gil_scoped_release release;
-                // Create a python-compatible callback function that acquires the GIL
-                auto pythonCallback = [callback](std::shared_ptr<CrashDump> dump) {
-                    py::gil_scoped_acquire acquire;
-                    callback(dump);
-
-                    // After callback, sync _extra_dict to native extra
-                    py::object pyDump = py::cast(dump);
-                    if(py::hasattr(pyDump, "_extra_dict")) {
-                        dump->extra = pyjson::to_json(pyDump.attr("_extra_dict"));
-                    }
-                };
-                d.registerCrashdumpCallback(std::move(pythonCallback));
-            },
-            py::arg("callback"),
-            DOC(dai, DeviceBase, registerCrashdumpCallback))
-        .def(
-            "removeCrashdumpCallback",
-            [](DeviceBase& d) {
-                py::gil_scoped_release release;
-                d.removeCrashdumpCallback();
-            },
-            DOC(dai, DeviceBase, removeCrashdumpCallback))
         .def(
             "getUsbSpeed",
             [](DeviceBase& d) {
@@ -864,12 +919,12 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 py::gil_scoped_release release;
                 return d.isNeuralDepthSupported();
             },
-            DOC(dai, DeviceBase, isNeuralDepthSupported))
-        .def("getPlatform", &DeviceBase::getPlatform, DOC(dai, DeviceBase, getPlatform))
-        .def("getPlatformAsString", &DeviceBase::getPlatformAsString, DOC(dai, DeviceBase, getPlatformAsString));
-
+            DOC(dai, DeviceBase, isNeuralDepthSupported));
     // Bind constructors
     bindConstructors<Device>(device);
+
+    device.def("getPlatform", &Device::getPlatform, DOC(dai, Device, getPlatform))
+        .def("getPlatformAsString", &Device::getPlatformAsString, DOC(dai, Device, getPlatformAsString));
 
     clock.def("now", &Clock::now);
 }

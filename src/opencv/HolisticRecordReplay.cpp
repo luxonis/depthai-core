@@ -200,7 +200,7 @@ bool setupHolisticReplay(Pipeline pipeline,
         std::string videoExt = ".mp4";
         std::filesystem::path rootPath = useTar ? platform::getTempPath() : replayPath;
         if(useTar)
-            tarNodenames = filenamesInArchive(replayPath);
+            tarNodenames = filenamesInTar(replayPath);
         else
             tarNodenames = platform::getFilenamesInDirectory(replayPath);
         hasCalibration = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
@@ -282,7 +282,7 @@ bool setupHolisticReplay(Pipeline pipeline,
                 outFiles.push_back(calibrationPath);
                 outFilenames["calibration"] = calibrationPath;
             }
-            if(useTar) extractFiles(replayPath, inFiles, outFiles);
+            if(useTar) untarFiles(replayPath, inFiles, outFiles);
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
             // For multi-device recordings, where devices are not the same
@@ -312,7 +312,7 @@ bool setupHolisticReplay(Pipeline pipeline,
             // configPath = platform::joinPaths(rootPath, mxId + "_record_config.json");
             // outFiles.push_back(configPath);
             // outFilenames["record_config"] = configPath;
-            // extractFiles(replayPath, inFiles, outFiles);
+            // untarFiles(replayPath, inFiles, outFiles);
         }
 
         std::ifstream file(configPath);

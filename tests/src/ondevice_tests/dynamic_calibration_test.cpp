@@ -55,7 +55,7 @@ class TestHelper {
         path outRoot = path(testFolder) / "extracted";
         create_directories(outRoot);
 
-        auto recordingFilenames = dai::utility::filenamesInArchive(RECORDING_PATH);
+        auto recordingFilenames = dai::utility::filenamesInTar(RECORDING_PATH);
         std::vector<std::string> srcFiles;  // filtered names from tar (files only)
         std::vector<path> dstFiles;         // matching output paths
 
@@ -81,7 +81,7 @@ class TestHelper {
             dstFiles.push_back(outPath);
         }
         // Extract only file entries; directories already created above
-        dai::utility::extractFiles(RECORDING_PATH, srcFiles, dstFiles);
+        dai::utility::untarFiles(RECORDING_PATH, srcFiles, dstFiles);
     }
 
     ~TestHelper() {

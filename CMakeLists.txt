@@ -271,14 +271,11 @@ set(TARGET_CORE_SOURCES
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
     src/common/ModelType.cpp
-    src/device/CrashDump.cpp
-    src/device/CrashDumpManager.cpp
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
-    src/device/Platform.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/PipelineStateApi.cpp

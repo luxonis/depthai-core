@@ -42,16 +42,14 @@
 
 namespace dai {
 
-// Forward declarations
+// Forward declare Pipeline
 class Pipeline;
 class PipelineImpl;
-class CrashDumpManager;
 /**
  * The core of depthai device for RAII, connects to device and maintains watchdog, timesync, ...
  */
 class DeviceBase {
-    friend class PipelineImpl;      // Needed for reconnections
-    friend class CrashDumpManager;  // Needed for gate access during crash dump collection
+    friend class PipelineImpl;  // Needed for reconnections
 
    public:
     // constants
@@ -266,18 +264,6 @@ class DeviceBase {
     virtual ~DeviceBase();
 
     /**
-     * @brief Get the platform of the connected device
-     * @return Platform Platform enum
-     */
-    Platform getPlatform() const;
-
-    /**
-     * @brief Get the platform of the connected device as string
-     * @return std::string String representation of Platform
-     */
-    std::string getPlatformAsString() const;
-
-    /**
      * Gets Bootloader version if it was booted through Bootloader
      *
      * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
@@ -441,14 +427,12 @@ class DeviceBase {
      * it's best to close the device after this operation.
      * Supported only on RVC2.
      */
-    std::unique_ptr<CrashDump> getState();
+    dai::CrashDump getState();
 
     /**
      * Retrieves crash dump for debugging.
-     * @param clearCrashDump Clear the cached crash dump on device after collection
-     * @return Unique pointer to the CrashDump, or nullptr if no crash dump available
      */
-    std::unique_ptr<CrashDump> getCrashDump(bool clearCrashDump = true);
+    dai::CrashDump getCrashDump(bool clearCrashDump = true);
 
     /**
      * Retrieves whether the is crash dump stored on device or not.
@@ -820,27 +804,6 @@ class DeviceBase {
     bool isClosed() const;
 
     /**
-     * Register a callback that will be called when the device crashes.
-     * The callback receives a shared pointer to the CrashDump, which can be modified
-     * before it is stored. Only one callback can be registered at a time.
-     *
-     * @param callback Callback to call when a crash dump is collected
-     */
-    void registerCrashdumpCallback(std::function<void(std::shared_ptr<CrashDump>)> callback);
-
-    /**
-     * Removes the registered crash dump callback
-     */
-    void removeCrashdumpCallback();
-
-    /**
-     * Check if the device has crashed
-     *
-     * @returns True if the device has crashed (watchdog timeout detected), false otherwise
-     */
-    bool hasCrashed() const;
-
-    /**
      * Crashes the device
      * @warning ONLY FOR TESTING PURPOSES, it causes an unrecoverable crash on the device
      */
@@ -956,9 +919,7 @@ class DeviceBase {
         bool hasPipeline;
     };
     void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
-    void collectAndLogCrashDump(DeviceBase* device = nullptr);
-    CrashDumpRVC2::CrashReportCollection getCrashReportCollectionRVC2(bool clear = true);
-    DeviceInfo deviceInfo;
+    DeviceInfo deviceInfo = {};
     std::optional<Version> bootloaderVersion;
 
     // Log callback
@@ -966,14 +927,9 @@ class DeviceBase {
     std::mutex logCallbackMapMtx;
     std::unordered_map<int, std::function<void(LogMessage)>> logCallbackMap;
 
-    // Crash dump callback
-    std::mutex crashdumpCallbackMtx;
-    std::function<void(std::shared_ptr<CrashDump>)> crashdumpCallback;
-
     // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
-    std::atomic<bool> crashed{false};
     std::condition_variable watchdogCondVar;
     std::mutex watchdogMtx;
 
