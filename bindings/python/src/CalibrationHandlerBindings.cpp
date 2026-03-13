@@ -240,8 +240,14 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("cameraId"),
              py::arg("rectifiedRotation"),
              DOC(dai, CalibrationHandler, setStereoRight))
-        .def("setAccelerometerCalibParams", &CalibrationHandler::setAccelerometerCalibParams, py::arg("accelerometerCalibParams"))
-        .def("setGyroscopeCalibParams", &CalibrationHandler::setGyroscopeCalibParams, py::arg("gyroscopeCalibParams"))
+        .def("setAccelerometerCalibParams", 
+             &CalibrationHandler::setAccelerometerCalibParams,
+             py::arg("accelerometerCalibParams"),
+             DOC(dai, CalibrationHandler, setAccelerometerCalibParams))
+        .def("setGyroscopeCalibParams", 
+             &CalibrationHandler::setGyroscopeCalibParams,
+             py::arg("gyroscopeCalibParams"),
+             DOC(dai, CalibrationHandler, setGyroscopeCalibParams))
         .def("validateCalibrationHandler",
              &CalibrationHandler::validateCalibrationHandler,
              py::arg("throwOnError") = true,

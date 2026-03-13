@@ -896,22 +896,22 @@ TEST_CASE("EEPROM data stereo flags consistency", "[getEepromData]") {
 TEST_CASE("IMU calibration params setters preserve accelerometer and gyroscope values", "[imuCalibration][getEepromData]") {
     dai::CalibrationHandler handler;
 
-    const std::vector<float> expectedAccelerometerelerometer = {0.1f, -0.2f, 0.3f, 1.0f, 1.1f, 1.2f, -0.4f, 0.5f, -0.6f, 9.81f, 0.01f, -0.02f};
+    const std::vector<float> expectedAccelerometer = {0.1f, -0.2f, 0.3f, 1.0f, 1.1f, 1.2f, -0.4f, 0.5f, -0.6f, 9.81f, 0.01f, -0.02f};
     const std::vector<float> expectedGyroscope = {-0.7f, 0.8f, -0.9f, 0.001f, 0.002f, 0.003f, 1.3f, 1.4f, 1.5f, -0.03f, 0.04f, -0.05f};
     const auto expectedImuModel = makeImuModelParams();
 
-    handler.setAccelerometerCalibParams(expectedAccelerometerelerometer);
+    handler.setAccelerometerCalibParams(expectedAccelerometer);
     handler.setGyroscopeCalibParams(expectedGyroscope);
     auto eepromData = handler.getEepromData();
     eepromData.imuModelParams = expectedImuModel;
     handler = dai::CalibrationHandler(eepromData);
 
-    REQUIRE(handler.getAccelerometerCalibParams() == expectedAccelerometerelerometer);
+    REQUIRE(handler.getAccelerometerCalibParams() == expectedAccelerometer);
     REQUIRE(handler.getGyroscopeCalibParams() == expectedGyroscope);
     requireImuModelParamsEqual(handler.getImuModelParams(), expectedImuModel);
 
     const auto eeprom = handler.getEepromData();
-    REQUIRE(eeprom.accelerometerCalibParams == expectedAccelerometerelerometer);
+    REQUIRE(eeprom.accelerometerCalibParams == expectedAccelerometer);
     REQUIRE(eeprom.gyroscopeCalibParams == expectedGyroscope);
     requireImuModelParamsEqual(eeprom.imuModelParams, expectedImuModel);
 }
