@@ -64,6 +64,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Type definitions
     py::class_<GlobalProperties> globalProperties(m, "GlobalProperties", DOC(dai, GlobalProperties));
+    py::class_<DeviceProperties> deviceProperties(m, "DeviceProperties", DOC(dai, DeviceProperties));
     py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
     py::class_<RecordConfig::VideoEncoding> recordVideoConfig(recordConfig, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
     py::class_<PipelineStateApi> pipelineStateApi(m, "PipelineStateApi", DOC(dai, PipelineStateApi));
@@ -85,17 +86,18 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Bind global properties
-    globalProperties.def_readwrite("leonOsFrequencyHz", &GlobalProperties::leonCssFrequencyHz)
-        .def_readwrite("leonRtFrequencyHz", &GlobalProperties::leonMssFrequencyHz)
-        .def_readwrite("pipelineName", &GlobalProperties::pipelineName)
-        .def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion)
-        .def_readwrite("cameraTuningBlobSize", &GlobalProperties::cameraTuningBlobSize, DOC(dai, GlobalProperties, cameraTuningBlobSize))
-        .def_readwrite("cameraTuningBlobUri", &GlobalProperties::cameraTuningBlobUri, DOC(dai, GlobalProperties, cameraTuningBlobUri))
-        .def_readwrite("cameraSocketTuningBlobSize", &GlobalProperties::cameraSocketTuningBlobSize, DOC(dai, GlobalProperties, cameraSocketTuningBlobSize))
-        .def_readwrite("cameraSocketTuningBlobUri", &GlobalProperties::cameraSocketTuningBlobUri, DOC(dai, GlobalProperties, cameraSocketTuningBlobUri))
-        .def_readwrite("xlinkChunkSize", &GlobalProperties::xlinkChunkSize, DOC(dai, GlobalProperties, xlinkChunkSize))
-        .def_readwrite("sippBufferSize", &GlobalProperties::sippBufferSize, DOC(dai, GlobalProperties, sippBufferSize))
-        .def_readwrite("sippDmaBufferSize", &GlobalProperties::sippDmaBufferSize, DOC(dai, GlobalProperties, sippDmaBufferSize));
+    globalProperties.def_readwrite("pipelineName", &GlobalProperties::pipelineName).def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion);
+
+    deviceProperties.def(py::init<>())
+        .def_readwrite("leonCssFrequencyHz", &DeviceProperties::leonCssFrequencyHz)
+        .def_readwrite("leonMssFrequencyHz", &DeviceProperties::leonMssFrequencyHz)
+        .def_readwrite("cameraTuningBlobSize", &DeviceProperties::cameraTuningBlobSize, DOC(dai, DeviceProperties, cameraTuningBlobSize))
+        .def_readwrite("cameraTuningBlobUri", &DeviceProperties::cameraTuningBlobUri, DOC(dai, DeviceProperties, cameraTuningBlobUri))
+        .def_readwrite("cameraSocketTuningBlobSize", &DeviceProperties::cameraSocketTuningBlobSize, DOC(dai, DeviceProperties, cameraSocketTuningBlobSize))
+        .def_readwrite("cameraSocketTuningBlobUri", &DeviceProperties::cameraSocketTuningBlobUri, DOC(dai, DeviceProperties, cameraSocketTuningBlobUri))
+        .def_readwrite("xlinkChunkSize", &DeviceProperties::xlinkChunkSize, DOC(dai, DeviceProperties, xlinkChunkSize))
+        .def_readwrite("sippBufferSize", &DeviceProperties::sippBufferSize, DOC(dai, DeviceProperties, sippBufferSize))
+        .def_readwrite("sippDmaBufferSize", &DeviceProperties::sippDmaBufferSize, DOC(dai, DeviceProperties, sippDmaBufferSize));
 
     recordVideoConfig.def(py::init<>())
         .def_readwrite("enabled", &RecordConfig::VideoEncoding::enabled, DOC(dai, RecordConfig, VideoEncoding, enabled))
@@ -107,7 +109,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     recordConfig.def(py::init<>())
         .def_readwrite("outputDir", &RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
         .def_readwrite("videoEncoding", &RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
-        .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
+        .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel))
+        .def_readwrite("syncCameraOutputs", &RecordConfig::syncCameraOutputs, DOC(dai, RecordConfig, syncCameraOutputs));
 
     pipelineStateApi.def("nodes", static_cast<NodesStateApi (PipelineStateApi::*)()>(&PipelineStateApi::nodes), DOC(dai, PipelineStateApi, nodes))
         .def("nodes",
@@ -195,6 +198,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         //.def(py::init<const Pipeline&>())
         .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
+        .def("setDefaultDeviceProperties", &Pipeline::setDefaultDeviceProperties, py::arg("deviceProperties"), DOC(dai, Pipeline, setDefaultDeviceProperties))
+        .def("getDefaultDeviceProperties", &Pipeline::getDefaultDeviceProperties, DOC(dai, Pipeline, getDefaultDeviceProperties))
         //.def("create", &Pipeline::create<node::XLinkIn>)
         .def("remove", &Pipeline::remove, py::arg("node"), DOC(dai, Pipeline, remove))
         .def("getAllNodes", static_cast<std::vector<std::shared_ptr<Node>> (Pipeline::*)() const>(&Pipeline::getAllNodes), DOC(dai, Pipeline, getAllNodes))

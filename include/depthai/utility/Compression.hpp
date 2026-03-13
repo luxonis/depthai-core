@@ -17,6 +17,14 @@ std::vector<uint8_t> inflate(uint8_t* data, size_t size);
 std::vector<std::string> filenamesInTar(const std::filesystem::path& tarPath);
 
 /**
+ * Reads a single file from a tar archive into memory.
+ * @param tarPath Path to the tar file to read
+ * @param fileInTar Path of the file inside the tar archive
+ * @return File contents as a byte vector
+ */
+std::vector<uint8_t> readFileInTar(const std::filesystem::path& tarPath, const std::string& fileInTar);
+
+/**
  * Creates a tar archive containing the specified files.
  * @param tarPath Path where the tar file will be created
  * @param filesOnDisk Vector of paths to file on the host filesystem to include in the archive

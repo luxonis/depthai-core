@@ -232,6 +232,14 @@ void ReplayVideo::run() {
     bool first = true;
     auto start = std::chrono::steady_clock::now();
     uint64_t index = 0;
+    // For looping
+    uint64_t lastSeqNum = 0;
+    uint64_t seqNumOffset = 0;
+    std::chrono::time_point<std::chrono::steady_clock> firstTs;
+    std::chrono::time_point<std::chrono::steady_clock> lastTs;
+    std::chrono::milliseconds lastInterval;
+    std::chrono::time_point<std::chrono::steady_clock> tsOffset;
+
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
     while(mainLoop()) {
@@ -268,6 +276,8 @@ void ReplayVideo::run() {
                 // End of file
                 if(loop) {
                     if(hasMetadata) {
+                        seqNumOffset = lastSeqNum + 1;
+                        tsOffset = lastTs + lastInterval;
                         bytePlayer.restart();
                     }
                     videoPlayer.restart();
@@ -310,7 +320,20 @@ void ReplayVideo::run() {
 
         auto buffer = getVideoMessage(*metadata, outFrameType, frame);
 
-        if(first) prevMsgTs = buffer->getTimestampDevice();
+        // Update sequence num and timestamps for looping
+        buffer->setSequenceNum(buffer->getSequenceNum() + seqNumOffset);
+        lastSeqNum = buffer->getSequenceNum();
+        auto deviceTsOffset = buffer->getTimestamp() - buffer->getTimestampDevice();
+        buffer->setTimestamp(buffer->getTimestamp() - firstTs + tsOffset);
+        buffer->setTimestampDevice(buffer->getTimestamp() - deviceTsOffset);
+        lastInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestamp() - lastTs);
+        lastTs = buffer->getTimestamp();
+
+        if(first) {
+            prevMsgTs = buffer->getTimestampDevice();
+            firstTs = buffer->getTimestamp();
+            tsOffset = firstTs;
+        }
 
         if(hasMetadata && !(fps.has_value() && fps.value() > 0.1f)) {
             std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
@@ -358,6 +381,14 @@ void ReplayMetadataOnly::run() {
         throw std::runtime_error("Metadata file not found");
     }
     bool first = true;
+    // For looping
+    uint64_t lastSeqNum = 0;
+    uint64_t seqNumOffset = 0;
+    std::chrono::time_point<std::chrono::steady_clock> firstTs;
+    std::chrono::time_point<std::chrono::steady_clock> lastTs;
+    std::chrono::milliseconds lastInterval;
+    std::chrono::time_point<std::chrono::steady_clock> tsOffset;
+
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
     while(mainLoop()) {
@@ -372,6 +403,8 @@ void ReplayMetadataOnly::run() {
         } else if(!first) {
             // End of file
             if(loop) {
+                seqNumOffset = lastSeqNum + 1;
+                tsOffset = lastTs + lastInterval;
                 bytePlayer.restart();
                 continue;
             }
@@ -383,7 +416,20 @@ void ReplayMetadataOnly::run() {
         }
         auto buffer = getMessage(metadata, datatype);
 
-        if(first) prevMsgTs = buffer->getTimestampDevice();
+        // Update sequence num and timestamps for looping
+        buffer->setSequenceNum(buffer->getSequenceNum() + seqNumOffset);
+        lastSeqNum = buffer->getSequenceNum();
+        auto deviceTsOffset = buffer->getTimestamp() - buffer->getTimestampDevice();
+        buffer->setTimestamp(buffer->getTimestamp() - firstTs + tsOffset);
+        buffer->setTimestampDevice(buffer->getTimestamp() - deviceTsOffset);
+        lastInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestamp() - lastTs);
+        lastTs = buffer->getTimestamp();
+
+        if(first) {
+            prevMsgTs = buffer->getTimestampDevice();
+            firstTs = buffer->getTimestamp();
+            tsOffset = firstTs;
+        }
 
         if(!(fps.has_value() && fps.value() > 0.1f)) {
             std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));

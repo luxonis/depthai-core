@@ -37,6 +37,7 @@ struct RecordConfig {
     std::filesystem::path outputDir;
     VideoEncoding videoEncoding;
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
+    bool syncCameraOutputs = false;
 };
 
 struct NodeRecordParams {
@@ -75,7 +76,7 @@ struct adl_serializer<dai::RecordConfig> {
                            {"profile", profile},
                            {"lossless", p.videoEncoding.lossless},
                            {"quality", p.videoEncoding.quality}};
-        j = json{{"outputDir", p.outputDir}, {"videoEncoding", vidEnc}, {"compressionLevel", p.compressionLevel}};
+        j = json{{"outputDir", p.outputDir}, {"videoEncoding", vidEnc}, {"compressionLevel", p.compressionLevel}, {"syncCameraOutputs", p.syncCameraOutputs}};
     }
 
     static void from_json(const json& j, dai::RecordConfig& p) {  // NOLINT this is a specialization, naming conventions don't apply
@@ -101,6 +102,9 @@ struct adl_serializer<dai::RecordConfig> {
         }
 
         j.at("compressionLevel").get_to(p.compressionLevel);
+        if(j.contains("syncCameraOutputs")) {
+            j.at("syncCameraOutputs").get_to(p.syncCameraOutputs);
+        }
 
         j.at("outputDir").get_to(p.outputDir);
     }
