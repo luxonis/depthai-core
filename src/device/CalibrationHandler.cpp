@@ -798,12 +798,12 @@ dai::CameraBoardSocket CalibrationHandler::getStereoRightCameraId() const {
     return eepromData.stereoRectificationData.rightCameraSocket;
 }
 
-std::vector<float> CalibrationHandler::getAccCalibParams() const {
-    return eepromData.accCalibParams;
+std::vector<float> CalibrationHandler::getAccelerometerCalibParams() const {
+    return eepromData.accelerometerCalibParams;
 }
 
-std::vector<float> CalibrationHandler::getGyroCalibParams() const {
-    return eepromData.gyroCalibParams;
+std::vector<float> CalibrationHandler::getGyroscopeCalibParams() const {
+    return eepromData.gyroscopeCalibParams;
 }
 
 dai::ImuModelParams CalibrationHandler::getImuModelParams() const {
@@ -1143,20 +1143,20 @@ bool CalibrationHandler::validateCameraArray() const {
     }
 }
 
-void CalibrationHandler::setAccCalibParams(const std::vector<float>& accCalibParams) {
+void CalibrationHandler::setAccelerometerCalibParams(const std::vector<float>& calibParams) {
     constexpr size_t kExpectedParams = 12;
-    if(accCalibParams.size() > kExpectedParams) {
+    if(calibParams.size() > kExpectedParams) {
         throw std::runtime_error("Accelerometer calibration parameter array size should be at most 12");
     }
-    eepromData.accCalibParams = accCalibParams;
+    eepromData.accelerometerCalibParams = calibParams;
 }
 
-void CalibrationHandler::setGyroCalibParams(const std::vector<float>& gyroCalibParams) {
+void CalibrationHandler::setGyroscopeCalibParams(const std::vector<float>& calibParams) {
     constexpr size_t kExpectedParams = 12;
-    if(gyroCalibParams.size() > kExpectedParams) {
+    if(calibParams.size() > kExpectedParams) {
         throw std::runtime_error("Gyroscope calibration parameter array size should be at most 12");
     }
-    eepromData.gyroCalibParams = gyroCalibParams;
+    eepromData.gyroscopeCalibParams = calibParams;
 }
 
 bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) const {

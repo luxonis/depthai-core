@@ -140,8 +140,8 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, CalibrationHandler, getStereoLeftRectificationRotation))
         .def("getStereoLeftCameraId", &CalibrationHandler::getStereoLeftCameraId, DOC(dai, CalibrationHandler, getStereoLeftCameraId))
         .def("getStereoRightCameraId", &CalibrationHandler::getStereoRightCameraId, DOC(dai, CalibrationHandler, getStereoRightCameraId))
-        .def("getAccCalibParams", &CalibrationHandler::getAccCalibParams)
-        .def("getGyroCalibParams", &CalibrationHandler::getGyroCalibParams)
+        .def("getAccelerometerCalibParams", &CalibrationHandler::getAccelerometerCalibParams)
+        .def("getGyroscopeCalibParams", &CalibrationHandler::getGyroscopeCalibParams)
         .def("getImuModelParams", &CalibrationHandler::getImuModelParams)
 
         .def("eepromToJsonFile", &CalibrationHandler::eepromToJsonFile, py::arg("destPath"), DOC(dai, CalibrationHandler, eepromToJsonFile))
@@ -240,8 +240,8 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("cameraId"),
              py::arg("rectifiedRotation"),
              DOC(dai, CalibrationHandler, setStereoRight))
-        .def("setAccCalibParams", &CalibrationHandler::setAccCalibParams, py::arg("accCalibParams"))
-        .def("setGyroCalibParams", &CalibrationHandler::setGyroCalibParams, py::arg("gyroCalibParams"))
+        .def("setAccelerometerCalibParams", &CalibrationHandler::setAccelerometerCalibParams, py::arg("accelerometerCalibParams"))
+        .def("setGyroscopeCalibParams", &CalibrationHandler::setGyroscopeCalibParams, py::arg("gyroscopeCalibParams"))
         .def("validateCalibrationHandler",
              &CalibrationHandler::validateCalibrationHandler,
              py::arg("throwOnError") = true,

@@ -31,8 +31,8 @@ struct EepromData {
     bool stereoUseSpecTranslation{true};
     bool stereoEnableDistortionCorrection{false};
     CameraBoardSocket verticalCameraSocket = dai::CameraBoardSocket::AUTO;
-    std::vector<float> accCalibParams;
-    std::vector<float> gyroCalibParams;
+    std::vector<float> accelerometerCalibParams;
+    std::vector<float> gyroscopeCalibParams;
     // Hard-coded IMU model parameters, not really stored to EEPROM but part of the calibration data
     ImuModelParams imuModelParams;
 };
@@ -57,8 +57,8 @@ DEPTHAI_SERIALIZE_OPTIONAL_EXT(EepromData,
                                stereoUseSpecTranslation,
                                stereoEnableDistortionCorrection,
                                verticalCameraSocket,
-                               accCalibParams,
-                               gyroCalibParams,
+                               accelerometerCalibParams,
+                               gyroscopeCalibParams,
                                imuModelParams);
 
 }  // namespace dai

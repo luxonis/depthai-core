@@ -392,16 +392,16 @@ class CalibrationHandler {
     /**
      * Get the accelerometer calibration parameters.
      *
-     * @return returns a flat vector of 12 floats
+     * @return returns a flat vector of up to 12 floats
      */
-    std::vector<float> getAccCalibParams() const;
+    std::vector<float> getAccelerometerCalibParams() const;
 
     /**
      * Get the gyroscope calibration parameters.
      *
-     * @return returns a flat vector of 12 floats
+     * @return returns a flat vector of up to 12 floats
      */
-    std::vector<float> getGyroCalibParams() const;
+    std::vector<float> getGyroscopeCalibParams() const;
 
     /**
      * Get the IMU model-specific parameters.
@@ -638,16 +638,16 @@ class CalibrationHandler {
     /**
      * Set the accelerometer calibration parameters.
      *
-     * @param accCalibParams Up to 12 float array containing accelerometer calibration parameters
+     * @param calibParams Up to 12 float array containing accelerometer calibration parameters
      */
-    void setAccCalibParams(const std::vector<float>& accCalibParams);
+    void setAccelerometerCalibParams(const std::vector<float>& calibParams);
 
     /**
      * Set the gyroscope calibration parameters.
      *
-     * @param gyroCalibParams Up to 12 float array containing gyroscope calibration parameters
+     * @param calibParams Up to 12 float array containing gyroscope calibration parameters
      */
-    void setGyroCalibParams(const std::vector<float>& gyroCalibParams);
+    void setGyroscopeCalibParams(const std::vector<float>& calibParams);
 
     /**
      * Validate Calibration handler properties and how they are set, so there is no:

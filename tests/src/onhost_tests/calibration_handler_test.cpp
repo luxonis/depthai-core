@@ -896,23 +896,23 @@ TEST_CASE("EEPROM data stereo flags consistency", "[getEepromData]") {
 TEST_CASE("IMU calibration params setters preserve accelerometer and gyroscope values", "[imuCalibration][getEepromData]") {
     dai::CalibrationHandler handler;
 
-    const std::vector<float> expectedAcc = {0.1f, -0.2f, 0.3f, 1.0f, 1.1f, 1.2f, -0.4f, 0.5f, -0.6f, 9.81f, 0.01f, -0.02f};
-    const std::vector<float> expectedGyro = {-0.7f, 0.8f, -0.9f, 0.001f, 0.002f, 0.003f, 1.3f, 1.4f, 1.5f, -0.03f, 0.04f, -0.05f};
+    const std::vector<float> expectedAccelerometerelerometer = {0.1f, -0.2f, 0.3f, 1.0f, 1.1f, 1.2f, -0.4f, 0.5f, -0.6f, 9.81f, 0.01f, -0.02f};
+    const std::vector<float> expectedGyroscope = {-0.7f, 0.8f, -0.9f, 0.001f, 0.002f, 0.003f, 1.3f, 1.4f, 1.5f, -0.03f, 0.04f, -0.05f};
     const auto expectedImuModel = makeImuModelParams();
 
-    handler.setAccCalibParams(expectedAcc);
-    handler.setGyroCalibParams(expectedGyro);
+    handler.setAccelerometerCalibParams(expectedAccelerometerelerometer);
+    handler.setGyroscopeCalibParams(expectedGyroscope);
     auto eepromData = handler.getEepromData();
     eepromData.imuModelParams = expectedImuModel;
     handler = dai::CalibrationHandler(eepromData);
 
-    REQUIRE(handler.getAccCalibParams() == expectedAcc);
-    REQUIRE(handler.getGyroCalibParams() == expectedGyro);
+    REQUIRE(handler.getAccelerometerCalibParams() == expectedAccelerometerelerometer);
+    REQUIRE(handler.getGyroscopeCalibParams() == expectedGyroscope);
     requireImuModelParamsEqual(handler.getImuModelParams(), expectedImuModel);
 
     const auto eeprom = handler.getEepromData();
-    REQUIRE(eeprom.accCalibParams == expectedAcc);
-    REQUIRE(eeprom.gyroCalibParams == expectedGyro);
+    REQUIRE(eeprom.accelerometerCalibParams == expectedAccelerometerelerometer);
+    REQUIRE(eeprom.gyroscopeCalibParams == expectedGyroscope);
     requireImuModelParamsEqual(eeprom.imuModelParams, expectedImuModel);
 }
 
@@ -921,47 +921,47 @@ TEST_CASE("IMU calibration params setters reject more than twelve values", "[imu
 
     const std::vector<float> tooManyParams(13, 1.0f);
 
-    REQUIRE_THROWS_WITH(handler.setAccCalibParams(tooManyParams),
+    REQUIRE_THROWS_WITH(handler.setAccelerometerCalibParams(tooManyParams),
                         Catch::Matchers::ContainsSubstring("Accelerometer calibration parameter array size should be at most 12"));
-    REQUIRE_THROWS_WITH(handler.setGyroCalibParams(tooManyParams),
+    REQUIRE_THROWS_WITH(handler.setGyroscopeCalibParams(tooManyParams),
                         Catch::Matchers::ContainsSubstring("Gyroscope calibration parameter array size should be at most 12"));
 }
 
 TEST_CASE("EEPROM constructor preserves IMU calibration params", "[imuCalibration][getEepromData]") {
     dai::EepromData data;
-    data.accCalibParams = {0.25f, -0.5f, 0.75f, 1.0f, 1.25f, 1.5f};
-    data.gyroCalibParams = {-1.0f, -0.5f, 0.0f, 0.5f, 1.0f, 1.5f};
+    data.accelerometerCalibParams = {0.25f, -0.5f, 0.75f, 1.0f, 1.25f, 1.5f};
+    data.gyroscopeCalibParams = {-1.0f, -0.5f, 0.0f, 0.5f, 1.0f, 1.5f};
     data.imuModelParams = makeImuModelParams();
 
     dai::CalibrationHandler handler(data);
     const auto loaded = handler.getEepromData();
 
-    REQUIRE(loaded.accCalibParams == data.accCalibParams);
-    REQUIRE(loaded.gyroCalibParams == data.gyroCalibParams);
-    REQUIRE(handler.getAccCalibParams() == data.accCalibParams);
-    REQUIRE(handler.getGyroCalibParams() == data.gyroCalibParams);
+    REQUIRE(loaded.accelerometerCalibParams == data.accelerometerCalibParams);
+    REQUIRE(loaded.gyroscopeCalibParams == data.gyroscopeCalibParams);
+    REQUIRE(handler.getAccelerometerCalibParams() == data.accelerometerCalibParams);
+    REQUIRE(handler.getGyroscopeCalibParams() == data.gyroscopeCalibParams);
     requireImuModelParamsEqual(loaded.imuModelParams, data.imuModelParams);
     requireImuModelParamsEqual(handler.getImuModelParams(), data.imuModelParams);
 }
 
 TEST_CASE("JSON round-trip preserves IMU calibration params", "[imuCalibration][json]") {
     auto calibJson = loadValidCalibJson();
-    const std::vector<float> expectedAcc = {0.11f, 0.22f, 0.33f, 1.11f, 1.22f, 1.33f, -0.11f, -0.22f, -0.33f, 0.44f, 0.55f, 0.66f};
-    const std::vector<float> expectedGyro = {-0.12f, -0.24f, -0.36f, 1.44f, 1.55f, 1.66f, 0.12f, 0.24f, 0.36f, -0.48f, -0.6f, -0.72f};
+    const std::vector<float> expectedAccelerometer = {0.11f, 0.22f, 0.33f, 1.11f, 1.22f, 1.33f, -0.11f, -0.22f, -0.33f, 0.44f, 0.55f, 0.66f};
+    const std::vector<float> expectedGyroscope = {-0.12f, -0.24f, -0.36f, 1.44f, 1.55f, 1.66f, 0.12f, 0.24f, 0.36f, -0.48f, -0.6f, -0.72f};
     const auto expectedImuModel = makeImuModelParams();
 
-    calibJson["accCalibParams"] = expectedAcc;
-    calibJson["gyroCalibParams"] = expectedGyro;
+    calibJson["accelerometerCalibParams"] = expectedAccelerometer;
+    calibJson["gyroscopeCalibParams"] = expectedGyroscope;
     calibJson["imuModelParams"] = makeImuModelParamsJson();
 
     const auto handler = CalibrationHandler::fromJson(calibJson);
-    REQUIRE(handler.getAccCalibParams() == expectedAcc);
-    REQUIRE(handler.getGyroCalibParams() == expectedGyro);
+    REQUIRE(handler.getAccelerometerCalibParams() == expectedAccelerometer);
+    REQUIRE(handler.getGyroscopeCalibParams() == expectedGyroscope);
     requireImuModelParamsEqual(handler.getImuModelParams(), expectedImuModel);
 
     const auto serialized = handler.eepromToJson();
-    REQUIRE(serialized.at("accCalibParams").get<std::vector<float>>() == expectedAcc);
-    REQUIRE(serialized.at("gyroCalibParams").get<std::vector<float>>() == expectedGyro);
+    REQUIRE(serialized.at("accelerometerCalibParams").get<std::vector<float>>() == expectedAccelerometer);
+    REQUIRE(serialized.at("gyroscopeCalibParams").get<std::vector<float>>() == expectedGyroscope);
     REQUIRE(serialized.at("imuModelParams").at("name").get<std::string>() == expectedImuModel.name);
     REQUIRE(serialized.at("imuModelParams").at("accelerometer").at("x").at("vrw").get<double>() == Catch::Approx(expectedImuModel.accelerometer.x.vrw).margin(1e-6));
     REQUIRE(serialized.at("imuModelParams").at("accelerometer").at("y").at("rrw").get<double>() == Catch::Approx(expectedImuModel.accelerometer.y.rrw).margin(1e-6));
