@@ -57,6 +57,7 @@ jobs:
       luxonis_os_versions_to_test: "['1.14.1','1.20.5','1.27.1']"
       luxonis_os_versions_to_test_rgb: "['1.27.1']"
       luxonis_os_versions_to_test_usb: "['1.27.1']"
+      luxonis_os_versions_to_test_frame_sync: "['1.27.1']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}

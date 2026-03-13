@@ -16,6 +16,10 @@ on:
         required: false
         type: string
         default: "[]"
+      luxonis_os_versions_to_test_frame_sync:
+        required: false
+        type: string
+        default: "[]"
     secrets:
       CONTAINER_REGISTRY:
         required: true
@@ -207,7 +211,7 @@ jobs:
       needs: [build_docker_container]
       strategy:
         matrix:
-          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test) }}
+          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_frame_sync) }}
         fail-fast: false
       runs-on: ['self-hosted', 'testbed-runner']
       steps:
