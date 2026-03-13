@@ -41,7 +41,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
         bool optical_flow_recall_all_cams;                       // Recall in all cameras, not just cam0
         bool optical_flow_recall_num_points_cell;                // Respect gridcell feature limit
         bool optical_flow_recall_over_tracking;                  // Always perform recall, even on already tracked features
-        bool optical_flow_recall_update_patch_viewpoint;         // Update feature patch when succesfully recalled
+        bool optical_flow_recall_update_patch_viewpoint;         // Update feature patch when successfully recalled
         float optical_flow_recall_max_patch_dist;                // Maximum distance in % of width to accept a recall, or 0
         std::vector<float> optical_flow_recall_max_patch_norms;  // Maximum patch residual norm to accept a recall
 

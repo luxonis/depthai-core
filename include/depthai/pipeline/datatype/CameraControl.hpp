@@ -537,7 +537,7 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height);
 
     /**
-     * Set a command to specify auto exposure compensation. This modifies the brightness target with positive nubers making the image brighter and negative
+     * Set a command to specify auto exposure compensation. This modifies the brightness target with positive numbers making the image brighter and negative
      * numbers making the image darker.
      * @param compensation Compensation value between -9..9, default 0
      */

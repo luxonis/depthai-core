@@ -42,13 +42,13 @@ endfunction()
 include(CTest)
 enable_testing()
 
-# Create target dependant on depthai::core
+# Create target dependent on depthai::core
 add_executable(integration-test-core src/main.cpp)
 target_link_libraries(integration-test-core PRIVATE depthai::core)
 add_runtime_dependencies(integration-test-core usb-1.0)
 add_test(integration-test-core integration-test-core)
 
-# Create target dependant on depthai::opencv (if available)
+# Create target dependent on depthai::opencv (if available)
 if(TARGET depthai::opencv)
     add_executable(integration-test-opencv src/main.cpp)
     target_link_libraries(integration-test-opencv PRIVATE depthai::opencv)

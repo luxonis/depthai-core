@@ -161,7 +161,7 @@ cmake --build build
 
 <!-- ### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
 
-To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
+To integrate into a different build system than CMake, the preferred way is compiling as dynamic library and setting correct build options.
 1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
 2. Then install: [Installing](#installing)
 
@@ -204,6 +204,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_RECONNECT_TIMEOUT | Specifies timeout in milliseconds for reconnecting to a device after a connection loss. If set to 0, reconnect is disabled. |
 | DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: `any`, `usb`, `tcpip`, `tcpshd`. |
 | DEPTHAI_PLATFORM | Restricts default search to the specified platform. Options: `any`, `rvc2`, `rvc3`, `rvc4`. |
+| DEPTHAI_RPC_READ_TIMEOUT | Specifies timeout in milliseconds for reading RPC responses. If 0, wait indefinitely. |
+| DEPTHAI_RPC_WRITE_TIMEOUT | Specifies timeout in milliseconds for writing RPC requests. If 0, wait indefinitely. |
 | DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_ID_LIST | Alias to MXID list. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_NAME_LIST | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR". It also looks for NAMEs outside of the host's subnet in case of tcpip. |
@@ -227,6 +229,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
 | DEPTHAI_PROFILING | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print. |
 | DEPTHAI_PIPELINE_DEBUGGING | Enables pipeline debugging with state dumps. DEPTHAI_LEVEL=trace is required to print the state dumps. |
+| DEPTHAI_AUTOCALIBRATION | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). DEPTHAI_AUTOCALIBRATION=CONTINUOUS: runs check repetitively; DEPTHAI_AUTOCALIBRATION=ON_START: runs calibration only at the start of the pipeline; DEPTHAI_AUTOCALIBRATION=OFF: no recalibration. |
 
 ## Running tests
 
@@ -307,4 +310,3 @@ You can do this by passing the `--parallel` flag with a lower number of jobs to 
 ```
 cmake --build build --parallel 2
 ```
-
