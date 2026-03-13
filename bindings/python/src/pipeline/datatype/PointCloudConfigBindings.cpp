@@ -1,5 +1,4 @@
 #include <memory>
-#include <unordered_map>
 
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
@@ -42,22 +41,27 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
     // Message
     config.def(py::init<>())
         .def("__repr__", &PointCloudConfig::str)
-        // .def(py::init<std::shared_ptr<RawPointCloudConfig>>())
-
-        // .def("set", &PointCloudConfig::set, py::arg("config"), DOC(dai, PointCloudConfig, set))
-        // .def("get", &PointCloudConfig::get, DOC(dai, PointCloudConfig, get))
-        .def("getSparse", &PointCloudConfig::getSparse, DOC(dai, PointCloudConfig, getSparse))
+        .def("getOrganized", &PointCloudConfig::getOrganized, DOC(dai, PointCloudConfig, getOrganized))
+        .def("setOrganized", &PointCloudConfig::setOrganized, DOC(dai, PointCloudConfig, setOrganized))
         .def("getTransformationMatrix", &PointCloudConfig::getTransformationMatrix, DOC(dai, PointCloudConfig, getTransformationMatrix))
-        .def("setSparse", &PointCloudConfig::setSparse, DOC(dai, PointCloudConfig, setSparse))
         .def(
             "setTransformationMatrix",
             [](PointCloudConfig& cfg, std::array<std::array<float, 3>, 3> mat) { return cfg.setTransformationMatrix(mat); },
             DOC(dai, PointCloudConfig, setTransformationMatrix))
-
         .def(
             "setTransformationMatrix",
             [](PointCloudConfig& cfg, std::array<std::array<float, 4>, 4> mat) { return cfg.setTransformationMatrix(mat); },
-            DOC(dai, PointCloudConfig, setTransformationMatrix));
+            DOC(dai, PointCloudConfig, setTransformationMatrix))
+        .def("getLengthUnit", &PointCloudConfig::getLengthUnit, DOC(dai, PointCloudConfig, getLengthUnit))
+        .def("setLengthUnit", &PointCloudConfig::setLengthUnit, DOC(dai, PointCloudConfig, setLengthUnit))
+        // Deprecated
+        .def(
+            "getSparse",
+            [](const PointCloudConfig& cfg) {
+                PyErr_WarnEx(PyExc_DeprecationWarning, "getSparse() is deprecated, use getOrganized() instead (note: sparse == !organized).", 1);
+                return !cfg.getOrganized();
+            },
+            "**Deprecated:** Use getOrganized() instead (sparse == !organized).");
 
     // add aliases
 }

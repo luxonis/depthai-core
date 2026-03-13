@@ -461,6 +461,14 @@ dai_set_test_labels(imgdetections_test onhost ci)
 dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
 dai_set_test_labels(imgframe_test onhost ci)
 
+# PointCloudData / PointCloudConfig / PointCloudProperties datatype tests
+dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
+dai_set_test_labels(pointclouddata_test onhost ci)
+
+# PointCloud node tests
+dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
+dai_set_test_labels(point_cloud_test onhost ci)
+
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
