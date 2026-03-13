@@ -1,23 +1,23 @@
 #pragma once
 
-#include <vector>
+#include <string>
 
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
 
 struct AccelAxisNoiseParams {
-    double vrw; // velocity random walk
-    double rrw; // rate random walk
-    double bi;  // bias instability
+    double vrw = 0.0; // velocity random walk
+    double rrw = 0.0; // rate random walk
+    double bi = 0.0;  // bias instability
 
     DEPTHAI_SERIALIZE(AccelAxisNoiseParams, vrw, rrw, bi);
 };
 
 struct GyroAxisNoiseParams {
-    double arw; // angle random walk
-    double rrw; // rate random walk
-    double bi;  // bias instability
+    double arw = 0.0; // angle random walk
+    double rrw = 0.0; // rate random walk
+    double bi = 0.0;  // bias instability
 
     DEPTHAI_SERIALIZE(GyroAxisNoiseParams, arw, rrw, bi);
 };

@@ -140,9 +140,9 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, CalibrationHandler, getStereoLeftRectificationRotation))
         .def("getStereoLeftCameraId", &CalibrationHandler::getStereoLeftCameraId, DOC(dai, CalibrationHandler, getStereoLeftCameraId))
         .def("getStereoRightCameraId", &CalibrationHandler::getStereoRightCameraId, DOC(dai, CalibrationHandler, getStereoRightCameraId))
-        .def("getAccelerometerCalibParams", &CalibrationHandler::getAccelerometerCalibParams)
-        .def("getGyroscopeCalibParams", &CalibrationHandler::getGyroscopeCalibParams)
-        .def("getImuModelParams", &CalibrationHandler::getImuModelParams)
+        .def("getAccelerometerCalibParams", &CalibrationHandler::getAccelerometerCalibParams, DOC(dai, CalibrationHandler, getAccelerometerCalibParams))
+        .def("getGyroscopeCalibParams", &CalibrationHandler::getGyroscopeCalibParams, DOC(dai,CalibrationHandler, getGyroscopeCalibParams))
+        .def("getImuModelParams", &CalibrationHandler::getImuModelParams, DOC(dai, CalibrationHandler, getImuModelParams))
 
         .def("eepromToJsonFile", &CalibrationHandler::eepromToJsonFile, py::arg("destPath"), DOC(dai, CalibrationHandler, eepromToJsonFile))
         .def("eepromToJson", &CalibrationHandler::eepromToJson, DOC(dai, CalibrationHandler, eepromToJson))
