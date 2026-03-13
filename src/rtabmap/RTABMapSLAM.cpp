@@ -93,7 +93,6 @@ class RTABMapSLAM::Impl {
         auto* dataPtr = reinterpret_cast<Point3fRGBA*>(data.data());
         pcl->setWidth(cloud->width);
         pcl->setHeight(cloud->height);
-        pcl->setSparse(!cloud->is_dense);
 
         std::for_each(cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](const pcl::PointXYZRGB& point) mutable {
             size_t i = &point - &cloud->points[0];

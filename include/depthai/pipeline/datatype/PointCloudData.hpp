@@ -20,12 +20,12 @@ namespace dai {
  * PointCloudData message. Carries point cloud data.
  */
 class PointCloudData : public Buffer, public ProtoSerializable {
-    unsigned int width;        // width in pixels
-    unsigned int height;       // height in pixels
-    uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
+    unsigned int width;        // width in pixels (for organized) or number of points (for unorganized)
+    unsigned int height;       // height in pixels (for organized) or 1 (for unorganized)
+    uint32_t instanceNum = 0;  // Which source created this frame
     float minx, miny, minz;
     float maxx, maxy, maxz;
-    bool sparse = false;
+    
     bool color = false;
 
    public:
@@ -91,8 +91,17 @@ class PointCloudData : public Buffer, public ProtoSerializable {
 
     /**
      * Retrieves whether point cloud is sparse
+     * @deprecated Use isOrganized() instead. Sparse means height == 1
      */
+    [[deprecated("isSparse is deprecated, use isOrganized() instead (isSparse == !isOrganized())")]]
     bool isSparse() const;
+
+    /**
+     * Retrieves whether point cloud is organized (height > 1)
+     * Organized point clouds have width x height structure from the original image
+     * Sparse point clouds have height == 1 and only contain valid points
+     */
+    bool isOrganized() const;
 
     /**
      * Retrieves whether point cloud is color
@@ -174,7 +183,9 @@ class PointCloudData : public Buffer, public ProtoSerializable {
      * Specifies whether point cloud is sparse
      *
      * @param val whether point cloud is sparse
+     * @deprecated This setter is deprecated and will be removed in a future release
      */
+    [[deprecated("setSparse is deprecated, width and height are set automatically based on organization")]]
     PointCloudData& setSparse(bool val);
 
     /**
@@ -190,6 +201,12 @@ class PointCloudData : public Buffer, public ProtoSerializable {
      * @param instanceNum instance number
      */
     PointCloudData& setInstanceNum(unsigned int instanceNum);
+
+    /**
+     * Recomputes the bounding box (min/max X, Y, Z) from the current point data.
+     * Only considers valid points (z > 0). If no valid points exist, all bounds are set to 0.
+     */
+    PointCloudData& updateBoundingBox();
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
@@ -236,7 +253,7 @@ class PointCloudData : public Buffer, public ProtoSerializable {
         return DatatypeEnum::PointCloudData;
     }
     DEPTHAI_SERIALIZE(
-        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, sparse, instanceNum, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
+        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 
 }  // namespace dai
