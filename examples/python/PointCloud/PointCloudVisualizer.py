@@ -22,13 +22,13 @@ import depthai as dai
 def colorize_depth(frame: np.ndarray) -> np.ndarray:
     """Normalize a uint16 depth frame and apply a colormap for display."""
     downscaled = frame[::4]
-    non_zero = downscaled[downscaled != 0]
-    if non_zero.size == 0:
-        min_d, max_d = 0, 1
+    nonZero = downscaled[downscaled != 0]
+    if nonZero.size == 0:
+        minD, maxD = 0, 1
     else:
-        min_d = np.percentile(non_zero, 1)
-        max_d = np.percentile(downscaled, 99)
-    colored = np.interp(frame, (min_d, max_d), (0, 255)).astype(np.uint8)
+        minD = np.percentile(nonZero, 1)
+        maxD = np.percentile(downscaled, 99)
+    colored = np.interp(frame, (minD, maxD), (0, 255)).astype(np.uint8)
     return cv2.applyColorMap(colored, cv2.COLORMAP_HOT)
 
 
@@ -55,7 +55,7 @@ def main() -> None:
         stereo.depth.link(pc.inputDepth)
 
         queue = pc.outputPointCloud.createOutputQueue(maxSize=4, blocking=False)
-        q_depth = stereo.depth.createOutputQueue(maxSize=4, blocking=False)
+        qDepth = stereo.depth.createOutputQueue(maxSize=4, blocking=False)
 
         # ── Open3D setup ──────────────────────────────────────────────
         vis = o3d.visualization.Visualizer()
@@ -70,16 +70,16 @@ def main() -> None:
         print("Waiting for auto-exposure to settle...")
         time.sleep(1)
         queue.tryGetAll()  # drain stale frames
-        q_depth.tryGetAll()
+        qDepth.tryGetAll()
 
         print("Streaming... Press Q in the Open3D window to quit.")
 
         try:
             while True:
-                pcl_data = queue.tryGet()
+                pclData = queue.tryGet()
 
-                if pcl_data is not None:
-                    points = pcl_data.getPoints()
+                if pclData is not None:
+                    points = pclData.getPoints()
                     if len(points) > 0:
                         pcd.points = o3d.utility.Vector3dVector(points)
                         if first:
@@ -89,9 +89,9 @@ def main() -> None:
                             vis.update_geometry(pcd)
 
                 # Show colorized depth in an OpenCV window
-                depth_msg = q_depth.tryGet()
-                if depth_msg is not None:
-                    cv2.imshow("Depth", colorize_depth(depth_msg.getCvFrame()))
+                depthMsg = qDepth.tryGet()
+                if depthMsg is not None:
+                    cv2.imshow("Depth", colorize_depth(depthMsg.getCvFrame()))
 
                 if cv2.waitKey(1) == ord("q"):
                     break

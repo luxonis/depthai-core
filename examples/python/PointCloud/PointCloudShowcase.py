@@ -66,9 +66,9 @@ def print_header(title: str) -> None:
     print(f"╚══════════════════════════════════════════════╝")
 
 
-def print_point_cloud_info(pcd: dai.PointCloudData, frame_num: int) -> None:
+def print_point_cloud_info(pcd: dai.PointCloudData, frameNum: int) -> None:
     points = pcd.getPoints()
-    print(f"\n--- Frame {frame_num} ---")
+    print(f"\n--- Frame {frameNum} ---")
     print(f"  Points       : {len(points)}")
     print(f"  Width×Height : {pcd.getWidth()} × {pcd.getHeight()}")
     print(f"  Organized    : {'yes' if pcd.isOrganized() else 'no'}")
@@ -90,9 +90,9 @@ def main() -> None:
 
     # device = dai.Device()
     # print(f"Device: {device.getDeviceName()}  (ID: {device.getDeviceId()})\n")
-    device_ip = "10.11.0.29"
-    device_info = dai.DeviceInfo(device_ip)
-    device = dai.Device(device_info)
+    deviceIp = "10.11.0.29"
+    deviceInfo = dai.DeviceInfo(deviceIp)
+    device = dai.Device(deviceInfo)
 
     # ------------------------------------------------------------------
     # Single pipeline – shared Camera + StereoDepth, multiple PointCloud
@@ -106,56 +106,56 @@ def main() -> None:
         right.requestFullResolutionOutput().link(stereo.right)
 
         # ── 1. Sparse point cloud  (METER, multi-threaded, large pool) ────
-        pc_sparse = pipeline.create(dai.node.PointCloud)
-        pc_sparse.setRunOnHost(False)
-        pc_sparse.initialConfig.setLengthUnit(dai.LengthUnit.METER)
-        stereo.depth.link(pc_sparse.inputDepth)
-        q_sparse = pc_sparse.outputPointCloud.createOutputQueue()
+        pcSparse = pipeline.create(dai.node.PointCloud)
+        pcSparse.setRunOnHost(False)
+        pcSparse.initialConfig.setLengthUnit(dai.LengthUnit.METER)
+        stereo.depth.link(pcSparse.inputDepth)
+        qSparse = pcSparse.outputPointCloud.createOutputQueue()
 
         # ── 2. Organized point cloud  (MILLIMETER, single-threaded) ───────
-        pc_organized = pipeline.create(dai.node.PointCloud)
-        pc_organized.setRunOnHost(False)
-        pc_organized.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
-        pc_organized.initialConfig.setOrganized(True)
-        stereo.depth.link(pc_organized.inputDepth)
-        q_organized = pc_organized.outputPointCloud.createOutputQueue()
+        pcOrganized = pipeline.create(dai.node.PointCloud)
+        pcOrganized.setRunOnHost(False)
+        pcOrganized.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
+        pcOrganized.initialConfig.setOrganized(True)
+        stereo.depth.link(pcOrganized.inputDepth)
+        qOrganized = pcOrganized.outputPointCloud.createOutputQueue()
 
         # ── 3. Transform pointcloud into another device's coordinate system ───
-        pc_cam = pipeline.create(dai.node.PointCloud)
-        pc_cam.setRunOnHost(False)
-        pc_cam.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
-        pc_cam.setTargetCoordinateSystem(dai.CameraBoardSocket.CAM_A)
+        pcCam = pipeline.create(dai.node.PointCloud)
+        pcCam.setRunOnHost(False)
+        pcCam.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
+        pcCam.setTargetCoordinateSystem(dai.CameraBoardSocket.CAM_A)
         # Or transform to a housing coordinate system instead, e.g.:
-        # pc_cam.setTargetCoordinateSystem(dai.HousingCoordinateSystem.VESA_A)
-        stereo.depth.link(pc_cam.inputDepth)
-        q_cam = pc_cam.outputPointCloud.createOutputQueue()
+        # pcCam.setTargetCoordinateSystem(dai.HousingCoordinateSystem.VESA_A)
+        stereo.depth.link(pcCam.inputDepth)
+        qCam = pcCam.outputPointCloud.createOutputQueue()
 
         # ── 4. Custom 4×4 transform  (90° Z rotation) + passthrough ──────
-        pc_custom = pipeline.create(dai.node.PointCloud)
-        pc_custom.setRunOnHost(False)
-        pc_custom.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
-        pc_custom.useCPU()
+        pcCustom = pipeline.create(dai.node.PointCloud)
+        pcCustom.setRunOnHost(False)
+        pcCustom.initialConfig.setLengthUnit(dai.LengthUnit.MILLIMETER)
+        pcCustom.useCPU()
         transform = [
             [0.0, -1.0, 0.0, 0.0],
             [1.0,  0.0, 0.0, 0.0],
             [0.0,  0.0, 1.0, 0.0],
             [0.0,  0.0, 0.0, 1.0],
         ]
-        pc_custom.initialConfig.setTransformationMatrix(transform)
-        stereo.depth.link(pc_custom.inputDepth)
-        q_custom = pc_custom.outputPointCloud.createOutputQueue()
-        q_depth = pc_custom.passthroughDepth.createOutputQueue()
+        pcCustom.initialConfig.setTransformationMatrix(transform)
+        stereo.depth.link(pcCustom.inputDepth)
+        qCustom = pcCustom.outputPointCloud.createOutputQueue()
+        qDepth = pcCustom.passthroughDepth.createOutputQueue()
 
         # Note: Housing coordinate system transform is also available, e.g.:
         #   pc.setTargetCoordinateSystem(dai.HousingCoordinateSystem.VESA_A)
         # See the docstring at the top of this file for all available
         # CameraBoardSocket and HousingCoordinateSystem values.
 
-        sparse_frames = []
-        organized_frames = []
-        cam_frames = []
-        custom_frames = []
-        depth_frames = []
+        sparseFrames = []
+        organizedFrames = []
+        camFrames = []
+        customFrames = []
+        depthFrames = []
 
         pipeline.start()
 
@@ -164,18 +164,18 @@ def main() -> None:
         time.sleep(1)
 
         # Drain stale frames that arrived during warm-up
-        q_sparse.tryGetAll()
-        q_organized.tryGetAll()
-        q_cam.tryGetAll()
-        q_custom.tryGetAll()
-        q_depth.tryGetAll()
+        qSparse.tryGetAll()
+        qOrganized.tryGetAll()
+        qCam.tryGetAll()
+        qCustom.tryGetAll()
+        qDepth.tryGetAll()
 
         for _ in range(NUM_FRAMES):
-            sparse_frames.append(q_sparse.get())
-            organized_frames.append(q_organized.get())
-            cam_frames.append(q_cam.get())
-            custom_frames.append(q_custom.get())
-            depth_frames.append(q_depth.get())
+            sparseFrames.append(qSparse.get())
+            organizedFrames.append(qOrganized.get())
+            camFrames.append(qCam.get())
+            customFrames.append(qCustom.get())
+            depthFrames.append(qDepth.get())
 
     # ------------------------------------------------------------------
     # Display results grouped by feature
@@ -184,25 +184,25 @@ def main() -> None:
     # 1 ── Sparse point cloud
     print_header("1. Basic sparse point cloud")
     print("  Config: METER")
-    for i, pcd in enumerate(sparse_frames):
+    for i, pcd in enumerate(sparseFrames):
         print_point_cloud_info(pcd, i)
 
     # 2 ── Organized point cloud
     print_header("2. Organized point cloud")
     print("  Config: MILLIMETER, initialConfig.setOrganized(True)")
-    for i, pcd in enumerate(organized_frames):
+    for i, pcd in enumerate(organizedFrames):
         print_point_cloud_info(pcd, i)
 
     # 3 ── Transform pointcloud into another device's coordinate system
     print_header("3. Camera-to-camera transform")
     print("  Config: setTargetCoordinateSystem(CAM_A)")
-    for i, pcd in enumerate(cam_frames):
+    for i, pcd in enumerate(camFrames):
         print_point_cloud_info(pcd, i)
 
     # 4 ── Custom transform + passthrough depth
     print_header("4. Custom transform matrix + passthrough")
     print("  Config: 90° Z rotation via initialConfig")
-    for i, (pcd, depth) in enumerate(zip(custom_frames, depth_frames)):
+    for i, (pcd, depth) in enumerate(zip(customFrames, depthFrames)):
         print_point_cloud_info(pcd, i)
         print(f"  Depth frame  : {depth.getWidth()} × {depth.getHeight()}")
 
