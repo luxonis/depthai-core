@@ -75,6 +75,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Extrinsics> extrinsics(m, "Extrinsics", DOC(dai, Extrinsics));
     py::class_<CameraInfo> cameraInfo(m, "CameraInfo", DOC(dai, CameraInfo));
     py::class_<EepromData> eepromData(m, "EepromData", DOC(dai, EepromData));
+    py::class_<dai::ImuModelParams> imuModelParams(m, "ImuModelParams", DOC(dai, ImuModelParams));
+    py::class_<dai::AccelerometerNoiseParams> accelerometerNoiseParams(m, "AccelerometerNoiseParams", DOC(dai, AccelerometerNoiseParams));
+    py::class_<dai::GyroscopeNoiseParams> gyroscopeNoiseParams(m, "GyroscopeNoiseParams", DOC(dai, GyroscopeNoiseParams));
+    py::class_<dai::AccelAxisNoiseParams> accelAxisNoiseParams(m, "AccelAxisNoiseParams", DOC(dai, AccelAxisNoiseParams));
+    py::class_<dai::GyroAxisNoiseParams> gyroAxisNoiseParams(m, "GyroAxisNoiseParams", DOC(dai, GyroAxisNoiseParams));
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
@@ -525,6 +530,36 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("cameraType", &CameraInfo::cameraType)
         .def_readwrite("specHfovDeg", &CameraInfo::specHfovDeg);
 
+    // AccelAxisNoiseParams
+    accelAxisNoiseParams.def(py::init<>())
+        .def_readwrite("vrw", &AccelAxisNoiseParams::vrw)
+        .def_readwrite("rrw", &AccelAxisNoiseParams::rrw)
+        .def_readwrite("bi", &AccelAxisNoiseParams::bi);
+
+    // GyroAxisNoiseParams
+    gyroAxisNoiseParams.def(py::init<>())
+        .def_readwrite("arw", &GyroAxisNoiseParams::arw)
+        .def_readwrite("rrw", &GyroAxisNoiseParams::rrw)
+        .def_readwrite("bi", &GyroAxisNoiseParams::bi);
+
+    // AccelerometerNoiseParams
+    accelerometerNoiseParams.def(py::init<>())
+        .def_readwrite("x", &AccelerometerNoiseParams::x)
+        .def_readwrite("y", &AccelerometerNoiseParams::y)
+        .def_readwrite("z", &AccelerometerNoiseParams::z);
+
+    // GyroscopeNoiseParams
+    gyroscopeNoiseParams.def(py::init<>())
+        .def_readwrite("x", &GyroscopeNoiseParams::x)
+        .def_readwrite("y", &GyroscopeNoiseParams::y)
+        .def_readwrite("z", &GyroscopeNoiseParams::z);
+
+    // ImuModelParams
+    imuModelParams.def(py::init<>())
+        .def_readwrite("name", &ImuModelParams::name)
+        .def_readwrite("accelerometer", &ImuModelParams::accelerometer)
+        .def_readwrite("gyroscope", &ImuModelParams::gyroscope);
+
     // EepromData
     eepromData.def(py::init<>())
         .def_readwrite("version", &EepromData::version)
@@ -545,7 +580,10 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("housingExtrinsics", &EepromData::housingExtrinsics)
         .def_readwrite("stereoUseSpecTranslation", &EepromData::stereoUseSpecTranslation)
         .def_readwrite("stereoEnableDistortionCorrection", &EepromData::stereoEnableDistortionCorrection)
-        .def_readwrite("verticalCameraSocket", &EepromData::verticalCameraSocket);
+        .def_readwrite("verticalCameraSocket", &EepromData::verticalCameraSocket)
+        .def_readwrite("accelerometerCalibParams", &EepromData::accelerometerCalibParams)
+        .def_readwrite("gyroscopeCalibParams", &EepromData::gyroscopeCalibParams)
+        .def_readwrite("imuModelParams", &EepromData::imuModelParams);
     // UsbSpeed
     usbSpeed.value("UNKNOWN", UsbSpeed::UNKNOWN)
         .value("LOW", UsbSpeed::LOW)

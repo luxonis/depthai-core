@@ -390,6 +390,27 @@ class CalibrationHandler {
     dai::CameraBoardSocket getStereoRightCameraId() const;
 
     /**
+     * Get the accelerometer calibration parameters.
+     *
+     * @return returns a flat vector of up to 12 floats
+     */
+    std::vector<float> getAccelerometerCalibParams() const;
+
+    /**
+     * Get the gyroscope calibration parameters.
+     *
+     * @return returns a flat vector of up to 12 floats
+     */
+    std::vector<float> getGyroscopeCalibParams() const;
+
+    /**
+     * Get the IMU model-specific parameters.
+     *
+     * @return returns IMU model parameters as ImuModelParams struct
+     */
+    dai::ImuModelParams getImuModelParams() const;
+
+    /**
      * Write raw calibration/board data to json file.
      *
      * @param destPath  Full path to the json file in which raw calibration data will be stored
@@ -613,6 +634,21 @@ class CalibrationHandler {
      * @return true on proper connection with no loops.
      */
     bool validateCameraArray() const;
+
+    /**
+     * Set the accelerometer calibration parameters.
+     *
+     * @param calibParams Up to 12 float array containing accelerometer calibration parameters
+     */
+    void setAccelerometerCalibParams(const std::vector<float>& calibParams);
+
+    /**
+     * Set the gyroscope calibration parameters.
+     *
+     * @param calibParams Up to 12 float array containing gyroscope calibration parameters
+     */
+    void setGyroscopeCalibParams(const std::vector<float>& calibParams);
+
     /**
      * Validate Calibration handler properties and how they are set, so there is no:
      *  - Cycling links
