@@ -52,13 +52,13 @@ class TestHelper {
             throw std::runtime_error("Test folder does not have write permissions: " + testFolder.string());
         }
 
-        auto recordingFilenames = dai::utility::filenamesInArchive(RECORDING_PATH);
+        auto recordingFilenames = dai::utility::filenamesInTar(RECORDING_PATH);
         std::vector<std::filesystem::path> recordingExtFiles;
         recordingExtFiles.reserve(recordingFilenames.size());
         for(const auto& filename : recordingFilenames) {
             recordingExtFiles.push_back(std::filesystem::path(testFolder).append("extracted").append(filename));
         }
-        dai::utility::extractFiles(RECORDING_PATH, recordingFilenames, recordingExtFiles);
+        dai::utility::untarFiles(RECORDING_PATH, recordingFilenames, recordingExtFiles);
     }
 
     ~TestHelper() {

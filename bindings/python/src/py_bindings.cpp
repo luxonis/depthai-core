@@ -15,12 +15,10 @@
 
 // project
 #include "CalibrationHandlerBindings.hpp"
-#include "CrashDumpBindings.hpp"
 #include "DatatypeBindings.hpp"
 #include "DeviceBindings.hpp"
 #include "DeviceBootloaderBindings.hpp"
 #include "MessageQueueBindings.hpp"
-#include "PlatformBindings.hpp"
 #include "VersionBindings.hpp"
 #include "XLinkBindings.hpp"
 #include "capabilities/CapabilityBindings.hpp"
@@ -84,8 +82,6 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&AssetManagerBindings::bind);
     callstack.push_front(&PipelineBindings::bind);
     callstack.push_front(&XLinkBindings::bind);
-    callstack.push_front(&PlatformBindings::bind);
-    callstack.push_front(&CrashDumpBindings::bind);
     callstack.push_front(&DeviceBindings::bind);
     callstack.push_front(&DeviceBootloaderBindings::bind);
     callstack.push_front(&CalibrationHandlerBindings::bind);

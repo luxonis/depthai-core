@@ -1,86 +1,38 @@
-#include <chrono>
-#include <condition_variable>
-#include <cstdlib>
 #include <iostream>
-#include <mutex>
-#include <thread>
+#include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
 
-namespace {
-void setEnvVar(const char* key, const char* value) {
-#ifdef _WIN32
-    _putenv_s(key, value);
-#else
-    setenv(key, value, 1);
-#endif
-}
-}  // namespace
+// Main intention of this example is to test and verify the crash dump functionality works as intended
+int main() try {
+    std::cout << "This example crashes the device on pressing 'c' key. Press 'q' to quit." << std::endl;
+    // Create pipeline
+    dai::Pipeline pipeline;
 
-int main() {
-    setEnvVar("DEPTHAI_CRASH_DEVICE", "1");
-    setEnvVar("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", "1");
+    // Define source and output
+    auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
 
-    dai::Device device;
-    std::mutex mtx;
-    std::condition_variable cv;
-    bool callbackInvoked = false;
-    std::shared_ptr<dai::CrashDump> receivedDump;
+    auto video = camRgb->requestOutput({1920, 1080})->createOutputQueue(1, false);
 
-    // Register crash dump callback
-    device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) {
-        // Basic crash dump usage
-        std::cout << "Crash dump callback invoked.\n";
-        std::cout << "  Platform: " << dai::platform2string(dump->getPlatform()) << std::endl;
-        std::cout << "  Device ID: " << dump->deviceId << std::endl;
-        std::cout << "  Crash timestamp: " << dump->crashdumpTimestamp << std::endl;
-        std::cout << "  DepthAI commit: " << dump->depthaiCommitHash << std::endl;
+    auto device = pipeline.getDefaultDevice();
 
-        // Advanced extra custom user data usage
-        dump->extra["example"] = "cpp_crash_dump";
-        dump->extra["host_time_ms"] = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    while(true) {
+        auto videoIn = video->get<dai::ImgFrame>();
 
-        {
-            std::lock_guard<std::mutex> lock(mtx);
-            receivedDump = std::move(dump);
-            callbackInvoked = true;
+        // Get BGR frame from NV12 encoded video frame to show with opencv
+        // Visualizing the frame on slower hosts might have overhead
+        cv::imshow("video", videoIn->getCvFrame());
+
+        int key = cv::waitKey(1);
+        if(key == 'q' || key == 'Q') {
+            return 0;
         }
-
-        cv.notify_one();
-    });
-
-    // Trigger the crash manually. In a real scenario, this would be triggered by an actual device crash.
-    std::cout << "Triggering crash manually ...\n";
-    device.crashDevice();
-
-    // Wait for the callback to be invoked (with timeout)
-    {
-        std::unique_lock<std::mutex> lock(mtx);
-        if(!cv.wait_for(lock, std::chrono::seconds(60), [&] { return callbackInvoked; })) {
-            std::cerr << "Timed out waiting for crash dump callback." << std::endl;
-            return 1;
+        if(key == 'c') {
+            device->crashDevice();
         }
     }
-
-    // Check if the device crash was detected by hasCrashed() within a reasonable time frame
-    bool crashDetected = false;
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-    while(std::chrono::steady_clock::now() < deadline) {
-        if(device.hasCrashed()) {
-            crashDetected = true;
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    }
-
-    if(!crashDetected) {
-        std::cerr << "Device crash was not detected by hasCrashed() within timeout.\n";
-        return 1;
-    }
-
-    // Print user defined extra data
-    std::cout << "Crash dump extra data:\n";
-    std::cout << receivedDump->extra.dump(2) << std::endl;
-
     return 0;
+} catch(const std::exception& ex) {
+    std::cerr << "Error: " << ex.what() << std::endl;
+    return 1;
 }

@@ -26,12 +26,6 @@ std::string getIPv4AddressAsString(std::uint32_t binary);
 std::string getLocalIpAddress();
 
 /**
- * @brief Get the OS platform
- * @return OS platform string
- */
-std::string getOSPlatform();
-
-/**
  * @brief Get the temporary path
  * @return Temporary path
  */

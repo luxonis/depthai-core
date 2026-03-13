@@ -13,10 +13,31 @@
 
 // project
 #include "depthai/device/DeviceBase.hpp"
-#include "depthai/device/Platform.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
 namespace dai {
+
+/**
+ * @brief Hardware platform type
+ *
+ */
+enum class Platform { RVC2, RVC3, RVC4 };
+
+/**
+ * @brief Convert Platform enum to string
+ *
+ * @param platform Platform enum
+ * @return std::string String representation of Platform
+ */
+std::string platform2string(Platform platform);
+
+/**
+ * @brief Convert string to Platform enum
+ *
+ * @param platform String representation of Platform
+ * @return Platform Platform enum
+ */
+Platform string2platform(const std::string& platform);
 
 /**
  * Represents the DepthAI device with the methods to interact with it.
@@ -37,6 +58,18 @@ class Device : public DeviceBase {
      * @brief dtor to close the device
      */
     ~Device() override;
+
+    /**
+     * @brief Get the platform of the connected device
+     * @return Platform Platform enum
+     */
+    Platform getPlatform() const;
+
+    /**
+     * @brief Get the platform of the connected device as string
+     * @return std::string String representation of Platform
+     */
+    std::string getPlatformAsString() const;
 
    private:
     void closeImpl() override;

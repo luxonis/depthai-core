@@ -716,44 +716,63 @@ std::optional<std::vector<uint8_t>> DeviceGate::USBImpl::getFile(const std::stri
     return fileData;
 }
 
-void DeviceGate::waitForSessionEnd() {
+std::optional<DeviceGate::CrashDump> DeviceGate::waitForSessionEnd() {
     while(true) {
-        switch(this->getState()) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        auto sessionState = getState();
+        if(sessionState == SessionState::ERROR_STATE) {
+            spdlog::error("DeviceGate session state is in error state - exiting");
+            return std::nullopt;
+        }
+        switch(sessionState) {
             case SessionState::NOT_CREATED:
             case SessionState::CREATED:
             case SessionState::RUNNING:
             case SessionState::STOPPING:
-                break;  // Nothing to do, wait for another state change
+                break;  // Nothing to do
             case SessionState::ERROR_STATE:
                 spdlog::error("DeviceGate session state is in error state - exiting");
-                return;  // Session is in error state, we can exit
+                return std::nullopt;
             case SessionState::STOPPED:
+                return std::nullopt;
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
-                return;  // Session is destroyed, we can exit
+                auto crashDumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
+                if(crashDumpPathStr == "0") {
+                    spdlog::warn("Firmware crashed but DEPTHAI_CRASHDUMP is set to 0, the crash dump will not be saved.");
+                    return std::nullopt;
+                }
+
+                auto currentVersion = getVersion();
+                auto requiredVersion = Version(0, 0, 14);
+                if(currentVersion < requiredVersion) {
+                    spdlog::warn("FW crashed but the gate version does not support transfering over the crash dump. Current version {}, required is {}",
+                                 currentVersion.toString(),
+                                 requiredVersion.toString());
+                    return std::nullopt;
+                }
+                spdlog::warn("FW crashed - trying to get out the crash dump");
+                std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
+                std::string crashDumpName;
+                spdlog::warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
+                return getCrashDump();
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }
 
 std::optional<DeviceGate::CrashDump> DeviceGate::getCrashDump() {
-    auto currentVersion = getVersion();
-    auto requiredVersion = Version(0, 0, 14);
-    if(currentVersion < requiredVersion) {
-        spdlog::warn("The gate version does not support transfering over the crash dump. Current version {}, required is {}",
-                     currentVersion.toString(),
-                     requiredVersion.toString());
-        return std::nullopt;
-    }
-
     std::string url = fmt::format("{}/{}/core_dump", sessionsEndpoint, sessionId);
     std::string filename;
     auto fileData = DeviceGate::getFile(url, filename);
     if(fileData) {
         return CrashDump{std::move(*fileData), filename};
     }
-    spdlog::warn("Could not retrieve file from the device gate");
     return std::nullopt;
+}
+
+// TODO(themarpe) - get all sessions, check if only one and not protected
+bool DeviceGate::isBootedNonExclusive() {
+    return true;
 }
 
 }  // namespace dai
