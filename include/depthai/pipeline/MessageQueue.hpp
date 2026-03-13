@@ -9,6 +9,7 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/LockingQueue.hpp"
+#include "depthai/utility/WaitAnyNotifier.hpp"
 #include "depthai/utility/PipelineEventDispatcherInterface.hpp"
 
 // shared
@@ -33,9 +34,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::string name;
 
-    std::mutex cvNotifyMtx;
-    std::unordered_map<CallbackId, std::shared_ptr<std::condition_variable>> condVars;
-    CallbackId uniqueCondVarId{0};
+    std::mutex notifierMtx;
+    std::unordered_map<CallbackId, std::shared_ptr<utility::WaitAnyNotifier>> notifiers;
+    CallbackId uniqueNotifierId{0};
 
    public:
     std::mutex callbacksMtx;                                                                                 // Only public for the Python bindings
@@ -44,7 +45,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
 
    private:
     void callCallbacks(std::shared_ptr<ADatatype> msg);
-    void notifyCondVars();
+    void notifyListeners();
     utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
 
    public:
@@ -61,14 +62,14 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
           name(c.name),
           callbacks(c.callbacks),
           uniqueCallbackId(c.uniqueCallbackId),
-          pipelineEventDispatcher(c.pipelineEventDispatcher){};
+          pipelineEventDispatcher(c.pipelineEventDispatcher) {};
     MessageQueue(MessageQueue&& m) noexcept
         : enable_shared_from_this(m),
           queue(std::move(m.queue)),
           name(std::move(m.name)),
           callbacks(std::move(m.callbacks)),
           uniqueCallbackId(m.uniqueCallbackId),
-          pipelineEventDispatcher(m.pipelineEventDispatcher){};
+          pipelineEventDispatcher(m.pipelineEventDispatcher) {};
 
     MessageQueue& operator=(const MessageQueue& c) {
         queue = c.queue;
@@ -83,19 +84,20 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         queue = std::move(m.queue);
         name = std::move(m.name);
         callbacks = std::move(m.callbacks);
+        notifiers = std::move(m.notifiers);
         uniqueCallbackId = m.uniqueCallbackId;
+        uniqueNotifierId = m.uniqueNotifierId;
         pipelineEventDispatcher = m.pipelineEventDispatcher;
         return *this;
     }
 
-    static bool waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues);
-
+    static bool waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues, std::optional<std::chrono::milliseconds> timeout = std::nullopt);
     static std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                               std::optional<std::chrono::milliseconds> timeout = std::nullopt);
     template <typename T>
     static std::unordered_map<std::string, std::shared_ptr<T>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                       std::optional<std::chrono::milliseconds> timeout = std::nullopt) {
-        auto resultADatatype = getAny(std::move(queues), timeout);
+        auto resultADatatype = getAny(queues, timeout);
         std::unordered_map<std::string, std::shared_ptr<T>> result;
         for(auto& [k, v] : resultADatatype) {
             auto casted = std::dynamic_pointer_cast<T>(v);
@@ -196,12 +198,12 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     CallbackId addCallback(const std::function<void()>& callback);
 
     /**
-     * Adds a condition variable to be notified on message queue destruction
+     * Adds a notifier to be pinged on message queue updates
      *
-     * @param cv Condition variable to be notified
-     * @returns Condition variable id
+     * @param notifier Notifier to be notified
+     * @returns Notifier id
      */
-    CallbackId addCondVar(std::shared_ptr<std::condition_variable> cv);
+    CallbackId addNotifier(std::shared_ptr<utility::WaitAnyNotifier> notifier);
 
     /**
      * Removes a callback
@@ -212,12 +214,12 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     bool removeCallback(CallbackId callbackId);
 
     /**
-     * Removes a condition variable
+     * Removes a notifier
      *
-     * @param condVarId Id of condition variable to be removed
-     * @returns True if condition variable was removed, false otherwise
+     * @param notifierId Id of notifier to be removed
+     * @returns True if notifier was removed, false otherwise
      */
-    bool removeCondVar(CallbackId condVarId);
+    bool removeNotifier(CallbackId notifierId);
 
     /**
      * Check whether front of the queue has message of type T

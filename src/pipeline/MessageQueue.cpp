@@ -2,6 +2,7 @@
 
 // std
 #include <chrono>
+#include <functional>
 #include <iostream>
 
 // project
@@ -31,7 +32,7 @@ void MessageQueue::close() {
     // Destroy queue
     queue.destruct();
 
-    notifyCondVars();
+    notifyListeners();
 
     // Log if name not empty
     if(!name.empty()) spdlog::debug("MessageQueue ({}) closed", name);
@@ -98,15 +99,15 @@ int MessageQueue::addCallback(const std::function<void()>& callback) {
     return addCallback([callback](const std::string&, std::shared_ptr<ADatatype>) { callback(); });
 }
 
-int MessageQueue::addCondVar(std::shared_ptr<std::condition_variable> cv) {
+int MessageQueue::addNotifier(std::shared_ptr<utility::WaitAnyNotifier> notifier) {
     // Lock first
-    std::unique_lock<std::mutex> lock(cvNotifyMtx);
+    std::unique_lock<std::mutex> lock(notifierMtx);
 
     // Get unique id
-    int uniqueId = uniqueCondVarId++;
+    int uniqueId = uniqueNotifierId++;
 
     // assign callback
-    condVars[uniqueId] = std::move(cv);
+    notifiers[uniqueId] = std::move(notifier);
 
     // return id assigned to the callback
     return uniqueId;
@@ -116,7 +117,7 @@ bool MessageQueue::removeCallback(int callbackId) {
     // Lock first
     std::unique_lock<std::mutex> lock(callbacksMtx);
 
-    // If callback with id 'callbackId' doesn't exists, return false
+    // If callback with id 'callbackId' doesn't exist, return false
     if(callbacks.count(callbackId) == 0) return false;
 
     // Otherwise erase and return true
@@ -124,15 +125,15 @@ bool MessageQueue::removeCallback(int callbackId) {
     return true;
 }
 
-bool MessageQueue::removeCondVar(int condVarId) {
+bool MessageQueue::removeNotifier(int notifierId) {
     // Lock first
-    std::unique_lock<std::mutex> lock(cvNotifyMtx);
+    std::unique_lock<std::mutex> lock(notifierMtx);
 
-    // If callback with id 'callbackId' doesn't exists, return false
-    if(condVars.count(condVarId) == 0) return false;
+    // If callback with id 'notifierId' doesn't exist, return false
+    if(notifiers.count(notifierId) == 0) return false;
 
     // Otherwise erase and return true
-    condVars.erase(condVarId);
+    notifiers.erase(notifierId);
     return true;
 }
 
@@ -142,7 +143,6 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     callCallbacks(msg);
-    notifyCondVars();
     auto queueNotClosed = queue.push(msg, [&](LockingQueueState state, size_t size) {
         if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             switch(state) {
@@ -158,17 +158,17 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
             }
         }
     });
+    notifyListeners();
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
 }
 
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     callCallbacks(msg);
-    notifyCondVars();
     if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
-    return queue.tryWaitAndPush(msg, timeout, [&](LockingQueueState state, size_t size) {
+    auto ret = queue.tryWaitAndPush(msg, timeout, [&](LockingQueueState state, size_t size) {
         if(pipelineEventDispatcher && pipelineEventDispatcher->sendEvents) {
             switch(state) {
                 case LockingQueueState::BLOCKED:
@@ -183,6 +183,8 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
             }
         }
     });
+    if(ret) notifyListeners();
+    return ret;
 }
 
 bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
@@ -203,116 +205,88 @@ void MessageQueue::callCallbacks(std::shared_ptr<ADatatype> message) {
     }
 }
 
-void MessageQueue::notifyCondVars() {
+void MessageQueue::notifyListeners() {
     // Lock first
-    std::lock_guard<std::mutex> lock(cvNotifyMtx);
+    std::lock_guard<std::mutex> lock(notifierMtx);
 
-    // Call all callbacks
-    for(auto& keyValue : condVars) {
-        keyValue.second->notify_one();
+    // Notify all listeners
+    for(auto& keyValue : notifiers) {
+        keyValue.second->notifyOne();
     }
 }
 
 MessageQueue::QueueException::~QueueException() noexcept = default;
 
-bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues) {
-    auto inputsWaitCv = std::make_shared<std::condition_variable>();
-    std::mutex waitMutex;
+bool MessageQueue::waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues, std::optional<std::chrono::milliseconds> timeout) {
+    std::vector<std::pair<std::reference_wrapper<MessageQueue>, MessageQueue::CallbackId>> notifierIds;
+    notifierIds.reserve(queues.size());
 
-    // Store IDs so we can unsubscribe later
-    std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> ids;
+    auto removeNotifiers = [&]() {
+        for(auto& [input, notifierId] : notifierIds) {
+            input.get().removeNotifier(notifierId);
+        }
+    };
+    auto checkAllClosed = [&]() {
+        return std::all_of(queues.begin(), queues.end(), [](const std::reference_wrapper<MessageQueue> q) { return q.get().isClosed(); });
+    };
+    auto checkForMessages = [&]() {
+        return std::any_of(queues.begin(), queues.end(), [](const std::reference_wrapper<MessageQueue> q) { return !q.get().isClosed() && q.get().has(); });
+    };
+    auto pred = [&]() {
+        try {
+            return checkAllClosed() || checkForMessages();
+        } catch(QueueException&) {
+            // Unblock on queue exception
+            return true;
+        }
+    };
 
-    // 1. Subscribe to all queues in the vector
-    for(MessageQueue& queue : queues) {
-        ids.push_back({queue, queue.addCondVar(inputsWaitCv)});
-    }
-
-    // 2. Wait until any queue has data or closes
-    std::unique_lock<std::mutex> lock(waitMutex);
-    inputsWaitCv->wait(lock, [&]() {
-        for(MessageQueue& queue : queues) {
-            if(queue.isClosed()) continue;
-            if(queue.has()) {
-                return true;
+    std::shared_ptr<utility::WaitAnyNotifier> notifier = std::make_shared<utility::WaitAnyNotifier>();
+    bool gotMessage = true;
+    try {
+        // Add notifier to all queues, if any message arrives from this point, wait should return
+        for(auto input : queues) {
+            auto notifierId = input.get().addNotifier(notifier);
+            notifierIds.emplace_back(input, notifierId);
+        }
+        // Check if any messages already present
+        if(!checkAllClosed() && !checkForMessages()) {
+            if(timeout.has_value()) {
+                notifier->waitFor(pred, timeout.value());
+            } else {
+                notifier->wait(pred);
             }
         }
-        return false;
-    });
-
-    // 3. Unsubscribe
-    for(auto& pair : ids) {
-        pair.first.removeCondVar(pair.second);
+        gotMessage = checkForMessages();
+    } catch(...) {
+        removeNotifiers();
+        throw;
     }
-    return true;
+    removeNotifiers();
+    return gotMessage;
 }
-
 std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                                  std::optional<std::chrono::milliseconds> timeout) {
-    std::vector<std::pair<MessageQueue&, MessageQueue::CallbackId>> condVarIds;
-    condVarIds.reserve(queues.size());
     std::unordered_map<std::string, std::shared_ptr<ADatatype>> inputs;
-
-    std::mutex inputsWaitMutex;
-    auto inputsWaitCv = std::make_shared<std::condition_variable>();
-
-    try {
-        // Register callbacks
-        for(auto& kv : queues) {
+    std::vector<std::reference_wrapper<MessageQueue>> queuesVec;
+    queuesVec.reserve(queues.size());
+    for(const auto& kv : queues) {
+        queuesVec.emplace_back(kv.second);
+    }
+    bool gotAny = waitAny(queuesVec, timeout);
+    if(gotAny) {
+        for(const auto& kv : queues) {
             auto& input = kv.second;
-            auto condVarId = input.addCondVar(inputsWaitCv);
-            condVarIds.emplace_back(input, condVarId);
-        }
-
-        // Check if any messages already present
-        bool hasAnyMessages = false;
-        for(auto& kv : queues) {
-            if(kv.second.has()) {
-                hasAnyMessages = true;
-                break;
-            }
-        }
-
-        if(!hasAnyMessages) {
-            // Wait for any message to arrive
-            auto pred = [&]() {
-                for(auto& kv : queues) {
-                    if(kv.second.isClosed()) {
-                        return true;
-                    }
+            std::shared_ptr<ADatatype> msg = nullptr;
+            try {
+                msg = input.tryGet<ADatatype>();
+            } catch(QueueException& e) {
+                if(e.what() != CLOSED_QUEUE_MESSAGE) {
+                    throw;
                 }
-                for(auto& kv : queues) {
-                    if(kv.second.has()) {
-                        return true;
-                    }
-                }
-                return false;
-            };
-            std::unique_lock<std::mutex> lock(inputsWaitMutex);
-            if(timeout.has_value()) {
-                inputsWaitCv->wait_for(lock, timeout.value(), pred);
-            } else {
-                inputsWaitCv->wait(lock, pred);
             }
+            if(msg) inputs[kv.first] = msg;
         }
-
-        // Remove condition variables
-        for(auto& [input, condVarId] : condVarIds) {
-            input.removeCondVar(condVarId);
-        }
-
-        // Collect all available messages
-        for(auto& kv : queues) {
-            auto& input = kv.second;
-            if(input.has()) {
-                inputs[kv.first] = input.get<ADatatype>();
-            }
-        }
-    } catch(...) {
-        // Remove condition variables
-        for(auto& [input, condVarId] : condVarIds) {
-            input.removeCondVar(condVarId);
-        }
-        throw;
     }
     return inputs;
 }
