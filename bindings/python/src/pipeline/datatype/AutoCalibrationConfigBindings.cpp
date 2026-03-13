@@ -40,6 +40,9 @@ void bind_auto_calibration_config(pybind11::module& m, void* pCallstack) {
                        DOC(dai, AutoCalibrationConfig, calibrationConfidenceThreshold))
         .def_readwrite("dataConfidenceThreshold", &AutoCalibrationConfig::dataConfidenceThreshold, DOC(dai, AutoCalibrationConfig, dataConfidenceThreshold))
         .def_readwrite("maxIterations", &AutoCalibrationConfig::maxIterations, DOC(dai, AutoCalibrationConfig, maxIterations))
+        .def_readwrite("maxImagesPerRecalibration",
+                       &AutoCalibrationConfig::maxImagesPerRecalibration,
+                       DOC(dai, AutoCalibrationConfig, maxImagesPerRecalibration))
         .def_readwrite("flashCalibration", &AutoCalibrationConfig::flashCalibration, DOC(dai, AutoCalibrationConfig, flashCalibration))
         .def_readwrite("validationSetSize", &AutoCalibrationConfig::validationSetSize, DOC(dai, AutoCalibrationConfig, validationSetSize))
         .def("__repr__", [](const AutoCalibrationConfig& c) {

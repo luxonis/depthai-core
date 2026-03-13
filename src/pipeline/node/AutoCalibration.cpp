@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/AutoCalibration.hpp"
 
+#include <cstddef>
+
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <pipeline/datatype/MessageGroup.hpp>
 
@@ -9,10 +11,10 @@
 namespace dai {
 namespace node {
 
-#define MAX_FAILS_PER_RECALIBRATION_DEFAULT 5
-#define GATE_FPS_DEFAULT 5
-#define BYTES_PER_SECOND_LIMIT_DEFAULT GATE_FPS_DEFAULT * 1280 * 800 * 2
-#define PACKET_SIZE_DEFAULT 100000
+constexpr int MAX_FAILS_PER_RECALIBRATION_DEFAULT = 5;
+constexpr int GATE_FPS_DEFAULT = 5;
+constexpr std::size_t BYTES_PER_SECOND_LIMIT_DEFAULT = static_cast<std::size_t>(GATE_FPS_DEFAULT) * 1280u * 800u * 2u;
+constexpr std::size_t PACKET_SIZE_DEFAULT = 100000u;
 
 void AutoCalibration::logReport(const Report& report, unsigned int iteration) const {
     // Define a lambda or a small helper to route to the correct spdlog method
@@ -43,7 +45,7 @@ void AutoCalibration::logReport(const Report& report, unsigned int iteration) co
         unsigned i = 0;
         for(const auto& coverageData : report.coveragesAcquired) {
             log("    recalibration iteration:");
-            log("        {}    coverageAcquired    {:.1f}    dataAcquired    {:.1f}", i, coverageData.first, coverageData.second);
+            log("        {}    coverageAcquired    {:.1f}    dataAcquired    {:.1f}", i + 1, coverageData.first, coverageData.second);
             i += 1;
         }
     } else {
@@ -61,7 +63,7 @@ void AutoCalibration::logConfig() const {
     log("Calib. Confidence Thr:  {:.2f}", initialConfig->calibrationConfidenceThreshold);
     log("Data Confidence Thr:    {:.2f}", initialConfig->dataConfidenceThreshold);
     log("Max Iterations:         {}", initialConfig->maxIterations);
-    log("Max Images/Recalib:     {}", initialConfig->maxImagesPerReacalibration);
+    log("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
     log("Validation Set Size:    {}", initialConfig->validationSetSize);
     log("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
     log("===========================================");
@@ -123,8 +125,8 @@ bool AutoCalibration::runOnHost() const {
 
 void AutoCalibration::postBuildStage() {
     auto xlinkBridge = gate->output.getXLinkBridge();
-    xlinkBridge->xLinkOut->setBytesPerSecondLimit(BYTES_PER_SECOND_LIMIT_DEFAULT);
-    xlinkBridge->xLinkOut->setPacketSize(PACKET_SIZE_DEFAULT);
+    xlinkBridge->xLinkOut->setBytesPerSecondLimit(static_cast<int>(BYTES_PER_SECOND_LIMIT_DEFAULT));
+    xlinkBridge->xLinkOut->setPacketSize(static_cast<int>(PACKET_SIZE_DEFAULT));
     xlinkBridge->xLinkOut->input.setMaxSize(1);
     xlinkBridge->xLinkOut->input.setBlocking(false);
 }
@@ -159,7 +161,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     for(unsigned int i = 0; i < maxNumIteration; i++) {
         logger->info("=== AutoCalibration: START recalib {}/{}", i + 1, maxNumIteration);
         dynamicCalibrationCommandQueue.send(DCC::startCalibration());
-        for(unsigned int numLoadedImages = 0; numLoadedImages < initialConfig->maxImagesPerReacalibration; numLoadedImages++) {
+        for(unsigned int numLoadedImages = 0; numLoadedImages < initialConfig->maxImagesPerRecalibration; numLoadedImages++) {
             if(!mainLoop()) return nullptr;
             auto dynCalibrationResult = dynamicCalibrationQueue.get<dai::DynamicCalibrationResult>();
             coverage = coverageQueue.get<dai::CoverageData>();
@@ -167,7 +169,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
                           i + 1,
                           maxNumIteration,
                           numLoadedImages + 1,
-                          initialConfig->maxImagesPerReacalibration,
+                          initialConfig->maxImagesPerRecalibration,
                           dynCalibrationResult->info,
                           coverage ? coverage->coverageAcquired : 0.0f,
                           coverage ? coverage->dataAcquired : 0.0f);
@@ -219,11 +221,11 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
 **/
 bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration) {
     unsigned int numIterations = 0;
-    while(numIterations <= initialConfig->maxIterations && mainLoop()) {
+    while(numIterations < initialConfig->maxIterations && mainLoop()) {
         auto startTime = std::chrono::steady_clock::now();  // Start timer
         logger->info("=== AutoCalibration: update iteration {}/{} (validationSetSize={}) ---",
-                     numIterations,
-                     initialConfig->maxIterations - 1,
+                     numIterations + 1,
+                     initialConfig->maxIterations,
                      initialConfig->validationSetSize);
         Report report;
         dynamicCalibrationCommandQueue.send(DCC::resetData());
@@ -237,7 +239,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                 auto endTime = std::chrono::steady_clock::now();
                 std::chrono::duration<double> elapsed = endTime - startTime;
                 report.elapsedSeconds = elapsed.count();  // Set duration
-                logReport(report, numIterations);
+                logReport(report, numIterations + 1);
                 return true;
             }
         } else {
@@ -255,7 +257,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
                     auto endTime = std::chrono::steady_clock::now();
                     std::chrono::duration<double> elapsed = endTime - startTime;
                     report.elapsedSeconds = elapsed.count();  // Set duration
-                    logReport(report, numIterations);
+                    logReport(report, numIterations + 1);
                     return true;
                 }
                 auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT, report);
@@ -268,7 +270,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         auto endTime = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed = endTime - startTime;
         report.elapsedSeconds = elapsed.count();  // Set duration
-        logReport(report, numIterations);
+        logReport(report, numIterations + 1);
         ++numIterations;
     }
 
@@ -313,7 +315,7 @@ bool AutoCalibration::validateIncomingData() {
 
         if(!timedout && messageGroup) {
             if(!messageGroup->get<dai::ImgFrame>(leftInputName) || !messageGroup->get<dai::ImgFrame>(rightInputName)) {
-                logger->warn("Autocalibratino: Not initialized - Empty message groups.");
+                logger->warn("AutoCalibration: Not initialized - Empty message groups.");
                 return false;
             }
 
@@ -321,11 +323,11 @@ bool AutoCalibration::validateIncomingData() {
             auto rightImgFrame = messageGroup->get<ImgFrame>(rightInputName);
 
             if(leftImgFrame->getWidth() != rightImgFrame->getWidth() || leftImgFrame->getHeight() != rightImgFrame->getHeight()) {
-                logger->warn("Autocalibratino: Not initialized - currently supports only sensors with same resolutions.");
+                logger->warn("AutoCalibration: Not initialized - currently supports only sensors with same resolutions.");
                 return false;
             }
             if(leftImgFrame->getHeight() != 800 || leftImgFrame->getWidth() != 1280) {
-                logger->warn("Autocalibratino: Not initialized - currently supports only sensors with 1280x800 resolution.");
+                logger->warn("AutoCalibration: Not initialized - currently supports only sensors with 1280x800 resolution.");
                 return false;
             }
             return true;
