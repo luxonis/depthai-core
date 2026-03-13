@@ -178,7 +178,6 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
     bool runOnHost() const override;
 
-   protected:
     void buildInternal() override;
 
    private:
