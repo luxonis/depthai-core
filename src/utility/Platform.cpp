@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <stdexcept>
 
 // Platform specific
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
@@ -143,6 +144,18 @@ std::string getLocalIpAddress() {
 #endif
 }
 
+std::string getOSPlatform() {
+#ifdef _WIN32
+    return "Windows";
+#elif __APPLE__
+    return "MacOS";
+#elif __linux__
+    return "Linux";
+#else
+    return "Other";
+#endif
+}
+
 void setThreadName(JoiningThread& thread, const std::string& name) {
 #ifdef __linux__
     auto handle = thread.native_handle();
@@ -155,22 +168,21 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
 }
 
 std::filesystem::path getTempPath() {
-    std::string tmpPath;
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    char tmpPathBuffer[MAX_PATH];
-    GetTempPathA(MAX_PATH, tmpPathBuffer);
-    tmpPath = tmpPathBuffer;
+    auto basePath = std::filesystem::temp_directory_path() / L"depthai_XXXXXX";
+    auto baseStr = basePath.wstring();
+    if(_wmktemp_s(baseStr.data(), baseStr.size() + 1) != 0 || !std::filesystem::create_directories(baseStr)) {
+        throw std::runtime_error("Failed to create a unique temporary directory");
+    }
+    return std::filesystem::path(baseStr);
 #else
     char tmpTemplate[] = "/tmp/depthai_XXXXXX";
-    char* tmpName = mkdtemp(tmpTemplate);
+    char* tmpName = mkdtemp(tmpTemplate);  // mkdtemp creates the directory automatically
     if(tmpName == nullptr) {
-        tmpPath = "/tmp";
-    } else {
-        tmpPath = tmpName;
-        tmpPath += '/';
+        throw std::runtime_error("Failed to create a unique temporary directory");
     }
+    return std::filesystem::path(std::string(tmpName) + '/');
 #endif
-    return std::filesystem::path(tmpPath);
 }
 
 bool checkPathExists(const std::filesystem::path& path, bool directory) {
