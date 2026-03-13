@@ -53,7 +53,15 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
             [](PointCloudConfig& cfg, std::array<std::array<float, 4>, 4> mat) { return cfg.setTransformationMatrix(mat); },
             DOC(dai, PointCloudConfig, setTransformationMatrix))
         .def("getLengthUnit", &PointCloudConfig::getLengthUnit, DOC(dai, PointCloudConfig, getLengthUnit))
-        .def("setLengthUnit", &PointCloudConfig::setLengthUnit, DOC(dai, PointCloudConfig, setLengthUnit));
+        .def("setLengthUnit", &PointCloudConfig::setLengthUnit, DOC(dai, PointCloudConfig, setLengthUnit))
+        // Deprecated
+        .def(
+            "getSparse",
+            [](const PointCloudConfig& cfg) {
+                PyErr_WarnEx(PyExc_DeprecationWarning, "getSparse() is deprecated, use getOrganized() instead (note: sparse == !organized).", 1);
+                return !cfg.getOrganized();
+            },
+            "**Deprecated:** Use getOrganized() instead (sparse == !organized).");
 
     // add aliases
 }
