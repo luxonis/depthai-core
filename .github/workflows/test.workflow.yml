@@ -2,6 +2,16 @@ name: DepthAI Core HIL Testing
 
 on:
   workflow_dispatch:
+    inputs:
+      dcl_mode:
+        description: "DCL mode for HIL jobs"
+        required: false
+        default: "OFF"
+        type: choice
+        options:
+          - OFF
+          - ON_START
+          - CONTINUOUS
   push:
     branches:
       - main
@@ -26,11 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
+      dcl_mode: ${{ steps.check.outputs.dcl_mode }}
     steps:
     - name: Evaluate trigger condition
       id: check
       run: |
         EVENT_NAME="${{ github.event_name }}"
+        DCL_MODE="${{ github.event.inputs.dcl_mode || 'OFF' }}"
 
         RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
         if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
@@ -44,9 +56,13 @@ jobs:
           if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
             SHOULD_RUN="false"
           fi
+          if echo "$LABELS" | jq -r '.[].name' | grep -q "testable_with_dcl"; then
+            DCL_MODE="ON_START"
+          fi
         fi
 
         echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+        echo "dcl_mode=$DCL_MODE" >> "$GITHUB_OUTPUT"
 
   run_vanilla_tests:
     needs: [precheck]
@@ -54,6 +70,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
+      dcl_mode: ${{ needs.precheck.outputs.dcl_mode }}
       luxonis_os_versions_to_test: "['1.14.1','1.20.5','1.27.1']"
       luxonis_os_versions_to_test_rgb: "['1.27.1']"
       luxonis_os_versions_to_test_usb: "['1.27.1']"
@@ -67,6 +84,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
+      dcl_mode: ${{ needs.precheck.outputs.dcl_mode }}
       luxonis_os_versions_to_test: "['1.27.1']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
@@ -78,6 +96,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
+      dcl_mode: ${{ needs.precheck.outputs.dcl_mode }}
       luxonis_os_versions_to_test: "['1.27.1']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
