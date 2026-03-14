@@ -44,10 +44,6 @@ def stability_test(fps):
         # Stereo settings
         neuralAssistedStereo.stereoDepth.setExtendedDisparity(True)
         neuralAssistedStereo.stereoDepth.setLeftRightCheck(True)
-        spatialDetectionNetwork.input.setBlocking(False)
-        spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
-        spatialDetectionNetwork.setDepthLowerThreshold(100)
-        spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
         # Feature Tracker settings
         featureTracker.initialConfig.setMotionEstimator(True)
