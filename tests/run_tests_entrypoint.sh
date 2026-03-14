@@ -12,7 +12,15 @@ fi
 
 # Optional second argument controls startup AutoCalibration mode.
 if [ -n "$DCL_MODE" ]; then
-  export DEPTHAI_AUTOCALIBRATION="$DCL_MODE"
+  case "$DCL_MODE" in
+    ON_START|CONTINUOUS|OFF)
+      export DEPTHAI_AUTOCALIBRATION="$DCL_MODE"
+      ;;
+    *)
+      echo "Error: Invalid DCL_MODE '$DCL_MODE'. Allowed values: ON_START, CONTINUOUS, OFF." >&2
+      exit 1
+      ;;
+  esac
 fi
 
 # Give Xvfb a moment to initialize
