@@ -1,5 +1,13 @@
 include(CMakeFindDependencyMacro)
 
+get_filename_component(CMAKE_CURRENT_LIST_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+include(${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@ConfigVersion.cmake)
+
+message(STATUS "Found depthai: ${CMAKE_CURRENT_LIST_DIR} (found version: ${PACKAGE_VERSION})")
+
+# Assume we are in <install-prefix>/lib/cmake/depthai/depthaiConfig.cmake
+get_filename_component(DEPTHAI_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
+
 find_dependency(nlohmann_json CONFIG REQUIRED)
 find_dependency(libnop CONFIG REQUIRED)
 find_dependency(XLink CONFIG REQUIRED COMPONENTS XLinkPublic)
