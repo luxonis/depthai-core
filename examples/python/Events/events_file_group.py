@@ -113,7 +113,7 @@ with dai.Pipeline() as pipeline:
 
     cv2.destroyAllWindows()
     # Wait for pending snaps to be uploaded
-    if eventMan.waitForPendingUploads():
+    if eventMan.waitForPendingUploads(timeoutMs=10000):
         print("Pending uploads have been successfully uploaded")
     else:
-        print("Pending uploads were discarded, due to timeout or dropped connection")
+        print("Pending uploads were discarded due to timeout (10s) or dropped connection")
