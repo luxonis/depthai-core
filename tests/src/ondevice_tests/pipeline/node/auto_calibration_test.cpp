@@ -57,8 +57,7 @@ TEST_CASE("AutoCalibration: Do not crash") {
         std::atomic<bool> sawUnsupportedResolutionWarning{false};
         device->setLogLevel(dai::LogLevel::WARN);
         device->addLogCallback([&](const dai::LogMessage& m) {
-            if(m.level >= dai::LogLevel::WARN
-               && m.payload.find("supports only sensors with 1280x800 resolution") != std::string::npos) {
+            if(m.level >= dai::LogLevel::WARN && m.payload.find("supports only sensors with 1280x800 resolution") != std::string::npos) {
                 sawUnsupportedResolutionWarning = true;
             }
         });

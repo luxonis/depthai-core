@@ -1,7 +1,6 @@
 #include "depthai/pipeline/node/AutoCalibration.hpp"
 
 #include <cstddef>
-
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <pipeline/datatype/MessageGroup.hpp>
 
