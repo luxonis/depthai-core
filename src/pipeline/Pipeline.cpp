@@ -687,7 +687,7 @@ void PipelineImpl::build() {
                 }
             }
         } else {
-            if(defaultDevice) {
+            if(isHostOnly()) {
                 Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
                                                    autoCalibtationString);
             } else {

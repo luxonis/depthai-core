@@ -151,6 +151,13 @@ struct CalibrationMetrics : public Buffer {
      * trust the data.
      */
     double dataConfidence;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::CalibrationMetrics;
+    }
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
     DEPTHAI_SERIALIZE(CalibrationMetrics, calibrationConfidence, dataConfidence);
 };
 

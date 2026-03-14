@@ -32,7 +32,7 @@ int main() {
         return 0;
     }
 
-    auto cameraNode = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::AUTO, std::nullopt, static_cast<float>(FPS));
+    auto cameraNode = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, std::nullopt, static_cast<float>(FPS));
 
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>()->build(cameraNode, "yolov6-nano");
 

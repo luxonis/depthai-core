@@ -134,10 +134,10 @@ int main() {
 
     cv::destroyAllWindows();
     // Wait for pending snaps to be uploaded
-    if(eventsManager->waitForPendingUploads()) {
+    if(eventsManager->waitForPendingUploads(10000)) {
         std::cout << "Pending uploads have been successfully uploaded" << std::endl;
     } else {
-        std::cout << "Pending uploads were discarded, due to timeout or dropped connection" << std::endl;
+        std::cout << "Pending uploads were discarded due to timeout (10s) or dropped connection" << std::endl;
     }
 
     return EXIT_SUCCESS;

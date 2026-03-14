@@ -1552,14 +1552,17 @@ void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
 }
 
 std::shared_ptr<CalibrationHandler> DeviceBase::tryGetCalibration() {
-    bool success;
-    std::string errorMsg;
-    dai::EepromData eepromData;
-    std::tie(success, errorMsg, eepromData) = pimpl->rpcCall("getCalibration").as<std::tuple<bool, std::string, dai::EepromData>>();
-    if(!success) {
+    try {
+        bool success;
+        std::string errorMsg;
+        dai::EepromData eepromData;
+        std::tie(success, errorMsg, eepromData) = pimpl->rpcCall("getCalibration").as<std::tuple<bool, std::string, dai::EepromData>>();
+        if(!success) return nullptr;
+        return std::make_shared<CalibrationHandler>(eepromData);
+    } catch(const std::exception& ex) {
+        pimpl->logger.debug("tryGetCalibration failed: {}", ex.what());
         return nullptr;
     }
-    return std::make_shared<CalibrationHandler>(eepromData);
 }
 
 CalibrationHandler DeviceBase::getCalibration() {

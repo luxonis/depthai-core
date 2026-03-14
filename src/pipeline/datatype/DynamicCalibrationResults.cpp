@@ -16,6 +16,11 @@ void CalibrationQuality::serialize(std::vector<std::uint8_t>& metadata, Datatype
     datatype = this->getDatatype();
 }
 
+void CalibrationMetrics::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+    metadata = utility::serialize(*this);
+    datatype = this->getDatatype();
+}
+
 DynamicCalibrationResult::~DynamicCalibrationResult() = default;
 
 void DynamicCalibrationResult::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {

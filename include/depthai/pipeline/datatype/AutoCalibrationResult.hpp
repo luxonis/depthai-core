@@ -28,6 +28,10 @@ class AutoCalibrationResult : public Buffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::AutoCalibrationResult;
+    }
+
     /**
      * @brief Quality of input features used (0.0 to 1.0).
      */

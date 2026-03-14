@@ -44,10 +44,6 @@ def stability_test(fps):
         # Stereo settings
         neuralAssistedStereo.stereoDepth.setExtendedDisparity(True)
         neuralAssistedStereo.stereoDepth.setLeftRightCheck(True)
-        spatialDetectionNetwork.input.setBlocking(False)
-        spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
-        spatialDetectionNetwork.setDepthLowerThreshold(100)
-        spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
         # Feature Tracker settings
         featureTracker.initialConfig.setMotionEstimator(True)
@@ -149,27 +145,30 @@ def stability_test(fps):
         while True:
             for name, queue in benchmarkReportQueues.items():
                 report = queue.get(timeout=datetime.timedelta(minutes=1)) # 1 minute timeout
-                if not isinstance(report, dai.BenchmarkReport):
-                    print(f"{name} report is not an instance of dai.BenchmarkReport")
-                if report:
-                    avgLatencyMs = report.averageLatency * 1000.0
-                    latencies = list(report.latencies)
-                    if latencies:
-                        minLatencyMs = min(latencies) * 1000.0
-                        maxLatencyMs = max(latencies) * 1000.0
-                        jitterMs = calculate_latency_jitter(latencies) * 1000.0
-                        latencySummary = (
-                            f"latency(avg/min/max): {avgLatencyMs:.2f}/{minLatencyMs:.2f}/{maxLatencyMs:.2f} ms, "
-                            f"jitter(stddev): {jitterMs:.2f} ms"
-                        )
-                    else:
-                        latencySummary = f"latency(avg): {avgLatencyMs:.2f} ms, jitter(stddev): N/A (no individual latencies attached)"
-                    print(f"{name} FPS: {report.fps:.2f}, {latencySummary}. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
-                    if report.fps < (fps / 10):
-                        raise RuntimeError(f"FPS dropped below {fps / 10} (FPS is {report.fps}) for {name} benchmark report")
-                else:
+                if report is None:
                     print(f"Timeout reached for {name} benchmark report")
                     continue
+
+                if not isinstance(report, dai.BenchmarkReport):
+                    print(f"{name} report is not an instance of dai.BenchmarkReport (got {type(report).__name__})")
+                    queue.tryGetAll()
+                    continue
+
+                avgLatencyMs = report.averageLatency * 1000.0
+                latencies = list(report.latencies)
+                if latencies:
+                    minLatencyMs = min(latencies) * 1000.0
+                    maxLatencyMs = max(latencies) * 1000.0
+                    jitterMs = calculate_latency_jitter(latencies) * 1000.0
+                    latencySummary = (
+                        f"latency(avg/min/max): {avgLatencyMs:.2f}/{minLatencyMs:.2f}/{maxLatencyMs:.2f} ms, "
+                        f"jitter(stddev): {jitterMs:.2f} ms"
+                    )
+                else:
+                    latencySummary = f"latency(avg): {avgLatencyMs:.2f} ms, jitter(stddev): N/A (no individual latencies attached)"
+                print(f"{name} FPS: {report.fps:.2f}, {latencySummary}. Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
+                if report.fps < (fps / 10):
+                    raise RuntimeError(f"FPS dropped below {fps / 10} (FPS is {report.fps}) for {name} benchmark report")
                 queue.tryGetAll() # Clear the queue
 
             # Detect memory leaks
