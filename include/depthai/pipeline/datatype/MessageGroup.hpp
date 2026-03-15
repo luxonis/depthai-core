@@ -64,7 +64,7 @@ class MessageGroup : public Buffer {
         return DatatypeEnum::MessageGroup;
     }
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum);
+    DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, Buffer::sequenceNum);
     #else
     DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
     #endif

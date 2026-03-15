@@ -13,6 +13,7 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
     py::class_<SyncProperties> syncProperties(m, "SyncProperties", DOC(dai, SyncProperties));
     auto sync = addNode<Sync>("Sync", DOC(dai, node, SyncBase));
     auto syncSystem = addNode<SyncSystem>("SyncSystem", DOC(dai, node, SyncBase));
+    auto syncPtp = addNode<SyncPtp>("SyncPtp", DOC(dai, node, SyncBase));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -50,5 +51,15 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
         .def("setRunOnHost", &SyncSystem::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, SyncBase, setRunOnHost))
         .def("runOnHost", &SyncSystem::runOnHost, DOC(dai, node, SyncBase, runOnHost));
     daiNodeModule.attr("SyncSystem").attr("Properties") = syncProperties;
+
+    syncPtp.def_readonly("out", &SyncPtp::out, DOC(dai, node, SyncBase, out))
+        .def_readonly("inputs", &SyncPtp::inputs, DOC(dai, node, SyncBase, inputs))
+        .def("setSyncThreshold", &SyncPtp::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, SyncBase, setSyncThreshold))
+        .def("setSyncAttempts", &SyncPtp::setSyncAttempts, py::arg("maxDataSize"), DOC(dai, node, SyncBase, setSyncAttempts))
+        .def("getSyncThreshold", &SyncPtp::getSyncThreshold, DOC(dai, node, SyncBase, getSyncThreshold))
+        .def("getSyncAttempts", &SyncPtp::getSyncAttempts, DOC(dai, node, SyncBase, getSyncAttempts))
+        .def("setRunOnHost", &SyncPtp::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, SyncBase, setRunOnHost))
+        .def("runOnHost", &SyncPtp::runOnHost, DOC(dai, node, SyncBase, runOnHost));
+    daiNodeModule.attr("SyncPtp").attr("Properties") = syncProperties;
 
 }

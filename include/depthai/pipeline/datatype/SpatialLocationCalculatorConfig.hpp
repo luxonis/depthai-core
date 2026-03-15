@@ -247,7 +247,8 @@ class SpatialLocationCalculatorConfig : public Buffer {
                       segmentationPassthrough,
                       bBoxScaleFactor,
                       config,
-                      Buffer::tsSystem);
+                      Buffer::tsSystem,
+                      Buffer::tsPtp);
     #else
         DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig,
                       globalStepSize,

@@ -131,6 +131,7 @@ class AprilTagConfig : public Buffer {
                       Buffer::ts,
                       Buffer::tsDevice,
                       Buffer::tsSystem,
+                      Buffer::tsPtp,
                       family,
                       quadDecimate,
                       quadSigma,

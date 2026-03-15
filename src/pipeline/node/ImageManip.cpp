@@ -51,6 +51,7 @@ void ImageManip::run() {
             dstFrame.tsDevice = srcFrame.tsDevice;
             #ifndef DEPTHAI_MESSAGES_RVC2
             dstFrame.tsSystem = srcFrame.tsSystem;
+            dstFrame.tsPtp = srcFrame.tsPtp;
             #endif
             dstFrame.ts = srcFrame.ts;
             dstFrame.category = srcFrame.category;

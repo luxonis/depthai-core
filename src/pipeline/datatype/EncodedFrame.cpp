@@ -148,6 +148,7 @@ ImgFrame EncodedFrame::getImgFrameMeta() const {
     frame.setTimestamp(getTimestamp());
     frame.setTimestampDevice(getTimestampDevice());
     frame.setTimestampSystem(getTimestampSystem());
+    frame.setTimestampPtp(getTimestampPtp());
     return frame;
 }
 

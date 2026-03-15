@@ -217,6 +217,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgAnnotations*
     } else {
         imageAnnotations->clear_tssystem();
     }
+
+    if(message->tsPtp.has_value()) {
+        proto::common::Timestamp* tsPtp = imageAnnotations->mutable_tsptp();
+        tsPtp->set_sec(message->tsPtp.value().sec);
+        tsPtp->set_nsec(message->tsPtp.value().nsec);
+    } else {
+        imageAnnotations->clear_tsptp();
+    }
     #endif
 
     if(message->transformation.has_value()) {
@@ -306,6 +314,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
         tsSystem->set_nsec(message->tsSystem.value().nsec);
     } else {
         spatialImgDetections->clear_tssystem();
+    }
+
+    if(message->tsPtp.has_value()) {
+        proto::common::Timestamp* tsPtp = spatialImgDetections->mutable_tsptp();
+        tsPtp->set_sec(message->tsPtp.value().sec);
+        tsPtp->set_nsec(message->tsPtp.value().nsec);
+    } else {
+        spatialImgDetections->clear_tsptp();
     }
     #endif
 
@@ -434,6 +450,13 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
         } else {
             imuAccelerometer->mutable_report()->clear_tssystem();
         }
+
+        if(packet.acceleroMeter.tsPtp.has_value()) {
+            imuAccelerometer->mutable_report()->mutable_tsptp()->set_sec(packet.acceleroMeter.tsPtp.value().sec);
+            imuAccelerometer->mutable_report()->mutable_tsptp()->set_nsec(packet.acceleroMeter.tsPtp.value().nsec);
+        } else {
+            imuAccelerometer->mutable_report()->clear_tsptp();
+        }
         #endif
 
         auto imuGyroscope = imuPacket->mutable_gyroscope();
@@ -454,6 +477,13 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
         } else {
             imuGyroscope->mutable_report()->clear_tssystem();
         }
+
+        if(packet.gyroscope.tsPtp.has_value()) {
+            imuGyroscope->mutable_report()->mutable_tsptp()->set_sec(packet.gyroscope.tsPtp.value().sec);
+            imuGyroscope->mutable_report()->mutable_tsptp()->set_nsec(packet.gyroscope.tsPtp.value().nsec);
+        } else {
+            imuGyroscope->mutable_report()->clear_tsptp();
+        }
         #endif
 
         auto imuMagnetometer = imuPacket->mutable_magnetometer();
@@ -473,6 +503,13 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
             imuMagnetometer->mutable_report()->mutable_tssystem()->set_nsec(packet.magneticField.tsSystem.value().nsec);
         } else {
             imuMagnetometer->mutable_report()->clear_tssystem();
+        }
+
+        if(packet.magneticField.tsPtp.has_value()) {
+            imuMagnetometer->mutable_report()->mutable_tsptp()->set_sec(packet.magneticField.tsPtp.value().sec);
+            imuMagnetometer->mutable_report()->mutable_tsptp()->set_nsec(packet.magneticField.tsPtp.value().nsec);
+        } else {
+            imuMagnetometer->mutable_report()->clear_tsptp();
         }
         #endif
 
@@ -495,6 +532,13 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
         } else {
             imuRotationVector->mutable_report()->clear_tssystem();
         }
+
+        if(packet.rotationVector.tsPtp.has_value()) {
+            imuRotationVector->mutable_report()->mutable_tsptp()->set_sec(packet.rotationVector.tsPtp.value().sec);
+            imuRotationVector->mutable_report()->mutable_tsptp()->set_nsec(packet.rotationVector.tsPtp.value().nsec);
+        } else {
+            imuRotationVector->mutable_report()->clear_tsptp();
+        }
         #endif
     }
 
@@ -513,6 +557,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const IMUData* messag
         tsSystem->set_nsec(message->tsSystem.value().nsec);
     } else {
         imuData->clear_tssystem();
+    }
+
+    if(message->tsPtp.has_value()) {
+        proto::common::Timestamp* tsPtp = imuData->mutable_tsptp();
+        tsPtp->set_sec(message->tsPtp.value().sec);
+        tsPtp->set_nsec(message->tsPtp.value().nsec);
+    } else {
+        imuData->clear_tsptp();
     }
     #endif
 
@@ -539,6 +591,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgDetections* 
         tsSystem->set_nsec(message->tsSystem.value().nsec);
     } else {
         imgDetections->clear_tssystem();
+    }
+
+    if(message->tsPtp.has_value()) {
+        proto::common::Timestamp* tsPtp = imgDetections->mutable_tsptp();
+        tsPtp->set_sec(message->tsPtp.value().sec);
+        tsPtp->set_nsec(message->tsPtp.value().nsec);
+    } else {
+        imgDetections->clear_tsptp();
     }
     #endif
 
@@ -636,6 +696,14 @@ static void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* enco
     } else {
         encodedFrame->clear_tssystem();
     }
+
+    if(message->tsPtp.has_value()) {
+        proto::common::Timestamp* tsPtp = encodedFrame->mutable_tsptp();
+        tsPtp->set_sec(message->tsPtp.value().sec);
+        tsPtp->set_nsec(message->tsPtp.value().nsec);
+    } else {
+        encodedFrame->clear_tsptp();
+    }
     #endif
 
     // Set camera settings
@@ -678,6 +746,14 @@ static void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const 
         tsSystem->set_nsec(message->tsSystem.value().nsec);
     } else {
         imgFrame->clear_tssystem();
+    }
+
+    if(message->tsPtp.has_value()) {
+        proto::common::Timestamp* tsPtp = imgFrame->mutable_tsptp();
+        tsPtp->set_sec(message->tsPtp.value().sec);
+        tsPtp->set_nsec(message->tsPtp.value().nsec);
+    } else {
+        imgFrame->clear_tsptp();
     }
     #endif
 
@@ -753,6 +829,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SegmentationMas
     } else {
         segmentationMask->clear_tssystem();
     }
+
+    if(message->tsPtp.has_value()) {
+        auto timestampPtp = segmentationMask->mutable_tsptp();
+        timestampPtp->set_sec(message->tsPtp.value().sec);
+        timestampPtp->set_nsec(message->tsPtp.value().nsec);
+    } else {
+        segmentationMask->clear_tsptp();
+    }
     #endif
 
     segmentationMask->set_width(message->getWidth());
@@ -792,6 +876,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
         timestampSystem->set_nsec(message->tsSystem.value().nsec);
     } else {
         pointCloudData->clear_tssystem();
+    }
+
+    if(message->tsPtp.has_value()) {
+        auto timestampPtp = pointCloudData->mutable_tsptp();
+        timestampPtp->set_sec(message->tsPtp.value().sec);
+        timestampPtp->set_nsec(message->tsPtp.value().nsec);
+    } else {
+        pointCloudData->clear_tsptp();
     }
     #endif
 
@@ -835,6 +927,14 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const RGBDData* messa
         timestampSystem->set_nsec(message->tsSystem.value().nsec);
     } else {
         rgbdData->clear_tssystem();
+    }
+
+    if(message->tsPtp.has_value()) {
+        auto timestampPtp = rgbdData->mutable_tsptp();
+        timestampPtp->set_sec(message->tsPtp.value().sec);
+        timestampPtp->set_nsec(message->tsPtp.value().nsec);
+    } else {
+        rgbdData->clear_tsptp();
     }
     #endif
 
@@ -924,6 +1024,12 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         } else {
             daiAccelerometer.tsSystem.reset();
         }
+
+        if(protoAccelerometer.report().has_tsptp()) {
+            daiAccelerometer.tsPtp = Timestamp{protoAccelerometer.report().tsptp().sec(), protoAccelerometer.report().tsptp().nsec()};
+        } else {
+            daiAccelerometer.tsPtp.reset();
+        }
         #endif
 
         auto protoGyroscope = packet.gyroscope();
@@ -945,6 +1051,12 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         } else {
             daiGyroscope.tsSystem.reset();
         }
+
+        if(protoGyroscope.report().has_tsptp()) {
+            daiGyroscope.tsPtp = Timestamp{protoGyroscope.report().tsptp().sec(), protoGyroscope.report().tsptp().nsec()};
+        } else {
+            daiGyroscope.tsPtp.reset();
+        }
         #endif
 
         auto protoMagnetometer = packet.magnetometer();
@@ -965,6 +1077,12 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
             daiMagnetometer.tsSystem->nsec = protoMagnetometer.report().tssystem().nsec();
         } else {
             daiMagnetometer.tsSystem.reset();
+        }
+
+        if(protoMagnetometer.report().has_tsptp()) {
+            daiMagnetometer.tsPtp = Timestamp{protoMagnetometer.report().tsptp().sec(), protoMagnetometer.report().tsptp().nsec()};
+        } else {
+            daiMagnetometer.tsPtp.reset();
         }
         #endif
 
@@ -988,6 +1106,12 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         } else {
             daiRotationVector.tsSystem.reset();
         }
+
+        if(protoRotationVector.report().has_tsptp()) {
+            daiRotationVector.tsPtp = Timestamp{protoRotationVector.report().tsptp().sec(), protoRotationVector.report().tsptp().nsec()};
+        } else {
+            daiRotationVector.tsPtp.reset();
+        }
         #endif
 
         obj.packets.push_back(imuPacket);
@@ -1001,6 +1125,12 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         obj.setTimestampSystem(fromProtoTimestamp<std::chrono::system_clock>(imuData->tssystem()));
     } else {
         obj.setTimestampSystem(std::nullopt);
+    }
+
+    if(imuData->has_tsptp()) {
+        obj.setTimestampPtp(fromProtoTimestamp<std::chrono::steady_clock>(imuData->tsptp()));
+    } else {
+        obj.setTimestampPtp(std::nullopt);
     }
     #endif
 
@@ -1025,6 +1155,12 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
         obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(imgFrame->tssystem()));
     } else {
         obj.setTimestampSystem(std::nullopt);
+    }
+
+    if(imgFrame->has_tsptp()) {
+        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(imgFrame->tsptp()));
+    } else {
+        obj.setTimestampPtp(std::nullopt);
     }
     #endif
 
@@ -1082,6 +1218,12 @@ static void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encode
         obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(encFrame.tssystem()));
     } else {
         obj.setTimestampSystem(std::nullopt);
+    }
+
+    if(encFrame.has_tsptp()) {
+        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(encFrame.tsptp()));
+    } else {
+        obj.setTimestampPtp(std::nullopt);
     }
     #endif
 
@@ -1144,6 +1286,12 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
     } else {
         obj.setTimestampSystem(std::nullopt);
     }
+
+    if(pcl->has_tsptp()) {
+        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(pcl->tsptp()));
+    } else {
+        obj.setTimestampPtp(std::nullopt);
+    }
     #endif
 
     obj.setSequenceNum(pcl->sequencenum());
@@ -1178,6 +1326,12 @@ static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::Img
         obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(imgFrame.tssystem()));
     } else {
         obj.setTimestampSystem(std::nullopt);
+    }
+
+    if(imgFrame.has_tsptp()) {
+        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(imgFrame.tsptp()));
+    } else {
+        obj.setTimestampPtp(std::nullopt);
     }
     #endif
 
@@ -1238,6 +1392,12 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
         obj.setTimestampSystem(utility::fromProtoTimestamp<std::chrono::system_clock>(rgbdData->tssystem()));
     } else {
         obj.setTimestampSystem(std::nullopt);
+    }
+
+    if(rgbdData->has_tsptp()) {
+        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(rgbdData->tsptp()));
+    } else {
+        obj.setTimestampPtp(std::nullopt);
     }
     #endif
 

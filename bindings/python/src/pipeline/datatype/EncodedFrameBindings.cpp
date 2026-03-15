@@ -77,6 +77,7 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", py::overload_cast<>(&EncodedFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", py::overload_cast<>(&EncodedFrame::Buffer::getTimestampDevice, py::const_), DOC(dai, Buffer, getTimestampDevice))
         .def("getTimestampSystem", py::overload_cast<>(&EncodedFrame::Buffer::getTimestampSystem, py::const_), DOC(dai, Buffer, getTimestampSystem))
+        .def("getTimestampPtp", py::overload_cast<>(&EncodedFrame::Buffer::getTimestampPtp, py::const_), DOC(dai, Buffer, getTimestampPtp))
         .def("getInstanceNum", &EncodedFrame::getInstanceNum, DOC(dai, EncodedFrame, getInstanceNum))
         .def("getWidth", &EncodedFrame::getWidth, DOC(dai, EncodedFrame, getWidth))
         .def("getHeight", &EncodedFrame::getHeight, DOC(dai, EncodedFrame, getHeight))

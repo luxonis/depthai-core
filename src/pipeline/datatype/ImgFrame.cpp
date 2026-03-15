@@ -84,6 +84,25 @@ std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::sy
     }
 }
 
+std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> ImgFrame::getTimestampPtp(CameraExposureOffset offset) const {
+    auto ts = getTimestampPtp();
+
+    if(!ts.has_value()) {
+        return std::nullopt;
+    }
+
+    auto expTime = getExposureTime();
+    switch(offset) {
+        case CameraExposureOffset::START:
+            return *ts - expTime;
+        case CameraExposureOffset::MIDDLE:
+            return *ts - expTime / 2;
+        case CameraExposureOffset::END:
+        default:
+            return ts;
+    }
+}
+
 unsigned int ImgFrame::getInstanceNum() const {
     return instanceNum;
 }

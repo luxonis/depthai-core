@@ -19,6 +19,11 @@ inline auto getTs(const std::shared_ptr<dai::Buffer>& b) {
             throw std::runtime_error("System timestamp missing, might not be supported by the device");
         }
         return b->getTimestampSystem().value();    // system_clock::time_point
+    } else if constexpr (TS == SyncTimestamp::Ptp) {
+        if(!b->getTimestampPtp().has_value()) {
+            throw std::runtime_error("PTP timestamp missing, might not be supported by the device");
+        }
+        return b->getTimestampPtp().value();    // steady_clock::time_point
     } else {
         throw std::runtime_error("Unknown SyncTimestamp");
     }
@@ -33,6 +38,11 @@ inline auto getTs(dai::Buffer *b) {
             throw std::runtime_error("System timestamp missing, might not be supported by the device");
         }
         return b->getTimestampSystem().value();    // system_clock::time_point
+    } else if constexpr (TS == SyncTimestamp::Ptp) {
+        if(!b->getTimestampPtp().has_value()) {
+            throw std::runtime_error("PTP timestamp missing, might not be supported by the device");
+        }
+        return b->getTimestampPtp().value();    // steady_clock::time_point
     } else {
         throw std::runtime_error("Unknown SyncTimestamp");
     }
@@ -181,6 +191,7 @@ void SyncBase<TS>::run() {
         outputGroup->setTimestamp(newestFrame->getTimestamp());
         outputGroup->setTimestampDevice(newestFrame->getTimestampDevice());
         outputGroup->setTimestampSystem(newestFrame->getTimestampSystem());
+        outputGroup->setTimestampPtp(newestFrame->getTimestampPtp());
         outputGroup->setSequenceNum(newestFrame->getSequenceNum());
         {
             auto blockEvent = this->outputBlockEvent();

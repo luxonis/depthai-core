@@ -70,6 +70,11 @@ class Buffer : public ADatatype {
     std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> getTimestampSystem() const;
 
     /**
+     * Retrieves timestamp directly captured from device's PTP clock
+     */
+    std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> getTimestampPtp() const;
+
+    /**
      * Sets image timestamp related to dai::Clock::now()
      */
     void setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
@@ -83,6 +88,11 @@ class Buffer : public ADatatype {
      * Sets image timestamp related to dai::Clock::now()
      */
     void setTimestampSystem(std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> timestamp);
+
+    /**
+     * Sets image timestamp related to device's PTP clock
+     */
+    void setTimestampPtp(std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> timestamp);
 
     /**
      * Retrieves image sequence number
@@ -109,7 +119,8 @@ class Buffer : public ADatatype {
 
     #ifndef DEPTHAI_MESSAGES_RVC2
     std::optional<Timestamp> tsSystem;  // generation timestamp, direct device system clock
-    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem);
+    std::optional<Timestamp> tsPtp;     // generation timestamp, direct device PTP clock
+    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem, tsPtp);
     #else
     DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice);
     #endif

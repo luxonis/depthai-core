@@ -198,6 +198,7 @@ void ObjectTracker::run() {
         trackletsMsg->tsDevice = inputTrackerImg->tsDevice;
         #ifndef DEPTHAI_MESSAGES_RVC2
         trackletsMsg->tsSystem = inputTrackerImg->tsSystem;
+        trackletsMsg->tsPtp = inputTrackerImg->tsPtp;
         #endif
         trackletsMsg->sequenceNum = inputTrackerImg->sequenceNum;
         trackletsMsg->tracklets = tracker.isInitialized() ? tracker.getTracklets() : std::vector<Tracklet>();

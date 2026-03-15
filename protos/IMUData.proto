@@ -30,6 +30,7 @@ message IMUReport {
     common.Timestamp ts = 3;
     common.Timestamp tsDevice = 4;
     optional common.Timestamp tsSystem = 5;
+    optional common.Timestamp tsPtp = 6;
 }
 
 message IMUReportVec {
@@ -56,4 +57,5 @@ message IMUData {
     common.Timestamp ts = 3;        // Timestamp
     common.Timestamp tsDevice = 4;  // Timestamp from device
     optional common.Timestamp tsSystem = 5;  // Timestamp from system_clock
+    optional common.Timestamp tsPtp = 6;  // Timestamp from PTP clock
 }

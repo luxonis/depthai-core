@@ -22,6 +22,7 @@ message EncodedFrame {
     common.ImgTransformation transformation = 15;
     bytes data = 16;  // Encoded frame data
     optional common.Timestamp tsSystem = 17;  // Timestamp from system_clock
+    optional common.Timestamp tsPtp = 18;  // Timestamp from PTP clock
 }
 
 enum Profile {

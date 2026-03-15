@@ -13,4 +13,5 @@ message SegmentationMask {
     bytes data = 7;
     repeated string labels = 8;
     optional common.Timestamp tsSystem = 9;
+    optional common.Timestamp tsPtp = 10;
 }

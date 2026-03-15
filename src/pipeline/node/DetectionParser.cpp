@@ -479,6 +479,7 @@ void DetectionParser::run() {
         outDetections->setTimestamp(inputData.getTimestamp());
         outDetections->setTimestampDevice(inputData.getTimestampDevice());
         outDetections->setTimestampSystem(inputData.getTimestampSystem());
+        outDetections->setTimestampPtp(inputData.getTimestampPtp());
         outDetections->transformation = inputData.transformation;
 
         {

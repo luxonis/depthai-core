@@ -84,6 +84,7 @@ void SpatialLocationCalculator::run() {
         outputSpatial->setSequenceNum(imgFrame->getSequenceNum());
         outputSpatial->setTimestampDevice(imgFrame->getTimestampDevice());
         outputSpatial->setTimestampSystem(imgFrame->getTimestampSystem());
+        outputSpatial->setTimestampPtp(imgFrame->getTimestampPtp());
         outputSpatial->setTimestamp(imgFrame->getTimestamp());
         if(calculationConfig->getConfigData().size() > 0) {
             utilities::SpatialUtils::computeSpatialData(imgFrame, calculationConfig->getConfigData(), spatialLocations, logger);
@@ -104,6 +105,7 @@ void SpatialLocationCalculator::run() {
             outputSpatialImgDetections->setSequenceNum(imgDetections->getSequenceNum());
             outputSpatialImgDetections->setTimestampDevice(imgDetections->getTimestampDevice());
             outputSpatialImgDetections->setTimestampSystem(imgDetections->getTimestampSystem());
+            outputSpatialImgDetections->setTimestampPtp(imgDetections->getTimestampPtp());
             outputSpatialImgDetections->setTimestamp(imgDetections->getTimestamp());
             outputSpatialImgDetections->transformation = imgDetections->transformation;
         }

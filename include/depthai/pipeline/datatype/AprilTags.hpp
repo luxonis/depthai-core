@@ -78,7 +78,7 @@ class AprilTags : public Buffer {
     std::vector<AprilTag> aprilTags;
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, aprilTags);
+    DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, aprilTags);
     #else
     DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, aprilTags);
     #endif

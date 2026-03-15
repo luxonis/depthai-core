@@ -26,7 +26,7 @@ class BenchmarkReport : public Buffer {
     }
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(BenchmarkReport, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, fps, timeTotal,
+    DEPTHAI_SERIALIZE(BenchmarkReport, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, fps, timeTotal,
         numMessagesReceived, averageLatency, latencies);
     #else
     DEPTHAI_SERIALIZE(BenchmarkReport, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, fps, timeTotal,

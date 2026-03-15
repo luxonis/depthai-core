@@ -195,6 +195,7 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
                       Base::Buffer::ts,
                       Base::Buffer::tsDevice,
                       Base::Buffer::tsSystem,
+                      Base::Buffer::tsPtp,
                       detections,
                       transformation,
                       segmentationMaskWidth,

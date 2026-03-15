@@ -54,7 +54,7 @@ class EdgeDetectorConfig : public Buffer {
     }
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, config);
+    DEPTHAI_SERIALIZE(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, config);
     #else
     DEPTHAI_SERIALIZE(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config);
     #endif

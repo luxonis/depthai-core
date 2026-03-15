@@ -67,7 +67,7 @@ class TrackedFeatures : public Buffer {
     }
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(TrackedFeatures, trackedFeatures, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem);
+    DEPTHAI_SERIALIZE(TrackedFeatures, trackedFeatures, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp);
     #else
     DEPTHAI_SERIALIZE(TrackedFeatures, trackedFeatures, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice);
     #endif

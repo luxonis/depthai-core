@@ -17,6 +17,7 @@ message ImgFrame {
     uint32 category = 10;
     bytes data = 11;
     optional common.Timestamp tsSystem = 12;
+    optional common.Timestamp tsPtp = 13;
 }
 
 message Specs {

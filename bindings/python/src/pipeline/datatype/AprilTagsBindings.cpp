@@ -50,6 +50,7 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &AprilTags::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &AprilTags::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getTimestampSystem", &AprilTags::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
+        .def("getTimestampPtp", &AprilTags::Buffer::getTimestampPtp, DOC(dai, Buffer, getTimestampPtp))
         .def("getSequenceNum", &AprilTags::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         // .def("setTimestamp", &AprilTags::setTimestamp, DOC(dai, Buffer, setTimestamp))
         // .def("setTimestampDevice", &AprilTags::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))

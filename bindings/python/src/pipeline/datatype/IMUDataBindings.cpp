@@ -51,6 +51,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &IMUReport::getTimestamp, DOC(dai, IMUReport, getTimestamp))
         .def("getTimestampDevice", &IMUReport::getTimestampDevice, DOC(dai, IMUReport, getTimestampDevice))
         .def("getTimestampSystem", &IMUReport::getTimestampSystem, DOC(dai, IMUReport, getTimestampSystem))
+        .def("getTimestampPtp", &IMUReport::getTimestampPtp, DOC(dai, IMUReport, getTimestampPtp))
         .def("getSequenceNum", &IMUReport::getSequenceNum, DOC(dai, IMUReport, getSequenceNum));
 
     imuReportAccuracy.value("UNRELIABLE", IMUReport::Accuracy::UNRELIABLE)

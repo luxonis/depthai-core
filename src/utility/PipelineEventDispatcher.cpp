@@ -53,6 +53,7 @@ void PipelineEventDispatcher::startEvent(PipelineEvent::Type type, const std::st
     event.event.setTimestamp(std::chrono::steady_clock::now());
     event.event.tsDevice = event.event.ts;
     event.event.setTimestampSystem(std::chrono::system_clock::now());
+    event.event.setTimestampPtp(std::nullopt);
     ++event.event.sequenceNum;
     event.event.nodeId = nodeId;
     event.event.queueSize = std::move(queueSize);
@@ -94,6 +95,7 @@ void PipelineEventDispatcher::endEvent(PipelineEvent::Type type, const std::stri
     event.event.setTimestamp(now);
     event.event.tsDevice = event.event.ts;
     event.event.setTimestampSystem(std::chrono::system_clock::now());
+    event.event.setTimestampPtp(std::nullopt);
     event.event.nodeId = nodeId;
     event.event.queueSize = std::move(queueSize);
     event.event.interval = PipelineEvent::Interval::END;
@@ -131,6 +133,7 @@ void PipelineEventDispatcher::startTrackedEvent(PipelineEvent event, std::option
     else
         event.setTimestamp(ts.value());
     event.setTimestampSystem(std::chrono::system_clock::now());
+    event.setTimestampPtp(std::nullopt);
     event.tsDevice = event.ts;
     event.nodeId = nodeId;
     event.interval = PipelineEvent::Interval::START;
@@ -164,6 +167,7 @@ void PipelineEventDispatcher::endTrackedEvent(PipelineEvent event, std::optional
     else
         event.setTimestamp(ts.value());
     event.setTimestampSystem(std::chrono::system_clock::now());
+    event.setTimestampPtp(std::nullopt);
     event.tsDevice = event.ts;
     event.nodeId = nodeId;
     event.interval = PipelineEvent::Interval::END;
@@ -202,6 +206,7 @@ void PipelineEventDispatcher::pingEvent(PipelineEvent::Type type, const std::str
     event.event.setTimestamp(now);
     event.event.tsDevice = event.event.ts;
     event.event.setTimestampSystem(sysNow);
+    event.event.setTimestampPtp(std::nullopt);
     ++event.event.sequenceNum;
     event.event.nodeId = nodeId;
     event.event.interval = PipelineEvent::Interval::NONE;
@@ -236,6 +241,7 @@ void PipelineEventDispatcher::pingInputEvent(const std::string& source, Pipeline
     eventCopy.setTimestamp(now);
     eventCopy.tsDevice = eventCopy.ts;
     eventCopy.setTimestampSystem(sysNow);
+    eventCopy.setTimestampPtp(std::nullopt);
     eventCopy.nodeId = nodeId;
     eventCopy.status = std::move(status);
     eventCopy.queueSize = std::move(queueSize);

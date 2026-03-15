@@ -35,7 +35,7 @@ class PipelineEventAggregationConfig : public Buffer {
     }
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodes, repeatIntervalSeconds);
+    DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, Buffer::sequenceNum, nodes, repeatIntervalSeconds);
     #else
     DEPTHAI_SERIALIZE(PipelineEventAggregationConfig, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodes, repeatIntervalSeconds);
     #endif

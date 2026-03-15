@@ -41,7 +41,7 @@ class ObjectTrackerConfig : public Buffer {
     }
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(ObjectTrackerConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, trackletIdsToRemove);
+    DEPTHAI_SERIALIZE(ObjectTrackerConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, trackletIdsToRemove);
     #else
     DEPTHAI_SERIALIZE(ObjectTrackerConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, trackletIdsToRemove);
     #endif

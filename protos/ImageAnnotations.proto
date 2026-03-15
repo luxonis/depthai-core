@@ -11,6 +11,7 @@ message ImageAnnotations {
     repeated ImageAnnotation annotations = 4;
     common.ImgTransformation transformation = 5;
     optional common.Timestamp tsSystem = 6;
+    optional common.Timestamp tsPtp = 7;
 }
 
 message ImageAnnotation {

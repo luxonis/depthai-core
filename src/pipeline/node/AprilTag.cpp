@@ -312,6 +312,7 @@ void AprilTag::run() {
         aprilTags->setTimestamp(inFrame->getTimestamp());
         aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
         aprilTags->setTimestampSystem(inFrame->getTimestampSystem());
+        aprilTags->setTimestampPtp(inFrame->getTimestampPtp());
 
         {
             auto blockEvent = this->outputBlockEvent();

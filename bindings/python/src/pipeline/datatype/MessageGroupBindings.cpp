@@ -55,9 +55,11 @@ void bind_message_group(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &MessageGroup::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &MessageGroup::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getTimestampSystem", &MessageGroup::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
+        .def("getTimestampPtp", &MessageGroup::Buffer::getTimestampPtp, DOC(dai, Buffer, getTimestampPtp))
         .def("getSequenceNum", &MessageGroup::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("setTimestamp", &MessageGroup::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
         .def("setTimestampDevice", &MessageGroup::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
         .def("setTimestampSystem", &MessageGroup::setTimestampSystem, py::arg("timestampSystem"), DOC(dai, Buffer, setTimestampSystem))
+        .def("setTimestampPtp", &MessageGroup::setTimestampPtp, py::arg("timestampPtp"), DOC(dai, Buffer, setTimestampPtp))
         .def("setSequenceNum", &MessageGroup::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum));
 }

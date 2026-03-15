@@ -387,6 +387,7 @@ void RGBD::run() {
             pc->setTimestamp(colorFrame->getTimestamp());
             pc->setTimestampDevice(colorFrame->getTimestampDevice());
             pc->setTimestampSystem(colorFrame->getTimestampSystem());
+            pc->setTimestampPtp(colorFrame->getTimestampPtp());
             pc->setSequenceNum(colorFrame->getSequenceNum());
             pc->setInstanceNum(colorFrame->getInstanceNum());
             auto width = colorFrame->getWidth();
@@ -425,6 +426,7 @@ void RGBD::run() {
             pc->setTimestamp(colorFrame->getTimestamp());
             pc->setTimestampDevice(colorFrame->getTimestampDevice());
             pc->setTimestampSystem(colorFrame->getTimestampSystem());
+            pc->setTimestampPtp(colorFrame->getTimestampPtp());
             pc->setSequenceNum(colorFrame->getSequenceNum());
             pc->setInstanceNum(colorFrame->getInstanceNum());
             {
@@ -439,6 +441,7 @@ void RGBD::run() {
                     rgbdData->setTimestamp(colorFrame->getTimestamp());
                     rgbdData->setTimestampDevice(colorFrame->getTimestampDevice());
                     rgbdData->setTimestampSystem(colorFrame->getTimestampSystem());
+                    rgbdData->setTimestampPtp(colorFrame->getTimestampPtp());
                     rgbdData->setSequenceNum(colorFrame->getSequenceNum());
                     rgbdData->setDepthFrame(depthFrame);
                     rgbdData->setRGBFrame(colorFrame);

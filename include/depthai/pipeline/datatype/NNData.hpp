@@ -602,7 +602,7 @@ class NNData : public Buffer {
     }
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, tensors, batchSize, transformation);
+    DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, tensors, batchSize, transformation);
     #else
     DEPTHAI_SERIALIZE(NNData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, tensors, batchSize, transformation);
     #endif

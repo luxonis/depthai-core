@@ -213,7 +213,8 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
                       Buffer::sequenceNum,
                       Buffer::ts,
                       Buffer::tsDevice,
-                      Buffer::tsSystem);
+                      Buffer::tsSystem,
+                      Buffer::tsPtp);
     #else
     DEPTHAI_SERIALIZE(EncodedFrame,
                       cam,

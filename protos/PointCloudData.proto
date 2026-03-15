@@ -21,4 +21,5 @@ message PointCloudData {
     bool color = 14;
     bytes data = 15;
     optional common.Timestamp tsSystem = 16;
+    optional common.Timestamp tsPtp = 17;
 }

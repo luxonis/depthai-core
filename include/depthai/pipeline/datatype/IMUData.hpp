@@ -37,6 +37,9 @@ struct IMUReport {
     #ifndef DEPTHAI_MESSAGES_RVC2
     /** Generation timestamp, direct device system clock */
     std::optional<Timestamp> tsSystem;
+
+    /** Generation timestamp, direct device PTP clock */
+    std::optional<Timestamp> tsPtp;
     #endif
 
     /**
@@ -70,6 +73,20 @@ struct IMUReport {
     }
 
     /**
+     * Retrieves timestamp directly captured from device's PTP clock
+     */
+    std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> getTimestampPtp() const {
+        #ifndef DEPTHAI_MESSAGES_RVC2
+        if(!tsPtp.has_value()) {
+            return std::nullopt;
+        }
+        return tsPtp->get<std::chrono::steady_clock>();
+        #else
+        return std::nullopt;
+        #endif
+    }
+
+    /**
      * Retrieves IMU report sequence number
      */
     int32_t getSequenceNum() const {
@@ -77,7 +94,7 @@ struct IMUReport {
     }
 };
 #ifndef DEPTHAI_MESSAGES_RVC2
-DEPTHAI_SERIALIZE_EXT(IMUReport, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT(IMUReport, sequence, accuracy, timestamp, tsDevice, tsSystem, tsPtp);
 #else
 DEPTHAI_SERIALIZE_EXT(IMUReport, sequence, accuracy, timestamp, tsDevice);
 #endif
@@ -93,7 +110,7 @@ struct IMUReportAccelerometer : public IMUReport {
     float z = 0;
 };
 #ifndef DEPTHAI_MESSAGES_RVC2
-DEPTHAI_SERIALIZE_EXT(IMUReportAccelerometer, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT(IMUReportAccelerometer, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem, tsPtp);
 #else
 DEPTHAI_SERIALIZE_EXT(IMUReportAccelerometer, x, y, z, sequence, accuracy, timestamp, tsDevice);
 #endif
@@ -109,7 +126,7 @@ struct IMUReportGyroscope : public IMUReport {
     float z = 0;
 };
 #ifndef DEPTHAI_MESSAGES_RVC2
-DEPTHAI_SERIALIZE_EXT(IMUReportGyroscope, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT(IMUReportGyroscope, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem, tsPtp);
 #else
 DEPTHAI_SERIALIZE_EXT(IMUReportGyroscope, x, y, z, sequence, accuracy, timestamp, tsDevice);
 #endif
@@ -125,7 +142,7 @@ struct IMUReportMagneticField : public IMUReport {
     float z = 0;
 };
 #ifndef DEPTHAI_MESSAGES_RVC2
-DEPTHAI_SERIALIZE_EXT(IMUReportMagneticField, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT(IMUReportMagneticField, x, y, z, sequence, accuracy, timestamp, tsDevice, tsSystem, tsPtp);
 #else
 DEPTHAI_SERIALIZE_EXT(IMUReportMagneticField, x, y, z, sequence, accuracy, timestamp, tsDevice);
 #endif
@@ -143,7 +160,7 @@ struct IMUReportRotationVectorWAcc : public IMUReport {
     float rotationVectorAccuracy = 0; /**< @brief Accuracy estimate [radians], 0 means no estimate */
 };
 #ifndef DEPTHAI_MESSAGES_RVC2
-DEPTHAI_SERIALIZE_EXT(IMUReportRotationVectorWAcc, i, j, k, real, rotationVectorAccuracy, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT(IMUReportRotationVectorWAcc, i, j, k, real, rotationVectorAccuracy, sequence, accuracy, timestamp, tsDevice, tsSystem, tsPtp);
 #else
 DEPTHAI_SERIALIZE_EXT(IMUReportRotationVectorWAcc, i, j, k, real, rotationVectorAccuracy, sequence, accuracy, timestamp, tsDevice);
 #endif
@@ -165,7 +182,7 @@ struct IMUReportGyroscopeUncalibrated : public IMUReport {
     float biasZ = 0; /**< @brief [rad/s] */
 };
 #ifndef DEPTHAI_MESSAGES_RVC2
-DEPTHAI_SERIALIZE_EXT(IMUReportGyroscopeUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT(IMUReportGyroscopeUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice, tsSystem, tsPtp);
 #else
 DEPTHAI_SERIALIZE_EXT(IMUReportGyroscopeUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice);
 #endif
@@ -187,7 +204,7 @@ struct IMUReportMagneticFieldUncalibrated : public IMUReport {
     float biasZ = 0; /**< @brief [uTesla] */
 };
 #ifndef DEPTHAI_MESSAGES_RVC2
-DEPTHAI_SERIALIZE_EXT(IMUReportMagneticFieldUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT(IMUReportMagneticFieldUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice, tsSystem, tsPtp);
 #else
 DEPTHAI_SERIALIZE_EXT(IMUReportMagneticFieldUncalibrated, x, y, z, biasX, biasY, biasZ, sequence, accuracy, timestamp, tsDevice);
 #endif
@@ -206,7 +223,7 @@ struct IMUReportRotationVector : public IMUReport {
     float real = 0; /**< @brief Quaternion component real */
 };
 #ifndef DEPTHAI_MESSAGES_RVC2
-DEPTHAI_SERIALIZE_EXT(IMUReportRotationVector, i, j, k, real, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT(IMUReportRotationVector, i, j, k, real, sequence, accuracy, timestamp, tsDevice, tsSystem, tsPtp);
 #else
 DEPTHAI_SERIALIZE_EXT(IMUReportRotationVector, i, j, k, real, sequence, accuracy, timestamp, tsDevice);
 #endif
@@ -227,7 +244,7 @@ struct IMUReportGyroIntegratedRV : public IMUReport {
     float angVelZ = 0; /**< @brief Angular velocity about z [rad/s] */
 };
 #ifndef DEPTHAI_MESSAGES_RVC2
-DEPTHAI_SERIALIZE_EXT(IMUReportGyroIntegratedRV, i, j, k, real, angVelX, angVelY, angVelZ, sequence, accuracy, timestamp, tsDevice, tsSystem);
+DEPTHAI_SERIALIZE_EXT(IMUReportGyroIntegratedRV, i, j, k, real, angVelX, angVelY, angVelZ, sequence, accuracy, timestamp, tsDevice, tsSystem, tsPtp);
 #else
 DEPTHAI_SERIALIZE_EXT(IMUReportGyroIntegratedRV, i, j, k, real, angVelX, angVelY, angVelZ, sequence, accuracy, timestamp, tsDevice);
 #endif
@@ -302,7 +319,7 @@ class IMUData : public Buffer, public ProtoSerializable {
 #endif
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, packets);
+    DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, Buffer::sequenceNum, packets);
     #else
     DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, packets);
     #endif

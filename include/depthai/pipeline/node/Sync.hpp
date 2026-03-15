@@ -11,7 +11,7 @@
 namespace dai {
 namespace node {
 
-enum class SyncTimestamp { Steady, System };
+enum class SyncTimestamp { Steady, System, Ptp };
 
 template<SyncTimestamp TS>
 struct SyncName {
@@ -21,6 +21,11 @@ struct SyncName {
 template<>
 struct SyncName<SyncTimestamp::System> {
     static constexpr const char* value = "SyncSystem";
+};
+
+template<>
+struct SyncName<SyncTimestamp::Ptp> {
+    static constexpr const char* value = "SyncPtp";
 };
 
 /**
@@ -87,9 +92,11 @@ class SyncBase : public DeviceNodeCRTP<DeviceNode, SyncBase<TS>, SyncProperties>
 
 template class SyncBase<SyncTimestamp::Steady>;
 template class SyncBase<SyncTimestamp::System>;
+template class SyncBase<SyncTimestamp::Ptp>;
 
 typedef SyncBase<SyncTimestamp::Steady> Sync;
 typedef SyncBase<SyncTimestamp::System> SyncSystem;
+typedef SyncBase<SyncTimestamp::Ptp> SyncPtp;
 
 }  // namespace node
 }  // namespace dai

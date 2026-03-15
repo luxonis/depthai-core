@@ -24,4 +24,5 @@ message RGBDData {
     }
 
     optional common.Timestamp tsSystem = 8;
+    optional common.Timestamp tsPtp = 9;
 }

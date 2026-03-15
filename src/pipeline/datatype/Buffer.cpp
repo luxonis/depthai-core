@@ -88,6 +88,21 @@ std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::sy
     #endif
 }
 
+std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> Buffer::getTimestampPtp() const {
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if(!tsPtp.has_value()) {
+        return std::nullopt;
+    }
+
+    using namespace std::chrono;
+    auto total = seconds(tsPtp->sec) + nanoseconds(tsPtp->nsec);
+    auto dur = duration_cast<steady_clock::duration>(total);
+    return time_point<steady_clock, steady_clock::duration>(dur);
+    #else
+    return std::nullopt;
+    #endif
+}
+
 void Buffer::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
     using namespace std::chrono;
@@ -116,6 +131,22 @@ void Buffer::setTimestampSystem(std::optional<std::chrono::time_point<std::chron
     tmp.sec = duration_cast<seconds>(ts).count();
     tmp.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
     tsSystem = tmp;
+    #endif
+}
+
+void Buffer::setTimestampPtp(std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> tp) {
+    #ifndef DEPTHAI_MESSAGES_RVC2
+    if(!tp.has_value()) {
+        tsPtp = std::nullopt;
+        return;
+    }
+    using namespace std::chrono;
+    auto ts = tp->time_since_epoch();
+
+    Timestamp tmp;
+    tmp.sec = duration_cast<seconds>(ts).count();
+    tmp.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    tsPtp = tmp;
     #endif
 }
 

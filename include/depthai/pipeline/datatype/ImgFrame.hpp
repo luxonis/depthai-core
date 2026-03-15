@@ -31,6 +31,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
     using Buffer::getTimestampSystem;
+    using Buffer::getTimestampPtp;
     enum class Type {
         YUV422i,    // interleaved 8 bit
         YUV444p,    // planar 4:4:4 format
@@ -117,6 +118,11 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * that can be synchronized using PTP
      */
     std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> getTimestampSystem(CameraExposureOffset offset) const;
+
+    /**
+     * Retrieves image timestamp (at the specified offset of exposure) directly captured from device's PTP clock
+     */
+    std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> getTimestampPtp(CameraExposureOffset offset) const;
 
     /**
      * Retrieves instance number
@@ -741,7 +747,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
 
    public:
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, fb, sourceFb, cam,
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, Buffer::sequenceNum, fb, sourceFb, cam,
         category, instanceNum, transformation);
     #else
     DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam,

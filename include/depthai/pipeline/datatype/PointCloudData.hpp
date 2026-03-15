@@ -33,6 +33,7 @@ class PointCloudData : public Buffer, public ProtoSerializable {
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
     using Buffer::getTimestampSystem;
+    using Buffer::getTimestampPtp;
 
     /**
      * Construct PointCloudData message.
@@ -240,7 +241,7 @@ class PointCloudData : public Buffer, public ProtoSerializable {
     #ifndef DEPTHAI_MESSAGES_RVC2
     DEPTHAI_SERIALIZE(
         PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, sparse,instanceNum,
-        Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum);
+        Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, Buffer::sequenceNum);
     #else
     DEPTHAI_SERIALIZE(
         PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, sparse,instanceNum,

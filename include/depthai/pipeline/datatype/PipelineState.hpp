@@ -121,7 +121,7 @@ class PipelineState : public Buffer {
     nlohmann::json toJson() const;
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodeStates, configSequenceNum);
+    DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::tsPtp, Buffer::sequenceNum, nodeStates, configSequenceNum);
     #else
     DEPTHAI_SERIALIZE(PipelineState, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeStates, configSequenceNum);
     #endif

@@ -40,7 +40,7 @@ class TransformData : public Buffer {
     Quaterniond getQuaternion() const;
 
     #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform, Buffer::tsSystem);
+    DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform, Buffer::tsSystem, Buffer::tsPtp);
     #else
     DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform);
     #endif

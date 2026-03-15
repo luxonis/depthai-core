@@ -192,6 +192,7 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
                       Base::Buffer::ts,
                       Base::Buffer::tsDevice,
                       Base::Buffer::tsSystem,
+                      Base::Buffer::tsPtp,
                       detections,
                       transformation,
                       segmentationMaskWidth,

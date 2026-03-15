@@ -189,6 +189,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", py::overload_cast<>(&ImgFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", py::overload_cast<>(&ImgFrame::Buffer::getTimestampDevice, py::const_), DOC(dai, Buffer, getTimestampDevice))
         .def("getTimestampSystem", py::overload_cast<>(&ImgFrame::Buffer::getTimestampSystem, py::const_), DOC(dai, Buffer, getTimestampSystem))
+        .def("getTimestampPtp", py::overload_cast<>(&ImgFrame::Buffer::getTimestampPtp, py::const_), DOC(dai, Buffer, getTimestampPtp))
         .def("getTimestamp", py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestamp, py::const_), py::arg("offset"), DOC(dai, ImgFrame, getTimestamp))
         .def("getTimestampDevice",
              py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampDevice, py::const_),
@@ -198,6 +199,10 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampSystem, py::const_),
              py::arg("offset"),
              DOC(dai, ImgFrame, getTimestampSystem))
+        .def("getTimestampPtp",
+             py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampPtp, py::const_),
+             py::arg("offset"),
+             DOC(dai, ImgFrame, getTimestampPtp))
         .def("getSequenceNum", &ImgFrame::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getInstanceNum", &ImgFrame::getInstanceNum, DOC(dai, ImgFrame, getInstanceNum))
         .def("getCategory", &ImgFrame::getCategory, DOC(dai, ImgFrame, getCategory))
@@ -262,6 +267,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("setTimestamp", &ImgFrame::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
         .def("setTimestampDevice", &ImgFrame::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
         .def("setTimestampSystem", &ImgFrame::setTimestampSystem, py::arg("timestampSystem"), DOC(dai, Buffer, setTimestampSystem))
+        .def("setTimestampPtp", &ImgFrame::setTimestampPtp, py::arg("timestampPtp"), DOC(dai, Buffer, setTimestampPtp))
         .def("setInstanceNum", &ImgFrame::setInstanceNum, py::arg("instance"), DOC(dai, ImgFrame, setInstanceNum))
         .def("setCategory", &ImgFrame::setCategory, py::arg("category"), DOC(dai, ImgFrame, setCategory))
         // .def("setSequenceNum", &ImgFrame::setSequenceNum, py::arg("seq"), DOC(dai, ImgFrame, setSequenceNum))
