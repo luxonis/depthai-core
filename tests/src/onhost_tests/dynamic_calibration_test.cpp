@@ -6,10 +6,16 @@ TEST_CASE("DynamicCalibration - Commands", "[DynamicCalibrationControl]") {
     using DCC = dai::DynamicCalibrationControl;
 
     SECTION("Calibrate command") {
-        auto cmd = DCC::calibrate(true);
+        auto defaultCmd = DCC::calibrate();
+        REQUIRE(std::holds_alternative<DCC::Commands::Calibrate>(defaultCmd->command));
+        auto& defaultCalibrate = std::get<DCC::Commands::Calibrate>(defaultCmd->command);
+        REQUIRE(defaultCalibrate.keepCameraCenters == true);
+
+        auto cmd = DCC::calibrate(true, false);
         REQUIRE(std::holds_alternative<DCC::Commands::Calibrate>(cmd->command));
         auto& c = std::get<DCC::Commands::Calibrate>(cmd->command);
         REQUIRE(c.force == true);
+        REQUIRE(c.keepCameraCenters == false);
     }
 
     SECTION("CalibrationQuality command") {
@@ -25,6 +31,11 @@ TEST_CASE("DynamicCalibration - Commands", "[DynamicCalibrationControl]") {
         auto& c = std::get<DCC::Commands::StartCalibration>(cmd->command);
         REQUIRE(c.loadImagePeriod == Catch::Approx(1.0f));
         REQUIRE(c.calibrationPeriod == Catch::Approx(10.0f));
+        REQUIRE(c.keepCameraCenters == true);
+
+        auto movableCentersCmd = DCC::startCalibration(1.0f, 10.0f, false);
+        auto& movableCenters = std::get<DCC::Commands::StartCalibration>(movableCentersCmd->command);
+        REQUIRE(movableCenters.keepCameraCenters == false);
     }
 
     SECTION("StopCalibration command") {
