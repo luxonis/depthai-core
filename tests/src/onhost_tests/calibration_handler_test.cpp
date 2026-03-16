@@ -256,56 +256,13 @@ static CalibrationHandler loadHandlerWithHousingRotation() {
 // Same camera chain as loadHandlerWithHousing (identity camera rotations, OAK-4-D-AF database)
 // but with a non-identity housing rotation Rz(90°) to exercise the database rotation path.
 static CalibrationHandler loadHandlerWithHousingRotationAndDB() {
-    nlohmann::json calibJson = {
-        {"productName", "OAK-4-D-AF"},
-        {"cameraData",
-         {{2,
-           {{"cameraType", 0},
-            {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-            {"extrinsics",
-             {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
-              {"specTranslation", {{"x", 3.75}, {"y", 0.0}, {"z", 0.0}}},
-              {"toCameraSocket", 0},
-              {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
-            {"height", 800},
-            {"intrinsicMatrix", {{796.0, 0.0, 648.5}, {0.0, 796.0, 410.7}, {0.0, 0.0, 1.0}}},
-            {"lensPosition", 0},
-            {"specHfovDeg", 71.86},
-            {"width", 1280}}},
-          {0,
-           {{"cameraType", 0},
-            {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-            {"extrinsics",
-             {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
-              {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
-              {"toCameraSocket", -1},
-              {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
-            {"height", 2160},
-            {"intrinsicMatrix", {{3088.5, 0.0, 1964.4}, {0.0, 3087.1, 1032.4}, {0.0, 0.0, 1.0}}},
-            {"lensPosition", 0},
-            {"specHfovDeg", 68.79},
-            {"width", 3840}}},
-          {1,
-           {{"cameraType", 0},
-            {"distortionCoeff", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-            {"extrinsics",
-             {{"rotationMatrix", {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}},
-              {"specTranslation", {{"x", -7.5}, {"y", 0.0}, {"z", 0.0}}},
-              {"toCameraSocket", 2},
-              {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}},
-            {"height", 800},
-            {"intrinsicMatrix", {{785.9, 0.0, 665.3}, {0.0, 785.9, 409.4}, {0.0, 0.0, 1.0}}},
-            {"lensPosition", 0},
-            {"specHfovDeg", 71.86},
-            {"width", 1280}}}}},
-        {"housingExtrinsics",
-         {// Rz(90°)
-          {"rotationMatrix", {{0.0, -1.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0, 1.0}}},
-          {"specTranslation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}},
-          {"toCameraSocket", 2},
-          {"translation", {{"x", 0.0}, {"y", 0.0}, {"z", 0.0}}}}}};
+    auto baseHandler = loadHandlerWithHousing();
+    auto eepromData = baseHandler.getEepromData();
 
-    return CalibrationHandler::fromJson(calibJson);
+    // Patch only housing rotation to Rz(90°), keep shared fixture data from loadHandlerWithHousing().
+    eepromData.housingExtrinsics.rotationMatrix = {{{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
+
+    return CalibrationHandler(eepromData);
 }
 
 static CalibrationHandler loadHandlerWithImuExtrinsics() {

@@ -9,9 +9,12 @@ namespace matrix {
 std::vector<std::vector<float>> matMul(std::vector<std::vector<float>>& firstMatrix, std::vector<std::vector<float>>& secondMatrix) {
     std::vector<std::vector<float>> res;
 
+    if(firstMatrix.empty() || secondMatrix.empty() || firstMatrix[0].empty() || secondMatrix[0].empty()) {
+        throw std::invalid_argument("Input matrices must be non-empty.");
+    }
+
     if(firstMatrix[0].size() != secondMatrix.size()) {
-        throw std::runtime_error("Number of column of the first matrix should match with the number of rows of the second matrix ");
-        // Return an empty vector
+        throw std::invalid_argument("Incompatible matrix dimensions");
         return res;
     }
 
@@ -276,26 +279,35 @@ std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array
 }
 
 void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
-    // Transpose R in-place
-    float temp = mat[0][1];
-    mat[0][1] = mat[1][0];
-    mat[1][0] = temp;
+    if(mat.size() != 4) {
+        throw std::invalid_argument("Expected a 4x4 matrix.");
+    }
+    for(const auto& row : mat) {
+        if(row.size() != 4) {
+            throw std::invalid_argument("Expected a 4x4 matrix.");
+        }
+    }
 
-    temp = mat[0][2];
-    mat[0][2] = mat[2][0];
-    mat[2][0] = temp;
+    const float r00 = mat[0][0], r01 = mat[0][1], r02 = mat[0][2];
+    const float r10 = mat[1][0], r11 = mat[1][1], r12 = mat[1][2];
+    const float r20 = mat[2][0], r21 = mat[2][1], r22 = mat[2][2];
 
-    temp = mat[1][2];
-    mat[1][2] = mat[2][1];
-    mat[2][1] = temp;
+    const float tx = mat[0][3], ty = mat[1][3], tz = mat[2][3];
 
-    // The inverse of an SE(3) transformation (R, t) is (R^T, -R^T t)
-    std::vector<std::vector<float>> R = {{mat[0][0], mat[0][1], mat[0][2]},
-                                         {mat[1][0], mat[1][1], mat[1][2]},
-                                         {mat[2][0], mat[2][1], mat[2][2]}};
-    std::vector<std::vector<float>> t = {{mat[0][3]}, {mat[1][3]}, {mat[2][3]}};
-    auto newTrans = matMul(R, t);
-    for(int i = 0; i < 3; ++i) mat[i][3] = -newTrans[i][0];
+    // t' = -R^T t
+    mat[0][3] = -(r00 * tx + r10 * ty + r20 * tz);
+    mat[1][3] = -(r01 * tx + r11 * ty + r21 * tz);
+    mat[2][3] = -(r02 * tx + r12 * ty + r22 * tz);
+
+    // R' = R^T
+    mat[0][0] = r00; mat[0][1] = r10; mat[0][2] = r20;
+    mat[1][0] = r01; mat[1][1] = r11; mat[1][2] = r21;
+    mat[2][0] = r02; mat[2][1] = r12; mat[2][2] = r22;
+
+    mat[3][0] = 0.0f;
+    mat[3][1] = 0.0f;
+    mat[3][2] = 0.0f;
+    mat[3][3] = 1.0f;
 }
 
 }  // namespace matrix
