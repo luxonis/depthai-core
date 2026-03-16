@@ -12,6 +12,7 @@ struct DclUtils {
     static void convertDclCalibrationToDai(CalibrationHandler& calibHandler,
                                            const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationA,
                                            const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationB,
+                                           const std::variant<CameraBoardSocket, HousingCoordinateSystem> boardSocketBase,
                                            const CameraBoardSocket socketSrc,
                                            const CameraBoardSocket socketDest,
                                            const std::pair<int, int>& resolutionA,
@@ -25,8 +26,9 @@ struct DclUtils {
 
     static std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::CameraCalibrationHandle>> convertDaiCalibrationToDcl(
         const CalibrationHandler& currentCalibration,
-        const CameraBoardSocket boardSocketA,
-        const CameraBoardSocket boardSocketB,
+        std::variant<CameraBoardSocket, HousingCoordinateSystem> boardSocketBase,
+        CameraBoardSocket boardSocketA,
+        CameraBoardSocket boardSocketB,
         const std::pair<int, int>& resolutionA,
         const std::pair<int, int>& resolutionB);
 

@@ -180,6 +180,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
     CalibrationHandler calibrationHandler;
 
+    std::variant<CameraBoardSocket, HousingCoordinateSystem> daiSocketBase = CameraBoardSocket::CAM_A;
     CameraBoardSocket daiSocketA = CameraBoardSocket::CAM_B;
     CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
     std::pair<int, int> resolutionA;
