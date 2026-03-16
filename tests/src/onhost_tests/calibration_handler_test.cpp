@@ -374,11 +374,11 @@ TEST_CASE("Legacy calibration version blocks camera-level getters", "[legacyCali
     auto handler = loadLegacyHandlerWithCamera();
 
     REQUIRE_THROWS_WITH(handler.getFov(CameraBoardSocket::CAM_A, true),
-                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the the requested cameraID"));
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the requested cameraID"));
     REQUIRE_THROWS_WITH(handler.getLensPosition(CameraBoardSocket::CAM_A),
-                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the the requested cameraID"));
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the requested cameraID"));
     REQUIRE_THROWS_WITH(handler.getDistortionModel(CameraBoardSocket::CAM_A),
-                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the the requested cameraID"));
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the requested cameraID"));
     REQUIRE_THROWS_WITH(handler.getCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_A, false),
                         Catch::Matchers::ContainsSubstring("requested source cameraId"));
 }
@@ -389,7 +389,7 @@ TEST_CASE("Missing camera intrinsics reports calibration guidance", "[getCameraI
     CalibrationHandler handler(data);
 
     REQUIRE_THROWS_WITH(handler.getCameraIntrinsics(CameraBoardSocket::CAM_A, 640, 480),
-                        Catch::Matchers::ContainsSubstring("There is no Camera data available for the requested cameraID"));
+                        Catch::Matchers::ContainsSubstring("Camera data available for the requested cameraID"));
 }
 
 TEST_CASE("Invalid camera ID throws", "[getCameraIntrinsics]") {

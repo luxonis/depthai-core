@@ -330,7 +330,9 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
         throw std::runtime_error("Your device contains old calibration which doesn't include Intrinsic data. Please recalibrate your device");
     }
     if(!hasCameraCalibration(cameraId)) {
-        throw std::runtime_error("Your device contains old calibration which doesn't include Intrinsic data or there is no Camera data available for the requested cameraID. Please recalibrate your device");
+        throw std::runtime_error(
+            "Your device contains old calibration which doesn't include Intrinsic data or there is no Camera data available for the requested cameraID. Please "
+            "recalibrate your device");
     }
     validateIntrinsicsMatrix(cameraId);
     std::vector<std::vector<float>> intrinsicMatrix = eepromData.cameraData.at(cameraId).intrinsicMatrix;
