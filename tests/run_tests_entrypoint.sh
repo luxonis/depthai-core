@@ -18,7 +18,7 @@ case "$TARGET" in
   rvc2|rvc4|rvc4usb|rvc4rgb|fsync)
     ;;
   *)
-    echo "Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]"
+    echo "Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]" >&2
     exit 2
     ;;
 esac
