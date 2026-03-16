@@ -27,6 +27,10 @@ namespace dai {
  *  - productName
  */
 
+namespace node {
+class DclUtils;
+}  // namespace node
+
 class CalibrationHandler {
    public:
     CalibrationHandler() = default;
@@ -654,6 +658,7 @@ class CalibrationHandler {
      * @param translation Translation between IMU and destCameraId origins.
      * @param specTranslation Translation between IMU and destCameraId origins from the design.
      */
+
     void setImuExtrinsics(CameraBoardSocket destCameraId,
                           std::vector<std::vector<float>> rotationMatrix,
                           std::vector<float> translation,
@@ -756,13 +761,15 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
     std::vector<std::vector<float>> getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
                                                               bool useSpecTranslation,
-                                                              CameraBoardSocket& originSocket) const;
+                                                              CameraBoardSocket& originSocket,
+                                                              LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     void setHousingToHousingOriginExtrinsics(std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
     void scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const;
     void validateIntrinsicsMatrix(CameraBoardSocket cameraId) const;
+    friend dai::node::DclUtils;
 
    protected:
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;
