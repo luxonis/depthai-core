@@ -277,6 +277,13 @@ std::array<std::array<float, 4>, 4> createTransformationMatrixInternal(const std
     return transformationMatrix;
 }
 
+std::vector<std::vector<float>> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const std::vector<float>& translation) {
+    if(translation.size() != 3) {
+        throw std::invalid_argument("Expected a 3x1 translation vector.");
+    }
+    return toVecMatrix4x4(createTransformationMatrix(rotation, dai::Point3f(translation[0], translation[1], translation[2])));
+}
+
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const dai::Point3f& translation) {
     if(rotation.size() != 3 || rotation[0].size() != 3 || rotation[1].size() != 3 || rotation[2].size() != 3) {
         throw std::invalid_argument("Expected a 3x3 rotation matrix.");
@@ -435,6 +442,62 @@ std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]) {
     R[2][2] = c + uz * uz * one_minus_c;
 
     return R;
+}
+
+std::vector<std::vector<float>> extractRotationMatrix(const std::vector<std::vector<float>>& transform) {
+    if(transform.size() < 3) {
+        throw std::invalid_argument("Expected at least 3 rows in transform matrix.");
+    }
+    std::vector<std::vector<float>> rotation(3, std::vector<float>(3, 0.0f));
+    for(int row = 0; row < 3; ++row) {
+        if(transform[row].size() < 3) {
+            throw std::invalid_argument("Expected at least 3 columns in transform matrix.");
+        }
+        for(int col = 0; col < 3; ++col) {
+            rotation[row][col] = transform[row][col];
+        }
+    }
+    return rotation;
+}
+
+std::vector<float> extractTranslationVector(const std::vector<std::vector<float>>& transform) {
+    if(transform.size() < 3) {
+        throw std::invalid_argument("Expected at least 3 rows in transform matrix.");
+    }
+    std::vector<float> translation(3, 0.0f);
+    for(int row = 0; row < 3; ++row) {
+        if(transform[row].size() < 4) {
+            throw std::invalid_argument("Expected at least 4 columns in transform matrix.");
+        }
+        translation[row] = transform[row][3];
+    }
+    return translation;
+}
+
+std::pair<std::vector<std::vector<float>>, std::vector<float>> invertSe3(const std::vector<std::vector<float>>& rotation,
+                                                                         const std::vector<float>& translation) {
+    if(rotation.size() != 3 || translation.size() != 3) {
+        throw std::invalid_argument("Expected a 3x3 rotation matrix and 3x1 translation vector.");
+    }
+    for(const auto& row : rotation) {
+        if(row.size() != 3) {
+            throw std::invalid_argument("Expected a 3x3 rotation matrix and 3x1 translation vector.");
+        }
+    }
+
+    std::vector<std::vector<float>> invertedRotation = {
+        {rotation[0][0], rotation[1][0], rotation[2][0]},
+        {rotation[0][1], rotation[1][1], rotation[2][1]},
+        {rotation[0][2], rotation[1][2], rotation[2][2]},
+    };
+    std::vector<float> invertedTranslation(3, 0.0f);
+    for(int row = 0; row < 3; ++row) {
+        for(int col = 0; col < 3; ++col) {
+            invertedTranslation[row] -= invertedRotation[row][col] * translation[col];
+        }
+    }
+
+    return {invertedRotation, invertedTranslation};
 }
 
 std::array<std::array<float, 2>, 2> getMatrixInverse(const std::array<std::array<float, 2>, 2>& matrix) {
