@@ -24,7 +24,6 @@ namespace dai {
 
 using namespace matrix;
 
-
 LengthUnit CalibrationHandler::getEepromTranslationUnits() const {
     return eepromTranslationUnits;
 }
@@ -558,9 +557,8 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
                     // column of [R | t] must be in the destination (housing-origin) frame:
                     // t = -R * db / scale
                     const auto& dbTranslation = housingIt->second;
-                    std::vector<std::vector<float>> c = {{-dbTranslation[0] / MM_TO_CM_SCALE},
-                                                         {-dbTranslation[1] / MM_TO_CM_SCALE},
-                                                         {-dbTranslation[2] / MM_TO_CM_SCALE}};
+                    std::vector<std::vector<float>> c = {
+                        {-dbTranslation[0] / MM_TO_CM_SCALE}, {-dbTranslation[1] / MM_TO_CM_SCALE}, {-dbTranslation[2] / MM_TO_CM_SCALE}};
                     auto rc = matMul(housingRotation, c);
                     housingSpecTranslation = Point3f(rc[0][0], rc[1][0], rc[2][0]);
                 }
@@ -604,11 +602,10 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
                     // All housing coordinate systems share the same orientation;
                     // only their origins differ. Build the pure-translation transform
                     // T_SpecificHousing_to_Housing from the database position.
-                    std::vector<std::vector<float>> T_SpecificHousingToHousing = {
-                        {1.0f, 0.0f, 0.0f, requestedDbTranslation[0] / MM_TO_CM_SCALE},
-                        {0.0f, 1.0f, 0.0f, requestedDbTranslation[1] / MM_TO_CM_SCALE},
-                        {0.0f, 0.0f, 1.0f, requestedDbTranslation[2] / MM_TO_CM_SCALE},
-                        {0.0f, 0.0f, 0.0f, 1.0f}};
+                    std::vector<std::vector<float>> T_SpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, requestedDbTranslation[0] / MM_TO_CM_SCALE},
+                                                                                  {0.0f, 1.0f, 0.0f, requestedDbTranslation[1] / MM_TO_CM_SCALE},
+                                                                                  {0.0f, 0.0f, 1.0f, requestedDbTranslation[2] / MM_TO_CM_SCALE},
+                                                                                  {0.0f, 0.0f, 0.0f, 1.0f}};
 
                     // Compose: T_SpecificHousing→HousingOrigin = T_Housing→HousingOrigin * T_SpecificHousing→Housing
                     T_HousingToHousingOrigin = matMul(T_HousingToHousingOrigin, T_SpecificHousingToHousing);
