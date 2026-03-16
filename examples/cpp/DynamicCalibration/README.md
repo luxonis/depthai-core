@@ -19,7 +19,7 @@ This folder contains three minimal, end-to-end **C++** examples that use **`dai:
 - **`CoverageData`** (`coverageOutput`)
   - `meanCoverage` — overall spatial coverage [0–1]
   - `dataAcquired` — amount of calibration-relevant data gathered [0–1]
-  - `coveragePerCellA/B` — 2D coverage matrices (per imager)
+  - `coveragePerCell` — per-sensor 2D coverage matrices keyed by camera socket
 
 - **`DynamicCalibrationResult`** (`calibrationOutput`)
   - `newCalibration` — `CalibrationHandler` with updated parameters

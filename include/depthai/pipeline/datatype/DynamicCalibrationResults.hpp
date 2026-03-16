@@ -40,11 +40,8 @@ struct CoverageData : public Buffer {
     /** @name Spatial coverage matrices */
     ///@{
 
-    /** 2D coverage matrix for input A (e.g. left image). Values are ∈ [0, 1]. */
-    std::vector<std::vector<float>> coveragePerCellA;
-
-    /** 2D coverage matrix for input B (e.g. right image). Values are ∈ [0, 1]. */
-    std::vector<std::vector<float>> coveragePerCellB;
+    /** 2D coverage matrix for each connected input, keyed by camera socket. Values are ∈ [0, 1]. */
+    std::unordered_map<CameraBoardSocket, std::vector<std::vector<float>>> coveragePerCell;
 
     ///@}
 
@@ -62,7 +59,7 @@ struct CoverageData : public Buffer {
 
     ///@}
 
-    DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, meanCoverage, dataAcquired, coverageAcquired);
+    DEPTHAI_SERIALIZE(CoverageData, coveragePerCell, meanCoverage, dataAcquired, coverageAcquired);
 };
 
 /**

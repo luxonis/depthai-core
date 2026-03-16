@@ -11,6 +11,9 @@
 namespace spdlog {
 class async_logger;
 }
+namespace dcl {
+class CameraSensorHandle;
+}
 namespace dai {
 namespace node {
 
@@ -98,6 +101,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     InputMap& inputs = sync->inputs;
     std::string leftInputName = "left";
     std::string rightInputName = "right";
+    std::vector<std::string> names;
     /**
      * Input left image
      */
@@ -117,10 +121,26 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     bool runOnHost() const override;
 
+    void postBuildStage() override;
+
    protected:
     Properties& getProperties() override;
 
    private:
+    struct ConnectedSensor {
+        CameraBoardSocket socket;
+        std::vector<std::vector<float>> intrinsics;
+        std::vector<float> distortion;
+        CameraModel distortionModel = CameraModel::Perspective;
+        size_t connectionOrder;
+        std::pair<int, int> resolution;
+        std::shared_ptr<dcl::CameraSensorHandle> sensorDcl;
+    };
+
+    std::vector<ConnectedSensor> connectedSensors;
+    std::vector<CameraBoardSocket> socketsInHandler;
+    std::vector<std::vector<std::vector<float>>> socketToSensorExtrinsics;
+
     class Impl;
     spimpl::impl_ptr<Impl> pimplDCL;
     enum ErrorCode : int {
@@ -141,12 +161,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void run() override;
 
-    CameraBoardSocket getBorderSockerA() {
-        return daiSocketA;
+    CameraBoardSocket getBorderSockerLeft() {
+        return daiSocketLeft;
     }
 
-    CameraBoardSocket getBorderSockerB() {
-        return daiSocketB;
+    CameraBoardSocket getBorderSockerRight() {
+        return daiSocketRight;
     }
 
     ErrorCode runQualityCheck(const bool force = false);
@@ -165,7 +185,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     ErrorCode evaluateCommand(const std::shared_ptr<DynamicCalibrationControl>& control);
 
     void computeMetrics(const CalibrationHandler& handler);
-
+    ConnectedSensor* findConnectedSensor(CameraBoardSocket socket);
+    const ConnectedSensor* findConnectedSensor(CameraBoardSocket socket) const;
     /**
      * From dai::CalibrationHandler data convert to DCL dcl::CameraCalibrationHandle, which includes all necesarry data for calibration
      * @return dcl::CameraCalibrationHanlder
@@ -182,10 +203,11 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     ImgTransformation imgTransformationA;
     ImgTransformation imgTransformationB;
 
-    CameraBoardSocket daiSocketA = CameraBoardSocket::CAM_B;
-    CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
-    std::pair<int, int> resolutionA;
-    std::pair<int, int> resolutionB;
+    std::variant<CameraBoardSocket, HousingCoordinateSystem> daiSocketBase = CameraBoardSocket::CAM_A;
+    CameraBoardSocket daiSocketLeft = CameraBoardSocket::CAM_B;
+    CameraBoardSocket daiSocketRight = CameraBoardSocket::CAM_C;
+    std::pair<int, int> resolutionLeft;
+    std::pair<int, int> resolutionRight;
     std::shared_ptr<::spdlog::async_logger> logger;
 
     // std::chrono::milliseconds sleepingTime = 250ms;
