@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_set>
@@ -23,6 +24,23 @@
 namespace dai {
 
 using namespace matrix;
+
+namespace {
+
+std::optional<std::array<float, 3>> lookupHousingEntry(const std::string& productName, HousingCoordinateSystem housingCs) {
+    if(productName.empty()) return std::nullopt;
+
+    const auto& housingData = getHousingCoordinates();
+    auto productIt = housingData.find(productName);
+    if(productIt == housingData.end()) return std::nullopt;
+
+    auto housingIt = productIt->second.find(housingCs);
+    if(housingIt == productIt->second.end()) return std::nullopt;
+
+    return housingIt->second;
+}
+
+}  // namespace
 
 LengthUnit CalibrationHandler::getEepromTranslationUnits() const {
     return eepromTranslationUnits;
@@ -545,24 +563,15 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
     // If using spec translation, try to get it from the database
     // ------------------------------------------------------------
     if(useSpecTranslation) {
-        const auto& housingData = getHousingCoordinates();
-
-        if(!eepromData.productName.empty()) {
-            auto productIt = housingData.find(eepromData.productName);
-            if(productIt != housingData.end()) {
-                auto housingIt = productIt->second.find(housingOrigin);
-                if(housingIt != productIt->second.end()) {
-                    // Get the translation from the database (in mm) and convert to cm.
-                    // The database positions are in the housing frame, but the translation
-                    // column of [R | t] must be in the destination (housing-origin) frame:
-                    // t = -R * db / scale
-                    const auto& dbTranslation = housingIt->second;
-                    std::vector<std::vector<float>> c = {
-                        {-dbTranslation[0] / MM_TO_CM_SCALE}, {-dbTranslation[1] / MM_TO_CM_SCALE}, {-dbTranslation[2] / MM_TO_CM_SCALE}};
-                    auto rc = matMul(housingRotation, c);
-                    housingSpecTranslation = Point3f(rc[0][0], rc[1][0], rc[2][0]);
-                }
-            }
+        if(const auto dbTranslation = lookupHousingEntry(eepromData.productName, housingOrigin)) {
+            // Get the translation from the database (in mm) and convert to cm.
+            // The database positions are in the housing frame, but the translation
+            // column of [R | t] must be in the destination (housing-origin) frame:
+            // t = -R * db / scale
+            std::vector<std::vector<float>> c = {
+                {-(*dbTranslation)[0] / MM_TO_CM_SCALE}, {-(*dbTranslation)[1] / MM_TO_CM_SCALE}, {-(*dbTranslation)[2] / MM_TO_CM_SCALE}};
+            auto rc = matMul(housingRotation, c);
+            housingSpecTranslation = Point3f(rc[0][0], rc[1][0], rc[2][0]);
         }
     }
 
@@ -590,27 +599,17 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
     // Get the requested specific housing coordinate system translation and subtract it
     // ------------------------------------------------------------
     if(useSpecTranslation && housingCS != HousingCoordinateSystem::AUTO) {
-        const auto& housingData = getHousingCoordinates();
+        if(const auto requestedDbTranslation = lookupHousingEntry(eepromData.productName, housingCS)) {
+            // All housing coordinate systems share the same orientation;
+            // only their origins differ. Build the pure-translation transform
+            // T_SpecificHousing_to_Housing from the database position.
+            std::vector<std::vector<float>> T_SpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] / MM_TO_CM_SCALE},
+                                                                          {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] / MM_TO_CM_SCALE},
+                                                                          {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] / MM_TO_CM_SCALE},
+                                                                          {0.0f, 0.0f, 0.0f, 1.0f}};
 
-        if(!eepromData.productName.empty()) {
-            auto productIt = housingData.find(eepromData.productName);
-            if(productIt != housingData.end()) {
-                auto requestedHousingIt = productIt->second.find(housingCS);
-                if(requestedHousingIt != productIt->second.end()) {
-                    const auto& requestedDbTranslation = requestedHousingIt->second;
-
-                    // All housing coordinate systems share the same orientation;
-                    // only their origins differ. Build the pure-translation transform
-                    // T_SpecificHousing_to_Housing from the database position.
-                    std::vector<std::vector<float>> T_SpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, requestedDbTranslation[0] / MM_TO_CM_SCALE},
-                                                                                  {0.0f, 1.0f, 0.0f, requestedDbTranslation[1] / MM_TO_CM_SCALE},
-                                                                                  {0.0f, 0.0f, 1.0f, requestedDbTranslation[2] / MM_TO_CM_SCALE},
-                                                                                  {0.0f, 0.0f, 0.0f, 1.0f}};
-
-                    // Compose: T_SpecificHousing→HousingOrigin = T_Housing→HousingOrigin * T_SpecificHousing→Housing
-                    T_HousingToHousingOrigin = matMul(T_HousingToHousingOrigin, T_SpecificHousingToHousing);
-                }
-            }
+            // Compose: T_SpecificHousing→HousingOrigin = T_Housing→HousingOrigin * T_SpecificHousing→Housing
+            T_HousingToHousingOrigin = matMul(T_HousingToHousingOrigin, T_SpecificHousingToHousing);
         }
     }
 
