@@ -611,9 +611,10 @@ CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
 
 std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
                                                                               bool useSpecTranslation,
-                                                                              CameraBoardSocket& originSocket) const {
-    // Define scale parameter for mm to cm conversion
-    constexpr float MM_TO_CM_SCALE = getLengthUnitMultiplier(DepthUnit::MILLIMETER) / getLengthUnitMultiplier(DepthUnit::CENTIMETER);
+                                                                              CameraBoardSocket& originSocket,
+                                                                              LengthUnit unit) const {
+    const float mmToUnitScale = getLengthUnitMultiplier(unit) / getLengthUnitMultiplier(LengthUnit::MILLIMETER);
+    const float cmToUnitScale = getLengthUnitMultiplier(unit) / getLengthUnitMultiplier(LengthUnit::CENTIMETER);
 
     const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
 
@@ -623,7 +624,8 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
     HousingCoordinateSystem housingOrigin = static_cast<HousingCoordinateSystem>(static_cast<int32_t>(housingExtrinsics.toCameraSocket));
 
     auto housingRotation = housingExtrinsics.rotationMatrix;
-    auto housingTranslation = housingExtrinsics.translation;          // Point3f
+    auto housingTranslation = Point3f(
+        housingExtrinsics.translation.x * cmToUnitScale, housingExtrinsics.translation.y * cmToUnitScale, housingExtrinsics.translation.z * cmToUnitScale);
     auto housingSpecTranslation = housingExtrinsics.specTranslation;  // Point3f
 
     // ------------------------------------------------------------
@@ -636,7 +638,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
             // column of [R | t] must be in the destination (housing-origin) frame:
             // t = -R * db / scale
             std::vector<std::vector<float>> c = {
-                {-(*dbTranslation)[0] / MM_TO_CM_SCALE}, {-(*dbTranslation)[1] / MM_TO_CM_SCALE}, {-(*dbTranslation)[2] / MM_TO_CM_SCALE}};
+                {-(*dbTranslation)[0] * mmToUnitScale}, {-(*dbTranslation)[1] * mmToUnitScale}, {-(*dbTranslation)[2] * mmToUnitScale}};
             auto rc = matMul(housingRotation, c);
             housingSpecTranslation = Point3f(rc[0][0], rc[1][0], rc[2][0]);
         }
@@ -670,9 +672,9 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
             // All housing coordinate systems share the same orientation;
             // only their origins differ. Build the pure-translation transform
             // T_SpecificHousing_to_Housing from the database position.
-            std::vector<std::vector<float>> T_SpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] / MM_TO_CM_SCALE},
-                                                                          {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] / MM_TO_CM_SCALE},
-                                                                          {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] / MM_TO_CM_SCALE},
+            std::vector<std::vector<float>> T_SpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] * mmToUnitScale},
+                                                                          {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] * mmToUnitScale},
+                                                                          {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] * mmToUnitScale},
                                                                           {0.0f, 0.0f, 0.0f, 1.0f}};
 
             // Compose: T_SpecificHousing→HousingOrigin = T_Housing→HousingOrigin * T_SpecificHousing→Housing
