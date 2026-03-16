@@ -152,33 +152,38 @@ std::vector<uint8_t> readFileInTar(const std::filesystem::path& tarPath, const s
 #else
     int r = archive_read_open_filename(a, tarPath.c_str(), 10240);
 #endif
-    if(r != ARCHIVE_OK) {
-        throw std::runtime_error("Could not open archive.");
-    }
 
-    while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-        if(fileInTar == archive_entry_pathname(entry)) {
-            std::vector<uint8_t> result;
-            char buff[8192];
-            la_ssize_t bytesRead = 0;
-            while((bytesRead = archive_read_data(a, buff, sizeof(buff))) > 0) {
-                result.insert(result.end(), buff, buff + bytesRead);
-            }
-            if(bytesRead < 0) {
-                archive_read_free(a);
-                throw std::runtime_error(fmt::format("Could not read file {} from archive {}.", fileInTar, tarPath));
-            }
+    bool archiveOpened = false;
+    if(r == ARCHIVE_OK) {
+        archiveOpened = true;
+        while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            if(fileInTar == archive_entry_pathname(entry)) {
+                std::vector<uint8_t> result;
+                char buff[8192];
+                la_ssize_t bytesRead = 0;
+                while((bytesRead = archive_read_data(a, buff, sizeof(buff))) > 0) {
+                    result.insert(result.end(), buff, buff + bytesRead);
+                }
+                if(bytesRead < 0) {
+                    archive_read_free(a);
+                    throw std::runtime_error(fmt::format("Could not read file {} from archive {}.", fileInTar, tarPath));
+                }
 
-            r = archive_read_free(a);
-            if(r != ARCHIVE_OK) {
-                throw std::runtime_error("Could not free archive.");
+                r = archive_read_free(a);
+                if(r != ARCHIVE_OK) {
+                    throw std::runtime_error("Could not free archive.");
+                }
+                return result;
             }
-            return result;
+            archive_read_data_skip(a);
         }
-        archive_read_data_skip(a);
     }
 
     r = archive_read_free(a);
+
+    if(!archiveOpened) {
+        throw std::runtime_error("Could not open archive.");
+    }
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not free archive.");
     }

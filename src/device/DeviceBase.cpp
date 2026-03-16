@@ -1403,7 +1403,7 @@ void DeviceBase::setCameraTuningBlob(const std::string& uri, uint32_t size) {
     pimpl->rpcCall("setCameraTuningBlob", uri, size);
 }
 
-void DeviceBase::setCameraSocketTuningBlobs(std::unordered_map<CameraBoardSocket, std::pair<std::string, uint32_t>> blobs) {
+void DeviceBase::setCameraSocketTuningBlobs(const std::unordered_map<CameraBoardSocket, std::pair<std::string, uint32_t>>& blobs) {
     pimpl->rpcCall("setCameraSocketTuningBlobs", blobs);
 }
 

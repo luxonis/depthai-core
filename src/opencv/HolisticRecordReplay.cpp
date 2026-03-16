@@ -289,9 +289,9 @@ bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
             cameraInfoData = std::vector<uint8_t>((std::istreambuf_iterator<char>(cameraInfoFile)), std::istreambuf_iterator<char>());
         }
 
-        json jCamInfo = json::parse(cameraInfoData);
         CalibrationHandler calib;
         try {
+            json jCamInfo = json::parse(cameraInfoData);
             calib = CalibrationHandler::fromJson(jCamInfo["calibration"], true);
             device.setCalibration(calib);
             std::vector<CameraFeatures> camFeatures = jCamInfo["camera_features"];

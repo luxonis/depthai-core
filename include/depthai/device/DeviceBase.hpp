@@ -344,7 +344,7 @@ class DeviceBase {
      *
      * @param blobs Unordered map of CameraBoardSocket to pair of URI and size of the tuning blob in bytes. The URI should be retrieved using the asset manager
      */
-    void setCameraSocketTuningBlobs(std::unordered_map<CameraBoardSocket, std::pair<std::string, uint32_t>> blobs);
+    void setCameraSocketTuningBlobs(const std::unordered_map<CameraBoardSocket, std::pair<std::string, uint32_t>>& blobs);
 
     /**
      * Sets the camera socket specific tuning blob for the device.

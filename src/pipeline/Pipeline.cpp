@@ -84,7 +84,7 @@ void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
     this->globalProperties = globalProperties;
 }
 
-void PipelineImpl::setDefaultDeviceProperties(DeviceProperties deviceProperties) {
+void PipelineImpl::setDefaultDeviceProperties(const DeviceProperties& deviceProperties) {
     if(defaultDevice) {
         defaultDevice->setProperties(deviceProperties);
     } else if(defaultDeviceProperties != nullptr) {
@@ -93,6 +93,9 @@ void PipelineImpl::setDefaultDeviceProperties(DeviceProperties deviceProperties)
 }
 
 void PipelineImpl::setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties) {
+    if(deviceProperties == nullptr) {
+        throw std::runtime_error("deviceProperties pointer cannot be null.");
+    }
     defaultDeviceProperties = deviceProperties;
 }
 

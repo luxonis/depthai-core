@@ -93,7 +93,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setXLinkChunkSize(int sizeBytes);
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(GlobalProperties globalProperties);
-    void setDefaultDeviceProperties(DeviceProperties deviceProperties);
+    void setDefaultDeviceProperties(const DeviceProperties& deviceProperties);
     void setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties);
     std::optional<DeviceProperties> getDefaultDeviceProperties() const;
     void setSippBufferSize(int sizeBytes);
@@ -438,9 +438,9 @@ class Pipeline {
     }
 
     /**
-     * check if calib data has been set or the default will be returned
-     * @return true - calib data has been set
-     * @return false - calib data has not been set - default will be returned
+     * check if calib data is available on the device
+     * @return true - calib data is available
+     * @return false - calib data is not available
      */
     bool isCalibrationDataAvailable() const {
         return impl()->isCalibrationDataAvailable();
