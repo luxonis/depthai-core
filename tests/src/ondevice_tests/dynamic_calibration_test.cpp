@@ -115,7 +115,7 @@ std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& 
     left->setWidth(leftMat.cols);
     left->setHeight(leftMat.rows);
     left->setCvFrame(leftMat, dai::ImgFrame::Type::GRAY8);
-    left->setInstanceNum(1);
+    left->setInstanceNum(static_cast<unsigned int>(dai::CameraBoardSocket::CAM_C));
 
     // Load right image
     cv::Mat rightMat = cv::imread(rightPath, cv::IMREAD_GRAYSCALE);
@@ -128,7 +128,7 @@ std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& 
     right->setWidth(rightMat.cols);
     right->setHeight(rightMat.rows);
     right->setCvFrame(rightMat, dai::ImgFrame::Type::GRAY8);
-    right->setInstanceNum(2);
+    right->setInstanceNum(static_cast<unsigned int>(dai::CameraBoardSocket::CAM_B));
 
     auto group = std::make_shared<dai::MessageGroup>();
     group->add("right", right);
@@ -136,23 +136,75 @@ std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& 
     return group;
 }
 
-static dai::CalibrationHandler getHandler() {
+static dai::CalibrationHandler getHandler(bool toHousing = false) {
+    auto camLeft = dai::CameraBoardSocket::CAM_C;
+    auto camRight = dai::CameraBoardSocket::CAM_B;
+    auto camBase = dai::CameraBoardSocket::CAM_A;
+
+    auto multiplyMatVec = [](const std::vector<std::vector<float>>& mat, const std::vector<float>& vec) -> std::vector<float> {
+        std::vector<float> result(mat.size(), 0.0f);
+
+        for(size_t i = 0; i < mat.size(); ++i) {
+            for(size_t col = 0; col < mat[i].size(); ++col) {
+                result[i] += mat[i][col] * vec[col];
+            }
+        }
+
+        return result;
+    };
+
+    auto invertSe3 = [](const std::vector<std::vector<float>>& rotation, const std::vector<float>& translation) {
+        std::vector<std::vector<float>> invertedRotation = {
+            {rotation[0][0], rotation[1][0], rotation[2][0]},
+            {rotation[0][1], rotation[1][1], rotation[2][1]},
+            {rotation[0][2], rotation[1][2], rotation[2][2]},
+        };
+        std::vector<float> invertedTranslation(3, 0.0f);
+        for(int row = 0; row < 3; ++row) {
+            for(int col = 0; col < 3; ++col) {
+                invertedTranslation[row] -= invertedRotation[row][col] * translation[col];
+            }
+        }
+        return std::make_pair(invertedRotation, invertedTranslation);
+    };
+
+    const double rvecLeftToRight[3] = {0.01, 0.01, 0.01};
+    std::vector<std::vector<float>> rotationLeftToRight = dai::matrix::rvecToRotationMatrix(rvecLeftToRight);
+    std::vector<float> cvecLeftToRight = {-7.5, 0.0, 0.0};
+    auto tvecLeftToRight = multiplyMatVec(rotationLeftToRight, cvecLeftToRight);
+
+    const double rvecRightToBase[3] = {0.0, 0.0, 0.1};
+    std::vector<std::vector<float>> rotationRightToBase = dai::matrix::rvecToRotationMatrix(rvecRightToBase);
+    std::vector<float> cvecRightToBase = {4.5f, 0.0f, 0.0f};
+    auto tvecRightToBase = multiplyMatVec(rotationRightToBase, cvecRightToBase);
+    auto [rotationBaseToRight, tvecBaseToRight] = invertSe3(rotationRightToBase, tvecRightToBase);
+
     std::vector<std::vector<float>> intrinsics = {{564.0, 0.0, 640.0}, {0.0, 564.0, 400.0}, {0.0, 0.0, 1.0}};
     std::vector<float> distortion = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    std::vector<std::vector<float>> identity = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
 
     dai::CalibrationHandler handler;
     auto eepromdata = handler.getEepromData();
     eepromdata.stereoUseSpecTranslation = false;
     eepromdata.stereoEnableDistortionCorrection = true;
+    eepromdata.housingExtrinsics.toCameraSocket = toHousing ? camRight : camBase;
+    eepromdata.housingExtrinsics.rotationMatrix = toHousing ? rotationBaseToRight : identity;
+    eepromdata.housingExtrinsics.translation =
+        toHousing ? dai::Point3f(tvecBaseToRight[0], tvecBaseToRight[1], tvecBaseToRight[2]) : dai::Point3f(0.0f, 0.0f, 0.0f);
     handler = dai::CalibrationHandler(eepromdata);
-    handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_B, intrinsics, 1280, 800);
-    handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_C, intrinsics, 1280, 800);
-    handler.setDistortionCoefficients(dai::CameraBoardSocket::CAM_B, distortion);
-    handler.setDistortionCoefficients(dai::CameraBoardSocket::CAM_C, distortion);
-    const double rvec[3] = {0.01, 0.01, 0.01};
-    std::vector<std::vector<float>> rotation = dai::matrix::rvecToRotationMatrix(rvec);
-    std::vector<float> translation = {7.5, 0.0, 0.0};
-    handler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, rotation, translation, {7.5f, 0.0f, 0.0f});
+    handler.setCameraIntrinsics(camLeft, intrinsics, 1280, 800);
+    handler.setCameraIntrinsics(camRight, intrinsics, 1280, 800);
+    handler.setDistortionCoefficients(camLeft, distortion);
+    handler.setDistortionCoefficients(camRight, distortion);
+
+    handler.setCameraExtrinsics(camLeft, camRight, rotationLeftToRight, tvecLeftToRight, cvecLeftToRight);
+
+    if(!toHousing) {
+        handler.setCameraIntrinsics(camBase, intrinsics, 1280, 800);
+        handler.setDistortionCoefficients(camBase, distortion);
+        handler.setCameraExtrinsics(camRight, camBase, rotationRightToBase, tvecRightToBase, cvecRightToBase);
+    }
+
     return handler;
 }
 }  // namespace
@@ -428,7 +480,13 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     auto commandInput = dynCalib->inputControl.createInputQueue();
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
 
-    device->setCalibration(getHandler());
+    auto calibrationHandler = getHandler();
+    device->setCalibration(calibrationHandler);
+    // Compare calibrated extrinsics. The default getter uses spec translations,
+    // which are a different quantity than the DCL/base-frame cvecs.
+    auto cvecBaseToLeftBefore = calibrationHandler.getCameraTranslationVector(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_A, false);
+    auto cvecBaseToRightBefore = calibrationHandler.getCameraTranslationVector(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_A, false);
+
     auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper));
     p.start();
     dynCalib->syncInput.send(group);
@@ -450,18 +508,135 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     REQUIRE(result != nullptr);
     REQUIRE(result->calibrationData != std::nullopt);
 
-    auto rotationMatrixOld = result->calibrationData->currentCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C);
+    auto rotationMatrixOld = result->calibrationData->currentCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
     std::vector<float> rvecOld = dai::matrix::rotationMatrixToVector(rotationMatrixOld);
-    auto rotationMatrix = result->calibrationData->newCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C);
+    auto rotationMatrix = result->calibrationData->newCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
     REQUIRE(std::fabs(rvecOld[0] - 0.01) < 0.00001);
     REQUIRE(std::fabs(rvecOld[1] - 0.01) < 0.00001);
     REQUIRE(std::fabs(rvecOld[2] - 0.01) < 0.00001);
 
     std::vector<float> rvec = dai::matrix::rotationMatrixToVector(rotationMatrix);
-    float threshold = 1e-7f;
-    REQUIRE(std::fabs(rvec[0]) < threshold);
-    REQUIRE(std::fabs(rvec[1]) < threshold);
-    REQUIRE(std::fabs(rvec[2]) < threshold);
+    float thresholdRotation = 1e-7f;
+    REQUIRE(std::fabs(rvec[0]) < thresholdRotation);
+    REQUIRE(std::fabs(rvec[1]) < thresholdRotation);
+    REQUIRE(std::fabs(rvec[2]) < thresholdRotation);
+
+    // Test cvecs are the same
+    auto cvecBaseToLeft =
+        result->calibrationData->newCalibration.getCameraTranslationVector(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_A, false);
+    auto cvecBaseToRight =
+        result->calibrationData->newCalibration.getCameraTranslationVector(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_A, false);
+
+    float thresholdTranslation = 1e-5f;
+    REQUIRE(std::fabs(cvecBaseToRight[0] - cvecBaseToRightBefore[0]) < thresholdTranslation);
+    REQUIRE(std::fabs(cvecBaseToRight[1] - cvecBaseToRightBefore[1]) < thresholdTranslation);
+    REQUIRE(std::fabs(cvecBaseToRight[2] - cvecBaseToRightBefore[2]) < thresholdTranslation);
+    REQUIRE(std::fabs(cvecBaseToLeft[0] - cvecBaseToLeftBefore[0]) < thresholdTranslation);
+    REQUIRE(std::fabs(cvecBaseToLeft[1] - cvecBaseToLeftBefore[1]) < thresholdTranslation);
+    REQUIRE(std::fabs(cvecBaseToLeft[2] - cvecBaseToLeftBefore[2]) < thresholdTranslation);
+
+    p.stop();
+    p.wait();
+}
+
+TEST_CASE("DynamicCalibration: Recalibration on synthetic data with housing base.") {
+    TestHelper helper;
+
+    auto device = std::make_shared<dai::Device>();
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    auto p = makePipeline(device, dynCalib, false);
+
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();
+    auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
+
+    auto calibrationHandler = getHandler(true);
+    device->setCalibration(calibrationHandler);
+
+    auto leftToHousingBefore = calibrationHandler.getHousingCalibration(dai::CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::AUTO, false);
+    auto rightToHousingBefore = calibrationHandler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false);
+
+    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper));
+    p.start();
+    dynCalib->syncInput.send(group);
+    std::this_thread::sleep_for(0.5s);
+
+    for(int i = 0; i < 7; i++) {
+        auto frameGroup = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper));
+        dynCalib->syncInput.send(frameGroup);
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
+        auto coverage = coverageOutput->get<dai::CoverageData>();
+        REQUIRE(coverage->coverageAcquired > 0.0f);
+    }
+
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::Calibrate{true}));
+    auto result = calibrationOutput->get<dai::DynamicCalibrationResult>();
+
+    REQUIRE(result != nullptr);
+    REQUIRE(result->calibrationData != std::nullopt);
+
+    auto rotationMatrixOld = result->calibrationData->currentCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
+    std::vector<float> rvecOld = dai::matrix::rotationMatrixToVector(rotationMatrixOld);
+    auto rotationMatrix = result->calibrationData->newCalibration.getCameraRotationMatrix(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
+    REQUIRE(std::fabs(rvecOld[0] - 0.01) < 0.00001);
+    REQUIRE(std::fabs(rvecOld[1] - 0.01) < 0.00001);
+    REQUIRE(std::fabs(rvecOld[2] - 0.01) < 0.00001);
+
+    std::vector<float> rvec = dai::matrix::rotationMatrixToVector(rotationMatrix);
+    float thresholdRotation = 1e-7f;
+    REQUIRE(std::fabs(rvec[0]) < thresholdRotation);
+    REQUIRE(std::fabs(rvec[1]) < thresholdRotation);
+    REQUIRE(std::fabs(rvec[2]) < thresholdRotation);
+
+    auto leftToHousing =
+        result->calibrationData->newCalibration.getHousingCalibration(dai::CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::AUTO, false);
+    auto rightToHousing =
+        result->calibrationData->newCalibration.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false);
+
+    float thresholdTransform = 1e-5f;
+    for(int row = 0; row < 4; ++row) {
+        REQUIRE(std::fabs(leftToHousing[row][3] - leftToHousingBefore[row][3]) < thresholdTransform);
+        REQUIRE(std::fabs(rightToHousing[row][3] - rightToHousingBefore[row][3]) < thresholdTransform);
+    }
+
+    p.stop();
+    p.wait();
+}
+
+TEST_CASE("DynamicCalibration: Get metrics with housing base.") {
+    TestHelper helper;
+
+    auto device = std::make_shared<dai::Device>();
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    auto p = makePipeline(device, dynCalib, false);
+
+    auto calibration = getHandler(true);
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();
+    auto metricsOutput = dynCalib->metricsOutput.createOutputQueue();
+
+    device->setCalibration(calibration);
+    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper));
+    p.start();
+    dynCalib->syncInput.send(group);
+    std::this_thread::sleep_for(0.5s);
+
+    for(int i = 0; i < 7; i++) {
+        auto frameGroup = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper));
+        dynCalib->syncInput.send(frameGroup);
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
+        (void)coverageOutput->get<dai::CoverageData>();
+    }
+
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::ComputeCalibrationMetrics{calibration}));
+
+    std::chrono::seconds waitingTime(1);
+    bool failed;
+    auto metrics = metricsOutput->get<dai::CalibrationMetrics>(waitingTime, failed);
+
+    REQUIRE(!failed);
+    REQUIRE(metrics != nullptr);
+
     p.stop();
     p.wait();
 }
