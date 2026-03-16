@@ -5,10 +5,23 @@ set -e
 TARGET="${1:-}"
 DCL_MODE="${2:-}"
 
-if [ -z "$TARGET" ]; then
-  echo "Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]"
+if [ "$#" -gt 2 ]; then
+  echo "Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]" >&2
   exit 2
 fi
+
+if [ -z "$TARGET" ]; then
+  echo "Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]" >&2
+  exit 2
+fi
+case "$TARGET" in
+  rvc2|rvc4|rvc4usb|rvc4rgb|fsync)
+    ;;
+  *)
+    echo "Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]"
+    exit 2
+    ;;
+esac
 
 # Optional second argument controls startup AutoCalibration mode.
 if [ -n "$DCL_MODE" ]; then

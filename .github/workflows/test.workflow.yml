@@ -53,10 +53,10 @@ jobs:
 
         SHOULD_RUN="true"
         if [[ "$EVENT_NAME" == "pull_request" ]]; then
-          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
+          if ! echo "$LABELS" | jq -e 'any(.[]; .name == "testable" or .name == "testable_with_dcl")' >/dev/null; then
             SHOULD_RUN="false"
           fi
-          if echo "$LABELS" | jq -r '.[].name' | grep -q "testable_with_dcl"; then
+          if echo "$LABELS" | jq -e 'any(.[]; .name == "testable_with_dcl")' >/dev/null; then
             DCL_MODE="ON_START"
           fi
         fi
