@@ -66,6 +66,8 @@ set(SOURCE_LIST
     src/nn_archive/NNArchiveBindings.cpp
     src/log/LogBindings.cpp
     src/VersionBindings.cpp
+    src/PlatformBindings.cpp
+    src/CrashDumpBindings.cpp
     src/common/ModelTypeBindings.cpp
 
     src/pipeline/node/NodeBindings.cpp
@@ -110,6 +112,7 @@ set(SOURCE_LIST
     src/pipeline/node/RectificationBindings.cpp
     src/pipeline/node/NeuralDepthBindings.cpp
     src/pipeline/node/GPUStereoBindings.cpp
+    src/pipeline/node/DepthBindings.cpp
     src/pipeline/node/NeuralAssistedStereoBindings.cpp
     src/pipeline/FilterParamsBindings.cpp
     src/pipeline/node/VppBindings.cpp

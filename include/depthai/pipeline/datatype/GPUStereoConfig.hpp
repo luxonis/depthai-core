@@ -97,6 +97,26 @@ class GPUStereoConfig : public Buffer {
         return raw < 0 ? 0 : raw;
     }
 
+    /**
+     * Set depth unit of depth map.
+     */
+    GPUStereoConfig& setDepthUnit(AlgorithmControl::DepthUnit depthUnit);
+
+    /**
+     * Get depth unit of depth map.
+     */
+    AlgorithmControl::DepthUnit getDepthUnit() const;
+
+    /**
+     * Set custom depth unit multiplier relative to 1 meter.
+     */
+    GPUStereoConfig& setCustomDepthUnitMultiplier(float multiplier);
+
+    /**
+     * Get custom depth unit multiplier relative to 1 meter.
+     */
+    float getCustomDepthUnitMultiplier() const;
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DEPTHAI_SERIALIZE(GPUStereoConfig,

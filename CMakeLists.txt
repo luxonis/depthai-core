@@ -271,11 +271,14 @@ set(TARGET_CORE_SOURCES
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
     src/common/ModelType.cpp
+    src/device/CrashDump.cpp
+    src/device/CrashDumpManager.cpp
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
+    src/device/Platform.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/PipelineStateApi.cpp
@@ -336,6 +339,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
+    src/pipeline/node/Depth.cpp
     src/pipeline/node/GPUStereo.cpp
     src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp

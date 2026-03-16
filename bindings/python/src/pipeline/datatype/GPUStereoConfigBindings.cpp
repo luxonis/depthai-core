@@ -65,6 +65,14 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
     gpuStereoConfig.def(py::init<>())
         .def("__repr__", &GPUStereoConfig::str)
         .def("invalidDisparity", &GPUStereoConfig::invalid_disparity, DOC(dai, GPUStereoConfig, invalid_disparity))
+        .def("setDepthUnit", &GPUStereoConfig::setDepthUnit, py::arg("depthUnit"), DOC(dai, GPUStereoConfig, setDepthUnit))
+        .def("getDepthUnit", &GPUStereoConfig::getDepthUnit, DOC(dai, GPUStereoConfig, getDepthUnit))
+        .def(
+            "setCustomDepthUnitMultiplier",
+            &GPUStereoConfig::setCustomDepthUnitMultiplier,
+            py::arg("customDepthUnitMultiplier"),
+            DOC(dai, GPUStereoConfig, setCustomDepthUnitMultiplier))
+        .def("getCustomDepthUnitMultiplier", &GPUStereoConfig::getCustomDepthUnitMultiplier, DOC(dai, GPUStereoConfig, getCustomDepthUnitMultiplier))
         .def_readwrite("maxDisparity", &GPUStereoConfig::max_disparity, DOC(dai, GPUStereoConfig, max_disparity))
         .def_readwrite("numPyramidLevels", &GPUStereoConfig::num_pyramid_levels, DOC(dai, GPUStereoConfig, num_pyramid_levels))
         .def_readwrite("downsampleMethod", &GPUStereoConfig::downsample_method, DOC(dai, GPUStereoConfig, downsample_method))

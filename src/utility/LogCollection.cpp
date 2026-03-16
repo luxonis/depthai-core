@@ -14,6 +14,7 @@
 #include "sha1.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
+#include "utility/Platform.hpp"
 
 namespace dai {
 namespace logCollection {
@@ -70,18 +71,6 @@ std::string protocolToString(XLinkProtocol_t protocol) {
     }
 }
 
-std::string getOSPlatform() {
-#ifdef _WIN32
-    return "Windows";
-#elif __APPLE__
-    return "MacOS";
-#elif __linux__
-    return "Linux";
-#else
-    return "Other";
-#endif
-}
-
 std::string calculateSHA1(const std::string& input) {
     SHA1 checksum;
     checksum.update(input);
@@ -111,7 +100,7 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>& pipelineData, const std
 
     multipart.parts.emplace_back("platform", platformToString(deviceInfo.platform));
     multipart.parts.emplace_back("connectionType", protocolToString(deviceInfo.protocol));
-    multipart.parts.emplace_back("osPlatform", getOSPlatform());
+    multipart.parts.emplace_back("osPlatform", platform::getOSPlatform());
     std::string daiVersion = fmt::format("{}-{}", build::VERSION, build::COMMIT);
     multipart.parts.emplace_back("depthAiVersion", std::move(daiVersion));
     multipart.parts.emplace_back("productId", deviceInfo.getDeviceId());
@@ -174,8 +163,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
     pipelineData.content = std::move(pipelineJsonStr);
     pipelineData.sha1Hash = std::move(pipelineSHA1);
     pipelineData.name = "pipeline.json";
-    auto success = sendLogsToServer(pipelineData, std::nullopt, deviceInfo);
-    if(!success) {
+    if(!sendLogsToServer(pipelineData, std::nullopt, deviceInfo)) {
         // Keep at info level to not spam in case of no internet connection
         logger::info("Failed to send pipeline logs to server");
     } else {
@@ -184,7 +172,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 #endif
 }
 
-void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const GenericCrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
+void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const CrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
     auto crashDumpEnvVar = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
     if(crashDumpEnvVar == "0") {
         logger::warn("Crash dump logging disabled");
@@ -204,20 +192,10 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
 
     // Create the crash dump object
     FileWithSHA1 crashDumpData;
-    if(auto* crashDumpPtr = std::get_if<CrashDump>(&crashDump)) {
-        std::string crashDumpJson = crashDumpPtr->serializeToJson().dump();
-        crashDumpData.content = std::move(crashDumpJson);
-        crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
-        crashDumpData.name = "crash_dump.json";
-    } else if(auto* crashDumpPtr = std::get_if<DeviceGate::CrashDump>(&crashDump)) {
-        crashDumpData.content = std::string((char*)(crashDumpPtr->data.data()), crashDumpPtr->data.size());
-        crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
-        crashDumpData.name = crashDumpPtr->filename;
-
-    } else {
-        logger::error("Unknown crash dump type");
-        return;
-    }
+    auto bytes = crashDump.toBytes();
+    crashDumpData.content = std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+    crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
+    crashDumpData.name = "crash_dump.tar.gz";
 
     fs::path logDir = fs::current_path() / ".cache" / "depthai" / "crashdumps";
     fs::path crashDumpPathLocal(dirToStoreCrashDumps);
@@ -237,9 +215,7 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
         return;
     }
 
-    std::ofstream crashDumpFile(crashDumpPathLocal);
-    crashDumpFile << crashDumpData.content;
-    crashDumpFile.close();
+    crashDump.toTar(crashDumpPathLocal);
     logger::error(errorString);
     // Send logs to the server if possible
 #ifdef DEPTHAI_ENABLE_CURL
@@ -254,16 +230,16 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Gen
     }
 
     // Check if logging is explicitly disabled
-    auto loggingDisabled = utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "");
-    if(loggingDisabled.empty()) {
+    if(!utility::getEnvAs<bool>("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", false)) {
         logger::info("Logging enabled");
-        auto success = sendLogsToServer(pipelineData, crashDumpData, deviceInfo);
-        if(!success) {
+        if(!sendLogsToServer(pipelineData, crashDumpData, deviceInfo)) {
             // Keep at info level to not spam in case of no internet connection
             logger::warn("Failed to send crash dump logs to the server.");
+        } else {
+            logger::info("Crash dump logs sent to server");
         }
     } else {
-        logger::info("Logging disabled");
+        logger::info("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION is set, not uploading crash dump logs.");
     }
 #else
     (void)pipelineSchema;
