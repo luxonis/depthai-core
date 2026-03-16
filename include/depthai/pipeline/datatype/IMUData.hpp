@@ -75,6 +75,7 @@ struct IMUReport {
     /**
      * Retrieves timestamp directly captured from device's PTP clock
      */
+    // TODO(PTP): steady_clock vs. system_clock vs other clock type for PTP?
     std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> getTimestampPtp() const {
         #ifndef DEPTHAI_MESSAGES_RVC2
         if(!tsPtp.has_value()) {

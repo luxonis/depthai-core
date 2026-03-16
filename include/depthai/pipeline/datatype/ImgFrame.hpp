@@ -122,6 +122,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     /**
      * Retrieves image timestamp (at the specified offset of exposure) directly captured from device's PTP clock
      */
+    // TODO(PTP): steady_clock vs. system_clock vs other clock type for PTP?
     std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> getTimestampPtp(CameraExposureOffset offset) const;
 
     /**

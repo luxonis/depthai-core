@@ -16,6 +16,8 @@ int64_t toNs(std::chrono::time_point<Clock> tp) {
 
 }  // namespace
 
+// TODO(PTP): steady_clock vs. system_clock vs other clock type for PTP?
+
 TEST_CASE("Buffer PTP timestamp set/unset", "[PTP][Buffer]") {
     dai::Buffer msg;
 

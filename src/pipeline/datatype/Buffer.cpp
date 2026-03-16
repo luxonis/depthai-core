@@ -88,6 +88,7 @@ std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::sy
     #endif
 }
 
+// TODO(PTP): steady_clock vs. system_clock vs other clock type for PTP?
 std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> Buffer::getTimestampPtp() const {
     #ifndef DEPTHAI_MESSAGES_RVC2
     if(!tsPtp.has_value()) {
@@ -134,6 +135,7 @@ void Buffer::setTimestampSystem(std::optional<std::chrono::time_point<std::chron
     #endif
 }
 
+// TODO(PTP): steady_clock vs. system_clock vs other clock type for PTP?
 void Buffer::setTimestampPtp(std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> tp) {
     #ifndef DEPTHAI_MESSAGES_RVC2
     if(!tp.has_value()) {

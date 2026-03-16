@@ -84,6 +84,7 @@ std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::sy
     }
 }
 
+// TODO(PTP): steady_clock vs. system_clock vs other clock type for PTP?
 std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> ImgFrame::getTimestampPtp(CameraExposureOffset offset) const {
     auto ts = getTimestampPtp();
 

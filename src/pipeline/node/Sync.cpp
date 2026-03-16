@@ -24,6 +24,7 @@ inline auto getTs(const std::shared_ptr<dai::Buffer>& b) {
             throw std::runtime_error("PTP timestamp missing, might not be supported by the device");
         }
         return b->getTimestampPtp().value();    // steady_clock::time_point
+        // TODO(PTP): modify the above comment in case clock type is changed
     } else {
         throw std::runtime_error("Unknown SyncTimestamp");
     }
@@ -43,6 +44,7 @@ inline auto getTs(dai::Buffer *b) {
             throw std::runtime_error("PTP timestamp missing, might not be supported by the device");
         }
         return b->getTimestampPtp().value();    // steady_clock::time_point
+        // TODO(PTP): modify the above comment in case clock type is changed
     } else {
         throw std::runtime_error("Unknown SyncTimestamp");
     }
