@@ -4,21 +4,26 @@ set -e
 # Usage: ./tests/run_tests_entrypoint.sh <target> [dcl_mode]
 TARGET="${1:-}"
 DCL_MODE="${2:-}"
+USAGE="Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]"
+
+usage() {
+  echo "$USAGE" >&2
+}
 
 if [ "$#" -gt 2 ]; then
-  echo "Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]" >&2
+  usage
   exit 2
 fi
 
 if [ -z "$TARGET" ]; then
-  echo "Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]" >&2
+  usage
   exit 2
 fi
 case "$TARGET" in
   rvc2|rvc4|rvc4usb|rvc4rgb|fsync)
     ;;
   *)
-    echo "Usage: $0 <rvc2|rvc4|rvc4usb|rvc4rgb|fsync> [ON_START|CONTINUOUS|OFF]" >&2
+    usage
     exit 2
     ;;
 esac
