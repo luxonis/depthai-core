@@ -1153,6 +1153,17 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
     return;
 }
 
+void CalibrationHandler::setHousingToHousingOriginExtrinsics(std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation) {
+    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
+        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
+    }
+    if(translation.size() != 3) {
+        throw std::runtime_error("Translation vector size should always be 3x1");
+    }
+    eepromData.housingExtrinsics.rotationMatrix = rotationMatrix;
+    eepromData.housingExtrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
+}
+
 void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
                                           std::vector<std::vector<float>> rotationMatrix,
                                           std::vector<float> translation,

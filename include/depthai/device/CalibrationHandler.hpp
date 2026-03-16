@@ -758,6 +758,8 @@ class CalibrationHandler {
                                                               bool useSpecTranslation,
                                                               CameraBoardSocket& originSocket) const;
 
+    void setHousingToHousingOriginExtrinsics(std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
+
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
     void scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const;
     void validateIntrinsicsMatrix(CameraBoardSocket cameraId) const;
