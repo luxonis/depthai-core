@@ -965,6 +965,7 @@ class DeviceBase {
     };
     void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
     void collectAndLogCrashDump(DeviceBase* device = nullptr);
+    void waitForRebootAndCollectCrashDump();
     CrashDumpRVC2::CrashReportCollection getCrashReportCollectionRVC2(bool clear = true);
     DeviceInfo deviceInfo;
     std::optional<Version> bootloaderVersion;
@@ -1028,6 +1029,7 @@ class DeviceBase {
     // Reconnection attempts and pointer to reset connections
     int maxReconnectionAttempts = 1;
     std::weak_ptr<PipelineImpl> pipelinePtr;
+    std::atomic<bool> crashDumpHandled{false};
     bool isClosing = false;  // if true, don't attempt to reconnect
     std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
 };

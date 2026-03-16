@@ -462,6 +462,7 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
     auto crashDumpUnique = dai::CrashDumpManager(device).collectCrashDump();
     std::shared_ptr<CrashDump> crashDump = std::move(crashDumpUnique);
     if(crashDump) {
+        crashDumpHandled.store(true);
         decltype(crashdumpCallback) callbackCopy;
 
         // Create a copy of the callback function to avoid race conditions
@@ -480,6 +481,38 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
         } else {
             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
         }
+    }
+}
+
+void DeviceBase::waitForRebootAndCollectCrashDump() {
+    auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
+    auto t1 = std::chrono::steady_clock::now();
+    bool gotDump = false;
+    bool found = false;
+    do {
+        DeviceInfo rebootingDeviceInfo;
+        std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceById(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
+        if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
+            pimpl->logger.trace("Found rebooting device in {}ns",
+                                std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - t1).count());
+            DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
+            if(gate) {
+                auto gateState = gate->getState();
+                crashed = (gateState == DeviceGate::SessionState::CRASHED || gateState == DeviceGate::SessionState::DESTROYED);
+            } else {
+                crashed = rebootingDevice.hasCrashDump();
+            }
+            if(crashed && !crashDumpHandled.load()) {
+                collectAndLogCrashDump(&rebootingDevice);
+            } else {
+                pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
+            }
+            gotDump = true;
+            break;
+        }
+    } while(!found && std::chrono::steady_clock::now() - t1 < std::chrono::milliseconds(timeout));
+    if(!gotDump) {
+        pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
     }
 }
 
@@ -504,7 +537,7 @@ void DeviceBase::closeImpl() {
     bool shouldGetCrashDump = false;
     // Check if the device is RVC3 - in case it is, crash dump retrieval is done differently
     bool isRvc2 = deviceInfo.platform == X_LINK_MYRIAD_X;
-    if(!dumpOnly && isRvc2 && timeout > 0) {
+    if(!dumpOnly && isRvc2 && timeout > 0 && !crashDumpHandled.load()) {
         pimpl->logger.debug("Crash dump collection enabled - first try to extract an existing crash dump");
         try {
             crashed = hasCrashDump();
@@ -572,7 +605,7 @@ void DeviceBase::closeImpl() {
 
     // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
-        if(crashed) {
+        if(crashed && !crashDumpHandled.load()) {
             collectAndLogCrashDump();
         }
         gate->waitForSessionEnd();
@@ -584,36 +617,10 @@ void DeviceBase::closeImpl() {
 
     if(!dumpOnly) {
         // Get crash dump if needed
-        if(shouldGetCrashDump && timeout > 0) {
+        if(shouldGetCrashDump && timeout > 0 && !crashDumpHandled.load()) {
             pimpl->logger.debug("Getting crash dump...");
-            auto t1 = steady_clock::now();
-            bool gotDump = false;
-            bool found = false;
-            do {
-                DeviceInfo rebootingDeviceInfo;
-                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceById(deviceInfo.getDeviceId(), X_LINK_ANY_STATE, false);
-                if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
-                    pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
-                    DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
-                    if(gate) {
-                        auto gateState = gate->getState();
-                        crashed = (gateState == DeviceGate::SessionState::CRASHED || gateState == DeviceGate::SessionState::DESTROYED);
-                    } else {
-                        crashed = rebootingDevice.hasCrashDump();
-                    }
-                    if(crashed) {
-                        collectAndLogCrashDump(&rebootingDevice);
-                    } else {
-                        pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
-                    }
-                    gotDump = true;
-                    break;
-                }
-            } while(!found && steady_clock::now() - t1 < std::chrono::milliseconds(timeout));
-            if(!gotDump) {
-                pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
-            }
-        } else if(shouldGetCrashDump) {
+            waitForRebootAndCollectCrashDump();
+        } else if(shouldGetCrashDump && !crashDumpHandled.load()) {
             pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
         } else if(timeout == 0) {
             pimpl->logger.debug("Crash dump collection disabled, skip device reconnection");
@@ -690,6 +697,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
     // Specify cfg
     config = cfg;
     firmwarePath = pathToMvcmd;
+    crashDumpHandled.store(false);
 
     // Apply nonExclusiveMode
     config.board.nonExclusiveMode = config.nonExclusiveMode;
@@ -1135,7 +1143,6 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
 
             if(reconnectionTimeoutMs <= 0) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECT_FAILED);
-                break;
             }
             // reconnection attempt
             // stop other threads
@@ -1153,9 +1160,16 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
                 }
 
                 // If device has crashed, collect dump
-                if(crashed) {
+                if(crashed && !crashDumpHandled.load()) {
                     collectAndLogCrashDump();
                 }
+                if(reconnectionTimeoutMs <= 0) {
+                    break;
+                }
+            } else if(reconnectionTimeoutMs <= 0) {
+                // For non-gate devices (RVC2), wait for the rebooting device and collect crash dump.
+                waitForRebootAndCollectCrashDump();
+                break;
             }
 
             // get timeout (in seconds)
@@ -1174,9 +1188,12 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             for(attempts = 0; attempts < maxReconnectionAttempts; attempts++) {
                 if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTING);
                 if(std::get<0>(getAnyAvailableDevice(reconnectTimeout))) {
+                    if(isClosing) {
+                        break;
+                    }
                     init2(prev.cfg, prev.pathToMvcmd, prev.hasPipeline, true);
                     crashed = hasCrashDump();
-                    if(crashed) {
+                    if(crashed && !crashDumpHandled.load()) {
                         collectAndLogCrashDump();
                     }
                     auto shared = pipelinePtr.lock();
