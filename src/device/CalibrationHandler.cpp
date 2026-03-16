@@ -24,36 +24,6 @@ namespace dai {
 
 using namespace matrix;
 
-namespace {
-void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
-    // Transpose in-place
-    float temp = mat[0][1];
-    mat[0][1] = mat[1][0];
-    mat[1][0] = temp;
-
-    temp = mat[0][2];
-    mat[0][2] = mat[2][0];
-    mat[2][0] = temp;
-
-    temp = mat[1][2];
-    mat[1][2] = mat[2][1];
-    mat[2][1] = temp;
-
-    // The inverse of an SE(3) transformation (R, t) is (R^T, -R^T t)
-    float newTrans[3];
-    for(int i = 0; i < 3; ++i) {
-        newTrans[i] = 0;
-        for(int j = 0; j < 3; ++j) {
-            newTrans[i] -= mat[i][j] * mat[j][3];
-        }
-    }
-    for(int i = 0; i < 3; ++i) mat[i][3] = newTrans[i];
-}
-
-float getDistanceUnitScale(LengthUnit targetUnit, LengthUnit sourceUnit) {
-    return getLengthUnitMultiplier(targetUnit) / getLengthUnitMultiplier(sourceUnit);
-}
-}  // namespace
 
 LengthUnit CalibrationHandler::getEepromTranslationUnits() const {
     return eepromTranslationUnits;
@@ -61,7 +31,7 @@ LengthUnit CalibrationHandler::getEepromTranslationUnits() const {
 
 void CalibrationHandler::scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const {
     const LengthUnit myUnits = getEepromTranslationUnits();
-    const float scale = getDistanceUnitScale(unit, myUnits);
+    const float scale = getLengthUnitMultiplier(unit) / getLengthUnitMultiplier(myUnits);
     if(scale == 1.0f) return;
     for(int i = 0; i < 3; ++i) {
         mat[i][3] *= scale;
@@ -588,12 +558,11 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
                     // column of [R | t] must be in the destination (housing-origin) frame:
                     // t = -R * db / scale
                     const auto& dbTranslation = housingIt->second;
-                    float cx = -dbTranslation[0] / MM_TO_CM_SCALE;
-                    float cy = -dbTranslation[1] / MM_TO_CM_SCALE;
-                    float cz = -dbTranslation[2] / MM_TO_CM_SCALE;
-                    housingSpecTranslation = Point3f(housingRotation[0][0] * cx + housingRotation[0][1] * cy + housingRotation[0][2] * cz,
-                                                    housingRotation[1][0] * cx + housingRotation[1][1] * cy + housingRotation[1][2] * cz,
-                                                    housingRotation[2][0] * cx + housingRotation[2][1] * cy + housingRotation[2][2] * cz);
+                    std::vector<std::vector<float>> c = {{-dbTranslation[0] / MM_TO_CM_SCALE},
+                                                         {-dbTranslation[1] / MM_TO_CM_SCALE},
+                                                         {-dbTranslation[2] / MM_TO_CM_SCALE}};
+                    auto rc = matMul(housingRotation, c);
+                    housingSpecTranslation = Point3f(rc[0][0], rc[1][0], rc[2][0]);
                 }
             }
         }

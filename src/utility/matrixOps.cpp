@@ -275,5 +275,28 @@ std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array
     return inv;
 }
 
+void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
+    // Transpose R in-place
+    float temp = mat[0][1];
+    mat[0][1] = mat[1][0];
+    mat[1][0] = temp;
+
+    temp = mat[0][2];
+    mat[0][2] = mat[2][0];
+    mat[2][0] = temp;
+
+    temp = mat[1][2];
+    mat[1][2] = mat[2][1];
+    mat[2][1] = temp;
+
+    // The inverse of an SE(3) transformation (R, t) is (R^T, -R^T t)
+    std::vector<std::vector<float>> R = {{mat[0][0], mat[0][1], mat[0][2]},
+                                         {mat[1][0], mat[1][1], mat[1][2]},
+                                         {mat[2][0], mat[2][1], mat[2][2]}};
+    std::vector<std::vector<float>> t = {{mat[0][3]}, {mat[1][3]}, {mat[2][3]}};
+    auto newTrans = matMul(R, t);
+    for(int i = 0; i < 3; ++i) mat[i][3] = -newTrans[i][0];
+}
+
 }  // namespace matrix
 }  // namespace dai
