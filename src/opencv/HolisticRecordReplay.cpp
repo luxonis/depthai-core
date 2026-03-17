@@ -252,30 +252,34 @@ bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
         return false;
     }
     bool useTar = !platform::checkPathExists(replayPath, true);
-    bool hasCameraInfo = false;
     std::vector<std::string> tarNodenames;
     std::string tarRoot = ".";
     if(useTar)
         tarNodenames = filenamesInTar(replayPath);
     else
         tarNodenames = platform::getFilenamesInDirectory(replayPath);
-    hasCameraInfo = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+    bool hasCameraInfo = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
         auto pathObj = std::filesystem::path(path);
         auto filename = pathObj.filename().string();
         return filename == "camera_info.json";
     });
+    bool hasCalibration = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
+        auto pathObj = std::filesystem::path(path);
+        auto filename = pathObj.filename().string();
+        return filename == "calibration.json";
+    });
     if(useTar) tarRoot = tarNodenames.empty() ? "." : tarNodenames[0].substr(0, tarNodenames[0].find_last_of("/\\") + 1);
-    if(hasCameraInfo) {
+    if(hasCameraInfo || hasCalibration) {
         std::vector<uint8_t> cameraInfoData;
         if(useTar) {
             try {
-                cameraInfoData = readFileInTar(replayPath, tarRoot + "camera_info.json");
+                cameraInfoData = readFileInTar(replayPath, tarRoot + (hasCameraInfo ? "camera_info.json" : "calibration.json"));
             } catch(const std::exception& e) {
                 spdlog::warn("Error while reading from tar file: {}", e.what());
                 return false;
             }
         } else {
-            std::filesystem::path cameraInfoPath = platform::joinPaths(replayPath, "camera_info.json");
+            std::filesystem::path cameraInfoPath = platform::joinPaths(replayPath, (hasCameraInfo ? "camera_info.json" : "calibration.json"));
             if(!std::filesystem::exists(cameraInfoPath)) {
                 spdlog::warn("camera_info.json not found in replay path.");
                 return false;
@@ -292,17 +296,19 @@ bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
         CalibrationHandler calib;
         try {
             json jCamInfo = json::parse(cameraInfoData);
-            calib = CalibrationHandler::fromJson(jCamInfo["calibration"], true);
+            calib = CalibrationHandler::fromJson(hasCameraInfo ? jCamInfo["calibration"] : jCamInfo, true);
             device.setCalibration(calib);
-            std::vector<CameraFeatures> camFeatures = jCamInfo["camera_features"];
-            std::string imu = jCamInfo["imu"];
-            device.overrideCameraFeatures(camFeatures, imu);
+            if(hasCameraInfo) {
+                std::vector<CameraFeatures> camFeatures = jCamInfo["camera_features"];
+                std::string imu = jCamInfo["imu"];
+                device.overrideCameraFeatures(camFeatures, imu);
+            }
         } catch(const std::runtime_error& e) {
-            spdlog::warn("Recorded calibration is invalid: {}", e.what());
+            spdlog::warn("Recorded camera information is invalid: {}", e.what());
             return false;
         }
 
-        return true;
+        return hasCameraInfo;
     }
     return false;
 }
