@@ -583,7 +583,10 @@ void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
 
 std::optional<EepromData> PipelineImpl::getEepromData() const {
     if(defaultDevice) {
-        return defaultDevice->getCalibration().getEepromData();
+        if(auto calibration = defaultDevice->tryGetCalibration()) {
+            return calibration->getEepromData();
+        }
+        return std::nullopt;
     }
     if(defaultDeviceProperties != nullptr) {
         std::unique_lock<std::mutex> lock(calibMtx);

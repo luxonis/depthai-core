@@ -233,8 +233,9 @@ void ReplayVideo::run() {
     auto start = std::chrono::steady_clock::now();
     uint64_t index = 0;
     // For looping
-    uint64_t lastSeqNum = 0;
-    uint64_t seqNumOffset = 0;
+    long firstSeqNum = 0;
+    long lastSeqNum = 0;
+    long seqNumOffset = 0;
     std::chrono::time_point<std::chrono::steady_clock> firstTs;
     std::chrono::time_point<std::chrono::steady_clock> lastTs;
     std::chrono::milliseconds lastInterval;
@@ -323,6 +324,8 @@ void ReplayVideo::run() {
         auto buffer = getVideoMessage(*metadata, outFrameType, frame);
 
         if(first) {
+            firstSeqNum = buffer->getSequenceNum() > 0 ? buffer->getSequenceNum() : 0;
+            seqNumOffset = firstSeqNum;
             prevMsgTs = buffer->getTimestampDevice();
             firstTs = buffer->getTimestamp();
             lastTs = firstTs;
@@ -331,7 +334,7 @@ void ReplayVideo::run() {
         }
 
         // Update sequence num and timestamps for looping
-        buffer->setSequenceNum(buffer->getSequenceNum() + seqNumOffset);
+        buffer->setSequenceNum(buffer->getSequenceNum() - firstSeqNum + seqNumOffset);
         lastSeqNum = buffer->getSequenceNum();
         auto deviceTsOffset = buffer->getTimestamp() - buffer->getTimestampDevice();
         buffer->setTimestamp(buffer->getTimestamp() - firstTs + tsOffset);
@@ -388,8 +391,9 @@ void ReplayMetadataOnly::run() {
     }
     bool first = true;
     // For looping
-    uint64_t lastSeqNum = 0;
-    uint64_t seqNumOffset = 0;
+    long firstSeqNum = 0;
+    long lastSeqNum = 0;
+    long seqNumOffset = 0;
     std::chrono::time_point<std::chrono::steady_clock> firstTs;
     std::chrono::time_point<std::chrono::steady_clock> lastTs;
     std::chrono::milliseconds lastInterval;
@@ -423,6 +427,8 @@ void ReplayMetadataOnly::run() {
         auto buffer = getMessage(metadata, datatype);
 
         if(first) {
+            firstSeqNum = buffer->getSequenceNum() > 0 ? buffer->getSequenceNum() : 0;
+            seqNumOffset = firstSeqNum;
             prevMsgTs = buffer->getTimestampDevice();
             firstTs = buffer->getTimestamp();
             lastTs = firstTs;
@@ -431,7 +437,7 @@ void ReplayMetadataOnly::run() {
         }
 
         // Update sequence num and timestamps for looping
-        buffer->setSequenceNum(buffer->getSequenceNum() + seqNumOffset);
+        buffer->setSequenceNum(buffer->getSequenceNum() - firstSeqNum + seqNumOffset);
         lastSeqNum = buffer->getSequenceNum();
         auto deviceTsOffset = buffer->getTimestamp() - buffer->getTimestampDevice();
         buffer->setTimestamp(buffer->getTimestamp() - firstTs + tsOffset);
