@@ -1,3 +1,4 @@
+#include <atomic>
 #include <csignal>
 #include <filesystem>
 #include <opencv2/highgui.hpp>
@@ -12,8 +13,9 @@
 #endif
 
 // Signal handling for clean shutdown
-static bool isRunning = true;
+static std::atomic<bool> isRunning = true;
 void signalHandler(int signum) {
+    (void)signum;
     isRunning = false;
 }
 
@@ -50,9 +52,9 @@ int main(int argc, char** argv) {
     imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
     imu->setBatchReportThreshold(100);
 
-    // Discard frames
+    // Discard frames by passing through sync
     auto sync = pipeline.create<dai::node::Sync>();
-    sync->setSyncAttempts(0);
+    sync->setSyncAttempts(0); // Don't wait for frames to sync
     camAOut->link(sync->inputs["camA"]);
     camBOut->link(sync->inputs["camB"]);
     camCOut->link(sync->inputs["camC"]);
@@ -64,6 +66,7 @@ int main(int argc, char** argv) {
 
     while(isRunning && pipeline.isRunning()) {
         auto frame = viewFinderQueue->get<dai::ImgFrame>();
+        if(!frame) continue;
         cv::imshow("Video", frame->getCvFrame());
         auto key = cv::waitKey(10);
         if(key == 'q') {

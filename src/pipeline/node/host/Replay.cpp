@@ -255,6 +255,8 @@ void ReplayVideo::run() {
             } else if(!first) {
                 // End of file
                 if(loop) {
+                    seqNumOffset = lastSeqNum + 1;
+                    tsOffset = lastTs + lastInterval;
                     bytePlayer.restart();
                     if(hasVideo) {
                         videoPlayer.restart();
