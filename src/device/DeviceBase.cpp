@@ -921,7 +921,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
             // Sets system inforation logging rate. By default 1s
             setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
-            hasMockedFeatures = false; // Handle reconnection case
+            hasMockedFeatures = false;  // Handle reconnection case
             mockCameraFeatures(utility::getEnvAs<std::string>("DEPTHAI_REPLAY", ""));
         } catch(const std::exception&) {
             // close device (cleanup)

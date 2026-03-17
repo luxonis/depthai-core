@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
 
     // Discard frames by passing through sync
     auto sync = pipeline.create<dai::node::Sync>();
-    sync->setSyncAttempts(0); // Don't wait for frames to sync
+    sync->setSyncAttempts(0);  // Don't wait for frames to sync
     camAOut->link(sync->inputs["camA"]);
     camBOut->link(sync->inputs["camB"]);
     camCOut->link(sync->inputs["camC"]);
