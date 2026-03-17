@@ -7,17 +7,17 @@
 namespace dai {
 
 struct AccelAxisNoiseParams {
-    double vrw = 0.0; // velocity random walk
-    double rrw = 0.0; // rate random walk
-    double bi = 0.0;  // bias instability
+    double vrw = 0.0;  // velocity random walk
+    double rrw = 0.0;  // rate random walk
+    double bi = 0.0;   // bias instability
 
     DEPTHAI_SERIALIZE(AccelAxisNoiseParams, vrw, rrw, bi);
 };
 
 struct GyroAxisNoiseParams {
-    double arw = 0.0; // angle random walk
-    double rrw = 0.0; // rate random walk
-    double bi = 0.0;  // bias instability
+    double arw = 0.0;  // angle random walk
+    double rrw = 0.0;  // rate random walk
+    double bi = 0.0;   // bias instability
 
     DEPTHAI_SERIALIZE(GyroAxisNoiseParams, arw, rrw, bi);
 };
@@ -45,7 +45,7 @@ struct ImuModelParams {
 
     // Accelerometer parameters
     AccelerometerNoiseParams accelerometer;
-    
+
     // Gyroscope parameters
     GyroscopeNoiseParams gyroscope;
 

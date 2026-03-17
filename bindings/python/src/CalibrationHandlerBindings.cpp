@@ -46,6 +46,8 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
                     DOC(dai, CalibrationHandler, fromJson))
 
         .def("getEepromData", &CalibrationHandler::getEepromData, DOC(dai, CalibrationHandler, getEepromData))
+        .def("hasCalibrationData", &CalibrationHandler::hasCalibrationData, DOC(dai, CalibrationHandler, hasCalibrationData))
+        .def("hasCameraCalibration", &CalibrationHandler::hasCameraCalibration, py::arg("cameraId"), DOC(dai, CalibrationHandler, hasCameraCalibration))
 
         .def("getCameraIntrinsics",
              py::overload_cast<CameraBoardSocket, int, int, Point2f, Point2f, bool>(&CalibrationHandler::getCameraIntrinsics, py::const_),
@@ -141,7 +143,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getStereoLeftCameraId", &CalibrationHandler::getStereoLeftCameraId, DOC(dai, CalibrationHandler, getStereoLeftCameraId))
         .def("getStereoRightCameraId", &CalibrationHandler::getStereoRightCameraId, DOC(dai, CalibrationHandler, getStereoRightCameraId))
         .def("getAccelerometerCalibParams", &CalibrationHandler::getAccelerometerCalibParams, DOC(dai, CalibrationHandler, getAccelerometerCalibParams))
-        .def("getGyroscopeCalibParams", &CalibrationHandler::getGyroscopeCalibParams, DOC(dai,CalibrationHandler, getGyroscopeCalibParams))
+        .def("getGyroscopeCalibParams", &CalibrationHandler::getGyroscopeCalibParams, DOC(dai, CalibrationHandler, getGyroscopeCalibParams))
         .def("getImuModelParams", &CalibrationHandler::getImuModelParams, DOC(dai, CalibrationHandler, getImuModelParams))
 
         .def("eepromToJsonFile", &CalibrationHandler::eepromToJsonFile, py::arg("destPath"), DOC(dai, CalibrationHandler, eepromToJsonFile))
@@ -240,11 +242,11 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("cameraId"),
              py::arg("rectifiedRotation"),
              DOC(dai, CalibrationHandler, setStereoRight))
-        .def("setAccelerometerCalibParams", 
+        .def("setAccelerometerCalibParams",
              &CalibrationHandler::setAccelerometerCalibParams,
              py::arg("accelerometerCalibParams"),
              DOC(dai, CalibrationHandler, setAccelerometerCalibParams))
-        .def("setGyroscopeCalibParams", 
+        .def("setGyroscopeCalibParams",
              &CalibrationHandler::setGyroscopeCalibParams,
              py::arg("gyroscopeCalibParams"),
              DOC(dai, CalibrationHandler, setGyroscopeCalibParams))

@@ -75,6 +75,24 @@ class CalibrationHandler {
     dai::EepromData getEepromData() const;
 
     /**
+     * @brief Returns true when calibration payload is supported and contains camera calibration entries.
+     *
+     * This check is not presence-only: it returns true only when
+     * `eepromData.version >= 4` (supported by intrinsics-dependent APIs)
+     * and `cameraData` is non-empty.
+     */
+    bool hasCalibrationData() const;
+
+    /**
+     * @brief Returns true when calibration is supported and contains data for a specific camera socket.
+     *
+     * This is a presence-plus-version-compatibility check. It requires
+     * `hasCalibrationData()` to be true (currently `eepromData.version >= 4`)
+     * and a matching entry for `cameraId` in `cameraData`.
+     */
+    bool hasCameraCalibration(CameraBoardSocket cameraId) const;
+
+    /**
      * Get the Camera Intrinsics object
      *
      * @param cameraId Uses the cameraId to identify which camera intrinsics to return
@@ -695,6 +713,7 @@ class CalibrationHandler {
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
     void scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const;
+    void validateIntrinsicsMatrix(CameraBoardSocket cameraId) const;
 
    protected:
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;

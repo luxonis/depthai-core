@@ -6,9 +6,9 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraInfo.hpp"
 #include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/ImuModelParams.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/StereoRectification.hpp"
-#include "depthai/common/ImuModelParams.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {

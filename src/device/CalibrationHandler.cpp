@@ -307,14 +307,32 @@ dai::EepromData CalibrationHandler::getEepromData() const {
     return eepromData;
 }
 
+bool CalibrationHandler::hasCalibrationData() const {
+    return eepromData.version >= 4 && !eepromData.cameraData.empty();
+}
+
+bool CalibrationHandler::hasCameraCalibration(CameraBoardSocket cameraId) const {
+    // Checks both that the device has a current calibration version and that data exists for this camera.
+    return hasCalibrationData() && eepromData.cameraData.find(cameraId) != eepromData.cameraData.end();
+}
+
+void CalibrationHandler::validateIntrinsicsMatrix(CameraBoardSocket cameraId) const {
+    const auto& storedIntrinsics = eepromData.cameraData.at(cameraId).intrinsicMatrix;
+    if(storedIntrinsics.size() < 3 || storedIntrinsics[0].size() < 3 || storedIntrinsics[1].size() < 3 || storedIntrinsics[2].size() < 3
+       || storedIntrinsics[0][0] == 0) {
+        throw std::runtime_error("There is no Intrinsic matrix available for the requested cameraID");
+    }
+}
+
 std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
     CameraBoardSocket cameraId, int resizeWidth, int resizeHeight, Point2f topLeftPixelId, Point2f bottomRightPixelId, bool keepAspectRatio) const {
     if(eepromData.version < 4) {
         throw std::runtime_error("Your device contains old calibration which doesn't include Intrinsic data. Please recalibrate your device");
     }
-    if(eepromData.cameraData.at(cameraId).intrinsicMatrix.size() == 0 || eepromData.cameraData.at(cameraId).intrinsicMatrix[0][0] == 0) {
-        throw std::runtime_error("There is no Intrinsic matrix available for the the requested cameraID");
+    if(!hasCameraCalibration(cameraId)) {
+        throw std::runtime_error("Your device contains old calibration which doesn't include Intrinsic data or there is no Camera data available for the requested cameraID. Please recalibrate your device");
     }
+    validateIntrinsicsMatrix(cameraId);
     std::vector<std::vector<float>> intrinsicMatrix = eepromData.cameraData.at(cameraId).intrinsicMatrix;
     if(resizeWidth != -1 || resizeHeight != -1) {
         if(resizeWidth == -1) {
@@ -398,11 +416,9 @@ std::tuple<std::vector<std::vector<float>>, int, int> CalibrationHandler::getDef
     if(eepromData.version < 4)
         throw std::runtime_error("Your device contains old calibration which doesn't include Intrinsic data. Please recalibrate your device");
 
-    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraId");
+    if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraId");
 
-    if(eepromData.cameraData.at(cameraId).intrinsicMatrix.size() == 0 || eepromData.cameraData.at(cameraId).intrinsicMatrix[0][0] == 0)
-        throw std::runtime_error("There is no Intrinsic matrix available for the the requested cameraID");
+    validateIntrinsicsMatrix(cameraId);
 
     return {eepromData.cameraData.at(cameraId).intrinsicMatrix, eepromData.cameraData.at(cameraId).width, eepromData.cameraData.at(cameraId).height};
 }
@@ -411,11 +427,9 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
     if(eepromData.version < 4)
         throw std::runtime_error("Your device contains old calibration which doesn't include Intrinsic data. Please recalibrate your device");
 
-    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
+    if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraID");
 
-    if(eepromData.cameraData.at(cameraId).intrinsicMatrix.size() == 0 || eepromData.cameraData.at(cameraId).intrinsicMatrix[0][0] == 0)
-        throw std::runtime_error("There is no Intrinsic matrix available for the the requested cameraID");
+    validateIntrinsicsMatrix(cameraId);
 
     if(eepromData.cameraData.at(cameraId).cameraType == CameraModel::Fisheye) {
         // in this case the camera model is Fisheye; we only want to return four floats.
@@ -432,8 +446,7 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
 }
 
 float CalibrationHandler::getFov(CameraBoardSocket cameraId, bool useSpec) const {
-    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
+    if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraID");
 
     if(useSpec) {
         return eepromData.cameraData.at(cameraId).specHfovDeg;
@@ -447,15 +460,13 @@ float CalibrationHandler::getFov(CameraBoardSocket cameraId, bool useSpec) const
 }
 
 uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) const {
-    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
+    if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraID");
 
     return eepromData.cameraData.at(cameraId).lensPosition;
 }
 
 CameraModel CalibrationHandler::getDistortionModel(CameraBoardSocket cameraId) const {
-    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
+    if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraID");
 
     return eepromData.cameraData.at(cameraId).cameraType;
 }
@@ -472,11 +483,11 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
      * 5. Multiply the two matrices to get the projection matrix from source -> destination camera.
      * 6. Return the projection matrix.
      */
-    if(eepromData.cameraData.find(srcCamera) == eepromData.cameraData.end()) {
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
+    if(!hasCameraCalibration(srcCamera)) {
+        throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
     }
-    if(eepromData.cameraData.find(dstCamera) == eepromData.cameraData.end()) {
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested destination cameraId");
+    if(!hasCameraCalibration(dstCamera)) {
+        throw std::runtime_error("There is no Camera data available corresponding to the requested destination cameraId");
     }
 
     std::vector<std::vector<float>> extrinsics;
@@ -827,6 +838,12 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
     if(srcCamera == CameraBoardSocket::AUTO || dstCamera == CameraBoardSocket::AUTO) {
         throw std::runtime_error("Invalid cameraId input..");
     }
+    if(!hasCameraCalibration(srcCamera)) {
+        throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
+    }
+    if(!hasCameraCalibration(dstCamera)) {
+        throw std::runtime_error("There is no Camera data available corresponding to the requested destination cameraId");
+    }
     if(eepromData.cameraData.at(srcCamera).extrinsics.toCameraSocket == dstCamera) {
         if(eepromData.cameraData.at(srcCamera).extrinsics.rotationMatrix.size() == 0
            || eepromData.cameraData.at(srcCamera).extrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
@@ -874,9 +891,16 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
 }
 
 bool CalibrationHandler::checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const {
+    if(!hasCameraCalibration(srcCamera) || !hasCameraCalibration(dstCamera)) {
+        return false;
+    }
+
     bool isConnectionFound = false;
     CameraBoardSocket currentCameraId = srcCamera;
     while(currentCameraId != CameraBoardSocket::AUTO) {
+        if(eepromData.cameraData.find(currentCameraId) == eepromData.cameraData.end()) {
+            return false;
+        }
         currentCameraId = eepromData.cameraData.at(currentCameraId).extrinsics.toCameraSocket;
         if(currentCameraId == dstCamera) {
             isConnectionFound = true;

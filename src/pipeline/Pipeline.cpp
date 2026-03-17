@@ -666,15 +666,23 @@ void PipelineImpl::build() {
             auto stereoPair = getStereoPair();
 
             auto hasStereoPairValidCalibration = [&stereoPair](const std::shared_ptr<CalibrationHandler>& calibration) -> bool {
+                if(!calibration) return false;
+
+                const auto leftSocket = stereoPair.first->getBoardSocket();
+                const auto rightSocket = stereoPair.second->getBoardSocket();
+                if(!calibration->hasCameraCalibration(leftSocket) || !calibration->hasCameraCalibration(rightSocket)) {
+                    return false;
+                }
+
                 try {
-                    calibration->getDefaultIntrinsics(stereoPair.first->getBoardSocket());
-                    calibration->getDefaultIntrinsics(stereoPair.second->getBoardSocket());
-                    calibration->getCameraExtrinsics(stereoPair.first->getBoardSocket(), stereoPair.second->getBoardSocket());
+                    // getDefaultIntrinsics() validates intrinsic matrix shape/content and throws on invalid data.
+                    calibration->getDefaultIntrinsics(leftSocket);
+                    calibration->getDefaultIntrinsics(rightSocket);
+                    calibration->getCameraExtrinsics(leftSocket, rightSocket);
                     return true;
                 } catch(const std::exception& ex) {
                     return false;
                 }
-                return false;
             };
 
             if(stereoPair.first && stereoPair.second && !hasDynamicCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
