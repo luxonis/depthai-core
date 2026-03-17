@@ -6,6 +6,7 @@
 #define _USE_MATH_DEFINES
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <memory>
@@ -233,9 +234,9 @@ void ReplayVideo::run() {
     auto start = std::chrono::steady_clock::now();
     uint64_t index = 0;
     // For looping
-    long firstSeqNum = 0;
-    long lastSeqNum = 0;
-    long seqNumOffset = 0;
+    int64_t firstSeqNum = 0;
+    int64_t lastSeqNum = 0;
+    int64_t seqNumOffset = 0;
     std::chrono::time_point<std::chrono::steady_clock> firstTs;
     std::chrono::time_point<std::chrono::steady_clock> lastTs;
     std::chrono::milliseconds lastInterval;
@@ -391,9 +392,9 @@ void ReplayMetadataOnly::run() {
     }
     bool first = true;
     // For looping
-    long firstSeqNum = 0;
-    long lastSeqNum = 0;
-    long seqNumOffset = 0;
+    int64_t firstSeqNum = 0;
+    int64_t lastSeqNum = 0;
+    int64_t seqNumOffset = 0;
     std::chrono::time_point<std::chrono::steady_clock> firstTs;
     std::chrono::time_point<std::chrono::steady_clock> lastTs;
     std::chrono::milliseconds lastInterval;
