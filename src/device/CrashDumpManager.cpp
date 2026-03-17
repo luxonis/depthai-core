@@ -33,6 +33,18 @@ CrashDumpManager::CrashDumpManager(DeviceBase* devicePtr) : devicePtr(devicePtr)
     }
 }
 
+CrashDumpManager::CrashDumpManager(CrashDumpManager&& other) noexcept : devicePtr(other.devicePtr) {
+    other.devicePtr = nullptr;
+}
+
+CrashDumpManager& CrashDumpManager::operator=(CrashDumpManager&& other) noexcept {
+    if(this != &other) {
+        devicePtr = other.devicePtr;
+        other.devicePtr = nullptr;
+    }
+    return *this;
+}
+
 std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
     // Collect the correct crash dump based on the platform
     std::unique_ptr<CrashDump> dump;

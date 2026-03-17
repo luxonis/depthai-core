@@ -337,6 +337,7 @@ void CrashDumpRVC4::fromTar(const fs::path& tarPath) {
     readFromFile(metadataPath, metadataContent);
     nlohmann::json metadata = nlohmann::json::parse(metadataContent);
     readMetadata(metadata);
+    filename = fromJson(metadata, "originalFilename", "");
 
     // Read extra
     if(fs::exists(extraPath)) {

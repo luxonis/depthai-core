@@ -23,8 +23,8 @@ class CrashDumpManager {
     CrashDumpManager& operator=(const CrashDumpManager&) = delete;
 
     // Movable
-    CrashDumpManager(CrashDumpManager&&) = default;
-    CrashDumpManager& operator=(CrashDumpManager&&) = default;
+    CrashDumpManager(CrashDumpManager&& other) noexcept;
+    CrashDumpManager& operator=(CrashDumpManager&& other) noexcept;
 
     /**
      * @brief Collect crash dump from the device

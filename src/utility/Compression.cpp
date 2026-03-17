@@ -18,7 +18,9 @@ static void archiveFilesImpl(const std::filesystem::path& archivePath,
                              const std::vector<std::filesystem::path>& filesOnDisk,
                              const std::vector<std::string>& filesInArchive,
                              bool gzip) {
-    assert(filesOnDisk.size() == filesInArchive.size());
+    if(filesOnDisk.size() != filesInArchive.size()) {
+        throw std::invalid_argument("filesOnDisk and filesInArchive must have the same size");
+    }
 
     struct archive* a = nullptr;
     struct archive_entry* entry = nullptr;
@@ -118,7 +120,9 @@ void extractFiles(const std::filesystem::path& archivePath,
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
     }
-    assert(filesInArchive.size() == filesOnDisk.size());
+    if(filesInArchive.size() != filesOnDisk.size()) {
+        throw std::invalid_argument("filesInArchive and filesOnDisk must have the same size");
+    }
     while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
         for(size_t i = 0; i < filesInArchive.size(); i++) {
             const auto& file = filesInArchive[i];
