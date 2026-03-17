@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
 
     auto imu = pipeline.create<dai::node::IMU>();
 
-    // enable ACCELEROMETER_RAW at 500 hz rate
+    // enable ACCELEROMETER_RAW at 400 hz rate
     imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 400);
     // enable GYROSCOPE_RAW at 400 hz rate
     imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
