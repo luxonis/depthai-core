@@ -8,12 +8,13 @@ COMMIT_ID=$4
 PARALLEL_JOBS=$5
 PULL_REQUEST=$6
 TAG=$7
+REPLAY_ENABLED=${8:-false}
 
 : "${PARALLEL_JOBS:=8}"  # Fallback to 8 if not set or passed
 : "${PULL_REQUEST:="false"}"  # Fallback to false if not set or passed
 
 if [ -z "$FLAVOR" ] || [ -z "$BRANCH" ] || [ -z "$REGISTRY" ] || [ -z "$COMMIT_ID" ] || [ -z "$PARALLEL_JOBS" ] || [ -z "$PULL_REQUEST" ] || [ -z "$TAG" ]; then
-  echo "Usage: $0 <flavor> <branch> <registry> <commit_id> <number_of_cores> <is_pipeline_pull_request> <tag>"
+  echo "Usage: $0 <flavor> <branch> <registry> <commit_id> <number_of_cores> <is_pipeline_pull_request> <tag> [replay_enabled]"
   exit 1
 fi
 
@@ -69,6 +70,7 @@ else
     echo "🔨 Building image ${IMAGE_NAME}..."
     docker buildx build --builder "${BUILDER_NAME}" -t "${IMAGE_NAME}" -f tests/Dockerfile . \
   --build-arg FLAVOR="${FLAVOR}" \
+  --build-arg REPLAY_ENABLED="${REPLAY_ENABLED}" \
   --build-arg BRANCH="${BRANCH}" \
   --build-arg GIT_COMMIT="${COMMIT_ID}" \
   --build-arg PARALLEL_JOBS="${PARALLEL_JOBS}" \

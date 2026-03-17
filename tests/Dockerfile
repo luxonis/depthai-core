@@ -6,6 +6,8 @@ ENV LC_ALL=en_US.UTF-8
 ENV DISPLAY=:99
 ARG FLAVOR=vanilla
 ENV FLAVOR=${FLAVOR}
+ARG REPLAY_ENABLED=false
+ENV REPLAY_ENABLED=${REPLAY_ENABLED}
 ARG PARALLEL_JOBS=8
 ARG PULL_REQUEST="false"
 
@@ -110,11 +112,17 @@ RUN --mount=type=cache,target=/opt/vcpkg-downloads \
     else \
         echo "Using vanilla flavor (no toolchain)"; \
     fi && \
+    REPLAY_CMAKE_ARG="" && \
+    if [ "$REPLAY_ENABLED" = "true" ]; then \
+        REPLAY_CMAKE_ARG="-DDEPTHAI_TESTS_ENABLE_REPLAY=ON"; \
+        echo "Enabling DEPTHAI_REPLAY for all tests"; \
+    fi && \
     cmake -S . -B build \
         -D CMAKE_BUILD_TYPE=Release \
         -D DEPTHAI_VCPKG_INTERNAL_ONLY=OFF \
         -D VCPKG_OVERLAY_TRIPLETS="/workspace/cmake/triplets/release" \
         -D DEPTHAI_BUILD_TESTS=ON \
+        ${REPLAY_CMAKE_ARG} \
         $(if [ "$PULL_REQUEST" = "false" ]; then echo "-D DEPTHAI_BUILD_EXAMPLES=ON \
         -D DEPTHAI_TEST_EXAMPLES=ON \
         -D DEPTHAI_BUILD_PYTHON=ON \
