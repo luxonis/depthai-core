@@ -102,6 +102,7 @@ jobs:
       flavor: "vanilla"
       job_prefix: "vanilla-replay"
       enable_replay_tests: true
+      rvc2_timeout_minutes: 1440
       luxonis_os_versions_to_test: "['1.27.1']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
