@@ -122,7 +122,6 @@ jobs:
           if-no-files-found: warn
 
  linux_rvc4_usb_test:
-      if: ${{ !inputs.enable_replay_tests }}
       needs: [build_docker_container]
       strategy:
         matrix:
@@ -148,7 +147,6 @@ jobs:
           if-no-files-found: warn
 
  linux_rvc4_rgb_test:
-      if: ${{ !inputs.enable_replay_tests }}
       needs: [build_docker_container]
       strategy:
         matrix:
