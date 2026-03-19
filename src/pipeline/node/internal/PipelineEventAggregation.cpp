@@ -588,7 +588,8 @@ std::tuple<std::shared_ptr<PipelineState>, bool> makeOutputState(PipelineEventHa
     outState->setTimestamp(std::chrono::steady_clock::now());
     outState->tsDevice = outState->ts;
     outState->setTimestampSystem(std::chrono::system_clock::now());
-    // TODO(PTP): can we get current PTP?
+    // Host-generated aggregation states do not synthesize a PTP timestamp,
+    // because there is no reliable direct PHC source on the host side.
     outState->setTimestampPtp(std::nullopt);
 
     // Filter state based on current configuration

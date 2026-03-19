@@ -1128,7 +1128,7 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
     }
 
     if(imuData->has_tsptp()) {
-        obj.setTimestampPtp(fromProtoTimestamp<std::chrono::steady_clock>(imuData->tsptp()));
+        obj.setTimestampPtp(fromProtoTimestamp<dai::ptp_clock>(imuData->tsptp()));
     } else {
         obj.setTimestampPtp(std::nullopt);
     }
@@ -1158,7 +1158,7 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
     }
 
     if(imgFrame->has_tsptp()) {
-        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(imgFrame->tsptp()));
+        obj.setTimestampPtp(utility::fromProtoTimestamp<dai::ptp_clock>(imgFrame->tsptp()));
     } else {
         obj.setTimestampPtp(std::nullopt);
     }
@@ -1221,7 +1221,7 @@ static void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encode
     }
 
     if(encFrame.has_tsptp()) {
-        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(encFrame.tsptp()));
+        obj.setTimestampPtp(utility::fromProtoTimestamp<dai::ptp_clock>(encFrame.tsptp()));
     } else {
         obj.setTimestampPtp(std::nullopt);
     }
@@ -1288,7 +1288,7 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
     }
 
     if(pcl->has_tsptp()) {
-        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(pcl->tsptp()));
+        obj.setTimestampPtp(utility::fromProtoTimestamp<dai::ptp_clock>(pcl->tsptp()));
     } else {
         obj.setTimestampPtp(std::nullopt);
     }
@@ -1329,7 +1329,7 @@ static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::Img
     }
 
     if(imgFrame.has_tsptp()) {
-        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(imgFrame.tsptp()));
+        obj.setTimestampPtp(utility::fromProtoTimestamp<dai::ptp_clock>(imgFrame.tsptp()));
     } else {
         obj.setTimestampPtp(std::nullopt);
     }
@@ -1395,7 +1395,7 @@ void setProtoMessage(RGBDData& obj, const google::protobuf::Message* msg, bool m
     }
 
     if(rgbdData->has_tsptp()) {
-        obj.setTimestampPtp(utility::fromProtoTimestamp<std::chrono::steady_clock>(rgbdData->tsptp()));
+        obj.setTimestampPtp(utility::fromProtoTimestamp<dai::ptp_clock>(rgbdData->tsptp()));
     } else {
         obj.setTimestampPtp(std::nullopt);
     }

@@ -10,7 +10,8 @@ constexpr const char* INPUT_BLOCK_NAME = "getInputs";
 
 PipelineEventDispatcherInterface::~PipelineEventDispatcherInterface() = default;
 
-// TODO(PTP): Could we populate PTP timestamp?
+// Host-generated events do not synthesize a PTP timestamp, because the host side
+// does not have a reliable direct PHC source in this design.
 
 std::string typeToString(PipelineEvent::Type type) {
     switch(type) {

@@ -72,8 +72,7 @@ class Buffer : public ADatatype {
     /**
      * Retrieves timestamp directly captured from device's PTP clock
      */
-    // TODO(PTP): steady_clock vs. system_clock vs other clock type for PTP?
-    std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> getTimestampPtp() const;
+    std::optional<std::chrono::time_point<dai::ptp_clock, dai::ptp_clock::duration>> getTimestampPtp() const;
 
     /**
      * Sets image timestamp related to dai::Clock::now()
@@ -93,8 +92,7 @@ class Buffer : public ADatatype {
     /**
      * Sets image timestamp related to device's PTP clock
      */
-    // TODO(PTP): steady_clock vs. system_clock vs other clock type for PTP?
-    void setTimestampPtp(std::optional<std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>> timestamp);
+    void setTimestampPtp(std::optional<std::chrono::time_point<dai::ptp_clock, dai::ptp_clock::duration>> timestamp);
 
     /**
      * Retrieves image sequence number

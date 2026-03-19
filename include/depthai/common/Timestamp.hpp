@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cstdint>
 
+#include "depthai/common/PtpClock.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {
@@ -24,6 +25,7 @@ struct Timestamp {
 
 template std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration> Timestamp::get<std::chrono::system_clock>() const;
 template std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> Timestamp::get<std::chrono::steady_clock>() const;
+template std::chrono::time_point<ptp_clock, ptp_clock::duration> Timestamp::get<ptp_clock>() const;
 
 DEPTHAI_SERIALIZE_EXT(Timestamp, sec, nsec);
 

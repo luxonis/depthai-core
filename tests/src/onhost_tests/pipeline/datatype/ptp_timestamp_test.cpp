@@ -16,14 +16,12 @@ int64_t toNs(std::chrono::time_point<Clock> tp) {
 
 }  // namespace
 
-// TODO(PTP): steady_clock vs. system_clock vs other clock type for PTP?
-
 TEST_CASE("Buffer PTP timestamp set/unset", "[PTP][Buffer]") {
     dai::Buffer msg;
 
     REQUIRE_FALSE(msg.getTimestampPtp().has_value());
 
-    auto tsPtp = std::chrono::time_point<std::chrono::steady_clock>(1234567890ns);
+    auto tsPtp = std::chrono::time_point<dai::ptp_clock>(1234567890ns);
     msg.setTimestampPtp(tsPtp);
     REQUIRE(msg.getTimestampPtp().has_value());
     REQUIRE(toNs(*msg.getTimestampPtp()) == toNs(tsPtp));
@@ -36,7 +34,7 @@ TEST_CASE("ImgFrame PTP exposure offsets", "[PTP][ImgFrame]") {
     dai::ImgFrame frame;
     frame.cam.exposureTimeUs = 2000;
 
-    auto tsPtp = std::chrono::time_point<std::chrono::steady_clock>(2500000000ns);
+    auto tsPtp = std::chrono::time_point<dai::ptp_clock>(2500000000ns);
     frame.setTimestampPtp(tsPtp);
 
     REQUIRE(frame.getTimestampPtp().has_value());
@@ -57,7 +55,7 @@ TEST_CASE("PTP timestamp serialization roundtrip", "[PTP][Serialization]") {
     SECTION("ImgFrame utility serialize/deserialize") {
         dai::ImgFrame src;
         src.setSequenceNum(77);
-        src.setTimestampPtp(std::chrono::time_point<std::chrono::steady_clock>(987654321ns));
+        src.setTimestampPtp(std::chrono::time_point<dai::ptp_clock>(987654321ns));
         src.setTimestampSystem(std::chrono::time_point<std::chrono::system_clock>(123456789ns));
         src.setTimestampDevice(std::chrono::steady_clock::time_point(333ns));
         src.setTimestamp(std::chrono::steady_clock::time_point(222ns));
@@ -77,7 +75,7 @@ TEST_CASE("PTP timestamp serialization roundtrip", "[PTP][Serialization]") {
     SECTION("IMUData report and aggregate PTP roundtrip") {
         dai::IMUData src;
         src.setSequenceNum(42);
-        src.setTimestampPtp(std::chrono::time_point<std::chrono::steady_clock>(7654321ns));
+        src.setTimestampPtp(std::chrono::time_point<dai::ptp_clock>(7654321ns));
 
         dai::IMUPacket packet;
         packet.acceleroMeter.sequence = 11;
@@ -93,7 +91,7 @@ TEST_CASE("PTP timestamp serialization roundtrip", "[PTP][Serialization]") {
         REQUIRE(toNs(*dst.getTimestampPtp()) == 7654321);
         REQUIRE_FALSE(dst.packets.empty());
         REQUIRE(dst.packets[0].acceleroMeter.getTimestampPtp().has_value());
-        REQUIRE(toNs(*dst.packets[0].acceleroMeter.getTimestampPtp()) == toNs(std::chrono::time_point<std::chrono::steady_clock>(123s + 456ns)));
+        REQUIRE(toNs(*dst.packets[0].acceleroMeter.getTimestampPtp()) == toNs(std::chrono::time_point<dai::ptp_clock>(123s + 456ns)));
     }
     #endif
 }
