@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <initializer_list>
 
 #include "depthai/depthai.hpp"
@@ -39,4 +40,34 @@ TEST_CASE("Test IMU, all sensors") {
 
 TEST_CASE("Test IMU, gyroscope 480 Hz") {
     basicIMUTest(480.0f, {dai::IMUSensor::GYROSCOPE_RAW}, 0.8f);  // TODO(Morato) - debug why some devices need so much tolerance
+}
+
+TEST_CASE("At least one measurement should be updated") {
+    dai::Pipeline pipeline;
+    auto imu = pipeline.create<dai::node::IMU>();
+    imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 400);
+    imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
+
+    imu->setBatchReportThreshold(10);
+    imu->setMaxBatchReports(20);
+
+    auto imuQueue = imu->out.createOutputQueue(50, false);
+
+    pipeline.start();
+
+    auto start = std::chrono::steady_clock::now();
+
+    dai::IMUPacket previousPacket;
+
+    while(pipeline.isRunning() && std::chrono::steady_clock::now() - start <= std::chrono::seconds(10)) {
+        auto imuData = imuQueue->get<dai::IMUData>();
+        if(imuData == nullptr) continue;
+
+        for(const auto& imuPacket : imuData->packets) {
+            REQUIRE((imuPacket.acceleroMeter.sequence > previousPacket.acceleroMeter.sequence || imuPacket.gyroscope.sequence > previousPacket.gyroscope.sequence));
+            previousPacket = imuPacket;
+        }
+    }
+
+    pipeline.stop();
 }
