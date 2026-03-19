@@ -51,7 +51,8 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def(py::init<>())
         .def_readwrite("newCalibration", &DynamicCalibrationResult::Data::newCalibration)                 // dai::CalibrationHandler
         .def_readwrite("currentCalibration", &DynamicCalibrationResult::Data::currentCalibration)         // dai::CalibrationHandler
-        .def_readwrite("calibrationDifference", &DynamicCalibrationResult::Data::calibrationDifference);  // CalibrationQuality::Data
+        .def_readwrite("calibrationDifference", &DynamicCalibrationResult::Data::calibrationDifference)   // CalibrationQuality::Data
+        .def_readwrite("dataConfidence", &DynamicCalibrationResult::Data::dataConfidence);
 
     // DynamicCalibrationResult
     py::class_<DynamicCalibrationResult, Buffer, std::shared_ptr<DynamicCalibrationResult>>(m, "DynamicCalibrationResult")
