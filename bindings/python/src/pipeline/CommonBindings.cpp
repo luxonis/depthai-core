@@ -518,7 +518,37 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("rotationMatrix", &Extrinsics::rotationMatrix)
         .def_readwrite("translation", &Extrinsics::translation)
         .def_readwrite("specTranslation", &Extrinsics::specTranslation)
-        .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket);
+        .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket)
+        .def_readwrite("lengthUnit", &Extrinsics::lengthUnit)
+        .def("getRotationMatrix", &Extrinsics::getRotationMatrix, DOC(dai, Extrinsics, getRotationMatrix))
+        .def("getInverseRotationMatrix", &Extrinsics::getInverseRotationMatrix, DOC(dai, Extrinsics, getInverseRotationMatrix))
+        .def("getTransformationMatrix",
+             &Extrinsics::getTransformationMatrix,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getTransformationMatrix))
+        .def("getInverseTransformationMatrix",
+             &Extrinsics::getInverseTransformationMatrix,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getInverseTransformationMatrix))
+        .def("setTransformationMatrix",
+             &Extrinsics::setTransformationMatrix,
+             py::arg("matrix"),
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, setTransformationMatrix))
+        .def("getTranslationVector",
+             &Extrinsics::getTranslationVector,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getTranslationVector))
+        .def("isEqualExtrinsics", &Extrinsics::isEqualExtrinsics, py::arg("other"), py::arg("epsilon") = 1e-6f, DOC(dai, Extrinsics, isEqualExtrinsics))
+        .def("getExtrinsicsTransformationTo",
+             &Extrinsics::getExtrinsicsTransformationTo,
+             py::arg("to"),
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getExtrinsicsTransformationTo));
 
     // CameraInfo
     cameraInfo.def(py::init<>())

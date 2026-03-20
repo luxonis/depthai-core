@@ -322,6 +322,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/SegmentationParser.cpp
     src/pipeline/utilities/DetectionParser/DetectionParserUtils.cpp
     src/pipeline/utilities/SpatialLocationCalculator/SpatialUtils.cpp
+    src/pipeline/utilities/Alignment/AlignmentUtilities.cpp
     src/pipeline/utilities/SegmentationParser/SegmentationParserUtils.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
