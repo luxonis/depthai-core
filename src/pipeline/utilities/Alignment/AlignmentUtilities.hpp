@@ -13,7 +13,7 @@
     #include <opencv2/calib3d.hpp>
 #endif
 
-#include <utility/matrixOps.hpp>
+#include <depthai/utility/matrixOps.hpp>
 
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Extrinsics.hpp"
