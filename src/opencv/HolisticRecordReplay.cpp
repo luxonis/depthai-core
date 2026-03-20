@@ -87,6 +87,8 @@ Node::Output* setupHolisticRecordCamera(
             auto down = roundDown(height, 8);
             height = down < requestHeight ? roundUp(height, 8) : down;
         }
+        width = std::min((size_t)cam->getMaxWidth(), width);
+        height = std::min((size_t)cam->getMaxHeight(), height);
     }
     camWidth = width;
     camHeight = height;
@@ -152,11 +154,17 @@ bool setupHolisticRecord(Pipeline pipeline,
             DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
             if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr || std::dynamic_pointer_cast<node::ColorCamera>(node) != nullptr
                || std::dynamic_pointer_cast<node::MonoCamera>(node) != nullptr) {
-                Node::Output* output;
-                size_t camWidth = 1920, camHeight = 1080;
+                Node::Output* output = nullptr;
+                size_t camWidth = 1920;
+                size_t camHeight = 1080;
+                bool videoEncodingEnabled = recordConfig.videoEncoding.enabled;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
                     output = setupHolisticRecordCamera(
                         std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, syncCameraOutputs ? maxRequestedFps : 0.0f, camWidth, camHeight);
+                    if(legacy && videoEncodingEnabled && (camWidth % 32 != 0 || camHeight % 8 != 0)) {
+                        spdlog::warn("Holistic record: video encoding disabled for output with size {}x{}", camWidth, camHeight);
+                        videoEncodingEnabled = false;
+                    }
                 } else {
                     output = &nodeS->getRecordOutput();
                 }
@@ -165,9 +173,9 @@ bool setupHolisticRecord(Pipeline pipeline,
                 }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
-                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
+                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(videoEncodingEnabled ? ".mp4" : ".avi"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
-                if(recordConfig.videoEncoding.enabled) {
+                if(videoEncodingEnabled) {
                     auto videnc = pipeline.create<dai::node::VideoEncoder>();
                     videnc->setProfile(recordConfig.videoEncoding.profile);
                     videnc->setLossless(recordConfig.videoEncoding.lossless);
