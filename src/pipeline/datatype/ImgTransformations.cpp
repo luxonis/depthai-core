@@ -14,7 +14,6 @@
 #include "depthai/common/Point3f.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
-#include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"
 namespace dai {
 
@@ -451,7 +450,9 @@ dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from,
 }
 
 dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai::Point2f& point, const float depth) const {
-    DAI_CHECK_V(depth > 0, "Depth must be positive. Given depth: {}", depth);
+    if(depth <= 0) {
+        throw std::runtime_error(fmt::format("Depth must be greater than 0. Provided depth: {}", depth));
+    }
 
     dai::Point2f copyPoint = point;
     bool normalized = point.isNormalized();

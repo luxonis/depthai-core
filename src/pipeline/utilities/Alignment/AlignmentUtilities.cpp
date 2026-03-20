@@ -2,7 +2,7 @@
 
 #include <spdlog/async_logger.h>
 
-#include <utility/matrixOps.hpp>
+#include <depthai/utility/matrixOps.hpp>
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/types.hpp>
