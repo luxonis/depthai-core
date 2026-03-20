@@ -51,8 +51,11 @@ TEST_CASE("hasCrashed returns true after device crash") {
 
     device.crashDevice();
 
-    // Give the device time to crash and for the watchdog to detect it
-    std::this_thread::sleep_for(std::chrono::seconds(12));
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(12);
+
+    while(!device.hasCrashed() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
 
     REQUIRE(device.hasCrashed());
 }

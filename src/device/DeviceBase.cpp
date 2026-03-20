@@ -462,7 +462,6 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
     auto crashDumpUnique = dai::CrashDumpManager(device).collectCrashDump();
     std::shared_ptr<CrashDump> crashDump = std::move(crashDumpUnique);
     if(crashDump) {
-        crashDumpHandled.store(true);
         decltype(crashdumpCallback) callbackCopy;
 
         // Create a copy of the callback function to avoid race conditions
@@ -481,6 +480,7 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
         } else {
             logCollection::logCrashDump(pipelineSchema, *crashDump, deviceInfo);
         }
+        crashDumpHandled.store(true);
     }
 }
 
@@ -1155,7 +1155,8 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(profilingThread.joinable()) profilingThread.join();
             if(gate) {
                 // Check whether device has crashed
-                if(gate->getState() == DeviceGate::SessionState::CRASHED) {
+                auto gateState = gate->getState();
+                if(gateState == DeviceGate::SessionState::CRASHED || gateState == DeviceGate::SessionState::DESTROYED) {
                     crashed = true;
                 }
 
@@ -1910,18 +1911,14 @@ Platform DeviceBase::getPlatform() const {
     switch(platform) {
         case X_LINK_MYRIAD_X:
             return Platform::RVC2;
-            break;
         case X_LINK_RVC3:
             return Platform::RVC3;
-            break;
         case X_LINK_RVC4:
             return Platform::RVC4;
-            break;
         case X_LINK_ANY_PLATFORM:
         case X_LINK_MYRIAD_2:
         default:
             throw std::runtime_error("Unknown platform");
-            break;
     }
 }
 

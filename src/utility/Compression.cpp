@@ -80,6 +80,9 @@ std::vector<std::string> filenamesInArchive(const std::filesystem::path& archive
     struct archive_entry* entry = nullptr;
 
     a = archive_read_new();
+    if(a == nullptr) {
+        throw std::runtime_error("Could not initialize archive.");
+    }
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
 #if defined(_WIN32)
@@ -112,7 +115,7 @@ void extractFiles(const std::filesystem::path& archivePath,
     a = archive_read_new();
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
-#if defined(_WIN32) && defined(_MSC_VER)
+#if defined(_WIN32)
     int r = archive_read_open_filename_w(a, archivePath.c_str(), 10240);
 #else
     int r = archive_read_open_filename(a, archivePath.c_str(), 10240);

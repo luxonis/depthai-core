@@ -131,7 +131,8 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
             [](py::object self, const std::string& key) {
                 auto d = getExtraDict(self);
                 if(!d.contains(key)) throw py::key_error(key);
-                PyDict_DelItemString(d.ptr(), key.c_str());
+                auto dict = d.cast<py::dict>();
+                dict.attr("pop")(py::str(key));
                 auto& dump = self.cast<CrashDump&>();
                 syncExtraToNative(self, dump);
             },
@@ -182,11 +183,11 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("errorSource", &CrashDumpRVC2::CrashReport::errorSource, DOC(dai, CrashDumpRVC2, CrashReport, errorSource))
         .def_readwrite("crashedThreadId", &CrashDumpRVC2::CrashReport::crashedThreadId, DOC(dai, CrashDumpRVC2, CrashReport, crashedThreadId))
         .def_readwrite("errorSourceInfo", &CrashDumpRVC2::CrashReport::errorSourceInfo, DOC(dai, CrashDumpRVC2, CrashReport, errorSourceInfo))
-        .def_readwrite("threadCallstack", &CrashDumpRVC2::CrashReport::threadCallstack, DOC(dai, CrashDump, CrashReport, threadCallstack))
-        .def_readwrite("prints", &CrashDumpRVC2::CrashReport::prints, DOC(dai, CrashDump, CrashReport, prints))
-        .def_readwrite("uptimeNs", &CrashDumpRVC2::CrashReport::uptimeNs, DOC(dai, CrashDump, CrashReport, uptimeNs))
-        .def_readwrite("timerRaw", &CrashDumpRVC2::CrashReport::timerRaw, DOC(dai, CrashDump, CrashReport, timerRaw))
-        .def_readwrite("statusFlags", &CrashDumpRVC2::CrashReport::statusFlags, DOC(dai, CrashDump, CrashReport, statusFlags));
+        .def_readwrite("threadCallstack", &CrashDumpRVC2::CrashReport::threadCallstack, DOC(dai, CrashDumpRVC2, CrashReport, threadCallstack))
+        .def_readwrite("prints", &CrashDumpRVC2::CrashReport::prints, DOC(dai, CrashDumpRVC2, CrashReport, prints))
+        .def_readwrite("uptimeNs", &CrashDumpRVC2::CrashReport::uptimeNs, DOC(dai, CrashDumpRVC2, CrashReport, uptimeNs))
+        .def_readwrite("timerRaw", &CrashDumpRVC2::CrashReport::timerRaw, DOC(dai, CrashDumpRVC2, CrashReport, timerRaw))
+        .def_readwrite("statusFlags", &CrashDumpRVC2::CrashReport::statusFlags, DOC(dai, CrashDumpRVC2, CrashReport, statusFlags));
 
     errorSourceInfo.def(py::init<>())
         .def_readwrite(
@@ -250,6 +251,6 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     // Bind CrashDumpRVC4
     crashDumpRVC4.def(py::init<>())
         .def(py::init<const std::filesystem::path&>(), py::arg("tarFile"))
-        .def_readwrite("data", &CrashDumpRVC4::data)
-        .def_readwrite("filename", &CrashDumpRVC4::filename);
+        .def_readwrite("data", &CrashDumpRVC4::data, DOC(dai, CrashDumpRVC4, data))
+        .def_readwrite("filename", &CrashDumpRVC4::filename, DOC(dai, CrashDumpRVC4, filename));
 }

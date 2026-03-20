@@ -74,7 +74,7 @@ std::unique_ptr<CrashDump> CrashDumpManager::collectCrashDump(bool clear) {
     dump->depthaiVersionPatch = std::to_string(build::VERSION_PATCH);
     dump->depthaiVersionPreReleaseType = build::PRE_RELEASE_TYPE;
     dump->depthaiVersionPreReleaseVersion = std::to_string(build::PRE_RELEASE_VERSION);
-    dump->depthaiVersionBuildInfo = build::BUILD_DATETIME;
+    dump->depthaiBuildDatetime = build::BUILD_DATETIME;
     dump->depthaiCommitHash = build::COMMIT;
     dump->depthaiCommitDatetime = build::COMMIT_DATETIME;
     dump->depthaiDeviceVersion = build::DEVICE_VERSION;
