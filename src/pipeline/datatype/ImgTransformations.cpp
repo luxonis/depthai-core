@@ -14,7 +14,6 @@
 #include "depthai/common/Point3f.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
-#include "utility/Logging.hpp"
 namespace dai {
 
 constexpr float ROUND_UP_EPS = 1e-3f;
@@ -95,9 +94,9 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
 
     const std::array<std::array<float, 4>, 4> extriniscTransformation = from.getExtrinsicsTransformationMatrixTo(to);
     if(extriniscTransformation[0][3] != 0 || extriniscTransformation[1][3] != 0 || extriniscTransformation[2][3] != 0) {
-        logger::warn(
-            "interSourceFrameTransform: Only rotation is expected for inter-source-frame transformations. A non-zero translation exists between the two source "
-            "and target transformations.");
+        std::cout << "Warning: interSourceFrameTransform: Only rotation is expected for inter-source-frame transformations. A non-zero translation exists "
+                     "between the two source and target transformations."
+                  << std::endl;
     }
     std::array<std::array<float, 3>, 3> rotationMatrix = {{{extriniscTransformation[0][0], extriniscTransformation[0][1], extriniscTransformation[0][2]},
                                                            {extriniscTransformation[1][0], extriniscTransformation[1][1], extriniscTransformation[1][2]},
