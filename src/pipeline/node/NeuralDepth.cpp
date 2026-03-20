@@ -28,6 +28,8 @@ std::shared_ptr<NeuralDepth> NeuralDepth::build(Output& leftInput, Output& right
 
 std::pair<int, int> NeuralDepth::getInputSize(DeviceModelZoo model) {
     switch(model) {
+        case DeviceModelZoo::NEURAL_DEPTH_EXTRA_LARGE:
+            return {1248, 780};
         case DeviceModelZoo::NEURAL_DEPTH_LARGE:
             return {768, 480};
         case DeviceModelZoo::NEURAL_DEPTH_MEDIUM:
@@ -74,6 +76,8 @@ void NeuralDepth::buildInternal() {
     // Link rectification outputs to neural network
     rectification->output1.link(neuralNetwork->inputs["left"]);
     rectification->output2.link(neuralNetwork->inputs["right"]);
+    neuralNetwork->inputs["left"].setBlocking(true);
+    neuralNetwork->inputs["right"].setBlocking(true);
 
     // Link neural network outputs to nnDataInput
     neuralNetwork->out.link(nnDataInput);

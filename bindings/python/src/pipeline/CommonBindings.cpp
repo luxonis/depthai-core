@@ -701,7 +701,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     profilingData.def_readwrite("numBytesWritten", &ProfilingData::numBytesWritten, DOC(dai, ProfilingData, numBytesWritten))
         .def_readwrite("numBytesRead", &ProfilingData::numBytesRead, DOC(dai, ProfilingData, numBytesRead));
 
-    deviceModelZoo.value("NEURAL_DEPTH_LARGE", DeviceModelZoo::NEURAL_DEPTH_LARGE)
+    deviceModelZoo.value("NEURAL_DEPTH_EXTRA_LARGE", DeviceModelZoo::NEURAL_DEPTH_EXTRA_LARGE)
+        .value("NEURAL_DEPTH_LARGE", DeviceModelZoo::NEURAL_DEPTH_LARGE)
         .value("NEURAL_DEPTH_MEDIUM", DeviceModelZoo::NEURAL_DEPTH_MEDIUM)
         .value("NEURAL_DEPTH_SMALL", DeviceModelZoo::NEURAL_DEPTH_SMALL)
         .value("NEURAL_DEPTH_NANO", DeviceModelZoo::NEURAL_DEPTH_NANO);
