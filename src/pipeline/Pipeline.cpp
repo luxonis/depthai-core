@@ -1196,6 +1196,18 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     }
 }
 
+bool Pipeline::isHolisticRecordEnabled() const {
+    auto envPath = utility::getEnvAs<std::string>("DEPTHAI_RECORD", "");
+    return impl()->recordConfig.state == RecordConfig::RecordReplayState::RECORD
+           || (!this->isBuilt() && !envPath.empty() && platform::checkPathExists(envPath, true));
+}
+
+bool Pipeline::isHolisticReplayEnabled() const {
+    auto envPath = utility::getEnvAs<std::string>("DEPTHAI_REPLAY", "");
+    return impl()->recordConfig.state == RecordConfig::RecordReplayState::REPLAY
+           || (!this->isBuilt() && !envPath.empty() && platform::checkPathExists(envPath, false));
+}
+
 void Pipeline::enablePipelineDebugging(bool enable) {
     if(this->isBuilt()) {
         throw std::runtime_error("Cannot change pipeline debugging state after pipeline is built");

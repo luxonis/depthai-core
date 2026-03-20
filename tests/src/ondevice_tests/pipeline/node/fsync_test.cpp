@@ -78,7 +78,7 @@ void testFsync(float fps, Thresholds thresholds, std::shared_ptr<dai::Device> de
         }
         REQUIRE(reportData != nullptr);
         REQUIRE(reportData->numMessagesReceived > 1);
-        REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.1));
+        if(!p.isHolisticReplayEnabled()) REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(0.1));
     }
 }
 

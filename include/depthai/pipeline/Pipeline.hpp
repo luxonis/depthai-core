@@ -573,6 +573,8 @@ class Pipeline {
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
+    bool isHolisticRecordEnabled() const;
+    bool isHolisticReplayEnabled() const;
 
     /// Pipeline debugging
     void enablePipelineDebugging(bool enable = true);

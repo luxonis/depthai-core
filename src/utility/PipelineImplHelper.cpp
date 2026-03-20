@@ -159,6 +159,8 @@ void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
                 }
             }
         }
+
+        pipeline->recordConfig.state = RecordConfig::RecordReplayState::NONE;
     }
 }
 void PipelineImplHelper::setupPipelineDebuggingPre(std::weak_ptr<PipelineImpl> pipelineWeak) {
