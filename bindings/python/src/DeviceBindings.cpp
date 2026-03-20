@@ -559,7 +559,6 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def(
             "registerCrashdumpCallback",
             [](DeviceBase& d, std::function<void(std::shared_ptr<CrashDump>)> callback) {
-                py::gil_scoped_release release;
                 // Create a python-compatible callback function that acquires the GIL
                 auto pythonCallback = [callback](std::shared_ptr<CrashDump> dump) {
                     py::gil_scoped_acquire acquire;
@@ -576,12 +575,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("callback"),
             DOC(dai, DeviceBase, registerCrashdumpCallback))
         .def(
-            "removeCrashdumpCallback",
-            [](DeviceBase& d) {
-                py::gil_scoped_release release;
-                d.removeCrashdumpCallback();
-            },
-            DOC(dai, DeviceBase, removeCrashdumpCallback))
+            "removeCrashdumpCallback", [](DeviceBase& d) { d.removeCrashdumpCallback(); }, DOC(dai, DeviceBase, removeCrashdumpCallback))
         .def(
             "getUsbSpeed",
             [](DeviceBase& d) {
