@@ -344,8 +344,7 @@ std::array<float, 3> opencvUndistortPoint(dai::Point2f px, const dai::ImgTransfo
             cv::undistortPoints(src, undistorted, cameraMatrix, distortionCoeffs, cv::noArray(), cv::noArray(), {cv::TermCriteria::MAX_ITER, 50, 0.001});
             break;
         case dai::CameraModel::Fisheye:
-            cv::fisheye::undistortPoints(
-                src, undistorted, cameraMatrix, distortionCoeffs, cv::noArray(), cv::noArray(), {cv::TermCriteria::MAX_ITER, 50, 0.001});
+            cv::fisheye::undistortPoints(src, undistorted, cameraMatrix, distortionCoeffs, cv::noArray(), cv::noArray());
             break;
         case dai::CameraModel::RadialDivision:
         case dai::CameraModel::Equirectangular:
