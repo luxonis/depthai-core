@@ -48,8 +48,7 @@ inline size_t roundUp(size_t numToRound, size_t multiple) {
     return roundDown(numToRound + multiple - 1UL, multiple);
 }
 
-Node::Output* setupHolisticRecordCamera(
-    std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, float recordingFps, size_t& camWidth, size_t& camHeight) {
+void getCameraRecordSize(std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, size_t& camWidth, size_t& camHeight) {
     size_t requestWidth = cam->getMaxRequestedWidth();
     size_t requestHeight = cam->getMaxRequestedHeight();
     size_t width = cam->getMaxWidth();
@@ -92,10 +91,15 @@ Node::Output* setupHolisticRecordCamera(
     }
     camWidth = width;
     camHeight = height;
+}
+
+Node::Output* setupHolisticRecordCamera(
+    std::shared_ptr<dai::node::Camera> cam, Pipeline& pipeline, bool legacy, float recordingFps, size_t& camWidth, size_t& camHeight) {
+    getCameraRecordSize(cam, pipeline, legacy, camWidth, camHeight);
     if(recordingFps > 0.0f) {
-        return cam->requestOutput(std::pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, recordingFps);
+        return cam->requestOutput(std::pair<uint32_t, uint32_t>(camWidth, camHeight), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, recordingFps);
     }
-    return cam->requestOutput(std::pair<uint32_t, uint32_t>(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
+    return cam->requestOutput(std::pair<uint32_t, uint32_t>(camWidth, camHeight), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
 }
 
 bool setupHolisticRecord(Pipeline pipeline,
@@ -109,6 +113,7 @@ bool setupHolisticRecord(Pipeline pipeline,
         if(!std::filesystem::is_directory(recordPath)) {
             throw std::runtime_error("Record output path " + recordPath.string() + " is not a directory.");
         }
+        // Get max requested fps & create sync and demux nodes
         float maxRequestedFps = 0.0f;
         const bool syncCameraOutputs = recordConfig.syncCameraOutputs;
         std::shared_ptr<dai::node::Sync> sync = nullptr;
@@ -141,6 +146,19 @@ bool setupHolisticRecord(Pipeline pipeline,
             }
         }
 
+        // Check if video encoding can be used (recorded output sizes must be aligned)
+        for(auto& node : sources) {
+            if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
+                size_t camWidth = 1920;
+                size_t camHeight = 1080;
+                getCameraRecordSize(std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, camWidth, camHeight);
+                if(legacy && recordConfig.videoEncoding.enabled && (camWidth % 32 != 0 || camHeight % 8 != 0)) {
+                    spdlog::warn("Holistic record: video encoding disabled due to incompatible stream size ({}x{})", camWidth, camHeight);
+                    recordConfig.videoEncoding.enabled = false;
+                }
+            }
+        }
+
         for(auto& node : sources) {
             auto nodeS = std::dynamic_pointer_cast<SourceNode>(node);
             if(nodeS == nullptr) {
@@ -157,14 +175,9 @@ bool setupHolisticRecord(Pipeline pipeline,
                 Node::Output* output = nullptr;
                 size_t camWidth = 1920;
                 size_t camHeight = 1080;
-                bool videoEncodingEnabled = recordConfig.videoEncoding.enabled;
                 if(std::dynamic_pointer_cast<node::Camera>(node) != nullptr) {
                     output = setupHolisticRecordCamera(
                         std::dynamic_pointer_cast<dai::node::Camera>(node), pipeline, legacy, syncCameraOutputs ? maxRequestedFps : 0.0f, camWidth, camHeight);
-                    if(legacy && videoEncodingEnabled && (camWidth % 32 != 0 || camHeight % 8 != 0)) {
-                        spdlog::warn("Holistic record: video encoding disabled for output with size {}x{}", camWidth, camHeight);
-                        videoEncodingEnabled = false;
-                    }
                 } else {
                     output = &nodeS->getRecordOutput();
                 }
@@ -173,9 +186,9 @@ bool setupHolisticRecord(Pipeline pipeline,
                 }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
-                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(videoEncodingEnabled ? ".mp4" : ".avi"));
+                recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
                 recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
-                if(videoEncodingEnabled) {
+                if(recordConfig.videoEncoding.enabled) {
                     auto videnc = pipeline.create<dai::node::VideoEncoder>();
                     videnc->setProfile(recordConfig.videoEncoding.profile);
                     videnc->setLossless(recordConfig.videoEncoding.lossless);
