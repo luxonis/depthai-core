@@ -2,20 +2,25 @@
 
 #include <array>
 #include <stdexcept>
+#include <string>
 #include <vector>
-
-#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 namespace matrix {
 
 std::vector<float> matVecMul(const std::vector<std::vector<float>>& matrix, const std::vector<float>& vec) {
-    DAI_CHECK_V(!matrix.empty(), "Matrix should not be empty");
-    DAI_CHECK_V(!vec.empty(), "Vector should not be empty");
+    if(matrix.empty()) {
+        throw std::runtime_error("Matrix should not be empty");
+    }
+    if(vec.empty()) {
+        throw std::runtime_error("Vector should not be empty");
+    }
 
     std::vector<float> res(matrix.size(), 0.0f);
     for(size_t i = 0; i < matrix.size(); ++i) {
-        DAI_CHECK_V(matrix[i].size() == vec.size(), "All matrix rows dimentsions need to match the vector size.");
+        if(matrix[i].size() != vec.size()) {
+            throw std::runtime_error("All matrix rows dimentsions need to match the vector size.");
+        }
         for(size_t j = 0; j < matrix[0].size(); ++j) {
             res[i] += matrix[i][j] * vec[j];
         }
@@ -34,10 +39,15 @@ std::array<float, 3> matVecMul(const std::array<std::array<float, 3>, 3>& matrix
 }
 
 bool mateq(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B) {
-    DAI_CHECK_V(A.size() == B.size(), "Matrices have different number of rows: {} and {}", A.size(), B.size());
+    if(A.size() != B.size()) {
+        throw std::runtime_error("Matrices have different number of rows: " + std::to_string(A.size()) + " and " + std::to_string(B.size()));
+    }
 
     for(size_t i = 0; i < A.size(); ++i) {
-        DAI_CHECK_V(A[i].size() == B[i].size(), "Matrices have different number of columns in row {}: {} and {}", i, A[i].size(), B[i].size());
+        if(A[i].size() != B[i].size()) {
+            throw std::runtime_error("Matrices have different number of columns in row " + std::to_string(i) + ": " + std::to_string(A[i].size()) + " and "
+                                     + std::to_string(B[i].size()));
+        }
         for(size_t j = 0; j < A[0].size(); ++j) {
             if(A[i][j] != B[i][j]) return false;
         }
@@ -69,25 +79,39 @@ std::array<std::array<float, 3>, 3> matMul(const std::array<std::array<float, 3>
 }
 
 std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& firstMatrix, const std::vector<std::vector<float>>& secondMatrix) {
-    DAI_CHECK_V(!firstMatrix.empty(), "First matrix should not be empty");
-    DAI_CHECK_V(!secondMatrix.empty(), "Second matrix should not be empty");
+    if(firstMatrix.empty()) {
+        throw std::runtime_error("First matrix should not be empty");
+    }
+    if(secondMatrix.empty()) {
+        throw std::runtime_error("Second matrix should not be empty");
+    }
 
     size_t n = firstMatrix.size();
     size_t m = firstMatrix[0].size();
     size_t p = secondMatrix.size();
     size_t q = secondMatrix[0].size();
 
-    DAI_CHECK_V(m != 0, "First matrix should not have empty rows");
+    if(m == 0) {
+        throw std::runtime_error("First matrix should not have empty rows");
+    }
     for(size_t i = 1; i < firstMatrix.size(); ++i) {
-        DAI_CHECK_V(firstMatrix[i].size() == m, "All rows of the first matrix should have the same number of columns.");
+        if(firstMatrix[i].size() != m) {
+            throw std::runtime_error("All rows of the first matrix should have the same number of columns.");
+        }
     }
 
-    DAI_CHECK_V(q != 0, "Second matrix should not have empty rows");
+    if(q == 0) {
+        throw std::runtime_error("Second matrix should not have empty rows");
+    }
     for(size_t i = 1; i < secondMatrix.size(); ++i) {
-        DAI_CHECK_V(secondMatrix[i].size() == q, "All rows of the second matrix should have the same number of columns.");
+        if(secondMatrix[i].size() != q) {
+            throw std::runtime_error("All rows of the second matrix should have the same number of columns.");
+        }
     }
 
-    DAI_CHECK_V(m == p, "Internal matrix dimensions must agree. Got {} and {}.", m, p);
+    if(m != p) {
+        throw std::runtime_error("Internal matrix dimensions must agree. Got " + std::to_string(m) + " and " + std::to_string(p) + ".");
+    }
 
     std::vector<std::vector<float>> res(n, std::vector<float>(q, 0.0f));
 
