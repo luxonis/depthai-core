@@ -155,6 +155,7 @@ bool setupHolisticRecord(Pipeline pipeline,
                 if(legacy && recordConfig.videoEncoding.enabled && (camWidth % 32 != 0 || camHeight % 8 != 0)) {
                     spdlog::warn("Holistic record: video encoding disabled due to incompatible stream size ({}x{})", camWidth, camHeight);
                     recordConfig.videoEncoding.enabled = false;
+                    break;
                 }
             }
         }
