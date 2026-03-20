@@ -1151,7 +1151,8 @@ std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<
     for(int i = 0; i < matched_indices.rows(); i++) {
         tmp = (matched_indices.row(i)).cast<int>();
         const bool hasSpatial = spatial_available && spatial_pair_valid(tmp(0), tmp(1));
-        const bool pairAccepted = hasSpatial ? spatial_gate_ok(tmp(0), tmp(1)) : (iou_matrix(tmp(0), tmp(1)) >= iou_threshold);
+        const bool iouAccepted = iou_matrix(tmp(0), tmp(1)) >= iou_threshold;
+        const bool pairAccepted = hasSpatial ? (spatial_gate_ok(tmp(0), tmp(1)) && iouAccepted) : iouAccepted;
         if(!pairAccepted) {
             unmatched_detections.push_back(tmp(0));
             unmatched_trackers.push_back(tmp(1));
