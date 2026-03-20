@@ -182,7 +182,11 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("errorSource", &CrashDumpRVC2::CrashReport::errorSource, DOC(dai, CrashDumpRVC2, CrashReport, errorSource))
         .def_readwrite("crashedThreadId", &CrashDumpRVC2::CrashReport::crashedThreadId, DOC(dai, CrashDumpRVC2, CrashReport, crashedThreadId))
         .def_readwrite("errorSourceInfo", &CrashDumpRVC2::CrashReport::errorSourceInfo, DOC(dai, CrashDumpRVC2, CrashReport, errorSourceInfo))
-        .def_readwrite("threadCallstack", &CrashDumpRVC2::CrashReport::threadCallstack, DOC(dai, CrashDumpRVC2, CrashReport, threadCallstack));
+        .def_readwrite("threadCallstack", &CrashDumpRVC2::CrashReport::threadCallstack, DOC(dai, CrashDump, CrashReport, threadCallstack))
+        .def_readwrite("prints", &CrashDumpRVC2::CrashReport::prints, DOC(dai, CrashDump, CrashReport, prints))
+        .def_readwrite("uptimeNs", &CrashDumpRVC2::CrashReport::uptimeNs, DOC(dai, CrashDump, CrashReport, uptimeNs))
+        .def_readwrite("timerRaw", &CrashDumpRVC2::CrashReport::timerRaw, DOC(dai, CrashDump, CrashReport, timerRaw))
+        .def_readwrite("statusFlags", &CrashDumpRVC2::CrashReport::statusFlags, DOC(dai, CrashDump, CrashReport, statusFlags));
 
     errorSourceInfo.def(py::init<>())
         .def_readwrite(
