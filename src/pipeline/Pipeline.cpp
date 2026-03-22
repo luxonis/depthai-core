@@ -659,9 +659,9 @@ void PipelineImpl::build() {
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     if(isBuild) return;
     // start ---Add AutoCalibration block---
-    auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
+    auto autoCalibrationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "ON_START");
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
+    if(autoCalibrationString == "CONTINUOUS" || autoCalibrationString == "ON_START") {
         if(defaultDevice && defaultDevice->tryGetCalibration()) {
             auto stereoPair = getStereoPair();
 
@@ -688,7 +688,7 @@ void PipelineImpl::build() {
             if(stereoPair.first && stereoPair.second && !hasDynamicCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
-                if(autoCalibtationString == "CONTINUOUS") {
+                if(autoCalibrationString == "CONTINUOUS") {
                     autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
                 } else {
                     autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
@@ -697,13 +697,13 @@ void PipelineImpl::build() {
         } else {
             if(isHostOnly()) {
                 Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
-                                                   autoCalibtationString);
+                                                   autoCalibrationString);
             } else {
                 Logging::getInstance().logger.warn("Device has no valid initial calibration. Skipping autocalibration.");
             }
         }
-    } else if(autoCalibtationString != "OFF" && autoCalibtationString != "") {
-        Logging::getInstance().logger.warn("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibtationString);
+    } else if(autoCalibrationString != "OFF" && autoCalibrationString != "") {
+        Logging::getInstance().logger.warn("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibrationString);
     }
 #endif
     // end of ---Add AutoCalibration block---
