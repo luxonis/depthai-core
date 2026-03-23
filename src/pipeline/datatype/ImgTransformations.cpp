@@ -48,20 +48,6 @@ inline bool RRinRR(const dai::RotatedRect& in, const dai::RotatedRect& out) {
     return true;
 }
 
-inline dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix, const dai::Point3f& point) {
-    const float x = matrix[0][0] * point.x + matrix[0][1] * point.y + matrix[0][2] * point.z + matrix[0][3];
-    const float y = matrix[1][0] * point.x + matrix[1][1] * point.y + matrix[1][2] * point.z + matrix[1][3];
-    const float z = matrix[2][0] * point.x + matrix[2][1] * point.y + matrix[2][2] * point.z + matrix[2][3];
-    const float w = matrix[3][0] * point.x + matrix[3][1] * point.y + matrix[3][2] * point.z + matrix[3][3];
-    if(w == 0.0f) {
-        throw std::runtime_error("Degenerate homogeneous coordinate with w=0 encountered. Cannot perform perspective division.");
-    }
-    if(w != 1.0f) {
-        return {x / w, y / w, z / w};
-    }
-    return {x, y, z};
-}
-
 std::array<float, 3> pixelToRay(dai::Point2f px, const dai::ImgTransformation& transformation) {
     std::array<float, 3> pxHomogeneous = {px.x, px.y, 1.0f};
     auto intrinsicMatrixInv = transformation.getSourceIntrinsicMatrixInv();
@@ -168,8 +154,8 @@ bool ImgTransformation::isEqualTransformation(const ImgTransformation& other) co
 }
 
 dai::Point2f ImgTransformation::transformPoint(dai::Point2f point) const {
-    auto transformed = matrix::matVecMul(transformationMatrix, {point.x, point.y, 1});
-    return {transformed[0] / transformed[2], transformed[1] / transformed[2]};
+    auto transformed = matrix::dehomogenizePoint3(matrix::matVecMul(transformationMatrix, {point.x, point.y, 1}));
+    return {transformed[0], transformed[1]};
 }
 dai::RotatedRect ImgTransformation::transformRect(dai::RotatedRect rect) const {
     const auto points = rect.getPoints();
@@ -181,8 +167,8 @@ dai::RotatedRect ImgTransformation::transformRect(dai::RotatedRect rect) const {
     return impl::getOuterRotatedRect(vPoints);
 }
 dai::Point2f ImgTransformation::invTransformPoint(dai::Point2f point) const {
-    auto transformed = matrix::matVecMul(transformationMatrixInv, {point.x, point.y, 1});
-    return {transformed[0] / transformed[2], transformed[1] / transformed[2]};
+    auto transformed = matrix::dehomogenizePoint3(matrix::matVecMul(transformationMatrixInv, {point.x, point.y, 1}));
+    return {transformed[0], transformed[1]};
 }
 dai::RotatedRect ImgTransformation::invTransformRect(dai::RotatedRect rect) const {
     const auto points = rect.getPoints();
@@ -309,8 +295,8 @@ ImgTransformation& ImgTransformation::addCrop(int x, int y, int width, int heigh
     std::array<std::array<float, 3>, 4> corners = {{{0, 0, 1}, {(float)width, 0, 1}, {(float)width, (float)height, 1}, {0, (float)height, 1}}};
     std::vector<std::array<float, 2>> srcCorners(4);
     for(auto i = 0; i < 4; ++i) {
-        auto corner = matrix::matVecMul(transformationMatrix, corners[i]);
-        srcCorners[i] = {corner[0] / corner[2], corner[1] / corner[2]};
+        auto corner = matrix::dehomogenizePoint3(matrix::matVecMul(transformationMatrix, corners[i]));
+        srcCorners[i] = {corner[0], corner[1]};
     }
     auto rect = impl::getOuterRotatedRect(srcCorners);
     srcCrops.push_back(rect);
@@ -475,7 +461,7 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
     dai::Point3f source3dPoint = {x_cm, y_cm, z_cm};
 
     const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to);
-    dai::Point3f target3dPoint = transformPoint3f(extriniscTransformation, source3dPoint);
+    dai::Point3f target3dPoint = matrix::transformPoint3f(extriniscTransformation, source3dPoint);
     if(target3dPoint.z <= 0) {
         throw std::runtime_error(fmt::format("Projected point is behind the target camera socket. Cannot project to 2D. Target spatial point: ({}, {}, {})",
                                              target3dPoint.x,
@@ -505,8 +491,8 @@ dai::Point2f ImgTransformation::project3DPoint(const dai::Point3f& point3f) cons
     const float x = point3f.x / point3f.z;
     const float y = point3f.y / point3f.z;
     const auto distorted = distortPoint({x, y, 1.0f}, distortionModel, distortionCoefficients);
-    const auto projected = matrix::matVecMul(getIntrinsicMatrix(), distorted);
-    return {projected[0] / projected[2], projected[1] / projected[2]};
+    const auto projected = matrix::dehomogenizePoint3(matrix::matVecMul(getIntrinsicMatrix(), distorted));
+    return {projected[0], projected[1]};
 }
 
 dai::Point2f ImgTransformation::project3DPointTo(const ImgTransformation& to, const dai::Point3f& point) const {
@@ -520,12 +506,12 @@ dai::Point2f ImgTransformation::project3DPointFrom(const ImgTransformation& from
 
 dai::Point3f ImgTransformation::remap3DPointTo(const ImgTransformation& to, const dai::Point3f& point) const {
     const auto transform = getExtrinsicsTransformationMatrixTo(to);
-    return transformPoint3f(transform, point);
+    return matrix::transformPoint3f(transform, point);
 }
 
 dai::Point3f ImgTransformation::remap3DPointFrom(const ImgTransformation& from, const dai::Point3f& point) const {
     const auto transform = from.getExtrinsicsTransformationMatrixTo(*this);
-    return transformPoint3f(transform, point);
+    return matrix::transformPoint3f(transform, point);
 }
 
 std::array<std::array<float, 3>, 3> ImgTransformation::getRotationMatrixTo(const ImgTransformation& to) const {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <stdexcept>
 #include <vector>
 
@@ -17,11 +18,9 @@ struct Extrinsics {
     Point3f getTranslationInUnit(bool useSpec, LengthUnit targetUnit) const {
         Point3f translationToUse = useSpec ? specTranslation : translation;
         const float scale = getDistanceUnitScale(targetUnit, lengthUnit);
-        if(scale != 1.0f) {
-            translationToUse.x *= scale;
-            translationToUse.y *= scale;
-            translationToUse.z *= scale;
-        }
+        translationToUse.x *= scale;
+        translationToUse.y *= scale;
+        translationToUse.z *= scale;
         return translationToUse;
     }
 
@@ -51,16 +50,7 @@ struct Extrinsics {
      * @return 3x3 rotation matrix as a 2D array
      */
     std::array<std::array<float, 3>, 3> getRotationMatrix() const {
-        if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3 || rotationMatrix[1].size() != 3 || rotationMatrix[2].size() != 3) {
-            throw std::runtime_error("Extrinsics rotationMatrix must be 3x3 to be converted to array format.");
-        }
-        std::array<std::array<float, 3>, 3> matrixArray;
-        for(int i = 0; i < 3; ++i) {
-            for(int j = 0; j < 3; ++j) {
-                matrixArray[i][j] = rotationMatrix[i][j];
-            }
-        }
-        return matrixArray;
+        return matrix::vectorMatrixToMatrix3x3(rotationMatrix);
     }
 
     /**
@@ -86,28 +76,12 @@ struct Extrinsics {
      *                                            \end{matrix} \right ] \f]
      *
      */
-    std::vector<std::vector<float>> getTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const {
-        if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3 || rotationMatrix[1].size() != 3 || rotationMatrix[2].size() != 3) {
-            throw std::runtime_error("Extrinsics rotationMatrix must be 3x3 to build a 4x4 transformation matrix.");
-        }
-        std::vector<std::vector<float>> transformMatrix(4, std::vector<float>(4, 0.0f));
-        for(int i = 0; i < 3; ++i) {
-            for(int j = 0; j < 3; ++j) {
-                transformMatrix[i][j] = rotationMatrix[i][j];
-            }
-        }
-
-        Point3f translationToUse = getTranslationInUnit(useSpecTranslation, unit);
-
-        transformMatrix[0][3] = translationToUse.x;
-        transformMatrix[1][3] = translationToUse.y;
-        transformMatrix[2][3] = translationToUse.z;
-        transformMatrix[3][3] = 1.0f;
-        return transformMatrix;
+    std::array<std::array<float, 4>, 4> getTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const {
+        return matrix::createTransformationMatrix(getRotationMatrix(), getTranslationInUnit(useSpecTranslation, unit));
     }
 
-    std::vector<std::vector<float>> getInverseTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const {
-        std::vector<std::vector<float>> transformMatrix = getTransformationMatrix(useSpecTranslation, unit);
+    std::array<std::array<float, 4>, 4> getInverseTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const {
+        auto transformMatrix = getTransformationMatrix(useSpecTranslation, unit);
         return matrix::invertSe3Matrix4x4(transformMatrix);
     }
 
@@ -129,17 +103,33 @@ struct Extrinsics {
             throw std::runtime_error("Extrinsics transformation matrix must have last row [0 0 0 1].");
         }
 
-        rotationMatrix = {
-            {matrix[0][0], matrix[0][1], matrix[0][2]},
-            {matrix[1][0], matrix[1][1], matrix[1][2]},
-            {matrix[2][0], matrix[2][1], matrix[2][2]},
-        };
-
+        rotationMatrix = matrix;
         const float scale = getDistanceUnitScale(unit, lengthUnit);
         translation = Point3f(matrix[0][3] * scale, matrix[1][3] * scale, matrix[2][3] * scale);
         lengthUnit = unit;
     }
 
+    /**
+     * @param matrix 4x4 transformation matrix
+     * Matrix representation of transformation matrix
+     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
+     *                                             r_{00} & r_{01} & r_{02} & T_x \\
+     *                                             r_{10} & r_{11} & r_{12} & T_y \\
+     *                                             r_{20} & r_{21} & r_{22} & T_z \\
+     *                                               0    &   0    &   0    & 1
+     *                                            \end{matrix} \right ] \f]
+     */
+    void setTransformationMatrix(const std::array<std::array<float, 4>, 4>& matrix, LengthUnit unit = LengthUnit::CENTIMETER) {
+        rotationMatrix = std::vector<std::vector<float>>(3, std::vector<float>(3, 0.0f));
+        for(size_t i = 0; i < 3; ++i) {
+            for(size_t j = 0; j < 3; ++j) {
+                rotationMatrix[i][j] = matrix[i][j];
+            }
+        }
+        const float scale = getDistanceUnitScale(unit, lengthUnit);
+        translation = Point3f(matrix[0][3] * scale, matrix[1][3] * scale, matrix[2][3] * scale);
+        lengthUnit = unit;
+    }
     /**
      * Get the translation vector
      * @param unit Units of the returned translation vector

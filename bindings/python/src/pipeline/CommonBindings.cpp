@@ -1,6 +1,10 @@
 #include "CommonBindings.hpp"
 
+#include <pybind11/detail/common.h>
 #include <pybind11/pybind11.h>
+
+#include <array>
+#include <vector>
 
 // Libraries
 #include "hedley/hedley.h"
@@ -533,10 +537,17 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getInverseTransformationMatrix))
         .def("setTransformationMatrix",
-             &Extrinsics::setTransformationMatrix,
+             py::overload_cast < const std::vector<std::vector<float>>(&Extrinsics::setTransformationMatrix),
              py::arg("matrix"),
+             py::arg("useSpecTranslation") = false,
              py::arg("unit") = LengthUnit::CENTIMETER,
-             DOC(dai, Extrinsics, setTransformationMatrix))
+             DOC(dai, Extrinsics, setTransformationMatrix, 1))
+        .def("setTransformationMatrix",
+             py::overload_cast < const std::array<std::array<float, 4>, 4>(&Extrinsics::setTransformationMatrix),
+             py::arg("matrix"),
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, setTransformationMatrix, 2))
         .def("getTranslationVector",
              &Extrinsics::getTranslationVector,
              py::arg("useSpecTranslation") = false,

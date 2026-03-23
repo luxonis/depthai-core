@@ -38,6 +38,16 @@ std::array<float, 3> matVecMul(const std::array<std::array<float, 3>, 3>& matrix
     return res;
 }
 
+std::array<float, 4> matVecMul(const std::array<std::array<float, 4>, 4>& matrix, const std::array<float, 4>& vec) {
+    std::array<float, 4> res = {0.0f, 0.0f, 0.0f, 0.0f};
+    for(size_t i = 0; i < 4; ++i) {
+        for(size_t j = 0; j < 4; ++j) {
+            res[i] += matrix[i][j] * vec[j];
+        }
+    }
+    return res;
+}
+
 bool mateq(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B) {
     if(A.size() != B.size()) {
         throw std::runtime_error("Matrices have different number of rows: " + std::to_string(A.size()) + " and " + std::to_string(B.size()));
@@ -70,6 +80,20 @@ std::array<std::array<float, 3>, 3> matMul(const std::array<std::array<float, 3>
     for(size_t i = 0; i < 3; ++i) {
         for(size_t j = 0; j < 3; ++j) {
             for(size_t k = 0; k < 3; ++k) {
+                res[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+
+    return res;
+}
+
+std::array<std::array<float, 4>, 4> matMul(const std::array<std::array<float, 4>, 4>& A, const std::array<std::array<float, 4>, 4>& B) {
+    std::array<std::array<float, 4>, 4> res = {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}};
+
+    for(size_t i = 0; i < 4; ++i) {
+        for(size_t j = 0; j < 4; ++j) {
+            for(size_t k = 0; k < 4; ++k) {
                 res[i][j] += A[i][k] * B[k][j];
             }
         }
@@ -242,6 +266,59 @@ std::vector<std::vector<float>> createTranslationMatrix(float dx, float dy) {
     return translationMatrix;
 }
 
+std::array<std::array<float, 4>, 4> createTransformationMatrixInternal(const std::array<std::array<float, 3>, 3>& rotation,
+                                                                       const std::array<float, 3>& translation) {
+    std::array<std::array<float, 4>, 4> transformationMatrix = {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 1}}};
+
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            transformationMatrix[i][j] = rotation[i][j];
+        }
+    }
+
+    transformationMatrix[0][3] = translation[0];
+    transformationMatrix[1][3] = translation[1];
+    transformationMatrix[2][3] = translation[2];
+    return transformationMatrix;
+}
+
+std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const dai::Point3f& translation) {
+    if(rotation.size() != 3 || rotation[0].size() != 3 || rotation[1].size() != 3 || rotation[2].size() != 3) {
+        throw std::invalid_argument("Expected a 3x3 rotation matrix.");
+    }
+    std::array<std::array<float, 3>, 3> rotationArray;
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            rotationArray[i][j] = rotation[i][j];
+        }
+    }
+    return createTransformationMatrixInternal(rotationArray, {translation.x, translation.y, translation.z});
+}
+
+std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::array<std::array<float, 3>, 3>& rotation, const dai::Point3f& translation) {
+    return createTransformationMatrixInternal(rotation, {translation.x, translation.y, translation.z});
+}
+
+dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix, const dai::Point3f& point) {
+    auto res = matVecMul(matrix, std::array<float, 4>{point.x, point.y, point.z, 1.0f});
+    auto dehomogenized = dehomogenizePoint4(res);
+    return {dehomogenized[0], dehomogenized[1], dehomogenized[2]};
+}
+
+std::array<float, 4> dehomogenizePoint4(const std::array<float, 4>& point) {
+    if(std::abs(point[3]) < 1e-6f) {
+        throw std::runtime_error("Cannot dehomogenize point with w close to zero.");
+    }
+    return {point[0] / point[3], point[1] / point[3], point[2] / point[3], 1.0f};
+}
+
+std::array<float, 3> dehomogenizePoint3(const std::array<float, 3>& point) {
+    if(std::abs(point[2]) < 1e-6f) {
+        throw std::runtime_error("Cannot dehomogenize point with z close to zero.");
+    }
+    return {point[0] / point[2], point[1] / point[2], 1.0f};
+}
+
 void printMatrix(std::vector<std::vector<float>>& matrix) {
     for(size_t i = 0; i < matrix.size(); ++i) {
         for(size_t j = 0; j < matrix[0].size(); ++j) {
@@ -299,6 +376,20 @@ std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::ar
         vectorR.push_back(row);
     }
     return vectorR;
+}
+
+std::array<std::array<float, 3>, 3> vectorMatrixToMatrix3x3(const std::vector<std::vector<float>>& R) {
+    if(R.size() != 3 || R[0].size() != 3 || R[1].size() != 3 || R[2].size() != 3) {
+        throw std::invalid_argument("Expected a 3x3 vector matrix to convert to 3x3 matrix.");
+    }
+    std::array<std::array<float, 3>, 3> matrix;
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            matrix[i][j] = R[i][j];
+        }
+    }
+
+    return matrix;
 }
 
 std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& R) {
@@ -433,12 +524,9 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
     mat[3][2] = 0.0f;
     mat[3][3] = 1.0f;
 }
-std::vector<std::vector<float>> invertSe3Matrix4x4(const std::vector<std::vector<float>>& matrix) {
-    if(matrix.size() != 4 || matrix[0].size() != 4 || matrix[1].size() != 4 || matrix[2].size() != 4 || matrix[3].size() != 4) {
-        throw std::invalid_argument("Expected a 4x4 matrix.");
-    }
 
-    std::vector<std::vector<float>> inv(4, std::vector<float>(4, 0.0f));
+std::array<std::array<float, 4>, 4> invertSe3Matrix4x4(const std::array<std::array<float, 4>, 4>& matrix) {
+    std::array<std::array<float, 4>, 4> inv = {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}};
 
     // Transpose rotation part (R^T)
     for(int i = 0; i < 3; ++i) {
