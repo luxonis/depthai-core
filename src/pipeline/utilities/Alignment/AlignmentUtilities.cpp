@@ -129,6 +129,7 @@ inline std::array<float, 3> distortRadialDivision(std::array<float, 3> point, co
     const float r4 = r2 * r2;
     const float r6 = r4 * r2;
     const float denom = 1.0f + k1 * r2 + k2 * r4 + k3 * r6;
+    if(std::abs(denom) < kTiny) return {x, y, 1.0f};
     return {x / denom, y / denom, 1.0f};
 }
 

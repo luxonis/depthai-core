@@ -1,6 +1,5 @@
+#include <vector>
 #define _USE_MATH_DEFINES
-
-#include "device/CalibrationHandler.hpp"
 
 #include <cmath>
 #include <fstream>
@@ -17,6 +16,7 @@
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/utility/matrixOps.hpp"
+#include "device/CalibrationHandler.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
@@ -560,31 +560,27 @@ Extrinsics CalibrationHandler::getExtrinsicsToLowestSocket(dai::CameraBoardSocke
         throw std::runtime_error("There is no Camera data available corresponding to the requested cameraId");
     }
 
-    std::vector<std::vector<float>> extrinsics;
+    std::vector<std::vector<float>> extrinsicsMatrix;
+    std::vector<float> specTranslationVector(3, 0.0f);
     auto lowestSocket = getCameraWithLowestId();
     if(cameraId == lowestSocket) {
-        extrinsics = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+        extrinsicsMatrix = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     } else {
-        extrinsics = computeExtrinsicMatrix(cameraId, lowestSocket, false);
+        extrinsicsMatrix = getCameraExtrinsics(cameraId, lowestSocket, false);
+        specTranslationVector = getCameraTranslationVector(cameraId, lowestSocket, true);
     }
-    dai::Extrinsics extr;
+    std::vector<std::vector<float>> rotationMatrix(3, std::vector<float>(3, 0.0f));
     for(unsigned int i = 0; i < 3; i++) {
-        extr.rotationMatrix.push_back(std::vector<float>());
         for(unsigned int j = 0; j < 3; j++) {
-            extr.rotationMatrix[i].push_back(extrinsics[i][j]);
+            rotationMatrix[i][j] = extrinsicsMatrix[i][j];
         }
     }
-    extr.translation.x = extrinsics[0][3];
-    extr.translation.y = extrinsics[1][3];
-    extr.translation.z = extrinsics[2][3];
-    extr.toCameraSocket = lowestSocket;
-    if(cameraId != lowestSocket) {
-        std::vector<std::vector<float>> specExtrinsics = computeExtrinsicMatrix(cameraId, lowestSocket, true);
-        extr.specTranslation.x = specExtrinsics[0][3];
-        extr.specTranslation.y = specExtrinsics[1][3];
-        extr.specTranslation.z = specExtrinsics[2][3];
-    }
-    return extr;
+
+    dai::Point3f translation{extrinsicsMatrix[0][3], extrinsicsMatrix[1][3], extrinsicsMatrix[2][3]};
+    dai::Point3f specTranslation{specTranslationVector[0], specTranslationVector[1], specTranslationVector[2]};
+    dai::Extrinsics extrinsics{rotationMatrix, translation, specTranslation, lowestSocket, LengthUnit::CENTIMETER};
+
+    return extrinsics;
 }
 
 CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {

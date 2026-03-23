@@ -321,6 +321,9 @@ nlohmann::json processVideo(const std::filesystem::path& videoPath) {
 
 std::filesystem::path extractTransformationTestDataFolder() {
     const std::filesystem::path archivePath{TRANSFORMATION_TEST_DATA};
+    if(!std::filesystem::exists(archivePath)) {
+        return {};
+    }
     const std::filesystem::path tempFolder = std::filesystem::temp_directory_path() / "depthai_img_transformations_test_data";
     std::filesystem::remove_all(tempFolder);
     std::filesystem::create_directories(tempFolder);
@@ -649,6 +652,7 @@ TEST_CASE("projectPoints test") {
         const double medianProjectionErrorPx = result.value("median_projection_error_px", std::numeric_limits<double>::quiet_NaN());
         const double stdProjectionErrorPx = result.value("std_projection_error_px", std::numeric_limits<double>::quiet_NaN());
 
+        REQUIRE(errorCount > 0);
         REQUIRE(std::isfinite(meanProjectionErrorPx));
         REQUIRE(std::isfinite(medianProjectionErrorPx));
         REQUIRE(std::isfinite(stdProjectionErrorPx));

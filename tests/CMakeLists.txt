@@ -353,12 +353,12 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         FILE "test_calib.json"
         LOCATION test_calib
         )
-        private_data(
-            URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/img_transformations_test_data.tar.xz"
-            SHA1 "3b48c23684ef22a6a0cebd16594afa69ceaed2d5"
-            FILE "img_transformations_test_data.tar.xz"
-            LOCATION img_transformations_test_data
-        )
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/img_transformations_test_data.tar.xz"
+        SHA1 "3b48c23684ef22a6a0cebd16594afa69ceaed2d5"
+        FILE "img_transformations_test_data.tar.xz"
+        LOCATION img_transformations_test_data
+    )
 endif()
 ### Helper script to wrap the tests with a timeout ############################
 

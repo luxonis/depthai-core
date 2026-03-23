@@ -53,15 +53,16 @@ inline dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& 
     const float y = matrix[1][0] * point.x + matrix[1][1] * point.y + matrix[1][2] * point.z + matrix[1][3];
     const float z = matrix[2][0] * point.x + matrix[2][1] * point.y + matrix[2][2] * point.z + matrix[2][3];
     const float w = matrix[3][0] * point.x + matrix[3][1] * point.y + matrix[3][2] * point.z + matrix[3][3];
-    if(w != 0.0f && w != 1.0f) {
+    if(w == 0.0f) {
+        throw std::runtime_error("Degenerate homogeneous coordinate with w=0 encountered. Cannot perform perspective division.");
+    }
+    if(w != 1.0f) {
         return {x / w, y / w, z / w};
     }
     return {x, y, z};
 }
 
 std::array<float, 3> pixelToRay(dai::Point2f px, const dai::ImgTransformation& transformation) {
-    std::array<float, 3> ray = {px.x, px.y, 1.0f};
-
     std::array<float, 3> pxHomogeneous = {px.x, px.y, 1.0f};
     auto intrinsicMatrixInv = transformation.getSourceIntrinsicMatrixInv();
     auto distortionModel = transformation.getDistortionModel();
@@ -69,7 +70,7 @@ std::array<float, 3> pixelToRay(dai::Point2f px, const dai::ImgTransformation& t
 
     std::array<float, 3> pxSensor = matrix::matVecMul(intrinsicMatrixInv, pxHomogeneous);
     std::array<float, 3> undistortedRay = undistortPoint(pxSensor, distortionModel, distortionCoeffs);
-    ray = {undistortedRay[0] / undistortedRay[2], undistortedRay[1] / undistortedRay[2], 1.0f};
+    std::array<float, 3> ray = {undistortedRay[0] / undistortedRay[2], undistortedRay[1] / undistortedRay[2], 1.0f};
     return ray;
 }
 
@@ -105,7 +106,6 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
     const std::array<float, 3> rectifiedRay = matrix::matVecMul(rotationMatrix, normalizedUndistortedRay);
 
     return rayToPixel(rectifiedRay, to);
-    ;
 }
 
 dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const ImgTransformation& from, const ImgTransformation& to) {
@@ -476,6 +476,13 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
 
     const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to);
     dai::Point3f target3dPoint = transformPoint3f(extriniscTransformation, source3dPoint);
+    if(target3dPoint.z <= 0) {
+        throw std::runtime_error(fmt::format("Projected point is behind the target camera socket. Cannot project to 2D. Target spatial point: ({}, {}, {})",
+                                             target3dPoint.x,
+                                             target3dPoint.y,
+                                             target3dPoint.z));
+    }
+
     std::array<float, 3> targetRay = {target3dPoint.x / target3dPoint.z, target3dPoint.y / target3dPoint.z, 1.0f};
 
     // target ray -> target sensor coords
@@ -492,10 +499,12 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
 }
 
 dai::Point2f ImgTransformation::project3DPoint(const dai::Point3f& point3f) const {
+    if(point3f.z <= 0) {
+        throw std::runtime_error("Cannot project point with z <= 0 (point is behind or at the camera).");
+    }
     const float x = point3f.x / point3f.z;
     const float y = point3f.y / point3f.z;
     const auto distorted = distortPoint({x, y, 1.0f}, distortionModel, distortionCoefficients);
-    // std::array<float, 3> distorted = {x, y, 1.0f};
     const auto projected = matrix::matVecMul(getIntrinsicMatrix(), distorted);
     return {projected[0] / projected[2], projected[1] / projected[2]};
 }

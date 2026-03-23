@@ -14,14 +14,9 @@ namespace dai {
 /// Extrinsics structure
 struct Extrinsics {
    private:
-    static constexpr LengthUnit EEPROM_TRANSLATION_UNITS = LengthUnit::CENTIMETER;
-
     Point3f getTranslationInUnit(bool useSpec, LengthUnit targetUnit) const {
         Point3f translationToUse = useSpec ? specTranslation : translation;
-        if(useSpec && translationToUse.x == 0.0f && translationToUse.y == 0.0f && translationToUse.z == 0.0f) {
-            throw std::invalid_argument("Cannot use specTranslation since it is {0, 0, 0}.");
-        }
-        const float scale = getDistanceUnitScale(targetUnit, EEPROM_TRANSLATION_UNITS);
+        const float scale = getDistanceUnitScale(targetUnit, lengthUnit);
         if(scale != 1.0f) {
             translationToUse.x *= scale;
             translationToUse.y *= scale;
@@ -40,8 +35,15 @@ struct Extrinsics {
      *  (x, y, z) pose of destCameraSocket w.r.t currentCameraSocket measured through CAD design
      */
     Point3f specTranslation;
+
+    /**
+     * The destination camera socket for which these extrinsics are defined.
+     */
     CameraBoardSocket toCameraSocket = CameraBoardSocket::AUTO;
 
+    /**
+     * The distance unit for the translation vector.
+     */
     LengthUnit lengthUnit = LengthUnit::CENTIMETER;
 
     /**
@@ -133,8 +135,9 @@ struct Extrinsics {
             {matrix[2][0], matrix[2][1], matrix[2][2]},
         };
 
-        const float scale = getDistanceUnitScale(EEPROM_TRANSLATION_UNITS, unit);
+        const float scale = getDistanceUnitScale(unit, lengthUnit);
         translation = Point3f(matrix[0][3] * scale, matrix[1][3] * scale, matrix[2][3] * scale);
+        lengthUnit = unit;
     }
 
     /**

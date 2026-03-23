@@ -19,7 +19,7 @@ std::vector<float> matVecMul(const std::vector<std::vector<float>>& matrix, cons
     std::vector<float> res(matrix.size(), 0.0f);
     for(size_t i = 0; i < matrix.size(); ++i) {
         if(matrix[i].size() != vec.size()) {
-            throw std::runtime_error("All matrix rows dimentsions need to match the vector size.");
+            throw std::runtime_error("All matrix rows dimensions need to match the vector size.");
         }
         for(size_t j = 0; j < matrix[0].size(); ++j) {
             res[i] += matrix[i][j] * vec[j];
@@ -49,7 +49,7 @@ bool mateq(const std::vector<std::vector<float>>& A, const std::vector<std::vect
                                      + std::to_string(B[i].size()));
         }
         for(size_t j = 0; j < A[0].size(); ++j) {
-            if(A[i][j] != B[i][j]) return false;
+            if(std::abs(A[i][j] - B[i][j]) > MATRIX_EQ_EPSILON) return false;
         }
     }
     return true;
@@ -58,7 +58,7 @@ bool mateq(const std::vector<std::vector<float>>& A, const std::vector<std::vect
 bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B) {
     for(size_t i = 0; i < 3; ++i) {
         for(size_t j = 0; j < 3; ++j) {
-            if(A[i][j] != B[i][j]) return false;
+            if(std::abs(A[i][j] - B[i][j]) > MATRIX_EQ_EPSILON) return false;
         }
     }
     return true;
@@ -289,7 +289,7 @@ std::vector<float> matrixToVector(const std::vector<std::vector<float>>& R) {
     // Rotation vector = axis * angle
     return {x * angle, y * angle, z * angle};
 }
-std::vector<std::vector<float>> matrix3x3toVectorMatrix(const std::array<std::array<float, 3>, 3>& R) {
+std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::array<float, 3>, 3>& R) {
     std::vector<std::vector<float>> vectorR;
     for(size_t i = 0; i < 3; ++i) {
         std::vector<float> row;
@@ -302,7 +302,7 @@ std::vector<std::vector<float>> matrix3x3toVectorMatrix(const std::array<std::ar
 }
 
 std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& R) {
-    std::vector<std::vector<float>> vectorR = matrix3x3toVectorMatrix(R);
+    std::vector<std::vector<float>> vectorR = matrix3x3ToVectorMatrix(R);
     return matrixToVector(vectorR);
 }
 

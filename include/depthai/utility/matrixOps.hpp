@@ -9,6 +9,8 @@
 namespace dai {
 namespace matrix {
 
+constexpr float MATRIX_EQ_EPSILON = 1e-6f;
+
 std::array<std::array<float, 3>, 3> matMul(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B);
 std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& firstMatrix, const std::vector<std::vector<float>>& secondMatrix);
 
@@ -30,7 +32,7 @@ std::vector<std::vector<float>> createTranslationMatrix(float dx, float dy);
 std::vector<float> matrixToVector(const std::vector<std::vector<float>>& R);
 std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& R);
 std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
-std::vector<std::vector<float>> matrix3x3toVectorMatrix(const std::array<std::array<float, 3>, 3>& R);
+std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::array<float, 3>, 3>& R);
 
 std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 4>, 4>& projection);
 

@@ -179,10 +179,10 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("addCrop", &ImgTransformation::addCrop, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), DOC(dai, ImgTransformation, addCrop))
         .def("addPadding",
              &ImgTransformation::addPadding,
-             py::arg("top"),
-             py::arg("bottom"),
-             py::arg("left"),
-             py::arg("right"),
+             py::arg("x"),
+             py::arg("y"),
+             py::arg("width"),
+             py::arg("height"),
              DOC(dai, ImgTransformation, addPadding))
         .def("addFlipVertical", &ImgTransformation::addFlipVertical, DOC(dai, ImgTransformation, addFlipVertical))
         .def("addFlipHorizontal", &ImgTransformation::addFlipHorizontal, DOC(dai, ImgTransformation, addFlipHorizontal))
