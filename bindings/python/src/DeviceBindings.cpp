@@ -562,10 +562,11 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 // Create a python-compatible callback function that acquires the GIL
                 auto pythonCallback = [callback](std::shared_ptr<CrashDump> dump) {
                     py::gil_scoped_acquire acquire;
+                    // Keep one stable Python wrapper alive across callback and sync.
+                    py::object pyDump = py::cast(dump);
                     callback(dump);
 
                     // After callback, sync _extra_dict to native extra
-                    py::object pyDump = py::cast(dump);
                     if(py::hasattr(pyDump, "_extra_dict")) {
                         dump->extra = pyjson::to_json(pyDump.attr("_extra_dict"));
                     }

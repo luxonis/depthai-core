@@ -108,11 +108,18 @@ std::vector<std::string> filenamesInArchive(const std::filesystem::path& archive
 void extractFiles(const std::filesystem::path& archivePath,
                   const std::vector<std::string>& filesInArchive,
                   const std::vector<std::filesystem::path>& filesOnDisk) {
+    if(filesInArchive.size() != filesOnDisk.size()) {
+        throw std::invalid_argument("filesInArchive and filesOnDisk must have the same size");
+    }
+
     struct archive* a = nullptr;
     struct archive_entry* entry = nullptr;
     std::ofstream outFileStream;
 
     a = archive_read_new();
+    if(a == nullptr) {
+        throw std::runtime_error("Could not initialize archive.");
+    }
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
 #if defined(_WIN32)
@@ -122,9 +129,6 @@ void extractFiles(const std::filesystem::path& archivePath,
 #endif
     if(r != ARCHIVE_OK) {
         throw std::runtime_error("Could not open archive.");
-    }
-    if(filesInArchive.size() != filesOnDisk.size()) {
-        throw std::invalid_argument("filesInArchive and filesOnDisk must have the same size");
     }
     while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
         for(size_t i = 0; i < filesInArchive.size(); i++) {

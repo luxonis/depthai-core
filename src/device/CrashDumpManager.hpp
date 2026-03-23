@@ -29,7 +29,7 @@ class CrashDumpManager {
     /**
      * @brief Collect crash dump from the device
      * @param clear Clear the cached crash dump on device after collection
-     * @return Unique pointer to the CrashDump, or nullptr if no crash dump available
+     * @return Unique pointer to the CrashDump. Platform-specific crash dump payload may be empty if no crash dump is available.
      */
     std::unique_ptr<CrashDump> collectCrashDump(bool clear = true);
 

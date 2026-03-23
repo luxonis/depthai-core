@@ -12,12 +12,11 @@ TEST_CASE("Crashdump callback is invoked on device crash") {
     dai::utility::setEnv("DEPTHAI_CRASHDUMP", "0");  // don't save nor upload crash dump
     dai::utility::setEnv("DEPTHAI_CRASH_DEVICE", "1");
 
-    dai::Device device;
-
     std::mutex mtx;
     std::condition_variable cv;
     std::atomic<bool> callbackInvoked{false};
     std::shared_ptr<dai::CrashDump> receivedDump;
+    dai::Device device;
 
     device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) {
         std::lock_guard<std::mutex> lock(mtx);
