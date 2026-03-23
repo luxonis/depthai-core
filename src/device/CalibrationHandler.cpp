@@ -567,7 +567,10 @@ Extrinsics CalibrationHandler::getExtrinsicsToLowestSocket(dai::CameraBoardSocke
         extrinsicsMatrix = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     } else {
         extrinsicsMatrix = getCameraExtrinsics(cameraId, lowestSocket, false);
-        specTranslationVector = getCameraTranslationVector(cameraId, lowestSocket, true);
+        try {
+            specTranslationVector = getCameraTranslationVector(cameraId, lowestSocket, true);
+        } catch(const std::exception&) {
+        };
     }
     std::vector<std::vector<float>> rotationMatrix(3, std::vector<float>(3, 0.0f));
     for(unsigned int i = 0; i < 3; i++) {

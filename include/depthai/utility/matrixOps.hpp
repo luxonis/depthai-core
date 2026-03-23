@@ -19,8 +19,8 @@ std::array<std::array<float, 4>, 4> matMul(const std::array<std::array<float, 4>
 std::vector<float> matVecMul(const std::vector<std::vector<float>>& matrix, const std::vector<float>& vec);
 std::array<float, 3> matVecMul(const std::array<std::array<float, 3>, 3>& matrix, const std::array<float, 3>& vec);
 
-bool mateq(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B);
-bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B);
+bool mateq(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B, float epsilon = MATRIX_EQ_EPSILON);
+bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B, float epsilon = MATRIX_EQ_EPSILON);
 
 bool matInv(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>& inverse);
 

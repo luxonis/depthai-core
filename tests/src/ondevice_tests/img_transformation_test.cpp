@@ -192,7 +192,8 @@ std::vector<CharucoPoint> projectPoints(const std::vector<CharucoPoint>& referen
 std::vector<float> calculateProjectionErrors(const std::vector<CharucoPoint>& projectedPoints, const std::vector<CharucoPoint>& targetPoints) {
     std::vector<float> errors;
     for(const auto& projected : projectedPoints) {
-        auto it = std::find_if(targetPoints.begin(), targetPoints.end(), [&](const CharucoPoint& p) { return p.charucoCornerId == projected.charucoCornerId; });
+        auto it = std::find_if(
+            targetPoints.begin(), targetPoints.end(), [&](const CharucoPoint& p) { return p.valid && p.charucoCornerId == projected.charucoCornerId; });
         if(it != targetPoints.end()) {
             const float error = std::hypot(projected.coordinates.x - it->coordinates.x, projected.coordinates.y - it->coordinates.y);
             errors.push_back(error);
@@ -660,6 +661,8 @@ TEST_CASE("projectPoints test") {
         currentResults[folder.stem()] = result;
         testIterator++;
     }
+
+    REQUIRE(testIterator > 0);
 
     const std::filesystem::path outputPath = baseFolder / "aggregated_results.json";
     std::ifstream inputFile(outputPath);

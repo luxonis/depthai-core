@@ -103,9 +103,12 @@ struct Extrinsics {
             throw std::runtime_error("Extrinsics transformation matrix must have last row [0 0 0 1].");
         }
 
-        rotationMatrix = matrix;
-        const float scale = getDistanceUnitScale(unit, lengthUnit);
-        translation = Point3f(matrix[0][3] * scale, matrix[1][3] * scale, matrix[2][3] * scale);
+        rotationMatrix = {
+            {matrix[0][0], matrix[0][1], matrix[0][2]},
+            {matrix[1][0], matrix[1][1], matrix[1][2]},
+            {matrix[2][0], matrix[2][1], matrix[2][2]},
+        };
+        translation = Point3f(matrix[0][3], matrix[1][3], matrix[2][3]);
         lengthUnit = unit;
     }
 
@@ -151,7 +154,7 @@ struct Extrinsics {
      * @return true if the Extrinsics objects are equal, false otherwise
      */
     bool isEqualExtrinsics(const Extrinsics& other, float epsilon = 1e-6f) const {
-        if(!matrix::mateq(rotationMatrix, other.rotationMatrix)) {
+        if(!matrix::mateq(rotationMatrix, other.rotationMatrix, epsilon)) {
             return false;
         }
         const auto thisTranslation = getTranslationVector(false, LengthUnit::CENTIMETER);

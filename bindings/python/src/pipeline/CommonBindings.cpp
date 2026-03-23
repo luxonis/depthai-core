@@ -540,7 +540,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::overload_cast<const std::vector<std::vector<float>>&, LengthUnit>(&Extrinsics::setTransformationMatrix),
              py::arg("matrix"),
              py::arg("unit") = LengthUnit::CENTIMETER,
-             DOC(dai, Extrinsics, setTransformationMatrix, 1))
+             DOC(dai, Extrinsics, setTransformationMatrix))
         .def("setTransformationMatrix",
              py::overload_cast<const std::array<std::array<float, 4>, 4>&, LengthUnit>(&Extrinsics::setTransformationMatrix),
              py::arg("matrix"),

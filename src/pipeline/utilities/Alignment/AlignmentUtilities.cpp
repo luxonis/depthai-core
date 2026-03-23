@@ -82,7 +82,11 @@ std::array<float, 3> distortPerspective(std::array<float, 3> point, const std::v
     const float r6 = r4 * r2;
     const float radialNum = 1.0f + k1 * r2 + k2 * r4 + k3 * r6;
     const float radialDen = 1.0f + k4 * r2 + k5 * r4 + k6 * r6;
-    const float radial = (radialDen != 0.0f) ? (radialNum / radialDen) : radialNum;
+    float safeRadialDen = radialDen;
+    if(std::abs(safeRadialDen) < kTiny) {
+        safeRadialDen = std::copysign(kTiny, safeRadialDen == 0.0f ? 1.0f : safeRadialDen);
+    }
+    const float radial = radialNum / safeRadialDen;
 
     float xDist = x * radial;
     float yDist = y * radial;
