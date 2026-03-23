@@ -537,15 +537,13 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getInverseTransformationMatrix))
         .def("setTransformationMatrix",
-             py::overload_cast < const std::vector<std::vector<float>>(&Extrinsics::setTransformationMatrix),
+             py::overload_cast<const std::vector<std::vector<float>>&, LengthUnit>(&Extrinsics::setTransformationMatrix),
              py::arg("matrix"),
-             py::arg("useSpecTranslation") = false,
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, setTransformationMatrix, 1))
         .def("setTransformationMatrix",
-             py::overload_cast < const std::array<std::array<float, 4>, 4>(&Extrinsics::setTransformationMatrix),
+             py::overload_cast<const std::array<std::array<float, 4>, 4>&, LengthUnit>(&Extrinsics::setTransformationMatrix),
              py::arg("matrix"),
-             py::arg("useSpecTranslation") = false,
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, setTransformationMatrix, 2))
         .def("getTranslationVector",
