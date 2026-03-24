@@ -112,14 +112,21 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             properties.parser.decodingFamily = yoloDecodingFamilyResolver(*head.metadata.subtype);
         }
 
-        // check if there are keypoints or segmentations to decode
-        if(head.outputs && !head.outputs->empty()) {
-            properties.parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
+        properties.parser.outputNamesToUse = head.metadata.yoloOutputs ? *head.metadata.yoloOutputs : std::vector<std::string>{};
+
+        if(properties.parser.decodingFamily == YoloDecodingFamily::YOLO26) {
+            properties.parser.strides = {1};
+        }
+
+        if(head.metadata.maskOutputs) {
+            properties.parser.decodeSegmentation = true;
+            properties.parser.maskOutputNames = *head.metadata.maskOutputs;
         }
 
         if(head.metadata.nKeypoints) {
             properties.parser.decodeKeypoints = true;
             properties.parser.nKeypoints = head.metadata.nKeypoints;
+            properties.parser.kptsOutputNames = head.metadata.keypointsOutputs ? *head.metadata.keypointsOutputs : std::vector<std::string>{};
         }
 
         const auto keypointNamesIt = head.metadata.extraParams.find("keypoint_label_names");
@@ -138,9 +145,6 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
             properties.parser.keypointLabelNames = keypointLabelNames;
         }
 
-        if(head.metadata.yoloOutputs) {
-            properties.parser.outputNamesToUse = *head.metadata.yoloOutputs;
-        }
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
         properties.parser.subtype.clear();
@@ -221,6 +225,7 @@ YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string
         return YoloDecodingFamily::TLBR;
     if(subtypeStr == "yolov3" || subtypeStr == "yolov3-tiny") return YoloDecodingFamily::v3AB;
     if(subtypeStr == "yolov5" || subtypeStr == "yolov7" || subtypeStr == "yolo-p" || subtypeStr == "yolov5-u") return YoloDecodingFamily::v5AB;
+    if(subtypeStr == "yolo26") return YoloDecodingFamily::YOLO26;
 
     pimpl->logger->error("Unknown YOLO subtype '{}', defaulting to TLBR decoding family.", name);
     return YoloDecodingFamily::TLBR;  // default
@@ -603,8 +608,11 @@ void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDet
         case YoloDecodingFamily::TLBR:  // top left bottom right anchor free: yolo v6r2, v8 v10 v11
             utilities::DetectionParserUtils::decodeTLBR(nnData, outDetections, properties, logger);
             break;
+        case YoloDecodingFamily::YOLO26:  // already decoded TLBR model
+            utilities::DetectionParserUtils::decodeEndToEnd(nnData, outDetections, properties, logger);
+            break;
         default:
-            logger->error("Unknown Yolo decoding family. 'R1AF', 'v3AB', 'v5AB' and 'TLBR' are supported.");
+            logger->error("Unknown Yolo decoding family. 'R1AF', 'v3AB', 'v5AB', 'TLBR' and 'YOLO26' are supported.");
             throw std::runtime_error("Unknown Yolo decoding family");
     }
 }

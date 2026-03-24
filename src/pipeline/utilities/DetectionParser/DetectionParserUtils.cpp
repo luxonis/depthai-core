@@ -3,7 +3,7 @@
 #include <spdlog/async_logger.h>
 
 #include <Eigen/Dense>
-#include <chrono>
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -30,7 +30,7 @@
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/properties/DetectionParserProperties.hpp"
 #include "pipeline/utilities/NNDataViewer.hpp"
-
+#include "utility/ErrorMacros.hpp"
 namespace dai {
 namespace utilities {
 namespace DetectionParserUtils {
@@ -40,36 +40,38 @@ void decodeR1AF(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger) {
-    auto layerNames = utilities::DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
+    auto layerNames = resolveLayerNames(nnData, properties.parser.outputNamesToUse, "_yolo");
 
     const std::vector<int> strides = properties.parser.strides;
-    if(strides.size() != layerNames.size()) {
-        std::string errorMsg = fmt::format(
-            "Number of strides does not match number of output layers. Strides size: {}, output layers size: {}", strides.size(), layerNames.size());
-        throw std::runtime_error(errorMsg);
-    }
+    DAI_CHECK_V(strides.size() == layerNames.size(),
+                "Number of strides does not match number of output layers. Strides size: {}, output layers size: {}",
+                strides.size(),
+                layerNames.size());
+
     const float confidenceThr = properties.parser.confidenceThreshold;
     const float iouThr = properties.parser.iouThreshold;
     const int numClasses = properties.parser.classes;
+    int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
+    int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
+
     int inputWidth;
     int inputHeight;
     std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
 
-    if(inputWidth <= 0 || inputHeight <= 0) {
-        throw std::runtime_error("Invalid input dimensions retrieved from NNData transformation.");
-    }
+    DAI_CHECK_V(inputHeight > 0 && inputWidth > 0, "Invalid input dimensions: width={}, height={}", inputWidth, inputHeight);
     std::vector<DetectionCandidate> detectionCandidates;
     detectionCandidates.reserve(defaultMaxDetectionsPerFrame);
 
     for(int strideIdx = 0; strideIdx < static_cast<int>(layerNames.size()); ++strideIdx) {
         std::string layerName = layerNames[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
+
         if(!tensorInfo) {
-            std::string errorMsg = fmt::format("Tensor info for layer {} is null", layerName);
-            throw std::runtime_error(errorMsg);
+            logger->error("Could not find tensor info for layer {}. Skipping this layer", layerName);
+            continue;
         }
 
-        if(!isTensorOrderValid(*tensorInfo, properties, logger)) {
+        if(!isTensorOrderValid(*tensorInfo, channelSize, logger)) {
             logger->error("Tensor order for layer {} is invalid, skipping this layer", layerName);
             continue;
         }
@@ -77,10 +79,7 @@ void decodeR1AF(const dai::NNData& nnData,
         int layerHeight = tensorInfo->getHeight();
         int layerWidth = tensorInfo->getWidth();
         NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
-        if(!outputData.build()) {
-            std::string errorMsg = fmt::format("Failed to build NNDataViewer for layer {}", layerName);
-            throw std::runtime_error(errorMsg);
-        }
+        DAI_CHECK_V(outputData.build(), "Failed to build NNDataViewer for layer {}", layerName);
 
         for(int row = 0; row < layerHeight; ++row) {
             for(int col = 0; col < layerWidth; ++col) {
@@ -118,7 +117,6 @@ void decodeR1AF(const dai::NNData& nnData,
                 ymax = std::max(0.0f, std::min(ymax, float(inputHeight)));
 
                 if(xmax <= xmin || ymax <= ymin) {
-                    logger->info("Invalid bbox parameters. Either xmax <= xmin or ymax <= ymin. Skipping detection.");
                     logger->debug(
                         "Skipping invalid bbox: layer='{}', "
                         "raw(cx,cy,w,h)=({:.2f},{:.2f},{:.2f},{:.2f}) "
@@ -143,7 +141,6 @@ void decodeR1AF(const dai::NNData& nnData,
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
     if(keepCandidates.size() == 0) {
-        logger->trace("No detections after NMS, skipping overlay.");
         return;
     }
     if(!properties.parser.classNames->empty()) {
@@ -177,32 +174,30 @@ void decodeV3AB(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger) {
-    auto layerNames = getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
+    auto layerNames = resolveLayerNames(nnData, properties.parser.outputNamesToUse, "_yolo");
     auto sigmoid = [](float x) -> float { return 1.f / (1.f + std::exp(-x)); };
 
     const std::vector<int> strides = properties.parser.strides;
-    if(strides.size() != layerNames.size()) {
-        std::string errorMsg = fmt::format(
-            "Number of strides does not match number of output layers. Strides size: {}, output layers size: {}", strides.size(), layerNames.size());
-        throw std::runtime_error(errorMsg);
-    }
+    DAI_CHECK_V(strides.size() == layerNames.size(),
+                "Number of strides does not match number of output layers. Strides size: {}, output layers size: {}",
+                strides.size(),
+                layerNames.size());
 
     const float confidenceThr = properties.parser.confidenceThreshold;
     const float iouThr = properties.parser.iouThreshold;
     const int numClasses = properties.parser.classes;
+    int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
+    int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
     int inputWidth;
     int inputHeight;
     std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
-    if(inputWidth <= 0 || inputHeight <= 0) {
-        throw std::runtime_error("Invalid input dimensions retrieved from NNData transformation.");
-    }
+    DAI_CHECK_V(
+        inputWidth > 0 && inputHeight > 0, "Invalid input dimensions retrieved from NNData transformation. Width: {}, Height: {}", inputWidth, inputHeight);
 
-    if(properties.parser.anchorsV2.size() != layerNames.size()) {
-        logger->error("Number of anchor sets does not match number of output layers. Anchor sets size: {}, output layers size: {}",
-                      properties.parser.anchorsV2.size(),
-                      layerNames.size());
-        return;
-    }
+    DAI_CHECK_V(properties.parser.anchorsV2.size() == layerNames.size(),
+                "Number of anchor sets does not match number of output layers. Anchor sets size: {}, output layers size: {}",
+                properties.parser.anchorsV2.size(),
+                layerNames.size());
 
     std::vector<DetectionCandidate> detectionCandidates;
     detectionCandidates.reserve(defaultMaxDetectionsPerFrame);
@@ -212,11 +207,11 @@ void decodeV3AB(const dai::NNData& nnData,
         int stride = strides[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
         if(!tensorInfo) {
-            std::string errorMsg = fmt::format("Tensor info for layer {} is null", layerName);
-            throw std::runtime_error(errorMsg);
+            logger->error("Could not find tensor info for layer {}. Skipping this layer", layerName);
+            continue;
         }
 
-        if(!isTensorOrderValid(*tensorInfo, properties, logger)) {
+        if(!isTensorOrderValid(*tensorInfo, channelSize, logger)) {
             logger->error("Tensor order for layer {} is invalid, skipping this layer", layerName);
             continue;
         }
@@ -226,19 +221,18 @@ void decodeV3AB(const dai::NNData& nnData,
         int layerChannels = tensorInfo->getChannels();
 
         NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
-        if(!outputData.build()) {
-            std::string errorMsg = fmt::format("Failed to build NNDataViewer for layer {}", layerName);
-            throw std::runtime_error(errorMsg);
-        }
+        DAI_CHECK_V(outputData.build(), "Failed to build NNDataViewer for layer {}", layerName);
+
         std::vector<std::vector<float>>& anchors = properties.parser.anchorsV2[strideIdx];
         int numAnchors = anchors.size();
         int block = 5 + numClasses;
         int expectedC = numAnchors * block;
 
-        if(layerChannels != expectedC) {
-            std::string errorMsg = fmt::format("Layer {} channels mismatch. Expected {}, got {}", layerName, expectedC, layerChannels);
-            throw std::runtime_error(errorMsg);
-        }
+        DAI_CHECK_V(layerChannels == expectedC,
+                    "Layer {} channels mismatch. Expected {}, got {}. Please check if the correct anchors are set for this layer.",
+                    layerName,
+                    expectedC,
+                    layerChannels);
 
         for(int row = 0; row < layerHeight; ++row) {
             for(int col = 0; col < layerWidth; ++col) {
@@ -282,7 +276,7 @@ void decodeV3AB(const dai::NNData& nnData,
                     ymax = std::max(0.0f, std::min(ymax, float(inputHeight)));
 
                     if(xmax <= xmin || ymax <= ymin) {
-                        logger->info("Invalid box with xmax <= xmin or ymax <= ymin, skipping");
+                        logger->debug("Invalid box with xmax <= xmin or ymax <= ymin, skipping");
                         continue;
                     }
 
@@ -296,7 +290,6 @@ void decodeV3AB(const dai::NNData& nnData,
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
     if(keepCandidates.size() == 0) {
-        logger->trace("No detections after NMS, skipping overlay.");
         return;
     }
 
@@ -333,32 +326,29 @@ void decodeV5AB(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger) {
-    auto layerNames = getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
+    auto layerNames = resolveLayerNames(nnData, properties.parser.outputNamesToUse, "_yolo");
 
     const std::vector<int> strides = properties.parser.strides;
-    if(strides.size() != layerNames.size()) {
-        std::string errorMsg = fmt::format(
-            "Number of strides does not match number of output layers. Strides size: {}, output layers size: {}", strides.size(), layerNames.size());
-        throw std::runtime_error(errorMsg);
-    }
+    DAI_CHECK_V(strides.size() == layerNames.size(),
+                "Number of strides does not match number of output layers. Strides size: {}, output layers size: {}",
+                strides.size(),
+                layerNames.size());
 
     const float confidenceThr = properties.parser.confidenceThreshold;
     const float iouThr = properties.parser.iouThreshold;
     const int numClasses = properties.parser.classes;
+    int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
+    int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
     int inputWidth;
     int inputHeight;
     std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
 
-    if(inputWidth <= 0 || inputHeight <= 0) {
-        throw std::runtime_error("Invalid input dimensions retrieved from NNData transformation.");
-    }
-
-    if(properties.parser.anchorsV2.size() != layerNames.size()) {
-        logger->error("Number of anchor sets does not match number of output layers. Anchor sets size: {}, output layers size: {}",
-                      properties.parser.anchorsV2.size(),
-                      layerNames.size());
-        return;
-    }
+    DAI_CHECK_V(
+        inputWidth > 0 && inputHeight > 0, "Invalid input dimensions retrieved from NNData transformation. Width: {}, Height: {}", inputWidth, inputHeight);
+    DAI_CHECK_V(properties.parser.anchorsV2.size() == layerNames.size(),
+                "Number of anchor sets does not match number of output layers. Anchor sets size: {}, output layers size: {}",
+                properties.parser.anchorsV2.size(),
+                layerNames.size());
 
     std::vector<DetectionCandidate> detectionCandidates;
     detectionCandidates.reserve(defaultMaxDetectionsPerFrame);
@@ -368,11 +358,11 @@ void decodeV5AB(const dai::NNData& nnData,
         int stride = strides[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
         if(!tensorInfo) {
-            std::string errorMsg = fmt::format("Tensor info for layer {} is null", layerName);
-            throw std::runtime_error(errorMsg);
+            logger->error("Could not find tensor info for layer {}. Skipping this layer", layerName);
+            continue;
         }
 
-        if(!isTensorOrderValid(*tensorInfo, properties, logger)) {
+        if(!isTensorOrderValid(*tensorInfo, channelSize, logger)) {
             logger->error("Tensor order for layer {} is invalid, skipping this layer", layerName);
             continue;
         }
@@ -382,19 +372,18 @@ void decodeV5AB(const dai::NNData& nnData,
         int layerChannels = tensorInfo->getChannels();
 
         NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
-        if(!outputData.build()) {
-            std::string errorMsg = fmt::format("Failed to build NNDataViewer for layer {}", layerName);
-            throw std::runtime_error(errorMsg);
-        }
+        DAI_CHECK_V(outputData.build(), "Failed to build NNDataViewer for layer {}", layerName);
+
         std::vector<std::vector<float>>& anchors = properties.parser.anchorsV2[strideIdx];
         int numAnchors = anchors.size();
         int block = 5 + numClasses;
         int expectedC = numAnchors * block;
 
-        if(layerChannels != expectedC) {
-            logger->error("Layer {} channels mismatch. Expected {}, got {}", layerName, expectedC, layerChannels);
-            return;
-        }
+        DAI_CHECK_V(layerChannels == expectedC,
+                    "Layer {} channels mismatch. Expected {}, got {}. Please check if the correct anchors are set for this layer.",
+                    layerName,
+                    expectedC,
+                    layerChannels);
 
         for(int row = 0; row < layerHeight; ++row) {
             for(int col = 0; col < layerWidth; ++col) {
@@ -437,7 +426,10 @@ void decodeV5AB(const dai::NNData& nnData,
                     xmax = std::max(0.0f, std::min(xmax, float(inputWidth)));
                     ymax = std::max(0.0f, std::min(ymax, float(inputHeight)));
 
-                    if(xmax <= xmin || ymax <= ymin) continue;
+                    if(xmax <= xmin || ymax <= ymin) {
+                        logger->debug("Invalid box with xmax <= xmin or ymax <= ymin, skipping");
+                        continue;
+                    }
                     DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, conf, bestC, strideIdx, row, col, std::nullopt};
 
                     detectionCandidates.emplace_back(std::move(candidate));
@@ -448,7 +440,6 @@ void decodeV5AB(const dai::NNData& nnData,
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
     if(keepCandidates.size() == 0) {
-        logger->trace("No detections after NMS, skipping overlay.");
         return;
     }
 
@@ -483,24 +474,24 @@ void decodeTLBR(const dai::NNData& nnData,
                 dai::ImgDetections& outDetections,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger) {
-    auto layerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
+    auto layerNames = resolveLayerNames(nnData, properties.parser.outputNamesToUse, "_yolo");
 
     const std::vector<int> strides = properties.parser.strides;
-    if(strides.size() != layerNames.size()) {
-        std::string errorMsg = fmt::format(
-            "Number of strides does not match number of output layers. Strides size: {}, output layers size: {}", strides.size(), layerNames.size());
-        throw std::runtime_error(errorMsg);
-    }
+    DAI_CHECK_V(strides.size() == layerNames.size(),
+                "Number of strides does not match number of output layers. Strides size: {}, output layers size: {}",
+                strides.size(),
+                layerNames.size());
+
     const float confidenceThr = properties.parser.confidenceThreshold;
     const float iouThr = properties.parser.iouThreshold;
     const int numClasses = properties.parser.classes;
+    int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
+    int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
     int inputWidth;
     int inputHeight;
     std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
-
-    if(inputWidth <= 0 || inputHeight <= 0) {
-        throw std::runtime_error("Invalid input dimensions retrieved from NNData transformation.");
-    }
+    DAI_CHECK_V(
+        inputWidth > 0 && inputHeight > 0, "Invalid input dimensions retrieved from NNData transformation. Width: {}, Height: {}", inputWidth, inputHeight);
 
     std::vector<DetectionCandidate> detectionCandidates;
     detectionCandidates.reserve(defaultMaxDetectionsPerFrame);
@@ -510,11 +501,11 @@ void decodeTLBR(const dai::NNData& nnData,
         int stride = strides[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
         if(!tensorInfo) {
-            std::string errorMsg = fmt::format("Tensor info for layer {} is null", layerName);
-            throw std::runtime_error(errorMsg);
+            logger->error("Could not find tensor info for layer {}. Skipping this layer", layerName);
+            continue;
         }
 
-        if(!isTensorOrderValid(*tensorInfo, properties, logger)) {
+        if(!isTensorOrderValid(*tensorInfo, channelSize, logger)) {
             logger->error("Tensor order for layer {} is invalid, skipping this layer", layerName);
             continue;
         }
@@ -522,10 +513,7 @@ void decodeTLBR(const dai::NNData& nnData,
         int layerHeight = tensorInfo->getHeight();
         int layerWidth = tensorInfo->getWidth();
         NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
-        if(!outputData.build()) {
-            std::string errorMsg = fmt::format("Failed to build NNDataViewer for layer {}", layerName);
-            throw std::runtime_error(errorMsg);
-        }
+        DAI_CHECK_V(outputData.build(), "Failed to build NNDataViewer for layer {}", layerName);
 
         for(int row = 0; row < layerHeight; ++row) {
             for(int col = 0; col < layerWidth; ++col) {
@@ -558,7 +546,7 @@ void decodeTLBR(const dai::NNData& nnData,
                 ymax = std::max(0.0f, std::min(ymax, float(inputHeight)));
 
                 if(xmax <= xmin || ymax <= ymin) {
-                    logger->info("Invalid box with xmax <= xmin or ymax <= ymin, skipping");
+                    logger->debug("Invalid box with xmax <= xmin or ymax <= ymin, skipping");
                     continue;
                 }
 
@@ -571,7 +559,6 @@ void decodeTLBR(const dai::NNData& nnData,
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
     if(keepCandidates.size() == 0) {
-        logger->trace("No detections after NMS, skipping overlay.");
         return;
     }
 
@@ -599,47 +586,196 @@ void decodeTLBR(const dai::NNData& nnData,
     }
 }
 
-bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties properties, std::shared_ptr<spdlog::async_logger>& logger) {
+// End to end models that directly output TLBR boxes without any anchor, e.g., YOLO26
+void decodeEndToEnd(const dai::NNData& nnData,
+                    dai::ImgDetections& outDetections,
+                    DetectionParserProperties& properties,
+                    std::shared_ptr<spdlog::async_logger>& logger) {
+    dai::DetectionParserOptions parser = properties.parser;
+
+    auto yoloLayerNames = resolveLayerNames(nnData, parser.outputNamesToUse, "_yolo");
+
+    DAI_CHECK_V(yoloLayerNames.size() == 1, "End-to-end models support only one yolo output layer. Please specify exactly one output name in the parser Head.");
+
+    auto searchLayer = yoloLayerNames[0];
+    const float confidenceThr = parser.confidenceThreshold;
+    const int numClasses = parser.classes;
     int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
-    int channelSize = anchorMultiplier * (properties.parser.classes + properties.parser.coordinates + 1);
+    int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
+    int inputWidth;
+    int inputHeight;
+    std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
 
-    auto checkAndFixOrder = [&](int channelDimIndex, int alternativeDimIndex, dai::TensorInfo::StorageOrder alternativeOrder) -> bool {
-        // Check that the dims size is big enough
-        if(static_cast<int>(tensorInfo.dims.size()) <= channelDimIndex || static_cast<int>(tensorInfo.dims.size()) <= alternativeDimIndex) {
-            logger->error("Invalid tensor dims size. Skipping.");
-            return false;
+    DAI_CHECK_V(inputWidth > 0 && inputHeight > 0, "Invalid input dimensions retrieved from NNData transformation.");
+
+    std::vector<DetectionCandidate> detectionCandidates;
+
+    auto tensorInfo = nnData.getTensorInfo(searchLayer);
+
+    DAI_CHECK_V(tensorInfo, "Tensor info for layer {} is null", searchLayer);
+
+    if(!isTensorOrderValid(*tensorInfo, channelSize, logger)) {
+        logger->error("Tensor order for layer {} is invalid, skipping this layer", searchLayer);
+        return;
+    }
+
+    const int layerChannels = tensorInfo->getChannels();
+    const int layerHeight = tensorInfo->getHeight();
+    const int layerWidth = tensorInfo->getWidth();
+    DAI_CHECK_V(
+        layerChannels == 5 + numClasses, "Invalid number of channels in end-to-end output. Expected {}, got {}. Skipping.", 5 + numClasses, layerChannels);
+
+    if(layerHeight <= 0 || layerWidth <= 0) {
+        logger->error("Invalid end-to-end output spatial size: height {}, width {}. Skipping.", layerHeight, layerWidth);
+        return;
+    }
+    detectionCandidates.reserve(static_cast<size_t>(layerHeight) * static_cast<size_t>(layerWidth));
+
+    NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
+    DAI_CHECK_V(outputData.build(), "Failed to build NNDataViewer for layer {}", searchLayer);
+
+    for(int col = 0; col < layerWidth; ++col) {
+        const float score = outputData.get(4, 0, col);
+        if(score < confidenceThr) {
+            continue;
         }
-
-        if(tensorInfo.dims[channelDimIndex] != uint32_t(channelSize)) {
-            // Check if the channel size would match the alternative storage order
-            if(tensorInfo.dims[alternativeDimIndex] == uint32_t(channelSize)) {
-                logger->trace("Invalid channel size for the tensor. Expected {}, got {}, switching", channelSize, tensorInfo.dims[channelDimIndex]);
-                tensorInfo.order = alternativeOrder;
-            } else {
-                logger->error("Invalid channel size for the tensor. Expected {}, got {}. Skipping.", channelSize, tensorInfo.dims[channelDimIndex]);
-                return false;
+        int bestC = 0;
+        float bestConf = 0.0f;
+        for(int c = 0; c < numClasses; ++c) {
+            float candidateProb = outputData.get(c + 5, 0, col);
+            if(candidateProb > bestConf) {
+                bestConf = candidateProb;
+                bestC = c;
             }
         }
-        return true;
-    };
 
+        float xmin = outputData.get(0, 0, col);
+        float ymin = outputData.get(1, 0, col);
+        float xmax = outputData.get(2, 0, col);
+        float ymax = outputData.get(3, 0, col);
+        xmin = std::max(0.0f, std::min(xmin, float(inputWidth)));
+        ymin = std::max(0.0f, std::min(ymin, float(inputHeight)));
+        xmax = std::max(0.0f, std::min(xmax, float(inputWidth)));
+        ymax = std::max(0.0f, std::min(ymax, float(inputHeight)));
+
+        if(xmax <= xmin || ymax <= ymin) {
+            logger->debug("Invalid box with xmax <= xmin or ymax <= ymin, skipping");
+            continue;
+        }
+
+        DetectionCandidate candidate = DetectionCandidate{xmin, ymin, xmax, ymax, bestConf, bestC, 0, 0, col, std::nullopt};
+
+        detectionCandidates.emplace_back(std::move(candidate));
+    }
+
+    topKFilter(detectionCandidates, 300);
+    std::vector<DetectionCandidate> keepCandidates = detectionCandidates;
+    if(keepCandidates.size() == 0) {
+        return;
+    }
+
+    if(!parser.classNames->empty()) {
+        for(auto& candidate : keepCandidates) {
+            candidate.labelName = (*parser.classNames)[candidate.label];
+        }
+    }
+
+    createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
+
+    if(parser.decodeSegmentation) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+        logger->trace("Segmentation decoding.");
+        segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
+#else
+        throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
+
+#endif
+    }
+
+    if(parser.decodeKeypoints) {
+        logger->trace("Keypoints decoding.");
+        keypointDecode(nnData, keepCandidates, outDetections, properties, logger);
+    }
+}
+
+void topKFilter(std::vector<DetectionCandidate>& detectionCandidates, int k) {
+    int numDetections = std::min(static_cast<int>(detectionCandidates.size()), k);
+
+    std::partial_sort(detectionCandidates.begin(),
+                      detectionCandidates.begin() + numDetections,
+                      detectionCandidates.end(),
+                      [](const DetectionCandidate& a, const DetectionCandidate& b) { return a.score > b.score; });
+
+    detectionCandidates.resize(numDetections);
+}
+
+bool checkAndFix3DTensorOrder(dai::TensorInfo& tensorInfo, int expectedChannelIdx, uint32_t channelSize, std::shared_ptr<spdlog::async_logger>& logger) {
+    if(tensorInfo.dims.size() != 3) {
+        logger->error("Expected a 3D tensor but got {}D. Tensor order cannot be determined. Skipping.", tensorInfo.dims.size());
+        return false;
+    }
+    if(tensorInfo.dims[expectedChannelIdx] == channelSize) return true;
+
+    if(tensorInfo.dims[0] == channelSize) {
+        tensorInfo.order = dai::TensorInfo::StorageOrder::CHW;
+        return true;
+    }
+
+    if(tensorInfo.dims[2] == channelSize) {
+        tensorInfo.order = dai::TensorInfo::StorageOrder::HWC;
+        return true;
+    }
+
+    if(tensorInfo.dims[1] == channelSize) {
+        tensorInfo.order = dai::TensorInfo::StorageOrder::HCW;
+        return true;
+    }
+
+    return false;
+}
+
+bool checkAndFix4DTensorOrder(dai::TensorInfo& tensorInfo, int expectedChannelIdx, uint32_t channelSize, std::shared_ptr<spdlog::async_logger>& logger) {
+    if(tensorInfo.dims.size() != 4) {
+        logger->error("Expected a 4D tensor but got {}D. Tensor order cannot be determined. Skipping.", tensorInfo.dims.size());
+        return false;
+    }
+
+    if(tensorInfo.dims[expectedChannelIdx] == channelSize) return true;
+
+    if(tensorInfo.dims[1] == channelSize) {
+        tensorInfo.order = dai::TensorInfo::StorageOrder::NCHW;
+        return true;
+    }
+
+    if(tensorInfo.dims[3] == channelSize) {
+        tensorInfo.order = dai::TensorInfo::StorageOrder::NHWC;
+        return true;
+    }
+
+    if(tensorInfo.dims[2] == channelSize) {
+        tensorInfo.order = dai::TensorInfo::StorageOrder::NHCW;
+        return true;
+    }
+
+    return false;
+}
+
+bool isTensorOrderValid(dai::TensorInfo& tensorInfo, uint32_t channelSize, std::shared_ptr<spdlog::async_logger>& logger) {
     switch(tensorInfo.order) {
         case dai::TensorInfo::StorageOrder::CHW:
-            if(!checkAndFixOrder(0, 2, dai::TensorInfo::StorageOrder::HWC)) return false;
-            break;
-        case dai::TensorInfo::StorageOrder::HWC:
-            if(!checkAndFixOrder(2, 0, dai::TensorInfo::StorageOrder::CHW)) return false;
-            break;
+            return checkAndFix3DTensorOrder(tensorInfo, 0, channelSize, logger);
+        case dai::TensorInfo::StorageOrder::HWC:  // need to do the same but different ordering
+            return checkAndFix3DTensorOrder(tensorInfo, 2, channelSize, logger);
+        case dai::TensorInfo::StorageOrder::HCW:
+            return checkAndFix3DTensorOrder(tensorInfo, 1, channelSize, logger);
         case dai::TensorInfo::StorageOrder::NCHW:
-            if(!checkAndFixOrder(1, 3, dai::TensorInfo::StorageOrder::NHWC)) return false;
-            break;
+            return checkAndFix4DTensorOrder(tensorInfo, 1, channelSize, logger);
         case dai::TensorInfo::StorageOrder::NHWC:
-            if(!checkAndFixOrder(3, 1, dai::TensorInfo::StorageOrder::NCHW)) return false;
-            break;
+            return checkAndFix4DTensorOrder(tensorInfo, 3, channelSize, logger);
         case dai::TensorInfo::StorageOrder::NHCW:
+            return checkAndFix4DTensorOrder(tensorInfo, 2, channelSize, logger);
         case dai::TensorInfo::StorageOrder::WHC:
         case dai::TensorInfo::StorageOrder::WCH:
-        case dai::TensorInfo::StorageOrder::HCW:
         case dai::TensorInfo::StorageOrder::CWH:
         case dai::TensorInfo::StorageOrder::NC:
         case dai::TensorInfo::StorageOrder::CN:
@@ -654,17 +790,52 @@ bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties p
     return true;
 }
 
-std::vector<std::string> getSortedDetectionLayerNames(const dai::NNData& nnData, std::string searchTerm, std::vector<std::string> outputNames) {
-    if(outputNames.empty()) {
-        outputNames = nnData.getAllLayerNames();
+std::vector<std::string> resolveLayerNames(const dai::NNData& nnData, const std::vector<std::string>& specifiedNames, const std::string& defaultSearchTerm) {
+    if(!specifiedNames.empty()) {
+        return getSortedLayerNames(nnData, specifiedNames);
     }
 
-    std::vector<std::string> layerNames;
-    for(const auto& name : outputNames) {
-        // if yolo in the name, push it to layerNames
+    return searchForDefaultLayers(nnData, defaultSearchTerm);
+}
+
+std::vector<std::string> searchForDefaultLayers(const dai::NNData& nnData, const std::string& searchTerm) {
+    auto nnDataLayerNames = nnData.getAllLayerNames();
+    std::vector<std::string> foundNames;
+    for(const auto& name : nnDataLayerNames) {
         if(name.find(searchTerm) != std::string::npos) {
-            layerNames.push_back(name);
+            foundNames.push_back(name);
         }
+    }
+    std::sort(foundNames.begin(), foundNames.end());
+    return foundNames;
+}
+
+std::vector<std::string> getSortedLayerNames(const dai::NNData& nnData, const std::vector<std::string>& searchNames) {
+    auto nnDataLayerNames = nnData.getAllLayerNames();
+    std::vector<std::string> layerNames;
+
+    for(const auto& outputName : searchNames) {
+        for(const auto& name : nnDataLayerNames) {
+            if(name == outputName) {
+                layerNames.push_back(name);
+                break;
+            }
+        }
+    }
+
+    if(layerNames.size() != searchNames.size()) {
+        auto joinNames = [](const std::vector<std::string>& names) {
+            std::string result;
+            for(size_t i = 0; i < names.size(); ++i) {
+                if(i != 0) result += ", ";
+                result += names[i];
+            }
+            return result;
+        };
+
+        DAI_CHECK(false,
+                  "NNData does not contain all of the specified output layer names. Expected names: [" + joinNames(searchNames) + "], Found: ["
+                      + joinNames(layerNames) + "], Available: [" + joinNames(nnDataLayerNames) + "]");
     }
 
     std::sort(layerNames.begin(), layerNames.end());
@@ -733,7 +904,7 @@ void createImgDetections(const std::vector<DetectionCandidate>& detectionCandida
 void segmentationDecode(const dai::NNData& nnData,
                         std::vector<DetectionCandidate>& detectionCandidates,
                         dai::ImgDetections& outDetections,
-                        DetectionParserProperties properties,
+                        DetectionParserProperties& properties,
                         std::shared_ptr<spdlog::async_logger>& logger) {
     std::pair<int, int> inputSize = nnData.transformation->getSize();
     int inputWidth = inputSize.first;
@@ -741,25 +912,21 @@ void segmentationDecode(const dai::NNData& nnData,
 
     cv::Mat indexMask(inputHeight, inputWidth, CV_8U, cv::Scalar(255));
 
-    auto maskLayerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "masks", std::vector<std::string>{});
-    if(properties.parser.strides.size() != maskLayerNames.size()) {
-        logger->error(
-            "Number of strides does not match number of mask output layers. Strides size: {}, mask output layers size: {}. Skipping segmentation decoding.",
-            properties.parser.strides.size(),
-            maskLayerNames.size());
-        return;
-    }
-    auto protoLayerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "proto", std::vector<std::string>{});
+    std::vector<std::string> maskLayerNames = resolveLayerNames(nnData, std::vector<std::string>{}, "mask");
+
+    DAI_CHECK_V(properties.parser.strides.size() == maskLayerNames.size(),
+                "Number of strides does not match number of mask output layers. Strides size: {}, mask output layers size: {}.",
+                properties.parser.strides.size(),
+                maskLayerNames.size());
+
+    auto protoLayerNames = resolveLayerNames(nnData, std::vector<std::string>{}, "proto");
     if(protoLayerNames.size() == 0) {
         logger->error("Expecting proto output layer, found no layer with proto label. Skipping segmentation decoding.");
         return;
     }
 
     NNDataViewer protoValues = NNDataViewer(*nnData.getTensorInfo(protoLayerNames[0]), nnData.data, logger);
-    if(!protoValues.build()) {
-        logger->error("Failed to build NNDataViewer for proto layer {}. Skipping segmentation decoding.", protoLayerNames[0]);
-        return;
-    }
+    DAI_CHECK_V(protoValues.build(), "Failed to build NNDataViewer for proto layer {}.", protoLayerNames[0]);
 
     TensorInfo protoInfo = *nnData.getTensorInfo(protoLayerNames[0]);
     int protoWidth = protoInfo.getWidth();
@@ -778,7 +945,7 @@ void segmentationDecode(const dai::NNData& nnData,
     dai::NNData& nnDataNonConst = const_cast<dai::NNData&>(nnData);
     xt::xarray<float> protoData = nnDataNonConst.getTensor<float>(protoLayerNames[0], true);
     if(protoInfo.order != dai::TensorInfo::StorageOrder::NHWC) {
-        logger->trace("Proto storage is not NHWC, changing order.");
+        logger->debug("Proto storage is not NHWC, changing order.");
         nnDataNonConst.changeStorageOrder(protoData, protoInfo.order, dai::TensorInfo::StorageOrder::NHWC);
     }
     Eigen::MatrixXf protoMatrix = Eigen::Map<Eigen::MatrixXf>(protoData.data(), protoChannels, protoHeight * protoWidth);
@@ -786,9 +953,7 @@ void segmentationDecode(const dai::NNData& nnData,
     Eigen::RowVectorXf coeffs(protoChannels);
 
     auto maskFromCoeffs = [logger, protoHeight, protoWidth, &maskLow](const Eigen::MatrixXf& protos2d, const Eigen::RowVectorXf& coeffs) -> void {
-        if(protos2d.rows() != coeffs.size()) {
-            throw std::runtime_error("Mask coefficients size does not match proto channels.");
-        }
+        DAI_CHECK_V(protos2d.rows() == coeffs.size(), "Mask coefficients size does not match proto channels.");
 
         Eigen::Map<Eigen::RowVectorXf> logits(maskLow.ptr<float>(), protoHeight * protoWidth);
         logits.noalias() = coeffs * protos2d;
@@ -799,11 +964,14 @@ void segmentationDecode(const dai::NNData& nnData,
 
     std::map<int, NNDataViewer> maskValues;
     for(int strideIdx = 0; strideIdx < static_cast<int>(maskLayerNames.size()); ++strideIdx) {
-        maskValues.try_emplace(strideIdx, *nnData.getTensorInfo(maskLayerNames[strideIdx]), nnData.data, logger);
-        if(!maskValues.at(strideIdx).build()) {
-            logger->error("Failed to build NNDataViewer for mask layer {}. Skipping segmentation decoding.", maskLayerNames[strideIdx]);
+        auto tensorInfo = *nnData.getTensorInfo(maskLayerNames[strideIdx]);
+        if(!isTensorOrderValid(tensorInfo, protoChannels, logger)) {
+            logger->error(
+                "Mask output layer channels ({}) do not match proto channels ({}). Skipping segmentation decoding.", tensorInfo.getChannels(), protoChannels);
             return;
         }
+        maskValues.try_emplace(strideIdx, tensorInfo, nnData.data, logger);
+        DAI_CHECK_V(maskValues.at(strideIdx).build(), "Failed to build NNDataViewer for mask layer {}.", maskLayerNames[strideIdx]);
     }
 
     for(size_t i = 0; i < detectionCandidates.size(); ++i) {  // loop over all detections
@@ -858,16 +1026,15 @@ void keypointDecode(const dai::NNData& nnData,
                     dai::ImgDetections& outDetections,
                     DetectionParserProperties properties,
                     std::shared_ptr<spdlog::async_logger>& logger) {
-    if(!properties.parser.nKeypoints) {
-        logger->warn("Number of keypoints not set in properties.parser.nKeypoints. Skipping keypoints decoding.");
-        return;
-    }
+    DAI_CHECK_V(properties.parser.nKeypoints, "Number of keypoints not set in properties.parser.nKeypoints. Skipping keypoints decoding.");
+    int nKeypoints = *properties.parser.nKeypoints;
 
     int inputWidth;
     int inputHeight;
     std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
 
-    auto yoloLayerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "yolo", properties.parser.outputNamesToUse);
+    auto yoloLayerNames = resolveLayerNames(nnData, properties.parser.outputNamesToUse, "_yolo");
+
     std::vector<int> featureMapWidths;
     for(int i = 0; i < static_cast<int>(yoloLayerNames.size()); ++i) {
         auto tensorInfo = nnData.getTensorInfo(yoloLayerNames[i]);
@@ -878,34 +1045,33 @@ void keypointDecode(const dai::NNData& nnData,
         featureMapWidths.push_back(tensorInfo->getWidth());
     }
 
-    auto kptsLayerNames = DetectionParserUtils::getSortedDetectionLayerNames(nnData, "kpt_output", std::vector<std::string>{});
-    if(properties.parser.strides.size() != kptsLayerNames.size()) {
-        logger->error(
-            "Number of strides does not match number of keypoints output layers. Strides size: {}, keypoints output layers size: {}. Skipping keypoints "
-            "decoding.",
-            properties.parser.strides.size(),
-            kptsLayerNames.size());
-        return;
-    }
+    auto kptsLayerNames = resolveLayerNames(nnData, std::vector<std::string>{}, "kpt_output");
+    DAI_CHECK_V(properties.parser.strides.size() == kptsLayerNames.size(),
+                "Number of strides does not match number of keypoints output layers. Strides size: {}, keypoints output layers size: {}. Skipping keypoints "
+                "decoding.",
+                properties.parser.strides.size(),
+                kptsLayerNames.size());
 
     // TODO (aljaz) move to a function
     std::map<int, NNDataViewer> keypointValues;
     for(int strideIdx = 0; strideIdx < static_cast<int>(kptsLayerNames.size()); ++strideIdx) {
-        keypointValues.try_emplace(strideIdx, *nnData.getTensorInfo(kptsLayerNames[strideIdx]), nnData.data, logger);
-        if(!keypointValues.at(strideIdx).build()) {
-            logger->error("Failed to build NNDataViewer for keypoints layer {}. Skipping keypoints decoding.", kptsLayerNames[strideIdx]);
+        auto tensorInfo = *nnData.getTensorInfo(kptsLayerNames[strideIdx]);
+        if(!isTensorOrderValid(tensorInfo, nKeypoints * 3, logger)) {  // each keypoint has x, y, conf
+            logger->error("Keypoint output layer channels ({}) do not match expected number of keypoints ({}). Skipping keypoints decoding.",
+                          tensorInfo.getChannels(),
+                          nKeypoints * 3);
             return;
         }
+
+        keypointValues.try_emplace(strideIdx, tensorInfo, nnData.data, logger);
+        DAI_CHECK_V(keypointValues.at(strideIdx).build(), "Failed to build NNDataViewer for keypoints layer {}.", kptsLayerNames[strideIdx]);
     }
 
-    if(outDetections.detections.size() != detectionCandidates.size()) {
-        logger->error(
-            "Number of detections in ImgDetections does not match number of detection candidates. ImgDetections size: {}, detection candidates size: {}. "
-            "Skipping keypoints decoding.",
-            outDetections.detections.size(),
-            detectionCandidates.size());
-        return;
-    }
+    DAI_CHECK_V(outDetections.detections.size() == detectionCandidates.size(),
+                "Number of detections in ImgDetections does not match number of detection candidates. ImgDetections size: {}, detection candidates size: {}. "
+                "Skipping keypoints decoding.",
+                outDetections.detections.size(),
+                detectionCandidates.size());
 
     const std::vector<std::string> keypointNames = properties.parser.keypointLabelNames;
 
@@ -914,21 +1080,20 @@ void keypointDecode(const dai::NNData& nnData,
         int flattenedIndex = c.rowIndex * featureMapWidths[c.headIndex] + c.columnIndex;
 
         std::vector<dai::Keypoint> keypoints;
-        keypoints.reserve(*properties.parser.nKeypoints);
+        keypoints.reserve(nKeypoints);
         NNDataViewer keypointMask = keypointValues.at(c.headIndex);
-
-        for(int k = 0; k < properties.parser.nKeypoints; ++k) {
+        for(int k = 0; k < nKeypoints; ++k) {
             int base = 3 * k;
 
             // keypointValues tensor storage order HWC
             //  H == 0
             //  W == 51 == 17 * 3 (x, y, conf for each keypoint)
             //  C == flattened spatial dimensions of row x col of the feature map
-            float x = std::clamp(keypointMask.get(flattenedIndex, 0, base + 0) / inputWidth, 0.0f, 1.0f);
-            float y = std::clamp(keypointMask.get(flattenedIndex, 0, base + 1) / inputHeight, 0.0f, 1.0f);
-            float conf = 1.f / (1.f + std::exp(-(keypointMask.get(flattenedIndex, 0, base + 2))));
+            float x = std::clamp(keypointMask.get(base + 0, 0, flattenedIndex) / inputWidth, 0.0f, 1.0f);
+            float y = std::clamp(keypointMask.get(base + 1, 0, flattenedIndex) / inputHeight, 0.0f, 1.0f);
+            float conf = 1.f / (1.f + std::exp(-(keypointMask.get(base + 2, 0, flattenedIndex))));
             dai::Keypoint kp{dai::Point2f(x, y), conf};
-            if(keypointNames.size() == static_cast<size_t>(*properties.parser.nKeypoints)) {
+            if(keypointNames.size() == static_cast<size_t>(nKeypoints)) {
                 kp.labelName = keypointNames[k];
             }
             keypoints.push_back(kp);

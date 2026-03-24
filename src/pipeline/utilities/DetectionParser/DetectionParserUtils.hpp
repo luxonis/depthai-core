@@ -2,6 +2,7 @@
 #include <spdlog/async_logger.h>
 
 #include <optional>
+#include <vector>
 
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
@@ -49,11 +50,23 @@ void decodeTLBR(const dai::NNData& nnData,
                 DetectionParserProperties& properties,
                 std::shared_ptr<spdlog::async_logger>& logger);
 
-std::vector<std::string> getSortedDetectionLayerNames(const dai::NNData& nnData, std::string searchTerm, std::vector<std::string> outputNames);
+/**
+Process already descoded end to end models TLBR models. e.g. yolo26
+*/
+void decodeEndToEnd(const dai::NNData& nnData,
+                    dai::ImgDetections& outDetections,
+                    DetectionParserProperties& properties,
+                    std::shared_ptr<spdlog::async_logger>& logger);
+
+std::vector<std::string> getSortedLayerNames(const dai::NNData& nnData, const std::vector<std::string>& outputNames);
+
+std::vector<std::string> searchForDefaultLayers(const dai::NNData& nnData, const std::string& searchTerm);
+
+std::vector<std::string> resolveLayerNames(const dai::NNData& nnData, const std::vector<std::string>& outputNamesToUse, const std::string& fallbackSearchTerm);
 
 float YoloIntersectionOverUnion(const DetectionCandidate& box1, const DetectionCandidate& box2);
 
-bool isTensorOrderValid(dai::TensorInfo& tensorInfo, DetectionParserProperties properties, std::shared_ptr<spdlog::async_logger>& logger);
+bool isTensorOrderValid(dai::TensorInfo& tensorInfo, uint32_t channelSize, std::shared_ptr<spdlog::async_logger>& logger);
 
 void createImgDetections(std::vector<DetectionCandidate>& detectionCandidates,
                          std::vector<int> keepIndices,
@@ -67,11 +80,13 @@ void createImgDetections(const std::vector<DetectionCandidate>& detectionCandida
                          unsigned int width,
                          unsigned int height);
 
+void topKFilter(std::vector<DetectionCandidate>& detectionCandidates, int k);
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 void segmentationDecode(const dai::NNData& nnData,
                         std::vector<DetectionCandidate>& detectionCandidates,
                         dai::ImgDetections& outDetections,
-                        DetectionParserProperties properties,
+                        DetectionParserProperties& properties,
                         std::shared_ptr<spdlog::async_logger>& logger);
 #endif
 
