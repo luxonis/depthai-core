@@ -88,6 +88,7 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
     if(fps <= 0) {
         throw std::runtime_error("VideoRecorder fps is invalid");
     }
+    std::filesystem::path pathObj(filePath);
     this->codec = codec;
     this->fps = fps;
     this->width = width;
@@ -96,6 +97,9 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
         case VideoCodec::H264:
         case VideoCodec::MJPEG:
 #ifdef DEPTHAI_ENABLE_MP4V2
+            if(pathObj.extension() != ".mp4") {
+                throw std::runtime_error("Encoded video can only be recorded in .mp4 format");
+            }
             mp4Writer = MP4Create(filePath.c_str());
             if(mp4Writer == MP4_INVALID_FILE_HANDLE) {
                 throw std::runtime_error("Failed to create MP4 file");
@@ -106,10 +110,11 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
 #endif
             break;
         case VideoCodec::RAW:
+            if(pathObj.extension() != ".avi" && pathObj.extension() != ".mkv") {
+                throw std::runtime_error("Raw video can only be recorded in .avi or .mkv format");
+            }
             cvWriter = std::make_unique<cv::VideoWriter>();
-            cvWriter->open(filePath, cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps, cv::Size(width, height));
-            // TODO - It would be better to use a lossless codec here
-            // cvWriter->open(filePath, cv::VideoWriter::fourcc('F','F','V','1'), fps, cv::Size(width, height));
+            cvWriter->open(filePath, cv::VideoWriter::fourcc('F', 'F', 'V', '1'), fps, cv::Size(width, height));
             assert(cvWriter->isOpened());
             break;
     }
@@ -294,7 +299,7 @@ void VideoPlayer::close() {
     }
 }
 
-std::tuple<size_t, size_t> getVideoSize(const std::string& filePath) {
+std::tuple<size_t, size_t, double> getVideoSize(const std::string& filePath) {
     cv::VideoCapture cvReader;
     cvReader.open(filePath);
     if(!cvReader.isOpened()) {
@@ -302,8 +307,9 @@ std::tuple<size_t, size_t> getVideoSize(const std::string& filePath) {
     }
     auto width = cvReader.get(cv::CAP_PROP_FRAME_WIDTH);
     auto height = cvReader.get(cv::CAP_PROP_FRAME_HEIGHT);
+    auto fps = cvReader.get(cv::CAP_PROP_FPS);
     cvReader.release();
-    return {width, height};
+    return {width, height, fps};
 }
 
 }  // namespace utility

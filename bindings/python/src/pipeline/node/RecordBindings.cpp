@@ -24,6 +24,7 @@ void bind_record(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     // Node
     recordVideo.def_readonly("input", &RecordVideo::input, DOC(dai, node, RecordVideo, input))
+        .def("setFps", &RecordVideo::setFps, py::arg("fps"), DOC(dai, node, RecordVideo, setFps))
         .def("setRecordMetadataFile", &RecordVideo::setRecordMetadataFile, py::arg("recordFile"), DOC(dai, node, RecordVideo, setRecordMetadataFile))
         .def("setRecordVideoFile", &RecordVideo::setRecordVideoFile, py::arg("recordFile"), DOC(dai, node, RecordVideo, setRecordVideoFile))
         .def("setCompressionLevel", &RecordVideo::setCompressionLevel, py::arg("compressionLevel"), DOC(dai, node, RecordVideo, setCompressionLevel))

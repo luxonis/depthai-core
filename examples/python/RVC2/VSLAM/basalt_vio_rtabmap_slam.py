@@ -20,7 +20,7 @@ with dai.Pipeline() as p:
             "Rtabmap/SaveWMState": "true"}
     slam.setParams(params)
 
-    rerunViewer = RerunNode()
+    rerunViewer = p.create(RerunNode)
     imu.enableIMUSensor([dai.IMUSensor.ACCELEROMETER_RAW, dai.IMUSensor.GYROSCOPE_RAW], 200)
     imu.setBatchReportThreshold(1)
     imu.setMaxBatchReports(10)

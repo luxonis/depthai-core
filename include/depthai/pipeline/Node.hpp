@@ -626,6 +626,7 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual void buildStage1();
     virtual void buildStage2();
     virtual void buildStage3();
+    virtual void postBuildStage();
 
     /// Retrieves all nodes outputs
     std::vector<Output> getOutputs();

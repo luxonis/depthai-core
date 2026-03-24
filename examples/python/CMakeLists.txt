@@ -372,3 +372,7 @@ endif()
 ## NeuralAssistedStereo
 add_python_example(neural_assisted_stereo NeuralAssistedStereo/neural_assisted_stereo.py)
 dai_set_example_test_labels(neural_assisted_stereo ondevice rvc4 ci)
+
+# Ips output
+add_python_example(camera_isp Camera/camera_isp.py)
+dai_set_example_test_labels(camera_isp rvc2_all rvc4 ci)

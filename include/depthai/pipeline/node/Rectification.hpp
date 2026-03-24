@@ -19,8 +19,8 @@ class Rectification : public DeviceNodeCRTP<DeviceNode, Rectification, Rectifica
     /**
      * Input images to be rectified
      */
-    Input input1{*this, {"input1", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, true}}}};
-    Input input2{*this, {"input2", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, true}}}};
+    Input input1{*this, {"input1", DEFAULT_GROUP, true, 4, {{DatatypeEnum::ImgFrame, true}}}};
+    Input input2{*this, {"input2", DEFAULT_GROUP, true, 4, {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * Passthrough for input messages (so the node can be placed between other nodes)
