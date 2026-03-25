@@ -30,7 +30,7 @@ void DetectionParser::buildInternal() {
         auto platform = device->getPlatform();
         if(platform == Platform::RVC2 && properties.parser.decodeSegmentation) {
             setRunOnHost(true);
-            std::cout << "DetectionParser: YOLO segmentation postprocessing not supported on RVC2. Running parser on host." << std::endl;
+            pimpl->logger->info("YOLO segmentation postprocessing is not supported on RVC2. Running parser on host.");
         }
     }
 }
