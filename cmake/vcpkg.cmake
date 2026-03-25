@@ -37,7 +37,7 @@ if(NOT DEFINED VCPKG_RECURSE_REBUILD_FLAG)
 endif()
 
 
-# check_conditions and find neccessary packages
+# check_conditions and find necessary packages
 find_package(Git REQUIRED)
 
 

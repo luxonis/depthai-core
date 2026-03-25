@@ -56,4 +56,10 @@ TEST_CASE("DynamicCalibration - Commands", "[DynamicCalibrationControl]") {
         auto& c = std::get<DCC::Commands::ApplyCalibration>(cmd->command);
         // Optionally verify that calibration matches (if operator== is defined)
     }
+    SECTION("ComputeMetricCommand command") {
+        dai::CalibrationHandler calHandler;  // Assuming default constructible
+        auto cmd = DCC::computeCalibrationMetrics(calHandler);
+        REQUIRE(std::holds_alternative<DCC::Commands::ComputeCalibrationMetrics>(cmd->command));
+        auto& c = std::get<DCC::Commands::ComputeCalibrationMetrics>(cmd->command);
+    }
 }

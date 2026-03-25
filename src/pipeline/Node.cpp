@@ -593,6 +593,9 @@ void Node::buildStage2() {
 void Node::buildStage3() {
     return;
 };
+void Node::postBuildStage() {
+    return;
+};
 
 void Node::setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l) {
     for(auto& nodeRef : l) {

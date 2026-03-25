@@ -307,7 +307,11 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("processor", &CrashDump::CrashReport::processor, DOC(dai, CrashDump, CrashReport, processor))
         .def_readwrite("errorSource", &CrashDump::CrashReport::errorSource, DOC(dai, CrashDump, CrashReport, errorSource))
         .def_readwrite("crashedThreadId", &CrashDump::CrashReport::crashedThreadId, DOC(dai, CrashDump, CrashReport, crashedThreadId))
-        .def_readwrite("threadCallstack", &CrashDump::CrashReport::threadCallstack, DOC(dai, CrashDump, CrashReport, threadCallstack));
+        .def_readwrite("threadCallstack", &CrashDump::CrashReport::threadCallstack, DOC(dai, CrashDump, CrashReport, threadCallstack))
+        .def_readwrite("prints", &CrashDump::CrashReport::prints, DOC(dai, CrashDump, CrashReport, prints))
+        .def_readwrite("uptimeNs", &CrashDump::CrashReport::uptimeNs, DOC(dai, CrashDump, CrashReport, uptimeNs))
+        .def_readwrite("timerRaw", &CrashDump::CrashReport::timerRaw, DOC(dai, CrashDump, CrashReport, timerRaw))
+        .def_readwrite("statusFlags", &CrashDump::CrashReport::statusFlags, DOC(dai, CrashDump, CrashReport, statusFlags));
 
     errorSourceInfo.def(py::init<>())
         .def_readwrite(
@@ -480,6 +484,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.hasCrashDump();
             },
             DOC(dai, DeviceBase, hasCrashDump))
+        .def(
+            "getState",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getState();
+            },
+            DOC(dai, DeviceBase, getState))
         .def(
             "getConnectedCameras",
             [](DeviceBase& d) {
@@ -912,7 +923,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 py::gil_scoped_release release;
                 return d.isNeuralDepthSupported();
             },
-            DOC(dai, DeviceBase, isNeuralDepthSupported));
+            DOC(dai, DeviceBase, isNeuralDepthSupported))
+        .def(
+            "getSupportedDeviceModels",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getSupportedDeviceModels();
+            },
+            DOC(dai, DeviceBase, getSupportedDeviceModels));
     // Bind constructors
     bindConstructors<Device>(device);
 

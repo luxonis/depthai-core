@@ -24,6 +24,11 @@ on:
         type: string
         default: "stereo"
         description: "Which device to test - stereo or rgb"
+      usb_test:
+        required: false
+        type: string
+        default: "false"
+        description: "Test depthai over USB"
       additional_options:
         required: false
         type: string
@@ -108,4 +113,7 @@ jobs:
             MODELS="oak4_s"
             RGB="rgb"
           fi
-          exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait $ADDITIONAL_OPTIONS --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4$RGB"
+          if [[ "${{ github.event.inputs.usb_test }}" == 'true' ]]; then
+            USB_TEST="usb" #TODO: this is a bit of a hack to pass the USB testing argument, can be refactored when more test arguments are needed
+          fi
+          exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait $ADDITIONAL_OPTIONS --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4$RGB$USB_TEST"
