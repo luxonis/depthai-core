@@ -73,6 +73,7 @@ Eigen::VectorXf k_previous_obs(const std::map<int, Eigen::VectorXf>& observation
 constexpr float kSpatialMinDepthMm = 1.0f;
 constexpr float kSpatialInvalidScore = -1000000.f;
 constexpr float kSpatialMinGateMm = 1.0f;
+constexpr float kMmToM = 1e-3f;
 constexpr float kDefaultFrameDtSec = 1.0f / 30.0f;
 constexpr float kSpatialAccelerationStdMmS2 = 2500.0f;
 constexpr float kSpatialXYMeasurementStdMm = 45.0f;
@@ -260,8 +261,8 @@ class OCSTracker::State {
         void sync_tracklet_motion(size_t idx) {
             if(idx >= trackers.size() || idx >= tracklets.size()) return;
             const auto& spatialVelocity = trackers[idx].spatial_velocity;
-            tracklets[idx].velocity = Point3f(spatialVelocity(0), spatialVelocity(1), spatialVelocity(2));
-            tracklets[idx].speed = spatialVelocity.norm();
+            tracklets[idx].velocity = Point3f(spatialVelocity(0) * kMmToM, spatialVelocity(1) * kMmToM, spatialVelocity(2) * kMmToM);
+            tracklets[idx].speed = spatialVelocity.norm() * kMmToM;
         }
         void remove_tracker(size_t idx) {
             if(idx < trackers.size()) {
@@ -1172,7 +1173,7 @@ Eigen::RowVectorXf OCSTracker::State::KalmanBoxTracker::predict() {
     if(has_spatial_state) {
         kf_spatial->predict();
         spatial_prediction.position.head<3>() = kf_spatial->x.head<3>();
-        spatial_prediction.validPosition = true;
+        spatial_prediction.validPosition = spatial_prediction.position(2) >= kSpatialMinDepthMm;
         spatial_velocity = kf_spatial->x.segment<3>(3);
     } else {
         spatial_prediction = SpatialPosition();

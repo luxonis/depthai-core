@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/ObjectTracker.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -56,13 +57,13 @@ void ObjectTracker::setSpatialAssociation(bool enabled) {
     properties.spatialAssociation = enabled;
 }
 void ObjectTracker::setSpatialAssociationWeight(float weight) {
-    properties.spatialAssociationWeight = weight;
+    properties.spatialAssociationWeight = std::clamp(weight, 0.0f, 1.0f);
 }
-void ObjectTracker::setSpatialDistanceThreshold(float thresholdMm) {
-    properties.spatialDistanceThreshold = thresholdMm;
+void ObjectTracker::setSpatialDistanceThreshold(float thresholdMeters) {
+    properties.spatialDistanceThreshold = std::max(thresholdMeters * 1000.0f, 1.0f);
 }
 void ObjectTracker::setSpatialDepthAwareScale(float scale) {
-    properties.spatialDepthAwareScale = scale;
+    properties.spatialDepthAwareScale = std::max(scale, 0.0f);
 }
 void ObjectTracker::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;

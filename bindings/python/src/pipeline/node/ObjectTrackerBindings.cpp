@@ -89,7 +89,7 @@ void bind_objecttracker(pybind11::module& m, void* pCallstack) {
              DOC(dai, node, ObjectTracker, setSpatialAssociationWeight))
         .def("setSpatialDistanceThreshold",
              &ObjectTracker::setSpatialDistanceThreshold,
-             py::arg("thresholdMm"),
+             py::arg("thresholdMeters"),
              DOC(dai, node, ObjectTracker, setSpatialDistanceThreshold))
         .def(
             "setSpatialDepthAwareScale", &ObjectTracker::setSpatialDepthAwareScale, py::arg("scale"), DOC(dai, node, ObjectTracker, setSpatialDepthAwareScale));
