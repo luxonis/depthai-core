@@ -24,17 +24,6 @@ namespace node {
 
 DetectionParser::~DetectionParser() = default;
 
-void DetectionParser::buildInternal() {
-    auto device = getDevice();
-    if(device) {
-        auto platform = device->getPlatform();
-        if(platform == Platform::RVC2 && properties.parser.decodeSegmentation) {
-            setRunOnHost(true);
-            pimpl->logger->info("YOLO segmentation postprocessing is not supported on RVC2. Running parser on host.");
-        }
-    }
-}
-
 void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
     constexpr int DEFAULT_SUPERBLOB_NUM_SHAVES = 8;
     switch(nnArchive.getModelType()) {
@@ -521,15 +510,24 @@ void DetectionParser::buildStage1() {
     }
     if(inTensorInfo.size() > 0) {
         int numDimensions = inTensorInfo[0].numDimensions;
-        if(numDimensions < 2) {
-            logger->error("Number of input dimensions is less than 2");
-        } else {
-            imgSizesSet = true;
-            imgWidth = inTensorInfo[0].dims[numDimensions - 1];
-            imgHeight = inTensorInfo[0].dims[numDimensions - 2];
-        }
+        DAI_CHECK_V(numDimensions >= 2,
+                    "Number of specified input dimensions is less than 2. Number of dimensions specified: {}. Please specify at least 2 dimensions (height and "
+                    "width) for the input tensor.",
+                    numDimensions);
+        imgSizesSet = true;
+        imgWidth = inTensorInfo[0].dims[numDimensions - 1];
+        imgHeight = inTensorInfo[0].dims[numDimensions - 2];
     } else {
         logger->info("Unable to read input tensor height and width from static inputs. The node will try to get input sizes at runtime.");
+    }
+
+    auto device = getDevice();
+    if(device) {
+        auto platform = device->getPlatform();
+        if(platform == Platform::RVC2 && properties.parser.decodeSegmentation) {
+            setRunOnHost(true);
+            logger->info("YOLO segmentation postprocessing is not supported on RVC2. Running postprocessing on host.");
+        }
     }
 }
 
