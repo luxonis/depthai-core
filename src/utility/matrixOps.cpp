@@ -21,7 +21,7 @@ std::vector<float> matVecMul(const std::vector<std::vector<float>>& matrix, cons
         if(matrix[i].size() != vec.size()) {
             throw std::runtime_error("All matrix rows dimensions need to match the vector size.");
         }
-        for(size_t j = 0; j < matrix[0].size(); ++j) {
+        for(size_t j = 0; j < vec.size(); ++j) {
             res[i] += matrix[i][j] * vec[j];
         }
     }

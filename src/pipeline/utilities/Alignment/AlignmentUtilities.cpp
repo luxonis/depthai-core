@@ -139,16 +139,17 @@ inline std::array<float, 3> distortRadialDivision(std::array<float, 3> point, co
 
 std::array<float, 3> distortPoint(std::array<float, 3> point, dai::CameraModel model, const std::vector<float>& coeffs) {
     if(coeffs.empty() || !hasNonZeroDistortion(coeffs)) return point;
+    auto homogeneousPoint = dai::matrix::dehomogenizePoint3(point);
     switch(model) {
         case dai::CameraModel::Perspective:
-            return distortPerspective(point, coeffs);
+            return distortPerspective(homogeneousPoint, coeffs);
         case dai::CameraModel::Fisheye:
-            return distortFisheye(point, coeffs);
+            return distortFisheye(homogeneousPoint, coeffs);
         case dai::CameraModel::RadialDivision:
-            return distortRadialDivision(point, coeffs);
+            return distortRadialDivision(homogeneousPoint, coeffs);
         case dai::CameraModel::Equirectangular:
         default:
-            return point;
+            return homogeneousPoint;
     }
 }
 
@@ -255,8 +256,10 @@ std::array<float, 3> undistortRadialDivision(std::array<float, 3> point, const s
         const float r4 = r2 * r2;
         const float r6 = r4 * r2;
         const float scale = 1.0f + k1 * r2 + k2 * r4 + k3 * r6;
+        if(!std::isfinite(scale) || std::abs(scale) < kTiny) break;
         const float x = point[0] * scale;
         const float y = point[1] * scale;
+        if(!std::isfinite(x) || !std::isfinite(y)) break;
         const float dx = x - undistorted[0];
         const float dy = y - undistorted[1];
         undistorted[0] += dx;
@@ -367,7 +370,8 @@ std::array<float, 3> opencvUndistortPoint(dai::Point2f px, const dai::ImgTransfo
 
 dai::Point2f opencvDistortRay(const std::array<float, 3> ray, const dai::ImgTransformation& transformation) {
     std::vector<cv::Point3f> src = {cv::Point3f(ray[0], ray[1], ray[2])};
-    std::vector<cv::Point2f> normalizedSrc = {cv::Point2f(ray[0] / ray[2], ray[1] / ray[2])};
+    std::vector<cv::Point2f> normalizedSrc;
+
     const cv::Matx33d cameraMatrix = makeCameraMatrix(transformation.getSourceIntrinsicMatrix());
     const auto distortionModel = transformation.getDistortionModel();
     const auto distortionCoeffsVec = transformation.getDistortionCoefficients();
@@ -379,6 +383,11 @@ dai::Point2f opencvDistortRay(const std::array<float, 3> ray, const dai::ImgTran
             cv::projectPoints(src, cv::Vec3d(0.0, 0.0, 0.0), cv::Vec3d(0.0, 0.0, 0.0), cameraMatrix, distortionCoeffs, projected);
             break;
         case dai::CameraModel::Fisheye:
+            normalizedSrc = {cv::Point2f(ray[0], ray[1])};
+            if(ray[2] >= kTiny) {
+                normalizedSrc[0].x = ray[0] / ray[2];
+                normalizedSrc[0].y = ray[1] / ray[2];
+            }
             cv::fisheye::distortPoints(normalizedSrc, projected, cameraMatrix, distortionCoeffs);
             break;
         case dai::CameraModel::RadialDivision:
