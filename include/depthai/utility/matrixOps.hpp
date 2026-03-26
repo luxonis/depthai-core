@@ -7,6 +7,9 @@
 #include <iostream>
 #include <vector>
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #include <opencv2/core.hpp>
+#endif
 namespace dai {
 namespace matrix {
 
@@ -49,5 +52,18 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat);
 std::array<std::array<float, 4>, 4> invertSe3Matrix4x4(const std::array<std::array<float, 4>, 4>& matrix);
 
 void printMatrix(std::vector<std::vector<float>>& matrix);
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+
+std::array<std::array<float, 3>, 3> cvMatToMatrix3x3(const cv::Mat& cvMat);
+
+std::array<std::array<float, 4>, 4> cvMatToMatrix4x4(const cv::Mat& cvMat);
+
+cv::Mat matrix3x3ToCvMat(const std::array<std::array<float, 3>, 3>& matrix);
+
+cv::Mat matrix4x4ToCvMat(const std::array<std::array<float, 4>, 4>& matrix);
+
+#endif
+
 }  // namespace matrix
 }  // namespace dai
