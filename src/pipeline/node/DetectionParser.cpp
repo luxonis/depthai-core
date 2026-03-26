@@ -510,13 +510,13 @@ void DetectionParser::buildStage1() {
     }
     if(inTensorInfo.size() > 0) {
         int numDimensions = inTensorInfo[0].numDimensions;
-        DAI_CHECK_V(numDimensions >= 2,
-                    "Number of specified input dimensions is less than 2. Number of dimensions specified: {}. Please specify at least 2 dimensions (height and "
-                    "width) for the input tensor.",
-                    numDimensions);
-        imgSizesSet = true;
-        imgWidth = inTensorInfo[0].dims[numDimensions - 1];
-        imgHeight = inTensorInfo[0].dims[numDimensions - 2];
+        if(numDimensions < 2) {
+            logger->warn("Number of specified input dimensions is less than 2 ({}). The node will try to get input sizes at runtime.", numDimensions);
+        } else {
+            imgSizesSet = true;
+            imgWidth = inTensorInfo[0].dims[numDimensions - 1];
+            imgHeight = inTensorInfo[0].dims[numDimensions - 2];
+        }
     } else {
         logger->info("Unable to read input tensor height and width from static inputs. The node will try to get input sizes at runtime.");
     }
