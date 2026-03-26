@@ -157,6 +157,11 @@ struct Extrinsics {
         if(!matrix::mateq(rotationMatrix, other.rotationMatrix, epsilon)) {
             return false;
         }
+
+        if(this->toCameraSocket != other.toCameraSocket) {
+            return false;
+        }
+
         const auto thisTranslation = getTranslationVector(false, LengthUnit::CENTIMETER);
         const auto otherTranslation = other.getTranslationVector(false, LengthUnit::CENTIMETER);
         for(size_t i = 0; i < 3; ++i) {

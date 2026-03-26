@@ -556,7 +556,7 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
 }
 
 Extrinsics CalibrationHandler::getExtrinsicsToLowestSocket(dai::CameraBoardSocket cameraId) const {
-    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
+    if(!hasCameraCalibration(cameraId)) {
         throw std::runtime_error("There is no Camera data available corresponding to the requested cameraId");
     }
 
