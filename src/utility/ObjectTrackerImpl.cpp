@@ -675,17 +675,68 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
         }
     }
 
+    auto apply_soft_spatial_rematch_score = [&](Eigen::MatrixXf& scores, const Eigen::MatrixXf& detection_spatial, const Eigen::MatrixXf& tracker_spatial) {
+        const bool spatial_available = parent->use_spatial_association && detection_spatial.rows() == scores.rows() && tracker_spatial.rows() == scores.cols()
+                                       && detection_spatial.cols() >= 4 && tracker_spatial.cols() >= 4;
+        if(!spatial_available) return;
+
+        // Keep fallback rounds IoU-dominant to preserve recovery recall.
+        const float beta = std::clamp(parent->spatial_association_weight, 0.0f, 0.25f);
+        if(beta <= 0.0f) return;
+        if(scores.cols() < 2) return;
+        constexpr float kFallbackSpatialTieEpsilon = 0.02f;
+
+        for(int i = 0; i < scores.rows(); i++) {
+            float best = -std::numeric_limits<float>::infinity();
+            float second = -std::numeric_limits<float>::infinity();
+            for(int j = 0; j < scores.cols(); j++) {
+                const float v = scores(i, j);
+                if(v > best) {
+                    second = best;
+                    best = v;
+                } else if(v > second) {
+                    second = v;
+                }
+            }
+            const float iouGap = best - second;
+            if(iouGap > kFallbackSpatialTieEpsilon) {
+                continue;
+            }
+
+            for(int j = 0; j < scores.cols(); j++) {
+                if(best - scores(i, j) > kFallbackSpatialTieEpsilon) continue;
+                const bool validPair = detection_spatial(i, 3) > 0.5f && tracker_spatial(j, 3) > 0.5f;
+                if(!validPair) continue;
+
+                const float dx = detection_spatial(i, 0) - tracker_spatial(j, 0);
+                const float dy = detection_spatial(i, 1) - tracker_spatial(j, 1);
+                const float dz = detection_spatial(i, 2) - tracker_spatial(j, 2);
+                const float spatialDistance = std::sqrt(dx * dx + dy * dy + dz * dz);
+                const float depthRef = std::max(kSpatialMinDepthMm, 0.5f * (detection_spatial(i, 2) + tracker_spatial(j, 2)));
+                const float depthMeters = std::max(0.0f, depthRef) * kMmToM;
+                const float scale = std::max(parent->spatial_distance_threshold * (1.0f + parent->spatial_depth_aware_scale * depthMeters), kSpatialMinGateMm);
+                const float normalizedDistance = std::min(spatialDistance / scale, 1.0f);
+                const float spatialSimilarity = 1.0f - normalizedDistance;
+                scores(i, j) = (1.0f - beta) * scores(i, j) + beta * spatialSimilarity;
+            }
+        }
+    };
+
     ///////////////////////
     /// Step2 Second round of associaton by OCR to find lost tracks back
     //////////////////////
     if(true == use_byte && dets_second.rows() > 0 && unmatched_trks.size() > 0) {
         Eigen::MatrixXf u_trks(unmatched_trks.size(), trks.cols());
+        Eigen::MatrixXf u_trks_spatial(unmatched_trks.size(), trks_spatial.cols());
         int index_for_u_trks = 0;
         for(auto i : unmatched_trks) {
-            u_trks.row(index_for_u_trks++) = trks.row(i);
+            u_trks.row(index_for_u_trks) = trks.row(i);
+            u_trks_spatial.row(index_for_u_trks) = trks_spatial.row(i);
+            index_for_u_trks++;
         }
         Eigen::MatrixXf iou_left = asso_func(dets_second, u_trks);
-        // Eigen::MatrixXf iou_left = asso_func(dets_second, u_trks);
+        Eigen::MatrixXf rematch_scores = iou_left;
+        apply_soft_spatial_rematch_score(rematch_scores, dets_second_spatial, u_trks_spatial);
         if(iou_left.maxCoeff() > iou_threshold) {
             /**
                 NOTE: by using a lower threshold, e.g., self.iou_threshold - 0.1, you may
@@ -695,7 +746,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
             std::vector<std::vector<float>> iou_matrix(iou_left.rows(), std::vector<float>(iou_left.cols()));
             for(int i = 0; i < iou_left.rows(); i++) {
                 for(int j = 0; j < iou_left.cols(); j++) {
-                    iou_matrix[i][j] = -iou_left(i, j);
+                    iou_matrix[i][j] = -rematch_scores(i, j);
                 }
             }
             std::vector<int> rowsol, colsol;
@@ -739,16 +790,24 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
 
     if(unmatched_dets.size() > 0 && unmatched_trks.size() > 0) {
         Eigen::MatrixXf left_dets(unmatched_dets.size(), 7);
+        Eigen::MatrixXf left_dets_spatial(unmatched_dets.size(), dets_first_spatial.cols());
         int inx_for_dets = 0;
         for(auto i : unmatched_dets) {
-            left_dets.row(inx_for_dets++) = dets_first.row(i);
+            left_dets.row(inx_for_dets) = dets_first.row(i);
+            left_dets_spatial.row(inx_for_dets) = dets_first_spatial.row(i);
+            inx_for_dets++;
         }
         Eigen::MatrixXf left_trks(unmatched_trks.size(), last_boxes.cols());
+        Eigen::MatrixXf left_trks_spatial(unmatched_trks.size(), trks_spatial.cols());
         int indx_for_trk = 0;
         for(auto i : unmatched_trks) {
-            left_trks.row(indx_for_trk++) = last_boxes.row(i);
+            left_trks.row(indx_for_trk) = last_boxes.row(i);
+            left_trks_spatial.row(indx_for_trk) = trks_spatial.row(i);
+            indx_for_trk++;
         }
         Eigen::MatrixXf iou_left = asso_func(left_dets, left_trks);
+        Eigen::MatrixXf rematch_scores = iou_left;
+        apply_soft_spatial_rematch_score(rematch_scores, left_dets_spatial, left_trks_spatial);
         if(iou_left.maxCoeff() > iou_threshold) {
             /**
                 NOTE: by using a lower threshold, e.g., self.iou_threshold - 0.1, you may
@@ -758,7 +817,7 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
             std::vector<std::vector<float>> iou_matrix(iou_left.rows(), std::vector<float>(iou_left.cols()));
             for(int i = 0; i < iou_left.rows(); i++) {
                 for(int j = 0; j < iou_left.cols(); j++) {
-                    iou_matrix[i][j] = -iou_left(i, j);
+                    iou_matrix[i][j] = -rematch_scores(i, j);
                 }
             }
             std::vector<int> rowsol, colsol;

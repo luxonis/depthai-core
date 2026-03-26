@@ -131,7 +131,8 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
 
     /**
      * Set spatial association weight in [0,1].
-     * @param weight Spatial association weight in [0,1], where 0 uses only 2D association cost and 1 uses only spatial association cost. Default is 0.5.
+     * @param weight Spatial association weight in [0,1] used to blend 2D and spatial association scores (0 = 2D-only scoring, 1 = spatial-only scoring).
+     *               This weight affects candidate scoring only; final acceptance still requires passing the 2D IoU threshold gate. Default is 0.5.
      */
     void setSpatialAssociationWeight(float weight);
 
