@@ -505,8 +505,23 @@ void OCSTracker::State::KalmanBoxTracker::update(Eigen::Matrix<float, 5, 1>* bbo
         kf_spatial->R(0, 0) = xyStd * xyStd;
         kf_spatial->R(1, 1) = xyStd * xyStd;
         kf_spatial->R(2, 2) = zStd * zStd;
-        kf_spatial->update(spatialZ);
         spatial_observation = spatialMeasurement;
+        if(!has_spatial_state) {
+            kf_spatial->x.head<3>() = spatialMeasurement.position;
+            kf_spatial->x.segment<3>(3).setZero();
+
+            const float xyVar = xyStd * xyStd;
+            const float zVar = zStd * zStd;
+            kf_spatial->P = Eigen::MatrixXf::Zero(6, 6);
+            kf_spatial->P(0, 0) = std::max(0.25f * xyVar, kSpatialProcessNoiseMinPos);
+            kf_spatial->P(1, 1) = std::max(0.25f * xyVar, kSpatialProcessNoiseMinPos);
+            kf_spatial->P(2, 2) = std::max(0.25f * zVar, kSpatialProcessNoiseMinPos);
+            kf_spatial->P(3, 3) = std::max(100.0f * xyVar, kSpatialProcessNoiseMinVel);
+            kf_spatial->P(4, 4) = std::max(100.0f * xyVar, kSpatialProcessNoiseMinVel);
+            kf_spatial->P(5, 5) = std::max(100.0f * zVar, kSpatialProcessNoiseMinVel);
+        } else {
+            kf_spatial->update(spatialZ);
+        }
         spatial_prediction.position.head<3>() = kf_spatial->x.head<3>();
         spatial_prediction.validPosition = true;
         spatial_velocity = kf_spatial->x.segment<3>(3);
