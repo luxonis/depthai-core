@@ -55,7 +55,8 @@ void bind_imagefilters(py::module& m, void* pCallstack) {
     py::enum_<ImageFiltersPresetMode>(m, "ImageFiltersPresetMode")
         .value("TOF_LOW_RANGE", ImageFiltersPresetMode::TOF_LOW_RANGE)
         .value("TOF_MID_RANGE", ImageFiltersPresetMode::TOF_MID_RANGE)
-        .value("TOF_HIGH_RANGE", ImageFiltersPresetMode::TOF_HIGH_RANGE);
+        .value("TOF_HIGH_RANGE", ImageFiltersPresetMode::TOF_HIGH_RANGE)
+        .value("TOF_OFF", ImageFiltersPresetMode::TOF_OFF);
 
     // StereoDepthFilterPipeline bindings
     imageFilters.def_readonly("input", &ImageFilters::input, DOC(dai, node, ImageFilters, input))

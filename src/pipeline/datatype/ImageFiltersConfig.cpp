@@ -129,6 +129,11 @@ void ImageFiltersConfig::setProfilePreset(ImageFiltersPresetMode presetMode) {
             this->filterParams = params;
             this->filterIndices = {};
         } break;
+
+        case ImageFiltersPresetMode::TOF_OFF: {
+            this->filterParams = {};
+            this->filterIndices = {};
+        } break;
     }
 }
 
@@ -142,6 +147,9 @@ void ToFDepthConfidenceFilterConfig::setProfilePreset(ImageFiltersPresetMode pre
         } break;
         case ImageFiltersPresetMode::TOF_HIGH_RANGE: {
             this->confidenceThreshold = 0.3f;
+        } break;
+        case ImageFiltersPresetMode::TOF_OFF: {
+            this->confidenceThreshold = 0.0f;
         } break;
     }
 }

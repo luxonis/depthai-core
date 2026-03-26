@@ -25,7 +25,13 @@ void ToFConfig::setProfilePreset(ImageFiltersPresetMode presetMode) {
         case ImageFiltersPresetMode::TOF_HIGH_RANGE: {
             this->phaseUnwrapErrorThreshold = 130;
         } break;
+        case ImageFiltersPresetMode::TOF_OFF: {
+            this->phaseUnwrapErrorThreshold = 10000;
+        } break;
     }
+    // IPP filter fields (std::optional): when unset, IPP keeps its own built-in
+    // defaults — which have bilateral, TNR, flying-pixel and R2P all ENABLED.
+    // Only the host-side ImageFilters node is controlled separately via TOF_OFF preset.
 }
 
 }  // namespace dai

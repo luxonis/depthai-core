@@ -65,6 +65,60 @@ class ToFConfig : public Buffer {
      */
     std::optional<bool> enablePhaseUnwrapping;
 
+    /*
+     * Enable bilateral filter inside IPP pipeline.
+     * Default: not set (IPP default used). When false, bilateral filtering is bypassed.
+     */
+    std::optional<bool> enableBilateralFilter;
+
+    /*
+     * Bilateral filter standard deviation factor.
+     */
+    std::optional<float> bilateralStdFactor;
+
+    /*
+     * Bilateral filter kernel size.
+     */
+    std::optional<uint32_t> bilateralFilterKernelSize;
+
+    /*
+     * Enable temporal noise reduction inside IPP pipeline.
+     * Default: not set (IPP default used). When false, TNR is bypassed.
+     */
+    std::optional<bool> enableTemporalNoiseReduction;
+
+    /*
+     * Temporal noise reduction max gain.
+     */
+    std::optional<float> tnrMaxGain;
+
+    /*
+     * Temporal noise reduction standard deviation factor.
+     */
+    std::optional<float> tnrStdFactor;
+
+    /*
+     * Enable flying pixel correction inside IPP pipeline.
+     * Default: not set (IPP default used). When false, flying pixel correction is bypassed.
+     */
+    std::optional<bool> enableFlyingPixelCorrection;
+
+    /*
+     * Flying pixel correction depth threshold.
+     */
+    std::optional<float> fpDepthThreshold;
+
+    /*
+     * Flying pixel correction minimum depth occurrence.
+     */
+    std::optional<float> fpMinDepthOccurrence;
+
+    /*
+     * Enable radial to perpendicular depth conversion inside IPP pipeline.
+     * Default: not set (IPP default used). When false, R2P is bypassed.
+     */
+    std::optional<bool> enableRadialToPerp;
+
     /**
      * Construct ToFConfig message.
      */
@@ -99,7 +153,17 @@ class ToFConfig : public Buffer {
                       enableWiggleCorrection,
                       enablePhaseUnwrapping,
                       phaseUnwrappingLevel,
-                      phaseUnwrapErrorThreshold);
+                      phaseUnwrapErrorThreshold,
+                      enableBilateralFilter,
+                      bilateralStdFactor,
+                      bilateralFilterKernelSize,
+                      enableTemporalNoiseReduction,
+                      tnrMaxGain,
+                      tnrStdFactor,
+                      enableFlyingPixelCorrection,
+                      fpDepthThreshold,
+                      fpMinDepthOccurrence,
+                      enableRadialToPerp);
 };
 
 }  // namespace dai

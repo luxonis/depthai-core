@@ -24,6 +24,10 @@ enum class ImageFiltersPresetMode : std::uint32_t {
 
     /// Optimized for high range ToF measurements (e.g., 1m–6m).
     TOF_HIGH_RANGE,
+
+    /// All host-side ImageFilters disabled (passthrough). Suitable when
+    /// the sensor IPP already performs its own filtering (e.g. VD55H1).
+    TOF_OFF,
 };
 
 // union of all filter params
