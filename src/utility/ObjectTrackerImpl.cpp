@@ -78,6 +78,7 @@ constexpr float kDefaultFrameDtSec = 1.0f / 30.0f;
 constexpr float kSpatialAccelerationStdMmS2 = 2500.0f;
 constexpr float kSpatialXYMeasurementStdMm = 45.0f;
 constexpr float kSpatialZMeasurementStdMm = 80.0f;
+constexpr float kDepthReferenceMm = 4000.0f;
 constexpr float kSpatialProcessNoiseMinPos = 1e-3f;
 constexpr float kSpatialProcessNoiseMinVel = 1e-2f;
 
@@ -497,7 +498,7 @@ void OCSTracker::State::KalmanBoxTracker::update(Eigen::Matrix<float, 5, 1>* bbo
         const SpatialPosition spatialMeasurement = SpatialPosition(*spatialPoint_);
         Eigen::VectorXf spatialZ(3);
         spatialZ << spatialMeasurement.position(0), spatialMeasurement.position(1), spatialMeasurement.position(2);
-        const float depthFactor = 1.0f + (std::max(spatialMeasurement.position(2), 0.0f) / 4000.0f);
+        const float depthFactor = 1.0f + (std::max(spatialMeasurement.position(2), 0.0f) / kDepthReferenceMm);
         const float xyStd = kSpatialXYMeasurementStdMm * depthFactor;
         const float zStd = kSpatialZMeasurementStdMm * depthFactor;
         kf_spatial->R = Eigen::MatrixXf::Identity(3, 3);
@@ -1156,7 +1157,7 @@ std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>, std::vector<
                 const float dz = detection_spatial(i, 2) - tracker_spatial(j, 2);
                 const float spatialDistance = std::sqrt(dx * dx + dy * dy + dz * dz);
                 const float depthRef = std::max(kSpatialMinDepthMm, 0.5f * (detection_spatial(i, 2) + tracker_spatial(j, 2)));
-                const float depthMeters = std::max(0.0f, depthRef) / 1000.0f;
+                const float depthMeters = std::max(0.0f, depthRef) * kMmToM;
                 const float gate = std::max(spatial_distance_threshold * (1.0f + spatial_depth_aware_scale * depthMeters), kSpatialMinGateMm);
                 const bool gatePass = spatialDistance <= gate;
                 spatial_gate_ok(i, j) = gatePass;
