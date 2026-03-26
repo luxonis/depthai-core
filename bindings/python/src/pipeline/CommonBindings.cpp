@@ -619,7 +619,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("anchorsV2", &DetectionParserOptions::anchorsV2)
         .def_readwrite("decodeKeypoints", &DetectionParserOptions::decodeKeypoints)
         .def_readwrite("numKeypoints", &DetectionParserOptions::nKeypoints)
-        .def_readwrite("outputNames", &DetectionParserOptions::outputNamesToUse);
+        .def_readwrite("outputNames", &DetectionParserOptions::outputNamesToUse)
+        .def_readwrite("maskOutputNames", &DetectionParserOptions::maskOutputNames)
+        .def_readwrite("kptsOutputNames", &DetectionParserOptions::kptsOutputNames);
 
     cameraExposureOffset.value("START", CameraExposureOffset::START).value("MIDDLE", CameraExposureOffset::MIDDLE).value("END", CameraExposureOffset::END);
 

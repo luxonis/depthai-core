@@ -143,7 +143,7 @@ void decodeR1AF(const dai::NNData& nnData,
     if(keepCandidates.size() == 0) {
         return;
     }
-    if(!properties.parser.classNames->empty()) {
+    if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
             candidate.labelName = (*properties.parser.classNames)[candidate.label];
         }
@@ -186,8 +186,6 @@ void decodeV3AB(const dai::NNData& nnData,
     const float confidenceThr = properties.parser.confidenceThreshold;
     const float iouThr = properties.parser.iouThreshold;
     const int numClasses = properties.parser.classes;
-    int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
-    int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
     int inputWidth;
     int inputHeight;
     std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
@@ -210,6 +208,9 @@ void decodeV3AB(const dai::NNData& nnData,
             logger->error("Could not find tensor info for layer {}. Skipping this layer", layerName);
             continue;
         }
+        std::vector<std::vector<float>>& anchors = properties.parser.anchorsV2[strideIdx];
+        int anchorMultiplier = anchors.size();
+        int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
 
         if(!isTensorOrderValid(*tensorInfo, channelSize, logger)) {
             logger->error("Tensor order for layer {} is invalid, skipping this layer", layerName);
@@ -223,7 +224,6 @@ void decodeV3AB(const dai::NNData& nnData,
         NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
         DAI_CHECK_V(outputData.build(), "Failed to build NNDataViewer for layer {}", layerName);
 
-        std::vector<std::vector<float>>& anchors = properties.parser.anchorsV2[strideIdx];
         int numAnchors = anchors.size();
         int block = 5 + numClasses;
         int expectedC = numAnchors * block;
@@ -293,7 +293,7 @@ void decodeV3AB(const dai::NNData& nnData,
         return;
     }
 
-    if(!properties.parser.classNames->empty()) {
+    if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
             candidate.labelName = (*properties.parser.classNames)[candidate.label];
         }
@@ -337,8 +337,6 @@ void decodeV5AB(const dai::NNData& nnData,
     const float confidenceThr = properties.parser.confidenceThreshold;
     const float iouThr = properties.parser.iouThreshold;
     const int numClasses = properties.parser.classes;
-    int anchorMultiplier = properties.parser.anchorsV2.empty() ? 1 : static_cast<int>(properties.parser.anchorsV2.size());
-    int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
     int inputWidth;
     int inputHeight;
     std::tie(inputWidth, inputHeight) = nnData.transformation->getSize();
@@ -362,6 +360,10 @@ void decodeV5AB(const dai::NNData& nnData,
             continue;
         }
 
+        std::vector<std::vector<float>>& anchors = properties.parser.anchorsV2[strideIdx];
+        int anchorMultiplier = anchors.size();
+        int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
+
         if(!isTensorOrderValid(*tensorInfo, channelSize, logger)) {
             logger->error("Tensor order for layer {} is invalid, skipping this layer", layerName);
             continue;
@@ -374,7 +376,6 @@ void decodeV5AB(const dai::NNData& nnData,
         NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
         DAI_CHECK_V(outputData.build(), "Failed to build NNDataViewer for layer {}", layerName);
 
-        std::vector<std::vector<float>>& anchors = properties.parser.anchorsV2[strideIdx];
         int numAnchors = anchors.size();
         int block = 5 + numClasses;
         int expectedC = numAnchors * block;
@@ -443,7 +444,7 @@ void decodeV5AB(const dai::NNData& nnData,
         return;
     }
 
-    if(!properties.parser.classNames->empty()) {
+    if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
             candidate.labelName = (*properties.parser.classNames)[candidate.label];
         }
@@ -562,7 +563,7 @@ void decodeTLBR(const dai::NNData& nnData,
         return;
     }
 
-    if(!properties.parser.classNames->empty()) {
+    if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
             candidate.labelName = (*properties.parser.classNames)[candidate.label];
         }
@@ -609,6 +610,7 @@ void decodeEndToEnd(const dai::NNData& nnData,
     DAI_CHECK_V(inputWidth > 0 && inputHeight > 0, "Invalid input dimensions retrieved from NNData transformation.");
 
     std::vector<DetectionCandidate> detectionCandidates;
+    detectionCandidates.reserve(defaultMaxDetectionsPerFrame);
 
     auto tensorInfo = nnData.getTensorInfo(searchLayer);
 
@@ -629,7 +631,6 @@ void decodeEndToEnd(const dai::NNData& nnData,
         logger->error("Invalid end-to-end output spatial size: height {}, width {}. Skipping.", layerHeight, layerWidth);
         return;
     }
-    detectionCandidates.reserve(static_cast<size_t>(layerHeight) * static_cast<size_t>(layerWidth));
 
     NNDataViewer outputData = NNDataViewer(*tensorInfo, nnData.data, logger);
     DAI_CHECK_V(outputData.build(), "Failed to build NNDataViewer for layer {}", searchLayer);
@@ -674,7 +675,7 @@ void decodeEndToEnd(const dai::NNData& nnData,
         return;
     }
 
-    if(!parser.classNames->empty()) {
+    if(parser.classNames && !parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
             candidate.labelName = (*parser.classNames)[candidate.label];
         }
@@ -912,7 +913,7 @@ void segmentationDecode(const dai::NNData& nnData,
 
     cv::Mat indexMask(inputHeight, inputWidth, CV_8U, cv::Scalar(255));
 
-    std::vector<std::string> maskLayerNames = resolveLayerNames(nnData, std::vector<std::string>{}, "mask");
+    std::vector<std::string> maskLayerNames = resolveLayerNames(nnData, properties.parser.maskOutputNames, "mask");
 
     DAI_CHECK_V(properties.parser.strides.size() == maskLayerNames.size(),
                 "Number of strides does not match number of mask output layers. Strides size: {}, mask output layers size: {}.",
@@ -1045,7 +1046,7 @@ void keypointDecode(const dai::NNData& nnData,
         featureMapWidths.push_back(tensorInfo->getWidth());
     }
 
-    auto kptsLayerNames = resolveLayerNames(nnData, std::vector<std::string>{}, "kpt_output");
+    auto kptsLayerNames = resolveLayerNames(nnData, properties.parser.kptsOutputNames, "kpt_output");
     DAI_CHECK_V(properties.parser.strides.size() == kptsLayerNames.size(),
                 "Number of strides does not match number of keypoints output layers. Strides size: {}, keypoints output layers size: {}. Skipping keypoints "
                 "decoding.",
