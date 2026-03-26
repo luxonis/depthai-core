@@ -91,7 +91,6 @@ void resetParser(DetectionParserOptions& parser) {
     parser.strides = {8, 16, 32};
     parser.keypointLabelNames.clear();
     parser.keypointEdges.clear();
-    parser.keypointEdges.clear();
 }
 
 void DetectionParser::checkKptExtraParams(DetectionParserOptions& parser, const nlohmann::json& extraParams) {
