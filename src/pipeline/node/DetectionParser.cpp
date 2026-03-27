@@ -140,17 +140,13 @@ void DetectionParser::configureYOLONetworkParser(DetectionParserOptions& parser,
         parser.strides = {1};
     }
 
-    if(metadata.maskOutputs) {
-        parser.decodeSegmentation = true;
-        parser.maskOutputNames = *metadata.maskOutputs;
-    } else {
-        parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
-    }
+    parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
 
     if(metadata.nKeypoints) {
         parser.decodeKeypoints = true;
         parser.nKeypoints = metadata.nKeypoints;
-        parser.kptsOutputNames = metadata.keypointsOutputs ? *metadata.keypointsOutputs : std::vector<std::string>{};
+        // TODO (aljazkonec1): some nnarchives have this field filled out wrong. Keep empty names vector and search for default names.
+        parser.kptsOutputNames = std::vector<std::string>{};
     }
 
     checkKptExtraParams(parser, metadata.extraParams);
