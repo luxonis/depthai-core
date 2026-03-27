@@ -49,19 +49,12 @@ std::array<float, 4> matVecMul(const std::array<std::array<float, 4>, 4>& matrix
 }
 
 bool mateq(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B, float epsilon) {
-    if(A.size() != B.size()) {
-        throw std::runtime_error("Matrices have different number of rows: " + std::to_string(A.size()) + " and " + std::to_string(B.size()));
-    }
+    if(A.size() != B.size()) return false;
+    if(A.empty()) return true;
+
     size_t columns = A[0].size();
     for(size_t i = 0; i < A.size(); ++i) {
-        if(A[i].size() != B[i].size()) {
-            throw std::runtime_error("Matrices have different number of columns in row " + std::to_string(i) + ": " + std::to_string(A[i].size()) + " and "
-                                     + std::to_string(B[i].size()));
-        }
-        if(columns != A[i].size()) {
-            throw std::runtime_error("Not all rows in the first matrix have the same number of columns.");
-        }
-
+        if(A[i].size() != columns || B[i].size() != columns) return false;
         for(size_t j = 0; j < columns; ++j) {
             if(std::abs(A[i][j] - B[i][j]) > epsilon) return false;
         }
