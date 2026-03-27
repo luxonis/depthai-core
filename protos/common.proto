@@ -36,7 +36,6 @@ message ImgTransformation {
     uint32 height = 8;
     Extrinsics extrinsics = 9;
     repeated RotatedRect srcCrops = 10;
-    uint32 calibrationId = 11;
 }
 
 message TransformationMatrix {
