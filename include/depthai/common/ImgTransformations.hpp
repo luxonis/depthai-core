@@ -286,33 +286,33 @@ struct ImgTransformation {
     dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
 
     /**
-     * Project a 3D point to a 2D point in the current frame. This takes into account the distortion model and 2D image transform.
-     * @param point3f 3D point to project
+     * Project a 3D spatial point into 2D point in the current frame defined by this transformation.
+     * @param point 3D point to project
      * @return Projected 2D point in the current frame
-     * @note This function assumes that the point3f is in the coordinate system of the current frame.
+     * @note This function assumes that the point is in the coordinate system of the current frame.
      */
     dai::Point2f project3DPoint(const dai::Point3f& point) const;
 
     /**
-     * Project a 3D point from the source frame to a 2D point in the target to frame. This takes into account extrinsics and distortion.
-     * @param to Transformation to project to
-     * @param point2f 2D point in the this transformation to project
-     * @param depth Depth of the point to project (mm)
-     * @return Projected 2D point in the target frame
+     * Project a 3D point from the source frame (this transformation) into a 2D point in the target frame (to transformation).
+     * @param to Target transformation to project to
+     * @param point2f Source 2D point in the current frame
+     * @param depth (mm) Depth of the point to project
+     * @return Projected 2D point in the target frame (to transformation)
      */
     dai::Point2f projectPointTo(const ImgTransformation& to, dai::Point2f& point, float depth) const;
 
     /**
-     * Project a 3D point to a 2D point in the target frame. This takes into account extrinsics and distortion.
-     * @param to Transformation to project to
+     * Project a 3D spatial point from the source coordinate system (this transformation) into a 2D point in the target frame (to transformation).
+     * @param to Target transformation to project to
      * @param point3f 3D point to project
-     * @return Projected 2D point in the target frame
+     * @return Projected 2D point in the target frame (to transformation)
      * @note This function assumes that the point3f is in the coordinate system of the current frame.
      */
     dai::Point2f project3DPointTo(const ImgTransformation& to, const dai::Point3f& point) const;
 
     /**
-     * Project a 3D point from the source frame to the current frame. This takes into account extrinsics and distortion.
+     * Project a 3D point from the source frame (from transformation) into a 2D point in the current frame (this transformation).
      * @param from Transformation to project from
      * @param point3f 3D point to project
      * @return Projected 2D point in the current frame
@@ -321,44 +321,49 @@ struct ImgTransformation {
     dai::Point2f project3DPointFrom(const ImgTransformation& from, const dai::Point3f& point) const;
 
     /**
-     * Remap a 3D point from this transformation to another.
-     * @param to Transformation to remap to
-     * @param point3f 3D point to remap
-     * @return Remapped 3D point in the target transformation
+     * Remap a 3D point from the source coordinate system of this transformation to the coordinate system of the target transformation (to transformation).
+     * @param to Target transformation to remap to
+     * @param point 3D point to remap
+     * @return Remapped 3D point in the target coordinate system
+     * @note This function assumes that the point is in the coordinate system of the current frame.
      */
     dai::Point3f remap3DPointTo(const ImgTransformation& to, const dai::Point3f& point) const;
 
     /**
-     * Remap a 3D point to this transformation from another.
+     * Remap a 3D point to the coordinate system of this transformation from the source coordinate system of the from transformation.
      * @param from Transformation to remap from
-     * @param point3f 3D point to remap
-     * @return Remapped 3D point in the current transformation
+     * @param point 3D point to remap
+     * @return Remapped 3D point in the current coordinate system
+     * @note This function assumes that the point is in the coordinate system of the source frame.
      */
     dai::Point3f remap3DPointFrom(const ImgTransformation& from, const dai::Point3f& point) const;
 
     /**
-     * Get the extrinsics matrix from this ImgTransformation to another ImgTransformation.
-     * @param to Transformation to get extrinsics to
+     * Get the extrinsic transformation matrix from the source coordinate system of this transformation to the target coordinate system of the to
+     * transformation.
+     * @param to Target transformation to get extrinsics to
      * @return 4x4 homogeneous transformation matrix representing the extrinsics from this transformation to the target transformation
-     * @note Both transformations must have a common toCameraSocket in their extrinsics. Otherwise extrinsics cannot be calculated.
+     * @note Both transformations must have a common toCameraSocket. Otherwise extrinsics cannot be calculated.
      */
     std::array<std::array<float, 4>, 4> getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
-                                                                            const bool useSpecTranslation = false,
-                                                                            const LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+                                                                            bool useSpecTranslation = false,
+                                                                            LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
     /**
-     * Get the extrinsic rotation matrix from this ImgTransformation to another ImgTransformation.
+     * Get the extrinsic rotation matrix from the source coordinate system of this transformation to the target coordinate system of the to transformation.
      * @param to Transformation to get extrinsics to
+     * @return 3x3 rotation matrix representing the extrinsic rotation from this transformation to the target transformation
      */
     std::array<std::array<float, 3>, 3> getRotationMatrixTo(const ImgTransformation& to) const;
 
     /**
-     * Get the extrinsic translation vector from this ImgTransformation to another ImgTransformation.
+     * Get the extrinsic translation vector from the source coordinate system of this transformation to the target coordinate system of the to transformation.
      * @param to Transformation to get extrinsics to
+     * @return 3x1 translation vector representing the extrinsic translation from this transformation to the target transformation
      */
     std::array<float, 3> getTranslationVectorTo(const ImgTransformation& to,
-                                                const bool useSpecTranslation = false,
-                                                const LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+                                                bool useSpecTranslation = false,
+                                                LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
     /**
      * Check if the transformations are aligned
