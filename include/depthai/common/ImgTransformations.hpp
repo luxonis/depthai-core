@@ -294,7 +294,8 @@ struct ImgTransformation {
     dai::Point2f project3DPoint(const dai::Point3f& point) const;
 
     /**
-     * Project a 3D point from the source frame (this transformation) into a 2D point in the target frame (to transformation).
+     * Project a 2D point from the source frame defined by this transformation into a 2D point in the target frame defined by the to transformation. This
+     * function will use the depth of the point to project it into 3D space and then reproject it back to 2D in the target frame.
      * @param to Target transformation to project to
      * @param point2f Source 2D point in the current frame
      * @param depth (mm) Depth of the point to project
