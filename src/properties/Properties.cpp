@@ -18,6 +18,7 @@
 #include "depthai/properties/MessageDemuxProperties.hpp"
 #include "depthai/properties/MonoCameraProperties.hpp"
 #include "depthai/properties/NeuralDepthProperties.hpp"
+#include "depthai/properties/GPUStereoProperties.hpp"
 #include "depthai/properties/NeuralNetworkProperties.hpp"
 #include "depthai/properties/ObjectTrackerProperties.hpp"
 #include "depthai/properties/PointCloudProperties.hpp"
@@ -70,6 +71,7 @@ EdgeDetectorProperties::~EdgeDetectorProperties() = default;
 GateProperties::~GateProperties() = default;
 RectificationProperties::~RectificationProperties() = default;
 NeuralDepthProperties::~NeuralDepthProperties() = default;
+GPUStereoProperties::~GPUStereoProperties() = default;
 FeatureTrackerProperties::~FeatureTrackerProperties() = default;
 IMUProperties::~IMUProperties() = default;
 ImageAlignProperties::~ImageAlignProperties() = default;

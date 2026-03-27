@@ -21,6 +21,7 @@
 #include "node/MessageDemux.hpp"
 #include "node/MonoCamera.hpp"
 #include "node/NeuralDepth.hpp"
+#include "node/GPUStereo.hpp"
 #include "node/NeuralNetwork.hpp"
 #include "node/ObjectTracker.hpp"
 #include "node/PointCloud.hpp"
