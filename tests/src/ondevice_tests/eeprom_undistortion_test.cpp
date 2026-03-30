@@ -4,17 +4,17 @@
 #include <depthai/depthai.hpp>
 
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
+#include "depthai/pipeline/node/Sync.hpp"
 
 // -----------------------------------------------------------------------------
-// Undistortion disabled on old EEPROM (stereoEnableDistortionCorrection=false)
+// Undistortion is only applied on new EEPROM formats
 // Purpose:
-//   Ensures that when a device has an older EEPROM format
-//   (stereoEnableDistortionCorrection == false), requesting camera output with
-//   enableUndistortion=true does NOT produce distortion coefficients in the
-//   undistortion request when the EEPROM format is old.
+//   Ensures that requesting camera output with enableUndistortion=true only
+//   changes the image when the EEPROM format supports distortion correction.
 // -----------------------------------------------------------------------------
-TEST_CASE("Undistortion disabled on old EEPROM") {
+TEST_CASE("Undistorted output changes only on new EEPROM") {
     dai::Pipeline pipeline;
 
     // Read the device's current calibration and force old EEPROM format
@@ -42,26 +42,47 @@ TEST_CASE("Undistortion disabled on old EEPROM") {
     device->setCalibration(dai::CalibrationHandler(eeprom));
 
     auto camera = pipeline.create<dai::node::Camera>()->build(socket);
+    auto sync = pipeline.create<dai::node::Sync>();
 
-    // Request output with enableUndistortion explicitly set to true
-    auto* output = camera->requestOutput({640, 400}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, std::nullopt, true);
-    REQUIRE(output != nullptr);
-    auto queue = output->createOutputQueue();
+    auto* distortedOutput = camera->requestOutput({640, 400}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
+    auto* undistortedOutput = camera->requestOutput({640, 400}, dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, std::nullopt, true);
+    REQUIRE(distortedOutput != nullptr);
+    REQUIRE(undistortedOutput != nullptr);
+
+    distortedOutput->link(sync->inputs["distorted"]);
+    undistortedOutput->link(sync->inputs["undistorted"]);
+
+    auto queue = sync->out.createOutputQueue();
 
     pipeline.start();
-    auto frame = queue->get<dai::ImgFrame>();
-    REQUIRE(frame != nullptr);
+
+    bool foundDifferentFramePair = false;
+    for(int i = 0; i < 5; i++) {
+        auto frames = queue->get<dai::MessageGroup>();
+        REQUIRE(frames != nullptr);
+
+        auto distortedFrame = frames->get<dai::ImgFrame>("distorted");
+        auto undistortedFrame = frames->get<dai::ImgFrame>("undistorted");
+        REQUIRE(distortedFrame != nullptr);
+        REQUIRE(undistortedFrame != nullptr);
+
+        REQUIRE(distortedFrame->getWidth() == undistortedFrame->getWidth());
+        REQUIRE(distortedFrame->getHeight() == undistortedFrame->getHeight());
+        REQUIRE(distortedFrame->getType() == undistortedFrame->getType());
+
+        const auto distortedData = distortedFrame->getData();
+        const auto undistortedData = undistortedFrame->getData();
+        const bool sameData = distortedData.size() == undistortedData.size() && std::equal(distortedData.begin(), distortedData.end(), undistortedData.begin());
+        if(!sameData) {
+            foundDifferentFramePair = true;
+            break;
+        }
+    }
+
     pipeline.stop();
-
-    auto distCoeffs = frame->transformation.getDistortionCoefficients();
-
     if(newEEPROM) {
-        // New EEPROM: firmware applies undistortion and then zeros out the coefficients
-        bool allZero = distCoeffs.empty() || std::all_of(distCoeffs.begin(), distCoeffs.end(), [](float v) { return v == 0.0f; });
-        REQUIRE(allZero);
+        REQUIRE(foundDifferentFramePair);
     } else {
-        // Old EEPROM: firmware skips undistortion, distortion coefficients are passed through
-        bool someNonZero = !distCoeffs.empty() && std::any_of(distCoeffs.begin(), distCoeffs.end(), [](float v) { return v != 0.0f; });
-        REQUIRE(someNonZero);
+        REQUIRE_FALSE(foundDifferentFramePair);
     }
 }

@@ -91,6 +91,7 @@ struct SendSnapCallbackResult {
 class EventsManager {
    public:
     explicit EventsManager(std::string apiKey = "", bool uploadCachedOnStart = false);
+    explicit EventsManager(bool uploadCachedOnStart) : EventsManager("", uploadCachedOnStart) {}
     ~EventsManager();
 
     /**

@@ -9,22 +9,42 @@ namespace matrix {
 std::vector<std::vector<float>> matMul(std::vector<std::vector<float>>& firstMatrix, std::vector<std::vector<float>>& secondMatrix) {
     std::vector<std::vector<float>> res;
 
-    if(firstMatrix[0].size() != secondMatrix.size()) {
-        throw std::runtime_error("Number of column of the first matrix should match with the number of rows of the second matrix ");
-        // Return an empty vector
-        return res;
+    if(firstMatrix.empty() || firstMatrix[0].empty()) {
+        throw std::invalid_argument("firstMatrix must be non-empty");
+    }
+    if(secondMatrix.empty() || secondMatrix[0].empty()) {
+        throw std::invalid_argument("secondMatrix must be non-empty");
+    }
+
+    const size_t colsA = firstMatrix[0].size();
+    const size_t colsB = secondMatrix[0].size();
+
+    for(const auto& row : firstMatrix) {
+        if(row.size() != colsA) {
+            throw std::invalid_argument("firstMatrix must be rectangular");
+        }
+    }
+
+    for(const auto& row : secondMatrix) {
+        if(row.size() != colsB) {
+            throw std::invalid_argument("secondMatrix must be rectangular");
+        }
+    }
+
+    if(colsA != secondMatrix.size()) {
+        throw std::invalid_argument("Number of columns of firstMatrix must match number of rows of secondMatrix");
     }
 
     // Initializing elements of matrix mult to 0.
     for(size_t i = 0; i < firstMatrix.size(); ++i) {
-        std::vector<float> col_vec(secondMatrix[0].size(), 0);
+        std::vector<float> col_vec(colsB, 0);
         res.push_back(col_vec);
     }
 
     // Multiplying matrix firstMatrix and secondMatrix and storing in array mult.
     for(size_t i = 0; i < firstMatrix.size(); ++i) {
-        for(size_t j = 0; j < secondMatrix[0].size(); ++j) {
-            for(size_t k = 0; k < firstMatrix[0].size(); ++k) {
+        for(size_t j = 0; j < colsB; ++j) {
+            for(size_t k = 0; k < colsA; ++k) {
                 res[i][j] += firstMatrix[i][k] * secondMatrix[k][j];
             }
         }
@@ -273,6 +293,44 @@ std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array
     }
 
     return inv;
+}
+
+void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
+    if(mat.size() != 4) {
+        throw std::invalid_argument("Expected a 4x4 matrix.");
+    }
+    for(const auto& row : mat) {
+        if(row.size() != 4) {
+            throw std::invalid_argument("Expected a 4x4 matrix.");
+        }
+    }
+
+    const float r00 = mat[0][0], r01 = mat[0][1], r02 = mat[0][2];
+    const float r10 = mat[1][0], r11 = mat[1][1], r12 = mat[1][2];
+    const float r20 = mat[2][0], r21 = mat[2][1], r22 = mat[2][2];
+
+    const float tx = mat[0][3], ty = mat[1][3], tz = mat[2][3];
+
+    // t' = -R^T t
+    mat[0][3] = -(r00 * tx + r10 * ty + r20 * tz);
+    mat[1][3] = -(r01 * tx + r11 * ty + r21 * tz);
+    mat[2][3] = -(r02 * tx + r12 * ty + r22 * tz);
+
+    // R' = R^T
+    mat[0][0] = r00;
+    mat[0][1] = r10;
+    mat[0][2] = r20;
+    mat[1][0] = r01;
+    mat[1][1] = r11;
+    mat[1][2] = r21;
+    mat[2][0] = r02;
+    mat[2][1] = r12;
+    mat[2][2] = r22;
+
+    mat[3][0] = 0.0f;
+    mat[3][1] = 0.0f;
+    mat[3][2] = 0.0f;
+    mat[3][3] = 1.0f;
 }
 
 }  // namespace matrix

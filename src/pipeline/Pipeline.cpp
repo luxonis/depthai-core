@@ -736,43 +736,51 @@ void PipelineImpl::build() {
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     if(isBuild) return;
     // start ---Add AutoCalibration block---
-    auto autoCalibtationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
+    auto autoCalibrationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "ON_START");
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    if(autoCalibtationString == "CONTINUOUS" || autoCalibtationString == "ON_START") {
+    if(autoCalibrationString == "CONTINUOUS" || autoCalibrationString == "ON_START") {
         if(defaultDevice && defaultDevice->tryGetCalibration()) {
             auto stereoPair = getStereoPair();
 
             auto hasStereoPairValidCalibration = [&stereoPair](const std::shared_ptr<CalibrationHandler>& calibration) -> bool {
+                if(!calibration) return false;
+
+                const auto leftSocket = stereoPair.first->getBoardSocket();
+                const auto rightSocket = stereoPair.second->getBoardSocket();
+                if(!calibration->hasCameraCalibration(leftSocket) || !calibration->hasCameraCalibration(rightSocket)) {
+                    return false;
+                }
+
                 try {
-                    calibration->getDefaultIntrinsics(stereoPair.first->getBoardSocket());
-                    calibration->getDefaultIntrinsics(stereoPair.second->getBoardSocket());
-                    calibration->getCameraExtrinsics(stereoPair.first->getBoardSocket(), stereoPair.second->getBoardSocket());
+                    // getDefaultIntrinsics() validates intrinsic matrix shape/content and throws on invalid data.
+                    calibration->getDefaultIntrinsics(leftSocket);
+                    calibration->getDefaultIntrinsics(rightSocket);
+                    calibration->getCameraExtrinsics(leftSocket, rightSocket);
                     return true;
                 } catch(const std::exception& ex) {
                     return false;
                 }
-                return false;
             };
 
             if(stereoPair.first && stereoPair.second && !hasDynamicCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
-                if(autoCalibtationString == "CONTINUOUS") {
+                if(autoCalibrationString == "CONTINUOUS") {
                     autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
                 } else {
                     autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
                 }
             }
         } else {
-            if(defaultDevice) {
+            if(isHostOnly()) {
                 Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
-                                                   autoCalibtationString);
+                                                   autoCalibrationString);
             } else {
                 Logging::getInstance().logger.warn("Device has no valid initial calibration. Skipping autocalibration.");
             }
         }
-    } else if(autoCalibtationString != "OFF" && autoCalibtationString != "") {
-        Logging::getInstance().logger.warn("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibtationString);
+    } else if(autoCalibrationString != "OFF" && autoCalibrationString != "") {
+        Logging::getInstance().logger.warn("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibrationString);
     }
 #endif
     // end of ---Add AutoCalibration block---

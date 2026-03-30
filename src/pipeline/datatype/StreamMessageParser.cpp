@@ -355,6 +355,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::CoverageData:
             break;
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+        case DatatypeEnum::COUNT:
+            break;
         default:
             break;
     }
