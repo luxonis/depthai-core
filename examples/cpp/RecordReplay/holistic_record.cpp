@@ -5,7 +5,6 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
-#include "depthai/pipeline/node/host/Display.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 #include "utility.hpp"
 #ifndef DEPTHAI_MERGED_TARGET
