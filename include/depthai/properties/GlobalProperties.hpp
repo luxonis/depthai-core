@@ -95,14 +95,12 @@ struct DeviceProperties : PropertiesSerializable<Properties, DeviceProperties> {
             calibData = other.calibData;
             eepromId = other.eepromId;
         }
-        if(other.cameraTuningBlobSize) cameraTuningBlobSize = other.cameraTuningBlobSize;
-        cameraTuningBlobUri = other.cameraTuningBlobUri;
-        for(const auto& [k, v] : other.cameraSocketTuningBlobSize) {
-            cameraSocketTuningBlobSize[k] = v;
+        if(other.cameraTuningBlobSize) {
+            cameraTuningBlobSize = other.cameraTuningBlobSize;
+            cameraTuningBlobUri = other.cameraTuningBlobUri;
         }
-        for(const auto& [k, v] : other.cameraSocketTuningBlobUri) {
-            cameraSocketTuningBlobUri[k] = v;
-        }
+        cameraSocketTuningBlobSize = other.cameraSocketTuningBlobSize;
+        cameraSocketTuningBlobUri = other.cameraSocketTuningBlobUri;
         xlinkChunkSize = other.xlinkChunkSize;
         sippBufferSize = other.sippBufferSize;
         sippDmaBufferSize = other.sippDmaBufferSize;
