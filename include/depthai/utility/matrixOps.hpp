@@ -16,7 +16,7 @@ namespace matrix {
 constexpr float MATRIX_EQ_EPSILON = 1e-6f;
 
 std::array<std::array<float, 3>, 3> matMul(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B);
-std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& firstMatrix, const std::vector<std::vector<float>>& secondMatrix);
+std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B);
 std::array<std::array<float, 4>, 4> matMul(const std::array<std::array<float, 4>, 4>& A, const std::array<std::array<float, 4>, 4>& B);
 
 std::vector<float> matVecMul(const std::vector<std::vector<float>>& matrix, const std::vector<float>& vec);

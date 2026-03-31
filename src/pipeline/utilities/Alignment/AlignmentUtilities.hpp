@@ -6,13 +6,12 @@
 #include <array>
 #include <cmath>
 #include <cstring>
-#include <vector>
-
-#include "depthai/common/ImgTransformations.hpp"
 #include <depthai/utility/matrixOps.hpp>
+#include <vector>
 
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"

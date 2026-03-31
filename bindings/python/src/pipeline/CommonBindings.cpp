@@ -519,6 +519,15 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Extrinsics
     extrinsics.def(py::init<>())
+        .def(py::init<std::vector<std::vector<float>>, Point3f, CameraBoardSocket, LengthUnit>(),
+             py::arg("rotationMatrix"),
+             py::arg("translation"),
+             py::arg("toCameraSocket"),
+             py::arg("lengthUnit") = LengthUnit::CENTIMETER)
+        .def(py::init<const std::vector<std::vector<float>>&, CameraBoardSocket, LengthUnit>(),
+             py::arg("extrinsicsMatrix"),
+             py::arg("toCameraSocket"),
+             py::arg("lengthUnit") = LengthUnit::CENTIMETER)
         .def_readwrite("rotationMatrix", &Extrinsics::rotationMatrix)
         .def_readwrite("translation", &Extrinsics::translation)
         .def_readwrite("specTranslation", &Extrinsics::specTranslation)
@@ -541,11 +550,6 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("matrix"),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, setTransformationMatrix))
-        .def("setTransformationMatrix",
-             py::overload_cast<const std::array<std::array<float, 4>, 4>&, LengthUnit>(&Extrinsics::setTransformationMatrix),
-             py::arg("matrix"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             DOC(dai, Extrinsics, setTransformationMatrix, 2))
         .def("getTranslationVector",
              &Extrinsics::getTranslationVector,
              py::arg("useSpecTranslation") = false,

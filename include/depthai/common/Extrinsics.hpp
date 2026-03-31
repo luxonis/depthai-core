@@ -17,11 +17,13 @@ struct Extrinsics {
     Point3f getTranslationInUnit(bool useSpec, LengthUnit targetUnit) const;
 
    public:
+    Extrinsics() = default;
 
-   Extrinsics() = default;
-
-   Extrinsics(std::vector<std::vector<float>> rotationMatrix, Point3f translation, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER)
-       : rotationMatrix(std::move(rotationMatrix)), translation(translation), toCameraSocket(toCameraSocket), lengthUnit(lengthUnit) {}
+    Extrinsics(std::vector<std::vector<float>> rotationMatrix,
+               Point3f translation,
+               CameraBoardSocket toCameraSocket,
+               LengthUnit lengthUnit = LengthUnit::CENTIMETER)
+        : rotationMatrix(std::move(rotationMatrix)), translation(translation), toCameraSocket(toCameraSocket), lengthUnit(lengthUnit) {}
 
     Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
 

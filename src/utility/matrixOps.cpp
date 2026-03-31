@@ -99,48 +99,34 @@ std::array<std::array<float, 4>, 4> matMul(const std::array<std::array<float, 4>
     return res;
 }
 
-std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& firstMatrix, const std::vector<std::vector<float>>& secondMatrix) {
-    if(firstMatrix.empty()) {
+std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B) {
+    if(A.empty()) {
         throw std::runtime_error("First matrix should not be empty");
     }
-    if(secondMatrix.empty()) {
+    if(B.empty()) {
         throw std::runtime_error("Second matrix should not be empty");
     }
 
-    size_t n = firstMatrix.size();
-    size_t m = firstMatrix[0].size();
-    size_t p = secondMatrix.size();
-    size_t q = secondMatrix[0].size();
-
-    if(m == 0) {
-        throw std::runtime_error("First matrix should not have empty rows");
-    }
-    for(size_t i = 1; i < firstMatrix.size(); ++i) {
-        if(firstMatrix[i].size() != m) {
-            throw std::runtime_error("All rows of the first matrix should have the same number of columns.");
-        }
-    }
-
-    if(q == 0) {
-        throw std::runtime_error("Second matrix should not have empty rows");
-    }
-    for(size_t i = 1; i < secondMatrix.size(); ++i) {
-        if(secondMatrix[i].size() != q) {
-            throw std::runtime_error("All rows of the second matrix should have the same number of columns.");
-        }
-    }
-
-    if(m != p) {
-        throw std::runtime_error("Internal matrix dimensions must agree. Got " + std::to_string(m) + " and " + std::to_string(p) + ".");
-    }
-
+    size_t n = A.size();
+    size_t m = A[0].size();
+    size_t p = B.size();
+    size_t q = B[0].size();
     std::vector<std::vector<float>> res(n, std::vector<float>(q, 0.0f));
 
     // Multiplying matrix firstMatrix and secondMatrix and storing in array mult.
     for(size_t i = 0; i < n; ++i) {
         for(size_t j = 0; j < q; ++j) {
+            if(A[i].size() != m) {
+                throw std::runtime_error("All rows of the matrix A need to have the same number of columns.");
+            }
+            if(A[i].size() != B.size()) {
+                throw std::runtime_error("Number of columns of A need to match number of rows of B for multiplication.");
+            }
             for(size_t k = 0; k < m; ++k) {
-                res[i][j] += firstMatrix[i][k] * secondMatrix[k][j];
+                if(B[k].size() != q) {
+                    throw std::runtime_error("All rows of the matrix B need to have the same number of columns.");
+                }
+                res[i][j] += A[i][k] * B[k][j];
             }
         }
     }

@@ -556,11 +556,8 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
 }
 
 CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
-    // Find the lowest socket in the chain
     dai::CameraBoardSocket currentCameraId = eepromData.cameraData.begin()->first;
-
     for(const auto& cameraData : eepromData.cameraData) {
-        // Check if the current cameraId is lower than the current lowest
         if(static_cast<int>(cameraData.first) < static_cast<int>(currentCameraId)) {
             currentCameraId = cameraData.first;
         }
