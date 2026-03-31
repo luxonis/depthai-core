@@ -184,7 +184,8 @@ TEST_CASE("Two Queue from one camera") {
     }
 
     CHECK(msgsFromGateCount == 0);
-    CHECK(msgsFromCameraCount > 60);
+    float replayFpsFactor = pipeline.isHolisticReplayEnabled() ? 0.1 : 1;
+    CHECK(msgsFromCameraCount * replayFpsFactor > 60);
 
     std::cout << "Gate frames: " << msgsFromGateCount << " | Camera frames: " << msgsFromCameraCount << std::endl;
 }
@@ -239,7 +240,8 @@ TEST_CASE("FPS regulation") {
 
     CHECK(msgsFromGateCount > 30);
     CHECK(msgsFromGateCount < 50);
-    CHECK(msgsFromCameraCount > 60);
+    float replayFpsFactor = pipeline.isHolisticReplayEnabled() ? 0.1 : 1;
+    CHECK(msgsFromCameraCount * replayFpsFactor > 60);
 
     std::cout << "Gate frames: " << msgsFromGateCount << " | Camera frames: " << msgsFromCameraCount << std::endl;
 }

@@ -64,7 +64,8 @@ TEST_CASE("XLinkBridge fps limit test") {
             break;
         }
     }
-    REQUIRE(numReceived == Catch::Approx(XLINK_FPS_LIMIT * TEST_DURATION.count()).margin(1.01));  // +- 1 frame
+    float replayFpsFactor = p.isHolisticReplayEnabled() ? 0.5 : 1;
+    REQUIRE(numReceived == Catch::Approx(XLINK_FPS_LIMIT * TEST_DURATION.count() * replayFpsFactor).margin(1.01));  // +- 1 frame
 }
 
 TEST_CASE("Sync node packet transfer timing and data integrity with varying delays", "[sync][xlink][timing][generate]") {

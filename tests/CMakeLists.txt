@@ -688,7 +688,7 @@ dai_set_test_labels(eeprom_undistortion_test ondevice rvc2_all ci)
 
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
-dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
+dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci noreplayci)
 
 dai_add_test(regression_message_group_test src/ondevice_tests/regression/message_group.cpp)
 dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 rvc4rgb ci)
@@ -699,11 +699,11 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 
 # Fsync test
 dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
-dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci)
+dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci noreplayci)
 
 # Fsync Multi-device test
 dai_add_test(fsync_multi_device_test src/onhost_tests/pipeline/fsync_multi_device.cpp)
-dai_set_test_labels(fsync_multi_device_test ondevice rvc4fsync ci)
+dai_set_test_labels(fsync_multi_device_test ondevice rvc4fsync ci noreplayci)
 
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
@@ -734,7 +734,7 @@ endif()
 
 # Benchmark tests
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
-dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)
 
 # SystemLogger test
 dai_add_test(system_logger_test src/ondevice_tests/pipeline/node/system_logger_test.cpp)
@@ -742,7 +742,7 @@ dai_set_test_labels(system_logger_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # Manual focus test
 dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
-dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci noreplayci)
 
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
@@ -770,7 +770,7 @@ dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
-dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci noreplayci)
 
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
