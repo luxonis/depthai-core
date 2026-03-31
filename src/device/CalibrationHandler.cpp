@@ -555,37 +555,6 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
     return extrinsics;
 }
 
-Extrinsics CalibrationHandler::getExtrinsicsToLowestSocket(dai::CameraBoardSocket cameraId) const {
-    if(!hasCameraCalibration(cameraId)) {
-        throw std::runtime_error("There is no Camera data available corresponding to the requested cameraId");
-    }
-
-    std::vector<std::vector<float>> extrinsicsMatrix;
-    std::vector<float> specTranslationVector(3, 0.0f);
-    auto lowestSocket = getCameraWithLowestId();
-    if(cameraId == lowestSocket) {
-        extrinsicsMatrix = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
-    } else {
-        extrinsicsMatrix = getCameraExtrinsics(cameraId, lowestSocket, false);
-        try {
-            specTranslationVector = getCameraTranslationVector(cameraId, lowestSocket, true);
-        } catch(const std::exception&) {
-        };
-    }
-    std::vector<std::vector<float>> rotationMatrix(3, std::vector<float>(3, 0.0f));
-    for(unsigned int i = 0; i < 3; i++) {
-        for(unsigned int j = 0; j < 3; j++) {
-            rotationMatrix[i][j] = extrinsicsMatrix[i][j];
-        }
-    }
-
-    dai::Point3f translation{extrinsicsMatrix[0][3], extrinsicsMatrix[1][3], extrinsicsMatrix[2][3]};
-    dai::Point3f specTranslation{specTranslationVector[0], specTranslationVector[1], specTranslationVector[2]};
-    dai::Extrinsics extrinsics{rotationMatrix, translation, specTranslation, lowestSocket, LengthUnit::CENTIMETER};
-
-    return extrinsics;
-}
-
 CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
     // Find the lowest socket in the chain
     dai::CameraBoardSocket currentCameraId = eepromData.cameraData.begin()->first;

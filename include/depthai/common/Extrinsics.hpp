@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <utility>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -16,6 +17,16 @@ struct Extrinsics {
     Point3f getTranslationInUnit(bool useSpec, LengthUnit targetUnit) const;
 
    public:
+
+   Extrinsics() = default;
+
+   Extrinsics(std::vector<std::vector<float>> rotationMatrix, Point3f translation, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER)
+       : rotationMatrix(std::move(rotationMatrix)), translation(translation), toCameraSocket(toCameraSocket), lengthUnit(lengthUnit) {}
+
+    Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
+
+    Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
+
     std::vector<std::vector<float>> rotationMatrix;
     /**
      *  (x, y, z) pose of destCameraSocket w.r.t currentCameraSocket obtained through calibration
@@ -50,15 +61,15 @@ struct Extrinsics {
      * Get the Camera Extrinsics object to the toCameraSocket.
      * @param useSpecTranslation Set to true to force using spec translation
      * @param unit Units of the returned translation vector
-     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
-     * Matrix representation of transformation matrix
-     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
-     *                                             r_{00} & r_{01} & r_{02} & T_x \\
-     *                                             r_{10} & r_{11} & r_{12} & T_y \\
-     *                                             r_{20} & r_{21} & r_{22} & T_z \\
-     *                                               0    &   0    &   0    & 1
-     *                                            \end{matrix} \right ] \f]
+     * @return 4x4 homogeneous transformation matrix
      *
+     * The returned matrix has the following layout:
+     * ```
+     * [ r00 r01 r02 Tx ]
+     * [ r10 r11 r12 Ty ]
+     * [ r20 r21 r22 Tz ]
+     * [  0   0   0  1 ]
+     * ```
      */
     std::array<std::array<float, 4>, 4> getTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
@@ -70,25 +81,31 @@ struct Extrinsics {
      */
     std::array<std::array<float, 4>, 4> getInverseTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
     /**
-     * @param matrix 4x4 transformation matrix
-     * Matrix representation of transformation matrix
-     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
-     *                                             r_{00} & r_{01} & r_{02} & T_x \\
-     *                                             r_{10} & r_{11} & r_{12} & T_y \\
-     *                                             r_{20} & r_{21} & r_{22} & T_z \\
-     *                                               0    &   0    &   0    & 1
-     *                                            \end{matrix} \right ] \f]
+     * Set the extrinsic transformation matrix.
+     * @param matrix 4x4 homogeneous transformation matrix
+     * @param unit Units of the translation components Tx, Ty, and Tz
+     *
+     * The matrix must have the following layout:
+     * ```
+     * [ r00 r01 r02 Tx ]
+     * [ r10 r11 r12 Ty ]
+     * [ r20 r21 r22 Tz ]
+     * [  0   0   0  1 ]
+     * ```
      */
     void setTransformationMatrix(const std::vector<std::vector<float>>& matrix, LengthUnit unit = LengthUnit::CENTIMETER);
     /**
-     * @param matrix 4x4 transformation matrix
-     * Matrix representation of transformation matrix
-     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
-     *                                             r_{00} & r_{01} & r_{02} & T_x \\
-     *                                             r_{10} & r_{11} & r_{12} & T_y \\
-     *                                             r_{20} & r_{21} & r_{22} & T_z \\
-     *                                               0    &   0    &   0    & 1
-     *                                            \end{matrix} \right ] \f]
+     * Set the extrinsic transformation matrix.
+     * @param matrix 4x4 homogeneous transformation matrix
+     * @param unit Units of the translation components Tx, Ty, and Tz
+     *
+     * The matrix must have the following layout:
+     * ```
+     * [ r00 r01 r02 Tx ]
+     * [ r10 r11 r12 Ty ]
+     * [ r20 r21 r22 Tz ]
+     * [  0   0   0  1 ]
+     * ```
      */
     void setTransformationMatrix(const std::array<std::array<float, 4>, 4>& matrix, LengthUnit unit = LengthUnit::CENTIMETER);
 

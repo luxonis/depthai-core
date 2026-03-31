@@ -10,6 +10,14 @@
 
 namespace dai {
 
+Extrinsics::Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit) : toCameraSocket(toCameraSocket) {
+    setTransformationMatrix(extrinsicsMatrix, lengthUnit);
+}
+
+Extrinsics::Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit) : toCameraSocket(toCameraSocket) {
+    setTransformationMatrix(extrinsicsMatrix, lengthUnit);
+}
+
 std::array<std::array<float, 3>, 3> Extrinsics::getRotationMatrix() const {
     return matrix::vectorMatrixToMatrix3x3(rotationMatrix);
 }
@@ -52,8 +60,7 @@ void Extrinsics::setTransformationMatrix(const std::array<std::array<float, 4>, 
             rotationMatrix[i][j] = matrix[i][j];
         }
     }
-    const float scale = getDistanceUnitScale(unit, lengthUnit);
-    translation = Point3f(matrix[0][3] * scale, matrix[1][3] * scale, matrix[2][3] * scale);
+    translation = Point3f(matrix[0][3], matrix[1][3], matrix[2][3]);
     lengthUnit = unit;
 }
 
