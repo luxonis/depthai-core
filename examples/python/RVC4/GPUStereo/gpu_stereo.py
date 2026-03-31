@@ -50,6 +50,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--headless", action="store_true", help="Run without displaying images")
 parser.add_argument("--device", type=str, default="10.11.0.51", help="Device IP address")
 parser.add_argument("--resolution", type=str, default="1280x800", help="Resolution")
+parser.add_argument(
+    "--fps",
+    type=float,
+    default=60.0,
+    metavar="N",
+    help="Camera output FPS (default: 60)",
+)
 args = parser.parse_args()
 width = int(args.resolution.split("x")[0])
 height = int(args.resolution.split("x")[1])
@@ -63,8 +70,8 @@ mono_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
 mono_right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 gpu = pipeline.create(dai.node.GPUStereo)
 
-mono_left_out = mono_left.requestOutput((width, height), type=dai.ImgFrame.Type.GRAY8)
-mono_right_out = mono_right.requestOutput((width, height), type=dai.ImgFrame.Type.GRAY8)
+mono_left_out = mono_left.requestOutput((width, height), type=dai.ImgFrame.Type.GRAY8, fps=args.fps)
+mono_right_out = mono_right.requestOutput((width, height), type=dai.ImgFrame.Type.GRAY8, fps=args.fps)
 mono_left_out.link(gpu.left)
 mono_right_out.link(gpu.right)
 
@@ -76,7 +83,6 @@ G = dai.GPUStereoConfig
 c.maxDisparity = 128
 c.numPyramidLevels = 3
 c.subpixelBits = 4
-c.useHostPtrBuffers = True
 c.useQcomAcceleratedOps = False
 c.useFp16 = True
 c.downsampleMethod = G.DownsampleMethod.BOX_FILTER
