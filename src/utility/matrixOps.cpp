@@ -109,7 +109,6 @@ std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& A,
 
     size_t n = A.size();
     size_t m = A[0].size();
-    size_t p = B.size();
     size_t q = B[0].size();
     std::vector<std::vector<float>> res(n, std::vector<float>(q, 0.0f));
 
