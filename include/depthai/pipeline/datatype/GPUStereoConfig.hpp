@@ -8,43 +8,15 @@ namespace dai {
 
 class GPUStereoConfig : public Buffer {
    public:
-    enum class DownsampleMethod {
-        BOX_FILTER,
-        BILINEAR,
-        GAUSSIAN_5x5,
-        GAUSSIAN_3x3,
-        NEAREST
-    };
+    enum class DownsampleMethod { BOX_FILTER, BILINEAR, GAUSSIAN_5x5, GAUSSIAN_3x3, NEAREST };
 
-    enum class PrefilterMethod {
-        NONE,
-        SOBEL_X,
-        BOX_MEAN_SUBTRACT,
-        GAUSSIAN_3x3,
-        BILATERAL_PREFILTER
-    };
+    enum class PrefilterMethod { NONE, SOBEL_X, BOX_MEAN_SUBTRACT, GAUSSIAN_3x3, BILATERAL_PREFILTER };
 
-    enum class CostVolumeAggregation {
-        WTA,
-        BOX,
-        BILATERAL
-    };
+    enum class CostVolumeAggregation { WTA, BOX, BILATERAL };
 
-    enum class CostMethod {
-        SAD,
-        CENSUS,
-        GRADIENT,
-        ZNCC,
-        RANK
-    };
+    enum class CostMethod { SAD, CENSUS, GRADIENT, ZNCC, RANK };
 
-    enum class PathAggregation {
-        NONE,
-        SGM_2,
-        SGM_4,
-        SGM_8,
-        SGM_MGM_INPLACE
-    };
+    enum class PathAggregation { NONE, SGM_2, SGM_4, SGM_8, SGM_MGM_INPLACE };
 
     struct AlgorithmControl {
         using DepthUnit = dai::DepthUnit;

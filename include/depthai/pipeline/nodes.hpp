@@ -16,12 +16,12 @@
 #endif
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"
+#include "node/GPUStereo.hpp"
 #include "node/IMU.hpp"
 #include "node/ImageManip.hpp"
 #include "node/MessageDemux.hpp"
 #include "node/MonoCamera.hpp"
 #include "node/NeuralDepth.hpp"
-#include "node/GPUStereo.hpp"
 #include "node/NeuralNetwork.hpp"
 #include "node/ObjectTracker.hpp"
 #include "node/PointCloud.hpp"
