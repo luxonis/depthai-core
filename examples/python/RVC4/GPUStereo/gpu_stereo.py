@@ -23,14 +23,13 @@ if not hasattr(dai.node, "GPUStereo"):
     sys.exit(1)
 
 
-def colorize_disparity_u16(frame_u16: np.ndarray) -> np.ndarray:
+def colorize_disparity_u16(frame_u16: np.ndarray, min_value: int, max_value: int) -> np.ndarray:
     valid = frame_u16[frame_u16 > 0]
     if valid.size == 0:
         return np.zeros((*frame_u16.shape, 3), dtype=np.uint8)
-    lo, hi = np.percentile(valid, [2, 98])
-    if hi <= lo:
-        hi = float(np.max(valid)) + 1.0
-    norm = np.clip((frame_u16.astype(np.float32) - lo) / (hi - lo), 0.0, 1.0)
+    if max_value <= min_value:
+        max_value = float(np.max(valid)) + 1.0
+    norm = np.clip((frame_u16.astype(np.float32) - min_value) / (max_value - min_value), 0.0, 1.0)
     return cv2.applyColorMap((norm * 255).astype(np.uint8), cv2.COLORMAP_JET)
 
 
@@ -56,6 +55,9 @@ width = int(args.resolution.split("x")[0])
 height = int(args.resolution.split("x")[1])
 
 device = dai.Device(args.device)
+
+device.setIrLaserDotProjectorIntensity(0.9)
+
 pipeline = dai.Pipeline(device)
 mono_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
 mono_right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
@@ -95,6 +97,9 @@ c.algorithmControl.customDepthUnitMultiplier = 1000.0
 disp_q = gpu.disparity.createOutputQueue()
 # depth_q = gpu.depth.createOutputQueue()
 
+min_disparity = 0
+max_disparity = c.maxDisparity * (1 << c.subpixelBits)
+
 with pipeline:
     pipeline.start()
     fps_window_start = time.monotonic()
@@ -114,7 +119,7 @@ with pipeline:
             fps_window_frames = 0
         # z_u16 = dep.getFrame()
         if not args.headless:
-            cv2.imshow("gpu stereo disparity", colorize_disparity_u16(d_u16))
+            cv2.imshow("gpu stereo disparity", colorize_disparity_u16(d_u16, min_disparity, max_disparity))
             # cv2.imshow("gpu stereo depth (uint16)", colorize_depth_u16(z_u16))
             if cv2.waitKey(1) == ord("q"):
                 pipeline.stop()
