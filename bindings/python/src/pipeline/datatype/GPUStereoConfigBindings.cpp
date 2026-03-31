@@ -77,7 +77,6 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("medianSize", &GPUStereoConfig::median_size, DOC(dai, GPUStereoConfig, median_size))
         .def_readwrite("minDisp", &GPUStereoConfig::min_disp, DOC(dai, GPUStereoConfig, min_disp))
         .def_readwrite("confidenceThreshold", &GPUStereoConfig::confidence_threshold, DOC(dai, GPUStereoConfig, confidence_threshold))
-        .def_readwrite("useHostPtrBuffers", &GPUStereoConfig::use_host_ptr_buffers, DOC(dai, GPUStereoConfig, use_host_ptr_buffers))
         .def_readwrite("useCostVolume", &GPUStereoConfig::use_cost_volume, DOC(dai, GPUStereoConfig, use_cost_volume))
         .def_readwrite("costVolumeAggregation", &GPUStereoConfig::cost_volume_aggregation, DOC(dai, GPUStereoConfig, cost_volume_aggregation))
         .def_readwrite("boxAggregationRadius", &GPUStereoConfig::box_aggregation_radius, DOC(dai, GPUStereoConfig, box_aggregation_radius))

@@ -29,8 +29,8 @@ class GPUStereoConfig : public Buffer {
     int max_disparity = 128;
     int num_pyramid_levels = 3;
     DownsampleMethod downsample_method = DownsampleMethod::BOX_FILTER;
-    PrefilterMethod prefilter_method = PrefilterMethod::SOBEL_X;
-    int block_match_radius = 2;
+    PrefilterMethod prefilter_method = PrefilterMethod::NONE;
+    int block_match_radius = 3;
     float adaptive_support_range_sigma = 0.f;
     float prefilter_bilateral_sigma_spatial = 2.f;
     float prefilter_bilateral_sigma_range = 0.08f;
@@ -41,15 +41,14 @@ class GPUStereoConfig : public Buffer {
     bool lr_check_fast = true;
     int median_size = 3;
     int min_disp = 0;
-    int confidence_threshold = 0;
-    bool use_host_ptr_buffers = true;
+    int confidence_threshold = 25;
     bool use_cost_volume = false;
     CostVolumeAggregation cost_volume_aggregation = CostVolumeAggregation::BOX;
     int box_aggregation_radius = 2;
     float bilateral_spatial_sigma = 2.0f;
     float bilateral_range_sigma = 0.08f;
     int bilateral_aggregation_radius = 2;
-    CostMethod cost_method = CostMethod::SAD;
+    CostMethod cost_method = CostMethod::ZNCC;
     PathAggregation path_aggregation = PathAggregation::NONE;
     float sgm_p1 = 0.5f;
     float sgm_p2 = 2.0f;
@@ -107,7 +106,6 @@ class GPUStereoConfig : public Buffer {
                       median_size,
                       min_disp,
                       confidence_threshold,
-                      use_host_ptr_buffers,
                       use_cost_volume,
                       cost_volume_aggregation,
                       box_aggregation_radius,
