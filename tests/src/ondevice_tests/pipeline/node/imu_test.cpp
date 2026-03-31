@@ -59,15 +59,21 @@ TEST_CASE("At least one measurement should be updated") {
 
     dai::IMUPacket previousPacket;
 
+    uint32_t numMessages = 0;
+
     while(pipeline.isRunning() && std::chrono::steady_clock::now() - start <= std::chrono::seconds(10)) {
         auto imuData = imuQueue->get<dai::IMUData>();
         if(imuData == nullptr) continue;
+
+        ++numMessages;
 
         for(const auto& imuPacket : imuData->packets) {
             REQUIRE((imuPacket.acceleroMeter.sequence > previousPacket.acceleroMeter.sequence || imuPacket.gyroscope.sequence > previousPacket.gyroscope.sequence));
             previousPacket = imuPacket;
         }
     }
+
+    REQUIRE(numMessages > 0);
 
     pipeline.stop();
 }
