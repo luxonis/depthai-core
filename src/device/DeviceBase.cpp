@@ -462,6 +462,18 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
     auto crashDumpUnique = dai::CrashDumpManager(device).collectCrashDump();
     std::shared_ptr<CrashDump> crashDump = std::move(crashDumpUnique);
     if(crashDump) {
+        bool hasPayload = true;
+        if(auto* rvc2Dump = dynamic_cast<CrashDumpRVC2*>(crashDump.get())) {
+            hasPayload = !rvc2Dump->crashReports.crashReports.empty();
+        } else if(auto* rvc4Dump = dynamic_cast<CrashDumpRVC4*>(crashDump.get())) {
+            hasPayload = !rvc4Dump->data.empty();
+        }
+
+        if(!hasPayload) {
+            pimpl->logger.warn("Device crashed, but no crash dump payload could be extracted.");
+            return;
+        }
+
         decltype(crashdumpCallback) callbackCopy;
 
         // Create a copy of the callback function to avoid race conditions
@@ -482,6 +494,39 @@ void DeviceBase::collectAndLogCrashDump(DeviceBase* device) {
         }
         crashDumpHandled.store(true);
     }
+}
+
+void DeviceBase::waitForGateAndCollectCrashDump() {
+    if(!gate) return;
+
+    gate->waitForSessionEnd();
+
+    try {
+        auto gateState = gate->getState();
+        crashed = crashed || gateState == DeviceGate::SessionState::CRASHED || gateState == DeviceGate::SessionState::DESTROYED;
+    } catch(const std::exception& ex) {
+        pimpl->logger.debug("Failed to query gate state after session end: {}", ex.what());
+    }
+
+    if(!crashed || crashDumpHandled.load()) return;
+
+    bool hasCrashdumpCallback = false;
+    {
+        std::unique_lock<std::mutex> l(crashdumpCallbackMtx);
+        hasCrashdumpCallback = static_cast<bool>(crashdumpCallback);
+    }
+
+    auto crashDumpPathStr = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
+    if(crashDumpPathStr == "0" && !hasCrashdumpCallback) {
+        pimpl->logger.warn("Firmware crashed but DEPTHAI_CRASHDUMP is set to 0, the crash dump will not be saved.");
+        crashDumpHandled.store(true);
+        return;
+    }
+
+    pimpl->logger.warn("FW crashed - trying to get out the crash dump");
+    std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
+    pimpl->logger.warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
+    collectAndLogCrashDump();
 }
 
 void DeviceBase::waitForRebootAndCollectCrashDump() {
@@ -537,6 +582,7 @@ void DeviceBase::closeImpl() {
     bool shouldGetCrashDump = false;
     // Check if the device is RVC3 - in case it is, crash dump retrieval is done differently
     bool isRvc2 = deviceInfo.platform == X_LINK_MYRIAD_X;
+    // Fix me, be consistent on what is used to see if crashdump is enabled
     if(!dumpOnly && isRvc2 && timeout > 0 && !crashDumpHandled.load()) {
         pimpl->logger.debug("Crash dump collection enabled - first try to extract an existing crash dump");
         try {
@@ -605,10 +651,7 @@ void DeviceBase::closeImpl() {
 
     // If the device was operated through gate, wait for the session to end
     if(gate && waitForGate) {
-        if(crashed && !crashDumpHandled.load()) {
-            collectAndLogCrashDump();
-        }
-        gate->waitForSessionEnd();
+        waitForGateAndCollectCrashDump();
     }
 
     // Close rpcStream
@@ -1154,16 +1197,7 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(loggingThread.joinable()) loggingThread.join();
             if(profilingThread.joinable()) profilingThread.join();
             if(gate) {
-                // Check whether device has crashed
-                auto gateState = gate->getState();
-                if(gateState == DeviceGate::SessionState::CRASHED || gateState == DeviceGate::SessionState::DESTROYED) {
-                    crashed = true;
-                }
-
-                // If device has crashed, collect dump
-                if(crashed && !crashDumpHandled.load()) {
-                    collectAndLogCrashDump();
-                }
+                waitForGateAndCollectCrashDump();
                 if(reconnectionTimeoutMs <= 0) {
                     break;
                 }

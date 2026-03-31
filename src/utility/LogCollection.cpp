@@ -229,8 +229,11 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
         pipelineData->sha1Hash = std::move(pipelineSHA1);
     }
 
-    // Check if logging is explicitly disabled
-    if(!utility::getEnvAs<bool>("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", false)) {
+    // Keep backward compatibility with the older global feedback switch while supporting
+    // the crashdump-specific switch introduced on this branch.
+    auto loggingDisabledLegacy = !utility::getEnvAs<std::string>("DEPTHAI_DISABLE_FEEDBACK", "").empty();
+    auto loggingDisabledCrashdump = utility::getEnvAs<bool>("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", false);
+    if(!loggingDisabledLegacy && !loggingDisabledCrashdump) {
         logger::info("Logging enabled");
         if(!sendLogsToServer(pipelineData, crashDumpData, deviceInfo)) {
             // Keep at info level to not spam in case of no internet connection
@@ -239,7 +242,7 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
             logger::info("Crash dump logs sent to server");
         }
     } else {
-        logger::info("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION is set, not uploading crash dump logs.");
+        logger::info("Crash dump upload disabled by environment.");
     }
 #else
     (void)pipelineSchema;

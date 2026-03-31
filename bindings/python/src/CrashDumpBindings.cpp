@@ -28,6 +28,11 @@ static py::dict getExtraDict(py::handle self) {
     return self.attr("_extra_dict");
 }
 
+static std::vector<uint8_t> bytesToVector(const py::bytes& bytes) {
+    std::string raw = bytes;
+    return std::vector<uint8_t>(raw.begin(), raw.end());
+}
+
 void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
@@ -99,7 +104,7 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, CrashDump, toBytes))
         .def_static(
             "fromBytes",
-            [](const std::vector<uint8_t>& bytes) -> std::shared_ptr<CrashDump> { return CrashDump::fromBytes(bytes); },
+            [](const py::bytes& bytes) -> std::shared_ptr<CrashDump> { return CrashDump::fromBytes(bytesToVector(bytes)); },
             py::arg("bytes"),
             DOC(dai, CrashDump, fromBytes))
         .def_static(
@@ -251,6 +256,10 @@ void CrashDumpBindings::bind(pybind11::module& m, void* pCallstack) {
     // Bind CrashDumpRVC4
     crashDumpRVC4.def(py::init<>())
         .def(py::init<const std::filesystem::path&>(), py::arg("tarFile"))
-        .def_readwrite("data", &CrashDumpRVC4::data, DOC(dai, CrashDumpRVC4, data))
+        .def_property(
+            "data",
+            [](const CrashDumpRVC4& dump) -> py::bytes { return py::bytes(reinterpret_cast<const char*>(dump.data.data()), dump.data.size()); },
+            [](CrashDumpRVC4& dump, const py::bytes& bytes) { dump.data = bytesToVector(bytes); },
+            DOC(dai, CrashDumpRVC4, data))
         .def_readwrite("filename", &CrashDumpRVC4::filename, DOC(dai, CrashDumpRVC4, filename));
 }

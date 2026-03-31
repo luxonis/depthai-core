@@ -9,7 +9,7 @@
 #include "utility/Environment.hpp"
 
 TEST_CASE("Crashdump callback is invoked on device crash") {
-    dai::utility::setEnv("DEPTHAI_CRASHDUMP", "0");  // don't save nor upload crash dump
+    dai::utility::setEnv("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", "1");  // don't save nor upload crash dump
     dai::utility::setEnv("DEPTHAI_CRASH_DEVICE", "1");
 
     std::mutex mtx;
@@ -39,10 +39,18 @@ TEST_CASE("Crashdump callback is invoked on device crash") {
     REQUIRE_FALSE(receivedDump->deviceId.empty());
     REQUIRE_FALSE(receivedDump->crashdumpTimestamp.empty());
     REQUIRE_FALSE(receivedDump->depthaiCommitHash.empty());
+    if(auto rvc2Dump = std::dynamic_pointer_cast<dai::CrashDumpRVC2>(receivedDump)) {
+        REQUIRE_FALSE(rvc2Dump->crashReports.crashReports.empty());
+    } else if(auto rvc4Dump = std::dynamic_pointer_cast<dai::CrashDumpRVC4>(receivedDump)) {
+        REQUIRE_FALSE(rvc4Dump->data.empty());
+        REQUIRE_FALSE(rvc4Dump->filename.empty());
+    } else {
+        FAIL("Unknown crash dump type returned by callback");
+    }
 }
 
 TEST_CASE("hasCrashed returns true after device crash") {
-    dai::utility::setEnv("DEPTHAI_CRASHDUMP", "0");  // don't save nor upload crash dump
+    dai::utility::setEnv("DEPTHAI_DISABLE_CRASHDUMP_COLLECTION", "1");  // don't save nor upload crash dump
     dai::utility::setEnv("DEPTHAI_CRASH_DEVICE", "1");
 
     dai::Device device;

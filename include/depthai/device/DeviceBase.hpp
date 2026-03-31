@@ -966,6 +966,7 @@ class DeviceBase {
     void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
     void collectAndLogCrashDump(DeviceBase* device = nullptr);
     void waitForRebootAndCollectCrashDump();
+    void waitForGateAndCollectCrashDump();
     CrashDumpRVC2::CrashReportCollection getCrashReportCollectionRVC2(bool clear = true);
     DeviceInfo deviceInfo;
     std::optional<Version> bootloaderVersion;
