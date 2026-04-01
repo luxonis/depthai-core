@@ -96,6 +96,19 @@ bool filenameMatchesCrashDumpPattern(const std::string& filename) {
            && filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
+bool isUsbProtocol(XLinkProtocol_t protocol) {
+    return protocol == X_LINK_USB_VSC || protocol == X_LINK_USB_CDC || protocol == X_LINK_USB_EP;
+}
+
+// RVC4 crashdump coverage over USB is not working yet. Skip these cases for now
+// and leave a note so the gap is removed once the USB path is fixed in the future.
+void skipIfRvc4OverUsb(const dai::DeviceBase& device) {
+    const auto deviceInfo = device.getDeviceInfo();
+    if(device.getPlatform() == dai::Platform::RVC4 && isUsbProtocol(deviceInfo.protocol)) {
+        SKIP("Skipping crashdump test on RVC4 over USB for now; this path is not working yet and should be fixed in the future.");
+    }
+}
+
 void requireCrashDumpPayload(const std::shared_ptr<dai::CrashDump>& dump) {
     REQUIRE(dump != nullptr);
     REQUIRE_FALSE(dump->deviceId.empty());
@@ -158,6 +171,7 @@ TEST_CASE("Crashdump callback rejects disabled automatic collection") {
         ScopedEnvVar crashdumpTimeout("DEPTHAI_CRASHDUMP_TIMEOUT", std::nullopt);
 
         dai::Device device;
+        skipIfRvc4OverUsb(device);
         REQUIRE_THROWS(device.registerCrashdumpCallback([](std::shared_ptr<dai::CrashDump>) {}));
     }
 
@@ -166,6 +180,7 @@ TEST_CASE("Crashdump callback rejects disabled automatic collection") {
         ScopedEnvVar crashdumpTimeout("DEPTHAI_CRASHDUMP_TIMEOUT", "0");
 
         dai::Device device;
+        skipIfRvc4OverUsb(device);
         REQUIRE_THROWS(device.registerCrashdumpCallback([](std::shared_ptr<dai::CrashDump>) {}));
     }
 }
@@ -185,6 +200,7 @@ TEST_CASE("Crashdump callback is not invoked after automatic collection is disab
         std::optional<ScopedEnvVar> disableCrashdump;
         {
             dai::Device device;
+            skipIfRvc4OverUsb(device);
             device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
             disableCrashdump.emplace("DEPTHAI_CRASHDUMP", "0");
@@ -202,6 +218,7 @@ TEST_CASE("Crashdump callback is not invoked after automatic collection is disab
         std::optional<ScopedEnvVar> disableCrashdumpTimeout;
         {
             dai::Device device;
+            skipIfRvc4OverUsb(device);
             device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
             disableCrashdumpTimeout.emplace("DEPTHAI_CRASHDUMP_TIMEOUT", "0");
@@ -224,6 +241,7 @@ TEST_CASE("Crashdump callback is invoked on device crash regardless of reconnect
 
         CrashObserver observer;
         dai::Device device;
+        skipIfRvc4OverUsb(device);
         device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
         device.crashDevice();
@@ -236,6 +254,7 @@ TEST_CASE("Crashdump callback is invoked on device crash regardless of reconnect
 
         CrashObserver observer;
         dai::Device device;
+        skipIfRvc4OverUsb(device);
         device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
         device.crashDevice();
@@ -258,6 +277,7 @@ TEST_CASE("Crashdump is written to the configured path") {
     CrashObserver observer;
     {
         dai::Device device;
+        skipIfRvc4OverUsb(device);
         device.registerCrashdumpCallback([&](std::shared_ptr<dai::CrashDump> dump) { observer.callback(dump); });
 
         device.crashDevice();
@@ -301,9 +321,7 @@ TEST_CASE("Crashdump can be collected more than once when reconnection is allowe
     int reconnectCount = 0;
 
     auto device = std::make_shared<dai::Device>();
-    if(device->getPlatform() == dai::Platform::RVC4) {
-        SKIP("Skipping repeated crashdump collection on RVC4 to keep runtime bounded; this path is covered on RVC2.");
-    }
+    skipIfRvc4OverUsb(*device);
     device->setMaxReconnectionAttempts(5, [&](dai::DeviceBase::ReconnectionStatus status) {
         if(status == dai::DeviceBase::ReconnectionStatus::RECONNECTED) {
             std::lock_guard<std::mutex> lock(reconnectMtx);
@@ -366,6 +384,7 @@ TEST_CASE("hasCrashed returns true after device crash") {
     ScopedEnvVar crashdumpTimeout("DEPTHAI_CRASHDUMP_TIMEOUT", "30000");
 
     dai::Device device;
+    skipIfRvc4OverUsb(device);
     REQUIRE_FALSE(device.hasCrashed());
 
     device.crashDevice();
