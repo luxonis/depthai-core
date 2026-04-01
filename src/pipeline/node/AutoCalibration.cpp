@@ -265,7 +265,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         throw std::invalid_argument("AutoCalibration: validationSetSize must be non-negative");
     }
 
-    const bool flashCalibration = shouldFlashCalibration(*calibration);
+    const bool flashCalibration = initialConfig->flashCalibration;
 
     unsigned int numIterations = 0;
     while(numIterations < initialConfig->maxIterations && mainLoop()) {
@@ -326,38 +326,6 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         output.send(resultOutput);
     }
     return false;
-}
-
-bool AutoCalibration::shouldFlashCalibration(const dai::CalibrationHandler& runtimeCalibration) {
-    if(!initialConfig->flashCalibration) {
-        return false;
-    }
-
-    CalibrationHandler eepromCalibration;
-    try {
-        eepromCalibration = device->readFactoryCalibration();
-    } catch(const std::exception& e) {
-        logger->warn("AutoCalibration: failed to read EEPROM calibration for flash safety check ({}). Disabling flash.", e.what());
-        return false;
-    }
-
-    bool compared = false;
-    for(const auto socket : {leftBoardSocket, rightBoardSocket}) {
-        if(socket == CameraBoardSocket::AUTO) {
-            continue;
-        }
-
-        compared = true;
-        if(hasDifferentDistortion(runtimeCalibration, eepromCalibration, socket)) {
-            logger->warn(
-                "AutoCalibration: runtime calibration differs from EEPROM on socket {} - calibration has likely been overridden. Disabling calibration "
-                "flashing.",
-                static_cast<int>(socket));
-            return false;
-        }
-    }
-
-    return compared;
 }
 
 void AutoCalibration::runContinuousMode() {
