@@ -559,8 +559,8 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
                                                                               bool useSpecTranslation,
                                                                               CameraBoardSocket& originSocket,
                                                                               LengthUnit unit) const {
-    const float mmToUnitScale = getDistanceUnitScale(unit, LengthUnit::MILLIMETER);
-    const float cmToUnitScale = getDistanceUnitScale(unit, LengthUnit::CENTIMETER);
+    const float mmToUnitScale = getLengthUnitMultiplier(unit) / getLengthUnitMultiplier(LengthUnit::MILLIMETER);
+    const float cmToUnitScale = getLengthUnitMultiplier(unit) / getLengthUnitMultiplier(LengthUnit::CENTIMETER);
 
     const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
 
