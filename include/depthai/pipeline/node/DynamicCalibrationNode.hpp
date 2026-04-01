@@ -141,12 +141,12 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void run() override;
 
-    CameraBoardSocket getBorderSockerA() {
-        return daiSocketA;
+    CameraBoardSocket getBorderSockerLeft() {
+        return daiSocketLeft;
     }
 
-    CameraBoardSocket getBorderSockerB() {
-        return daiSocketB;
+    CameraBoardSocket getBorderSockerRight() {
+        return daiSocketRight;
     }
 
     ErrorCode runQualityCheck(const bool force = false);
@@ -181,10 +181,10 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     CalibrationHandler calibrationHandler;
 
     std::variant<CameraBoardSocket, HousingCoordinateSystem> daiSocketBase = CameraBoardSocket::CAM_A;
-    CameraBoardSocket daiSocketA = CameraBoardSocket::CAM_B;
-    CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
-    std::pair<int, int> resolutionA;
-    std::pair<int, int> resolutionB;
+    CameraBoardSocket daiSocketLeft = CameraBoardSocket::CAM_B;
+    CameraBoardSocket daiSocketRight = CameraBoardSocket::CAM_C;
+    std::pair<int, int> resolutionLeft;
+    std::pair<int, int> resolutionRight;
     std::shared_ptr<::spdlog::async_logger> logger;
 
     // std::chrono::milliseconds sleepingTime = 250ms;
