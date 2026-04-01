@@ -414,6 +414,7 @@ std::vector<int> DetectionParser::getStrides() const {
 
 void DetectionParser::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
+    explicitRunOnHostSet = true;
 }
 
 /**
@@ -521,12 +522,14 @@ void DetectionParser::buildStage1() {
         logger->info("Unable to read input tensor height and width from static inputs. The node will try to get input sizes at runtime.");
     }
 
-    auto device = getDevice();
-    if(device) {
-        auto platform = device->getPlatform();
-        if(platform == Platform::RVC2 && properties.parser.decodeSegmentation) {
-            setRunOnHost(true);
-            logger->info("YOLO segmentation postprocessing is not supported on RVC2. Running postprocessing on host.");
+    if(!explicitRunOnHostSet) {
+        auto device = getDevice();
+        if(device) {
+            auto platform = device->getPlatform();
+            if(platform == Platform::RVC2 && properties.parser.decodeSegmentation) {
+                setRunOnHost(true);
+                logger->info("YOLO segmentation postprocessing is not supported on RVC2. Running postprocessing on host.");
+            }
         }
     }
 }
