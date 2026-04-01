@@ -361,10 +361,13 @@ std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::ar
 }
 
 std::array<std::array<float, 3>, 3> vectorMatrixToMatrix3x3(const std::vector<std::vector<float>>& R) {
+    std::array<std::array<float, 3>, 3> matrix;
+    if(R.size() == 0) {
+        return matrix;
+    }
     if(R.size() != 3 || R[0].size() != 3 || R[1].size() != 3 || R[2].size() != 3) {
         throw std::invalid_argument("Expected a 3x3 vector matrix to convert to 3x3 matrix.");
     }
-    std::array<std::array<float, 3>, 3> matrix;
     for(size_t i = 0; i < 3; ++i) {
         for(size_t j = 0; j < 3; ++j) {
             matrix[i][j] = R[i][j];
