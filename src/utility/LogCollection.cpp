@@ -27,6 +27,24 @@ struct FileWithSHA1 {
     std::string name;
 };
 
+std::string sanitizeCrashDumpTimestamp(std::string timestamp) {
+    for(char& ch : timestamp) {
+        const bool keep = (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '-' || ch == '_';
+        if(!keep) {
+            ch = '_';
+        }
+    }
+    return timestamp;
+}
+
+std::string getCrashDumpFilename(const CrashDump& crashDump) {
+    auto sanitizedTimestamp = sanitizeCrashDumpTimestamp(crashDump.crashdumpTimestamp);
+    if(sanitizedTimestamp.empty()) {
+        sanitizedTimestamp = "unknown_time";
+    }
+    return fmt::format("crash_dump_{}.tar.gz", sanitizedTimestamp);
+}
+
 std::string platformToString(XLinkPlatform_t platform) {
     switch(platform) {
         case X_LINK_ANY_PLATFORM:
@@ -173,7 +191,7 @@ void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& de
 }
 
 void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const CrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
-    auto crashDumpEnvVar = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "");
+    auto crashDumpEnvVar = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "", false);
     if(crashDumpEnvVar == "0") {
         logger::warn("Crash dump logging disabled");
         return;
@@ -195,7 +213,7 @@ void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const Cra
     auto bytes = crashDump.toBytes();
     crashDumpData.content = std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
     crashDumpData.sha1Hash = calculateSHA1(crashDumpData.content);
-    crashDumpData.name = "crash_dump.tar.gz";
+    crashDumpData.name = getCrashDumpFilename(crashDump);
 
     fs::path logDir = fs::current_path() / ".cache" / "depthai" / "crashdumps";
     fs::path crashDumpPathLocal(dirToStoreCrashDumps);
