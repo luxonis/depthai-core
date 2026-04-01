@@ -5,3 +5,4 @@ cmake_minimum_required(VERSION 3.10)
 ## function: dai_set_example_test_labels(example_name ...)
 
 dai_add_example(multi_device_external_frame_sync multi_device_external_frame_sync.cpp OFF OFF)
+dai_add_example(multi_device_connect_loop multi_device_connect_loop.cpp OFF OFF)
