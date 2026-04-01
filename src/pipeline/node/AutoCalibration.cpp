@@ -1,8 +1,8 @@
 #include "depthai/pipeline/node/AutoCalibration.hpp"
 
+#include <cmath>
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <pipeline/datatype/MessageGroup.hpp>
-#include <cmath>
 #include <stdexcept>
 
 #include "depthai/pipeline/InputQueue.hpp"
@@ -149,7 +149,7 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
 
     gate->initialConfig->open = false;
     gate->initialConfig->fps = GATE_FPS_DEFAULT;
-    dynamicCalibration->syncInput.setMaxSize(std::max(initialConfig->validationSetSize, 2));
+    dynamicCalibration->syncInput.setMaxSize(1);
     return std::static_pointer_cast<AutoCalibration>(shared_from_this());
 }
 
@@ -180,6 +180,7 @@ void AutoCalibration::loadData(unsigned int numImages) {
         coverageQueue.get<dai::CoverageData>();  // wait until the data are loaded
     }
     gateControlQueue.send(dai::GateControl::closeGate());
+    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
 }
 
 std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration) {
@@ -216,6 +217,8 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
             if(dynCalibrationResult->calibrationData) {
                 if(dynCalibrationResult->calibrationData.value().dataConfidence > initialConfig->dataConfidenceThreshold) {
                     gateControlQueue.send(dai::GateControl::closeGate());
+                    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+                    dynamicCalibrationCommandQueue.send(DCC::resetData());
                     report.numIterationPerRecalibration = i + 1;
                     report.dataQualityAfterRecalibration = dynCalibrationResult->calibrationData.value().dataConfidence;
                     report.recalibrationPassed = true;
@@ -243,6 +246,7 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     report.recalibrationPassed = false;
     report.numIterationPerRecalibration = maxNumIteration;
     gateControlQueue.send(dai::GateControl::closeGate());
+    dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
     report.elapsedRecalibrationSeconds = elapsed.count();
@@ -337,18 +341,23 @@ bool AutoCalibration::shouldFlashCalibration(const dai::CalibrationHandler& runt
         return false;
     }
 
+    bool compared = false;
     for(const auto socket : {leftBoardSocket, rightBoardSocket}) {
         if(socket == CameraBoardSocket::AUTO) {
             continue;
         }
 
+        compared = true;
         if(hasDifferentDistortion(runtimeCalibration, eepromCalibration, socket)) {
-            logger->warn("AutoCalibration: runtime calibration differs from EEPROM on socket {}. Disabling calibration flashing.", static_cast<int>(socket));
+            logger->warn(
+                "AutoCalibration: runtime calibration differs from EEPROM on socket {} - calibration has likely been overridden. Disabling calibration "
+                "flashing.",
+                static_cast<int>(socket));
             return false;
         }
     }
 
-    return true;
+    return compared;
 }
 
 void AutoCalibration::runContinuousMode() {
