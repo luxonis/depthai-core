@@ -27,6 +27,13 @@ extern "C" {
 
 namespace dai {
 
+namespace {
+
+// Serialize the XLink calls that are known to wedge when issued concurrently.
+std::mutex globalXLinkConnectionMtx;
+
+}  // namespace
+
 DeviceInfo::DeviceInfo(const deviceDesc_t& desc) {
     name = std::string(desc.name);
     deviceId = std::string(desc.mxid);
@@ -427,7 +434,7 @@ void XLinkConnection::close() {
 
     if(deviceLinkId != -1 && rebootOnDestruction) {
         auto previousLinkId = deviceLinkId;
-
+        std::lock_guard<std::mutex> globalLock(globalXLinkConnectionMtx);
         auto ret = XLinkResetRemoteTimeout(deviceLinkId, duration_cast<milliseconds>(RESET_TIMEOUT).count());
         if(ret != X_LINK_SUCCESS) {
             logger::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
@@ -590,7 +597,11 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
         auto tstart = steady_clock::now();
         do {
-            if((rc = XLinkConnect(&connectionHandler)) == X_LINK_SUCCESS) break;
+            {
+                std::lock_guard<std::mutex> globalLock(globalXLinkConnectionMtx);
+                rc = XLinkConnect(&connectionHandler);
+            }
+            if(rc == X_LINK_SUCCESS) break;
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < connectTimeout);
 
