@@ -95,8 +95,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     bool updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration);
 
-    bool shouldFlashCalibration(const dai::CalibrationHandler& runtimeCalibration);
-
     void logReport(const Report& report, unsigned int iteration) const;
 
     void logConfig() const;
