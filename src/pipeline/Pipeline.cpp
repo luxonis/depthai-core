@@ -809,11 +809,7 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkIn->setStreamName(streamName);
                 xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
                 xLinkBridge.xLinkIn->out.link(*connection.in);
-                if(defaultDevice->getPlatform() == Platform::RVC4 || defaultDevice->getPlatform() == Platform::RVC3) {
-                    xLinkBridge.xLinkOutHost->allowStreamResize(true);
-                } else {
-                    xLinkBridge.xLinkOutHost->allowStreamResize(false);
-                }
+                xLinkBridge.xLinkOutHost->allowStreamResize(true);
 
                 // Note the created bridge for serialization (for visualization)
                 xlinkBridges.push_back({xLinkBridge.xLinkOutHost->id, xLinkBridge.xLinkIn->id});
