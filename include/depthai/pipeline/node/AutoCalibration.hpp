@@ -95,6 +95,8 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     bool updateCalibrationProcess(std::shared_ptr<dai::CalibrationHandler> calibration);
 
+    bool shouldFlashCalibration(const dai::CalibrationHandler& runtimeCalibration);
+
     void logReport(const Report& report, unsigned int iteration) const;
 
     void logConfig() const;
@@ -121,6 +123,9 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     Input gateOutput{*this, {"gateOutput", DEFAULT_GROUP, false, 1, {{DatatypeEnum::Buffer, true}}}};
 
     bool runOnHostVar = true;
+
+    CameraBoardSocket leftBoardSocket = CameraBoardSocket::AUTO;
+    CameraBoardSocket rightBoardSocket = CameraBoardSocket::AUTO;
 
     // logger
     std::shared_ptr<::spdlog::async_logger> logger;
