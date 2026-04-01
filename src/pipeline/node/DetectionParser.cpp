@@ -511,7 +511,7 @@ void DetectionParser::buildStage1() {
     if(inTensorInfo.size() > 0) {
         int numDimensions = inTensorInfo[0].numDimensions;
         if(numDimensions < 2) {
-            logger->warn("Number of specified input dimensions is less than 2 ({}). The node will try to get input sizes at runtime.", numDimensions);
+            logger->warn("Number of specified input dimensions is {} while at least 2 are required. The node will try to get input sizes at runtime.", numDimensions);
         } else {
             imgSizesSet = true;
             imgWidth = inTensorInfo[0].dims[numDimensions - 1];
