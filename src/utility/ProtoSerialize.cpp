@@ -155,7 +155,11 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
             extrinsics.specTranslation = Point3f(t.x(), t.y(), t.z());
         }
         extrinsics.toCameraSocket = static_cast<CameraBoardSocket>(protoExtrinsics.tocamerasocket());
-        extrinsics.lengthUnit = static_cast<LengthUnit>(protoExtrinsics.lengthunit());
+        if(protoExtrinsics.has_lengthunit()) {
+            extrinsics.lengthUnit = static_cast<LengthUnit>(protoExtrinsics.lengthunit());
+        } else {
+            extrinsics.lengthUnit = LengthUnit::CENTIMETER;
+        }
     }
 
     std::vector<dai::RotatedRect> srcCrops;

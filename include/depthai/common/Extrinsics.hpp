@@ -136,7 +136,7 @@ struct Extrinsics {
                                                                       bool useSpecTranslation = false,
                                                                       LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
-    DEPTHAI_SERIALIZE(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit);
+    DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit);
 };
 
 }  // namespace dai
