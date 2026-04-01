@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <depthai/depthai.hpp>
+#include <depthai/utility/matrixOps.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -15,14 +16,22 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <numeric>
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/types.hpp>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
 
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/Point2f.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/utility/Compression.hpp"
+#include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
 
 bool isIdentity(const std::array<std::array<float, 3>, 3>& mat) {
     for(int i = 0; i < 3; i++) {
@@ -192,8 +201,7 @@ std::vector<CharucoPoint> projectPoints(const std::vector<CharucoPoint>& referen
 std::vector<float> calculateProjectionErrors(const std::vector<CharucoPoint>& projectedPoints, const std::vector<CharucoPoint>& targetPoints) {
     std::vector<float> errors;
     for(const auto& projected : projectedPoints) {
-        auto it = std::find_if(
-            targetPoints.begin(), targetPoints.end(), [&](const CharucoPoint& p) { return p.valid && p.charucoCornerId == projected.charucoCornerId; });
+        auto it = std::find_if(targetPoints.begin(), targetPoints.end(), [&](const CharucoPoint& p) { return p.charucoCornerId == projected.charucoCornerId; });
         if(it != targetPoints.end()) {
             const float error = std::hypot(projected.coordinates.x - it->coordinates.x, projected.coordinates.y - it->coordinates.y);
             errors.push_back(error);
@@ -630,6 +638,160 @@ TEST_CASE("ImgTransformation isAlignedTo distortion coefficients handling") {
 
     REQUIRE(base.isAlignedTo(zeros));
     REQUIRE_FALSE(base.isAlignedTo(nonZero));
+}
+
+TEST_CASE("AlignmentUtilities distort point") {
+    dai::Point3f point3D{40, 75, 150.0f};
+    cv::Point3f point3Dcv(point3D.x, point3D.y, point3D.z);
+    std::vector<cv::Point3f> pointCloud{point3Dcv};
+
+    std::array<std::array<float, 3>, 3> cameraMatrixValues{{
+        {857.48296979, 0.0, 968.06224829},
+        {0.0, 876.71824265, 556.37145899},
+        {0.0, 0.0, 1.0},
+    }};
+    const cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << 857.48296979, 0.0, 968.06224829, 0.0, 876.71824265, 556.37145899, 0.0, 0.0, 1.0);
+
+    std::vector<float> distCoeffs{20.43730926513672,
+                                  -17.942808151245117,
+                                  -0.015188916586339474,
+                                  0.0008560882997699082,
+                                  2.0712976455688477,
+                                  15.986123085021973,
+                                  -16.679258346557617,
+                                  1.121966004371643,
+                                  0.0,
+                                  0.0,
+                                  0.0,
+                                  0.0,
+                                  -0.006426393520087004,
+                                  0.006430431269109249};
+
+    dai::ImgTransformation transformation{
+        1920,
+        1080,
+        cameraMatrixValues,
+        dai::CameraModel::Perspective,
+        distCoeffs,
+    };
+
+    SECTION("Perspective distortion") {
+        cv::Mat distortionCoeffsCv = cv::Mat(distCoeffs).reshape(1, 1);
+
+        dai::Point2f projectedPoint = transformation.project3DPoint(point3D);
+        std::vector<cv::Point2f> projected;
+        cv::projectPoints(pointCloud, cv::Vec3d(0.0, 0.0, 0.0), cv::Vec3d(0.0, 0.0, 0.0), cameraMatrix, distortionCoeffsCv, projected);
+
+        INFO("Projected point with AlignmentUtilities: " << projectedPoint.x << ", " << projectedPoint.y);
+        INFO("Projected point with OpenCV: " << projected[0].x << ", " << projected[0].y);
+        std::cout << "Projected point with AlignmentUtilities: " << projectedPoint.x << ", " << projectedPoint.y << std::endl;
+        std::cout << "Projected point with OpenCV: " << projected[0].x << ", " << projected[0].y << std::endl;
+        REQUIRE(std::hypot(projectedPoint.x - projected[0].x, projectedPoint.y - projected[0].y) < 1e-3);
+    }
+
+    SECTION("Fisheye distortion") {
+        std::vector<float> distCoeffs{0.5f, -0.11f, 0.331f, -0.0001f};
+        cv::Mat distortionCoeffsCv;
+        cv::Mat(distCoeffs).reshape(1, 1).convertTo(distortionCoeffsCv, CV_64F);
+
+        transformation.setDistortionModel(dai::CameraModel::Fisheye);
+        transformation.setDistortionCoefficients(distCoeffs);
+
+        dai::Point2f projectedPoint = transformation.project3DPoint(point3D);
+
+        std::vector<cv::Point2f> projected;
+        cv::fisheye::projectPoints(pointCloud, projected, cv::Vec3d(0.0, 0.0, 0.0), cv::Vec3d(0.0, 0.0, 0.0), cameraMatrix, distortionCoeffsCv);
+
+        INFO("Projected point with AlignmentUtilities: " << projectedPoint.x << ", " << projectedPoint.y);
+        INFO("Projected point with OpenCV: " << projected[0].x << ", " << projected[0].y);
+        REQUIRE(std::hypot(projectedPoint.x - projected[0].x, projectedPoint.y - projected[0].y) < 1e-3);
+    }
+
+    SECTION("Unsupported Camera models") {
+        transformation.setDistortionModel(dai::CameraModel::RadialDivision);
+        REQUIRE_THROWS_AS(transformation.project3DPoint(point3D), std::invalid_argument);
+        transformation.setDistortionModel(dai::CameraModel::Equirectangular);
+        REQUIRE_THROWS_AS(transformation.project3DPoint(point3D), std::invalid_argument);
+    }
+}
+
+TEST_CASE("AlignmentUtilities undistort point") {
+    dai::Point2f point{1594.8793471442408, 200.6646247524987};
+    cv::Point2d distortedPoint(point.x, point.y);
+
+    std::vector<float> distCoeffs{20.43730926513672,
+                                  -17.942808151245117,
+                                  -0.015188916586339474,
+                                  0.0008560882997699082,
+                                  2.0712976455688477,
+                                  15.986123085021973,
+                                  -16.679258346557617,
+                                  1.121966004371643,
+                                  0.0,
+                                  0.0,
+                                  0.0,
+                                  0.0,
+                                  -0.006426393520087004,
+                                  0.006430431269109249};
+    cv::Mat distortionCoeffsCv = cv::Mat(distCoeffs).reshape(1, 1);
+
+    const cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << 857.48296979, 0.0, 968.06224829, 0.0, 876.71824265, 556.37145899, 0.0, 0.0, 1.0);
+
+    std::array<std::array<float, 3>, 3> cameraMatrixValues{{
+        {857.48296979, 0.0, 968.06224829},
+        {0.0, 876.71824265, 556.37145899},
+        {0.0, 0.0, 1.0},
+    }};
+
+    dai::ImgTransformation transformation{
+        1920,
+        1080,
+        cameraMatrixValues,
+        dai::CameraModel::Perspective,
+        distCoeffs,
+    };
+
+    SECTION("Perspective undistortion") {
+        const auto undistortedRay = pixelToRay(point, transformation);
+        std::vector<cv::Point2d> opencvUndistorted;
+        cv::undistortPoints(std::vector<cv::Point2d>{distortedPoint},
+                            opencvUndistorted,
+                            cameraMatrix,
+                            distortionCoeffsCv,
+                            cv::noArray(),
+                            cv::noArray(),
+                            {cv::TermCriteria::MAX_ITER, 50, 0.0001});
+
+        INFO("Undistorted point with AlignmentUtilities: " << undistortedRay[0] / undistortedRay[2] << ", " << undistortedRay[1] / undistortedRay[2]);
+        INFO("Undistorted point with OpenCV: " << opencvUndistorted[0].x << ", " << opencvUndistorted[0].y);
+        REQUIRE(std::hypot((undistortedRay[0] / undistortedRay[2]) - opencvUndistorted[0].x, (undistortedRay[1] / undistortedRay[2]) - opencvUndistorted[0].y)
+                < 1e-3);
+    }
+
+    SECTION("Fisheye undistortion") {
+        std::vector<float> distCoeffs{0.5f, -0.11f, 0.331f, -0.0001f};
+        cv::Mat distortionCoeffsCv;
+        cv::Mat(distCoeffs).reshape(1, 1).convertTo(distortionCoeffsCv, CV_64F);
+
+        transformation.setDistortionModel(dai::CameraModel::Fisheye);
+        transformation.setDistortionCoefficients(distCoeffs);
+
+        const auto undistortedRay = pixelToRay(point, transformation);
+        std::vector<cv::Point2d> opencvUndistorted;
+        cv::fisheye::undistortPoints(std::vector<cv::Point2d>{distortedPoint}, opencvUndistorted, cameraMatrix, distortionCoeffsCv);
+
+        INFO("Undistorted point with AlignmentUtilities: " << undistortedRay[0] / undistortedRay[2] << ", " << undistortedRay[1] / undistortedRay[2]);
+        INFO("Undistorted point with OpenCV: " << opencvUndistorted[0].x << ", " << opencvUndistorted[0].y);
+        REQUIRE(std::hypot((undistortedRay[0] / undistortedRay[2]) - opencvUndistorted[0].x, (undistortedRay[1] / undistortedRay[2]) - opencvUndistorted[0].y)
+                < 1e-3);
+    }
+
+    SECTION("Unsupported Camera models") {
+        transformation.setDistortionModel(dai::CameraModel::RadialDivision);
+        REQUIRE_THROWS_AS(pixelToRay(point, transformation), std::invalid_argument);
+        transformation.setDistortionModel(dai::CameraModel::Equirectangular);
+        REQUIRE_THROWS_AS(pixelToRay(point, transformation), std::invalid_argument);
+    }
 }
 
 TEST_CASE("projectPoints test") {

@@ -48,30 +48,6 @@ inline bool RRinRR(const dai::RotatedRect& in, const dai::RotatedRect& out) {
     return true;
 }
 
-std::array<float, 3> pixelToRay(dai::Point2f px, const dai::ImgTransformation& transformation) {
-    std::array<float, 3> pxHomogeneous = {px.x, px.y, 1.0f};
-    auto intrinsicMatrixInv = transformation.getSourceIntrinsicMatrixInv();
-    auto distortionModel = transformation.getDistortionModel();
-    auto distortionCoeffs = transformation.getDistortionCoefficients();
-
-    std::array<float, 3> pxSensor = matrix::matVecMul(intrinsicMatrixInv, pxHomogeneous);
-    std::array<float, 3> undistortedRay = undistortPoint(pxSensor, distortionModel, distortionCoeffs);
-    std::array<float, 3> ray = {undistortedRay[0] / undistortedRay[2], undistortedRay[1] / undistortedRay[2], 1.0f};
-    return ray;
-}
-
-dai::Point2f rayToPixel(const std::array<float, 3>& ray, const dai::ImgTransformation& transformation) {
-    auto distortionModel = transformation.getDistortionModel();
-    auto distortionCoeffs = transformation.getDistortionCoefficients();
-    auto intrinsicMatrix = transformation.getSourceIntrinsicMatrix();
-    std::array<float, 3> distortedRay = distortPoint(ray, distortionModel, distortionCoeffs);
-
-    std::array<float, 3> rayHomogeneous = {distortedRay[0] / distortedRay[2], distortedRay[1] / distortedRay[2], 1.0f};
-    std::array<float, 3> pxHomogeneous = matrix::matVecMul(intrinsicMatrix, rayHomogeneous);
-
-    return {pxHomogeneous[0] / pxHomogeneous[2], pxHomogeneous[1] / pxHomogeneous[2]};
-}
-
 dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransformation& from, const ImgTransformation& to) {
     if(from.isEqualTransformation(to)) {
         return sourcePt;

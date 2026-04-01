@@ -45,6 +45,30 @@ std::array<std::array<float, 3>, 3> makeInvTiltMatrix(float tauX, float tauY) {
 
 }  // namespace
 
+std::array<float, 3> pixelToRay(dai::Point2f px, const dai::ImgTransformation& transformation) {
+    std::array<float, 3> pxHomogeneous = {px.x, px.y, 1.0f};
+    auto intrinsicMatrixInv = transformation.getSourceIntrinsicMatrixInv();
+    auto distortionModel = transformation.getDistortionModel();
+    auto distortionCoeffs = transformation.getDistortionCoefficients();
+
+    std::array<float, 3> pxSensor = dai::matrix::matVecMul(intrinsicMatrixInv, pxHomogeneous);
+    std::array<float, 3> undistortedRay = undistortPoint(pxSensor, distortionModel, distortionCoeffs);
+    std::array<float, 3> ray = {undistortedRay[0] / undistortedRay[2], undistortedRay[1] / undistortedRay[2], 1.0f};
+    return ray;
+}
+
+dai::Point2f rayToPixel(const std::array<float, 3>& ray, const dai::ImgTransformation& transformation) {
+    auto distortionModel = transformation.getDistortionModel();
+    auto distortionCoeffs = transformation.getDistortionCoefficients();
+    auto intrinsicMatrix = transformation.getSourceIntrinsicMatrix();
+    std::array<float, 3> distortedRay = distortPoint(ray, distortionModel, distortionCoeffs);
+
+    std::array<float, 3> rayHomogeneous = {distortedRay[0] / distortedRay[2], distortedRay[1] / distortedRay[2], 1.0f};
+    std::array<float, 3> pxHomogeneous = dai::matrix::matVecMul(intrinsicMatrix, rayHomogeneous);
+
+    return {pxHomogeneous[0] / pxHomogeneous[2], pxHomogeneous[1] / pxHomogeneous[2]};
+}
+
 std::array<float, 3> applyTilt(float x, float y, float tauX, float tauY) {
     if(tauX == 0.0f && tauY == 0.0f) return {x, y, 1.0f};
     const auto matTilt = makeTiltMatrix(tauX, tauY);
@@ -118,20 +142,6 @@ inline std::array<float, 3> distortFisheye(std::array<float, 3> point, const std
     return {x * scale, y * scale, 1.0f};
 }
 
-inline std::array<float, 3> distortRadialDivision(std::array<float, 3> point, const std::vector<float>& coeffs) {
-    const float x = point[0];
-    const float y = point[1];
-    const float k1 = coeffAt(coeffs, 0);
-    const float k2 = coeffAt(coeffs, 1);
-    const float k3 = coeffAt(coeffs, 2);
-    const float r2 = x * x + y * y;
-    const float r4 = r2 * r2;
-    const float r6 = r4 * r2;
-    const float denom = 1.0f + k1 * r2 + k2 * r4 + k3 * r6;
-    if(std::abs(denom) < kTiny) return {x, y, 1.0f};
-    return {x / denom, y / denom, 1.0f};
-}
-
 std::array<float, 3> distortPoint(std::array<float, 3> point, dai::CameraModel model, const std::vector<float>& coeffs) {
     if(coeffs.empty() || !hasNonZeroDistortion(coeffs)) return point;
     auto homogeneousPoint = dai::matrix::dehomogenizePoint3(point);
@@ -141,10 +151,11 @@ std::array<float, 3> distortPoint(std::array<float, 3> point, dai::CameraModel m
         case dai::CameraModel::Fisheye:
             return distortFisheye(homogeneousPoint, coeffs);
         case dai::CameraModel::RadialDivision:
-            return distortRadialDivision(homogeneousPoint, coeffs);
+            throw std::invalid_argument("Unsupported distortion model: RadialDivision");
         case dai::CameraModel::Equirectangular:
+            throw std::invalid_argument("Unsupported distortion model: Equirectangular");
         default:
-            return homogeneousPoint;
+            throw std::invalid_argument("Unsupported distortion model.");
     }
 }
 
@@ -221,7 +232,7 @@ std::array<float, 3> undistortFisheye(std::array<float, 3> point, const std::vec
     // Solve theta_d = theta * (1 + k1*theta^2 + k2*theta^4 + k3*theta^6 + k4*theta^8)
     // with Newton iterations, then map back via r = tan(theta).
     float theta = rd;
-    for(int i = 0; i < 30; ++i) {
+    for(int i = 0; i < 40; ++i) {
         const float th2 = theta * theta;
         const float th4 = th2 * th2;
         const float th6 = th4 * th2;
@@ -240,30 +251,6 @@ std::array<float, 3> undistortFisheye(std::array<float, 3> point, const std::vec
     const float scale = tanTheta / rd;
     return {x * scale, y * scale, 1.0f};
 }
-
-std::array<float, 3> undistortRadialDivision(std::array<float, 3> point, const std::vector<float>& coeffs) {
-    std::array<float, 3> undistorted = point;
-    const float k1 = coeffAt(coeffs, 0);
-    const float k2 = coeffAt(coeffs, 1);
-    const float k3 = coeffAt(coeffs, 2);
-    for(int i = 0; i < 20; ++i) {
-        const float r2 = undistorted[0] * undistorted[0] + undistorted[1] * undistorted[1];
-        const float r4 = r2 * r2;
-        const float r6 = r4 * r2;
-        const float scale = 1.0f + k1 * r2 + k2 * r4 + k3 * r6;
-        if(!std::isfinite(scale) || std::abs(scale) < kTiny) break;
-        const float x = point[0] * scale;
-        const float y = point[1] * scale;
-        if(!std::isfinite(x) || !std::isfinite(y)) break;
-        const float dx = x - undistorted[0];
-        const float dy = y - undistorted[1];
-        undistorted[0] += dx;
-        undistorted[1] += dy;
-        if(dx * dx + dy * dy < 1e-12f) break;
-    }
-    return undistorted;
-}
-
 std::array<float, 3> undistortPoint(std::array<float, 3> point, dai::CameraModel model, const std::vector<float>& coeffs) {
     if(coeffs.empty() || !hasNonZeroDistortion(coeffs)) return point;
     switch(model) {
@@ -272,12 +259,13 @@ std::array<float, 3> undistortPoint(std::array<float, 3> point, dai::CameraModel
         case dai::CameraModel::Fisheye:
             return undistortFisheye(point, coeffs);
         case dai::CameraModel::RadialDivision: {
-            const auto undistorted = undistortRadialDivision(point, coeffs);
-            return undistorted;
+            throw std::invalid_argument("Unsupported distortion model: RadialDivision");
         }
-        case dai::CameraModel::Equirectangular:
+        case dai::CameraModel::Equirectangular: {
+            throw std::invalid_argument("Unsupported distortion model: Equirectangular");
+        }
         default:
-            return point;
+            throw std::invalid_argument("Unsupported distortion model");
     }
 }
 
