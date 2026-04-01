@@ -23,6 +23,7 @@
 
 // std
 #include <cassert>
+#include <cmath>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -52,6 +53,39 @@ struct hash<::dai::NodeConnectionSchema> {
 }  // namespace std
 
 namespace dai {
+
+namespace {
+
+bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHandler& rhs, CameraBoardSocket socket) {
+    if(!lhs.hasCameraCalibration(socket) || !rhs.hasCameraCalibration(socket)) {
+        if(!lhs.hasCameraCalibration(socket) && !rhs.hasCameraCalibration(socket)) {
+            return false;
+        }
+        return true;
+    }
+
+    if(lhs.getDistortionModel(socket) != rhs.getDistortionModel(socket)) {
+        return true;
+    }
+
+    const auto lhsDist = lhs.getDistortionCoefficients(socket);
+    const auto rhsDist = rhs.getDistortionCoefficients(socket);
+
+    if(lhsDist.size() != rhsDist.size()) {
+        return true;
+    }
+
+    constexpr float EPS = 1e-6f;
+    for(size_t i = 0; i < lhsDist.size(); ++i) {
+        if(std::fabs(lhsDist[i] - rhsDist[i]) > EPS) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+}  // namespace
 
 namespace fs = std::filesystem;
 
@@ -658,6 +692,10 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
 void PipelineImpl::build() {
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
     if(isBuild) return;
+
+    // Replay setup can update runtime calibration, so run it before deriving AutoCalibration defaults.
+    utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
+
     // start ---Add AutoCalibration block---
     auto autoCalibrationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "ON_START");
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
@@ -688,6 +726,43 @@ void PipelineImpl::build() {
             if(stereoPair.first && stereoPair.second && !hasDynamicCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
+
+                // Build-time flash safety: disable flashing when runtime calibration differs from EEPROM.
+                const auto runtimeCalibration = defaultDevice->tryGetCalibration();
+                bool allowFlashCalibration = autoCalibrationNode->initialConfig->flashCalibration;
+                if(allowFlashCalibration && runtimeCalibration) {
+                    try {
+                        const auto eepromCalibration = defaultDevice->readFactoryCalibration();
+
+                        bool compared = false;
+                        for(const auto socket : {stereoPair.first->getBoardSocket(), stereoPair.second->getBoardSocket()}) {
+                            if(socket == CameraBoardSocket::AUTO) {
+                                continue;
+                            }
+                            compared = true;
+                            if(hasDifferentDistortion(*runtimeCalibration, eepromCalibration, socket)) {
+                                allowFlashCalibration = false;
+                                Logging::getInstance().logger.warn(
+                                    "AutoCalibration build-time flash safety: runtime calibration differs from EEPROM on socket {}. Disabling "
+                                    "flashCalibration.",
+                                    static_cast<int>(socket));
+                                break;
+                            }
+                        }
+
+                        if(!compared) {
+                            allowFlashCalibration = false;
+                            Logging::getInstance().logger.warn(
+                                "AutoCalibration build-time flash safety: no valid stereo sockets to compare. Disabling flashCalibration.");
+                        }
+                    } catch(const std::exception& ex) {
+                        allowFlashCalibration = false;
+                        Logging::getInstance().logger.warn(
+                            "AutoCalibration build-time flash safety: failed to read EEPROM calibration ({}). Disabling flashCalibration.", ex.what());
+                    }
+                }
+                autoCalibrationNode->initialConfig->flashCalibration = allowFlashCalibration;
+
                 if(autoCalibrationString == "CONTINUOUS") {
                     autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
                 } else {
@@ -707,8 +782,6 @@ void PipelineImpl::build() {
     }
 #endif
     // end of ---Add AutoCalibration block---
-
-    utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
 
     // Run first build stage for all nodes
     for(const auto& node : getAllNodes()) {
