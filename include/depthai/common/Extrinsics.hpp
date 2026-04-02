@@ -22,8 +22,7 @@ struct Extrinsics {
     Extrinsics(std::vector<std::vector<float>> rotationMatrix,
                Point3f translation,
                CameraBoardSocket toCameraSocket,
-               LengthUnit lengthUnit = LengthUnit::CENTIMETER)
-        : rotationMatrix(std::move(rotationMatrix)), translation(translation), toCameraSocket(toCameraSocket), lengthUnit(lengthUnit) {}
+               LengthUnit lengthUnit = LengthUnit::CENTIMETER);
 
     Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
 
@@ -54,11 +53,13 @@ struct Extrinsics {
      * @return 3x3 rotation matrix as a 2D array
      */
     std::array<std::array<float, 3>, 3> getRotationMatrix() const;
+
     /**
-     * Get the extrinsic rotation matrix inverse in array format.
+     * Get the inverse extrinsic rotation matrix in array format.
      * @return 3x3 inverse rotation matrix as a 2D array
      */
     std::array<std::array<float, 3>, 3> getInverseRotationMatrix() const;
+
     /**
      * Get the Camera Extrinsics object to the toCameraSocket.
      * @param useSpecTranslation Set to true to force using spec translation
@@ -82,6 +83,7 @@ struct Extrinsics {
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
     std::array<std::array<float, 4>, 4> getInverseTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
+
     /**
      * Set the extrinsic transformation matrix.
      * @param matrix 4x4 homogeneous transformation matrix
@@ -96,6 +98,7 @@ struct Extrinsics {
      * ```
      */
     void setTransformationMatrix(const std::vector<std::vector<float>>& matrix, LengthUnit unit = LengthUnit::CENTIMETER);
+
     /**
      * Set the extrinsic transformation matrix.
      * @param matrix 4x4 homogeneous transformation matrix
@@ -112,6 +115,14 @@ struct Extrinsics {
     void setTransformationMatrix(const std::array<std::array<float, 4>, 4>& matrix, LengthUnit unit = LengthUnit::CENTIMETER);
 
     /**
+     * Set the translation vector
+     * @param translationVector The translation vector to set
+     * @param unit Units of the provided translation vector
+     * @param useSpecTranslation Set to true to force setting spec translation
+     */
+    void setTranslationVector(const dai::Point3f& translationVector, LengthUnit unit = LengthUnit::CENTIMETER, bool useSpecTranslation = false);
+
+    /**
      * Get the translation vector
      * @param unit Units of the returned translation vector
      * @return translation vector in specified units
@@ -125,6 +136,7 @@ struct Extrinsics {
      * @return true if the Extrinsics objects are equal, false otherwise
      */
     bool isEqualExtrinsics(const Extrinsics& other, float epsilon = 1e-6f) const;
+
     /**
      * Get the extrinsic transformation matrix from this Extrinsics to the target Extrinsics.
      * @param to The target Extrinsics to get the transformation matrix to

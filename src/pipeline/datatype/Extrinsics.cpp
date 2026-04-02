@@ -10,6 +10,14 @@
 
 namespace dai {
 
+Extrinsics::Extrinsics(std::vector<std::vector<float>> rotationMatrix, Point3f translation, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit)
+    : translation(translation), toCameraSocket(toCameraSocket), lengthUnit(lengthUnit) {
+    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3 || rotationMatrix[1].size() != 3 || rotationMatrix[2].size() != 3) {
+        throw std::runtime_error("Rotation matrix must be 3x3.");
+    }
+    this->rotationMatrix = std::move(rotationMatrix);
+}
+
 Extrinsics::Extrinsics(const std::vector<std::vector<float>>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit)
     : toCameraSocket(toCameraSocket) {
     setTransformationMatrix(extrinsicsMatrix, lengthUnit);
@@ -63,6 +71,15 @@ void Extrinsics::setTransformationMatrix(const std::array<std::array<float, 4>, 
         }
     }
     translation = Point3f(matrix[0][3], matrix[1][3], matrix[2][3]);
+    lengthUnit = unit;
+}
+
+void Extrinsics::setTranslationVector(const dai::Point3f& translationVector, LengthUnit unit, bool useSpecTranslation) {
+    if(useSpecTranslation) {
+        specTranslation = translationVector;
+    } else {
+        translation = translationVector;
+    }
     lengthUnit = unit;
 }
 

@@ -684,8 +684,6 @@ TEST_CASE("AlignmentUtilities distort point") {
 
         INFO("Projected point with AlignmentUtilities: " << projectedPoint.x << ", " << projectedPoint.y);
         INFO("Projected point with OpenCV: " << projected[0].x << ", " << projected[0].y);
-        std::cout << "Projected point with AlignmentUtilities: " << projectedPoint.x << ", " << projectedPoint.y << std::endl;
-        std::cout << "Projected point with OpenCV: " << projected[0].x << ", " << projected[0].y << std::endl;
         REQUIRE(std::hypot(projectedPoint.x - projected[0].x, projectedPoint.y - projected[0].y) < 1e-3);
     }
 

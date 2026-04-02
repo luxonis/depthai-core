@@ -190,12 +190,12 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("addScale", &ImgTransformation::addScale, py::arg("scaleX"), py::arg("scaleY"), DOC(dai, ImgTransformation, addScale))
         .def("addSrcCrops", &ImgTransformation::addSrcCrops, py::arg("crops"), DOC(dai, ImgTransformation, addSrcCrops))
         .def("remapPointTo", &ImgTransformation::remapPointTo, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remapPointTo))
-        .def("remapPointFrom", &ImgTransformation::remapPointFrom, py::arg("source"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
+        .def("remapPointFrom", &ImgTransformation::remapPointFrom, py::arg("from"), py::arg("point"), DOC(dai, ImgTransformation, remapPointFrom))
         .def("remapRectTo", &ImgTransformation::remapRectTo, py::arg("to"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectTo))
-        .def("remapRectFrom", &ImgTransformation::remapRectFrom, py::arg("source"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
+        .def("remapRectFrom", &ImgTransformation::remapRectFrom, py::arg("from"), py::arg("rect"), DOC(dai, ImgTransformation, remapRectFrom))
         .def("project3DPoint", &ImgTransformation::project3DPoint, py::arg("point"), DOC(dai, ImgTransformation, project3DPoint))
         .def("project3DPointTo", &ImgTransformation::project3DPointTo, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, project3DPointTo))
-        .def("project3DPointFrom", &ImgTransformation::project3DPointFrom, py::arg("source"), py::arg("point"), DOC(dai, ImgTransformation, project3DPointFrom))
+        .def("project3DPointFrom", &ImgTransformation::project3DPointFrom, py::arg("from"), py::arg("point"), DOC(dai, ImgTransformation, project3DPointFrom))
         .def(
             "projectPointTo",
             [](const ImgTransformation& self, const ImgTransformation& to, dai::Point2f point, float depth) { return self.projectPointTo(to, point, depth); },
@@ -204,7 +204,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
             py::arg("depth"),
             DOC(dai, ImgTransformation, projectPointTo))
         .def("remap3DPointTo", &ImgTransformation::remap3DPointTo, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remap3DPointTo))
-        .def("remap3DPointFrom", &ImgTransformation::remap3DPointFrom, py::arg("source"), py::arg("point"), DOC(dai, ImgTransformation, remap3DPointFrom))
+        .def("remap3DPointFrom", &ImgTransformation::remap3DPointFrom, py::arg("from"), py::arg("point"), DOC(dai, ImgTransformation, remap3DPointFrom))
         .def("getExtrinsicsTransformationMatrixTo",
              &ImgTransformation::getExtrinsicsTransformationMatrixTo,
              py::arg("to"),

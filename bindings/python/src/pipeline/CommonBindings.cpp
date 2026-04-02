@@ -550,6 +550,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("matrix"),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, setTransformationMatrix))
+        .def("setTranslationVector",
+             py::arg("translationVector"),
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             py::arg("useSpecTranslation") = false,
+             DOC(dai, Extrinsics, setTranslationVector))
         .def("getTranslationVector",
              &Extrinsics::getTranslationVector,
              py::arg("useSpecTranslation") = false,
