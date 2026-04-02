@@ -361,7 +361,7 @@ std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::ar
 }
 
 std::array<std::array<float, 3>, 3> vectorMatrixToMatrix3x3(const std::vector<std::vector<float>>& R) {
-    std::array<std::array<float, 3>, 3> matrix;
+    std::array<std::array<float, 3>, 3> matrix{};
     if(R.size() == 0) {
         return matrix;
     }

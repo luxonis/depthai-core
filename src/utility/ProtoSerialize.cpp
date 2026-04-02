@@ -138,12 +138,16 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
     if(imgTransformation.has_extrinsics()) {
         const auto& protoExtrinsics = imgTransformation.extrinsics();
         const auto& protoRotation = protoExtrinsics.rotationmatrix();
-        extrinsics.rotationMatrix.resize(protoRotation.arrays_size());
-        for(int i = 0; i < protoRotation.arrays_size(); ++i) {
-            const auto& row = protoRotation.arrays(i);
-            extrinsics.rotationMatrix[i].reserve(row.values_size());
-            for(int j = 0; j < row.values_size(); ++j) {
-                extrinsics.rotationMatrix[i].push_back(row.values(j));
+        if(protoRotation.arrays_size() > 0) {
+            extrinsics.rotationMatrix.clear();
+            extrinsics.rotationMatrix.reserve(protoRotation.arrays_size());
+            for(int i = 0; i < protoRotation.arrays_size(); ++i) {
+                const auto& row = protoRotation.arrays(i);
+                auto& rotationRow = extrinsics.rotationMatrix.emplace_back();
+                rotationRow.reserve(row.values_size());
+                for(int j = 0; j < row.values_size(); ++j) {
+                    rotationRow.push_back(row.values(j));
+                }
             }
         }
         if(protoExtrinsics.has_translation()) {
