@@ -170,10 +170,35 @@ TEST_CASE("Camera pool sizes") {
             }
         }
         std::cout << "Got the first part frames\n" << std::flush;
-        for(const auto& count : outQueuesCounter) {
-            REQUIRE(count == queueSize);
+
+        auto afterBlockCounters = outQueuesCounter;
+        auto counterDelta = [&](int idx) {
+            return outQueuesCounter[idx] - afterBlockCounters[idx];
+        };
+
+        // Check stream still works after script node unblocks the Camera node.
+        while(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() < timeToBlock + 5) {
+            for(int idx = 0; idx < outQueues.size(); ++idx) {
+                auto frame = outQueues[idx]->tryGet();
+                if(frame) {
+                    ++outQueuesCounter[idx];
+                }
+            }
         }
-        // Check stream still works after script node unblocks the Camera node
+        std::vector<int> recovered5s(outQueues.size());
+        for(int idx = 0; idx < outQueues.size(); ++idx) recovered5s[idx] = counterDelta(idx);
+
+        while(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() < timeToBlock + 15) {
+            for(int idx = 0; idx < outQueues.size(); ++idx) {
+                auto frame = outQueues[idx]->tryGet();
+                if(frame) {
+                    ++outQueuesCounter[idx];
+                }
+            }
+        }
+        std::vector<int> recovered15s(outQueues.size());
+        for(int idx = 0; idx < outQueues.size(); ++idx) recovered15s[idx] = counterDelta(idx);
+
         while(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() < timeToBlock + 30) {
             for(int idx = 0; idx < outQueues.size(); ++idx) {
                 auto frame = outQueues[idx]->tryGet();
@@ -182,8 +207,13 @@ TEST_CASE("Camera pool sizes") {
                 }
             }
         }
-        for(const auto& count : outQueuesCounter) {
-            REQUIRE(count > queueSize + 200);
+        for(int idx = 0; idx < outQueues.size(); ++idx) {
+            const int recovered30s = counterDelta(idx);
+            CAPTURE(overrideQueueSize, autoCalibrationOnStartup, isRvc4, idx, recovered5s[idx], recovered15s[idx], recovered30s);
+            REQUIRE(recovered5s[idx] > 0);
+            REQUIRE(recovered15s[idx] > recovered5s[idx] + 20);
+            REQUIRE(recovered30s > recovered15s[idx] + 40);
+            REQUIRE(recovered30s > 200);
         }
     }
 }
