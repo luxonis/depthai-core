@@ -69,9 +69,13 @@ int main() {
                     if(val > 0) depthValues.push_back(val);
                 }
             }
-            std::sort(depthValues.begin(), depthValues.end());
-            float medianDepth = depthValues[depthValues.size() / 2];
-            std::cout << "Median depth value: " << medianDepth << std::endl;
+            if(depthValues.empty()) {
+                std::cout << "Median depth value: N/A (no valid depth pixels)" << std::endl;
+            } else {
+                std::sort(depthValues.begin(), depthValues.end());
+                float medianDepth = depthValues[depthValues.size() / 2];
+                std::cout << "Median depth value: " << medianDepth << std::endl;
+            }
 
             // Process depth frame for visualization
             cv::Mat depthFrameColor;
