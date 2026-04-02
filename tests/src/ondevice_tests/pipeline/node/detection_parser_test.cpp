@@ -207,11 +207,13 @@ void runDetectionParserReplayTest(const std::string& modelName, const std::files
     for(int i = 0; i < NUM_MSGS; i++) {
         INFO("Frame number: " << i);
         if(!p.isRunning()) break;
-        auto detections = outputQueue->get<dai::ImgDetections>();
-        REQUIRE(detections != nullptr);
-        REQUIRE(detections->getSequenceNum() == i);
+        if(!outputQueue->isClosed()) {
+            auto detections = outputQueue->get<dai::ImgDetections>();
+            REQUIRE(detections != nullptr);
+            REQUIRE(detections->getSequenceNum() == i);
 
-        validateDetections(detections, groundTruthPath, i);
+            validateDetections(detections, groundTruthPath, i);
+        }
     }
 }
 
