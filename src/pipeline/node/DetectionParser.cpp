@@ -414,6 +414,7 @@ std::vector<int> DetectionParser::getStrides() const {
 
 void DetectionParser::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
+    explicitRunOnHostSet = true;
 }
 
 /**
@@ -511,7 +512,8 @@ void DetectionParser::buildStage1() {
     if(inTensorInfo.size() > 0) {
         int numDimensions = inTensorInfo[0].numDimensions;
         if(numDimensions < 2) {
-            logger->error("Number of input dimensions is less than 2");
+            logger->warn("Number of specified input dimensions is {} while at least 2 are required. The node will try to get input sizes at runtime.",
+                         numDimensions);
         } else {
             imgSizesSet = true;
             imgWidth = inTensorInfo[0].dims[numDimensions - 1];
@@ -519,6 +521,17 @@ void DetectionParser::buildStage1() {
         }
     } else {
         logger->info("Unable to read input tensor height and width from static inputs. The node will try to get input sizes at runtime.");
+    }
+
+    if(!explicitRunOnHostSet) {
+        auto device = getDevice();
+        if(device) {
+            auto platform = device->getPlatform();
+            if(platform == Platform::RVC2 && properties.parser.decodeSegmentation) {
+                setRunOnHost(true);
+                logger->info("YOLO segmentation postprocessing is not supported on RVC2. Running postprocessing on host.");
+            }
+        }
     }
 }
 

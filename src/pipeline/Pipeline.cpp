@@ -59,10 +59,10 @@ namespace {
 
 bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHandler& rhs, CameraBoardSocket socket) {
     if(!lhs.hasCameraCalibration(socket) || !rhs.hasCameraCalibration(socket)) {
-         if(!lhs.hasCameraCalibration(socket) && !rhs.hasCameraCalibration(socket)) {
-             return false;
-         }
-         return true;
+        if(!lhs.hasCameraCalibration(socket) && !rhs.hasCameraCalibration(socket)) {
+            return false;
+        }
+        return true;
     }
 
     if(lhs.getDistortionModel(socket) != rhs.getDistortionModel(socket)) {
@@ -820,7 +820,8 @@ void PipelineImpl::build() {
                             if(hasDifferentDistortion(*runtimeCalibration, eepromCalibration, socket)) {
                                 allowFlashCalibration = false;
                                 Logging::getInstance().logger.warn(
-                                    "AutoCalibration build-time flash safety: runtime calibration differs from EEPROM on socket {}. Disabling flashCalibration.",
+                                    "AutoCalibration build-time flash safety: runtime calibration differs from EEPROM on socket {}. Disabling "
+                                    "flashCalibration.",
                                     static_cast<int>(socket));
                                 break;
                             }
@@ -834,8 +835,7 @@ void PipelineImpl::build() {
                     } catch(const std::exception& ex) {
                         allowFlashCalibration = false;
                         Logging::getInstance().logger.warn(
-                            "AutoCalibration build-time flash safety: failed to read EEPROM calibration ({}). Disabling flashCalibration.",
-                            ex.what());
+                            "AutoCalibration build-time flash safety: failed to read EEPROM calibration ({}). Disabling flashCalibration.", ex.what());
                     }
                 }
                 autoCalibrationNode->initialConfig->flashCalibration = allowFlashCalibration;
