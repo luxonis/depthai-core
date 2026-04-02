@@ -820,7 +820,7 @@ TEST_CASE("projectPoints test") {
         REQUIRE(std::isfinite(medianProjectionErrorPx));
         REQUIRE(std::isfinite(stdProjectionErrorPx));
 
-        currentResults[folder.stem()] = result;
+        currentResults[folder.stem().string()] = result;
         testIterator++;
     }
 

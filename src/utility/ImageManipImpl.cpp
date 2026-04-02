@@ -10,12 +10,6 @@
     #include <opencv2/calib3d.hpp>
 #endif
 
-#if defined(WIN32) || defined(_WIN32)
-    #define _RESTRICT
-#else
-    #define _RESTRICT __restrict__
-#endif
-
 void dai::impl::transformOpenCV(const uint8_t* src,
                                 uint8_t* dst,
                                 const size_t srcWidth,
