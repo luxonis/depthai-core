@@ -1,7 +1,7 @@
 #include "depthai/pipeline/node/Sync.hpp"
-#include <stdexcept>
 
 #include <chrono>
+#include <stdexcept>
 
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -10,34 +10,34 @@ namespace dai {
 namespace node {
 
 namespace {
-template<SyncTimestamp TS>
+template <SyncTimestamp TS>
 inline auto getTs(const std::shared_ptr<dai::Buffer>& b) {
-    if constexpr (TS == SyncTimestamp::Steady) {
-        return b->getTimestamp();          // steady_clock::time_point
-    } else if constexpr (TS == SyncTimestamp::System) {
-        if (!b->getTimestampSystem().has_value()) {
+    if constexpr(TS == SyncTimestamp::Steady) {
+        return b->getTimestamp();  // steady_clock::time_point
+    } else if constexpr(TS == SyncTimestamp::System) {
+        if(!b->getTimestampSystem().has_value()) {
             throw std::runtime_error("System timestamp missing, might not be supported by the device");
         }
-        return b->getTimestampSystem().value();    // system_clock::time_point
+        return b->getTimestampSystem().value();  // system_clock::time_point
     } else {
         throw std::runtime_error("Unknown SyncTimestamp");
     }
 }
 
-template<SyncTimestamp TS>
-inline auto getTs(dai::Buffer *b) {
-    if constexpr (TS == SyncTimestamp::Steady) {
-        return b->getTimestamp();          // steady_clock::time_point
-    } else if constexpr (TS == SyncTimestamp::System) {
-        if (!b->getTimestampSystem().has_value()) {
+template <SyncTimestamp TS>
+inline auto getTs(dai::Buffer* b) {
+    if constexpr(TS == SyncTimestamp::Steady) {
+        return b->getTimestamp();  // steady_clock::time_point
+    } else if constexpr(TS == SyncTimestamp::System) {
+        if(!b->getTimestampSystem().has_value()) {
             throw std::runtime_error("System timestamp missing, might not be supported by the device");
         }
-        return b->getTimestampSystem().value();    // system_clock::time_point
+        return b->getTimestampSystem().value();  // system_clock::time_point
     } else {
         throw std::runtime_error("Unknown SyncTimestamp");
     }
 }
-}
+}  // namespace
 
 template <SyncTimestamp TS>
 void SyncBase<TS>::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
@@ -108,9 +108,8 @@ void SyncBase<TS>::run() {
             }
             // Print out the timestamps
             for(const auto& frame : inputFrames) {
-                logger->debug("Starting input {} timestamp is {} ms",
-                              frame.first,
-                              static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
+                logger->debug(
+                    "Starting input {} timestamp is {} ms", frame.first, static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
             }
             tAfterMessageBeginning = steady_clock::now();
             int attempts = 0;
@@ -119,9 +118,8 @@ void SyncBase<TS>::run() {
                 if(attempts > 50) {
                     logger->warn("Sync node has been trying to sync for {} messages, but the messages are still not in sync.", attempts);
                     for(const auto& frame : inputFrames) {
-                        logger->warn("Output {} timestamp is {} ms",
-                                     frame.first,
-                                     static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
+                        logger->warn(
+                            "Output {} timestamp is {} ms", frame.first, static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
                     }
                 }
                 if(attempts > this->properties.syncAttempts && this->properties.syncAttempts != -1) {

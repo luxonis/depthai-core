@@ -116,7 +116,8 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * Retrieves image timestamp (at the specified offset of exposure) directly captured from device's system clock,
      * that can be synchronized using PTP
      */
-    std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> getTimestampSystem(CameraExposureOffset offset) const;
+    std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> getTimestampSystem(
+        CameraExposureOffset offset) const;
 
     /**
      * Retrieves instance number
@@ -740,13 +741,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     ImgTransformation transformation;
 
    public:
-    #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, fb, sourceFb, cam,
-        category, instanceNum, transformation);
-    #else
-    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam,
-        category, instanceNum, transformation);
-    #endif
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
 };
 
 }  // namespace dai

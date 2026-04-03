@@ -237,15 +237,21 @@ class PointCloudData : public Buffer, public ProtoSerializable {
         return DatatypeEnum::PointCloudData;
     }
 
-    #ifndef DEPTHAI_MESSAGES_RVC2
-    DEPTHAI_SERIALIZE(
-        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, sparse,instanceNum,
-        Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum);
-    #else
-    DEPTHAI_SERIALIZE(
-        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, sparse,instanceNum,
-        Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
-    #endif
+    DEPTHAI_SERIALIZE(PointCloudData,
+                      width,
+                      height,
+                      minx,
+                      miny,
+                      minz,
+                      maxx,
+                      maxy,
+                      maxz,
+                      sparse,
+                      instanceNum,
+                      Buffer::ts,
+                      Buffer::tsDevice,
+                      Buffer::tsSystem,
+                      Buffer::sequenceNum);
 };
 
 }  // namespace dai
