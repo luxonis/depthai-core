@@ -54,5 +54,4 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
         .def("setRunOnHost", &SyncSystem::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, SyncBase, setRunOnHost))
         .def("runOnHost", &SyncSystem::runOnHost, DOC(dai, node, SyncBase, runOnHost));
     daiNodeModule.attr("SyncSystem").attr("Properties") = syncProperties;
-
 }

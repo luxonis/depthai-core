@@ -243,7 +243,8 @@ void getImages(bool debugOn,
                 std::cout << "Adding origFramesBuffer size was: " << origFramesBuffer.size() << "\n" << std::flush;
             }
             for(auto& compare : imgComparesOut) {
-                if(compare.second == nullptr && compare.first->tsDevice.get<std::chrono::steady_clock>() == inRgbOrig->tsDevice.get<std::chrono::steady_clock>()) {
+                if(compare.second == nullptr
+                   && compare.first->tsDevice.get<std::chrono::steady_clock>() == inRgbOrig->tsDevice.get<std::chrono::steady_clock>()) {
                     if(debugOn) {
                         std::cout << "Found compare.second...\n" << std::flush;
                     }
@@ -278,7 +279,8 @@ void getImages(bool debugOn,
         }
         if(imgComparesOut.size() == framesWantedCount) {
             if(std::find_if(imgComparesOut.begin(), imgComparesOut.end(), [](const auto& iter) { return iter.second == nullptr; }) == imgComparesOut.end()
-               || (inRgbOrig && inRgbOrig->tsDevice.get<std::chrono::steady_clock>() > imgComparesOut.back().first->tsDevice.get<std::chrono::steady_clock>())) {
+               || (inRgbOrig
+                   && inRgbOrig->tsDevice.get<std::chrono::steady_clock>() > imgComparesOut.back().first->tsDevice.get<std::chrono::steady_clock>())) {
                 if(debugOn) {
                     std::cout << "Got all frames\n" << std::flush;
                 }

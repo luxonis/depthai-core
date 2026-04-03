@@ -46,11 +46,7 @@ class PipelineEvent : public Buffer {
         return DatatypeEnum::PipelineEvent;
     }
 
-    #ifndef DEPTHAI_MESSAGES_RVC2
     DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, nodeId, status, queueSize, interval, type, source);
-    #else
-    DEPTHAI_SERIALIZE(PipelineEvent, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, nodeId, status, queueSize, interval, type, source);
-    #endif
 };
 
 }  // namespace dai

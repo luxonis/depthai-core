@@ -221,7 +221,6 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    #ifndef DEPTHAI_MESSAGES_RVC2
     DEPTHAI_SERIALIZE(ImgDetections,
                       sequenceNum,
                       ts,
@@ -231,16 +230,6 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
                       transformation,
                       segmentationMaskWidth,
                       segmentationMaskHeight);
-    #else
-    DEPTHAI_SERIALIZE(ImgDetections,
-                      sequenceNum,
-                      ts,
-                      tsDevice,
-                      detections,
-                      transformation,
-                      segmentationMaskWidth,
-                      segmentationMaskHeight);
-    #endif
 };
 
 }  // namespace dai

@@ -13,12 +13,12 @@ namespace node {
 
 enum class SyncTimestamp { Steady, System };
 
-template<SyncTimestamp TS>
+template <SyncTimestamp TS>
 struct SyncName {
     static constexpr const char* value = "Sync";
 };
 
-template<>
+template <>
 struct SyncName<SyncTimestamp::System> {
     static constexpr const char* value = "SyncSystem";
 };
@@ -38,7 +38,8 @@ class SyncBase : public DeviceNodeCRTP<DeviceNode, SyncBase<TS>, SyncProperties>
     /**
      * A map of inputs
      */
-    DeviceNode::InputMap inputs{*this, "inputs", {"", DeviceNode::DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DeviceNode::DEFAULT_WAIT_FOR_MESSAGE}};
+    DeviceNode::InputMap inputs{
+        *this, "inputs", {"", DeviceNode::DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DeviceNode::DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Output message of type MessageGroup

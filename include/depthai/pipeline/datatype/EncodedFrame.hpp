@@ -212,7 +212,6 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    #ifndef DEPTHAI_MESSAGES_RVC2
     DEPTHAI_SERIALIZE(EncodedFrame,
                       cam,
                       instanceNum,
@@ -230,24 +229,6 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
                       Buffer::ts,
                       Buffer::tsDevice,
                       Buffer::tsSystem);
-    #else
-    DEPTHAI_SERIALIZE(EncodedFrame,
-                      cam,
-                      instanceNum,
-                      width,
-                      height,
-                      quality,
-                      bitrate,
-                      profile,
-                      lossless,
-                      type,
-                      frameOffset,
-                      frameSize,
-                      transformation,
-                      Buffer::sequenceNum,
-                      Buffer::ts,
-                      Buffer::tsDevice);
-    #endif
 };
 
 }  // namespace dai

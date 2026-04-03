@@ -1,18 +1,17 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include <optional>
 
 #include "depthai/common/Timestamp.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/span.hpp"
-
-#include "depthai/common/optional.hpp"
 
 namespace dai {
 class ImgAnnotations;
@@ -107,12 +106,8 @@ class Buffer : public ADatatype {
     Timestamp ts = {};        // generation timestamp, synced to host time
     Timestamp tsDevice = {};  // generation timestamp, direct device monotonic clock
 
-    #ifndef DEPTHAI_MESSAGES_RVC2
     std::optional<Timestamp> tsSystem;  // generation timestamp, direct device system clock
     DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem);
-    #else
-    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice);
-    #endif
 };
 
 }  // namespace dai
