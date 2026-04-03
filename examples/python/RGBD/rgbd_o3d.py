@@ -66,7 +66,7 @@ with dai.Pipeline() as p:
     rgbd = p.create(dai.node.RGBD).build()
     align = None
     color.build()
-    o3dViewer = O3DNode()
+    o3dViewer = p.create(O3DNode)
     left.build(dai.CameraBoardSocket.CAM_B)
     right.build(dai.CameraBoardSocket.CAM_C)
     out = None

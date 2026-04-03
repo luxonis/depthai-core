@@ -271,7 +271,7 @@ std::string jsonDisplay(const nlohmann::json& json, int level = 0, int indent = 
 
 #define DEPTHAI_SERIALIZE_OPTIONAL(...)                                                   \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_OPTIONAL_INTRUSIVE(__VA_ARGS__)) \
-    DEPTHAI_DEFERRED_EXPAND(NOP_EXTERNAL_STRUCTURE(__VA_ARGS__))
+    DEPTHAI_DEFERRED_EXPAND(NOP_STRUCTURE(__VA_ARGS__))
 
 #define DEPTHAI_SERIALIZE_EXT(...)                                                   \
     DEPTHAI_DEFERRED_EXPAND(DEPTHAI_NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(__VA_ARGS__)) \

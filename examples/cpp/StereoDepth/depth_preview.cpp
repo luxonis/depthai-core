@@ -47,8 +47,6 @@ int main() {
         // Normalization for better visualization
         frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig->getMaxDisparity());
 
-        std::cout << "Left type: " << inLeft->fb.str() << std::endl;
-
         cv::imshow("disparity", frame);
 
         // Available color maps: https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html

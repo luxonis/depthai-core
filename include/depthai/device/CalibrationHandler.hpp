@@ -75,6 +75,24 @@ class CalibrationHandler {
     dai::EepromData getEepromData() const;
 
     /**
+     * @brief Returns true when calibration payload is supported and contains camera calibration entries.
+     *
+     * This check is not presence-only: it returns true only when
+     * `eepromData.version >= 4` (supported by intrinsics-dependent APIs)
+     * and `cameraData` is non-empty.
+     */
+    bool hasCalibrationData() const;
+
+    /**
+     * @brief Returns true when calibration is supported and contains data for a specific camera socket.
+     *
+     * This is a presence-plus-version-compatibility check. It requires
+     * `hasCalibrationData()` to be true (currently `eepromData.version >= 4`)
+     * and a matching entry for `cameraId` in `cameraData`.
+     */
+    bool hasCameraCalibration(CameraBoardSocket cameraId) const;
+
+    /**
      * Get the Camera Intrinsics object
      *
      * @param cameraId Uses the cameraId to identify which camera intrinsics to return
@@ -390,6 +408,27 @@ class CalibrationHandler {
     dai::CameraBoardSocket getStereoRightCameraId() const;
 
     /**
+     * Get the accelerometer calibration parameters.
+     *
+     * @return returns a flat vector of up to 12 floats
+     */
+    std::vector<float> getAccelerometerCalibParams() const;
+
+    /**
+     * Get the gyroscope calibration parameters.
+     *
+     * @return returns a flat vector of up to 12 floats
+     */
+    std::vector<float> getGyroscopeCalibParams() const;
+
+    /**
+     * Get the IMU model-specific parameters.
+     *
+     * @return returns IMU model parameters as ImuModelParams struct
+     */
+    dai::ImuModelParams getImuModelParams() const;
+
+    /**
      * Write raw calibration/board data to json file.
      *
      * @param destPath  Full path to the json file in which raw calibration data will be stored
@@ -613,6 +652,21 @@ class CalibrationHandler {
      * @return true on proper connection with no loops.
      */
     bool validateCameraArray() const;
+
+    /**
+     * Set the accelerometer calibration parameters.
+     *
+     * @param calibParams Up to 12 float array containing accelerometer calibration parameters
+     */
+    void setAccelerometerCalibParams(const std::vector<float>& calibParams);
+
+    /**
+     * Set the gyroscope calibration parameters.
+     *
+     * @param calibParams Up to 12 float array containing gyroscope calibration parameters
+     */
+    void setGyroscopeCalibParams(const std::vector<float>& calibParams);
+
     /**
      * Validate Calibration handler properties and how they are set, so there is no:
      *  - Cycling links
@@ -623,6 +677,12 @@ class CalibrationHandler {
      *
      */
     void validateCalibrationHandler(bool throwOnError = true) const;
+
+    /**
+     * Get the lowest camera socket
+     * @return the lowest camera socket
+     */
+    dai::CameraBoardSocket getCameraWithLowestId() const;
 
    private:
     /** when the user is writing extrinsics do we validate if
@@ -659,6 +719,7 @@ class CalibrationHandler {
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
     void scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const;
+    void validateIntrinsicsMatrix(CameraBoardSocket cameraId) const;
 
    protected:
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;

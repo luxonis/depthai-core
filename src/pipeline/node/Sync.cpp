@@ -50,6 +50,16 @@ void SyncBase<TS>::setSyncAttempts(int syncAttempts) {
 }
 
 template <SyncTimestamp TS>
+void SyncBase<TS>::setProcessor(ProcessorType proc) {
+    this->properties.processor = proc;
+}
+
+template <SyncTimestamp TS>
+ProcessorType SyncBase<TS>::getProcessor() const {
+    return this->properties.processor;
+}
+
+template <SyncTimestamp TS>
 std::chrono::nanoseconds SyncBase<TS>::getSyncThreshold() const {
     return std::chrono::nanoseconds(this->properties.syncThresholdNs);
 }

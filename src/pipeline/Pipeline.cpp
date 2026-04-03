@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/pipeline/node/AutoCalibration.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -22,6 +23,7 @@
 
 // std
 #include <cassert>
+#include <cmath>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -51,6 +53,39 @@ struct hash<::dai::NodeConnectionSchema> {
 }  // namespace std
 
 namespace dai {
+
+namespace {
+
+bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHandler& rhs, CameraBoardSocket socket) {
+    if(!lhs.hasCameraCalibration(socket) || !rhs.hasCameraCalibration(socket)) {
+        if(!lhs.hasCameraCalibration(socket) && !rhs.hasCameraCalibration(socket)) {
+            return false;
+        }
+        return true;
+    }
+
+    if(lhs.getDistortionModel(socket) != rhs.getDistortionModel(socket)) {
+        return true;
+    }
+
+    const auto lhsDist = lhs.getDistortionCoefficients(socket);
+    const auto rhsDist = rhs.getDistortionCoefficients(socket);
+
+    if(lhsDist.size() != rhsDist.size()) {
+        return true;
+    }
+
+    constexpr float EPS = 1e-6f;
+    for(size_t i = 0; i < lhsDist.size(); ++i) {
+        if(std::fabs(lhsDist[i] - rhsDist[i]) > EPS) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+}  // namespace
 
 namespace fs = std::filesystem;
 
@@ -217,10 +252,6 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
 
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
-        // const auto& node = kv.second;
-        if(std::string(node->getName()) == std::string("NodeGroup") || std::string(node->getName()) == std::string("DeviceNodeGroup")) {
-            continue;
-        }
         if(!includePipelineDebugging
            && std::find(pipelineDebuggingNodeIds.begin(), pipelineDebuggingNodeIds.end(), node->id) != pipelineDebuggingNodeIds.end()) {
             continue;
@@ -240,7 +271,11 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         }
         if(deviceNode) {
             deviceNode->getProperties().serialize(info.properties, type);
-            info.logLevel = deviceNode->getLogLevel();
+            if(std::string(deviceNode->getName()) == "DeviceNodeGroup") {
+                info.logLevel = LogLevel::OFF;
+            } else {
+                info.logLevel = deviceNode->getLogLevel();
+            }
         }
         // Create Io information
         auto inputs = node->getInputs();
@@ -372,9 +407,9 @@ PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, boo
     auto schema = getPipelineSchema(type, includePipelineDebugging);
     // Remove bridge info
     schema.bridges.clear();
-    // Remove host nodes
+    // Remove host and group nodes
     for(auto it = schema.nodes.begin(); it != schema.nodes.end();) {
-        if(!it->second.deviceNode) {
+        if(!it->second.deviceNode || it->second.name == "NodeGroup" || it->second.name == "DeviceNodeGroup") {
             it = schema.nodes.erase(it);
         } else {
             ++it;
@@ -620,12 +655,133 @@ bool PipelineImpl::isBuilt() const {
     return isBuild;
 }
 
+bool PipelineImpl::hasDynamicCalibration() const {
+    // call this only with locked pipelineBuildMutex
+    for(const auto& node : getAllNodes()) {
+        if(node->getName() == dai::node::DynamicCalibration::NAME || node->getName() == dai::node::AutoCalibration::NAME) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
+    if(!defaultDevice) {
+        return {nullptr, nullptr};
+    }
+    auto stereoSockets = defaultDevice->getStereoPairs();
+    if(stereoSockets.size() != 1) {
+        return {nullptr, nullptr};
+    }
+    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> stereoPair = std::pair(nullptr, nullptr);
+    // call this only with locked pipelineBuildMutex
+    for(const auto& node : getAllNodes()) {
+        if(node->getName() == dai::node::Camera::NAME) {
+            auto camera = std::static_pointer_cast<dai::node::Camera>(node);
+            auto boardSocket = camera->getBoardSocket();
+            if(boardSocket == stereoSockets[0].left) {
+                stereoPair.first = camera;
+            } else if(boardSocket == stereoSockets[0].right) {
+                stereoPair.second = camera;
+            }
+        }
+    }
+    return stereoPair;
+}
+
 void PipelineImpl::build() {
     std::unique_lock<std::mutex> lock(pipelineBuildMutex);
-
     if(isBuild) return;
 
-    utility::PipelineImplHelper(shared_from_this()).setupHolisticRecordAndReplay();
+    // Replay setup can update runtime calibration, so run it before deriving AutoCalibration defaults.
+    utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
+
+    // start ---Add AutoCalibration block---
+    auto autoCalibrationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "ON_START");
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    if(autoCalibrationString == "CONTINUOUS" || autoCalibrationString == "ON_START") {
+        if(defaultDevice && defaultDevice->tryGetCalibration()) {
+            auto stereoPair = getStereoPair();
+
+            auto hasStereoPairValidCalibration = [&stereoPair](const std::shared_ptr<CalibrationHandler>& calibration) -> bool {
+                if(!calibration) return false;
+
+                const auto leftSocket = stereoPair.first->getBoardSocket();
+                const auto rightSocket = stereoPair.second->getBoardSocket();
+                if(!calibration->hasCameraCalibration(leftSocket) || !calibration->hasCameraCalibration(rightSocket)) {
+                    return false;
+                }
+
+                try {
+                    // getDefaultIntrinsics() validates intrinsic matrix shape/content and throws on invalid data.
+                    calibration->getDefaultIntrinsics(leftSocket);
+                    calibration->getDefaultIntrinsics(rightSocket);
+                    calibration->getCameraExtrinsics(leftSocket, rightSocket);
+                    return true;
+                } catch(const std::exception& ex) {
+                    return false;
+                }
+            };
+
+            if(stereoPair.first && stereoPair.second && !hasDynamicCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
+                auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
+                Logging::getInstance().logger.info("AutoCalibration is initialized");
+
+                // Build-time flash safety: disable flashing when runtime calibration differs from EEPROM.
+                const auto runtimeCalibration = defaultDevice->tryGetCalibration();
+                bool allowFlashCalibration = autoCalibrationNode->initialConfig->flashCalibration;
+                if(allowFlashCalibration && runtimeCalibration) {
+                    try {
+                        const auto eepromCalibration = defaultDevice->readFactoryCalibration();
+
+                        bool compared = false;
+                        for(const auto socket : {stereoPair.first->getBoardSocket(), stereoPair.second->getBoardSocket()}) {
+                            if(socket == CameraBoardSocket::AUTO) {
+                                continue;
+                            }
+                            compared = true;
+                            if(hasDifferentDistortion(*runtimeCalibration, eepromCalibration, socket)) {
+                                allowFlashCalibration = false;
+                                Logging::getInstance().logger.info(
+                                    "AutoCalibration build-time flash safety: runtime calibration differs from EEPROM on socket {}. Disabling "
+                                    "flashCalibration.",
+                                    static_cast<int>(socket));
+                                break;
+                            }
+                        }
+
+                        if(!compared) {
+                            allowFlashCalibration = false;
+                            Logging::getInstance().logger.info(
+                                "AutoCalibration build-time flash safety: no valid stereo sockets to compare. Disabling flashCalibration.");
+                        }
+                    } catch(const std::exception& ex) {
+                        allowFlashCalibration = false;
+                        Logging::getInstance().logger.info(
+                            "AutoCalibration build-time flash safety: failed to read EEPROM calibration ({}). Disabling flashCalibration.", ex.what());
+                    }
+                }
+                autoCalibrationNode->initialConfig->flashCalibration = allowFlashCalibration;
+
+                if(autoCalibrationString == "CONTINUOUS") {
+                    autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
+                } else {
+                    autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
+                }
+            }
+        } else {
+            if(isHostOnly()) {
+                Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
+                                                   autoCalibrationString);
+            } else {
+                Logging::getInstance().logger.info("Device has no valid initial calibration. Skipping autocalibration.");
+            }
+        }
+    } else if(autoCalibrationString != "OFF" && autoCalibrationString != "") {
+        Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibrationString);
+    }
+#endif
+    // end of ---Add AutoCalibration block---
 
     // Run first build stage for all nodes
     for(const auto& node : getAllNodes()) {
@@ -641,7 +797,7 @@ void PipelineImpl::build() {
         node->buildStage3();
     }
 
-    utility::PipelineImplHelper(shared_from_this()).setupPipelineDebuggingPre();
+    utility::PipelineImplHelper::setupPipelineDebuggingPre(shared_from_this());
 
     // Go through all the connections and handle any
     // Host -> Device connections
@@ -726,11 +882,7 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkIn->setStreamName(streamName);
                 xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
                 xLinkBridge.xLinkIn->out.link(*connection.in);
-                if(defaultDevice->getPlatform() == Platform::RVC4 || defaultDevice->getPlatform() == Platform::RVC3) {
-                    xLinkBridge.xLinkOutHost->allowStreamResize(true);
-                } else {
-                    xLinkBridge.xLinkOutHost->allowStreamResize(false);
-                }
+                xLinkBridge.xLinkOutHost->allowStreamResize(true);
 
                 // Note the created bridge for serialization (for visualization)
                 xlinkBridges.push_back({xLinkBridge.xLinkOutHost->id, xLinkBridge.xLinkIn->id});
@@ -784,7 +936,7 @@ void PipelineImpl::build() {
         }
     }
 
-    utility::PipelineImplHelper(shared_from_this()).setupPipelineDebuggingPost(bridgesOut, bridgesIn);
+    utility::PipelineImplHelper::setupPipelineDebuggingPost(shared_from_this(), bridgesOut, bridgesIn);
 
     isBuild = true;
 }
@@ -800,8 +952,13 @@ void PipelineImpl::start() {
     //     }
     // }
 
+    // Starts pipeline, go through all nodes and start them
     // Implicitly build (if not already)
     build();
+
+    for(const auto& node : getAllNodes()) {
+        node->postBuildStage();
+    }
 
     Logging::getInstance().logger.debug("Full schema dump: {}", ((nlohmann::json)getPipelineSchema(SerializationType::JSON, false)).dump());
 
@@ -916,43 +1073,7 @@ PipelineImpl::~PipelineImpl() {
     stop();
     wait();
 
-    if(recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
-        std::vector<std::filesystem::path> filenames = {recordReplayFilenames["record_config"]};
-        std::vector<std::string> outFiles = {"record_config.json"};
-        filenames.reserve(recordReplayFilenames.size() * 2 + 1);
-        outFiles.reserve(recordReplayFilenames.size() * 2 + 1);
-        for(auto& rstr : recordReplayFilenames) {
-            if(rstr.first != "record_config") {
-                std::string nodeName = rstr.first.substr(2);
-                std::filesystem::path filePath = rstr.second;
-                filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
-                outFiles.push_back(nodeName + ".mcap");
-                if(rstr.first[0] == 'v') {
-                    filenames.push_back(std::filesystem::path(filePath).concat(".mp4"));
-                    outFiles.push_back(nodeName + ".mp4");
-                }
-            }
-        }
-        Logging::getInstance().logger.info("Record: Creating tar file with {} files", filenames.size());
-        try {
-            utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar"), filenames, outFiles);
-        } catch(const std::exception& e) {
-            Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
-        }
-        std::filesystem::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json"));
-    }
-
-    if(removeRecordReplayFiles && recordConfig.state != RecordConfig::RecordReplayState::NONE) {
-        Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
-        for(auto& kv : recordReplayFilenames) {
-            if(kv.first != "record_config") {
-                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
-                std::filesystem::remove(std::filesystem::path(kv.second).concat(".mp4"));
-            } else {
-                std::filesystem::remove(kv.second);
-            }
-        }
-    }
+    utility::PipelineImplHelper::finishHolisticRecordAndReplay(this);
 }
 
 void PipelineImpl::run() {

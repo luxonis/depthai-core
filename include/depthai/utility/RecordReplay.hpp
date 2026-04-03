@@ -27,7 +27,7 @@ struct RecordConfig {
     struct VideoEncoding {
         bool enabled = true;
         int bitrate = 0;
-        Profile profile = Profile::MJPEG;
+        Profile profile = Profile::H264_MAIN;
         bool lossless = false;
         int quality = 80;
     };

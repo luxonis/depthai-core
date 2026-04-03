@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <chrono>
+#include <cstdlib>
 #include <thread>
 
 #include "XLink/XLinkPublicDefines.h"
@@ -101,8 +102,13 @@ TEST_CASE("Camera pool sizes") {
         std::vector<int> outQueuesCounter;
         std::vector<std::shared_ptr<dai::node::Camera>> cameras;
         auto script = pipeline.create<dai::node::Script>();
-        // Default size of the pool for RVC2 is 3 and RVC4 is 7
-        int queueSize = overrideQueueSize == -1 ? (isRvc4 ? 7 : 3) : overrideQueueSize;
+        // If startup AutoCalibration is enabled globally, default pool count is increased by 3.
+        const char* autoCalibrationEnv = std::getenv("DEPTHAI_AUTOCALIBRATION");
+        const bool autoCalibrationOnStartup =
+            autoCalibrationEnv != nullptr && (std::string(autoCalibrationEnv) == "ON_START" || std::string(autoCalibrationEnv) == "CONTINUOUS");
+        const int defaultQueueSizeBase = isRvc4 ? 7 : 3;
+        const int defaultQueueSize = defaultQueueSizeBase + (autoCalibrationOnStartup ? 3 : 0);
+        int queueSize = overrideQueueSize == -1 ? defaultQueueSize : overrideQueueSize;
         for(const auto& [socket, resolutions] : streams) {
             auto camera = pipeline.create<dai::node::Camera>()->build(socket);
             camera->properties.maxSizePoolOutputs = 1 * 1024 * 1024 * 1024;  // 1G size limit to only test num frames limitation

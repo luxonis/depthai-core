@@ -98,7 +98,10 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::ObjectTrackerConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::AutoCalibrationConfig:
+        case DatatypeEnum::AutoCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CalibrationMetrics:
         case DatatypeEnum::CoverageData:
         case DatatypeEnum::PipelineEvent:
         case DatatypeEnum::PipelineState:
@@ -107,6 +110,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
+        case DatatypeEnum::COUNT:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -177,7 +181,10 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::ObjectTrackerConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::AutoCalibrationConfig:
+        case DatatypeEnum::AutoCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
+        case DatatypeEnum::CalibrationMetrics:
         case DatatypeEnum::CoverageData:
         case DatatypeEnum::PipelineEvent:
         case DatatypeEnum::PipelineState:
@@ -186,6 +193,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
+        case DatatypeEnum::COUNT:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};

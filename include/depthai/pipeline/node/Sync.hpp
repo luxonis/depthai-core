@@ -63,6 +63,18 @@ class SyncBase : public DeviceNodeCRTP<DeviceNode, SyncBase<TS>, SyncProperties>
     void setSyncAttempts(int syncAttempts);
 
     /**
+     * Specify on which processor the node should run. RVC2 only.
+     * @param type Processor type - Leon CSS or Leon MSS
+     */
+    void setProcessor(ProcessorType type);
+
+    /**
+     * Get on which processor the node should run
+     * @returns Processor type - Leon CSS or Leon MSS
+     */
+    ProcessorType getProcessor() const;
+
+    /**
      * Gets the maximal interval between messages in the group in milliseconds
      */
     std::chrono::nanoseconds getSyncThreshold() const;

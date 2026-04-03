@@ -43,6 +43,8 @@ void bind_mapdata(pybind11::module& m, void* pCallstack);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack);
 void bind_dynamic_calibration_control(pybind11::module& m, void* pCallstack);
+void bind_auto_calibration_config(pybind11::module& m, void* pCallstack);
+void bind_auto_calibration_result(pybind11::module& m, void* pCallstack);
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 void bind_vppconfig(pybind11::module& m, void* pCallstack);
 void bind_gate_control(pybind11::module& m, void* pCallstack);
@@ -94,6 +96,8 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     callstack.push_front(bind_dynamic_calibration_results);
     callstack.push_front(bind_dynamic_calibration_control);
+    callstack.push_front(bind_auto_calibration_config);
+    callstack.push_front(bind_auto_calibration_result);
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 }
 
@@ -158,6 +162,8 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("ToFDepthConfidenceFilterConfig", DatatypeEnum::ToFDepthConfidenceFilterConfig)
         .value("DynamicCalibrationControl", DatatypeEnum::DynamicCalibrationControl)
         .value("DynamicCalibrationResult", DatatypeEnum::DynamicCalibrationResult)
+        .value("AutoCalibrationConfig", DatatypeEnum::AutoCalibrationConfig)
+        .value("AutoCalibrationResult", DatatypeEnum::AutoCalibrationResult)
         .value("CalibrationQuality", DatatypeEnum::CalibrationQuality)
         .value("CoverageData", DatatypeEnum::CoverageData);
 }

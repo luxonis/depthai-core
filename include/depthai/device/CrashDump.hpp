@@ -66,7 +66,15 @@ struct CrashDump {
         };
 
         std::vector<ThreadCallstack> threadCallstack;
-        DEPTHAI_SERIALIZE(CrashReport, processor, errorSource, crashedThreadId, errorSourceInfo, threadCallstack);
+        /// Device print/log lines captured around the crash.
+        std::vector<std::string> prints;
+        /// Device uptime in nanoseconds at crash-report capture time.
+        uint64_t uptimeNs = 0;
+        /// Raw device timer value captured in the crash report.
+        uint64_t timerRaw = 0;
+        /// Platform-specific crash/status flags captured with the report.
+        uint64_t statusFlags = 0;
+        DEPTHAI_SERIALIZE(CrashReport, processor, errorSource, crashedThreadId, errorSourceInfo, threadCallstack, prints, uptimeNs, timerRaw, statusFlags);
     };
 
     std::vector<CrashReport> crashReports;
