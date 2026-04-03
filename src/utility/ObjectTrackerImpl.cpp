@@ -1338,7 +1338,9 @@ void OCSTracker::State::KalmanFilterNew::update(Eigen::VectorXf z_) {
         Optionally provide H to override the measurement function for this
         one call, otherwise self.H will be used.
      * */
-    history_obs.push_back(z_);
+    if(filterType == FilterType::boxFilter) {
+        history_obs.push_back(z_);
+    }
     if(z_.size() == 0) {
         if(true == observed) freeze();
         observed = false;
@@ -1972,7 +1974,7 @@ OCSTracker::OCSTracker(const ObjectTrackerProperties& properties)
       trackletBirthThreshold(properties.trackletBirthThreshold),
       spatialAssociation(properties.spatialAssociation),
       spatialAssociationWeight(std::clamp(properties.spatialAssociationWeight, 0.0f, 1.0f)),
-      spatialDistanceThreshold(std::max(properties.spatialDistanceThreshold, kSpatialMinGateMm)),
+      spatialDistanceThreshold(std::max(properties.spatialDistanceThreshold, kSpatialMinGateMm)),  // Converted to mm in node::ObjectTracker::run().
       spatialDepthAwareScale(std::max(properties.spatialDepthAwareScale, 0.0f)) {}
 OCSTracker::~OCSTracker() {}
 void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {

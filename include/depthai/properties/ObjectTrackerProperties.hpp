@@ -81,10 +81,10 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
      */
     float spatialAssociationWeight = 0.5f;
     /**
-     * Base 3D gating threshold in millimeters used for spatial association.
-     * When using ObjectTracker::setSpatialDistanceThreshold(), provide meters and it will be converted to this internal unit.
+     * Base 3D gating threshold in meters used for spatial association.
+     * Internally converted to millimeters before entering ObjectTracker implementation.
      */
-    float spatialDistanceThreshold = 1500.0f;
+    float spatialDistanceThreshold = 1.5f;
     /**
      * Depth-aware gating scale. Gate grows with depth: gate = base * (1 + scale * depthMeters).
      */

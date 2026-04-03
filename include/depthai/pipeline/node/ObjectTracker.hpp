@@ -139,7 +139,7 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
     /**
      * Set base 3D gating threshold in meters for spatial association.
      * @param thresholdMeters Base spatial gating distance in meters. Default is 1.5m.
-     * @note Internally this value is stored in millimeters.
+     * @note Internally this value is converted to millimeters for ObjectTracker implementation.
      */
     void setSpatialDistanceThreshold(float thresholdMeters);
 

@@ -60,7 +60,7 @@ void ObjectTracker::setSpatialAssociationWeight(float weight) {
     properties.spatialAssociationWeight = std::clamp(weight, 0.0f, 1.0f);
 }
 void ObjectTracker::setSpatialDistanceThreshold(float thresholdMeters) {
-    properties.spatialDistanceThreshold = std::max(thresholdMeters * 1000.0f, 1.0f);
+    properties.spatialDistanceThreshold = std::max(thresholdMeters, 0.001f);
 }
 void ObjectTracker::setSpatialDepthAwareScale(float scale) {
     properties.spatialDepthAwareScale = std::max(scale, 0.0f);
@@ -109,7 +109,9 @@ void ObjectTracker::run() {
         logger->warn("Selected tracker type is not supported on RVC4, using SHORT_TERM_IMAGELESS instead");
     }
 
-    impl::OCSTracker tracker(properties);
+    auto trackerProperties = properties;
+    trackerProperties.spatialDistanceThreshold = std::max(trackerProperties.spatialDistanceThreshold * 1000.0f, 1.0f);
+    impl::OCSTracker tracker(trackerProperties);
 
     while(mainLoop()) {
         std::shared_ptr<ImgFrame> inputTrackerImg;
