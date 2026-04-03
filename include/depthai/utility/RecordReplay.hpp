@@ -37,7 +37,7 @@ struct RecordConfig {
     std::filesystem::path outputDir;
     VideoEncoding videoEncoding;
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
-    bool syncCameraOutputs = false;
+    bool syncCameraOutputs = true;
 };
 
 struct NodeRecordParams {
