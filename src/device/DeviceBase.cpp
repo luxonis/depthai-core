@@ -919,6 +919,11 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
             // Sets system inforation logging rate. By default 1s
             setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
+            if(deviceInfo.platform == X_LINK_MYRIAD_X) {
+                auto _ = getCrashDump(true);
+                pimpl->logger.debug("Clearing crash dump from previous run");
+            }
         } catch(const std::exception&) {
             // close device (cleanup)
             close();
