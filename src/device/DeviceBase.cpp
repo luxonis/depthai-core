@@ -525,7 +525,7 @@ void DeviceBase::waitForGateAndCollectCrashDump() {
     }
 
     pimpl->logger.warn("FW crashed - trying to get out the crash dump");
-    std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
+    std::this_thread::sleep_for(std::chrono::seconds(5));  // Allow for the generation of the crash dump and the log file
     pimpl->logger.warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
     collectAndLogCrashDump();
 }
