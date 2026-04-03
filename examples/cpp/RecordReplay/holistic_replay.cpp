@@ -1,4 +1,5 @@
 #include <opencv2/highgui.hpp>
+
 #include "depthai/depthai.hpp"
 
 #ifndef DEPTHAI_MERGED_TARGET
