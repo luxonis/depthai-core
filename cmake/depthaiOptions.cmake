@@ -42,11 +42,11 @@ option(DEPTHAI_INSTALL "Enable install target for depthai-core targets" ON)
 
 # ---------- Dependency Management -------------
 option(DEPTHAI_BOOTSTRAP_VCPKG "Automatically bootstrap VCPKG" ON)
-option(DEPTHAI_VCPKG_INTERNAL_ONLY "Use VCPKG internally, but not for interface libraries" ON)
+option(DEPTHAI_VCPKG_INTERNAL_ONLY "Use VCPKG internally, but not for interface libraries" OFF)
 
-set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT ON)
+set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT OFF)
 if(DEPTHAI_VCPKG_INTERNAL_ONLY)
-    set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT OFF)
+  set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT ON)
 endif()
 
 option(DEPTHAI_JSON_EXTERNAL "Use external nlohmann_json library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
