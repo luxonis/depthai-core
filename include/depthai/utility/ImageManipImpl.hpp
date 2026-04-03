@@ -29,6 +29,12 @@
     #define DEPTHAI_PLANE_ALIGNMENT 128 * 32
 #endif
 
+#if defined(WIN32) || defined(_WIN32)
+    #define _RESTRICT
+#else
+    #define _RESTRICT __restrict__
+#endif
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #define DEPTHAI_IMAGEMANIPV2_OPENCV 1
     #include <opencv2/opencv.hpp>
@@ -3654,3 +3660,5 @@ Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::
 
 }  // namespace impl
 }  // namespace dai
+
+#undef _RESTRICT
