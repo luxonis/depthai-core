@@ -82,7 +82,6 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
     float spatialAssociationWeight = 0.5f;
     /**
      * Base 3D gating threshold in meters used for spatial association.
-     * Internally converted to millimeters before entering ObjectTracker implementation.
      */
     float spatialDistanceThreshold = 1.5f;
     /**

@@ -1974,7 +1974,7 @@ OCSTracker::OCSTracker(const ObjectTrackerProperties& properties)
       trackletBirthThreshold(properties.trackletBirthThreshold),
       spatialAssociation(properties.spatialAssociation),
       spatialAssociationWeight(std::clamp(properties.spatialAssociationWeight, 0.0f, 1.0f)),
-      spatialDistanceThreshold(std::max(properties.spatialDistanceThreshold, kSpatialMinGateMm)),  // Converted to mm in node::ObjectTracker::run().
+      spatialDistanceThreshold(std::max(properties.spatialDistanceThreshold * 1000.0f, kSpatialMinGateMm)),
       spatialDepthAwareScale(std::max(properties.spatialDepthAwareScale, 0.0f)) {}
 OCSTracker::~OCSTracker() {}
 void OCSTracker::init(const ImgFrame& frame, const std::vector<ImgDetection>& detections, const std::vector<Point3f>& spatialData) {

@@ -109,9 +109,7 @@ void ObjectTracker::run() {
         logger->warn("Selected tracker type is not supported on RVC4, using SHORT_TERM_IMAGELESS instead");
     }
 
-    auto trackerProperties = properties;
-    trackerProperties.spatialDistanceThreshold = std::max(trackerProperties.spatialDistanceThreshold * 1000.0f, 1.0f);
-    impl::OCSTracker tracker(trackerProperties);
+    impl::OCSTracker tracker(properties);
 
     while(mainLoop()) {
         std::shared_ptr<ImgFrame> inputTrackerImg;
