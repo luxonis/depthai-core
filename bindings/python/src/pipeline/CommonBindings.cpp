@@ -1,6 +1,10 @@
 #include "CommonBindings.hpp"
 
+#include <pybind11/detail/common.h>
 #include <pybind11/pybind11.h>
+
+#include <array>
+#include <vector>
 
 // Libraries
 #include "hedley/hedley.h"
@@ -515,10 +519,55 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Extrinsics
     extrinsics.def(py::init<>())
+        .def(py::init<std::vector<std::vector<float>>, Point3f, CameraBoardSocket, LengthUnit>(),
+             py::arg("rotationMatrix"),
+             py::arg("translation"),
+             py::arg("toCameraSocket"),
+             py::arg("lengthUnit") = LengthUnit::CENTIMETER)
+        .def(py::init<const std::vector<std::vector<float>>&, CameraBoardSocket, LengthUnit>(),
+             py::arg("extrinsicsMatrix"),
+             py::arg("toCameraSocket"),
+             py::arg("lengthUnit") = LengthUnit::CENTIMETER)
         .def_readwrite("rotationMatrix", &Extrinsics::rotationMatrix)
         .def_readwrite("translation", &Extrinsics::translation)
         .def_readwrite("specTranslation", &Extrinsics::specTranslation)
-        .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket);
+        .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket)
+        .def_readwrite("lengthUnit", &Extrinsics::lengthUnit)
+        .def("getRotationMatrix", &Extrinsics::getRotationMatrix, DOC(dai, Extrinsics, getRotationMatrix))
+        .def("getInverseRotationMatrix", &Extrinsics::getInverseRotationMatrix, DOC(dai, Extrinsics, getInverseRotationMatrix))
+        .def("getTransformationMatrix",
+             &Extrinsics::getTransformationMatrix,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getTransformationMatrix))
+        .def("getInverseTransformationMatrix",
+             &Extrinsics::getInverseTransformationMatrix,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getInverseTransformationMatrix))
+        .def("setTransformationMatrix",
+             py::overload_cast<const std::vector<std::vector<float>>&, LengthUnit>(&Extrinsics::setTransformationMatrix),
+             py::arg("matrix"),
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, setTransformationMatrix))
+        .def("setTranslationVector",
+             &Extrinsics::setTranslationVector,
+             py::arg("translationVector"),
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             py::arg("useSpecTranslation") = false,
+             DOC(dai, Extrinsics, setTranslationVector))
+        .def("getTranslationVector",
+             &Extrinsics::getTranslationVector,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getTranslationVector))
+        .def("isEqualExtrinsics", &Extrinsics::isEqualExtrinsics, py::arg("other"), py::arg("epsilon") = 1e-6f, DOC(dai, Extrinsics, isEqualExtrinsics))
+        .def("getExtrinsicsTransformationTo",
+             &Extrinsics::getExtrinsicsTransformationTo,
+             py::arg("to"),
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getExtrinsicsTransformationTo));
 
     // CameraInfo
     cameraInfo.def(py::init<>())

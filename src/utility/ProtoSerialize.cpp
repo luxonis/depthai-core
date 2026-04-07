@@ -94,11 +94,39 @@ void serializeImgTransformation(proto::common::ImgTransformation* imgTransformat
     for(const auto& value : transformation.getDistortionCoefficients()) {
         distortionCoefficients->add_values(value);
     }
+
+    const auto extrinsics = transformation.getExtrinsics();
+    proto::common::Extrinsics* protoExtrinsics = imgTransformation->mutable_extrinsics();
+    proto::common::TransformationMatrix* rotationMatrix = protoExtrinsics->mutable_rotationmatrix();
+    for(const auto& row : extrinsics.rotationMatrix) {
+        proto::common::FloatArray* floatArray = rotationMatrix->add_arrays();
+        for(const auto& value : row) {
+            floatArray->add_values(value);
+        }
+    }
+    protoExtrinsics->mutable_translation()->set_x(extrinsics.translation.x);
+    protoExtrinsics->mutable_translation()->set_y(extrinsics.translation.y);
+    protoExtrinsics->mutable_translation()->set_z(extrinsics.translation.z);
+    protoExtrinsics->mutable_spectranslation()->set_x(extrinsics.specTranslation.x);
+    protoExtrinsics->mutable_spectranslation()->set_y(extrinsics.specTranslation.y);
+    protoExtrinsics->mutable_spectranslation()->set_z(extrinsics.specTranslation.z);
+    protoExtrinsics->set_tocamerasocket(static_cast<proto::common::CameraBoardSocket>(extrinsics.toCameraSocket));
+    protoExtrinsics->set_lengthunit(static_cast<proto::common::LengthUnit>(extrinsics.lengthUnit));
+
+    for(const auto& crop : transformation.getSrcCrops()) {
+        auto* protoCrop = imgTransformation->add_srccrops();
+        protoCrop->mutable_center()->set_x(crop.center.x);
+        protoCrop->mutable_center()->set_y(crop.center.y);
+        protoCrop->mutable_size()->set_width(crop.size.width);
+        protoCrop->mutable_size()->set_height(crop.size.height);
+        protoCrop->set_angle(crop.angle);
+    }
 }
 ImgTransformation deserializeImgTransformation(const proto::common::ImgTransformation& imgTransformation) {
     std::array<std::array<float, 3>, 3> transformationMatrix;
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix;
     std::vector<float> distortionCoefficients;
+    Extrinsics extrinsics;
     distortionCoefficients.reserve(imgTransformation.distortioncoefficients().values_size());
     for(auto i = 0U; i < 3; ++i)
         for(auto j = 0U; j < 3; ++j) transformationMatrix[i][j] = imgTransformation.transformationmatrix().arrays(i).values(j);
@@ -106,15 +134,64 @@ ImgTransformation deserializeImgTransformation(const proto::common::ImgTransform
         for(auto j = 0U; j < 3; ++j) sourceIntrinsicMatrix[i][j] = imgTransformation.sourceintrinsicmatrix().arrays(i).values(j);
     for(auto i = 0; i < imgTransformation.distortioncoefficients().values_size(); ++i)
         distortionCoefficients.push_back(imgTransformation.distortioncoefficients().values(i));
+
+    if(imgTransformation.has_extrinsics()) {
+        const auto& protoExtrinsics = imgTransformation.extrinsics();
+        const auto& protoRotation = protoExtrinsics.rotationmatrix();
+        if(protoRotation.arrays_size() > 0) {
+            extrinsics.rotationMatrix.clear();
+            extrinsics.rotationMatrix.reserve(protoRotation.arrays_size());
+            for(int i = 0; i < protoRotation.arrays_size(); ++i) {
+                const auto& row = protoRotation.arrays(i);
+                auto& rotationRow = extrinsics.rotationMatrix.emplace_back();
+                rotationRow.reserve(row.values_size());
+                for(int j = 0; j < row.values_size(); ++j) {
+                    rotationRow.push_back(row.values(j));
+                }
+            }
+        }
+        if(protoExtrinsics.has_translation()) {
+            const auto& t = protoExtrinsics.translation();
+            extrinsics.translation = Point3f(t.x(), t.y(), t.z());
+        }
+        if(protoExtrinsics.has_spectranslation()) {
+            const auto& t = protoExtrinsics.spectranslation();
+            extrinsics.specTranslation = Point3f(t.x(), t.y(), t.z());
+        }
+        extrinsics.toCameraSocket = static_cast<CameraBoardSocket>(protoExtrinsics.tocamerasocket());
+        if(protoExtrinsics.has_lengthunit()) {
+            extrinsics.lengthUnit = static_cast<LengthUnit>(protoExtrinsics.lengthunit());
+        } else {
+            extrinsics.lengthUnit = LengthUnit::CENTIMETER;
+        }
+    }
+
+    std::vector<dai::RotatedRect> srcCrops;
+    srcCrops.reserve(imgTransformation.srccrops_size());
+    for(const auto& crop : imgTransformation.srccrops()) {
+        dai::Point2f center;
+        center.x = crop.center().x();
+        center.y = crop.center().y();
+        dai::Size2f size;
+        size.width = crop.size().width();
+        size.height = crop.size().height();
+        srcCrops.emplace_back(center, size, crop.angle());
+    }
     ImgTransformation transformation;
     transformation = ImgTransformation(imgTransformation.srcwidth(),
                                        imgTransformation.srcheight(),
                                        sourceIntrinsicMatrix,
                                        static_cast<CameraModel>(imgTransformation.distortionmodel()),
-                                       distortionCoefficients);
+                                       distortionCoefficients,
+                                       extrinsics);
     if(transformation.isValid()) {
         transformation.addTransformation(transformationMatrix);
-        transformation.addCrop(0, 0, imgTransformation.width(), imgTransformation.height());
+        if(!srcCrops.empty()) {
+            transformation.setSize(imgTransformation.width(), imgTransformation.height());
+            transformation.addSrcCrops(srcCrops);
+        } else {
+            transformation.addCrop(0, 0, imgTransformation.width(), imgTransformation.height());
+        }
     }
     return transformation;
 }

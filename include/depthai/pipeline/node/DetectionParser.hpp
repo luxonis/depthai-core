@@ -290,6 +290,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
    private:
     bool runOnHostVar = false;
+    bool explicitRunOnHostSet = false;
     void setNNArchiveBlob(const NNArchive& nnArchive);
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);

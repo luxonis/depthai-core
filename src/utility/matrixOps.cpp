@@ -2,50 +2,130 @@
 
 #include <array>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace dai {
 namespace matrix {
 
-std::vector<std::vector<float>> matMul(std::vector<std::vector<float>>& firstMatrix, std::vector<std::vector<float>>& secondMatrix) {
-    std::vector<std::vector<float>> res;
-
-    if(firstMatrix.empty() || firstMatrix[0].empty()) {
-        throw std::invalid_argument("firstMatrix must be non-empty");
+std::vector<float> matVecMul(const std::vector<std::vector<float>>& matrix, const std::vector<float>& vec) {
+    if(matrix.empty()) {
+        throw std::runtime_error("Matrix should not be empty");
     }
-    if(secondMatrix.empty() || secondMatrix[0].empty()) {
-        throw std::invalid_argument("secondMatrix must be non-empty");
+    if(vec.empty()) {
+        throw std::runtime_error("Vector should not be empty");
     }
 
-    const size_t colsA = firstMatrix[0].size();
-    const size_t colsB = secondMatrix[0].size();
+    std::vector<float> res(matrix.size(), 0.0f);
+    for(size_t i = 0; i < matrix.size(); ++i) {
+        if(matrix[i].size() != vec.size()) {
+            throw std::runtime_error("All matrix rows dimensions need to match the vector size.");
+        }
+        for(size_t j = 0; j < vec.size(); ++j) {
+            res[i] += matrix[i][j] * vec[j];
+        }
+    }
+    return res;
+}
 
-    for(const auto& row : firstMatrix) {
-        if(row.size() != colsA) {
-            throw std::invalid_argument("firstMatrix must be rectangular");
+std::array<float, 3> matVecMul(const std::array<std::array<float, 3>, 3>& matrix, const std::array<float, 3>& vec) {
+    std::array<float, 3> res = {0.0f, 0.0f, 0.0f};
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            res[i] += matrix[i][j] * vec[j];
+        }
+    }
+    return res;
+}
+
+std::array<float, 4> matVecMul(const std::array<std::array<float, 4>, 4>& matrix, const std::array<float, 4>& vec) {
+    std::array<float, 4> res = {0.0f, 0.0f, 0.0f, 0.0f};
+    for(size_t i = 0; i < 4; ++i) {
+        for(size_t j = 0; j < 4; ++j) {
+            res[i] += matrix[i][j] * vec[j];
+        }
+    }
+    return res;
+}
+
+bool mateq(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B, float epsilon) {
+    if(A.size() != B.size()) return false;
+    if(A.empty()) return true;
+
+    size_t columns = A[0].size();
+    for(size_t i = 0; i < A.size(); ++i) {
+        if(A[i].size() != columns || B[i].size() != columns) return false;
+        for(size_t j = 0; j < columns; ++j) {
+            if(std::abs(A[i][j] - B[i][j]) > epsilon) return false;
+        }
+    }
+    return true;
+}
+
+bool mateq(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B, float epsilon) {
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            if(std::abs(A[i][j] - B[i][j]) > epsilon) return false;
+        }
+    }
+    return true;
+}
+
+std::array<std::array<float, 3>, 3> matMul(const std::array<std::array<float, 3>, 3>& A, const std::array<std::array<float, 3>, 3>& B) {
+    std::array<std::array<float, 3>, 3> res = {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}};
+
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            for(size_t k = 0; k < 3; ++k) {
+                res[i][j] += A[i][k] * B[k][j];
+            }
         }
     }
 
-    for(const auto& row : secondMatrix) {
-        if(row.size() != colsB) {
-            throw std::invalid_argument("secondMatrix must be rectangular");
+    return res;
+}
+
+std::array<std::array<float, 4>, 4> matMul(const std::array<std::array<float, 4>, 4>& A, const std::array<std::array<float, 4>, 4>& B) {
+    std::array<std::array<float, 4>, 4> res = {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}};
+
+    for(size_t i = 0; i < 4; ++i) {
+        for(size_t j = 0; j < 4; ++j) {
+            for(size_t k = 0; k < 4; ++k) {
+                res[i][j] += A[i][k] * B[k][j];
+            }
         }
     }
 
-    if(colsA != secondMatrix.size()) {
-        throw std::invalid_argument("Number of columns of firstMatrix must match number of rows of secondMatrix");
+    return res;
+}
+
+std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& A, const std::vector<std::vector<float>>& B) {
+    if(A.empty()) {
+        throw std::runtime_error("First matrix should not be empty");
+    }
+    if(B.empty()) {
+        throw std::runtime_error("Second matrix should not be empty");
     }
 
-    // Initializing elements of matrix mult to 0.
-    for(size_t i = 0; i < firstMatrix.size(); ++i) {
-        std::vector<float> col_vec(colsB, 0);
-        res.push_back(col_vec);
-    }
+    size_t n = A.size();
+    size_t m = A[0].size();
+    size_t q = B[0].size();
+    std::vector<std::vector<float>> res(n, std::vector<float>(q, 0.0f));
 
     // Multiplying matrix firstMatrix and secondMatrix and storing in array mult.
-    for(size_t i = 0; i < firstMatrix.size(); ++i) {
-        for(size_t j = 0; j < colsB; ++j) {
-            for(size_t k = 0; k < colsA; ++k) {
-                res[i][j] += firstMatrix[i][k] * secondMatrix[k][j];
+    for(size_t i = 0; i < n; ++i) {
+        for(size_t j = 0; j < q; ++j) {
+            if(A[i].size() != m) {
+                throw std::runtime_error("All rows of the matrix A need to have the same number of columns.");
+            }
+            if(A[i].size() != B.size()) {
+                throw std::runtime_error("Number of columns of A need to match number of rows of B for multiplication.");
+            }
+            for(size_t k = 0; k < m; ++k) {
+                if(B[k].size() != q) {
+                    throw std::runtime_error("All rows of the matrix B need to have the same number of columns.");
+                }
+                res[i][j] += A[i][k] * B[k][j];
             }
         }
     }
@@ -168,6 +248,59 @@ std::vector<std::vector<float>> createTranslationMatrix(float dx, float dy) {
     return translationMatrix;
 }
 
+std::array<std::array<float, 4>, 4> createTransformationMatrixInternal(const std::array<std::array<float, 3>, 3>& rotation,
+                                                                       const std::array<float, 3>& translation) {
+    std::array<std::array<float, 4>, 4> transformationMatrix = {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 1}}};
+
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            transformationMatrix[i][j] = rotation[i][j];
+        }
+    }
+
+    transformationMatrix[0][3] = translation[0];
+    transformationMatrix[1][3] = translation[1];
+    transformationMatrix[2][3] = translation[2];
+    return transformationMatrix;
+}
+
+std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const dai::Point3f& translation) {
+    if(rotation.size() != 3 || rotation[0].size() != 3 || rotation[1].size() != 3 || rotation[2].size() != 3) {
+        throw std::invalid_argument("Expected a 3x3 rotation matrix.");
+    }
+    std::array<std::array<float, 3>, 3> rotationArray;
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            rotationArray[i][j] = rotation[i][j];
+        }
+    }
+    return createTransformationMatrixInternal(rotationArray, {translation.x, translation.y, translation.z});
+}
+
+std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::array<std::array<float, 3>, 3>& rotation, const dai::Point3f& translation) {
+    return createTransformationMatrixInternal(rotation, {translation.x, translation.y, translation.z});
+}
+
+dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix, const dai::Point3f& point) {
+    auto res = matVecMul(matrix, std::array<float, 4>{point.x, point.y, point.z, 1.0f});
+    auto dehomogenized = dehomogenizePoint4(res);
+    return {dehomogenized[0], dehomogenized[1], dehomogenized[2]};
+}
+
+std::array<float, 4> dehomogenizePoint4(const std::array<float, 4>& point) {
+    if(std::abs(point[3]) < 1e-6f) {
+        throw std::runtime_error("Cannot dehomogenize point with w close to zero.");
+    }
+    return {point[0] / point[3], point[1] / point[3], point[2] / point[3], 1.0f};
+}
+
+std::array<float, 3> dehomogenizePoint3(const std::array<float, 3>& point) {
+    if(std::abs(point[2]) < 1e-6f) {
+        throw std::runtime_error("Cannot dehomogenize point with z close to zero.");
+    }
+    return {point[0] / point[2], point[1] / point[2], 1.0f};
+}
+
 void printMatrix(std::vector<std::vector<float>>& matrix) {
     for(size_t i = 0; i < matrix.size(); ++i) {
         for(size_t j = 0; j < matrix[0].size(); ++j) {
@@ -178,6 +311,10 @@ void printMatrix(std::vector<std::vector<float>>& matrix) {
 }
 
 std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R) {
+    return matrixToVector(R);
+}
+
+std::vector<float> matrixToVector(const std::vector<std::vector<float>>& R) {
     if(R.size() != 3 || R[0].size() != 3 || R[1].size() != 3 || R[2].size() != 3) {
         throw std::invalid_argument("Expected a 3x3 rotation matrix.");
     }
@@ -210,6 +347,46 @@ std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>&
 
     // Rotation vector = axis * angle
     return {x * angle, y * angle, z * angle};
+}
+std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::array<float, 3>, 3>& R) {
+    std::vector<std::vector<float>> vectorR;
+    for(size_t i = 0; i < 3; ++i) {
+        std::vector<float> row;
+        for(size_t j = 0; j < 3; ++j) {
+            row.push_back(R[i][j]);
+        }
+        vectorR.push_back(row);
+    }
+    return vectorR;
+}
+
+std::array<std::array<float, 3>, 3> vectorMatrixToMatrix3x3(const std::vector<std::vector<float>>& R) {
+    std::array<std::array<float, 3>, 3> matrix{};
+    if(R.size() == 0) {
+        return matrix;
+    }
+    if(R.size() != 3 || R[0].size() != 3 || R[1].size() != 3 || R[2].size() != 3) {
+        throw std::invalid_argument("Expected a 3x3 vector matrix to convert to 3x3 matrix.");
+    }
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            matrix[i][j] = R[i][j];
+        }
+    }
+
+    return matrix;
+}
+
+std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& R) {
+    std::vector<std::vector<float>> vectorR = matrix3x3ToVectorMatrix(R);
+    return matrixToVector(vectorR);
+}
+
+std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 4>, 4>& projection) {
+    std::array<std::array<float, 3>, 3> rotationMatrix = {{{projection[0][0], projection[0][1], projection[0][2]},
+                                                           {projection[1][0], projection[1][1], projection[1][2]},
+                                                           {projection[2][0], projection[2][1], projection[2][2]}}};
+    return rotationMatrix;
 }
 
 std::vector<std::vector<float>> rvecToRotationMatrix(const double rvec[3]) {
@@ -333,5 +510,73 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
     mat[3][3] = 1.0f;
 }
 
+std::array<std::array<float, 4>, 4> invertSe3Matrix4x4(const std::array<std::array<float, 4>, 4>& matrix) {
+    std::array<std::array<float, 4>, 4> inv = {{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}};
+
+    // Transpose rotation part (R^T)
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            inv[i][j] = matrix[j][i];
+        }
+    }
+
+    // Invert translation: -R^T * t
+    for(int i = 0; i < 3; ++i) {
+        float newTrans = 0.0f;
+        for(int j = 0; j < 3; ++j) {
+            newTrans -= inv[i][j] * matrix[j][3];
+        }
+        inv[i][3] = newTrans;
+    }
+
+    inv[3][3] = 1.0f;
+    return inv;
+}
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+std::array<std::array<float, 3>, 3> cvMatToMatrix3x3(const cv::Mat& cvMat) {
+    if(cvMat.rows != 3 || cvMat.cols != 3) {
+        throw std::invalid_argument("Expected a 3x3 cv::Mat to convert to 3x3 matrix.");
+    }
+    std::array<std::array<float, 3>, 3> matrix;
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            matrix[i][j] = cvMat.at<float>(i, j);
+        }
+    }
+    return matrix;
+}
+std::array<std::array<float, 4>, 4> cvMatToMatrix4x4(const cv::Mat& cvMat) {
+    if(cvMat.rows != 4 || cvMat.cols != 4) {
+        throw std::invalid_argument("Expected a 4x4 cv::Mat to convert to 4x4 matrix.");
+    }
+    std::array<std::array<float, 4>, 4> matrix;
+    for(size_t i = 0; i < 4; ++i) {
+        for(size_t j = 0; j < 4; ++j) {
+            matrix[i][j] = cvMat.at<float>(i, j);
+        }
+    }
+    return matrix;
+}
+cv::Mat matrix3x3ToCvMat(const std::array<std::array<float, 3>, 3>& matrix) {
+    cv::Mat cvMat(3, 3, CV_32F);
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            cvMat.at<float>(i, j) = matrix[i][j];
+        }
+    }
+    return cvMat;
+}
+cv::Mat matrix4x4ToCvMat(const std::array<std::array<float, 4>, 4>& matrix) {
+    cv::Mat cvMat(4, 4, CV_32F);
+    for(size_t i = 0; i < 4; ++i) {
+        for(size_t j = 0; j < 4; ++j) {
+            cvMat.at<float>(i, j) = matrix[i][j];
+        }
+    }
+    return cvMat;
+}
+
+#endif
 }  // namespace matrix
 }  // namespace dai
