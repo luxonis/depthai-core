@@ -115,6 +115,10 @@ bool Extrinsics::isEqualExtrinsics(const Extrinsics& other, float epsilon) const
 std::array<std::array<float, 4>, 4> Extrinsics::getExtrinsicsTransformationTo(const Extrinsics& to,
                                                                               const bool useSpecTranslation,
                                                                               const LengthUnit sourceUnit) const {
+    if(this->toCameraSocket == dai::CameraBoardSocket::AUTO || to.toCameraSocket == dai::CameraBoardSocket::AUTO) {
+        throw std::runtime_error(
+            "Cannot get extrinsics transformation to or from an extrinsics with AUTO camera socket. Please specify the camera socket for both extrinsics.");
+    }
     if(this->toCameraSocket != to.toCameraSocket) {
         throw std::runtime_error("Cannot get extrinsics to a transformation with a different base camera socket.");
     }

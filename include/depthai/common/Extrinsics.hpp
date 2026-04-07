@@ -28,7 +28,7 @@ struct Extrinsics {
 
     Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
 
-    std::vector<std::vector<float>> rotationMatrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    std::vector<std::vector<float>> rotationMatrix;
     /**
      *  (x, y, z) pose of destCameraSocket w.r.t currentCameraSocket obtained through calibration
      */
