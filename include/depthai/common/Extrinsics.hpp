@@ -16,6 +16,8 @@ struct Extrinsics {
    private:
     Point3f getTranslationInUnit(bool useSpec, LengthUnit targetUnit) const;
 
+    bool validRotationMatrix() const;
+
    public:
     Extrinsics() = default;
 
@@ -28,7 +30,7 @@ struct Extrinsics {
 
     Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit = LengthUnit::CENTIMETER);
 
-    std::vector<std::vector<float>> rotationMatrix = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    std::vector<std::vector<float>> rotationMatrix;
     /**
      *  (x, y, z) pose of destCameraSocket w.r.t currentCameraSocket obtained through calibration
      */
@@ -52,13 +54,13 @@ struct Extrinsics {
      * Get the extrinsic rotation matrix in array format.
      * @return 3x3 rotation matrix as a 2D array
      */
-    std::array<std::array<float, 3>, 3> getRotationMatrix() const;
+    std::vector<std::vector<float>> getRotationMatrix() const;
 
     /**
      * Get the inverse extrinsic rotation matrix in array format.
      * @return 3x3 inverse rotation matrix as a 2D array
      */
-    std::array<std::array<float, 3>, 3> getInverseRotationMatrix() const;
+    std::vector<std::vector<float>> getInverseRotationMatrix() const;
 
     /**
      * Get the Camera Extrinsics object to the toCameraSocket.
@@ -73,6 +75,7 @@ struct Extrinsics {
      * [ r20 r21 r22 Tz ]
      * [  0   0   0  1 ]
      * ```
+     * @note The full transformation matrix can only be obtained if both the rotation matrix and the translation vector are set.
      */
     std::array<std::array<float, 4>, 4> getTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
 

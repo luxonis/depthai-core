@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/common/Rect.hpp>
 
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/RotatedRect.hpp"
 
@@ -48,6 +49,9 @@ TEST_CASE("Normalized point remap") {
     REQUIRE(pt.isNormalized());
     dai::ImgTransformation transformFrom(2000, 1000);
     dai::ImgTransformation transformTo(2000, 1000);
+    dai::Extrinsics extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A};
+    transformFrom.setExtrinsics(extrinsics);
+    transformTo.setExtrinsics(extrinsics);
     transformTo.addScale(2, 2);
     transformTo.addCrop(0, 0, 2000, 1000);
     pt = transformFrom.remapPointTo(transformTo, pt);
@@ -59,8 +63,12 @@ TEST_CASE("Normalized point remap") {
 TEST_CASE("Normalized rect remap") {
     dai::RotatedRect rect(dai::Point2f(0.2, 0.3, true), dai::Size2f(0.4, 0.5, true), 45);
     REQUIRE(rect.isNormalized());
+    dai::Extrinsics extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A};
     dai::ImgTransformation transformFrom(2000, 1000);
     dai::ImgTransformation transformTo(2000, 1000);
+    transformFrom.setExtrinsics(extrinsics);
+    transformTo.setExtrinsics(extrinsics);
+
     transformTo.addScale(2, 2);
     transformTo.addCrop(0, 0, 2000, 1000);
     rect = transformFrom.remapRectTo(transformTo, rect);
