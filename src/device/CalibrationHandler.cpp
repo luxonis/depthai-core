@@ -584,7 +584,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
             // column of [R | t] must be in the destination (housing-origin) frame:
             // t = -R * db / scale
             std::vector<std::vector<float>> c = {
-                {-(*dbTranslation)[0] / mmToUnitScale}, {-(*dbTranslation)[1] / mmToUnitScale}, {-(*dbTranslation)[2] / mmToUnitScale}};
+                {-(*dbTranslation)[0] * mmToUnitScale}, {-(*dbTranslation)[1] * mmToUnitScale}, {-(*dbTranslation)[2] * mmToUnitScale}};
             auto rc = matMul(housingRotation, c);
             housingSpecTranslation = Point3f(rc[0][0], rc[1][0], rc[2][0]);
         }
@@ -618,9 +618,9 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
             // All housing coordinate systems share the same orientation;
             // only their origins differ. Build the pure-translation transform
             // T_SpecificHousing_to_Housing from the database position.
-            std::vector<std::vector<float>> T_SpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] / mmToUnitScale},
-                                                                          {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] / mmToUnitScale},
-                                                                          {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] / mmToUnitScale},
+            std::vector<std::vector<float>> T_SpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] * mmToUnitScale},
+                                                                          {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] * mmToUnitScale},
+                                                                          {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] * mmToUnitScale},
                                                                           {0.0f, 0.0f, 0.0f, 1.0f}};
 
             // Compose: T_SpecificHousing→HousingOrigin = T_Housing→HousingOrigin * T_SpecificHousing→Housing
@@ -1054,6 +1054,31 @@ void CalibrationHandler::setCameraType(CameraBoardSocket cameraId, CameraModel c
     } else {
         eepromData.cameraData.at(cameraId).cameraType = cameraModel;
     }
+    return;
+}
+
+void CalibrationHandler::overwriteCameraExtrinsics(CameraBoardSocket srcCameraId,
+                                                   CameraBoardSocket destCameraId,
+                                                   std::vector<std::vector<float>> rotationMatrix,
+                                                   std::vector<float> translation) {
+    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
+        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
+    }
+    if(translation.size() != 3) {
+        throw std::runtime_error("Translation vector size should always be 3x1");
+    }
+
+    auto cameraData = eepromData.cameraData.find(srcCameraId);
+    if(cameraData == eepromData.cameraData.end()) {
+        throw std::runtime_error("No existing extrinsics found for the source camera socket");
+    }
+
+    if(cameraData->second.extrinsics.toCameraSocket != destCameraId) {
+        throw std::runtime_error("Source camera socket has a different `toCameraSocket`");
+    }
+
+    cameraData->second.extrinsics.rotationMatrix = rotationMatrix;
+    cameraData->second.extrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
     return;
 }
 

@@ -98,6 +98,14 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     InputMap& inputs = sync->inputs;
     std::string leftInputName = "left";
     std::string rightInputName = "right";
+    std::vector<std::string> names;
+    std::vector<CameraBoardSocket> sockets;
+    std::vector<CameraBoardSocket> socketConnection;
+    std::unordered_map<CameraBoardSocket, size_t> socketToIdx;
+    std::vector<std::pair<int, int>> resolutions;
+    std::vector<std::pair<int, int>> socketConnectionResolutions;
+    std::unordered_map<CameraBoardSocket, std::vector<std::vector<float>>> socketToFrameIntrinsics;
+    std::vector<std::vector<std::vector<float>>> socketToSensorExtrinsics;
     /**
      * Input left image
      */

@@ -616,6 +616,10 @@ class CalibrationHandler {
                              std::vector<float> translation,
                              std::vector<float> specTranslation = {0, 0, 0});
 
+    void overwriteCameraExtrinsics(CameraBoardSocket srcCameraId,
+                                   CameraBoardSocket destCameraId,
+                                   std::vector<std::vector<float>> rotationMatrix,
+                                   std::vector<float> translation);
     /**
      * Set the Imu to Camera Extrinsics object
      *
@@ -624,6 +628,7 @@ class CalibrationHandler {
      * @param translation Translation between IMU and destCameraId origins.
      * @param specTranslation Translation between IMU and destCameraId origins from the design.
      */
+
     void setImuExtrinsics(CameraBoardSocket destCameraId,
                           std::vector<std::vector<float>> rotationMatrix,
                           std::vector<float> translation,
