@@ -337,7 +337,7 @@ std::filesystem::path extractTransformationTestDataFolder() {
     std::filesystem::remove_all(tempFolder);
     std::filesystem::create_directories(tempFolder);
 
-    const auto archiveEntries = dai::utility::filenamesInTar(archivePath);
+    const auto archiveEntries = dai::utility::filenamesInArchive(archivePath);
     std::vector<std::string> filesInArchive;
     std::vector<std::filesystem::path> extractedFiles;
     filesInArchive.reserve(archiveEntries.size());
@@ -358,7 +358,7 @@ std::filesystem::path extractTransformationTestDataFolder() {
     }
 
     if(!filesInArchive.empty()) {
-        dai::utility::untarFiles(archivePath, filesInArchive, extractedFiles);
+        dai::utility::extractFiles(archivePath, filesInArchive, extractedFiles);
     }
 
     const std::filesystem::path extractedRoot = tempFolder / archivePath.stem().stem();
