@@ -182,13 +182,11 @@ bool setupHolisticRecord(Pipeline pipeline,
                 } else {
                     output = &nodeS->getRecordOutput();
                 }
-                if(syncCameraOutputs) {
-                    output->link(sync->inputs[nodeName]);
-                }
                 auto recordNode = pipeline.create<dai::node::RecordVideo>();
                 recordNode->setRecordMetadataFile(std::filesystem::path(filePath).concat(".mcap"));
                 recordNode->setRecordVideoFile(std::filesystem::path(filePath).concat(recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
-                recordNode->setCompressionLevel((dai::RecordConfig::CompressionLevel)recordConfig.compressionLevel);
+                recordNode->setCompressionLevel(recordConfig.compressionLevel);
+                Node::Output* recordOutput = output;
                 if(recordConfig.videoEncoding.enabled) {
                     auto videnc = pipeline.create<dai::node::VideoEncoder>();
                     videnc->setProfile(recordConfig.videoEncoding.profile);
@@ -205,26 +203,18 @@ bool setupHolisticRecord(Pipeline pipeline,
                         imageManip->initialConfig->setFrameType(ImgFrame::Type::NV12);
                         imageManip->setMaxOutputFrameSize(maxOutputFrameSize);
 
-                        if(syncCameraOutputs) {
-                            demux->outputs[nodeName].link(imageManip->inputImage);
-                        } else {
-                            output->link(imageManip->inputImage);
-                        }
+                        output->link(imageManip->inputImage);
                         imageManip->out.link(videnc->input);
                     } else {
-                        if(syncCameraOutputs) {
-                            demux->outputs[nodeName].link(videnc->input);
-                        } else {
-                            output->link(videnc->input);
-                        }
+                        output->link(videnc->input);
                     }
-                    videnc->out.link(recordNode->input);
+                    recordOutput = &videnc->out;
+                }
+                if(syncCameraOutputs) {
+                    recordOutput->link(sync->inputs[nodeName]);
+                    demux->outputs[nodeName].link(recordNode->input);
                 } else {
-                    if(syncCameraOutputs) {
-                        demux->outputs[nodeName].link(recordNode->input);
-                    } else {
-                        output->link(recordNode->input);
-                    }
+                    recordOutput->link(recordNode->input);
                 }
             } else {
                 auto recordNode = pipeline.create<dai::node::RecordMetadataOnly>();
