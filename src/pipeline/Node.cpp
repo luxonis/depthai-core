@@ -1,6 +1,7 @@
+#include <spdlog/spdlog.h>
+
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <memory>
-#include <spdlog/spdlog.h>
 #include <thread>
 
 #include "depthai/pipeline/InputQueue.hpp"
