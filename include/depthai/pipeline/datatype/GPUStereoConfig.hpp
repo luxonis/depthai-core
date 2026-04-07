@@ -72,6 +72,8 @@ class GPUStereoConfig : public Buffer {
     float hole_fill_sigma_spatial = 2.0f;
     float hole_fill_sigma_range = 0.05f;
     float temporal_alpha = 0.f;
+    int temporal_delta = 0;
+    int temporal_persistency_mode = 3;
     bool region_refine = false;
     int region_refine_cell_size = 16;
     float region_refine_plane_residual_thresh = 3.0f;
@@ -136,6 +138,8 @@ class GPUStereoConfig : public Buffer {
                       hole_fill_sigma_spatial,
                       hole_fill_sigma_range,
                       temporal_alpha,
+                      temporal_delta,
+                      temporal_persistency_mode,
                       region_refine,
                       region_refine_cell_size,
                       region_refine_plane_residual_thresh,

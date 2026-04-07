@@ -8,6 +8,10 @@ Requires: PyQt6, depthai (with GPUStereo), opencv-python, numpy.
 Run:
   python3 gpu_stereo_gui.py --device 10.11.0.51 --resolution 1280x800
 
+Temporal filtering (when 0 < temporalAlpha < 1) uses RVC4-style logic aligned with StereoDepth
+post-processing: EMA when stable, edge test via temporalDelta, and invalid-fill persistency over an
+8-frame history. State is kept in OpenCL on the device (no host previous-frame disparity).
+
 Host buffers / OpenCL platform index are fixed by the device node (see GPUStereo docs).
 """
 
@@ -140,6 +144,8 @@ _GPUS_CONFIG_FIELDS = (
     "holeFillSigmaSpatial",
     "holeFillSigmaRange",
     "temporalAlpha",
+    "temporalDelta",
+    "temporalPersistencyMode",
     "regionRefine",
     "regionRefineCellSize",
     "regionRefinePlaneResidualThresh",
@@ -157,6 +163,9 @@ def gpu_stereo_pipeline_defaults() -> dai.GPUStereoConfig:
     c = dai.GPUStereoConfig()
     c.algorithmControl.depthUnit = dai.DepthUnit.MILLIMETER
     c.algorithmControl.customDepthUnitMultiplier = 1000.0
+    c.temporalAlpha = 0.0
+    c.temporalDelta = 0
+    c.temporalPersistencyMode = 3
     return c
 
 
@@ -396,16 +405,43 @@ class StereoConfigPanel(QWidget):
         self.region_res.setDecimals(2)
         fl.addRow("Region residual thresh", self.region_res)
 
-        g, fl = gb("Temporal / Device")
+        g, fl = gb("Temporal")
         self.temporal_alpha = QDoubleSpinBox()
         self.temporal_alpha.setRange(0.0, 1.0)
         self.temporal_alpha.setDecimals(2)
+        self.temporal_alpha.setToolTip(
+            "EMA blend weight when current and previous disparity agree within δ. "
+            "Use 0 to disable temporal filtering, or strictly between 0 and 1 to enable."
+        )
         fl.addRow("Temporal α (0=off)", self.temporal_alpha)
+        self.temporal_delta = QSpinBox()
+        self.temporal_delta.setRange(0, 65535)
+        self.temporal_delta.setToolTip(
+            "Max disparity difference (same units as output disp) for blending; above this, copy current. "
+            "0 = automatic: 3 × 2^subpixelBits (three integer disparity steps in subpixel units)."
+        )
+        fl.addRow("Temporal δ disparity (0=auto)", self.temporal_delta)
+        self.temporal_persistency = QComboBox()
+        for val, label in (
+            (0, "0 — persistency off"),
+            (1, "1 — valid 8 of last 8"),
+            (2, "2 — valid 2 in last 3"),
+            (3, "3 — valid 2 in last 4 (default)"),
+            (4, "4 — valid 2 of last 8"),
+            (5, "5 — valid 1 in last 2"),
+            (6, "6 — valid 1 in last 5"),
+            (7, "7 — valid 1 in last 8"),
+            (8, "8 — persistency indefinitely"),
+        ):
+            self.temporal_persistency.addItem(label, val)
+        self.temporal_persistency.setToolTip(
+            "When the current disparity is invalid (0), whether to reuse a recent value from history "
+            "(same semantics as StereoDepth post-processing temporal filter persistency)."
+        )
+        fl.addRow("Temporal persistency", self.temporal_persistency)
+        g, fl = gb("Device")
         self.qcom_ops = QCheckBox()
         fl.addRow("Qualcomm accelerated ops", self.qcom_ops)
-        note = QLabel("OpenCL platform/device and host buffers are fixed by the GPUStereo node.")
-        note.setWordWrap(True)
-        form_root.addWidget(note)
 
         root.addWidget(scroll)
         self._load_from_config(initial)
@@ -461,6 +497,8 @@ class StereoConfigPanel(QWidget):
         self.region_cell.setValue(cfg.regionRefineCellSize)
         self.region_res.setValue(float(cfg.regionRefinePlaneResidualThresh))
         self.temporal_alpha.setValue(float(cfg.temporalAlpha))
+        self.temporal_delta.setValue(int(getattr(cfg, "temporalDelta", 0)))
+        self._set_combo_by_data(self.temporal_persistency, int(getattr(cfg, "temporalPersistencyMode", 3)))
         self.qcom_ops.setChecked(cfg.useQcomAcceleratedOps)
 
     def to_config(self, base: dai.GPUStereoConfig) -> dai.GPUStereoConfig:
@@ -510,6 +548,8 @@ class StereoConfigPanel(QWidget):
         c.regionRefineCellSize = self.region_cell.value()
         c.regionRefinePlaneResidualThresh = self.region_res.value()
         c.temporalAlpha = self.temporal_alpha.value()
+        c.temporalDelta = self.temporal_delta.value()
+        c.temporalPersistencyMode = int(self.temporal_persistency.currentData())
         c.useQcomAcceleratedOps = self.qcom_ops.isChecked()
         c.minDisp = base.minDisp
         c.refinementRadius = base.refinementRadius

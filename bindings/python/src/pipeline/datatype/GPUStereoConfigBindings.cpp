@@ -109,6 +109,8 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("holeFillSigmaSpatial", &GPUStereoConfig::hole_fill_sigma_spatial, DOC(dai, GPUStereoConfig, hole_fill_sigma_spatial))
         .def_readwrite("holeFillSigmaRange", &GPUStereoConfig::hole_fill_sigma_range, DOC(dai, GPUStereoConfig, hole_fill_sigma_range))
         .def_readwrite("temporalAlpha", &GPUStereoConfig::temporal_alpha, DOC(dai, GPUStereoConfig, temporal_alpha))
+        .def_readwrite("temporalDelta", &GPUStereoConfig::temporal_delta, DOC(dai, GPUStereoConfig, temporal_delta))
+        .def_readwrite("temporalPersistencyMode", &GPUStereoConfig::temporal_persistency_mode, DOC(dai, GPUStereoConfig, temporal_persistency_mode))
         .def_readwrite("regionRefine", &GPUStereoConfig::region_refine, DOC(dai, GPUStereoConfig, region_refine))
         .def_readwrite("regionRefineCellSize", &GPUStereoConfig::region_refine_cell_size, DOC(dai, GPUStereoConfig, region_refine_cell_size))
         .def_readwrite(
