@@ -99,7 +99,7 @@ Node::Output* setupHolisticRecordCamera(
     if(recordingFps > 0.0f) {
         return cam->requestOutput(std::pair<uint32_t, uint32_t>(camWidth, camHeight), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, recordingFps);
     }
-    return cam->requestOutput(std::pair<uint32_t, uint32_t>(camWidth, camHeight), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP);
+    return cam->requestOutput(std::pair<uint32_t, uint32_t>(camWidth, camHeight), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::CROP, cam->getMaxRequestedFps());
 }
 
 bool setupHolisticRecord(Pipeline pipeline,
