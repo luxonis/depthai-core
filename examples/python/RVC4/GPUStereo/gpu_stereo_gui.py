@@ -28,7 +28,7 @@ import numpy as np
 
 try:
     from PyQt6.QtCore import Qt, QThread, pyqtSignal
-    from PyQt6.QtGui import QCloseEvent, QImage, QKeySequence, QPixmap, QShortcut
+    from PyQt6.QtGui import QCloseEvent, QImage, QKeySequence, QMouseEvent, QPixmap, QShortcut
     from PyQt6.QtWidgets import (
         QApplication,
         QCheckBox,
@@ -95,6 +95,48 @@ class AspectRatioLabel(QLabel):
             Qt.TransformationMode.SmoothTransformation,
         )
         super().setPixmap(scaled)
+
+
+class HoverImageLabel(AspectRatioLabel):
+    pixel_hovered = pyqtSignal(int, int)
+    hover_cleared = pyqtSignal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setMouseTracking(True)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        super().mouseMoveEvent(event)
+        if self._src is None or self._src.isNull():
+            self.hover_cleared.emit()
+            return
+        sw, sh = self.width(), self.height()
+        if sw <= 1 or sh <= 1:
+            self.hover_cleared.emit()
+            return
+        scaled = self._src.scaled(
+            sw,
+            sh,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        pw, ph = scaled.width(), scaled.height()
+        ox = (sw - pw) // 2
+        oy = (sh - ph) // 2
+        mx = int(event.position().x())
+        my = int(event.position().y())
+        lx, ly = mx - ox, my - oy
+        if lx < 0 or ly < 0 or lx >= pw or ly >= ph:
+            self.hover_cleared.emit()
+            return
+        iw, ih = self._src.width(), self._src.height()
+        ix = min(iw - 1, max(0, int(lx * iw / pw)))
+        iy = min(ih - 1, max(0, int(ly * ih / ph)))
+        self.pixel_hovered.emit(ix, iy)
+
+    def leaveEvent(self, event) -> None:
+        self.hover_cleared.emit()
+        super().leaveEvent(event)
 
 
 _GPUS_CONFIG_FIELDS = (
@@ -172,10 +214,22 @@ def gpu_stereo_pipeline_defaults() -> dai.GPUStereoConfig:
 class PipelineThread(QThread):
     frame_ready = pyqtSignal(object)
 
-    def __init__(self, pipeline: dai.Pipeline, disp_q: dai.OutputQueue, min_d: int, max_d: int) -> None:
+    def __init__(
+        self,
+        pipeline: dai.Pipeline,
+        disp_q: dai.OutputQueue,
+        depth_q: dai.OutputQueue,
+        rect_left_q: dai.OutputQueue,
+        rect_right_q: dai.OutputQueue,
+        min_d: int,
+        max_d: int,
+    ) -> None:
         super().__init__()
         self.pipeline = pipeline
         self.disp_q = disp_q
+        self.depth_q = depth_q
+        self.rect_left_q = rect_left_q
+        self.rect_right_q = rect_right_q
         self.min_d = min_d
         self.max_d = max_d
         self._stop = threading.Event()
@@ -193,14 +247,31 @@ class PipelineThread(QThread):
             while not self._stop.is_set() and self.pipeline.isRunning():
                 try:
                     disp = self.disp_q.get(timeout=0.2)
+                    depth_if = self.depth_q.get(timeout=0.2)
+                    rl_fr = self.rect_left_q.get(timeout=0.2)
+                    rr_fr = self.rect_right_q.get(timeout=0.2)
                 except BaseException:
                     continue
-                if disp is None:
+                if disp is None or depth_if is None or rl_fr is None or rr_fr is None:
                     continue
                 assert isinstance(disp, dai.ImgFrame)
-                d_u16 = disp.getFrame()
-                rgb = colorize_disparity_u16(np.asarray(d_u16), self.min_d, self.max_d)
-                self.frame_ready.emit(rgb.copy())
+                assert isinstance(depth_if, dai.ImgFrame)
+                assert isinstance(rl_fr, dai.ImgFrame)
+                assert isinstance(rr_fr, dai.ImgFrame)
+                d_u16 = np.asarray(disp.getFrame())
+                depth_u16 = np.asarray(depth_if.getFrame())
+                rl_gray = np.asarray(rl_fr.getFrame())
+                rr_gray = np.asarray(rr_fr.getFrame())
+                disp_rgb = colorize_disparity_u16(d_u16, self.min_d, self.max_d)
+                self.frame_ready.emit(
+                    (
+                        d_u16.copy(),
+                        depth_u16.copy(),
+                        rl_gray.copy(),
+                        rr_gray.copy(),
+                        disp_rgb.copy(),
+                    )
+                )
 
 
 class StereoConfigPanel(QWidget):
@@ -565,6 +636,9 @@ class MainWindow(QMainWindow):
         pipeline: dai.Pipeline,
         gpu: dai.node.GPUStereo,
         disp_q: dai.OutputQueue,
+        depth_q: dai.OutputQueue,
+        rect_left_q: dai.OutputQueue,
+        rect_right_q: dai.OutputQueue,
         cfg_q,
         initial_cfg: dai.GPUStereoConfig,
     ) -> None:
@@ -579,7 +653,14 @@ class MainWindow(QMainWindow):
         self._min_d = 0
         self._max_d = initial_cfg.maxDisparity * (1 << int(initial_cfg.subpixelBits))
 
-        self._disp_label = AspectRatioLabel()
+        self._last_bundle: tuple | None = None
+
+        self._view_mode = QComboBox()
+        self._view_mode.addItems(["Disparity", "Rectified left", "Rectified right"])
+        self._view_mode.setCurrentIndex(0)
+        self._view_mode.currentIndexChanged.connect(lambda _i: self._refresh_left_pane())
+
+        self._disp_label = HoverImageLabel()
         self._disp_label.setMinimumSize(320, 240)
         self._disp_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._disp_label.setText("Starting…")
@@ -587,11 +668,18 @@ class MainWindow(QMainWindow):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
+        self._disp_label.pixel_hovered.connect(self._on_pixel_hover)
+        self._disp_label.hover_cleared.connect(self._on_hover_clear)
+
+        self._hover_dist = QLabel("")
+        self._hover_dist.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         left_pane = QWidget()
         left_lay = QVBoxLayout(left_pane)
         left_lay.setContentsMargins(0, 0, 0, 0)
-        left_lay.addWidget(self._disp_label)
+        left_lay.addWidget(self._view_mode)
+        left_lay.addWidget(self._disp_label, stretch=1)
+        left_lay.addWidget(self._hover_dist)
 
         self._panel = StereoConfigPanel(initial_cfg)
         self._apply_btn = QPushButton("Apply config to device")
@@ -626,11 +714,61 @@ class MainWindow(QMainWindow):
             sc.setContext(Qt.ShortcutContext.ApplicationShortcut)
             sc.activated.connect(self.close)
 
-        self._worker = PipelineThread(pipeline, disp_q, self._min_d, self._max_d)
+        self._worker = PipelineThread(
+            pipeline,
+            disp_q,
+            depth_q,
+            rect_left_q,
+            rect_right_q,
+            self._min_d,
+            self._max_d,
+        )
         self._worker.frame_ready.connect(self._on_frame)
         self._worker.start()
 
-    def _on_frame(self, bgr: np.ndarray) -> None:
+    def _bgr_for_view(
+        self,
+        disp_rgb: np.ndarray,
+        rl_gray: np.ndarray,
+        rr_gray: np.ndarray,
+    ) -> np.ndarray:
+        idx = self._view_mode.currentIndex()
+        if idx == 1:
+            return cv2.cvtColor(rl_gray, cv2.COLOR_GRAY2BGR)
+        if idx == 2:
+            return cv2.cvtColor(rr_gray, cv2.COLOR_GRAY2BGR)
+        return disp_rgb
+
+    def _refresh_left_pane(self) -> None:
+        if self._last_bundle is None:
+            return
+        _, _, rl, rr, disp_rgb = self._last_bundle
+        bgr = self._bgr_for_view(disp_rgb, rl, rr)
+        self._disp_label.setSourcePixmap(numpy_bgr_to_qpixmap(bgr))
+
+    def _on_pixel_hover(self, ix: int, iy: int) -> None:
+        if self._last_bundle is None:
+            self._hover_dist.setText("")
+            return
+        depth_u16 = self._last_bundle[1]
+        if depth_u16.size == 0:
+            self._hover_dist.setText("")
+            return
+        h, w = depth_u16.shape[:2]
+        if ix < 0 or iy < 0 or ix >= w or iy >= h:
+            self._hover_dist.setText("")
+            return
+        d = int(depth_u16[iy, ix])
+        if d <= 0:
+            self._hover_dist.setText("Distance: —")
+            return
+        self._hover_dist.setText(f"Distance: {d / 1000.0:.3f} m")
+
+    def _on_hover_clear(self) -> None:
+        self._hover_dist.setText("")
+
+    def _on_frame(self, bundle: tuple) -> None:
+        self._last_bundle = bundle
         self._fps_frames += 1
         now = time.monotonic()
         dt = now - self._fps_t0
@@ -638,6 +776,8 @@ class MainWindow(QMainWindow):
             self._fps_label.setText(f"FPS: {self._fps_frames / dt:.1f}")
             self._fps_t0 = now
             self._fps_frames = 0
+        _, _, rl, rr, disp_rgb = bundle
+        bgr = self._bgr_for_view(disp_rgb, rl, rr)
         self._disp_label.setSourcePixmap(numpy_bgr_to_qpixmap(bgr))
 
     def _on_apply(self) -> None:
@@ -692,10 +832,22 @@ def main() -> None:
     _gpustereo_config_assign(ic, gpu_stereo_pipeline_defaults())
 
     disp_q = gpu.disparity.createOutputQueue()
+    depth_q = gpu.depth.createOutputQueue()
+    rect_left_q = gpu.rectifiedLeft.createOutputQueue()
+    rect_right_q = gpu.rectifiedRight.createOutputQueue()
     cfg_q = gpu.inputConfig.createInputQueue()
 
     app = QApplication(sys.argv)
-    win = MainWindow(pipeline, gpu, disp_q, cfg_q, ic)
+    win = MainWindow(
+        pipeline,
+        gpu,
+        disp_q,
+        depth_q,
+        rect_left_q,
+        rect_right_q,
+        cfg_q,
+        ic,
+    )
     win.show()
     sys.exit(app.exec())
 
