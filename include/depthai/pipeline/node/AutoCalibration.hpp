@@ -110,7 +110,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
     // internal queues
     Output gateControlQueue{*this, {"gateControlQueue", DEFAULT_GROUP, {{{DatatypeEnum::GateControl, false}}}}};
 
-    Output dynamicCalibrationCommandQueue{*this, {"dynamicCalibrtationCommandQueue", DEFAULT_GROUP, {{{DatatypeEnum::DynamicCalibrationControl, false}}}}};
+    Output dynamicCalibrationCommandQueue{*this, {"dynamicCalibrationCommandQueue", DEFAULT_GROUP, {{{DatatypeEnum::DynamicCalibrationControl, false}}}}};
 
     Input dynamicCalibrationQueue{*this, {"dynamicCalibrationQueue", DEFAULT_GROUP, false, 1, {{DatatypeEnum::DynamicCalibrationResult, true}}}};
 

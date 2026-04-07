@@ -25,7 +25,7 @@ with dai.Pipeline() as pipeline:
         print("This example is only supported on IMX586 and Luxonis OS 1.20.5 or higher", file=sys.stderr)
         sys.exit(0)
 
-    cameraNode = pipeline.create(dai.node.Camera).build(sensorFps=FPS)
+    cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A, (1280, 720), FPS)
 
     # Configure the DetectionNetwork
     detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, dai.NNModelDescription("yolov6-nano"))

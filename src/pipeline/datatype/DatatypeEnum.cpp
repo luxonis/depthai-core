@@ -107,6 +107,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::DynamicCalibrationControl,
          DatatypeEnum::DynamicCalibrationResult,
          DatatypeEnum::AutoCalibrationConfig,
+         DatatypeEnum::AutoCalibrationResult,
          DatatypeEnum::CoverageData,
          DatatypeEnum::CalibrationMetrics,
          DatatypeEnum::CalibrationQuality,

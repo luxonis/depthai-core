@@ -34,7 +34,7 @@ int main() {
         return 0;
     }
 
-    auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::AUTO, std::nullopt, static_cast<float>(FPS));
+    auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A, std::nullopt, static_cast<float>(FPS));
     auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
     benchmarkIn->setRunOnHost(true);
     benchmarkIn->sendReportEveryNMessages(FPS);
@@ -42,7 +42,7 @@ int main() {
     auto* output = cam->requestOutput(std::make_pair(250U, 250U));
     output->link(benchmarkIn->input);
 
-    auto outputQueue = output->createOutputQueue();
+    auto outputQueue = output->createOutputQueue(1, false);
 
     pipeline.start();
 

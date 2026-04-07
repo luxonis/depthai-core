@@ -678,6 +678,12 @@ class CalibrationHandler {
      */
     void validateCalibrationHandler(bool throwOnError = true) const;
 
+    /**
+     * Get the lowest camera socket
+     * @return the lowest camera socket
+     */
+    dai::CameraBoardSocket getCameraWithLowestId() const;
+
    private:
     /** when the user is writing extrinsics do we validate if
      * the connection between all the cameras exists ?

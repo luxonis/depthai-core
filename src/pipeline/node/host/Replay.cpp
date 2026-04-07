@@ -110,6 +110,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
+        case DatatypeEnum::COUNT:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -192,6 +193,7 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
+        case DatatypeEnum::COUNT:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};

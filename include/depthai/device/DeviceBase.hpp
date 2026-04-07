@@ -33,6 +33,7 @@
 #include "depthai/common/ChipTemperature.hpp"
 #include "depthai/common/ConnectionInterface.hpp"
 #include "depthai/common/CpuUsage.hpp"
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/MemoryInfo.hpp"
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/device/BoardConfig.hpp"
@@ -768,6 +769,13 @@ class DeviceBase {
      * @returns True if supported, false otherwise
      */
     bool isNeuralDepthSupported();
+
+    /**
+     * Returns the subset of device zoo models currently available on the device.
+     *
+     * @returns Supported device zoo models
+     */
+    std::vector<DeviceModelZoo> getSupportedDeviceModels();
 
     /**
      * Configures Timesync service on device. It keeps host and device clocks in sync

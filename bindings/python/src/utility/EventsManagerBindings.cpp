@@ -102,6 +102,8 @@ void EventsManagerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readonly("uploadStatus", &SendSnapCallbackResult::uploadStatus);
 
     py::class_<EventsManager>(m, "EventsManager")
+        .def(py::init([](bool uploadCachedOnStart) { return std::make_unique<EventsManager>("", uploadCachedOnStart); }),
+             py::arg("uploadCachedOnStart") = false)
         .def(py::init<std::string, bool>(), py::arg("apiKey") = "", py::arg("uploadCachedOnStart") = false)
         .def("setLogResponse", &EventsManager::setLogResponse, py::arg("logResponse"), DOC(dai, utility, EventsManager, setLogResponse))
         .def("setVerifySsl", &EventsManager::setVerifySsl, py::arg("verifySsl"), DOC(dai, utility, EventsManager, setVerifySsl))

@@ -41,13 +41,17 @@ struct AutoCalibrationConfig : public Buffer {
           calibrationConfidenceThreshold(calibrationConfidence),
           dataConfidenceThreshold(dataConfidence),
           maxIterations(maxIter),
-          maxImagesPerReacalibration(maxImg),
+          maxImagesPerRecalibration(maxImg),
           validationSetSize(valSize),
           flashCalibration(flash) {}
 
     virtual ~AutoCalibrationConfig();
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::AutoCalibrationConfig;
+    }
 
     /**
      * @brief Calibration trigger mode (ON_START or CONTINUOUS).
@@ -77,7 +81,7 @@ struct AutoCalibrationConfig : public Buffer {
     /**
      * @brief Maximum number of images to collect for one recalibration event.
      */
-    unsigned int maxImagesPerReacalibration = 10;
+    unsigned int maxImagesPerRecalibration = 10;
 
     /**
      * @brief Number of images used for validating the calibration result.
@@ -96,7 +100,7 @@ struct AutoCalibrationConfig : public Buffer {
                       calibrationConfidenceThreshold,
                       dataConfidenceThreshold,
                       maxIterations,
-                      maxImagesPerReacalibration,
+                      maxImagesPerRecalibration,
                       validationSetSize,
                       flashCalibration);
     // clang-format on

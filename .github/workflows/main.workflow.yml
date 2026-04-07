@@ -47,9 +47,30 @@ jobs:
 
         echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
 
-  style:
+  consistency:
     runs-on: ubuntu-24.04
     needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Install consistency check dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install ripgrep
+
+    - name: Run datatype enum consistency check
+      run: bash ci/check_datatype_enum_consistency.sh
+
+    - name: Run protobuf consistency check
+      run: bash ci/check_protobuf_consistency.sh
+
+  style:
+    runs-on: ubuntu-24.04
+    needs: [precheck, consistency]
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
@@ -71,7 +92,7 @@ jobs:
 
   tidy:
     runs-on: ubuntu-24.04
-    needs: [precheck]
+    needs: [precheck, consistency]
     if: needs.precheck.outputs.should_run == 'true'
 
     steps:
@@ -92,7 +113,7 @@ jobs:
 
   build:
     runs-on: ${{ matrix.os }}
-    needs: [precheck]
+    needs: [precheck, consistency]
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
@@ -133,7 +154,7 @@ jobs:
 
   integration:
     runs-on: ${{ matrix.os }}
-    needs: [precheck]
+    needs: [precheck, consistency]
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
