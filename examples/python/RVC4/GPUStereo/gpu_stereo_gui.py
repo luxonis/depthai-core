@@ -640,6 +640,8 @@ class MainWindow(QMainWindow):
         rect_left_q: dai.OutputQueue,
         rect_right_q: dai.OutputQueue,
         cfg_q,
+        left_cam_ctrl_q,
+        right_cam_ctrl_q,
         initial_cfg: dai.GPUStereoConfig,
     ) -> None:
         super().__init__()
@@ -648,6 +650,8 @@ class MainWindow(QMainWindow):
         self._gpu = gpu
         self._disp_q = disp_q
         self._cfg_q = cfg_q
+        self._left_cam_ctrl_q = left_cam_ctrl_q
+        self._right_cam_ctrl_q = right_cam_ctrl_q
         self._base_algo = initial_cfg
 
         self._min_d = 0
@@ -681,6 +685,29 @@ class MainWindow(QMainWindow):
         left_lay.addWidget(self._disp_label, stretch=1)
         left_lay.addWidget(self._hover_dist)
 
+        cam_outer = QGroupBox("Cameras — CAM_B + CAM_C")
+        cam_fl = QFormLayout(cam_outer)
+        self._cam_exp_us = QSpinBox()
+        self._cam_exp_us.setRange(1, 200000)
+        self._cam_exp_us.setValue(10000)
+        self._cam_exp_us.setSuffix(" µs")
+        self._cam_iso = QSpinBox()
+        self._cam_iso.setRange(100, 3200)
+        self._cam_iso.setValue(400)
+        self._cam_sharpness = QSpinBox()
+        self._cam_sharpness.setRange(0, 4)
+        self._cam_sharpness.setValue(1)
+        self._cam_luma_denoise = QSpinBox()
+        self._cam_luma_denoise.setRange(0, 4)
+        self._cam_luma_denoise.setValue(1)
+        cam_fl.addRow("Exposure", self._cam_exp_us)
+        cam_fl.addRow("ISO", self._cam_iso)
+        cam_fl.addRow("Sharpness", self._cam_sharpness)
+        cam_fl.addRow("Luma denoise", self._cam_luma_denoise)
+        btn_cam = QPushButton("Apply to both cameras")
+        btn_cam.clicked.connect(self._on_apply_cam_exposure)
+        cam_fl.addRow(btn_cam)
+
         self._panel = StereoConfigPanel(initial_cfg)
         self._apply_btn = QPushButton("Apply config to device")
         self._apply_btn.clicked.connect(self._on_apply)
@@ -693,6 +720,7 @@ class MainWindow(QMainWindow):
         right_pane = QWidget()
         right_lay = QVBoxLayout(right_pane)
         right_lay.setContentsMargins(0, 0, 0, 0)
+        right_lay.addWidget(cam_outer)
         right_lay.addWidget(self._panel, stretch=1)
         right_lay.addLayout(bottom_bar)
 
@@ -790,6 +818,22 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Apply failed", str(e))
 
+    def _on_apply_cam_exposure(self) -> None:
+        try:
+            exp = self._cam_exp_us.value()
+            iso = self._cam_iso.value()
+            sharp = self._cam_sharpness.value()
+            luma = self._cam_luma_denoise.value()
+            for q in (self._left_cam_ctrl_q, self._right_cam_ctrl_q):
+                ctrl = dai.CameraControl()
+                ctrl.setManualExposure(exp, iso)
+                ctrl.setSharpness(sharp)
+                ctrl.setLumaDenoise(luma)
+                q.send(ctrl)
+            self._status.setText("Cameras (CAM_B, CAM_C): controls sent")
+        except Exception as e:
+            QMessageBox.warning(self, "Camera control failed", str(e))
+
     def closeEvent(self, event: QCloseEvent) -> None:
         self._worker.stop()
         self._worker.wait(5000)
@@ -836,6 +880,8 @@ def main() -> None:
     rect_left_q = gpu.rectifiedLeft.createOutputQueue()
     rect_right_q = gpu.rectifiedRight.createOutputQueue()
     cfg_q = gpu.inputConfig.createInputQueue()
+    left_cam_ctrl_q = mono_left.inputControl.createInputQueue()
+    right_cam_ctrl_q = mono_right.inputControl.createInputQueue()
 
     app = QApplication(sys.argv)
     win = MainWindow(
@@ -846,6 +892,8 @@ def main() -> None:
         rect_left_q,
         rect_right_q,
         cfg_q,
+        left_cam_ctrl_q,
+        right_cam_ctrl_q,
         ic,
     )
     win.show()
