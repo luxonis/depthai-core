@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """PyQt GUI for GPUStereo — same pipeline as gpu_stereo.py with live parameter tuning via inputConfig.
 
-Requires: PyQt6, depthai (with GPUStereo), opencv-python, numpy.
+Requires: PyQt6, depthai (with GPUStereo), opencv-python, numpy, PyYAML.
 
-  pip install PyQt6
+  pip install PyQt6 pyyaml
 
 Run:
   python3 gpu_stereo_gui.py --device 10.11.0.51 --resolution 1280x800
@@ -18,16 +18,24 @@ Host buffers / OpenCL platform index are fixed by the device node (see GPUStereo
 from __future__ import annotations
 
 import argparse
+import enum
 import sys
 import threading
 import time
+from pathlib import Path
 
 import cv2
 import depthai as dai
 import numpy as np
 
 try:
-    from PyQt6.QtCore import Qt, QThread, pyqtSignal
+    import yaml
+except ImportError as e:
+    print("PyYAML is required: pip install pyyaml", file=sys.stderr)
+    raise SystemExit(1) from e
+
+try:
+    from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
     from PyQt6.QtGui import QCloseEvent, QImage, QKeySequence, QMouseEvent, QPixmap, QShortcut
     from PyQt6.QtWidgets import (
         QApplication,
@@ -43,6 +51,7 @@ try:
         QPushButton,
         QScrollArea,
         QSizePolicy,
+        QSlider,
         QSpinBox,
         QSplitter,
         QVBoxLayout,
@@ -68,6 +77,20 @@ def numpy_bgr_to_qpixmap(bgr: np.ndarray) -> QPixmap:
     h, w, ch = rgb.shape
     qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
     return QPixmap.fromImage(qimg.copy())
+
+
+def estimate_depth_scale_k(d_u16: np.ndarray, depth_u16: np.ndarray) -> float | None:
+    valid = (d_u16 > 0) & (depth_u16 > 0)
+    if not np.any(valid):
+        return None
+    prod = depth_u16[valid].astype(np.float64) * d_u16[valid].astype(np.float64)
+    return float(np.median(prod))
+
+
+def jet_vertical_colorbar_bgr(height: int = 180, width: int = 22) -> np.ndarray:
+    ramp = np.linspace(255, 0, height, dtype=np.uint8).reshape(-1, 1)
+    jet = cv2.applyColorMap(ramp, cv2.COLORMAP_JET)
+    return cv2.resize(jet, (width, height), interpolation=cv2.INTER_NEAREST)
 
 
 class AspectRatioLabel(QLabel):
@@ -211,6 +234,73 @@ def gpu_stereo_pipeline_defaults() -> dai.GPUStereoConfig:
     return c
 
 
+DEFAULT_VIZ_DISP_MAX = 128
+
+
+def default_config_path() -> Path:
+    return Path(__file__).resolve().parent / "config.yaml"
+
+
+def load_config_file(path: Path) -> dict:
+    if not path.is_file():
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_config_file(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False, allow_unicode=True)
+
+
+def _serialize_gpustereo_config(cfg: dai.GPUStereoConfig) -> dict:
+    out: dict = {}
+    for name in _GPUS_CONFIG_FIELDS:
+        v = getattr(cfg, name)
+        if isinstance(v, enum.Enum):
+            out[name] = v.name
+        elif isinstance(v, (float, np.floating)):
+            out[name] = float(v)
+        elif isinstance(v, bool):
+            out[name] = bool(v)
+        else:
+            out[name] = int(v)
+    out["depthUnit"] = cfg.algorithmControl.depthUnit.name
+    out["customDepthUnitMultiplier"] = float(cfg.algorithmControl.customDepthUnitMultiplier)
+    return out
+
+
+def _deserialize_gpustereo_config(d: dict) -> dai.GPUStereoConfig:
+    tmpl = gpu_stereo_pipeline_defaults()
+    out = dai.GPUStereoConfig()
+    _gpustereo_config_assign(out, tmpl)
+    for name in _GPUS_CONFIG_FIELDS:
+        if name not in d:
+            continue
+        raw = d[name]
+        ref = getattr(tmpl, name)
+        if isinstance(ref, enum.Enum):
+            setattr(out, name, type(ref)[raw] if isinstance(raw, str) else raw)
+        elif isinstance(ref, bool):
+            setattr(out, name, bool(raw))
+        elif isinstance(ref, float):
+            setattr(out, name, float(raw))
+        elif isinstance(ref, int):
+            setattr(out, name, int(raw))
+        else:
+            setattr(out, name, float(raw))
+    if "depthUnit" in d:
+        out.algorithmControl.depthUnit = dai.DepthUnit[d["depthUnit"]]
+    if "customDepthUnitMultiplier" in d:
+        out.algorithmControl.customDepthUnitMultiplier = float(d["customDepthUnitMultiplier"])
+    return out
+
+
 class PipelineThread(QThread):
     frame_ready = pyqtSignal(object)
 
@@ -221,8 +311,6 @@ class PipelineThread(QThread):
         depth_q: dai.OutputQueue,
         rect_left_q: dai.OutputQueue,
         rect_right_q: dai.OutputQueue,
-        min_d: int,
-        max_d: int,
     ) -> None:
         super().__init__()
         self.pipeline = pipeline
@@ -230,8 +318,6 @@ class PipelineThread(QThread):
         self.depth_q = depth_q
         self.rect_left_q = rect_left_q
         self.rect_right_q = rect_right_q
-        self.min_d = min_d
-        self.max_d = max_d
         self._stop = threading.Event()
 
     def stop(self) -> None:
@@ -262,14 +348,12 @@ class PipelineThread(QThread):
                 depth_u16 = np.asarray(depth_if.getFrame())
                 rl_gray = np.asarray(rl_fr.getFrame())
                 rr_gray = np.asarray(rr_fr.getFrame())
-                disp_rgb = colorize_disparity_u16(d_u16, self.min_d, self.max_d)
                 self.frame_ready.emit(
                     (
                         d_u16.copy(),
                         depth_u16.copy(),
                         rl_gray.copy(),
                         rr_gray.copy(),
-                        disp_rgb.copy(),
                     )
                 )
 
@@ -356,14 +440,22 @@ class StereoConfigPanel(QWidget):
         self.second_peak.setRange(0.0, 0.5)
         self.second_peak.setDecimals(3)
         self.second_peak.setSingleStep(0.01)
+        self.second_peak.setToolTip(
+            "Minimum cost margin (best vs second-best) over the full disparity search. "
+            "Applies to cost-volume WTA and to the pyramid second-peak pass. 0 = off."
+        )
         fl.addRow("Second-peak threshold", self.second_peak)
+        self.second_peak_gap = QSpinBox()
+        self.second_peak_gap.setRange(0, 32)
+        self.second_peak_gap.setToolTip(
+            "If > 0, only invalidate on ambiguous margin when the second-best disparity is farther "
+            "than this (pixels) from the best. Same as second_peak_min_disparity_gap in GPUStereoConfig."
+        )
+        fl.addRow("Second-peak min disparity gap", self.second_peak_gap)
 
         g, fl = gb("Cost volume")
         self.use_cost_volume = QCheckBox()
         fl.addRow("Use cost volume", self.use_cost_volume)
-        self.second_peak_gap = QSpinBox()
-        self.second_peak_gap.setRange(0, 32)
-        fl.addRow("Second-peak min disp gap", self.second_peak_gap)
         self.cost_agg = QComboBox()
         for val in (
             self.G.CostVolumeAggregation.BOX,
@@ -643,6 +735,11 @@ class MainWindow(QMainWindow):
         left_cam_ctrl_q,
         right_cam_ctrl_q,
         initial_cfg: dai.GPUStereoConfig,
+        config_path: Path,
+        cli_device: str,
+        cli_resolution: str,
+        cli_fps: float,
+        saved: dict | None,
     ) -> None:
         super().__init__()
         self.setWindowTitle("GPUStereo — controls")
@@ -653,6 +750,10 @@ class MainWindow(QMainWindow):
         self._left_cam_ctrl_q = left_cam_ctrl_q
         self._right_cam_ctrl_q = right_cam_ctrl_q
         self._base_algo = initial_cfg
+        self._config_path = config_path
+        self._cli_device = cli_device
+        self._cli_resolution = cli_resolution
+        self._cli_fps = cli_fps
 
         self._min_d = 0
         self._max_d = initial_cfg.maxDisparity * (1 << int(initial_cfg.subpixelBits))
@@ -662,7 +763,28 @@ class MainWindow(QMainWindow):
         self._view_mode = QComboBox()
         self._view_mode.addItems(["Disparity", "Rectified left", "Rectified right"])
         self._view_mode.setCurrentIndex(0)
-        self._view_mode.currentIndexChanged.connect(lambda _i: self._refresh_left_pane())
+        self._view_mode.currentIndexChanged.connect(self._on_view_mode_changed)
+
+        self._disp_viz_widget = QWidget()
+        dv_lay = QVBoxLayout(self._disp_viz_widget)
+        dv_lay.setContentsMargins(0, 0, 0, 0)
+        self._slider_disp_min = QSlider(Qt.Orientation.Horizontal)
+        self._slider_disp_max = QSlider(Qt.Orientation.Horizontal)
+        self._lbl_disp_min_val = QLabel("0")
+        self._lbl_disp_max_val = QLabel("0")
+        row_min = QHBoxLayout()
+        row_min.addWidget(QLabel("Min disp"))
+        row_min.addWidget(self._slider_disp_min, stretch=1)
+        row_min.addWidget(self._lbl_disp_min_val)
+        row_max = QHBoxLayout()
+        row_max.addWidget(QLabel("Max disp"))
+        row_max.addWidget(self._slider_disp_max, stretch=1)
+        row_max.addWidget(self._lbl_disp_max_val)
+        dv_lay.addLayout(row_min)
+        dv_lay.addLayout(row_max)
+        self._sync_viz_slider_range(use_defaults=True)
+        self._slider_disp_min.valueChanged.connect(self._on_viz_disp_min_changed)
+        self._slider_disp_max.valueChanged.connect(self._on_viz_disp_max_changed)
 
         self._disp_label = HoverImageLabel()
         self._disp_label.setMinimumSize(320, 240)
@@ -675,6 +797,27 @@ class MainWindow(QMainWindow):
         self._disp_label.pixel_hovered.connect(self._on_pixel_hover)
         self._disp_label.hover_cleared.connect(self._on_hover_clear)
 
+        self._colorbar_widget = QWidget()
+        cb_row = QHBoxLayout(self._colorbar_widget)
+        cb_row.setContentsMargins(0, 0, 0, 0)
+        depth_lbl_col = QVBoxLayout()
+        self._lbl_near_depth = QLabel("Near: —")
+        self._lbl_far_depth = QLabel("Far: —")
+        depth_lbl_col.addWidget(self._lbl_near_depth)
+        depth_lbl_col.addStretch()
+        depth_lbl_col.addWidget(self._lbl_far_depth)
+        cb_row.addLayout(depth_lbl_col)
+        self._colorbar_label = QLabel()
+        self._colorbar_label.setFixedSize(22, 180)
+        self._colorbar_label.setPixmap(numpy_bgr_to_qpixmap(jet_vertical_colorbar_bgr(180, 22)))
+        cb_row.addWidget(self._colorbar_label)
+
+        self._image_row = QWidget()
+        image_row_lay = QHBoxLayout(self._image_row)
+        image_row_lay.setContentsMargins(0, 0, 0, 0)
+        image_row_lay.addWidget(self._disp_label, stretch=1)
+        image_row_lay.addWidget(self._colorbar_widget)
+
         self._hover_dist = QLabel("")
         self._hover_dist.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
@@ -682,7 +825,8 @@ class MainWindow(QMainWindow):
         left_lay = QVBoxLayout(left_pane)
         left_lay.setContentsMargins(0, 0, 0, 0)
         left_lay.addWidget(self._view_mode)
-        left_lay.addWidget(self._disp_label, stretch=1)
+        left_lay.addWidget(self._disp_viz_widget)
+        left_lay.addWidget(self._image_row, stretch=1)
         left_lay.addWidget(self._hover_dist)
 
         cam_outer = QGroupBox("Cameras — CAM_B + CAM_C")
@@ -709,6 +853,7 @@ class MainWindow(QMainWindow):
         cam_fl.addRow(btn_cam)
 
         self._panel = StereoConfigPanel(initial_cfg)
+        self._wire_panel_autosave()
         self._apply_btn = QPushButton("Apply config to device")
         self._apply_btn.clicked.connect(self._on_apply)
         self._status = QLabel("")
@@ -748,15 +893,176 @@ class MainWindow(QMainWindow):
             depth_q,
             rect_left_q,
             rect_right_q,
-            self._min_d,
-            self._max_d,
         )
         self._worker.frame_ready.connect(self._on_frame)
         self._worker.start()
 
+        self._save_timer = QTimer(self)
+        self._save_timer.setSingleShot(True)
+        self._save_timer.timeout.connect(self._save_config_to_file)
+        self._cam_exp_us.valueChanged.connect(self._schedule_save)
+        self._cam_iso.valueChanged.connect(self._schedule_save)
+        self._cam_sharpness.valueChanged.connect(self._schedule_save)
+        self._cam_luma_denoise.valueChanged.connect(self._schedule_save)
+        self._view_mode.currentIndexChanged.connect(lambda _i: self._schedule_save())
+
+        if saved:
+            self._apply_saved_ui(saved)
+
+    def _schedule_save(self) -> None:
+        self._save_timer.start(500)
+
+    def _wire_panel_autosave(self) -> None:
+        for w in self._panel.findChildren(QSpinBox):
+            w.valueChanged.connect(self._schedule_save)
+        for w in self._panel.findChildren(QDoubleSpinBox):
+            w.valueChanged.connect(self._schedule_save)
+        for w in self._panel.findChildren(QComboBox):
+            w.currentIndexChanged.connect(self._schedule_save)
+        for w in self._panel.findChildren(QCheckBox):
+            w.stateChanged.connect(self._schedule_save)
+
+    def _collect_config_dict(self) -> dict:
+        cfg = self._panel.to_config(self._base_algo)
+        return {
+            "device": self._cli_device,
+            "resolution": self._cli_resolution,
+            "fps": float(self._cli_fps),
+            "view_mode": int(self._view_mode.currentIndex()),
+            "viz_disp_min": int(self._slider_disp_min.value()),
+            "viz_disp_max": int(self._slider_disp_max.value()),
+            "camera": {
+                "exposure_us": int(self._cam_exp_us.value()),
+                "iso": int(self._cam_iso.value()),
+                "sharpness": int(self._cam_sharpness.value()),
+                "luma_denoise": int(self._cam_luma_denoise.value()),
+            },
+            "gpustereo": _serialize_gpustereo_config(cfg),
+        }
+
+    def _save_config_to_file(self) -> None:
+        try:
+            save_config_file(self._config_path, self._collect_config_dict())
+        except Exception:
+            pass
+
+    def _apply_saved_ui(self, d: dict) -> None:
+        cam = d.get("camera")
+        if isinstance(cam, dict):
+            if "exposure_us" in cam:
+                self._cam_exp_us.setValue(int(cam["exposure_us"]))
+            if "iso" in cam:
+                self._cam_iso.setValue(int(cam["iso"]))
+            if "sharpness" in cam:
+                self._cam_sharpness.setValue(int(cam["sharpness"]))
+            if "luma_denoise" in cam:
+                self._cam_luma_denoise.setValue(int(cam["luma_denoise"]))
+        if "view_mode" in d:
+            self._view_mode.setCurrentIndex(max(0, min(int(d["view_mode"]), self._view_mode.count() - 1)))
+        if "viz_disp_min" in d and "viz_disp_max" in d:
+            self._slider_disp_min.setValue(int(d["viz_disp_min"]))
+            self._slider_disp_max.setValue(int(d["viz_disp_max"]))
+            self._sync_viz_slider_range(use_defaults=False)
+        self._refresh_left_pane()
+        if self._view_mode.currentIndex() == 0:
+            self._update_disparity_depth_labels()
+
+    def _sync_viz_slider_range(self, use_defaults: bool = False) -> None:
+        md = max(1, int(self._max_d))
+        self._slider_disp_min.blockSignals(True)
+        self._slider_disp_max.blockSignals(True)
+        self._slider_disp_min.setRange(0, md)
+        self._slider_disp_max.setRange(0, md)
+        if use_defaults:
+            vmin, vmax = 0, min(DEFAULT_VIZ_DISP_MAX, md)
+        else:
+            vmin = self._slider_disp_min.value()
+            vmax = self._slider_disp_max.value()
+            vmin = max(0, min(int(vmin), md - 1)) if md > 1 else 0
+            vmax = max(1, min(int(vmax), md))
+            if vmin >= vmax:
+                vmin, vmax = 0, min(DEFAULT_VIZ_DISP_MAX, md)
+        self._slider_disp_min.setValue(vmin)
+        self._slider_disp_max.setValue(vmax)
+        self._slider_disp_min.blockSignals(False)
+        self._slider_disp_max.blockSignals(False)
+        self._lbl_disp_min_val.setText(str(self._slider_disp_min.value()))
+        self._lbl_disp_max_val.setText(str(self._slider_disp_max.value()))
+
+    def _on_viz_disp_min_changed(self, _v: int) -> None:
+        if self._slider_disp_min.value() >= self._slider_disp_max.value():
+            self._slider_disp_max.blockSignals(True)
+            if self._slider_disp_min.value() < self._slider_disp_max.maximum():
+                self._slider_disp_max.setValue(self._slider_disp_min.value() + 1)
+            else:
+                self._slider_disp_min.blockSignals(True)
+                self._slider_disp_min.setValue(max(0, self._slider_disp_max.value() - 1))
+                self._slider_disp_min.blockSignals(False)
+            self._slider_disp_max.blockSignals(False)
+        self._lbl_disp_min_val.setText(str(self._slider_disp_min.value()))
+        self._refresh_left_pane()
+        self._update_disparity_depth_labels()
+        self._schedule_save()
+
+    def _on_viz_disp_max_changed(self, _v: int) -> None:
+        if self._slider_disp_max.value() <= self._slider_disp_min.value():
+            self._slider_disp_min.blockSignals(True)
+            if self._slider_disp_max.value() > self._slider_disp_min.minimum():
+                self._slider_disp_min.setValue(self._slider_disp_max.value() - 1)
+            else:
+                self._slider_disp_max.blockSignals(True)
+                self._slider_disp_max.setValue(min(self._slider_disp_min.value() + 1, self._slider_disp_max.maximum()))
+                self._slider_disp_max.blockSignals(False)
+            self._slider_disp_min.blockSignals(False)
+        self._lbl_disp_max_val.setText(str(self._slider_disp_max.value()))
+        self._refresh_left_pane()
+        self._update_disparity_depth_labels()
+        self._schedule_save()
+
+    def _on_view_mode_changed(self, _i: int) -> None:
+        disp = self._view_mode.currentIndex() == 0
+        self._disp_viz_widget.setVisible(disp)
+        self._colorbar_widget.setVisible(disp)
+        self._refresh_left_pane()
+        if disp:
+            self._update_disparity_depth_labels()
+
+    def _disparity_bgr(self, d_u16: np.ndarray) -> np.ndarray:
+        return colorize_disparity_u16(
+            d_u16,
+            self._slider_disp_min.value(),
+            self._slider_disp_max.value(),
+        )
+
+    def _update_disparity_depth_labels(self) -> None:
+        if self._last_bundle is None:
+            self._lbl_near_depth.setText("Near: —")
+            self._lbl_far_depth.setText("Far: —")
+            return
+        if self._view_mode.currentIndex() != 0:
+            return
+        d_u16, depth_u16, _, _ = self._last_bundle
+        k = estimate_depth_scale_k(d_u16, depth_u16)
+        vmin = self._slider_disp_min.value()
+        vmax = self._slider_disp_max.value()
+        if k is None:
+            self._lbl_near_depth.setText("Near: —")
+            self._lbl_far_depth.setText("Far: —")
+            return
+        if vmax > 0:
+            near_m = (k / float(vmax)) / 1000.0
+            self._lbl_near_depth.setText(f"Near: {near_m:.3f} m")
+        else:
+            self._lbl_near_depth.setText("Near: —")
+        if vmin > 0:
+            far_m = (k / float(vmin)) / 1000.0
+            self._lbl_far_depth.setText(f"Far: {far_m:.3f} m")
+        else:
+            self._lbl_far_depth.setText("Far: ∞")
+
     def _bgr_for_view(
         self,
-        disp_rgb: np.ndarray,
+        d_u16: np.ndarray,
         rl_gray: np.ndarray,
         rr_gray: np.ndarray,
     ) -> np.ndarray:
@@ -765,13 +1071,13 @@ class MainWindow(QMainWindow):
             return cv2.cvtColor(rl_gray, cv2.COLOR_GRAY2BGR)
         if idx == 2:
             return cv2.cvtColor(rr_gray, cv2.COLOR_GRAY2BGR)
-        return disp_rgb
+        return self._disparity_bgr(d_u16)
 
     def _refresh_left_pane(self) -> None:
         if self._last_bundle is None:
             return
-        _, _, rl, rr, disp_rgb = self._last_bundle
-        bgr = self._bgr_for_view(disp_rgb, rl, rr)
+        d_u16, _, rl, rr = self._last_bundle
+        bgr = self._bgr_for_view(d_u16, rl, rr)
         self._disp_label.setSourcePixmap(numpy_bgr_to_qpixmap(bgr))
 
     def _on_pixel_hover(self, ix: int, iy: int) -> None:
@@ -804,17 +1110,21 @@ class MainWindow(QMainWindow):
             self._fps_label.setText(f"FPS: {self._fps_frames / dt:.1f}")
             self._fps_t0 = now
             self._fps_frames = 0
-        _, _, rl, rr, disp_rgb = bundle
-        bgr = self._bgr_for_view(disp_rgb, rl, rr)
+        d_u16, _, rl, rr = bundle
+        bgr = self._bgr_for_view(d_u16, rl, rr)
         self._disp_label.setSourcePixmap(numpy_bgr_to_qpixmap(bgr))
+        self._update_disparity_depth_labels()
 
     def _on_apply(self) -> None:
         try:
             cfg = self._panel.to_config(self._base_algo)
             self._cfg_q.send(cfg)
             self._max_d = cfg.maxDisparity * (1 << cfg.subpixelBits)
-            self._worker.max_d = self._max_d
+            self._sync_viz_slider_range()
+            self._refresh_left_pane()
+            self._update_disparity_depth_labels()
             self._status.setText("Config sent (pipeline rebuild on device)")
+            self._schedule_save()
         except Exception as e:
             QMessageBox.warning(self, "Apply failed", str(e))
 
@@ -831,10 +1141,12 @@ class MainWindow(QMainWindow):
                 ctrl.setLumaDenoise(luma)
                 q.send(ctrl)
             self._status.setText("Cameras (CAM_B, CAM_C): controls sent")
+            self._schedule_save()
         except Exception as e:
             QMessageBox.warning(self, "Camera control failed", str(e))
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        self._save_config_to_file()
         self._worker.stop()
         self._worker.wait(5000)
         event.accept()
@@ -848,18 +1160,30 @@ def main() -> None:
         )
         sys.exit(1)
 
+    config_path = default_config_path()
+    saved = load_config_file(config_path)
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--device", type=str, default="10.11.0.51", help="Device IP")
-    parser.add_argument("--resolution", type=str, default="1280x800", help="WxH")
+    parser.add_argument("--device", type=str, default=saved.get("device") or "10.11.0.51", help="Device IP")
+    parser.add_argument("--resolution", type=str, default=saved.get("resolution") or "1280x800", help="WxH")
     parser.add_argument(
         "--fps",
         type=float,
-        default=60.0,
+        default=float(saved.get("fps", 60.0)),
         metavar="N",
         help="Camera output FPS (default: 60)",
     )
     args = parser.parse_args()
     w, h = (int(x) for x in args.resolution.split("x"))
+
+    ic = gpu_stereo_pipeline_defaults()
+    gs = saved.get("gpustereo")
+    if isinstance(gs, dict) and gs:
+        try:
+            loaded = _deserialize_gpustereo_config(gs)
+            _gpustereo_config_assign(ic, loaded)
+        except Exception:
+            pass
 
     device = dai.Device(args.device)
     device.setIrLaserDotProjectorIntensity(0.9)
@@ -872,8 +1196,7 @@ def main() -> None:
     mono_right.requestOutput((w, h), type=dai.ImgFrame.Type.GRAY8, fps=args.fps).link(gpu.right)
     gpu.setRectification(True)
 
-    ic = gpu.initialConfig
-    _gpustereo_config_assign(ic, gpu_stereo_pipeline_defaults())
+    _gpustereo_config_assign(gpu.initialConfig, ic)
 
     disp_q = gpu.disparity.createOutputQueue()
     depth_q = gpu.depth.createOutputQueue()
@@ -895,6 +1218,11 @@ def main() -> None:
         left_cam_ctrl_q,
         right_cam_ctrl_q,
         ic,
+        config_path,
+        args.device,
+        args.resolution,
+        float(args.fps),
+        saved,
     )
     win.show()
     sys.exit(app.exec())
