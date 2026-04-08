@@ -118,7 +118,7 @@ dai::ImgTransformation createRectifiedImgTransformation(const dai::Extrinsics& e
                                                         uint32_t outputWidth,
                                                         uint32_t outputHeight) {
     dai::ImgTransformation outputImgTransformation;
-
+    // Rectified frame is treated as a brand new camera, so source size is set to output size
     outputImgTransformation.setSourceSize(outputWidth, outputHeight);
     outputImgTransformation.setSize(outputWidth, outputHeight);
     outputImgTransformation.setIntrinsicMatrix(dai::matrix::cvMatToMatrix3x3(cvIntrinsicMatrix));
@@ -272,6 +272,8 @@ void Rectification::run() {
         rectifiedFrame1->setMetadata(*input1Frame);
         rectifiedFrame1->setWidth(output1FrameWidth);
         rectifiedFrame1->setHeight(output1FrameHeight);
+        rectifiedFrame1->sourceFb.width = output1FrameWidth;
+        rectifiedFrame1->sourceFb.height = output1FrameHeight;
         rectifiedFrame1->setType(dai::ImgFrame::Type::RAW8);
         rectifiedFrame1->fb.stride = rectifiedFrame1->fb.width * rectifiedFrame1->getBytesPerPixel();
 
@@ -283,6 +285,8 @@ void Rectification::run() {
         rectifiedFrame2->setMetadata(*input2Frame);
         rectifiedFrame2->setWidth(output2FrameWidth);
         rectifiedFrame2->setHeight(output2FrameHeight);
+        rectifiedFrame2->sourceFb.width = output2FrameWidth;
+        rectifiedFrame2->sourceFb.height = output2FrameHeight;
         rectifiedFrame2->setType(dai::ImgFrame::Type::RAW8);
         rectifiedFrame2->fb.stride = rectifiedFrame2->fb.width * rectifiedFrame2->getBytesPerPixel();
 
