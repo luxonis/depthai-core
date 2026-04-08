@@ -745,6 +745,7 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci)
+set_tests_properties(camera_fps_config_test PROPERTIES ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
