@@ -164,21 +164,44 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
                                           const CameraBoardSocket socketDest,
                                           const std::pair<int, int>& resolutionA,
                                           const std::pair<int, int>& resolutionB) {
+    // Get extrinsics for both cameras (T_left_to_origin and T_right_to_origin)
     dcl::scalar_t tvecA[3];
     dclCalibrationA->getTvec(tvecA);
     dcl::scalar_t rvecA[3];
     dclCalibrationA->getRvec(rvecA);
 
-    constexpr dcl::scalar_t threshold = 1e-10;
+    dcl::scalar_t tvecB[3];
+    dclCalibrationB->getTvec(tvecB);
+    dcl::scalar_t rvecB[3];
+    dclCalibrationB->getRvec(rvecB);
 
-    // clang-format off
-    auto isNonZero = [&](const auto& vec) {
-      return std::abs(vec[0]) > threshold || std::abs(vec[1]) > threshold || std::abs(vec[2]) > threshold;
-    };
-    // clang-format on
+    // Convert rvecs to rotation matrices
+    // DCL uses "origin to camera" convention: p_cam = R_cam * p_origin + t_cam
+    auto R_A = matrix::rvecToRotationMatrix(rvecA);
+    auto R_B = matrix::rvecToRotationMatrix(rvecB);
 
-    if(isNonZero(tvecA) || isNonZero(rvecA)) {
-        throw std::runtime_error("Extrinsics of the left camera are not zero within the allowed threshold.");
+    // Compute T_A_to_B (left to right) from per-camera poses:
+    //   p_A = R_A * p_ref + t_A  =>  p_ref = R_A^T * (p_A - t_A)
+    //   p_B = R_B * p_ref + t_B  =>  p_B = R_B * R_A^T * p_A + t_B - R_B * R_A^T * t_A
+    // R_rel = R_B * R_A^T
+    // t_rel = t_B - R_rel * t_A
+    std::vector<std::vector<float>> R_A_inv(3, std::vector<float>(3, 0.0f));
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            R_A_inv[i][j] = R_A[j][i];  // transpose of rotation = inverse
+        }
+    }
+
+    auto rotationMatrix = matrix::matMul(R_B, R_A_inv);
+
+    // t_rel = t_B - R_rel * t_A, converted from meters to cm
+    std::vector<float> translation(3, 0.0f);
+    for(int i = 0; i < 3; ++i) {
+        float R_rel_dot_tA = 0.0f;
+        for(int j = 0; j < 3; ++j) {
+            R_rel_dot_tA += rotationMatrix[i][j] * static_cast<float>(tvecA[j]);
+        }
+        translation[i] = (static_cast<float>(tvecB[i]) - R_rel_dot_tA) * 100.0f;  // meters to cm
     }
 
     dcl::distortion_t distortionA;
@@ -206,16 +229,6 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
         {static_cast<float>(cameraMatrixB[6]), static_cast<float>(cameraMatrixB[7]), static_cast<float>(cameraMatrixB[8])}
     };
     // clang-format on
-
-    dcl::scalar_t tvecB[3];
-    dclCalibrationB->getTvec(tvecB);
-    auto translation = std::vector<float>(tvecB, tvecB + 3);
-    for(auto& val : translation) {
-        val *= 100.0f;
-    }
-    dcl::scalar_t rvecB[3];
-    dclCalibrationB->getRvec(rvecB);
-    auto rotationMatrix = matrix::rvecToRotationMatrix(rvecB);
 
     calibHandler.setCameraIntrinsics(socketSrc, matA, resolutionA.first, resolutionA.second);
     calibHandler.setCameraIntrinsics(socketDest, matB, resolutionB.first, resolutionB.second);
