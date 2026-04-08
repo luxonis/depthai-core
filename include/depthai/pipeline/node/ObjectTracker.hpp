@@ -124,6 +124,31 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
     void setTrackletBirthThreshold(uint32_t trackletBirthThreshold);
 
     /**
+     * Enable or disable spatially-aware association. If disabled, only 2D association is used.
+     * @param enabled `true` enables spatially-aware association, `false` uses 2D-only association. Default is true.
+     */
+    void setSpatialAssociation(bool enabled);
+
+    /**
+     * Set spatial association weight in [0,1].
+     * @param weight Spatial association weight in [0,1] used to blend 2D and spatial association scores (0 = 2D-only scoring, 1 = spatial-only scoring).
+     *               This weight affects candidate scoring only; final acceptance still requires passing the 2D IoU threshold gate. Default is 0.5.
+     */
+    void setSpatialAssociationWeight(float weight);
+
+    /**
+     * Set base 3D gating threshold in meters for spatial association.
+     * @param thresholdMeters Base spatial gating distance in meters. Default is 1.5m.
+     */
+    void setSpatialDistanceThreshold(float thresholdMeters);
+
+    /**
+     * Set depth-aware gating scale used for spatial association. Increases gating threshold with increased depth.
+     * @param scale Depth-aware gating scale factor. Default is 0.35
+     */
+    void setSpatialDepthAwareScale(float scale);
+
+    /**
      * Specify whether to run on host or device
      * By default, the node will run on device.
      */

@@ -28,16 +28,25 @@ Extrinsics::Extrinsics(std::array<std::array<float, 4>, 4>& extrinsicsMatrix, Ca
     setTransformationMatrix(extrinsicsMatrix, lengthUnit);
 }
 
-std::array<std::array<float, 3>, 3> Extrinsics::getRotationMatrix() const {
-    return matrix::vectorMatrixToMatrix3x3(rotationMatrix);
+std::vector<std::vector<float>> Extrinsics::getRotationMatrix() const {
+    return rotationMatrix;
 }
 
-std::array<std::array<float, 3>, 3> Extrinsics::getInverseRotationMatrix() const {
-    auto rotMatrix = getRotationMatrix();
-    return matrix::getMatrixInverse(rotMatrix);
+std::vector<std::vector<float>> Extrinsics::getInverseRotationMatrix() const {
+    if(!validRotationMatrix()) {
+        throw std::runtime_error(
+            "Cannot compute inverse of invalid extrinsics rotation matrix. Please ensure the rotation matrix is properly set and is a valid rotation matrix.");
+    }
+    auto inv = matrix::getMatrixInverse(matrix::vectorMatrixToMatrix3x3(rotationMatrix));
+    return matrix::matrix3x3ToVectorMatrix(inv);
 }
 
 std::array<std::array<float, 4>, 4> Extrinsics::getTransformationMatrix(bool useSpecTranslation, LengthUnit unit) const {
+    if(!validRotationMatrix()) {
+        throw std::runtime_error(
+            "The full extrinsics transformation matrix can only be obtained if both the rotation matrix and the translation vector are properly set. Please "
+            "ensure that the rotation matrix is a valid rotation matrix and that the translation vector is set.");
+    }
     return matrix::createTransformationMatrix(getRotationMatrix(), getTranslationInUnit(useSpecTranslation, unit));
 }
 
@@ -115,6 +124,10 @@ bool Extrinsics::isEqualExtrinsics(const Extrinsics& other, float epsilon) const
 std::array<std::array<float, 4>, 4> Extrinsics::getExtrinsicsTransformationTo(const Extrinsics& to,
                                                                               const bool useSpecTranslation,
                                                                               const LengthUnit sourceUnit) const {
+    if(this->toCameraSocket == dai::CameraBoardSocket::AUTO || to.toCameraSocket == dai::CameraBoardSocket::AUTO) {
+        throw std::runtime_error(
+            "Cannot get extrinsics transformation to or from an extrinsics with AUTO camera socket. Please specify the camera socket for both extrinsics.");
+    }
     if(this->toCameraSocket != to.toCameraSocket) {
         throw std::runtime_error("Cannot get extrinsics to a transformation with a different base camera socket.");
     }
@@ -142,5 +155,9 @@ Point3f Extrinsics::getTranslationInUnit(bool useSpec, LengthUnit targetUnit) co
     translationToUse.z *= scale;
     return translationToUse;
 }
+
+bool Extrinsics::validRotationMatrix() const {
+    return rotationMatrix.size() == 3 && rotationMatrix[0].size() == 3 && rotationMatrix[1].size() == 3 && rotationMatrix[2].size() == 3;
+};
 
 }  // namespace dai

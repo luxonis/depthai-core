@@ -107,7 +107,7 @@ std::vector<std::vector<float> > applyRectificationMatrix(const dai::Extrinsics&
     cv::Mat rectificationMatrixInv;
     cv::invert(rectificationMatrix, rectificationMatrixInv);
     std::array<std::array<float, 3>, 3> arrayR1Inv = dai::matrix::cvMatToMatrix3x3(rectificationMatrixInv);
-    std::array<std::array<float, 3>, 3> inputRotationMatrix = extrinsics.getRotationMatrix();
+    std::array<std::array<float, 3>, 3> inputRotationMatrix = dai::matrix::vectorMatrixToMatrix3x3(extrinsics.getRotationMatrix());
 
     // inputRotationMatrix points to toCameraSocket, rectificationMatrix points to rectified frame, so multiply by inverse from the right
     return dai::matrix::matrix3x3ToVectorMatrix(dai::matrix::matMul(inputRotationMatrix, arrayR1Inv));
