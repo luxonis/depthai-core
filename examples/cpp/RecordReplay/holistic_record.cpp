@@ -33,11 +33,11 @@ int main(int argc, char** argv) {
     pipeline.enableHolisticRecord(config);
 
     auto camA = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto* camAOut = camA->requestFullResolutionOutput();
+    auto* camAOut = camA->requestFullResolutionOutput(std::nullopt, 10);
     auto camB = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
-    auto* camBOut = camB->requestFullResolutionOutput();
+    auto* camBOut = camB->requestFullResolutionOutput(std::nullopt, 10);
     auto camC = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
-    auto* camCOut = camC->requestFullResolutionOutput();
+    auto* camCOut = camC->requestFullResolutionOutput(std::nullopt, 10);
 
     auto* viewFinderOut = camA->requestOutput({640, 480});
 
