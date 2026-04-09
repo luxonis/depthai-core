@@ -35,13 +35,11 @@ struct DetectionParserOptions {
     std::vector<float> anchors;
     std::map<std::string, std::vector<int>> anchorMasks;
     std::vector<std::string> outputNamesToUse;
-    std::vector<std::string> maskOutputNames;
-    std::vector<std::string> kptsOutputNames;
     /// see YoloDetectionNetwork::setAnchors() for format
     std::vector<std::vector<std::vector<float>>> anchorsV2;
     float iouThreshold;
-    std::vector<dai::Edge> keypointEdges;
-    std::vector<std::string> keypointLabelNames;
+    std::vector<dai::Edge> keypointEdges = {};
+    std::vector<std::string> keypointLabelNames = {};
 };
 
 DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
@@ -62,8 +60,6 @@ DEPTHAI_SERIALIZE_EXT(DetectionParserOptions,
                       anchorsV2,
                       iouThreshold,
                       keypointEdges,
-                      keypointLabelNames,
-                      maskOutputNames,
-                      kptsOutputNames);
+                      keypointLabelNames);
 
 }  // namespace dai

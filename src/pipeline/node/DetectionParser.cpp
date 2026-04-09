@@ -82,8 +82,6 @@ void resetParser(DetectionParserOptions& parser) {
     parser.anchors.clear();
     parser.anchorMasks.clear();
     parser.outputNamesToUse.clear();
-    parser.maskOutputNames.clear();
-    parser.kptsOutputNames.clear();
     parser.anchorsV2.clear();
     parser.decodeSegmentation = false;
     parser.decodeKeypoints = false;
@@ -145,8 +143,6 @@ void DetectionParser::configureYOLONetworkParser(DetectionParserOptions& parser,
     if(metadata.nKeypoints) {
         parser.decodeKeypoints = true;
         parser.nKeypoints = metadata.nKeypoints;
-        // TODO (aljazkonec1): some nnarchives have this field filled out wrong. Keep empty names vector and search for default names.
-        parser.kptsOutputNames = std::vector<std::string>{};
     }
 
     checkKptExtraParams(parser, metadata.extraParams);
