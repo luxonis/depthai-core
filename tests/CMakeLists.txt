@@ -790,7 +790,7 @@ dai_set_test_labels(runtime_calibration_test ondevice rvc2_all rvc4 rvc4rgb ci)
 # NeuralDepth test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_depth_node_test src/ondevice_tests/neural_depth_node_test.cpp)
-    dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci)
+    dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci noreplayci)
     target_compile_definitions(neural_depth_node_test PRIVATE
         NEURAL_REPLAY_PATH="${test_recording}"
         NEURAL_CALIBRATION_PATH="${test_calib}"
