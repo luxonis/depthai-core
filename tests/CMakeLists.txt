@@ -806,6 +806,8 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         NEURAL_REPLAY_PATH="${test_recording}"
         NEURAL_CALIBRATION_PATH="${test_calib}"
     )
+    # TODO(Morato) - shouldn't be needed, but AUTOCALIBRATION seems to impact the FPS a bit at the beginning
+    set_tests_properties(neural_depth_node_test PROPERTIES ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 endif()
 
 # NeuralAssistedStereo test

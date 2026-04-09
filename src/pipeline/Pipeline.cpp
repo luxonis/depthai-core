@@ -3,7 +3,9 @@
 #include <cstring>
 
 #include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/pipeline/node/AutoCalibration.hpp"
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
+    #include "depthai/pipeline/node/AutoCalibration.hpp"
+#endif
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkInHost.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
@@ -57,6 +59,7 @@ namespace dai {
 
 namespace {
 
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHandler& rhs, CameraBoardSocket socket) {
     if(!lhs.hasCameraCalibration(socket) || !rhs.hasCameraCalibration(socket)) {
         if(!lhs.hasCameraCalibration(socket) && !rhs.hasCameraCalibration(socket)) {
@@ -85,6 +88,7 @@ bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHand
 
     return false;
 }
+#endif
 
 }  // namespace
 
@@ -732,6 +736,7 @@ bool PipelineImpl::isBuilt() const {
     return isBuild;
 }
 
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 bool PipelineImpl::hasDynamicCalibration() const {
     // call this only with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
@@ -741,6 +746,11 @@ bool PipelineImpl::hasDynamicCalibration() const {
     }
     return false;
 }
+#else
+bool PipelineImpl::hasDynamicCalibration() const {
+    return false;
+}
+#endif
 
 std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> PipelineImpl::getStereoPair() const {
     if(!defaultDevice) {
@@ -774,6 +784,7 @@ void PipelineImpl::build() {
     utility::PipelineImplHelper::setupHolisticRecordAndReplay(shared_from_this());
 
     // start ---Add AutoCalibration block---
+#ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     auto autoCalibrationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "ON_START");
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     if(autoCalibrationString == "CONTINUOUS" || autoCalibrationString == "ON_START") {
@@ -857,6 +868,7 @@ void PipelineImpl::build() {
     } else if(autoCalibrationString != "OFF" && autoCalibrationString != "") {
         Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibrationString);
     }
+#endif
 #endif
     // end of ---Add AutoCalibration block---
 
