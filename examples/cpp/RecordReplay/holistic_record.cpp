@@ -55,7 +55,6 @@ int main(int argc, char** argv) {
     camAOut->link(sync->inputs["camA"]);
     camBOut->link(sync->inputs["camB"]);
     camCOut->link(sync->inputs["camC"]);
-    imu->out.link(sync->inputs["imu"]);
 
     auto viewFinderQueue = viewFinderOut->createOutputQueue();
 

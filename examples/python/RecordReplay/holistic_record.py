@@ -7,6 +7,7 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output", default="recordings", help="Output path")
+parser.add_argument("-fps", "--fps", default=30, type=int, help="FPS for recording")
 args = parser.parse_args()
 
 # Create output directory if it doesn't exist
@@ -24,13 +25,13 @@ with dai.Pipeline(True) as pipeline:
 
     # Define source and output
     camA = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    camAOut = camA.requestFullResolutionOutput()
+    camAOut = camA.requestFullResolutionOutput(fps=args.fps)
     camB = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    camBOut = camB.requestFullResolutionOutput()
+    camBOut = camB.requestFullResolutionOutput(fps=args.fps)
     camC = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-    camCOut = camC.requestFullResolutionOutput()
+    camCOut = camC.requestFullResolutionOutput(fps=args.fps)
 
-    viewFinderOut = camA.requestOutput((640, 480))
+    viewFinderOut = camA.requestOutput((640, 480), fps=args.fps)
 
     imu = pipeline.create(dai.node.IMU)
     imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 400)
@@ -42,7 +43,6 @@ with dai.Pipeline(True) as pipeline:
     camAOut.link(sync.inputs["camA"])
     camBOut.link(sync.inputs["camB"])
     camCOut.link(sync.inputs["camC"])
-    imu.out.link(sync.inputs["imu"])
 
     viewFinderQueue = viewFinderOut.createOutputQueue()
 
