@@ -819,7 +819,7 @@ void PipelineImpl::build() {
                             compared = true;
                             if(hasDifferentDistortion(*runtimeCalibration, eepromCalibration, socket)) {
                                 allowFlashCalibration = false;
-                                Logging::getInstance().logger.warn(
+                                Logging::getInstance().logger.info(
                                     "AutoCalibration build-time flash safety: runtime calibration differs from EEPROM on socket {}. Disabling "
                                     "flashCalibration.",
                                     static_cast<int>(socket));
@@ -829,12 +829,12 @@ void PipelineImpl::build() {
 
                         if(!compared) {
                             allowFlashCalibration = false;
-                            Logging::getInstance().logger.warn(
+                            Logging::getInstance().logger.info(
                                 "AutoCalibration build-time flash safety: no valid stereo sockets to compare. Disabling flashCalibration.");
                         }
                     } catch(const std::exception& ex) {
                         allowFlashCalibration = false;
-                        Logging::getInstance().logger.warn(
+                        Logging::getInstance().logger.info(
                             "AutoCalibration build-time flash safety: failed to read EEPROM calibration ({}). Disabling flashCalibration.", ex.what());
                     }
                 }
@@ -851,11 +851,11 @@ void PipelineImpl::build() {
                 Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION='{}' set on host-only pipeline. Skipping AutoCalibration node creation.",
                                                    autoCalibrationString);
             } else {
-                Logging::getInstance().logger.warn("Device has no valid initial calibration. Skipping autocalibration.");
+                Logging::getInstance().logger.info("Device has no valid initial calibration. Skipping autocalibration.");
             }
         }
     } else if(autoCalibrationString != "OFF" && autoCalibrationString != "") {
-        Logging::getInstance().logger.warn("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibrationString);
+        Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibrationString);
     }
 #endif
     // end of ---Add AutoCalibration block---
@@ -959,13 +959,7 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkIn->setStreamName(streamName);
                 xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
                 xLinkBridge.xLinkIn->out.link(*connection.in);
-                const auto outNodeName = std::string(outNode->getName());
-                const bool isReplayOutput = outNodeName == "ReplayVideo" || outNodeName == "ReplayMetadataOnly";
-                if(isReplayOutput || defaultDevice->getPlatform() == Platform::RVC4 || defaultDevice->getPlatform() == Platform::RVC3) {
-                    xLinkBridge.xLinkOutHost->allowStreamResize(true);
-                } else {
-                    xLinkBridge.xLinkOutHost->allowStreamResize(false);
-                }
+                xLinkBridge.xLinkOutHost->allowStreamResize(true);
 
                 // Note the created bridge for serialization (for visualization)
                 xlinkBridges.push_back({xLinkBridge.xLinkOutHost->id, xLinkBridge.xLinkIn->id});

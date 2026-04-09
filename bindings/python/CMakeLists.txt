@@ -66,6 +66,8 @@ set(SOURCE_LIST
     src/nn_archive/NNArchiveBindings.cpp
     src/log/LogBindings.cpp
     src/VersionBindings.cpp
+    src/PlatformBindings.cpp
+    src/CrashDumpBindings.cpp
     src/common/ModelTypeBindings.cpp
 
     src/pipeline/node/NodeBindings.cpp

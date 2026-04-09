@@ -122,9 +122,6 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     bool runOnHostVar = true;
 
-    CameraBoardSocket leftBoardSocket = CameraBoardSocket::AUTO;
-    CameraBoardSocket rightBoardSocket = CameraBoardSocket::AUTO;
-
     // logger
     std::shared_ptr<::spdlog::async_logger> logger;
 };

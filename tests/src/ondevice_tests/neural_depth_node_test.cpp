@@ -61,7 +61,7 @@ void testNeuralDepthModelBasic(dai::DeviceModelZoo model, float minFps) {
         if(i == 0) {
             continue;
         }
-        if(!pipeline.isHolisticReplayEnabled()) REQUIRE(report->fps + kFpsTolerance >= minFps);
+        REQUIRE(report->fps + kFpsTolerance >= minFps);
     }
 
     pipeline.stop();

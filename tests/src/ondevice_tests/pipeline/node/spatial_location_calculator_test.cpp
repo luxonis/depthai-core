@@ -45,6 +45,8 @@ std::shared_ptr<dai::ImgFrame> createDepthFrame(const cv::Mat& depthMat, const s
     depthFrame->transformation.setSourceSize(width, height);
     depthFrame->transformation.setSize(width, height);
     depthFrame->transformation.setIntrinsicMatrix(intrinsics);
+    dai::Extrinsics extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A};
+    depthFrame->transformation.setExtrinsics(extrinsics);
     REQUIRE(depthFrame->validateTransformations());
     return depthFrame;
 }

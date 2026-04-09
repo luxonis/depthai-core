@@ -259,6 +259,12 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         SHA1 "d745e1cdf18dda1ef00311250676407df207df4c"
         FILE "test_calib.json"
         LOCATION test_calib
+        )
+    private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/img_transformations_test_data.tar.xz"
+        SHA1 "3b48c23684ef22a6a0cebd16594afa69ceaed2d5"
+        FILE "img_transformations_test_data.tar.xz"
+        LOCATION img_transformations_test_data
     )
 endif()
 
@@ -679,8 +685,12 @@ if(DEPTHAI_FETCH_ARTIFACTS)
 endif()
 
 # ImgTransformations tests
-dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
+if(DEPTHAI_FETCH_ARTIFACTS)
+    dai_add_test(img_transformation_test src/ondevice_tests/img_transformation_test.cpp CXX_STANDARD 17)
+    target_compile_definitions(img_transformation_test PRIVATE TRANSFORMATION_TEST_DATA="${img_transformations_test_data}")
+    dai_set_test_labels(img_transformation_test ondevice rvc2_all rvc4 ci)
+endif()
+
 
 # EEPROM undistortion test (RVC2 only)
 dai_add_test(eeprom_undistortion_test src/ondevice_tests/eeprom_undistortion_test.cpp)
@@ -771,6 +781,7 @@ dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci noreplayci)
+set_tests_properties(camera_fps_config_test PROPERTIES ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -808,3 +819,7 @@ dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci noreplayci)
 # AutoCalibration test
 dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)
 dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
+
+# Crashdump test
+dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
+dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci)

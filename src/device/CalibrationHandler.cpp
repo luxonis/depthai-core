@@ -1,6 +1,5 @@
+#include <vector>
 #define _USE_MATH_DEFINES
-
-#include "device/CalibrationHandler.hpp"
 
 #include <cmath>
 #include <fstream>
@@ -17,6 +16,7 @@
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/utility/matrixOps.hpp"
+#include "device/CalibrationHandler.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
@@ -553,6 +553,16 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
     }
 
     return extrinsics;
+}
+
+CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
+    dai::CameraBoardSocket currentCameraId = eepromData.cameraData.begin()->first;
+    for(const auto& cameraData : eepromData.cameraData) {
+        if(static_cast<int>(cameraData.first) < static_cast<int>(currentCameraId)) {
+            currentCameraId = cameraData.first;
+        }
+    }
+    return currentCameraId;
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,

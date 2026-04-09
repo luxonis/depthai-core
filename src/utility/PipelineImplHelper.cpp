@@ -142,7 +142,7 @@ void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
                 std::ostringstream oss;
                 oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
 
-                utility::tarFiles(platform::joinPaths(pipeline->recordConfig.outputDir, "recording_" + oss.str() + ".tar"), filenames, outFiles);
+                utility::archiveFiles(platform::joinPaths(pipeline->recordConfig.outputDir, "recording_" + oss.str() + ".tar"), filenames, outFiles);
             } catch(const std::exception& e) {
                 Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
             }

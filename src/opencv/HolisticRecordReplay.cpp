@@ -267,7 +267,7 @@ bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
     std::vector<std::string> tarNodenames;
     std::string tarRoot = ".";
     if(useTar)
-        tarNodenames = filenamesInTar(replayPath);
+        tarNodenames = filenamesInArchive(replayPath);
     else
         tarNodenames = platform::getFilenamesInDirectory(replayPath);
     bool hasCameraInfo = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
@@ -285,7 +285,7 @@ bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath) {
         std::vector<uint8_t> cameraInfoData;
         if(useTar) {
             try {
-                cameraInfoData = readFileInTar(replayPath, tarRoot + (hasCameraInfo ? "camera_info.json" : "calibration.json"));
+                cameraInfoData = readFileInArchive(replayPath, tarRoot + (hasCameraInfo ? "camera_info.json" : "calibration.json"));
             } catch(const std::exception& e) {
                 spdlog::warn("Error while reading from tar file: {}", e.what());
                 return false;
@@ -347,7 +347,7 @@ bool setupHolisticReplay(Pipeline pipeline,
         std::string videoExt = ".mp4";
         std::filesystem::path rootPath = useTar ? platform::getTempPath() : replayPath;
         if(useTar)
-            tarNodenames = filenamesInTar(replayPath);
+            tarNodenames = filenamesInArchive(replayPath);
         else
             tarNodenames = platform::getFilenamesInDirectory(replayPath);
         bool hasMp4Files = std::any_of(tarNodenames.begin(), tarNodenames.end(), [](const std::string& path) {
@@ -411,7 +411,7 @@ bool setupHolisticReplay(Pipeline pipeline,
                 outFilenames[nodeName] = filePath;
             }
             if(useTar) {
-                untarFiles(replayPath, inFiles, outFiles);
+                extractFiles(replayPath, inFiles, outFiles);
             }
         } else {
             throw std::runtime_error("Recording does not match the pipeline configuration.");
@@ -442,7 +442,7 @@ bool setupHolisticReplay(Pipeline pipeline,
             // configPath = platform::joinPaths(rootPath, mxId + "_record_config.json");
             // outFiles.push_back(configPath);
             // outFilenames["record_config"] = configPath;
-            // untarFiles(replayPath, inFiles, outFiles);
+            // extractFiles(replayPath, inFiles, outFiles);
         }
 
         recordConfig.state = RecordConfig::RecordReplayState::REPLAY;

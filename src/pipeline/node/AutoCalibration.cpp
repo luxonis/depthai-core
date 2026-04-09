@@ -1,6 +1,5 @@
 #include "depthai/pipeline/node/AutoCalibration.hpp"
 
-#include <cmath>
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <pipeline/datatype/MessageGroup.hpp>
 #include <stdexcept>
@@ -10,36 +9,6 @@
 
 namespace dai {
 namespace node {
-
-namespace {
-
-bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHandler& rhs, CameraBoardSocket socket) {
-    if(!lhs.hasCameraCalibration(socket) || !rhs.hasCameraCalibration(socket)) {
-        return false;
-    }
-
-    if(lhs.getDistortionModel(socket) != rhs.getDistortionModel(socket)) {
-        return true;
-    }
-
-    const auto lhsDist = lhs.getDistortionCoefficients(socket);
-    const auto rhsDist = rhs.getDistortionCoefficients(socket);
-
-    if(lhsDist.size() != rhsDist.size()) {
-        return true;
-    }
-
-    constexpr float EPS = 1e-6f;
-    for(size_t i = 0; i < lhsDist.size(); ++i) {
-        if(std::fabs(lhsDist[i] - rhsDist[i]) > EPS) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-}  // namespace
 
 constexpr int MAX_FAILS_PER_RECALIBRATION_DEFAULT = 5;
 constexpr int GATE_FPS_DEFAULT = 5;
@@ -128,8 +97,6 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
     gate->setRunOnHost(false);
     auto outputCameraLeft = cameraLeft->requestIspOutput();
     auto outputCameraRight = cameraRight->requestIspOutput();
-    leftBoardSocket = cameraLeft->getBoardSocket();
-    rightBoardSocket = cameraRight->getBoardSocket();
     outputCameraLeft->link(left);
     outputCameraRight->link(right);
     sync->out.link(gate->input);
@@ -265,8 +232,6 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         throw std::invalid_argument("AutoCalibration: validationSetSize must be non-negative");
     }
 
-    const bool flashCalibration = initialConfig->flashCalibration;
-
     unsigned int numIterations = 0;
     while(numIterations < initialConfig->maxIterations && mainLoop()) {
         auto startTime = std::chrono::steady_clock::now();  // Start timer
@@ -279,7 +244,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         if(initialConfig->validationSetSize == 0) {
             auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT, report);
             if(newCalibration) {
-                dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*newCalibration, flashCalibration));
+                dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
                 output.send(resultOutput);
                 report.calibrationUpdated = true;
@@ -297,7 +262,7 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
             report.calibrationConfidence = metrics->calibrationConfidence;
             if(metrics->dataConfidence > initialConfig->dataConfidenceThreshold) {
                 if(metrics->calibrationConfidence > initialConfig->calibrationConfidenceThreshold) {
-                    dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*calibration, flashCalibration));
+                    dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
                     auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
                     output.send(resultOutput);
                     report.calibrationUpdated = true;
