@@ -65,10 +65,7 @@ void decodeR1AF(const dai::NNData& nnData,
         std::string layerName = layerNames[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
 
-        if(!tensorInfo) {
-            logger->error("Could not find tensor info for layer {}. Skipping this layer", layerName);
-            continue;
-        }
+        DAI_CHECK_V(tensorInfo, "Tensor info for layer {} is null.", layerName);
 
         if(!isTensorOrderValid(*tensorInfo, channelSize, logger)) {
             logger->error("Tensor order for layer {} is invalid, skipping this layer", layerName);
@@ -203,10 +200,8 @@ void decodeV3AB(const dai::NNData& nnData,
         std::string layerName = layerNames[strideIdx];
         int stride = strides[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
-        if(!tensorInfo) {
-            logger->error("Could not find tensor info for layer {}. Skipping this layer", layerName);
-            continue;
-        }
+        DAI_CHECK_V(tensorInfo, "Tensor info for layer {} is null.", layerName);
+
         std::vector<std::vector<float>>& anchors = properties.parser.anchorsV2[strideIdx];
         int anchorMultiplier = anchors.size();
         int channelSize = anchorMultiplier * (numClasses + properties.parser.coordinates + 1);
@@ -354,10 +349,7 @@ void decodeV5AB(const dai::NNData& nnData,
         std::string layerName = layerNames[strideIdx];
         int stride = strides[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
-        if(!tensorInfo) {
-            logger->error("Could not find tensor info for layer {}. Skipping this layer", layerName);
-            continue;
-        }
+        DAI_CHECK_V(tensorInfo, "Tensor info for layer {} is null.", layerName);
 
         std::vector<std::vector<float>>& anchors = properties.parser.anchorsV2[strideIdx];
         int anchorMultiplier = anchors.size();
@@ -499,10 +491,7 @@ void decodeTLBR(const dai::NNData& nnData,
         std::string layerName = layerNames[strideIdx];
         int stride = strides[strideIdx];
         auto tensorInfo = nnData.getTensorInfo(layerName);
-        if(!tensorInfo) {
-            logger->error("Could not find tensor info for layer {}. Skipping this layer", layerName);
-            continue;
-        }
+        DAI_CHECK_V(tensorInfo, "Tensor info for layer {} is null.", layerName);
 
         if(!isTensorOrderValid(*tensorInfo, channelSize, logger)) {
             logger->error("Tensor order for layer {} is invalid, skipping this layer", layerName);
