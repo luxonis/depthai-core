@@ -57,13 +57,21 @@ parser.add_argument(
     metavar="N",
     help="Camera output FPS (default: 60)",
 )
+parser.add_argument(
+    "--ir-dot",
+    type=float,
+    default=0.9,
+    metavar="I",
+    help="IR laser dot projector intensity in [0, 1] (default: 0.9)",
+)
 args = parser.parse_args()
+args.ir_dot = max(0.0, min(1.0, float(args.ir_dot)))
 width = int(args.resolution.split("x")[0])
 height = int(args.resolution.split("x")[1])
 
 device = dai.Device(args.device)
 
-device.setIrLaserDotProjectorIntensity(0.9)
+device.setIrLaserDotProjectorIntensity(float(args.ir_dot))
 
 pipeline = dai.Pipeline(device)
 mono_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)

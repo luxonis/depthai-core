@@ -1156,9 +1156,12 @@ class MainWindow(QMainWindow):
         pyr_q: dai.OutputQueue | None = None,
         match_curve_q: dai.OutputQueue | None = None,
         pyr_disp_q: dai.OutputQueue | None = None,
+        device: dai.Device | None = None,
+        ir_dot_projector: float = 0.9,
     ) -> None:
         super().__init__()
         self.setWindowTitle("GPUStereo — controls")
+        self._device = device
         self._pipeline = pipeline
         self._gpu = gpu
         self._disp_q = disp_q
@@ -1297,10 +1300,29 @@ class MainWindow(QMainWindow):
         cam_fl.addRow("ISO", self._cam_iso)
         cam_fl.addRow("Sharpness", self._cam_sharpness)
         cam_fl.addRow("Luma denoise", self._cam_luma_denoise)
+        self._slider_ir_dot = QSlider(Qt.Orientation.Horizontal)
+        self._slider_ir_dot.setRange(0, 10)
+        self._slider_ir_dot.setSingleStep(1)
+        self._slider_ir_dot.setPageStep(1)
+        self._slider_ir_dot.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self._slider_ir_dot.setTickInterval(1)
+        self._lbl_ir_dot = QLabel("")
+        ir_row = QWidget()
+        ir_row_lay = QHBoxLayout(ir_row)
+        ir_row_lay.setContentsMargins(0, 0, 0, 0)
+        ir_row_lay.addWidget(self._slider_ir_dot, stretch=1)
+        ir_row_lay.addWidget(self._lbl_ir_dot)
+        cam_fl.addRow("IR dot projector (0–1)", ir_row)
         btn_cam = QPushButton("Apply to both cameras")
         btn_cam.clicked.connect(self._on_apply_cam_exposure)
         cam_fl.addRow(btn_cam)
         self._update_cam_exposure_widgets_enabled()
+        ir_clamped = max(0.0, min(1.0, float(ir_dot_projector)))
+        ir_step = int(round(ir_clamped * 10.0))
+        self._slider_ir_dot.blockSignals(True)
+        self._slider_ir_dot.setValue(ir_step)
+        self._slider_ir_dot.blockSignals(False)
+        self._lbl_ir_dot.setText(f"{ir_step * 0.1:.1f}")
 
         self._panel = StereoConfigPanel(initial_cfg)
         self._wire_panel_autosave()
@@ -1361,6 +1383,7 @@ class MainWindow(QMainWindow):
         self._cam_iso.valueChanged.connect(self._schedule_save)
         self._cam_sharpness.valueChanged.connect(self._schedule_save)
         self._cam_luma_denoise.valueChanged.connect(self._schedule_save)
+        self._slider_ir_dot.valueChanged.connect(self._on_ir_dot_changed)
         self._view_mode.currentIndexChanged.connect(lambda _i: self._schedule_save())
 
         self._panel.levels.currentIndexChanged.connect(self._on_panel_pyramid_levels_changed)
@@ -1495,6 +1518,7 @@ class MainWindow(QMainWindow):
                 "luma_denoise": int(self._cam_luma_denoise.value()),
             },
             "gpustereo": _serialize_gpustereo_config(cfg),
+            "ir_dot_projector": round(self._slider_ir_dot.value() * 0.1, 1),
         }
 
     def _save_config_to_file(self) -> None:
@@ -1539,6 +1563,18 @@ class MainWindow(QMainWindow):
             self._slider_disp_min.setValue(int(d["viz_disp_min"]))
             self._slider_disp_max.setValue(int(d["viz_disp_max"]))
             self._sync_viz_slider_range(use_defaults=False)
+        if "ir_dot_projector" in d and hasattr(self, "_slider_ir_dot"):
+            try:
+                x = max(0.0, min(1.0, float(d["ir_dot_projector"])))
+                t = int(round(x * 10.0))
+                self._slider_ir_dot.blockSignals(True)
+                self._slider_ir_dot.setValue(t)
+                self._slider_ir_dot.blockSignals(False)
+                self._lbl_ir_dot.setText(f"{t * 0.1:.1f}")
+                if self._device is not None:
+                    self._device.setIrLaserDotProjectorIntensity(float(t * 0.1))
+            except (TypeError, ValueError):
+                pass
         self._refresh_left_pane()
         if self._view_mode.currentIndex() == 0:
             self._update_disparity_depth_labels()
@@ -1840,6 +1876,16 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Camera control failed", str(e))
 
+    def _on_ir_dot_changed(self, v: int) -> None:
+        intensity = max(0.0, min(1.0, int(v) * 0.1))
+        self._lbl_ir_dot.setText(f"{intensity:.1f}")
+        if self._device is not None:
+            try:
+                self._device.setIrLaserDotProjectorIntensity(float(intensity))
+            except Exception:
+                pass
+        self._schedule_save()
+
     def closeEvent(self, event: QCloseEvent) -> None:
         self._save_config_to_file()
         self._worker.stop()
@@ -1868,7 +1914,21 @@ def main() -> None:
         metavar="N",
         help="Camera output FPS (default: 60)",
     )
+    _ir_dot_default = 0.9
+    if isinstance(saved, dict) and "ir_dot_projector" in saved:
+        try:
+            _ir_dot_default = max(0.0, min(1.0, float(saved["ir_dot_projector"])))
+        except (TypeError, ValueError):
+            pass
+    parser.add_argument(
+        "--ir-dot",
+        type=float,
+        default=_ir_dot_default,
+        metavar="I",
+        help="IR laser dot projector intensity in [0, 1] (step 0.1 in GUI; saved in config file)",
+    )
     args = parser.parse_args()
+    args.ir_dot = max(0.0, min(1.0, float(args.ir_dot)))
     w, h = (int(x) for x in args.resolution.split("x"))
 
     ic = gpu_stereo_pipeline_defaults()
@@ -1887,7 +1947,7 @@ def main() -> None:
         vm_saved = 0
 
     device = dai.Device(args.device)
-    device.setIrLaserDotProjectorIntensity(0.9)
+    device.setIrLaserDotProjectorIntensity(float(args.ir_dot))
 
     pipeline = dai.Pipeline(device)
     mono_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
@@ -1940,6 +2000,8 @@ def main() -> None:
         pyr_q,
         match_curve_q,
         pyr_disp_q,
+        device=device,
+        ir_dot_projector=float(args.ir_dot),
     )
     win.show()
     sys.exit(app.exec())
