@@ -1205,6 +1205,23 @@ class MainWindow(QMainWindow):
 
         cam_outer = QGroupBox("Cameras — CAM_B + CAM_C")
         cam_fl = QFormLayout(cam_outer)
+        self._cam_auto_exp = QCheckBox("Auto-exposure")
+        self._cam_auto_exp.setChecked(True)
+        self._cam_auto_exp.stateChanged.connect(self._on_cam_auto_exposure_changed)
+        cam_fl.addRow(self._cam_auto_exp)
+        self._cam_ae_comp = QSlider(Qt.Orientation.Horizontal)
+        self._cam_ae_comp.setRange(-9, 9)
+        self._cam_ae_comp.setValue(0)
+        self._cam_ae_comp.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self._cam_ae_comp.setTickInterval(1)
+        self._lbl_ae_comp = QLabel("0")
+        self._cam_ae_comp.valueChanged.connect(self._on_cam_ae_comp_changed)
+        ae_row = QWidget()
+        ae_row_lay = QHBoxLayout(ae_row)
+        ae_row_lay.setContentsMargins(0, 0, 0, 0)
+        ae_row_lay.addWidget(self._cam_ae_comp, stretch=1)
+        ae_row_lay.addWidget(self._lbl_ae_comp)
+        cam_fl.addRow("AE compensation", ae_row)
         self._cam_exp_us = QSpinBox()
         self._cam_exp_us.setRange(1, 200000)
         self._cam_exp_us.setValue(10000)
@@ -1225,6 +1242,7 @@ class MainWindow(QMainWindow):
         btn_cam = QPushButton("Apply to both cameras")
         btn_cam.clicked.connect(self._on_apply_cam_exposure)
         cam_fl.addRow(btn_cam)
+        self._update_cam_exposure_widgets_enabled()
 
         self._panel = StereoConfigPanel(initial_cfg)
         self._wire_panel_autosave()
@@ -1411,6 +1429,8 @@ class MainWindow(QMainWindow):
             "viz_disp_min": int(self._slider_disp_min.value()),
             "viz_disp_max": int(self._slider_disp_max.value()),
             "camera": {
+                "auto_exposure": self._cam_auto_exp.isChecked(),
+                "ae_compensation": int(self._cam_ae_comp.value()),
                 "exposure_us": int(self._cam_exp_us.value()),
                 "iso": int(self._cam_iso.value()),
                 "sharpness": int(self._cam_sharpness.value()),
@@ -1428,6 +1448,16 @@ class MainWindow(QMainWindow):
     def _apply_saved_ui(self, d: dict) -> None:
         cam = d.get("camera")
         if isinstance(cam, dict):
+            if "auto_exposure" in cam:
+                self._cam_auto_exp.blockSignals(True)
+                self._cam_auto_exp.setChecked(bool(cam["auto_exposure"]))
+                self._cam_auto_exp.blockSignals(False)
+            if "ae_compensation" in cam:
+                self._cam_ae_comp.blockSignals(True)
+                ac = max(-9, min(9, int(cam["ae_compensation"])))
+                self._cam_ae_comp.setValue(ac)
+                self._lbl_ae_comp.setText(str(ac))
+                self._cam_ae_comp.blockSignals(False)
             if "exposure_us" in cam:
                 self._cam_exp_us.setValue(int(cam["exposure_us"]))
             if "iso" in cam:
@@ -1436,6 +1466,7 @@ class MainWindow(QMainWindow):
                 self._cam_sharpness.setValue(int(cam["sharpness"]))
             if "luma_denoise" in cam:
                 self._cam_luma_denoise.setValue(int(cam["luma_denoise"]))
+            self._update_cam_exposure_widgets_enabled()
         if "view_mode" in d:
             self._view_mode.setCurrentIndex(max(0, min(int(d["view_mode"]), self._view_mode.count() - 1)))
         vm = self._view_mode.currentIndex()
@@ -1701,18 +1732,51 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Apply failed", str(e))
 
+    def _update_cam_exposure_widgets_enabled(self) -> None:
+        ae_on = self._cam_auto_exp.isChecked()
+        self._cam_ae_comp.setEnabled(ae_on)
+        self._cam_exp_us.setEnabled(not ae_on)
+        self._cam_iso.setEnabled(not ae_on)
+
+    def _on_cam_auto_exposure_changed(self, _state: int) -> None:
+        self._update_cam_exposure_widgets_enabled()
+        self._schedule_save()
+        try:
+            self._send_camera_control()
+        except Exception:
+            pass
+
+    def _on_cam_ae_comp_changed(self, v: int) -> None:
+        ae_comp = max(-9, min(9, int(v)))
+        self._lbl_ae_comp.setText(str(ae_comp))
+        self._schedule_save()
+        if not self._cam_auto_exp.isChecked():
+            return
+        try:
+            self._send_camera_control()
+        except Exception:
+            pass
+
+    def _send_camera_control(self) -> None:
+        exp = int(self._cam_exp_us.value())
+        iso = int(self._cam_iso.value())
+        sharp = int(self._cam_sharpness.value())
+        luma = int(self._cam_luma_denoise.value())
+        ae_comp = max(-9, min(9, int(self._cam_ae_comp.value())))
+        for q in (self._left_cam_ctrl_q, self._right_cam_ctrl_q):
+            ctrl = dai.CameraControl()
+            if self._cam_auto_exp.isChecked():
+                ctrl.setAutoExposureEnable()
+                ctrl.setAutoExposureCompensation(ae_comp)
+            else:
+                ctrl.setManualExposure(exp, iso)
+            ctrl.setSharpness(sharp)
+            ctrl.setLumaDenoise(luma)
+            q.send(ctrl)
+
     def _on_apply_cam_exposure(self) -> None:
         try:
-            exp = self._cam_exp_us.value()
-            iso = self._cam_iso.value()
-            sharp = self._cam_sharpness.value()
-            luma = self._cam_luma_denoise.value()
-            for q in (self._left_cam_ctrl_q, self._right_cam_ctrl_q):
-                ctrl = dai.CameraControl()
-                ctrl.setManualExposure(exp, iso)
-                ctrl.setSharpness(sharp)
-                ctrl.setLumaDenoise(luma)
-                q.send(ctrl)
+            self._send_camera_control()
             self._status.setText("Cameras (CAM_B, CAM_C): controls sent")
             self._schedule_save()
         except Exception as e:
