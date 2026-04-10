@@ -44,6 +44,15 @@ void bind_gpustereo(pybind11::module& m, void* pCallstack) {
         .def_readonly("initialConfig", &GPUStereo::initialConfig, DOC(dai, node, GPUStereo, initialConfig))
         .def_readonly("disparity", &GPUStereo::disparity, DOC(dai, node, GPUStereo, disparity), DOC(dai, node, GPUStereo, disparity))
         .def_readonly("depth", &GPUStereo::depth, DOC(dai, node, GPUStereo, depth), DOC(dai, node, GPUStereo, depth))
+        .def_readonly("debugPyramid", &GPUStereo::debugPyramid, py::doc("GRAY8 pyramid slice for debug (see GPUStereoConfig.debugPyramidLevel)."))
+        .def_readonly(
+            "debugPyramidDisparity",
+            &GPUStereo::debugPyramidDisparity,
+            py::doc("RAW16 disparity at pyramid level (see GPUStereoConfig.debugPyramidDisparityLevel)."))
+        .def_readonly(
+            "debugZnccCurve",
+            &GPUStereo::debugZnccCurve,
+            py::doc("RAW32 payload: 3 uint32 header (d_min, d_max, n) + n float32 ZNCC costs (1-rho); see gui."))
         .def("build", &GPUStereo::build, py::arg("leftInput"), py::arg("rightInput"), DOC(dai, node, GPUStereo, build))
         .def_property_readonly(
             "sync", [](GPUStereo& n) { return &(*n.sync); }, py::return_value_policy::reference_internal, DOC(dai, node, GPUStereo, sync))

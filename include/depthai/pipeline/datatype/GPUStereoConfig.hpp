@@ -55,6 +55,10 @@ class GPUStereoConfig : public Buffer {
     bool sgm_adaptive_p2 = true;
     bool use_fp16 = true;
     bool use_qcom_accelerated_ops = false;
+    int debug_pyramid_level = -1;
+    int debug_pyramid_disparity_level = -1;
+    int debug_zncc_plot_x = -1;
+    int debug_zncc_plot_y = -1;
     float second_peak_threshold = 0.f;
     int second_peak_min_disparity_gap = 0;
     int census_radius_x = 2;
@@ -121,6 +125,10 @@ class GPUStereoConfig : public Buffer {
                       sgm_adaptive_p2,
                       use_fp16,
                       use_qcom_accelerated_ops,
+                      debug_pyramid_level,
+                      debug_pyramid_disparity_level,
+                      debug_zncc_plot_x,
+                      debug_zncc_plot_y,
                       second_peak_threshold,
                       second_peak_min_disparity_gap,
                       census_radius_x,

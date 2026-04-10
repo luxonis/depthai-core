@@ -45,6 +45,9 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
 
     Output disparity{*this, {"disparity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output debugPyramid{*this, {"debugPyramid", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output debugPyramidDisparity{*this, {"debugPyramidDisparity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    Output debugZnccCurve{*this, {"debugZnccCurve", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     void buildInternal() override;
 };

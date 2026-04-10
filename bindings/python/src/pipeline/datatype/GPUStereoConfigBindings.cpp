@@ -91,6 +91,22 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("sgmAdaptiveP2", &GPUStereoConfig::sgm_adaptive_p2, DOC(dai, GPUStereoConfig, sgm_adaptive_p2))
         .def_readwrite("useFp16", &GPUStereoConfig::use_fp16, DOC(dai, GPUStereoConfig, use_fp16))
         .def_readwrite("useQcomAcceleratedOps", &GPUStereoConfig::use_qcom_accelerated_ops, DOC(dai, GPUStereoConfig, use_qcom_accelerated_ops))
+        .def_readwrite(
+            "debugPyramidLevel",
+            &GPUStereoConfig::debug_pyramid_level,
+            py::doc("Pyramid level streamed on debugPyramid output when >= 0; -1 disables."))
+        .def_readwrite(
+            "debugPyramidDisparityLevel",
+            &GPUStereoConfig::debug_pyramid_disparity_level,
+            py::doc("Pyramid level streamed on debugPyramidDisparity (RAW16); -1 disables."))
+        .def_readwrite(
+            "debugZnccPlotX",
+            &GPUStereoConfig::debug_zncc_plot_x,
+            py::doc("Pyramid pixel X for ZNCC cost curve on debugZnccCurve; -1 disables."))
+        .def_readwrite(
+            "debugZnccPlotY",
+            &GPUStereoConfig::debug_zncc_plot_y,
+            py::doc("Pyramid pixel Y for ZNCC cost curve on debugZnccCurve; -1 disables."))
         .def_readwrite("secondPeakThreshold", &GPUStereoConfig::second_peak_threshold, DOC(dai, GPUStereoConfig, second_peak_threshold))
         .def_readwrite(
             "secondPeakMinDisparityGap", &GPUStereoConfig::second_peak_min_disparity_gap, DOC(dai, GPUStereoConfig, second_peak_min_disparity_gap))

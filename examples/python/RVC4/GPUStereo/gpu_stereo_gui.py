@@ -13,6 +13,11 @@ post-processing: EMA when stable, edge test via temporalDelta, and invalid-fill 
 8-frame history. State is kept in OpenCL on the device (no host previous-frame disparity).
 
 Host buffers / OpenCL platform index are fixed by the device node (see GPUStereo docs).
+
+Pyramid debug: gray per level; per-level disparity uses Turbo colormap with values scaled by 2^L
+to match full-res disparity sliders; block matching cost vs disparity on hover (device OpenCL) for
+SAD (plain or adaptive), ZNCC (1−ρ), Census/Rank (Hamming), and GRADIENT (SAD on pyramid). Census/Rank
+curves require pyramid matching (cost volume off). Range: maxDisparity>>level, capped to 768 samples.
 """
 
 from __future__ import annotations
@@ -36,7 +41,19 @@ except ImportError as e:
 
 try:
     from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
-    from PyQt6.QtGui import QCloseEvent, QImage, QKeySequence, QMouseEvent, QPixmap, QShortcut
+    from PyQt6.QtGui import (
+        QColor,
+        QCursor,
+        QCloseEvent,
+        QFont,
+        QImage,
+        QKeySequence,
+        QMouseEvent,
+        QPainter,
+        QPen,
+        QPixmap,
+        QShortcut,
+    )
     from PyQt6.QtWidgets import (
         QApplication,
         QCheckBox,
@@ -54,6 +71,7 @@ try:
         QSlider,
         QSpinBox,
         QSplitter,
+        QToolTip,
         QVBoxLayout,
         QWidget,
     )
@@ -62,14 +80,24 @@ except ImportError as e:
     raise SystemExit(1) from e
 
 
-def colorize_disparity_u16(frame_u16: np.ndarray, min_value: int, max_value: int) -> np.ndarray:
-    valid = frame_u16[frame_u16 > 0]
+def colorize_disparity_u16(
+    frame_u16: np.ndarray,
+    min_value: int,
+    max_value: int,
+    *,
+    value_scale: float = 1.0,
+    colormap: int = cv2.COLORMAP_JET,
+) -> np.ndarray:
+    f = frame_u16.astype(np.float32) * value_scale
+    valid_m = frame_u16 > 0
+    valid = f[valid_m]
     if valid.size == 0:
         return np.zeros((*frame_u16.shape, 3), dtype=np.uint8)
     if max_value <= min_value:
         max_value = float(np.max(valid)) + 1.0
-    norm = np.clip((frame_u16.astype(np.float32) - min_value) / (max_value - min_value), 0.0, 1.0)
-    return cv2.applyColorMap((norm * 255).astype(np.uint8), cv2.COLORMAP_JET)
+    norm = np.clip((f - float(min_value)) / (float(max_value) - float(min_value)), 0.0, 1.0)
+    bgr = cv2.applyColorMap((norm * 255).astype(np.uint8), colormap)
+    return np.where(valid_m[..., np.newaxis], bgr, np.uint8(0))
 
 
 def numpy_bgr_to_qpixmap(bgr: np.ndarray) -> QPixmap:
@@ -87,16 +115,276 @@ def estimate_depth_scale_k(d_u16: np.ndarray, depth_u16: np.ndarray) -> float | 
     return float(np.median(prod))
 
 
-def jet_vertical_colorbar_bgr(height: int = 180, width: int = 22) -> np.ndarray:
+def parse_match_cost_curve_frame(fr: dai.ImgFrame | None) -> tuple[int, int, np.ndarray | None]:
+    if fr is None:
+        return 0, -1, None
+    raw = fr.getData()
+    if len(raw) < 12:
+        return 0, -1, None
+    hdr = np.frombuffer(raw, dtype=np.int32, count=3)
+    dmin, dmax, n = int(hdr[0]), int(hdr[1]), int(hdr[2])
+    need = 12 + n * 4
+    if n <= 0 or len(raw) < need:
+        return dmin, dmax, None
+    costs = np.frombuffer(raw, dtype=np.float32, count=n, offset=12).copy()
+    return dmin, dmax, costs
+
+
+class MatchCostPlotWidget(QWidget):
+    def __init__(self) -> None:
+        super().__init__()
+        self._d_min: int | None = None
+        self._d_max: int | None = None
+        self._costs: np.ndarray | None = None
+        self._message: str | None = None
+        self._y_axis_short = "cost"
+        self.setMinimumHeight(145)
+        self.setMaximumHeight(220)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setMouseTracking(True)
+
+    def set_curve(self, d_min: int, d_max: int, costs: np.ndarray | None) -> None:
+        self._message = None
+        self._d_min, self._d_max, self._costs = d_min, d_max, costs
+        self.update()
+
+    def set_message(self, text: str) -> None:
+        self._d_min = self._d_max = None
+        self._costs = None
+        self._message = text
+        self.update()
+
+    def set_y_axis_short(self, label: str) -> None:
+        self._y_axis_short = label or "cost"
+        self.update()
+
+    def _curve_layout(self):
+        if self._message or self._costs is None or self._costs.size == 0 or self._d_min is None or self._d_max is None:
+            return None
+        c = self._costs.astype(np.float64)
+        c = np.where(np.isfinite(c) & (c < 1e29), c, np.nan)
+        if not np.any(np.isfinite(c)):
+            return None
+        y_hi = float(np.nanmax(c))
+        y_lo = float(np.nanmin(c))
+        if y_hi <= y_lo:
+            y_hi = y_lo + 1e-6
+        pad = (y_hi - y_lo) * 0.1
+        y_lo -= pad
+        y_hi += pad
+        w_pix = self.width()
+        h_pix = self.height()
+        margin_l, margin_r, margin_t, margin_b = 48, 14, 14, 36
+        plot_w = max(1, w_pix - margin_l - margin_r)
+        plot_h = max(1, h_pix - margin_t - margin_b)
+        n = int(c.size)
+        d0, d1 = self._d_min, self._d_max
+        return {
+            "c": c,
+            "y_lo": y_lo,
+            "y_hi": y_hi,
+            "margin_l": margin_l,
+            "margin_r": margin_r,
+            "margin_t": margin_t,
+            "margin_b": margin_b,
+            "plot_w": plot_w,
+            "plot_h": plot_h,
+            "n": n,
+            "d0": d0,
+            "d1": d1,
+            "w_pix": w_pix,
+            "h_pix": h_pix,
+        }
+
+    def _index_to_x(self, i: int, lay: dict) -> float:
+        n = lay["n"]
+        return lay["margin_l"] + (i / max(1, n - 1)) * lay["plot_w"]
+
+    def _cost_to_y(self, v: float, lay: dict) -> float:
+        t = (v - lay["y_lo"]) / (lay["y_hi"] - lay["y_lo"])
+        return lay["margin_t"] + lay["plot_h"] - t * lay["plot_h"]
+
+    def _disparity_tick_values(self, d0: int, d1: int) -> list[int]:
+        span = d1 - d0
+        if span <= 0:
+            return [d0]
+        if span <= 8:
+            return list(range(d0, d1 + 1))
+        target = 7
+        step = max(1, (span + target - 1) // target)
+        ticks = list(range(d0, d1 + 1, step))
+        if ticks[-1] != d1:
+            ticks.append(d1)
+        return ticks
+
+    def _global_min_index(self, c: np.ndarray) -> int | None:
+        valid = np.isfinite(c) & (c < 1e29)
+        idxs = np.flatnonzero(valid)
+        if idxs.size == 0:
+            return None
+        vals = c[idxs]
+        order = np.argsort(vals, kind="stable")
+        return int(idxs[order[0]])
+
+    def _second_interior_peak_index(self, c: np.ndarray, ib: int | None) -> int | None:
+        if ib is None:
+            return None
+        n = int(c.size)
+        if n < 3:
+            return None
+        best_c = np.inf
+        best_i: int | None = None
+        for i in range(1, n - 1):
+            if i == ib:
+                continue
+            a, b, cc = float(c[i - 1]), float(c[i]), float(c[i + 1])
+            if not (np.isfinite(a) and np.isfinite(b) and np.isfinite(cc)):
+                continue
+            if a >= 1e29 or b >= 1e29 or cc >= 1e29:
+                continue
+            if b < a and b < cc and b < best_c:
+                best_c = b
+                best_i = i
+        return best_i
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        super().mouseMoveEvent(event)
+        lay = self._curve_layout()
+        if lay is None:
+            QToolTip.hideText()
+            return
+        mx = float(event.position().x())
+        my = float(event.position().y())
+        ml, mt, pw, ph = lay["margin_l"], lay["margin_t"], lay["plot_w"], lay["plot_h"]
+        c, n, d0 = lay["c"], lay["n"], lay["d0"]
+        if not (ml <= mx <= ml + pw and mt <= my <= mt + ph):
+            QToolTip.hideText()
+            return
+        t = (mx - ml) / pw
+        fi = t * max(1, n - 1)
+        i = int(round(fi))
+        i = max(0, min(n - 1, i))
+        d = d0 + i
+        v = c[i]
+        if not np.isfinite(v) or v >= 1e29:
+            QToolTip.hideText()
+            return
+        ylab = self._y_axis_short
+        QToolTip.showText(
+            QCursor.pos(),
+            f"d = {d}\n{ylab} = {v:.6f}",
+            self,
+            self.rect(),
+            4000,
+        )
+
+    def leaveEvent(self, event) -> None:
+        QToolTip.hideText()
+        super().leaveEvent(event)
+
+    def paintEvent(self, _event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.fillRect(self.rect(), QColor(28, 28, 30))
+        painter.setPen(QColor(160, 160, 168))
+        font = QFont()
+        font.setPointSize(9)
+        painter.setFont(font)
+        if self._message:
+            painter.drawText(self.rect(), int(Qt.AlignmentFlag.AlignCenter), self._message)
+            return
+        lay = self._curve_layout()
+        if lay is None:
+            painter.drawText(
+                self.rect(),
+                int(Qt.AlignmentFlag.AlignCenter),
+                "Hover pyramid gray or disparity view to plot block cost vs d",
+            )
+            return
+        c = lay["c"]
+        margin_l = lay["margin_l"]
+        margin_t = lay["margin_t"]
+        margin_b = lay["margin_b"]
+        plot_w = lay["plot_w"]
+        plot_h = lay["plot_h"]
+        h_pix = lay["h_pix"]
+        n = lay["n"]
+        d0, d1 = lay["d0"], lay["d1"]
+
+        painter.setPen(QColor(70, 70, 78))
+        painter.drawRect(margin_l, margin_t, plot_w, plot_h)
+        painter.setPen(QColor(120, 120, 130))
+        painter.drawText(4, margin_t + 12, self._y_axis_short)
+
+        tick_font = QFont(font)
+        tick_font.setPointSize(8)
+        painter.setFont(tick_font)
+        for td in self._disparity_tick_values(d0, d1):
+            i = td - d0
+            if i < 0 or i >= n:
+                continue
+            x = self._index_to_x(i, lay)
+            painter.setPen(QColor(90, 90, 98))
+            painter.drawLine(int(x), margin_t + plot_h, int(x), margin_t + plot_h + 5)
+            painter.setPen(QColor(150, 150, 158))
+            tw = painter.fontMetrics().horizontalAdvance(str(td))
+            painter.drawText(int(x - tw / 2), h_pix - 10, str(td))
+        painter.setFont(font)
+        painter.setPen(QColor(110, 110, 120))
+        painter.drawText(margin_l, h_pix - 2, "disparity")
+
+        painter.setPen(QPen(QColor(80, 200, 255), 2))
+        for i in range(n - 1):
+            x0 = self._index_to_x(i, lay)
+            x1 = self._index_to_x(i + 1, lay)
+            v0, v1 = c[i], c[i + 1]
+            if not (np.isfinite(v0) and np.isfinite(v1)):
+                continue
+            y0 = self._cost_to_y(v0, lay)
+            y1 = self._cost_to_y(v1, lay)
+            painter.drawLine(int(x0), int(y0), int(x1), int(y1))
+
+        ib = self._global_min_index(c)
+        i2 = self._second_interior_peak_index(c, ib)
+        if ib is not None and np.isfinite(c[ib]):
+            xb = self._index_to_x(ib, lay)
+            yb = self._cost_to_y(float(c[ib]), lay)
+            painter.setPen(QPen(QColor(80, 255, 120), 1))
+            painter.setBrush(QColor(80, 255, 120, 200))
+            painter.drawEllipse(int(xb - 5), int(yb - 5), 10, 10)
+        if i2 is not None and np.isfinite(c[i2]):
+            x2 = self._index_to_x(i2, lay)
+            y2 = self._cost_to_y(float(c[i2]), lay)
+            painter.setPen(QPen(QColor(255, 180, 60), 1))
+            painter.setBrush(QColor(255, 180, 60, 200))
+            painter.drawEllipse(int(x2 - 5), int(y2 - 5), 10, 10)
+
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QColor(150, 150, 158))
+        painter.drawText(margin_l, margin_t - 2, f"d ∈ [{d0}, {d1}]  (n={n})   ● min   ● 2nd peak")
+
+
+def vertical_colormap_bar_bgr(height: int, width: int, colormap: int) -> np.ndarray:
     ramp = np.linspace(255, 0, height, dtype=np.uint8).reshape(-1, 1)
-    jet = cv2.applyColorMap(ramp, cv2.COLORMAP_JET)
-    return cv2.resize(jet, (width, height), interpolation=cv2.INTER_NEAREST)
+    bar = cv2.applyColorMap(ramp, colormap)
+    return cv2.resize(bar, (width, height), interpolation=cv2.INTER_NEAREST)
+
+
+def jet_vertical_colorbar_bgr(height: int = 180, width: int = 22) -> np.ndarray:
+    return vertical_colormap_bar_bgr(height, width, cv2.COLORMAP_JET)
 
 
 class AspectRatioLabel(QLabel):
     def __init__(self) -> None:
         super().__init__()
         self._src: QPixmap | None = None
+        self._nearest = False
+
+    def setNearestNeighborScaling(self, on: bool) -> None:
+        if self._nearest == on:
+            return
+        self._nearest = on
+        self._apply_scaled()
 
     def setSourcePixmap(self, pixmap: QPixmap) -> None:
         self._src = pixmap
@@ -107,6 +395,9 @@ class AspectRatioLabel(QLabel):
         super().resizeEvent(event)
         self._apply_scaled()
 
+    def _scale_mode(self) -> Qt.TransformationMode:
+        return Qt.TransformationMode.FastTransformation if self._nearest else Qt.TransformationMode.SmoothTransformation
+
     def _apply_scaled(self) -> None:
         if self._src is None or self._src.isNull():
             return
@@ -115,7 +406,7 @@ class AspectRatioLabel(QLabel):
         scaled = self._src.scaled(
             self.size(),
             Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
+            self._scale_mode(),
         )
         super().setPixmap(scaled)
 
@@ -141,7 +432,7 @@ class HoverImageLabel(AspectRatioLabel):
             sw,
             sh,
             Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
+            self._scale_mode(),
         )
         pw, ph = scaled.width(), scaled.height()
         ox = (sw - pw) // 2
@@ -236,6 +527,41 @@ def gpu_stereo_pipeline_defaults() -> dai.GPUStereoConfig:
 
 DEFAULT_VIZ_DISP_MAX = 128
 
+VIEW_PYR_LEVELS_UI = 7
+
+_PYRAMID_DISP_COLORMAP = getattr(cv2, "COLORMAP_TURBO", cv2.COLORMAP_JET)
+
+
+def _pyramid_view_ranges(has_gray: bool, has_disp: bool) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
+    idx = 3
+    gr: tuple[int, int] | None = None
+    dr: tuple[int, int] | None = None
+    if has_gray:
+        gr = (idx, idx + VIEW_PYR_LEVELS_UI)
+        idx += VIEW_PYR_LEVELS_UI
+    if has_disp:
+        dr = (idx, idx + VIEW_PYR_LEVELS_UI)
+        idx += VIEW_PYR_LEVELS_UI
+    return gr, dr
+
+
+def _vm_in_range(vm: int, rng: tuple[int, int] | None) -> bool:
+    return rng is not None and rng[0] <= vm < rng[1]
+
+
+def _match_cost_curve_supported(cm: object) -> bool:
+    CM = dai.GPUStereoConfig.CostMethod
+    return cm in (CM.SAD, CM.ZNCC, CM.CENSUS, CM.RANK, CM.GRADIENT)
+
+
+def _match_cost_curve_descriptor_pair(cm: object) -> bool:
+    CM = dai.GPUStereoConfig.CostMethod
+    return cm in (CM.CENSUS, CM.RANK)
+
+
+def _vm_needs_match_cost_plot(vm: int, gray_rng: tuple[int, int] | None, disp_rng: tuple[int, int] | None) -> bool:
+    return _vm_in_range(vm, gray_rng) or _vm_in_range(vm, disp_rng)
+
 
 def default_config_path() -> Path:
     return Path(__file__).resolve().parent / "config.yaml"
@@ -311,6 +637,9 @@ class PipelineThread(QThread):
         depth_q: dai.OutputQueue,
         rect_left_q: dai.OutputQueue,
         rect_right_q: dai.OutputQueue,
+        pyr_q: dai.OutputQueue | None = None,
+        match_curve_q: dai.OutputQueue | None = None,
+        pyr_disp_q: dai.OutputQueue | None = None,
     ) -> None:
         super().__init__()
         self.pipeline = pipeline
@@ -318,7 +647,12 @@ class PipelineThread(QThread):
         self.depth_q = depth_q
         self.rect_left_q = rect_left_q
         self.rect_right_q = rect_right_q
+        self.pyr_q = pyr_q
+        self.match_curve_q = match_curve_q
+        self.pyr_disp_q = pyr_disp_q
         self._stop = threading.Event()
+        self._last_match_curve: dai.ImgFrame | None = None
+        self._last_pyr_disp: np.ndarray | None = None
 
     def stop(self) -> None:
         self._stop.set()
@@ -348,12 +682,32 @@ class PipelineThread(QThread):
                 depth_u16 = np.asarray(depth_if.getFrame())
                 rl_gray = np.asarray(rl_fr.getFrame())
                 rr_gray = np.asarray(rr_fr.getFrame())
+                pyr_gray = None
+                if self.pyr_q is not None:
+                    pdbg = self.pyr_q.tryGet()
+                    if pdbg is not None and isinstance(pdbg, dai.ImgFrame):
+                        pyr_gray = np.asarray(pdbg.getFrame()).copy()
+                match_curve_fr = None
+                if self.match_curve_q is not None:
+                    zg = self.match_curve_q.tryGet()
+                    if zg is not None and isinstance(zg, dai.ImgFrame):
+                        self._last_match_curve = zg
+                    match_curve_fr = self._last_match_curve
+                pyr_disp_arr = None
+                if self.pyr_disp_q is not None:
+                    pdg = self.pyr_disp_q.tryGet()
+                    if pdg is not None and isinstance(pdg, dai.ImgFrame):
+                        self._last_pyr_disp = np.asarray(pdg.getFrame()).copy()
+                    pyr_disp_arr = self._last_pyr_disp
                 self.frame_ready.emit(
                     (
                         d_u16.copy(),
                         depth_u16.copy(),
                         rl_gray.copy(),
                         rr_gray.copy(),
+                        pyr_gray,
+                        match_curve_fr,
+                        pyr_disp_arr,
                     )
                 )
 
@@ -441,14 +795,15 @@ class StereoConfigPanel(QWidget):
         self.second_peak.setDecimals(3)
         self.second_peak.setSingleStep(0.01)
         self.second_peak.setToolTip(
-            "Minimum cost margin (best vs second-best) over the full disparity search. "
-            "Applies to cost-volume WTA and to the pyramid second-peak pass. 0 = off."
+            "Minimum cost margin between the WTA winner and the next-best strict local minimum "
+            "(interior disparity where cost is lower than at d−1 and d+1). "
+            "Applies to cost-volume WTA and the pyramid second-peak pass. 0 = off."
         )
         fl.addRow("Second-peak threshold", self.second_peak)
         self.second_peak_gap = QSpinBox()
         self.second_peak_gap.setRange(0, 32)
         self.second_peak_gap.setToolTip(
-            "If > 0, only invalidate on ambiguous margin when the second-best disparity is farther "
+            "If > 0, only invalidate on ambiguous margin when the second local-minimum disparity is farther "
             "than this (pixels) from the best. Same as second_peak_min_disparity_gap in GPUStereoConfig."
         )
         fl.addRow("Second-peak min disparity gap", self.second_peak_gap)
@@ -740,6 +1095,9 @@ class MainWindow(QMainWindow):
         cli_resolution: str,
         cli_fps: float,
         saved: dict | None,
+        pyr_q: dai.OutputQueue | None = None,
+        match_curve_q: dai.OutputQueue | None = None,
+        pyr_disp_q: dai.OutputQueue | None = None,
     ) -> None:
         super().__init__()
         self.setWindowTitle("GPUStereo — controls")
@@ -754,6 +1112,11 @@ class MainWindow(QMainWindow):
         self._cli_device = cli_device
         self._cli_resolution = cli_resolution
         self._cli_fps = cli_fps
+        self._pyr_q = pyr_q
+        self._match_curve_q = match_curve_q
+        self._pyr_disp_q = pyr_disp_q
+        self._pending_plot_xy: tuple[int, int] | None = None
+        self._committed_plot_xy: tuple[int, int] | None = None
 
         self._min_d = 0
         self._max_d = initial_cfg.maxDisparity * (1 << int(initial_cfg.subpixelBits))
@@ -762,6 +1125,13 @@ class MainWindow(QMainWindow):
 
         self._view_mode = QComboBox()
         self._view_mode.addItems(["Disparity", "Rectified left", "Rectified right"])
+        if pyr_q is not None:
+            for li in range(VIEW_PYR_LEVELS_UI):
+                self._view_mode.addItem(f"Pyramid L{li}")
+        if pyr_disp_q is not None:
+            for li in range(VIEW_PYR_LEVELS_UI):
+                self._view_mode.addItem(f"Pyramid disp L{li}")
+        self._vr_gray, self._vr_disp = _pyramid_view_ranges(self._pyr_q is not None, self._pyr_disp_q is not None)
         self._view_mode.setCurrentIndex(0)
         self._view_mode.currentIndexChanged.connect(self._on_view_mode_changed)
 
@@ -818,6 +1188,9 @@ class MainWindow(QMainWindow):
         image_row_lay.addWidget(self._disp_label, stretch=1)
         image_row_lay.addWidget(self._colorbar_widget)
 
+        self._cost_plot = MatchCostPlotWidget()
+        self._cost_plot.setVisible(False)
+
         self._hover_dist = QLabel("")
         self._hover_dist.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
@@ -827,6 +1200,7 @@ class MainWindow(QMainWindow):
         left_lay.addWidget(self._view_mode)
         left_lay.addWidget(self._disp_viz_widget)
         left_lay.addWidget(self._image_row, stretch=1)
+        left_lay.addWidget(self._cost_plot)
         left_lay.addWidget(self._hover_dist)
 
         cam_outer = QGroupBox("Cameras — CAM_B + CAM_C")
@@ -887,12 +1261,19 @@ class MainWindow(QMainWindow):
             sc.setContext(Qt.ShortcutContext.ApplicationShortcut)
             sc.activated.connect(self.close)
 
+        self._plot_debounce = QTimer(self)
+        self._plot_debounce.setSingleShot(True)
+        self._plot_debounce.timeout.connect(self._commit_debug_plot_pixel)
+
         self._worker = PipelineThread(
             pipeline,
             disp_q,
             depth_q,
             rect_left_q,
             rect_right_q,
+            pyr_q,
+            match_curve_q,
+            pyr_disp_q,
         )
         self._worker.frame_ready.connect(self._on_frame)
         self._worker.start()
@@ -906,8 +1287,106 @@ class MainWindow(QMainWindow):
         self._cam_luma_denoise.valueChanged.connect(self._schedule_save)
         self._view_mode.currentIndexChanged.connect(lambda _i: self._schedule_save())
 
+        self._panel.levels.currentIndexChanged.connect(self._on_panel_pyramid_levels_changed)
+        self._panel.cost_method.currentIndexChanged.connect(self._on_panel_cost_method_changed)
+        self._panel.use_cost_volume.stateChanged.connect(lambda _s: self._refresh_cost_plot_hint_if_visible())
+        self._panel.adaptive_sigma.valueChanged.connect(lambda _v: self._refresh_cost_plot_hint_if_visible())
+
         if saved:
             self._apply_saved_ui(saved)
+
+    def _vm_gray_pyr(self, vm: int) -> bool:
+        return _vm_in_range(vm, self._vr_gray)
+
+    def _vm_disp_pyr(self, vm: int) -> bool:
+        return _vm_in_range(vm, self._vr_disp)
+
+    def _vm_match_cost_plot(self, vm: int) -> bool:
+        return _vm_needs_match_cost_plot(vm, self._vr_gray, self._vr_disp)
+
+    def _match_curve_y_label(self) -> str:
+        G = self._panel.G.CostMethod
+        cm = self._panel.cost_method.currentData()
+        if cm == G.ZNCC:
+            return "1−ρ"
+        if cm == G.SAD:
+            return "w-SAD" if self._panel.adaptive_sigma.value() > 0.0 else "SAD"
+        if cm == G.GRADIENT:
+            return "SAD"
+        if cm in (G.CENSUS, G.RANK):
+            return "Hamming"
+        return "cost"
+
+    def _refresh_cost_plot_hint_if_visible(self) -> None:
+        if self._cost_plot.isVisible():
+            self._update_match_cost_plot_hint()
+
+    def _sync_match_cost_plot(self, curve_fr: dai.ImgFrame | None) -> None:
+        if not self._cost_plot.isVisible():
+            return
+        cm = self._panel.cost_method.currentData()
+        if not _match_cost_curve_supported(cm):
+            self._update_match_cost_plot_hint()
+            return
+        if self._panel.use_cost_volume.isChecked() and _match_cost_curve_descriptor_pair(cm):
+            self._update_match_cost_plot_hint()
+            return
+        self._cost_plot.set_y_axis_short(self._match_curve_y_label())
+        self._cost_plot.set_message("")
+        if self._committed_plot_xy is None:
+            self._cost_plot.set_curve(0, -1, None)
+            return
+        dm, dx, costs = parse_match_cost_curve_frame(curve_fr)
+        if costs is not None and costs.size > 0:
+            self._cost_plot.set_curve(dm, dx, costs)
+        else:
+            self._cost_plot.set_curve(0, -1, None)
+
+    def _sync_disp_colorbar_ramp(self) -> None:
+        vm = self._view_mode.currentIndex()
+        cmap = _PYRAMID_DISP_COLORMAP if self._vm_disp_pyr(vm) else cv2.COLORMAP_JET
+        self._colorbar_label.setPixmap(numpy_bgr_to_qpixmap(vertical_colormap_bar_bgr(180, 22, cmap)))
+
+    def _config_with_debug(self) -> dai.GPUStereoConfig:
+        c = self._panel.to_config(self._base_algo)
+        vm = self._view_mode.currentIndex()
+        if hasattr(c, "debugPyramidLevel"):
+            c.debugPyramidLevel = (vm - self._vr_gray[0]) if self._vm_gray_pyr(vm) else -1
+        if hasattr(c, "debugPyramidDisparityLevel"):
+            c.debugPyramidDisparityLevel = (vm - self._vr_disp[0]) if self._vm_disp_pyr(vm) else -1
+        if hasattr(c, "debugZnccPlotX"):
+            if self._vm_match_cost_plot(vm) and self._committed_plot_xy is not None:
+                c.debugZnccPlotX = self._committed_plot_xy[0]
+                c.debugZnccPlotY = self._committed_plot_xy[1]
+            else:
+                c.debugZnccPlotX = -1
+                c.debugZnccPlotY = -1
+        return c
+
+    def _send_view_config_to_device(self) -> None:
+        if self._pyr_q is None and self._match_curve_q is None and self._pyr_disp_q is None:
+            return
+        try:
+            self._cfg_q.send(self._config_with_debug())
+        except Exception:
+            pass
+
+    def _commit_debug_plot_pixel(self) -> None:
+        if self._pending_plot_xy is None:
+            return
+        self._committed_plot_xy = self._pending_plot_xy
+        self._send_view_config_to_device()
+
+    def _on_panel_pyramid_levels_changed(self, _i: int) -> None:
+        self._schedule_save()
+        if self._vm_match_cost_plot(self._view_mode.currentIndex()):
+            self._send_view_config_to_device()
+
+    def _on_panel_cost_method_changed(self, _i: int) -> None:
+        self._schedule_save()
+        if self._vm_match_cost_plot(self._view_mode.currentIndex()):
+            self._update_match_cost_plot_hint()
+            self._send_view_config_to_device()
 
     def _schedule_save(self) -> None:
         self._save_timer.start(500)
@@ -959,6 +1438,14 @@ class MainWindow(QMainWindow):
                 self._cam_luma_denoise.setValue(int(cam["luma_denoise"]))
         if "view_mode" in d:
             self._view_mode.setCurrentIndex(max(0, min(int(d["view_mode"]), self._view_mode.count() - 1)))
+        vm = self._view_mode.currentIndex()
+        use_pyr = (self._pyr_q is not None and self._vm_gray_pyr(vm)) or (
+            self._pyr_disp_q is not None and self._vm_disp_pyr(vm)
+        )
+        self._disp_label.setNearestNeighborScaling(use_pyr)
+        self._cost_plot.setVisible(self._match_curve_q is not None and self._vm_match_cost_plot(vm))
+        if self._cost_plot.isVisible():
+            self._update_match_cost_plot_hint()
         if "viz_disp_min" in d and "viz_disp_max" in d:
             self._slider_disp_min.setValue(int(d["viz_disp_min"]))
             self._slider_disp_max.setValue(int(d["viz_disp_max"]))
@@ -966,6 +1453,8 @@ class MainWindow(QMainWindow):
         self._refresh_left_pane()
         if self._view_mode.currentIndex() == 0:
             self._update_disparity_depth_labels()
+        self._sync_disp_colorbar_ramp()
+        self._send_view_config_to_device()
 
     def _sync_viz_slider_range(self, use_defaults: bool = False) -> None:
         md = max(1, int(self._max_d))
@@ -1020,18 +1509,54 @@ class MainWindow(QMainWindow):
         self._schedule_save()
 
     def _on_view_mode_changed(self, _i: int) -> None:
-        disp = self._view_mode.currentIndex() == 0
-        self._disp_viz_widget.setVisible(disp)
-        self._colorbar_widget.setVisible(disp)
+        vm = self._view_mode.currentIndex()
+        disp = vm == 0
+        pyr_disp_viz = self._pyr_disp_q is not None and self._vm_disp_pyr(vm)
+        self._disp_viz_widget.setVisible(disp or pyr_disp_viz)
+        self._colorbar_widget.setVisible(disp or pyr_disp_viz)
+        use_pyr = (self._pyr_q is not None and self._vm_gray_pyr(vm)) or (
+            self._pyr_disp_q is not None and self._vm_disp_pyr(vm)
+        )
+        self._disp_label.setNearestNeighborScaling(use_pyr)
+        show_plot = self._match_curve_q is not None and self._vm_match_cost_plot(vm)
+        self._cost_plot.setVisible(show_plot)
+        if show_plot:
+            self._update_match_cost_plot_hint()
         self._refresh_left_pane()
         if disp:
             self._update_disparity_depth_labels()
+        self._sync_disp_colorbar_ramp()
+        self._send_view_config_to_device()
 
-    def _disparity_bgr(self, d_u16: np.ndarray) -> np.ndarray:
+    def _update_match_cost_plot_hint(self) -> None:
+        if not self._cost_plot.isVisible():
+            return
+        cm = self._panel.cost_method.currentData()
+        if not _match_cost_curve_supported(cm):
+            self._cost_plot.set_y_axis_short("cost")
+            self._cost_plot.set_message("Cost curve not available for this cost method")
+            return
+        if self._panel.use_cost_volume.isChecked() and _match_cost_curve_descriptor_pair(cm):
+            self._cost_plot.set_y_axis_short(self._match_curve_y_label())
+            self._cost_plot.set_message("Census/Rank curves need pyramid matching (turn off cost volume)")
+            return
+        self._cost_plot.set_y_axis_short(self._match_curve_y_label())
+        self._cost_plot.set_message("")
+        self._cost_plot.set_curve(0, -1, None)
+
+    def _disparity_bgr(
+        self,
+        d_u16: np.ndarray,
+        *,
+        value_scale: float = 1.0,
+        colormap: int = cv2.COLORMAP_JET,
+    ) -> np.ndarray:
         return colorize_disparity_u16(
             d_u16,
             self._slider_disp_min.value(),
             self._slider_disp_max.value(),
+            value_scale=value_scale,
+            colormap=colormap,
         )
 
     def _update_disparity_depth_labels(self) -> None:
@@ -1041,7 +1566,8 @@ class MainWindow(QMainWindow):
             return
         if self._view_mode.currentIndex() != 0:
             return
-        d_u16, depth_u16, _, _ = self._last_bundle
+        b = self._last_bundle
+        d_u16, depth_u16 = b[0], b[1]
         k = estimate_depth_scale_k(d_u16, depth_u16)
         vmin = self._slider_disp_min.value()
         vmax = self._slider_disp_max.value()
@@ -1065,8 +1591,23 @@ class MainWindow(QMainWindow):
         d_u16: np.ndarray,
         rl_gray: np.ndarray,
         rr_gray: np.ndarray,
+        pyr_gray: np.ndarray | None,
+        pyr_disp: np.ndarray | None,
     ) -> np.ndarray:
         idx = self._view_mode.currentIndex()
+        if self._vm_disp_pyr(idx):
+            if pyr_disp is None or pyr_disp.size == 0:
+                return np.zeros((max(1, rl_gray.shape[0]), max(1, rl_gray.shape[1]), 3), dtype=np.uint8)
+            level = idx - self._vr_disp[0]
+            return self._disparity_bgr(
+                pyr_disp,
+                value_scale=float(1 << level),
+                colormap=_PYRAMID_DISP_COLORMAP,
+            )
+        if self._pyr_q is not None and self._vm_gray_pyr(idx):
+            if pyr_gray is None or pyr_gray.size == 0:
+                return np.zeros((max(1, rl_gray.shape[0]), max(1, rl_gray.shape[1]), 3), dtype=np.uint8)
+            return cv2.cvtColor(pyr_gray, cv2.COLOR_GRAY2BGR)
         if idx == 1:
             return cv2.cvtColor(rl_gray, cv2.COLOR_GRAY2BGR)
         if idx == 2:
@@ -1076,13 +1617,42 @@ class MainWindow(QMainWindow):
     def _refresh_left_pane(self) -> None:
         if self._last_bundle is None:
             return
-        d_u16, _, rl, rr = self._last_bundle
-        bgr = self._bgr_for_view(d_u16, rl, rr)
+        b = self._last_bundle
+        d_u16, rl, rr, pyr = b[0], b[2], b[3], b[4]
+        pyr_d = b[6] if len(b) > 6 else None
+        bgr = self._bgr_for_view(d_u16, rl, rr, pyr, pyr_d)
         self._disp_label.setSourcePixmap(numpy_bgr_to_qpixmap(bgr))
 
     def _on_pixel_hover(self, ix: int, iy: int) -> None:
         if self._last_bundle is None:
             self._hover_dist.setText("")
+            return
+        vm = self._view_mode.currentIndex()
+        if self._vm_gray_pyr(vm):
+            g = self._last_bundle[4]
+            if g is not None and g.size > 0 and 0 <= iy < g.shape[0] and 0 <= ix < g.shape[1]:
+                self._hover_dist.setText(f"Pyramid gray: {int(g[iy, ix])}")
+                self._pending_plot_xy = (ix, iy)
+                self._plot_debounce.stop()
+                self._plot_debounce.start(75)
+            else:
+                self._hover_dist.setText("")
+            return
+        if self._vm_disp_pyr(vm):
+            pd = self._last_bundle[6] if len(self._last_bundle) > 6 else None
+            if pd is not None and pd.size > 0 and 0 <= iy < pd.shape[0] and 0 <= ix < pd.shape[1]:
+                v = int(pd[iy, ix])
+                li = vm - self._vr_disp[0]
+                if v > 0:
+                    eq = v * (1 << li)
+                    self._hover_dist.setText(f"L{li} disp: {v} raw, {eq} ×2^{li} (slider scale)")
+                else:
+                    self._hover_dist.setText("Pyramid disp: —")
+                self._pending_plot_xy = (ix, iy)
+                self._plot_debounce.stop()
+                self._plot_debounce.start(75)
+            else:
+                self._hover_dist.setText("")
             return
         depth_u16 = self._last_bundle[1]
         if depth_u16.size == 0:
@@ -1110,14 +1680,17 @@ class MainWindow(QMainWindow):
             self._fps_label.setText(f"FPS: {self._fps_frames / dt:.1f}")
             self._fps_t0 = now
             self._fps_frames = 0
-        d_u16, _, rl, rr = bundle
-        bgr = self._bgr_for_view(d_u16, rl, rr)
+        d_u16, _, rl, rr, pyr = bundle[0], bundle[1], bundle[2], bundle[3], bundle[4]
+        pyr_d = bundle[6] if len(bundle) > 6 else None
+        bgr = self._bgr_for_view(d_u16, rl, rr, pyr, pyr_d)
         self._disp_label.setSourcePixmap(numpy_bgr_to_qpixmap(bgr))
         self._update_disparity_depth_labels()
+        match_curve_fr = bundle[5] if len(bundle) > 5 else None
+        self._sync_match_cost_plot(match_curve_fr)
 
     def _on_apply(self) -> None:
         try:
-            cfg = self._panel.to_config(self._base_algo)
+            cfg = self._config_with_debug()
             self._cfg_q.send(cfg)
             self._max_d = cfg.maxDisparity * (1 << cfg.subpixelBits)
             self._sync_viz_slider_range()
@@ -1185,6 +1758,12 @@ def main() -> None:
         except Exception:
             pass
 
+    vm_saved = saved.get("view_mode", 0)
+    try:
+        vm_saved = int(vm_saved)
+    except (TypeError, ValueError):
+        vm_saved = 0
+
     device = dai.Device(args.device)
     device.setIrLaserDotProjectorIntensity(0.9)
 
@@ -1196,12 +1775,25 @@ def main() -> None:
     mono_right.requestOutput((w, h), type=dai.ImgFrame.Type.GRAY8, fps=args.fps).link(gpu.right)
     gpu.setRectification(True)
 
-    _gpustereo_config_assign(gpu.initialConfig, ic)
-
     disp_q = gpu.disparity.createOutputQueue()
     depth_q = gpu.depth.createOutputQueue()
     rect_left_q = gpu.rectifiedLeft.createOutputQueue()
     rect_right_q = gpu.rectifiedRight.createOutputQueue()
+    pyr_q = None
+    if hasattr(gpu, "debugPyramid"):
+        pyr_q = gpu.debugPyramid.createOutputQueue(maxSize=4, blocking=False)
+    match_curve_q = None
+    if hasattr(gpu, "debugZnccCurve"):
+        match_curve_q = gpu.debugZnccCurve.createOutputQueue(maxSize=4, blocking=False)
+    pyr_disp_q = None
+    if hasattr(gpu, "debugPyramidDisparity"):
+        pyr_disp_q = gpu.debugPyramidDisparity.createOutputQueue(maxSize=4, blocking=False)
+    vr_gray, vr_disp = _pyramid_view_ranges(pyr_q is not None, pyr_disp_q is not None)
+    if hasattr(ic, "debugPyramidLevel"):
+        ic.debugPyramidLevel = (vm_saved - vr_gray[0]) if _vm_in_range(vm_saved, vr_gray) else -1
+    if hasattr(ic, "debugPyramidDisparityLevel"):
+        ic.debugPyramidDisparityLevel = (vm_saved - vr_disp[0]) if _vm_in_range(vm_saved, vr_disp) else -1
+    _gpustereo_config_assign(gpu.initialConfig, ic)
     cfg_q = gpu.inputConfig.createInputQueue()
     left_cam_ctrl_q = mono_left.inputControl.createInputQueue()
     right_cam_ctrl_q = mono_right.inputControl.createInputQueue()
@@ -1223,6 +1815,9 @@ def main() -> None:
         args.resolution,
         float(args.fps),
         saved,
+        pyr_q,
+        match_curve_q,
+        pyr_disp_q,
     )
     win.show()
     sys.exit(app.exec())
