@@ -499,6 +499,14 @@ class Pipeline {
         return impl()->getDeviceConfig();
     }
 
+    /**
+     * Returns Camera nodes for the device's first stereo pair when both exist in the pipeline.
+     * If the device exposes no stereo pairs or more than one pair is ambiguous, both entries may be null.
+     */
+    std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const {
+        return impl()->getStereoPair();
+    }
+
     bool isRunning() const {
         return impl()->isRunning();
     }

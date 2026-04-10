@@ -321,6 +321,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
+    src/pipeline/node/Depth.cpp
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/SegmentationParser.cpp
     src/pipeline/utilities/DetectionParser/DetectionParserUtils.cpp
