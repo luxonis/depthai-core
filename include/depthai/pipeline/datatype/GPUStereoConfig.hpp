@@ -29,7 +29,7 @@ class GPUStereoConfig : public Buffer {
     int max_disparity = 128;
     int num_pyramid_levels = 3;
     DownsampleMethod downsample_method = DownsampleMethod::BOX_FILTER;
-    PrefilterMethod prefilter_method = PrefilterMethod::NONE;
+    PrefilterMethod prefilter_method = PrefilterMethod::GAUSSIAN_3x3;
     int block_match_radius = 3;
     float adaptive_support_range_sigma = 0.f;
     float prefilter_bilateral_sigma_spatial = 2.f;
@@ -38,10 +38,10 @@ class GPUStereoConfig : public Buffer {
     int refinement_radius_full = 3;
     int subpixel_bits = 4;
     bool lr_check = true;
-    bool lr_check_fast = true;
+    bool lr_check_fast = false;
     int median_size = 3;
     int min_disp = 0;
-    int confidence_threshold = 25;
+    int confidence_threshold = 10;
     bool use_cost_volume = false;
     CostVolumeAggregation cost_volume_aggregation = CostVolumeAggregation::BOX;
     int box_aggregation_radius = 2;

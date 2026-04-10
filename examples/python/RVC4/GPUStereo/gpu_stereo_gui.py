@@ -515,13 +515,71 @@ def _gpustereo_config_assign(dst: dai.GPUStereoConfig, src: dai.GPUStereoConfig)
     dst.algorithmControl.customDepthUnitMultiplier = src.algorithmControl.customDepthUnitMultiplier
 
 
-def gpu_stereo_pipeline_defaults() -> dai.GPUStereoConfig:
-    c = dai.GPUStereoConfig()
-    c.algorithmControl.depthUnit = dai.DepthUnit.MILLIMETER
-    c.algorithmControl.customDepthUnitMultiplier = 1000.0
+def _apply_gpustereo_config_header_defaults(c: dai.GPUStereoConfig) -> None:
+    G = dai.GPUStereoConfig
+    c.maxDisparity = 128
+    c.numPyramidLevels = 3
+    c.downsampleMethod = G.DownsampleMethod.BOX_FILTER
+    c.prefilterMethod = G.PrefilterMethod.GAUSSIAN_3x3
+    c.blockMatchRadius = 3
+    c.adaptiveSupportRangeSigma = 0.0
+    c.prefilterBilateralSigmaSpatial = 2.0
+    c.prefilterBilateralSigmaRange = 0.08
+    c.refinementRadius = 6
+    c.refinementRadiusFull = 3
+    c.subpixelBits = 4
+    c.lrCheck = True
+    c.lrCheckFast = False
+    c.medianSize = 3
+    c.minDisp = 0
+    c.confidenceThreshold = 10
+    c.useCostVolume = False
+    c.costVolumeAggregation = G.CostVolumeAggregation.BOX
+    c.boxAggregationRadius = 2
+    c.bilateralSpatialSigma = 2.0
+    c.bilateralRangeSigma = 0.08
+    c.bilateralAggregationRadius = 2
+    c.costMethod = G.CostMethod.ZNCC
+    c.pathAggregation = G.PathAggregation.NONE
+    c.sgmP1 = 0.5
+    c.sgmP2 = 2.0
+    c.sgmAdaptiveP2 = True
+    c.useFp16 = True
+    c.useQcomAcceleratedOps = False
+    if hasattr(c, "debugPyramidLevel"):
+        c.debugPyramidLevel = -1
+        c.debugPyramidDisparityLevel = -1
+        c.debugZnccPlotX = -1
+        c.debugZnccPlotY = -1
+    c.secondPeakThreshold = 0.0
+    c.secondPeakMinDisparityGap = 0
+    c.censusRadiusX = 2
+    c.censusRadiusY = 2
+    c.speckleMaxSize = 0
+    c.speckleMaxDiff = 1
+    c.textureFilterRadius = 0
+    c.textureThreshold = 25.0
+    c.featureMaskEdgeThresh = 0.0
+    c.featureMaskCornerThresh = 0.0
+    c.featureMaskMorphRadius = 1
+    c.edgeAwareRadius = 0
+    c.edgeAwareEps = 0.01
+    c.holeFillRadius = 0
+    c.holeFillSigmaSpatial = 2.0
+    c.holeFillSigmaRange = 0.05
     c.temporalAlpha = 0.0
     c.temporalDelta = 0
     c.temporalPersistencyMode = 3
+    c.regionRefine = False
+    c.regionRefineCellSize = 16
+    c.regionRefinePlaneResidualThresh = 3.0
+    c.algorithmControl.depthUnit = dai.DepthUnit.MILLIMETER
+    c.algorithmControl.customDepthUnitMultiplier = 1000.0
+
+
+def gpu_stereo_pipeline_defaults() -> dai.GPUStereoConfig:
+    c = dai.GPUStereoConfig()
+    _apply_gpustereo_config_header_defaults(c)
     return c
 
 
