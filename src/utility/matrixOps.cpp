@@ -2,9 +2,10 @@
 
 #include <Eigen/Dense>
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <stdexcept>
-#include <string>
 #include <vector>
 
 namespace dai {
@@ -510,9 +511,12 @@ std::array<std::array<float, 3>, 3> getHomographyMatrix(const std::array<dai::Po
     }
 
     const double residual = (A * solution - b).norm();
-    if(residual > 1e-8) {
+    const double scale = std::max({1.0, A.norm() * solution.norm(), b.norm()});
+    const double relativeResidual = residual / scale;
+    if(relativeResidual > 1e-10) {
         throw std::runtime_error("Cannot compute homography matrix from the provided point pairs.");
     }
+
     const Eigen::Matrix<double, 3, 3> homography = (Eigen::Matrix<double, 3, 3>() << solution(0),
                                                      solution(1),
                                                      solution(2),
@@ -523,6 +527,10 @@ std::array<std::array<float, 3>, 3> getHomographyMatrix(const std::array<dai::Po
                                                      solution(7),
                                                      1.0)
                                                         .finished();
+
+    if(!homography.allFinite()) {
+        throw std::runtime_error("Computed homography contains non-finite values; cannot construct float result.");
+    }
 
     std::array<std::array<float, 3>, 3> result{};
     for(size_t row = 0; row < 3; ++row) {
