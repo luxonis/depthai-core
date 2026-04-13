@@ -499,11 +499,20 @@ std::array<std::array<float, 3>, 3> getHomographyMatrix(const std::array<dai::Po
         b(2 * i + 1) = v;
     }
 
-    const Eigen::Matrix<double, 8, 1> solution = A.partialPivLu().solve(b);
+    Eigen::FullPivLU<Eigen::Matrix<double, 8, 8>> lu(A);
+    if(!lu.isInvertible() || lu.rank() != 8) {
+        throw std::runtime_error("Cannot compute homography matrix from the provided point pairs.");
+    }
+
+    const Eigen::Matrix<double, 8, 1> solution = lu.solve(b);
     if(!solution.allFinite()) {
         throw std::runtime_error("Cannot compute homography matrix from the provided point pairs.");
     }
 
+    const double residual = (A * solution - b).norm();
+    if(residual > 1e-8) {
+        throw std::runtime_error("Cannot compute homography matrix from the provided point pairs.");
+    }
     const Eigen::Matrix<double, 3, 3> homography = (Eigen::Matrix<double, 3, 3>() << solution(0),
                                                      solution(1),
                                                      solution(2),
