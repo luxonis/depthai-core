@@ -41,7 +41,10 @@ std::array<std::array<float, 3>, 3> cvHomographyToArray(const cv::Mat& matrix) {
     return result;
 }
 
-void compareWithOpenCV(const std::array<dai::Point2f, 4>& srcPoints, const std::array<dai::Point2f, 4>& dstPoints, float epsilonMat = 1e-6f, float epsilonPt = 1e-3f) {
+void compareWithOpenCV(const std::array<dai::Point2f, 4>& srcPoints,
+                       const std::array<dai::Point2f, 4>& dstPoints,
+                       float epsilonMat = 1e-6f,
+                       float epsilonPt = 1e-3f) {
     const auto homography = normalizeHomography(dai::matrix::getHomographyMatrix(srcPoints, dstPoints));
 
     cv::Point2f cvSrcPoints[4];

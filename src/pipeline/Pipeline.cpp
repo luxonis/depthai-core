@@ -786,7 +786,7 @@ void PipelineImpl::build() {
     // start ---Add AutoCalibration block---
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     auto autoCalibrationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "ON_START");
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     if(autoCalibrationString == "CONTINUOUS" || autoCalibrationString == "ON_START") {
         if(defaultDevice && defaultDevice->tryGetCalibration()) {
             auto stereoPair = getStereoPair();
@@ -868,7 +868,7 @@ void PipelineImpl::build() {
     } else if(autoCalibrationString != "OFF" && autoCalibrationString != "") {
         Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibrationString);
     }
-#endif
+    #endif
 #endif
     // end of ---Add AutoCalibration block---
 

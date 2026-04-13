@@ -1,7 +1,6 @@
 #include "depthai/utility/matrixOps.hpp"
 
 #include <Eigen/Dense>
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -517,16 +516,9 @@ std::array<std::array<float, 3>, 3> getHomographyMatrix(const std::array<dai::Po
         throw std::runtime_error("Cannot compute homography matrix from the provided point pairs.");
     }
 
-    const Eigen::Matrix<double, 3, 3> homography = (Eigen::Matrix<double, 3, 3>() << solution(0),
-                                                     solution(1),
-                                                     solution(2),
-                                                     solution(3),
-                                                     solution(4),
-                                                     solution(5),
-                                                     solution(6),
-                                                     solution(7),
-                                                     1.0)
-                                                        .finished();
+    const Eigen::Matrix<double, 3, 3> homography =
+        (Eigen::Matrix<double, 3, 3>() << solution(0), solution(1), solution(2), solution(3), solution(4), solution(5), solution(6), solution(7), 1.0)
+            .finished();
 
     if(!homography.allFinite()) {
         throw std::runtime_error("Computed homography contains non-finite values; cannot construct float result.");
