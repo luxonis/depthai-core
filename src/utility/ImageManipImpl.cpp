@@ -585,8 +585,8 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
         if(outputWidth == 0) outputWidth = std::min((size_t)rmaxx, MAX_AUTO_WIDTH);
         if(outputHeight == 0) outputHeight = std::min((size_t)rmaxy, MAX_AUTO_HEIGHT);
     } else {
-        if(outputWidth == 0) outputWidth = std::min((size_t)(rmaxx - rminx), MAX_AUTO_WIDTH);
-        if(outputHeight == 0) outputHeight = std::min((size_t)(rmaxy - rminy), MAX_AUTO_HEIGHT);
+        if(outputWidth == 0) outputWidth = std::min((size_t)std::max(rmaxx - rminx, 0.f), MAX_AUTO_WIDTH);
+        if(outputHeight == 0) outputHeight = std::min((size_t)std::max(rmaxy - rminy, 0.f), MAX_AUTO_HEIGHT);
     }
 }
 

@@ -9,7 +9,7 @@
 
 namespace {
 
-std::array<std::array<float, 3>, 3> normalizeHomography(const std::array<std::array<float, 3>, 3>& homography) {
+[[maybe_unused]] std::array<std::array<float, 3>, 3> normalizeHomography(const std::array<std::array<float, 3>, 3>& homography) {
     const float scale = homography[2][2];
     REQUIRE(scale != 0.0f);
 
@@ -22,7 +22,7 @@ std::array<std::array<float, 3>, 3> normalizeHomography(const std::array<std::ar
     return normalized;
 }
 
-std::array<float, 2> transformPoint(const std::array<std::array<float, 3>, 3>& homography, const dai::Point2f& point) {
+[[maybe_unused]] std::array<float, 2> transformPoint(const std::array<std::array<float, 3>, 3>& homography, const dai::Point2f& point) {
     const float x = homography[0][0] * point.x + homography[0][1] * point.y + homography[0][2];
     const float y = homography[1][0] * point.x + homography[1][1] * point.y + homography[1][2];
     const float z = homography[2][0] * point.x + homography[2][1] * point.y + homography[2][2];
