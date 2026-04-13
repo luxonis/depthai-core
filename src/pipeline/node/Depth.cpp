@@ -1,3 +1,7 @@
+/**
+ * @file Depth.cpp
+ * @brief Implementation of dai::node::Depth: stereo camera resolution, backend creation, and output aliasing.
+ */
 #include "depthai/pipeline/node/Depth.hpp"
 
 #include <cstring>
@@ -10,13 +14,21 @@ namespace dai {
 namespace node {
 namespace {
 
+/// Default ISP stream rate when requesting Camera outputs for stereo feeding Depth.
 constexpr float kDefaultIspFps = 30.f;
 
+/**
+ * @brief Detaches a node from the pipeline root and attaches it under a DeviceNodeGroup parent.
+ */
 void adoptFromPipeline(Pipeline& pipeline, Depth& parent, const std::shared_ptr<Node>& child) {
     pipeline.remove(child);
     parent.add(child);
 }
 
+/**
+ * @brief Creates a device node, removes it from the pipeline map, and adopts it under Depth.
+ * @tparam T Node type (e.g. StereoDepth, NeuralDepth).
+ */
 template <typename T>
 std::shared_ptr<T> createAdopted(Pipeline& pipeline, Depth& parent) {
     auto child = pipeline.create<T>();
@@ -24,6 +36,10 @@ std::shared_ptr<T> createAdopted(Pipeline& pipeline, Depth& parent) {
     return child;
 }
 
+/**
+ * @brief Finds existing Camera nodes matching the left/right sockets of a stereo pair.
+ * @return Pair of (left, right) cameras; either side may be null if not present in the pipeline.
+ */
 std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
     std::shared_ptr<Camera> left;
     std::shared_ptr<Camera> right;
@@ -42,12 +58,22 @@ std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(c
     return {left, right};
 }
 
+/**
+ * @brief Returns the first stereo pair advertised by the device.
+ * @throws std::runtime_error If the device exposes no stereo pairs (via DAI_CHECK_V).
+ */
 StereoPair requireFirstStereoPair(const std::shared_ptr<Device>& device) {
     const auto pairs = device->getStereoPairs();
     DAI_CHECK_V(!pairs.empty(), "Device has no stereo camera pair for Depth node.");
     return pairs[0];
 }
 
+/**
+ * @brief Ensures left/right cameras exist for the pair and returns their ISP outputs at kDefaultIspFps.
+ *
+ * Reuses existing Camera nodes on the pair sockets when found; otherwise creates them and adopts under parent.
+ * @return Pointers to left and right Camera ISP outputs suitable for StereoDepth::build / NeuralDepth::build.
+ */
 std::pair<Node::Output*, Node::Output*> ensureStereoIspOutputs(Pipeline& pipeline, Depth& parent, const StereoPair& pair) {
     auto [leftCam, rightCam] = findCamerasForPair(pipeline, pair);
     if(!leftCam) {
@@ -68,7 +94,9 @@ std::pair<Node::Output*, Node::Output*> ensureStereoIspOutputs(Pipeline& pipelin
 
 Depth::Depth(const std::shared_ptr<Device>& device) : DeviceNodeGroup(device) {}
 
-void Depth::buildInternal() {}
+void Depth::buildInternal() {
+    // Depth defers wiring to build(); nothing to do at construction time.
+}
 
 std::shared_ptr<Depth> Depth::build(DeviceModelZoo neuralModel) {
     DAI_CHECK_V(!built_, "Depth::build() was already called.");

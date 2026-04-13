@@ -1,3 +1,7 @@
+/**
+ * @file depth_node_test.cpp
+ * @brief On-device tests for dai::node::Depth (stereo backend selection, build lifecycle, outputs).
+ */
 #include <catch2/catch_all.hpp>
 
 #include "depthai/depthai.hpp"

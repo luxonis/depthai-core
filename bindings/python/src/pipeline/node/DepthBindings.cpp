@@ -4,6 +4,7 @@
 #include "depthai/pipeline/node/Depth.hpp"
 #include "depthai/common/DeviceModelZoo.hpp"
 
+/// Python bindings for dai.node.Depth (composite StereoDepth / NeuralDepth group).
 void bind_depth(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
@@ -15,9 +16,10 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
     callstack->pop();
     cb(m, pCallstack);
 
+    // build(neuralModel=...) wires backend; depth/confidence mirror the active subnode outputs.
     node.def("build", py::overload_cast<DeviceModelZoo>(&Depth::build), py::arg("neuralModel") = DeviceModelZoo::NEURAL_DEPTH_SMALL)
         .def_property_readonly("depth", [](Depth& d) -> Node::Output& { return d.depth(); }, py::return_value_policy::reference_internal)
         .def_property_readonly("confidence", [](Depth& d) -> Node::Output& { return d.confidence(); }, py::return_value_policy::reference_internal)
-        .def("getStereoDepth", &Depth::getStereoDepth)
-        .def("getNeuralDepth", &Depth::getNeuralDepth);
+        .def("getStereoDepth", &Depth::getStereoDepth, "Underlying StereoDepth on non-RVC4 platforms after build(); None on RVC4.")
+        .def("getNeuralDepth", &Depth::getNeuralDepth, "Underlying NeuralDepth on RVC4 after build(); None on other platforms.");
 }
