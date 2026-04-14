@@ -53,6 +53,9 @@ std::array<std::array<float, 4>, 4> invertSe3Matrix4x4(const std::array<std::arr
 
 void printMatrix(std::vector<std::vector<float>>& matrix);
 
+std::vector<std::vector<float>> toVecMatrix4x4(const std::array<std::array<float, 4>, 4>& m);
+bool isIdentity4x4(const std::vector<std::vector<float>>& m, float epsilon = MATRIX_EQ_EPSILON);
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 
 std::array<std::array<float, 3>, 3> cvMatToMatrix3x3(const cv::Mat& cvMat);

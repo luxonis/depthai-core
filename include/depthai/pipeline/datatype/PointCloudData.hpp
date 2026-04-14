@@ -206,11 +206,6 @@ class PointCloudData : public Buffer, public ProtoSerializable {
     /**
      * Retrieves image transformation data
      */
-    ImgTransformation& getTransformation();
-
-    /**
-     * Retrieves image transformation data (const)
-     */
     const ImgTransformation& getTransformation() const;
 
     /**

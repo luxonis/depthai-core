@@ -115,10 +115,6 @@ PointCloudData& PointCloudData::setInstanceNum(unsigned int instanceNum) {
     return *this;
 }
 
-ImgTransformation& PointCloudData::getTransformation() {
-    return transformation;
-}
-
 const ImgTransformation& PointCloudData::getTransformation() const {
     return transformation;
 }

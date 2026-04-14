@@ -1527,7 +1527,7 @@ TEST_CASE("PointCloudData stores and retrieves ImgTransformation", "[PointCloud]
     dai::PointCloudData pc;
     pc.setTransformation(srcTransform);
 
-    auto& retrieved = pc.getTransformation();
+    const auto& retrieved = pc.getTransformation();
     auto retrievedIntrinsics = retrieved.getIntrinsicMatrix();
 
     REQUIRE(retrievedIntrinsics[0][0] == Catch::Approx(500.f));
@@ -1538,7 +1538,7 @@ TEST_CASE("PointCloudData stores and retrieves ImgTransformation", "[PointCloud]
 
 TEST_CASE("PointCloudData transformation default is identity", "[PointCloud][Transformation]") {
     dai::PointCloudData pc;
-    auto& t = pc.getTransformation();
+    const auto& t = pc.getTransformation();
     auto intrinsics = t.getIntrinsicMatrix();
 
     // Default intrinsic matrix is identity
@@ -1549,12 +1549,12 @@ TEST_CASE("PointCloudData transformation default is identity", "[PointCloud][Tra
     REQUIRE(intrinsics[0][2] == Catch::Approx(0.f));
 }
 
-TEST_CASE("PointCloudData transformation mutated via reference", "[PointCloud][Transformation]") {
+TEST_CASE("PointCloudData transformation mutated via setter", "[PointCloud][Transformation]") {
     dai::PointCloudData pc;
     std::array<std::array<float, 3>, 3> intrinsics = {{{300.f, 0.f, 160.f}, {0.f, 300.f, 120.f}, {0.f, 0.f, 1.f}}};
-    pc.getTransformation() = dai::ImgTransformation(320, 240, intrinsics);
+    pc.setTransformation(dai::ImgTransformation(320, 240, intrinsics));
 
-    const auto& ct = static_cast<const dai::PointCloudData&>(pc).getTransformation();
+    const auto& ct = pc.getTransformation();
     auto mat = ct.getIntrinsicMatrix();
     REQUIRE(mat[0][0] == Catch::Approx(300.f));
     REQUIRE(mat[0][2] == Catch::Approx(160.f));

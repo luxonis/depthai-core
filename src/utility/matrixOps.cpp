@@ -578,5 +578,20 @@ cv::Mat matrix4x4ToCvMat(const std::array<std::array<float, 4>, 4>& matrix) {
 }
 
 #endif
+
+std::vector<std::vector<float>> toVecMatrix4x4(const std::array<std::array<float, 4>, 4>& m) {
+    std::vector<std::vector<float>> result(4, std::vector<float>(4));
+    for(int i = 0; i < 4; ++i)
+        for(int j = 0; j < 4; ++j) result[i][j] = m[i][j];
+    return result;
+}
+
+bool isIdentity4x4(const std::vector<std::vector<float>>& m, float epsilon) {
+    for(int i = 0; i < 4; ++i)
+        for(int j = 0; j < 4; ++j)
+            if(std::abs(m[i][j] - (i == j ? 1.0f : 0.0f)) > epsilon) return false;
+    return true;
+}
+
 }  // namespace matrix
 }  // namespace dai

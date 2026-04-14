@@ -525,22 +525,6 @@ bool PointCloud::hasTransformationChanged(const ImgFrame& frame) {
     return true;
 }
 
-// ── General utility functions ──
-
-static std::vector<std::vector<float>> toVecMatrix(const std::array<std::array<float, 4>, 4>& m) {
-    std::vector<std::vector<float>> result(4, std::vector<float>(4));
-    for(int i = 0; i < 4; ++i)
-        for(int j = 0; j < 4; ++j) result[i][j] = m[i][j];
-    return result;
-}
-
-static bool isIdentity4x4(const std::vector<std::vector<float>>& m) {
-    for(int i = 0; i < 4; ++i)
-        for(int j = 0; j < 4; ++j)
-            if(std::abs(m[i][j] - (i == j ? 1.0f : 0.0f)) > 1e-6f) return false;
-    return true;
-}
-
 static void logMatrix4x4(const std::shared_ptr<spdlog::logger>& logger,
                           spdlog::level::level_enum level,
                           const std::string& name,
@@ -576,7 +560,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
     // After rectification, the rotation already accounts for the rectification change.
     auto frameExtrinsics = depthFrame.transformation.getExtrinsics();
     auto refCamera = frameExtrinsics.toCameraSocket;
-    auto T_frame_to_ref = toVecMatrix(frameExtrinsics.getTransformationMatrix(useSpecTranslation, unit));
+    auto T_frame_to_ref = matrix::toVecMatrix4x4(frameExtrinsics.getTransformationMatrix(useSpecTranslation, unit));
     logMatrix4x4(pimpl->logger, spdlog::level::debug, "T_frame_to_ref", T_frame_to_ref);
 
     // Get calibration data
@@ -621,12 +605,12 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
         }
 
         case PointCloudConfig::CoordinateSystemType::NONE: {
-            auto configMat = toVecMatrix(config.getTransformationMatrix());
+            auto configMat = matrix::toVecMatrix4x4(config.getTransformationMatrix());
 
-            if(!isIdentity4x4(configMat)) {
+            if(!matrix::isIdentity4x4(configMat)) {
                 pimpl->logger->info("Applying custom transform composed with frame extrinsics");
                 T_final = matrix::matMul(configMat, T_frame_to_ref);
-            } else if(!isIdentity4x4(T_frame_to_ref)) {
+            } else if(!matrix::isIdentity4x4(T_frame_to_ref)) {
                 pimpl->logger->info("Applying frame extrinsics (T_frame_to_ref)");
                 T_final = T_frame_to_ref;
             } else {

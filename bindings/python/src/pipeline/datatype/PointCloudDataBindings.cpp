@@ -179,6 +179,6 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
         .def("setMaxZ", &PointCloudData::setMaxZ, DOC(dai, PointCloudData, setMaxZ))
         .def("getInstanceNum", &PointCloudData::getInstanceNum, DOC(dai, PointCloudData, getInstanceNum))
         .def("updateBoundingBox", &PointCloudData::updateBoundingBox, DOC(dai, PointCloudData, updateBoundingBox))
-        .def("getTransformation", [](PointCloudData& data) -> ImgTransformation& { return data.getTransformation(); }, py::return_value_policy::reference_internal)
+        .def("getTransformation", &PointCloudData::getTransformation, py::return_value_policy::reference_internal)
         .def("setTransformation", &PointCloudData::setTransformation, py::arg("transformation"));
 }
