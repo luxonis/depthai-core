@@ -43,7 +43,7 @@ class ResultThread(threading.Thread):
         self.result = process
 
 # Function to run ctest with specific environment variables and labels
-def run_ctest(env_vars, labels, blocking=True, name=""):
+def run_ctest(env_vars, labels, excluded_labels=None, blocking=True, name=""):
     env = os.environ.copy()
     env_vars["DEPTHAI_PIPELINE_DEBUGGING"] = "1"
     
@@ -76,6 +76,10 @@ def run_ctest(env_vars, labels, blocking=True, name=""):
 
     if os.name == "nt":
         cmd.extend(["-LE", "^nowindows$"])
+
+    if excluded_labels:
+        excluded_pattern = "|".join(f"^{label}$" for label in excluded_labels)
+        cmd.extend(["-LE", excluded_pattern])
 
     for label in labels:
         # Encapsulate label in ^label$ to match exactly
@@ -136,6 +140,18 @@ if __name__ == "__main__":
         required=False,
     )
 
+    parser.add_argument(
+        "--rvc4replay",
+        action="store_true",
+        required=False,
+    )
+
+    parser.add_argument(
+        "--rvc2replay",
+        action="store_true",
+        required=False,
+    )
+
     args = parser.parse_args()
     test_dir = args.test_dir
     print("Going to run tests in directory:", test_dir)
@@ -182,6 +198,7 @@ if __name__ == "__main__":
 
     # List to keep track of results
     resultThreads = []
+    replay_excluded_labels = ["noreplayci"]
 
     # Filter configurations based on command-line arguments
     if args.rvc4:
@@ -190,19 +207,26 @@ if __name__ == "__main__":
         test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "usb"]
     elif args.rvc2:
         test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
+    elif args.rvc4replay:
+        test_configs = [config for config in all_configs if "rvc4" in config.get("labels", []) and config.get("env", {}).get("DEPTHAI_PROTOCOL") == "tcpip"]
+    elif args.rvc2replay:
+        test_configs = [config for config in all_configs if "rvc2" in config.get("labels", []) or "onhost" in config.get("labels", [])]
     elif args.rvc4rgb:
         test_configs = [config for config in all_configs if "rvc4rgb" in config.get("labels", [])]
     elif args.fsync:
         test_configs = [config for config in all_configs if "rvc4fsync" in config.get("labels", [])]
+    else:
+        parser.error("One test target argument is required.")
 
 
     for config in test_configs:
         name = config["name"]
         env_vars = config["env"]
         labels = config.get("labels")
+        excluded_labels = replay_excluded_labels if args.rvc4replay or args.rvc2replay else []
 
         print(f"Running tests for configuration: {name}")
-        resultThread = run_ctest(env_vars, labels, blocking=False, name=name)
+        resultThread = run_ctest(env_vars, labels, excluded_labels=excluded_labels, blocking=False, name=name)
         resultThreads.append((name, resultThread))
 
     # Process the results

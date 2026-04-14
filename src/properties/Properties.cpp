@@ -96,6 +96,7 @@ UVCProperties::~UVCProperties() = default;
 VideoEncoderProperties::~VideoEncoderProperties() = default;
 WarpProperties::~WarpProperties() = default;
 GlobalProperties::~GlobalProperties() = default;
+DeviceProperties::~DeviceProperties() = default;
 CastProperties::~CastProperties() = default;
 VppProperties::~VppProperties() = default;
 

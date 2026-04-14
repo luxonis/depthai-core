@@ -196,6 +196,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_LEVEL | Sets logging verbosity, 'trace', 'debug', 'info', 'warn', 'error' and 'off' |
 | XLINK_LEVEL | Sets logging verbosity of XLink library, 'debug'. 'info', 'warn', 'error', 'fatal' and 'off' |
 | DEPTHAI_INSTALL_SIGNAL_HANDLER | Set to 0 to disable installing Backward signal handler for stack trace printing |
+| DEPTHAI_DEBUGGER | Enables debugger-friendly behavior. `ON` is equivalent to `DEPTHAI_WATCHDOG=0` and `DEPTHAI_RPC_READ_TIMEOUT=0`. Explicit values of those variables still take precedence. |
 | DEPTHAI_WATCHDOG | Sets device watchdog timeout. Useful for debugging (`DEPTHAI_WATCHDOG=0`), to prevent device reset while the process is paused. |
 | DEPTHAI_WATCHDOG_INITIAL_DELAY | Specifies delay after which the device watchdog starts. |
 | DEPTHAI_SEARCH_TIMEOUT | Specifies timeout in milliseconds for device searching in blocking functions. |

@@ -19,9 +19,11 @@ void basicIMUTest(float fps, std::initializer_list<dai::IMUSensor> sensors, floa
         auto reportData = reportQueue->get<dai::BenchmarkReport>();
         REQUIRE(reportData != nullptr);
         REQUIRE(reportData->numMessagesReceived > 1);
-        REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(maxEpsilon));
-        REQUIRE(reportData->averageLatency > 0.0);
-        REQUIRE(reportData->averageLatency < 1.0);  // Sanity check that the latency measurement works correctly
+        if(!p.isHolisticReplayEnabled()) {
+            REQUIRE(reportData->fps == Catch::Approx(fps).epsilon(maxEpsilon));
+            REQUIRE(reportData->averageLatency > 0.0);
+            REQUIRE(reportData->averageLatency < 1.0);  // Sanity check that the latency measurement works correctly
+        }
     }
 }
 

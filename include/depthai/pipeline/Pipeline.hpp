@@ -3,6 +3,7 @@
 
 // standard
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
@@ -43,6 +44,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
         if(createImplicitDevice) {
             defaultDevice = std::make_shared<Device>();
+        } else {
+            hostProperties = DeviceProperties();
+            defaultDeviceProperties = &hostProperties.value();
         }
     }
     PipelineImpl(std::shared_ptr<Device> device) : assetManager("/pipeline/"), defaultDevice{std::move(device)} {}
@@ -89,6 +93,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setXLinkChunkSize(int sizeBytes);
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(GlobalProperties globalProperties);
+    void setDefaultDeviceProperties(const DeviceProperties& deviceProperties);
+    void setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties);
+    std::optional<DeviceProperties> getDefaultDeviceProperties() const;
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
@@ -158,6 +165,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
+    std::optional<DeviceProperties> hostProperties;
+    DeviceProperties* defaultDeviceProperties = nullptr;
 
     // Queue for tasks
     LockingQueue<std::function<void()>> tasks;
@@ -309,6 +318,27 @@ class Pipeline {
     }
 
     /**
+     * Sets default device properties
+     */
+    void setDefaultDeviceProperties(DeviceProperties deviceProperties) {
+        impl()->setDefaultDeviceProperties(deviceProperties);
+    }
+
+    /**
+     * Sets default device properties reference. The properties should live at least as long as the pipeline.
+     */
+    void setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties) {
+        impl()->setDefaultDevicePropertiesRef(deviceProperties);
+    }
+
+    /**
+     * Gets a copy of default device properties. If pipeline is in host only mode, returns host properties, otherwise returns device properties
+     */
+    std::optional<DeviceProperties> getDefaultDeviceProperties() const {
+        return impl()->getDefaultDeviceProperties();
+    }
+
+    /**
      * @returns Pipeline schema
      */
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
@@ -408,9 +438,9 @@ class Pipeline {
     }
 
     /**
-     * check if calib data has been set or the default will be returned
-     * @return true - calib data has been set
-     * @return false - calib data has not been set - default will be returned
+     * check if calib data is available on the device
+     * @return true - calib data is available
+     * @return false - calib data is not available
      */
     bool isCalibrationDataAvailable() const {
         return impl()->isCalibrationDataAvailable();
@@ -543,6 +573,8 @@ class Pipeline {
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
+    bool isHolisticRecordEnabled() const;
+    bool isHolisticReplayEnabled() const;
 
     /// Pipeline debugging
     void enablePipelineDebugging(bool enable = true);
