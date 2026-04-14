@@ -776,7 +776,9 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
     pointCloudData->set_maxx(message->getMaxX());
     pointCloudData->set_maxy(message->getMaxY());
     pointCloudData->set_maxz(message->getMaxZ());
-    pointCloudData->set_sparse(message->isSparse());
+    
+    // Set sparse flag based on height for backward compatibility with protobuf
+    pointCloudData->set_sparse(message->getHeight() == 1);
     pointCloudData->set_color(message->isColor());
 
     if(!metadataOnly) {
@@ -1056,7 +1058,6 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
     obj.setMaxX(pcl->maxx());
     obj.setMaxY(pcl->maxy());
     obj.setMaxZ(pcl->maxz());
-    obj.setSparse(pcl->sparse());
     obj.setColor(pcl->color());
 
     if(!metadataOnly && !pcl->data().empty() && pcl->data().data() != nullptr) {
