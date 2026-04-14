@@ -49,6 +49,10 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
         .value("SGM_8", GPUStereoConfig::PathAggregation::SGM_8)
         .value("SGM_MGM_INPLACE", GPUStereoConfig::PathAggregation::SGM_MGM_INPLACE)
         .export_values();
+    py::enum_<GPUStereoConfig::SpeckleFilterBackend>(gpuStereoConfig, "SpeckleFilterBackend", py::doc("When speckleMaxSize > 0: OPENCL runs speckle on GPU; OPENCV uses cv::filterSpeckles on the host after stereo (same family as StereoDepth)."))
+        .value("OPENCL", GPUStereoConfig::SpeckleFilterBackend::OPENCL)
+        .value("OPENCV", GPUStereoConfig::SpeckleFilterBackend::OPENCV)
+        .export_values();
 
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
@@ -114,6 +118,10 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("censusRadiusY", &GPUStereoConfig::census_radius_y, DOC(dai, GPUStereoConfig, census_radius_y))
         .def_readwrite("speckleMaxSize", &GPUStereoConfig::speckle_max_size, DOC(dai, GPUStereoConfig, speckle_max_size))
         .def_readwrite("speckleMaxDiff", &GPUStereoConfig::speckle_max_diff, DOC(dai, GPUStereoConfig, speckle_max_diff))
+        .def_readwrite(
+            "speckleFilterBackend",
+            &GPUStereoConfig::speckle_filter_backend,
+            py::doc("OPENCL (default) or OPENCV; only used when speckleMaxSize > 0."))
         .def_readwrite("textureFilterRadius", &GPUStereoConfig::texture_filter_radius, DOC(dai, GPUStereoConfig, texture_filter_radius))
         .def_readwrite("textureThreshold", &GPUStereoConfig::texture_threshold, DOC(dai, GPUStereoConfig, texture_threshold))
         .def_readwrite("featureMaskEdgeThresh", &GPUStereoConfig::feature_mask_edge_thresh, DOC(dai, GPUStereoConfig, feature_mask_edge_thresh))

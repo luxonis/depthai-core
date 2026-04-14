@@ -490,6 +490,7 @@ _GPUS_CONFIG_FIELDS = (
     "censusRadiusY",
     "speckleMaxSize",
     "speckleMaxDiff",
+    "speckleFilterBackend",
     "textureFilterRadius",
     "textureThreshold",
     "featureMaskEdgeThresh",
@@ -511,6 +512,8 @@ _GPUS_CONFIG_FIELDS = (
 
 def _gpustereo_config_assign(dst: dai.GPUStereoConfig, src: dai.GPUStereoConfig) -> None:
     for name in _GPUS_CONFIG_FIELDS:
+        if not hasattr(src, name):
+            continue
         setattr(dst, name, getattr(src, name))
     dst.algorithmControl.depthUnit = src.algorithmControl.depthUnit
     dst.algorithmControl.customDepthUnitMultiplier = src.algorithmControl.customDepthUnitMultiplier
@@ -558,6 +561,8 @@ def _apply_gpustereo_config_header_defaults(c: dai.GPUStereoConfig) -> None:
     c.censusRadiusY = 2
     c.speckleMaxSize = 0
     c.speckleMaxDiff = 1
+    if hasattr(c, "speckleFilterBackend"):
+        c.speckleFilterBackend = G.SpeckleFilterBackend.OPENCL
     c.textureFilterRadius = 0
     c.textureThreshold = 25.0
     c.featureMaskEdgeThresh = 0.0
@@ -646,6 +651,8 @@ def save_config_file(path: Path, data: dict) -> None:
 def _serialize_gpustereo_config(cfg: dai.GPUStereoConfig) -> dict:
     out: dict = {}
     for name in _GPUS_CONFIG_FIELDS:
+        if not hasattr(cfg, name):
+            continue
         v = getattr(cfg, name)
         if isinstance(v, enum.Enum):
             out[name] = v.name
@@ -961,6 +968,14 @@ class StereoConfigPanel(QWidget):
         self.speckle_diff = QSpinBox()
         self.speckle_diff.setRange(1, 65535)
         fl.addRow("Speckle max diff", self.speckle_diff)
+        self.speckle_backend = QComboBox()
+        for val, label in (
+            (self.G.SpeckleFilterBackend.OPENCL, "OPENCL (GPU)"),
+            (self.G.SpeckleFilterBackend.OPENCV, "OPENCV (StereoDepth-style)"),
+        ):
+            self.speckle_backend.addItem(label, val)
+        self.speckle_backend.setToolTip("When speckle max size > 0: GPU OpenCL speckle vs host cv::filterSpeckles.")
+        fl.addRow("Speckle backend", self.speckle_backend)
 
         g, fl = gb("Edge-aware / Hole fill / Region")
         self.ea_r = QSpinBox()
@@ -1056,6 +1071,7 @@ class StereoConfigPanel(QWidget):
             self.fm_morph,
             self.speckle_size,
             self.speckle_diff,
+            self.speckle_backend,
             self.region_refine,
             self.region_cell,
             self.region_res,
@@ -1154,6 +1170,7 @@ class StereoConfigPanel(QWidget):
         self.fm_morph.setEnabled(fm_edge_on)
 
         self.speckle_diff.setEnabled(self.speckle_size.value() > 0)
+        self.speckle_backend.setEnabled(self.speckle_size.value() > 0)
 
         rr = self.region_refine.isChecked()
         self.region_cell.setEnabled(rr)
@@ -1220,6 +1237,10 @@ class StereoConfigPanel(QWidget):
         self.fm_morph.setValue(cfg.featureMaskMorphRadius)
         self.speckle_size.setValue(cfg.speckleMaxSize)
         self.speckle_diff.setValue(cfg.speckleMaxDiff)
+        if hasattr(cfg, "speckleFilterBackend"):
+            self._set_combo_by_data(self.speckle_backend, cfg.speckleFilterBackend)
+        else:
+            self.speckle_backend.setCurrentIndex(0)
         self.ea_r.setValue(cfg.edgeAwareRadius)
         self.ea_eps.setValue(float(cfg.edgeAwareEps))
         self.hole_r.setValue(cfg.holeFillRadius)
@@ -1273,6 +1294,8 @@ class StereoConfigPanel(QWidget):
         c.featureMaskMorphRadius = self.fm_morph.value()
         c.speckleMaxSize = self.speckle_size.value()
         c.speckleMaxDiff = self.speckle_diff.value()
+        if hasattr(c, "speckleFilterBackend"):
+            c.speckleFilterBackend = self.speckle_backend.currentData()
         c.edgeAwareRadius = self.ea_r.value()
         c.edgeAwareEps = self.ea_eps.value()
         c.holeFillRadius = self.hole_r.value()

@@ -18,6 +18,8 @@ class GPUStereoConfig : public Buffer {
 
     enum class PathAggregation { NONE, SGM_2, SGM_4, SGM_8, SGM_MGM_INPLACE };
 
+    enum class SpeckleFilterBackend { OPENCL, OPENCV };
+
     struct AlgorithmControl {
         using DepthUnit = dai::DepthUnit;
         DepthUnit depthUnit = DepthUnit::MILLIMETER;
@@ -65,6 +67,7 @@ class GPUStereoConfig : public Buffer {
     int census_radius_y = 2;
     int speckle_max_size = 0;
     int speckle_max_diff = 1;
+    SpeckleFilterBackend speckle_filter_backend = SpeckleFilterBackend::OPENCL;
     int texture_filter_radius = 0;
     float texture_threshold = 25.0f;
     float feature_mask_edge_thresh = 0.f;
@@ -135,6 +138,7 @@ class GPUStereoConfig : public Buffer {
                       census_radius_y,
                       speckle_max_size,
                       speckle_max_diff,
+                      speckle_filter_backend,
                       texture_filter_radius,
                       texture_threshold,
                       feature_mask_edge_thresh,
