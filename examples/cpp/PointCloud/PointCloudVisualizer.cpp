@@ -1,20 +1,16 @@
 /**
  * PointCloud Visualizer
  *
- * Live 3D visualization of stereo-depth point clouds using the built-in
- * RemoteConnection (foxglove) visualizer, with a colorized depth preview
- * in an OpenCV window.
+ * Live 3D visualization of colorized stereo-depth point clouds using the
+ * built-in RemoteConnection (foxglove) visualizer.
  *
  * Run the example, then open the visualizer in a browser (default
  * http://localhost:8082) to see the live point cloud.
- * Press 'q' in viewer / OpenCV window or Ctrl-C in the terminal to quit.
+ * Press 'q' in the viewer or Ctrl-C in the terminal to quit.
  */
 
-#include <chrono>
 #include <csignal>
 #include <iostream>
-#include <opencv2/opencv.hpp>
-#include <thread>
 
 #include "depthai/depthai.hpp"
 #include "depthai/remote_connection/RemoteConnection.hpp"
@@ -23,38 +19,6 @@
 static volatile std::sig_atomic_t isRunning{1};
 void signalHandler(int) {
     isRunning = 0;
-}
-
-// Colorize a uint16 depth frame for display (same logic as the Python version)
-static cv::Mat colorizeDepth(const cv::Mat& depthFrame) {
-    // Down-sample every 4th row for percentile estimation
-    cv::Mat downscaled;
-    cv::resize(depthFrame, downscaled, {}, 1.0, 0.25, cv::INTER_NEAREST);
-
-    std::vector<uint16_t> vals;
-    vals.reserve(downscaled.total());
-    for(int i = 0; i < downscaled.rows; i++) {
-        for(int j = 0; j < downscaled.cols; j++) {
-            vals.push_back(downscaled.at<uint16_t>(i, j));
-        }
-    }
-    std::sort(vals.begin(), vals.end());
-
-    if(vals.empty()) return cv::Mat::zeros(depthFrame.size(), CV_8UC3);
-
-    // Non-zero 1st/99th percentile as min/max
-    auto nonZeroIt = std::upper_bound(vals.begin(), vals.end(), uint16_t(0));
-    if(nonZeroIt == vals.end()) return cv::Mat::zeros(depthFrame.size(), CV_8UC3);
-    const auto nonZeroCount = static_cast<size_t>(std::distance(nonZeroIt, vals.end()));
-    double minD = *std::next(nonZeroIt, nonZeroCount / 100);
-    double maxD = *std::next(nonZeroIt, nonZeroCount * 99 / 100);
-    if(maxD <= minD) maxD = minD + 1;
-
-    cv::Mat normalized;
-    depthFrame.convertTo(normalized, CV_8UC1, 255.0 / (maxD - minD), -255.0 * minD / (maxD - minD));
-    cv::Mat colorized;
-    cv::applyColorMap(normalized, colorized, cv::COLORMAP_HOT);
-    return colorized;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,54 +35,55 @@ int main() {
     auto device = pipeline.getDefaultDevice();
     std::cout << "Device: " << device->getDeviceName() << "  (ID: " << device->getDeviceId() << ")\n\n";
 
-    // ── Camera + StereoDepth ─────────────────────────────────────────
+    const auto size = std::make_pair(640, 400);
+
+    // ── Cameras ──────────────────────────────────────────────────────
     auto left = pipeline.create<dai::node::Camera>();
     auto right = pipeline.create<dai::node::Camera>();
-    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto color = pipeline.create<dai::node::Camera>();
 
     left->build(dai::CameraBoardSocket::CAM_B);
     right->build(dai::CameraBoardSocket::CAM_C);
+    color->build(dai::CameraBoardSocket::CAM_A);
 
-    left->requestOutput({640, 400})->link(stereo->left);
-    right->requestOutput({640, 400})->link(stereo->right);
+    // ── StereoDepth ──────────────────────────────────────────────────
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    left->requestOutput(size)->link(stereo->left);
+    right->requestOutput(size)->link(stereo->right);
+
+    // ── Align depth to color camera ──────────────────────────────────
+    auto colorOut = color->requestOutput(size, dai::ImgFrame::Type::RGB888i,
+                                         dai::ImgResizeMode::CROP, std::nullopt, true);
+
+    auto align = pipeline.create<dai::node::ImageAlign>();
+    stereo->depth.link(align->input);
+    colorOut->link(align->inputAlignTo);
 
     // ── PointCloud node ──────────────────────────────────────────────
     auto pc = pipeline.create<dai::node::PointCloud>();
     pc->setRunOnHost(true);
-    pc->initialConfig->setLengthUnit(dai::LengthUnit::METER);
-    stereo->depth.link(pc->inputDepth);
+    align->outputAligned.link(pc->inputDepth);
+    colorOut->link(pc->getColorInput());
 
     // Publish the point cloud to the remote visualizer
-    remoteConnector.addTopic("pointcloud", pc->outputPointCloud);
-
-    // Depth output queue for the OpenCV preview (passthrough keeps it in sync with the point cloud)
-    auto qDepth = pc->passthroughDepth.createOutputQueue(4, false);
+    remoteConnector.addTopic("pcl", pc->outputPointCloud);
 
     pipeline.start();
     remoteConnector.registerPipeline(pipeline);
 
+    device->setIrLaserDotProjectorIntensity(0.7);
+
     std::cout << "Pipeline started.\n"
               << "Open the visualizer at http://localhost:8082 to see the point cloud.\n"
-              << "Press 'q' in viewer / OpenCV window or Ctrl-C to quit.\n";
+              << "Press 'q' in the viewer or Ctrl-C to quit.\n";
 
     while(isRunning != 0 && pipeline.isRunning()) {
-        // Show colorized depth in an OpenCV window
-        auto depthMsg = qDepth->tryGet<dai::ImgFrame>();
-        if(depthMsg) {
-            cv::imshow("Depth", colorizeDepth(depthMsg->getCvFrame()));
-        }
-
-        int cvKey = cv::waitKey(1);
-        if(cvKey == 'q') break;
-
         int key = remoteConnector.waitKey(1);
         if(key == 'q') {
             std::cout << "Got 'q' key from the remote connection.\n";
             break;
         }
     }
-
-    cv::destroyAllWindows();
 
     std::cout << "Done.\n";
     return 0;
