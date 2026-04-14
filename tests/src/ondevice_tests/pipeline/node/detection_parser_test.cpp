@@ -267,7 +267,7 @@ void runDetectionParserReplaySmokeTest(const std::string& modelName,
     dai::Pipeline p;
     auto device = p.getDefaultDevice();
 
-    auto description = dai::NNModelDescription{modelName, "RVC4"};
+    auto description = dai::NNModelDescription{modelName, device->getPlatformAsString()};
     auto archivePath = dai::getModelFromZoo(description);
     dai::NNArchive nnArchive{archivePath};
 
