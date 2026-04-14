@@ -53,6 +53,7 @@ try:
         QPen,
         QPixmap,
         QShortcut,
+        QStandardItemModel,
     )
     from PyQt6.QtWidgets import (
         QApplication,
@@ -837,6 +838,14 @@ class StereoConfigPanel(QWidget):
         self.block_radius = QSpinBox()
         self.block_radius.setRange(1, 7)
         fl.addRow("Block match radius", self.block_radius)
+        self.refine_r = QSpinBox()
+        self.refine_r.setRange(1, 64)
+        self.refine_r.setToolTip("Pyramid refinement search radius at downsampled levels (not full-res).")
+        fl.addRow("Refinement radius", self.refine_r)
+        self.refine_r_full = QSpinBox()
+        self.refine_r_full.setRange(1, 64)
+        self.refine_r_full.setToolTip("Refinement search radius at full resolution (finest pyramid level).")
+        fl.addRow("Refinement radius (full-res)", self.refine_r_full)
         self.adaptive_sigma = QDoubleSpinBox()
         self.adaptive_sigma.setRange(0.0, 1.0)
         self.adaptive_sigma.setDecimals(3)
@@ -1021,6 +1030,151 @@ class StereoConfigPanel(QWidget):
 
         root.addWidget(scroll)
         self._load_from_config(initial)
+        self._wire_dependency_state()
+        self._refresh_dependency_state()
+
+    def _wire_dependency_state(self) -> None:
+        watched: list[QWidget] = [
+            self.use_cost_volume,
+            self.cost_agg,
+            self.path_agg,
+            self.prefilter,
+            self.cost_method,
+            self.adaptive_sigma,
+            self.block_radius,
+            self.refine_r,
+            self.refine_r_full,
+            self.levels,
+            self.census_rx,
+            self.census_ry,
+            self.lr_check,
+            self.lr_check_fast,
+            self.conf_thr,
+            self.tex_r,
+            self.fm_edge,
+            self.fm_corner,
+            self.fm_morph,
+            self.speckle_size,
+            self.speckle_diff,
+            self.region_refine,
+            self.region_cell,
+            self.region_res,
+            self.temporal_alpha,
+            self.temporal_delta,
+            self.temporal_persistency,
+            self.ea_r,
+            self.ea_eps,
+            self.hole_r,
+            self.hole_ss,
+            self.hole_sr,
+            self.second_peak,
+            self.second_peak_gap,
+            self.sgm_p1,
+            self.sgm_p2,
+            self.sgm_adaptive_p2,
+        ]
+        for w in watched:
+            if isinstance(w, (QSpinBox, QDoubleSpinBox)):
+                w.valueChanged.connect(self._refresh_dependency_state)
+            elif isinstance(w, QComboBox):
+                w.currentIndexChanged.connect(self._refresh_dependency_state)
+            elif isinstance(w, QCheckBox):
+                w.stateChanged.connect(self._refresh_dependency_state)
+
+    def _refresh_dependency_state(self) -> None:
+        G = self.G
+        use_cv = self.use_cost_volume.isChecked()
+        cm = self.cost_method.currentData()
+        sad = cm == G.CostMethod.SAD
+        census_rank = cm in (G.CostMethod.CENSUS, G.CostMethod.RANK)
+        cv_agg = self.cost_agg.currentData()
+        path = self.path_agg.currentData()
+        path_none = path == G.PathAggregation.NONE
+        n_levels = int(self.levels.currentData())
+
+        pm = self.prefilter.model()
+        if isinstance(pm, QStandardItemModel):
+            for i in range(self.prefilter.count()):
+                d = self.prefilter.itemData(i)
+                ok = not (
+                    use_cv
+                    and d
+                    in (
+                        G.PrefilterMethod.GAUSSIAN_3x3,
+                        G.PrefilterMethod.BILATERAL_PREFILTER,
+                    )
+                )
+                it = pm.item(i)
+                if it is not None:
+                    it.setEnabled(ok)
+        pre_bad_cv = self.prefilter.currentData() in (
+            G.PrefilterMethod.GAUSSIAN_3x3,
+            G.PrefilterMethod.BILATERAL_PREFILTER,
+        )
+        if use_cv and pre_bad_cv:
+            self.prefilter.blockSignals(True)
+            self._set_combo_by_data(self.prefilter, G.PrefilterMethod.NONE)
+            self.prefilter.blockSignals(False)
+            self.prefilter.currentIndexChanged.emit(self.prefilter.currentIndex())
+
+        lr = self.lr_check.isChecked()
+        lr_fast = self.lr_check_fast.isChecked()
+        conf_on = self.conf_thr.value() > 0
+        block_needed = (not use_cv) or conf_on or (lr and not lr_fast)
+        self.block_radius.setEnabled(block_needed)
+
+        self.adaptive_sigma.setEnabled((not use_cv) and sad)
+
+        self.census_rx.setEnabled(census_rank)
+        self.census_ry.setEnabled(census_rank)
+
+        self.cost_agg.setEnabled(use_cv)
+        self.path_agg.setEnabled(use_cv)
+        self.use_fp16.setEnabled(use_cv)
+
+        box = use_cv and cv_agg == G.CostVolumeAggregation.BOX
+        bilat = use_cv and cv_agg == G.CostVolumeAggregation.BILATERAL
+        self.box_agg_r.setEnabled(box)
+        self.bilat_agg_r.setEnabled(bilat)
+        self.bilat_sigma_s.setEnabled(bilat)
+        self.bilat_sigma_r.setEnabled(bilat)
+
+        sgm = use_cv and not path_none
+        self.sgm_p1.setEnabled(sgm)
+        self.sgm_p2.setEnabled(sgm)
+        pre_none = self.prefilter.currentData() == G.PrefilterMethod.NONE
+        self.sgm_adaptive_p2.setEnabled(sgm and not (use_cv and pre_none))
+
+        self.lr_check_fast.setEnabled(lr)
+
+        self.tex_t.setEnabled(self.tex_r.value() > 0)
+
+        fm_edge_on = self.fm_edge.value() > 0
+        self.fm_corner.setEnabled(fm_edge_on)
+        self.fm_morph.setEnabled(fm_edge_on)
+
+        self.speckle_diff.setEnabled(self.speckle_size.value() > 0)
+
+        rr = self.region_refine.isChecked()
+        self.region_cell.setEnabled(rr)
+        self.region_res.setEnabled(rr)
+
+        ta = self.temporal_alpha.value()
+        temp_on = 0.0 < ta < 1.0
+        self.temporal_delta.setEnabled(temp_on)
+        self.temporal_persistency.setEnabled(temp_on)
+
+        self.ea_eps.setEnabled(self.ea_r.value() > 0)
+
+        hf_on = self.hole_r.value() > 0
+        self.hole_ss.setEnabled(hf_on)
+        self.hole_sr.setEnabled(hf_on)
+
+        refine_ok = n_levels >= 2
+        self.refine_r.setEnabled(refine_ok)
+        self.refine_r_full.setEnabled(refine_ok)
+
+        self.second_peak_gap.setEnabled(self.second_peak.value() > 0.0)
 
     def _set_combo_by_data(self, combo: QComboBox, value) -> None:
         for i in range(combo.count()):
@@ -1037,6 +1191,8 @@ class StereoConfigPanel(QWidget):
         self._set_combo_by_data(self.subpixel, cfg.subpixelBits)
         self._set_combo_by_data(self.cost_method, cfg.costMethod)
         self.block_radius.setValue(cfg.blockMatchRadius)
+        self.refine_r.setValue(int(cfg.refinementRadius))
+        self.refine_r_full.setValue(int(cfg.refinementRadiusFull))
         self.adaptive_sigma.setValue(float(cfg.adaptiveSupportRangeSigma))
         self.census_rx.setValue(cfg.censusRadiusX)
         self.census_ry.setValue(cfg.censusRadiusY)
@@ -1088,6 +1244,8 @@ class StereoConfigPanel(QWidget):
         c.subpixelBits = self.subpixel.currentData()
         c.costMethod = self.cost_method.currentData()
         c.blockMatchRadius = self.block_radius.value()
+        c.refinementRadius = self.refine_r.value()
+        c.refinementRadiusFull = self.refine_r_full.value()
         c.adaptiveSupportRangeSigma = self.adaptive_sigma.value()
         c.censusRadiusX = self.census_rx.value()
         c.censusRadiusY = self.census_ry.value()
@@ -1128,8 +1286,6 @@ class StereoConfigPanel(QWidget):
         c.temporalPersistencyMode = int(self.temporal_persistency.currentData())
         c.useQcomAcceleratedOps = self.qcom_ops.isChecked()
         c.minDisp = base.minDisp
-        c.refinementRadius = base.refinementRadius
-        c.refinementRadiusFull = base.refinementRadiusFull
         c.prefilterBilateralSigmaSpatial = base.prefilterBilateralSigmaSpatial
         c.prefilterBilateralSigmaRange = base.prefilterBilateralSigmaRange
         return c
