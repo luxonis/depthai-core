@@ -266,35 +266,34 @@ void runDetectionParserReplaySmokeTest(const std::string& modelName,
                                        const DetectionParserSmokeExpectations& expectations) {
     dai::Pipeline p;
     auto device = p.getDefaultDevice();
-
-    auto description = dai::NNModelDescription{modelName, device->getPlatformAsString()};
-    auto archivePath = dai::getModelFromZoo(description);
-    dai::NNArchive nnArchive{archivePath};
-
-    auto size = nnArchive.getInputSize();
-    REQUIRE(size.has_value());
-
     auto replayNode = p.create<dai::node::ReplayVideo>();
     replayNode->setLoop(false);
     replayNode->setFps(30);
     replayNode->setOutFrameType(dai::ImgFrame::Type::BGR888i);
     replayNode->setReplayVideoFile(testVideoPath);
+
+    auto detectionNetwork = p.create<dai::node::DetectionNetwork>()->build(replayNode, modelName);
+    auto optionalNNArchive = detectionNetwork->neuralNetwork->getNNArchive();
+
+    REQUIRE(optionalNNArchive.has_value());
+    dai::NNArchive nnArchive = *optionalNNArchive;
+
+    auto size = nnArchive.getInputSize();
+    REQUIRE(size.has_value());
     replayNode->setSize(*size);
 
-    auto nn = p.create<dai::node::NeuralNetwork>()->build(replayNode->out, nnArchive);
-    auto detectionParser = p.create<dai::node::DetectionParser>()->build(nn->out, nnArchive);
-    detectionParser->setConfidenceThreshold(0.01F);
+    detectionNetwork->detectionParser->setConfidenceThreshold(0.01F);
 
-    REQUIRE(detectionParser->properties.parser.decodingFamily == YoloDecodingFamily::YOLO26);
-    REQUIRE(detectionParser->properties.parser.decodeSegmentation == expectations.decodeSegmentation);
-    REQUIRE(detectionParser->properties.parser.decodeKeypoints == expectations.decodeKeypoints);
+    REQUIRE(detectionNetwork->detectionParser->properties.parser.decodingFamily == YoloDecodingFamily::YOLO26);
+    REQUIRE(detectionNetwork->detectionParser->properties.parser.decodeSegmentation == expectations.decodeSegmentation);
+    REQUIRE(detectionNetwork->detectionParser->properties.parser.decodeKeypoints == expectations.decodeKeypoints);
     if(expectations.decodeKeypoints) {
-        REQUIRE(detectionParser->properties.parser.nKeypoints.has_value());
+        REQUIRE(detectionNetwork->detectionParser->properties.parser.nKeypoints.has_value());
     } else {
-        REQUIRE_FALSE(detectionParser->properties.parser.nKeypoints.has_value());
+        REQUIRE_FALSE(detectionNetwork->detectionParser->properties.parser.nKeypoints.has_value());
     }
 
-    auto outputQueue = detectionParser->out.createOutputQueue(4, true);
+    auto outputQueue = detectionNetwork->detectionParser->out.createOutputQueue(4, true);
 
     bool foundDetections = false;
     bool foundExpectedExtraOutput = false;
@@ -325,9 +324,9 @@ void runDetectionParserReplaySmokeTest(const std::string& modelName,
 
             const auto keypoints = detection.getKeypoints();
             if(expectations.decodeKeypoints) {
-                REQUIRE(detectionParser->properties.parser.nKeypoints.has_value());
+                REQUIRE(detectionNetwork->detectionParser->properties.parser.nKeypoints.has_value());
                 if(!keypoints.empty()) {
-                    validateSmokeKeypoints(keypoints, static_cast<std::size_t>(*detectionParser->properties.parser.nKeypoints));
+                    validateSmokeKeypoints(keypoints, static_cast<std::size_t>(*detectionNetwork->detectionParser->properties.parser.nKeypoints));
                     foundExpectedExtraOutput = true;
                 }
             } else {
