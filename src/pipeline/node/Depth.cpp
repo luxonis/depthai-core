@@ -1,12 +1,10 @@
-/**
- * @file Depth.cpp
- * @brief Implementation of dai::node::Depth: stereo camera resolution, backend creation, and output aliasing.
- */
 #include "depthai/pipeline/node/Depth.hpp"
 
 #include <cstring>
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/StereoPair.hpp"
+#include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "utility/ErrorMacros.hpp"
 
@@ -14,32 +12,11 @@ namespace dai {
 namespace node {
 namespace {
 
-/// Default ISP stream rate when requesting Camera outputs for stereo feeding Depth.
-constexpr float kDefaultIspFps = 30.f;
+constexpr float kStereoMonoFps = 30.f;
+constexpr std::pair<uint32_t, uint32_t> kStereoDepthMonoSize{640, 400};
+/// Fixed NeuralDepth zoo model for RVC4 (``Depth`` does not take a per-pipeline model yet).
+constexpr DeviceModelZoo kRvc4NeuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
 
-/**
- * @brief Detaches a node from the pipeline root and attaches it under a DeviceNodeGroup parent.
- */
-void adoptFromPipeline(Pipeline& pipeline, Depth& parent, const std::shared_ptr<Node>& child) {
-    pipeline.remove(child);
-    parent.add(child);
-}
-
-/**
- * @brief Creates a device node, removes it from the pipeline map, and adopts it under Depth.
- * @tparam T Node type (e.g. StereoDepth, NeuralDepth).
- */
-template <typename T>
-std::shared_ptr<T> createAdopted(Pipeline& pipeline, Depth& parent) {
-    auto child = pipeline.create<T>();
-    adoptFromPipeline(pipeline, parent, child);
-    return child;
-}
-
-/**
- * @brief Finds existing Camera nodes matching the left/right sockets of a stereo pair.
- * @return Pair of (left, right) cameras; either side may be null if not present in the pipeline.
- */
 std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
     std::shared_ptr<Camera> left;
     std::shared_ptr<Camera> right;
@@ -58,81 +35,100 @@ std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(c
     return {left, right};
 }
 
-/**
- * @brief Returns the first stereo pair advertised by the device.
- * @throws std::runtime_error If the device exposes no stereo pairs (via DAI_CHECK_V).
- */
 StereoPair requireFirstStereoPair(const std::shared_ptr<Device>& device) {
     const auto pairs = device->getStereoPairs();
     DAI_CHECK_V(!pairs.empty(), "Device has no stereo camera pair for Depth node.");
     return pairs[0];
 }
 
-/**
- * @brief Ensures left/right cameras exist for the pair and returns their ISP outputs at kDefaultIspFps.
- *
- * Reuses existing Camera nodes on the pair sockets when found; otherwise creates them and adopts under parent.
- * @return Pointers to left and right Camera ISP outputs suitable for StereoDepth::build / NeuralDepth::build.
- */
-std::pair<Node::Output*, Node::Output*> ensureStereoIspOutputs(Pipeline& pipeline, Depth& parent, const StereoPair& pair) {
-    auto [leftCam, rightCam] = findCamerasForPair(pipeline, pair);
-    if(!leftCam) {
-        leftCam = pipeline.create<Camera>()->build(pair.left);
-        adoptFromPipeline(pipeline, parent, leftCam);
-    }
-    if(!rightCam) {
-        rightCam = pipeline.create<Camera>()->build(pair.right);
-        adoptFromPipeline(pipeline, parent, rightCam);
-    }
-    auto* lo = leftCam->requestIspOutput(kDefaultIspFps);
-    auto* ro = rightCam->requestIspOutput(kDefaultIspFps);
-    DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera ISP output request failed.");
-    return {lo, ro};
-}
-
 }  // namespace
 
-Depth::Depth(const std::shared_ptr<Device>& device) : DeviceNodeGroup(device) {}
-
-void Depth::buildInternal() {
-    // Depth defers wiring to build(); nothing to do at construction time.
+Depth::Depth(const std::shared_ptr<Device>& device) : DeviceNodeGroup(device) {
+    DAI_CHECK_V(device != nullptr, "Depth node requires a device.");
+    if(device->getPlatform() == Platform::RVC4) {
+        neuralBackend_ = std::make_unique<::dai::Subnode<NeuralDepth>>(*this, "neuralDepth");
+        depthOut_ = &(*neuralBackend_)->depth;
+        confidenceOut_ = &(*neuralBackend_)->confidence;
+    } else {
+        stereoBackend_ = std::make_unique<::dai::Subnode<StereoDepth>>(*this, "stereoDepth");
+        depthOut_ = &(*stereoBackend_)->depth;
+        confidenceOut_ = &(*stereoBackend_)->confidenceMap;
+    }
 }
 
-std::shared_ptr<Depth> Depth::build(DeviceModelZoo neuralModel) {
-    DAI_CHECK_V(!built_, "Depth::build() was already called.");
+void Depth::buildInternal() {
+    if(graphBuilt_) {
+        return;
+    }
+    if(parent.lock() == nullptr) {
+        return;
+    }
+
     const auto device = getDevice();
     DAI_CHECK_V(device != nullptr, "Depth node requires a device.");
 
-    auto pipeline = getParentPipeline();
-    DAI_CHECK_V(pipeline.impl() != nullptr, "Depth node must be added to a pipeline before build().");
+    Pipeline pipeline = getParentPipeline();
+    DAI_CHECK_V(pipeline.impl() != nullptr, "Depth node must be part of a pipeline.");
 
-    const Platform platform = device->getPlatform();
+    const auto platform = device->getPlatform();
     const auto pair = requireFirstStereoPair(device);
-    auto [ispLeft, ispRight] = ensureStereoIspOutputs(pipeline, *this, pair);
 
+    std::pair<uint32_t, uint32_t> monoSize;
     if(platform == Platform::RVC4) {
-        neural_ = createAdopted<NeuralDepth>(pipeline, *this);
-        neural_->build(*ispLeft, *ispRight, neuralModel);
-        depthOut_ = &neural_->depth;
-        confidenceOut_ = &neural_->confidence;
+        const auto is = NeuralDepth::getInputSize(kRvc4NeuralDepthModel);
+        monoSize = {static_cast<uint32_t>(is.first), static_cast<uint32_t>(is.second)};
     } else {
-        stereo_ = createAdopted<StereoDepth>(pipeline, *this);
-        stereo_->build(*ispLeft, *ispRight, StereoDepth::PresetMode::DEFAULT);
-        depthOut_ = &stereo_->depth;
-        confidenceOut_ = &stereo_->confidenceMap;
+        monoSize = kStereoDepthMonoSize;
     }
 
-    built_ = true;
-    return std::static_pointer_cast<Depth>(shared_from_this());
+    auto [leftOut, rightOut] = ensureStereoCameraOutputs(pipeline, pair, monoSize, kStereoMonoFps);
+
+    if(platform == Platform::RVC4) {
+        DAI_CHECK_V(neuralBackend_ != nullptr, "NeuralDepth subnode missing on RVC4.");
+        (*neuralBackend_)->build(*leftOut, *rightOut, kRvc4NeuralDepthModel);
+    } else {
+        DAI_CHECK_V(stereoBackend_ != nullptr, "StereoDepth subnode missing.");
+        (*stereoBackend_)->build(*leftOut, *rightOut, StereoDepth::PresetMode::DEFAULT);
+    }
+
+    graphBuilt_ = true;
+}
+
+std::pair<Node::Output*, Node::Output*> Depth::ensureStereoCameraOutputs(Pipeline& pipeline,
+                                                                        const StereoPair& pair,
+                                                                        std::pair<uint32_t, uint32_t> frameSize,
+                                                                        float monoFps) {
+    auto [leftFound, rightFound] = findCamerasForPair(pipeline, pair);
+
+    std::shared_ptr<Camera> left = leftFound;
+    std::shared_ptr<Camera> right = rightFound;
+
+    if(!left) {
+        left = pipeline.create<Camera>()->build(pair.left);
+    }
+    if(!right) {
+        right = pipeline.create<Camera>()->build(pair.right);
+    }
+
+    auto* lo = left->requestOutput(frameSize, std::nullopt, ImgResizeMode::CROP, monoFps);
+    auto* ro = right->requestOutput(frameSize, std::nullopt, ImgResizeMode::CROP, monoFps);
+    DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera stereo output request failed.");
+    return {lo, ro};
 }
 
 Node::Output& Depth::depth() {
-    DAI_CHECK_V(built_ && depthOut_ != nullptr, "Depth::build() must be called before accessing outputs.");
+    if(!graphBuilt_) {
+        buildInternal();
+    }
+    DAI_CHECK_V(depthOut_ != nullptr, "Depth backend output missing.");
     return *depthOut_;
 }
 
 Node::Output& Depth::confidence() {
-    DAI_CHECK_V(built_ && confidenceOut_ != nullptr, "Depth::build() must be called before accessing outputs.");
+    if(!graphBuilt_) {
+        buildInternal();
+    }
+    DAI_CHECK_V(confidenceOut_ != nullptr, "Depth backend confidence output missing.");
     return *confidenceOut_;
 }
 

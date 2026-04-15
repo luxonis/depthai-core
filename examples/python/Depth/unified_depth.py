@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
 Stereo-style demo using the unified dai.node.Depth group (StereoDepth on RVC2/RVC3, NeuralDepth on RVC4).
-Cameras are created or reused inside Depth.build(); this script only configures the stereo backend when present.
+
+- On RVC4 the NeuralDepth zoo model is fixed inside the library (not set via ``build()``).
+- Create host queues on ``depth_node.depth`` / ``confidence`` **before** ``pipeline.build()`` (the pipeline
+  rejects new queues after build). The first ``depth``/``confidence`` access wires cameras and the backend.
 """
 
 import cv2
@@ -10,16 +13,11 @@ import numpy as np
 
 pipeline = dai.Pipeline()
 depth_node = pipeline.create(dai.node.Depth)
-depth_node.build()
-
-stereo = depth_node.getStereoDepth()
-if stereo is not None:
-    stereo.setRectification(True)
-    stereo.setExtendedDisparity(True)
-    stereo.setLeftRightCheck(True)
 
 depth_queue = depth_node.depth.createOutputQueue()
 confidence_queue = depth_node.confidence.createOutputQueue()
+
+pipeline.build()
 
 color_map = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
 color_map[0] = [0, 0, 0]  # invalid / zero depth pixels stay black
@@ -62,3 +60,5 @@ with pipeline:
         if key == ord("q"):
             pipeline.stop()
             break
+
+    cv2.destroyAllWindows()

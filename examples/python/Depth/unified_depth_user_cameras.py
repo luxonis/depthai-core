@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Same flow as unified_depth.py, but left/right Camera nodes are created explicitly on the device's
-first stereo pair before Depth.build(). Depth then reuses those cameras (ISP at 30 FPS) instead
-of creating and adopting its own.
+first stereo pair. Depth reuses them and adds its own ``requestOutput`` paths for stereo depth (no adoption).
 
-You can also create(dai.node.Depth) first, then the two Camera nodes, then depth.build(); both orders work.
+Order is flexible for ``Depth`` vs ``Camera`` creation. Create ``depth_node.depth`` / ``confidence`` output
+queues **before** ``pipeline.build()``. On RVC4 the NeuralDepth model is fixed in the Depth wiring path.
 """
 
 import sys
@@ -30,7 +30,6 @@ pipeline.create(dai.node.Camera).build(sp.left, sensorResolution=(1280, 800), se
 pipeline.create(dai.node.Camera).build(sp.right, sensorResolution=(1280, 800), sensorFps=30)
 
 depth_node = pipeline.create(dai.node.Depth)
-depth_node.build()
 
 stereo = depth_node.getStereoDepth()
 if stereo is not None:
@@ -40,6 +39,8 @@ if stereo is not None:
 
 depth_queue = depth_node.depth.createOutputQueue()
 confidence_queue = depth_node.confidence.createOutputQueue()
+
+pipeline.build()
 
 color_map = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
 color_map[0] = [0, 0, 0]
@@ -81,3 +82,5 @@ with pipeline:
         if key == ord("q"):
             pipeline.stop()
             break
+
+    cv2.destroyAllWindows()

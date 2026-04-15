@@ -16,10 +16,12 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
     callstack->pop();
     cb(m, pCallstack);
 
-    // build(neuralModel=...) wires backend; depth/confidence mirror the active subnode outputs.
+    // C++ build() is a no-op (neural model for RVC4 is fixed in Depth::buildInternal). Queues before pipeline.build().
     node.def("build", py::overload_cast<DeviceModelZoo>(&Depth::build), py::arg("neuralModel") = DeviceModelZoo::NEURAL_DEPTH_SMALL)
         .def_property_readonly("depth", [](Depth& d) -> Node::Output& { return d.depth(); }, py::return_value_policy::reference_internal)
         .def_property_readonly("confidence", [](Depth& d) -> Node::Output& { return d.confidence(); }, py::return_value_policy::reference_internal)
-        .def("getStereoDepth", &Depth::getStereoDepth, "Underlying StereoDepth on non-RVC4 platforms after build(); None on RVC4.")
-        .def("getNeuralDepth", &Depth::getNeuralDepth, "Underlying NeuralDepth on RVC4 after build(); None on other platforms.");
+        .def("getStereoDepth", &Depth::getStereoDepth, py::return_value_policy::reference_internal,
+             "Underlying StereoDepth on non-RVC4 platforms; None on RVC4. Lifetime tied to Depth.")
+        .def("getNeuralDepth", &Depth::getNeuralDepth, py::return_value_policy::reference_internal,
+             "Underlying NeuralDepth on RVC4; None on other platforms. Lifetime tied to Depth.");
 }
