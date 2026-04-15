@@ -563,6 +563,10 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
     // After rectification, the rotation already accounts for the rectification change.
     auto frameExtrinsics = depthFrame.transformation.getExtrinsics();
     auto refCamera = frameExtrinsics.toCameraSocket;
+    if(refCamera == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("PointCloud: depth frame extrinsics toCameraSocket is AUTO. "
+                                 "Ensure the depth frame has valid extrinsics with a specific camera socket set.");
+    }
     auto T_frame_to_ref = matrix::toVecMatrix4x4(frameExtrinsics.getTransformationMatrix(useSpecTranslation, unit));
     logMatrix4x4(pimpl->logger, spdlog::level::debug, "T_frame_to_ref", T_frame_to_ref);
 
@@ -581,29 +585,15 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
     switch(coordSystemType) {
         case PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET: {
             pimpl->logger->info("Using CAMERA_SOCKET transformation to {}, via ref camera {}", toString(targetCameraSocket), toString(refCamera));
-
-            if(refCamera == CameraBoardSocket::AUTO) {
-                pimpl->logger->warn("Frame extrinsics toCameraSocket is AUTO, falling back to source camera instance num");
-                auto srcCamera = static_cast<CameraBoardSocket>(depthFrame.getInstanceNum());
-                T_final = calibHandler.getCameraExtrinsics(srcCamera, targetCameraSocket, useSpecTranslation, unit);
-            } else {
-                auto T_ref_to_target = calibHandler.getCameraExtrinsics(refCamera, targetCameraSocket, useSpecTranslation, unit);
-                T_final = matrix::matMul(T_ref_to_target, T_frame_to_ref);
-            }
+            auto T_ref_to_target = calibHandler.getCameraExtrinsics(refCamera, targetCameraSocket, useSpecTranslation, unit);
+            T_final = matrix::matMul(T_ref_to_target, T_frame_to_ref);
             break;
         }
 
         case PointCloudConfig::CoordinateSystemType::HOUSING: {
             pimpl->logger->info("Using HOUSING transformation to housing {}, via ref camera {}", static_cast<int>(targetHousingCS), toString(refCamera));
-
-            if(refCamera == CameraBoardSocket::AUTO) {
-                pimpl->logger->warn("Frame extrinsics toCameraSocket is AUTO, falling back to source camera instance num");
-                auto srcCamera = static_cast<CameraBoardSocket>(depthFrame.getInstanceNum());
-                T_final = calibHandler.getHousingCalibration(srcCamera, targetHousingCS, true, unit);
-            } else {
-                auto T_ref_to_housing = calibHandler.getHousingCalibration(refCamera, targetHousingCS, true, unit);
-                T_final = matrix::matMul(T_ref_to_housing, T_frame_to_ref);
-            }
+            auto T_ref_to_housing = calibHandler.getHousingCalibration(refCamera, targetHousingCS, true, unit);
+            T_final = matrix::matMul(T_ref_to_housing, T_frame_to_ref);
             break;
         }
 
