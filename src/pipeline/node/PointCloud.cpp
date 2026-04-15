@@ -236,6 +236,9 @@ void PointCloud::Impl::setIntrinsics(float fx, float fy, float cx, float cy, uns
 #ifdef DEPTHAI_ENABLE_KOMPUTE
     const bool resolutionChanged = intrinsicsSet && (this->width != width || this->height != height);
 #endif
+    if(fx == 0.0f || fy == 0.0f) {
+        throw std::runtime_error("Focal lengths fx and fy must be non-zero");
+    }
     this->fx = fx;
     this->fy = fy;
     this->cx = cx;

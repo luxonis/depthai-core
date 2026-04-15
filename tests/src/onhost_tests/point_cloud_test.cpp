@@ -1559,3 +1559,200 @@ TEST_CASE("PointCloudData transformation mutated via setter", "[PointCloud][Tran
     REQUIRE(mat[0][0] == Catch::Approx(300.f));
     REQUIRE(mat[0][2] == Catch::Approx(160.f));
 }
+
+// ============================================================================
+// setIntrinsics rejects zero focal lengths
+// ============================================================================
+TEST_CASE("setIntrinsics rejects zero focal lengths", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+
+    SECTION("fx = 0") {
+        REQUIRE_THROWS_AS(impl.setIntrinsics(0.f, 100.f, 2.f, 2.f, 4, 4), std::runtime_error);
+    }
+    SECTION("fy = 0") {
+        REQUIRE_THROWS_AS(impl.setIntrinsics(100.f, 0.f, 2.f, 2.f, 4, 4), std::runtime_error);
+    }
+    SECTION("both = 0") {
+        REQUIRE_THROWS_AS(impl.setIntrinsics(0.f, 0.f, 2.f, 2.f, 4, 4), std::runtime_error);
+    }
+}
+
+// ============================================================================
+// clearExtrinsics: transform no-ops after clear
+// ============================================================================
+TEST_CASE("clearExtrinsics disables transformation", "[PointCloud][Impl][Transform]") {
+    dai::node::PointCloud::Impl impl;
+    impl.setExtrinsics({{1, 0, 0, 100}, {0, 1, 0, 200}, {0, 0, 1, 300}, {0, 0, 0, 1}});
+
+    std::vector<dai::Point3f> pts = {{1.f, 2.f, 3.f}};
+    impl.applyTransformation(pts);
+    // After applying, values are shifted
+    REQUIRE(pts[0].x == Catch::Approx(101.f));
+
+    // Reset and re-apply
+    impl.clearExtrinsics();
+    std::vector<dai::Point3f> pts2 = {{1.f, 2.f, 3.f}};
+    impl.applyTransformation(pts2);
+    // Should be unchanged
+    REQUIRE(pts2[0].x == Catch::Approx(1.f));
+    REQUIRE(pts2[0].y == Catch::Approx(2.f));
+    REQUIRE(pts2[0].z == Catch::Approx(3.f));
+}
+
+// ============================================================================
+// MT with height smaller than thread count
+// ============================================================================
+TEST_CASE("CPU_MT with height < threadNum produces correct output", "[PointCloud][Impl][MT]") {
+    dai::node::PointCloud::Impl impl;
+    constexpr unsigned W = 8, H = 2;  // Only 2 rows but 8 threads
+    impl.setIntrinsics(100.f, 100.f, 4.f, 1.f, W, H);
+    impl.useCPUMT(8);
+
+    auto depth = makeConstantDepth(W, H, 1000);
+    auto pts = computeDense(impl, depth);
+
+    REQUIRE(pts.size() == W * H);
+    for(const auto& p : pts) {
+        REQUIRE(p.z == Catch::Approx(1000.f));
+    }
+
+    // Verify against single-threaded reference
+    dai::node::PointCloud::Impl implST;
+    implST.setIntrinsics(100.f, 100.f, 4.f, 1.f, W, H);
+    implST.useCPU();
+    auto ptsST = computeDense(implST, depth);
+
+    for(size_t i = 0; i < pts.size(); ++i) {
+        REQUIRE(pts[i].x == Catch::Approx(ptsST[i].x));
+        REQUIRE(pts[i].y == Catch::Approx(ptsST[i].y));
+        REQUIRE(pts[i].z == Catch::Approx(ptsST[i].z));
+    }
+}
+
+// ============================================================================
+// 1x1 image edge case
+// ============================================================================
+TEST_CASE("1x1 image produces single point", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+    impl.setIntrinsics(100.f, 100.f, 0.f, 0.f, 1, 1);
+
+    auto depth = makeConstantDepth(1, 1, 500);
+    auto pts = computeDense(impl, depth);
+
+    REQUIRE(pts.size() == 1);
+    // col=0, row=0, cx=0, cy=0 -> x = (0-0)*500/100 = 0, y = 0
+    REQUIRE(pts[0].x == Catch::Approx(0.f));
+    REQUIRE(pts[0].y == Catch::Approx(0.f));
+    REQUIRE(pts[0].z == Catch::Approx(500.f));
+}
+
+// ============================================================================
+// Re-setting intrinsics with different resolution
+// ============================================================================
+TEST_CASE("Reinitialize intrinsics with different resolution", "[PointCloud][Impl]") {
+    dai::node::PointCloud::Impl impl;
+
+    // First: 4x4
+    impl.setIntrinsics(100.f, 100.f, 2.f, 2.f, 4, 4);
+    auto depth4 = makeConstantDepth(4, 4, 1000);
+    auto pts4 = computeDense(impl, depth4);
+    REQUIRE(pts4.size() == 16);
+
+    // Re-set to 8x8
+    impl.setIntrinsics(200.f, 200.f, 4.f, 4.f, 8, 8);
+    auto depth8 = makeConstantDepth(8, 8, 2000);
+    auto pts8 = computeDense(impl, depth8);
+    REQUIRE(pts8.size() == 64);
+
+    for(const auto& p : pts8) {
+        REQUIRE(p.z == Catch::Approx(2000.f));
+    }
+
+    // Centre pixel of new resolution
+    auto& centre = pts8[4 * 8 + 4];
+    REQUIRE(centre.x == Catch::Approx(0.f));
+    REQUIRE(centre.y == Catch::Approx(0.f));
+}
+
+// ============================================================================
+// updateBoundingBox on empty PointCloudData
+// ============================================================================
+TEST_CASE("updateBoundingBox on empty PointCloudData", "[PointCloud][PointCloudData]") {
+    dai::PointCloudData pcd;
+    // No points set -- should not crash, bounds should be 0
+    pcd.updateBoundingBox();
+
+    REQUIRE(pcd.getMinX() == Catch::Approx(0.f));
+    REQUIRE(pcd.getMinY() == Catch::Approx(0.f));
+    REQUIRE(pcd.getMinZ() == Catch::Approx(0.f));
+    REQUIRE(pcd.getMaxX() == Catch::Approx(0.f));
+    REQUIRE(pcd.getMaxY() == Catch::Approx(0.f));
+    REQUIRE(pcd.getMaxZ() == Catch::Approx(0.f));
+}
+
+// ============================================================================
+// updateBoundingBox on colored PointCloudData
+// ============================================================================
+TEST_CASE("updateBoundingBox on colored PointCloudData", "[PointCloud][PointCloudData][Colored]") {
+    dai::PointCloudData pcd;
+    std::vector<dai::Point3fRGBA> pts = {
+        {-5.f, -3.f, 1.f, 255, 0, 0, 255},
+        {10.f,  7.f, 8.f, 0, 255, 0, 255},
+        { 2.f, -1.f, 4.f, 0, 0, 255, 255},
+    };
+    pcd.setPointsRGB(pts);
+    pcd.setWidth(3).setHeight(1);
+    pcd.updateBoundingBox();
+
+    REQUIRE(pcd.getMinX() == Catch::Approx(-5.f));
+    REQUIRE(pcd.getMaxX() == Catch::Approx(10.f));
+    REQUIRE(pcd.getMinY() == Catch::Approx(-3.f));
+    REQUIRE(pcd.getMaxY() == Catch::Approx(7.f));
+    REQUIRE(pcd.getMinZ() == Catch::Approx(1.f));
+    REQUIRE(pcd.getMaxZ() == Catch::Approx(8.f));
+}
+
+// ============================================================================
+// PointCloudData::getPointsRGB throws on non-color data
+// ============================================================================
+TEST_CASE("getPointsRGB throws on non-color data", "[PointCloud][PointCloudData]") {
+    dai::PointCloudData pcd;
+    pcd.setPoints({{1.f, 2.f, 3.f}});
+    pcd.setWidth(1).setHeight(1);
+
+    REQUIRE_FALSE(pcd.isColor());
+    REQUIRE_THROWS_AS(pcd.getPointsRGB(), std::runtime_error);
+}
+
+// ============================================================================
+// PointCloudData::getPoints on colored data strips color
+// ============================================================================
+TEST_CASE("getPoints on colored data returns xyz only", "[PointCloud][PointCloudData][Colored]") {
+    dai::PointCloudData pcd;
+    std::vector<dai::Point3fRGBA> pts = {
+        {1.f, 2.f, 3.f, 100, 150, 200, 255},
+        {4.f, 5.f, 6.f, 10, 20, 30, 255},
+    };
+    pcd.setPointsRGB(pts);
+    pcd.setWidth(2).setHeight(1);
+
+    REQUIRE(pcd.isColor());
+    auto xyz = pcd.getPoints();
+    REQUIRE(xyz.size() == 2);
+    REQUIRE(xyz[0].x == Catch::Approx(1.f));
+    REQUIRE(xyz[0].y == Catch::Approx(2.f));
+    REQUIRE(xyz[0].z == Catch::Approx(3.f));
+    REQUIRE(xyz[1].x == Catch::Approx(4.f));
+}
+
+// ============================================================================
+// setSparse throws (deprecated)
+// ============================================================================
+TEST_CASE("setSparse throws logic_error", "[PointCloud][PointCloudData]") {
+    dai::PointCloudData pcd;
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    REQUIRE_THROWS_AS(pcd.setSparse(true), std::logic_error);
+    REQUIRE_THROWS_AS(pcd.setSparse(false), std::logic_error);
+    #pragma GCC diagnostic pop
+}
