@@ -49,7 +49,10 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
         .value("SGM_8", GPUStereoConfig::PathAggregation::SGM_8)
         .value("SGM_MGM_INPLACE", GPUStereoConfig::PathAggregation::SGM_MGM_INPLACE)
         .export_values();
-    py::enum_<GPUStereoConfig::SpeckleFilterBackend>(gpuStereoConfig, "SpeckleFilterBackend", py::doc("When speckleMaxSize > 0: OPENCL runs speckle on GPU; OPENCV uses cv::filterSpeckles on the host after stereo (same family as StereoDepth)."))
+    py::enum_<GPUStereoConfig::SpeckleFilterBackend>(
+        gpuStereoConfig,
+        "SpeckleFilterBackend",
+        "When speckleMaxSize > 0: OPENCL runs speckle on GPU; OPENCV uses cv::filterSpeckles on the host after stereo (same family as StereoDepth).")
         .value("OPENCL", GPUStereoConfig::SpeckleFilterBackend::OPENCL)
         .value("OPENCV", GPUStereoConfig::SpeckleFilterBackend::OPENCV)
         .export_values();
