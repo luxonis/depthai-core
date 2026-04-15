@@ -463,13 +463,6 @@ Node::Input& PointCloud::getColorInput() {
 }
 
 void PointCloud::buildInternal() {
-    if(device && !runOnHostVar) {
-        auto platform = device->getPlatform();
-        if(platform == Platform::RVC2) {
-            throw std::runtime_error("PointCloud node is not supported on RVC2 devices.");
-        }
-    }
-
     // Wire Sync subnode output to our private inSync input.
     // Color mode detection happens in run() because buildInternal() is called
     // at node creation time, before the user has linked inputs.
@@ -485,6 +478,12 @@ void PointCloud::buildInternal() {
 #endif
 
 PointCloud::Properties& PointCloud::getProperties() {
+    if(device && !runOnHostVar) {
+        auto platform = device->getPlatform();
+        if(platform == Platform::RVC2) {
+            throw std::runtime_error("PointCloud node is not supported on RVC2 devices. Use setRunOnHost(true) instead.");
+        }
+    }
     properties.initialConfig = *initialConfig;
     return properties;
 }
