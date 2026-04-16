@@ -378,6 +378,9 @@ add_python_example(camera_isp Camera/camera_isp.py)
 dai_set_example_test_labels(camera_isp rvc2_all rvc4 ci)
 
 ## PointCloud
+add_python_example(pointcloud PointCloud/point_cloud.py)
+dai_set_example_test_labels(pointcloud ondevice rvc4 ci)
+
 add_python_example(pointcloud_showcase PointCloud/point_cloud_showcase.py)
 dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
 

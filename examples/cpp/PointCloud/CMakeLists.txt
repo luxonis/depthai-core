@@ -8,5 +8,5 @@ dai_add_example(PointCloud PointCloud.cpp OFF OFF)
 dai_add_example(PointCloudShowcase PointCloudShowcase.cpp OFF OFF)
 
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
-    dai_add_example(PointCloudVisualizer PointCloudVisualizer.cpp OFF OFF)
+    dai_add_example(PointCloudVisualizer PointCloudVisualizer.cpp ON OFF)
 endif()

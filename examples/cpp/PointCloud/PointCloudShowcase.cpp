@@ -121,7 +121,21 @@ int main() {
         // ==============================================================
         // Collect frames – drain all queues evenly to avoid back-pressure
         // ==============================================================
-        std::vector<std::shared_ptr<dai::PointCloudData>> sparseFrames, organizedFrames, camFrames, customFrames, colorFrames;
+        struct TestCase {
+            std::shared_ptr<dai::MessageQueue> queue;
+            std::string title;
+            std::string config;
+            std::vector<std::shared_ptr<dai::PointCloudData>> frames;
+        };
+
+        std::vector<TestCase> testCases = {
+            {qSparse, "1. Basic sparse point cloud", "METER", {}},
+            {qOrganized, "2. Organized point cloud", "MILLIMETER, initialConfig->setOrganized(true)", {}},
+            {qCam, "3. Camera-to-camera transform", "setTargetCoordinateSystem(CAM_A)", {}},
+            {qCustom, "4. Custom transform matrix + passthrough", "90° Z rotation via initialConfig", {}},
+            {qColor, "5. Colorized point cloud (RGB)", "METER, aligned color camera linked to inputColor", {}},
+        };
+
         std::vector<std::shared_ptr<dai::ImgFrame>> depthFrames;
 
         pipeline.start();
@@ -131,60 +145,33 @@ int main() {
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
         // Drain stale frames that arrived during warm-up
-        while(qSparse->tryGet<dai::PointCloudData>()) {
+        for(auto& tc : testCases) {
+            tc.queue->tryGetAll<dai::PointCloudData>();
         }
-        while(qOrganized->tryGet<dai::PointCloudData>()) {
-        }
-        while(qCam->tryGet<dai::PointCloudData>()) {
-        }
-        while(qCustom->tryGet<dai::PointCloudData>()) {
-        }
-        while(qDepth->tryGet<dai::ImgFrame>()) {
-        }
-        while(qColor->tryGet<dai::PointCloudData>()) {
-        }
+        qDepth->tryGetAll<dai::ImgFrame>();
 
         for(int i = 0; i < NUM_FRAMES; ++i) {
-            sparseFrames.push_back(qSparse->get<dai::PointCloudData>());
-            organizedFrames.push_back(qOrganized->get<dai::PointCloudData>());
-            camFrames.push_back(qCam->get<dai::PointCloudData>());
-            customFrames.push_back(qCustom->get<dai::PointCloudData>());
+            for(auto& tc : testCases) {
+                tc.frames.push_back(tc.queue->get<dai::PointCloudData>());
+            }
             depthFrames.push_back(qDepth->get<dai::ImgFrame>());
-            colorFrames.push_back(qColor->get<dai::PointCloudData>());
         }
         pipeline.stop();
 
         // ==============================================================
         // Display results grouped by feature
         // ==============================================================
-
-        // 1 ── Sparse point cloud
-        printHeader("1. Basic sparse point cloud");
-        std::cout << "  Config: METER\n";
-        for(int i = 0; i < NUM_FRAMES; ++i) printPointCloudInfo(*sparseFrames[i], i);
-
-        // 2 ── Organized point cloud
-        printHeader("2. Organized point cloud");
-        std::cout << "  Config: MILLIMETER, initialConfig->setOrganized(true)\n";
-        for(int i = 0; i < NUM_FRAMES; ++i) printPointCloudInfo(*organizedFrames[i], i);
-
-        // 3 ── Transform pointcloud into another camera's coordinate system
-        printHeader("3. Camera-to-camera transform");
-        std::cout << "  Config: setTargetCoordinateSystem(CAM_A)\n";
-        for(int i = 0; i < NUM_FRAMES; ++i) printPointCloudInfo(*camFrames[i], i);
-
-        // 4 ── Custom transform + passthrough depth
-        printHeader("4. Custom transform matrix + passthrough");
-        std::cout << "  Config: 90° Z rotation via initialConfig\n";
-        for(int i = 0; i < NUM_FRAMES; ++i) {
-            printPointCloudInfo(*customFrames[i], i);
-            std::cout << "  Depth frame  : " << depthFrames[i]->getWidth() << " × " << depthFrames[i]->getHeight() << "\n";
+        for(const auto& tc : testCases) {
+            printHeader(tc.title);
+            std::cout << "  Config: " << tc.config << "\n";
+            for(int i = 0; i < NUM_FRAMES; ++i) {
+                printPointCloudInfo(*tc.frames[i], i);
+                // Show depth passthrough info for the custom transform case
+                if(tc.title.find("Custom") != std::string::npos) {
+                    std::cout << "  Depth frame  : " << depthFrames[i]->getWidth() << " × " << depthFrames[i]->getHeight() << "\n";
+                }
+            }
         }
-
-        // 5 ── Colorized point cloud
-        printHeader("5. Colorized point cloud (RGB)");
-        std::cout << "  Config: METER, aligned color camera linked to inputColor\n";
-        for(int i = 0; i < NUM_FRAMES; ++i) printPointCloudInfo(*colorFrames[i], i);
 
     } catch(const std::exception& e) {
         std::cerr << "\nError: " << e.what() << std::endl;

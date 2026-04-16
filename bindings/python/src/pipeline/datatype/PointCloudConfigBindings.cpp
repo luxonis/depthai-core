@@ -19,7 +19,7 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
     py::class_<PointCloudConfig, Py<PointCloudConfig>, Buffer, std::shared_ptr<PointCloudConfig>> config(m, "PointCloudConfig", DOC(dai, PointCloudConfig));
 
     py::enum_<PointCloudConfig::CoordinateSystemType>(config, "CoordinateSystemType")
-        .value("NONE", PointCloudConfig::CoordinateSystemType::NONE)
+        .value("DEFAULT", PointCloudConfig::CoordinateSystemType::DEFAULT)
         .value("CAMERA_SOCKET", PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET)
         .value("HOUSING", PointCloudConfig::CoordinateSystemType::HOUSING);
 

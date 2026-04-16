@@ -539,7 +539,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
 
     // Compute the target transform based on coordSystemType
     // The final transform is: T_ref→target * T_frame→ref
-    std::optional<std::vector<std::vector<float>>> T_final;
+    std::optional<std::vector<std::vector<float>>> T_final = std::nullopt;
 
     switch(coordSystemType) {
         case PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET: {
@@ -556,7 +556,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
             break;
         }
 
-        case PointCloudConfig::CoordinateSystemType::NONE: {
+        case PointCloudConfig::CoordinateSystemType::DEFAULT: {
             auto configMat = matrix::toVecMatrix4x4(config.getTransformationMatrix());
 
             if(!matrix::isIdentity4x4(configMat)) {
@@ -566,7 +566,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
                 pimpl->logger->info("Applying frame extrinsics (T_frame_to_ref)");
                 T_final = T_frame_to_ref;
             } else {
-                pimpl->logger->info("No coordinate system transformation applied (identity)");
+                pimpl->logger->debug("No coordinate system transformation applied (identity)");
             }
             break;
         }
@@ -719,19 +719,13 @@ void PointCloud::run() {
         }
         if(!group) continue;
 
-        auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(depthInputName));
+        auto depthFrame = group->get<ImgFrame>(depthInputName);
         if(!depthFrame) {
             pimpl->logger->warn("PointCloud: failed to extract depth frame from MessageGroup -- skipping");
             continue;
         }
 
-        std::shared_ptr<ImgFrame> colorFrame;
-        {
-            auto it = group->group.find(colorInputName);
-            if(it != group->group.end()) {
-                colorFrame = std::dynamic_pointer_cast<ImgFrame>(it->second);
-            }
-        }
+        auto colorFrame = colorMode ? group->get<ImgFrame>(colorInputName) : nullptr;
 
         // Check for runtime config update
         auto newConfig = inputConfig.tryGet<PointCloudConfig>();

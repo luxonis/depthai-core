@@ -24,13 +24,13 @@ class PointCloudConfig : public Buffer {
 
    public:
     enum class CoordinateSystemType : uint8_t {
-        NONE,           ///< No transformation (camera coordinates)
+        DEFAULT,        ///< Default (camera coordinates, no additional transformation)
         CAMERA_SOCKET,  ///< Transform to another camera
         HOUSING         ///< Transform to housing coordinate system
     };
 
    private:
-    CoordinateSystemType coordSystemType = CoordinateSystemType::NONE;
+    CoordinateSystemType coordSystemType = CoordinateSystemType::DEFAULT;
     CameraBoardSocket targetCameraSocket = CameraBoardSocket::AUTO;
     HousingCoordinateSystem targetHousingCS = HousingCoordinateSystem::AUTO;
     bool useSpecTranslation = true;
