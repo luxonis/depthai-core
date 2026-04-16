@@ -50,12 +50,12 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
         void computePointCloudDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points);
 
         // Apply extrinsic transformation to points
-        void applyTransformation(std::vector<Point3f>& points);
-        void applyTransformation(std::vector<Point3fRGBA>& points);
+        template <typename PointT>
+        void applyTransformation(std::vector<PointT>& points);
 
         // Filter dense points to sparse (only z > 0)
-        std::vector<Point3f> filterValidPoints(const std::vector<Point3f>& densePoints);
-        std::vector<Point3fRGBA> filterValidPoints(const std::vector<Point3fRGBA>& densePoints);
+        template <typename PointT>
+        std::vector<PointT> filterValidPoints(const std::vector<PointT>& densePoints);
 
         void setLengthUnit(dai::LengthUnit lengthUnit);
         void useCPU();
@@ -69,8 +69,8 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
        private:
         void initializeGPU(uint32_t device);
-        void transformPointsCPU(std::vector<Point3f>& points);
-        void transformPointsCPU(std::vector<Point3fRGBA>& points);
+        template <typename PointT>
+        void transformPointsCPU(std::vector<PointT>& points);
         void calcPointsChunkDense(const uint8_t* depthData, std::vector<Point3f>& points, unsigned int startRow, unsigned int endRow);
         void calcPointsChunkDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points, unsigned int startRow, unsigned int endRow);
         void computePointCloudDenseCPU(const uint8_t* depthData, std::vector<Point3f>& points);
@@ -228,7 +228,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     Input inSync{*this, {"inSync", DEFAULT_GROUP, false, 0, {{DatatypeEnum::MessageGroup, true}}}};
 
     void run() override;
-    void initialize(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudConfig> config);
+    void initialize(const ImgFrame& depthFrame, const PointCloudConfig& config);
     bool hasTransformationChanged(const ImgFrame& frame);
 
     // Helper methods for initialize()
@@ -236,12 +236,11 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     void setCoordinateTransformation(const ImgFrame& depthFrame, const PointCloudConfig& config);
 
     // Processing methods for the two code paths
-    void processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudData> pc);
-    void processColorized(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<ImgFrame> colorFrame, std::shared_ptr<PointCloudData> pc);
+    void processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudData> pc, bool organized);
+    void processColorized(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<ImgFrame> colorFrame, std::shared_ptr<PointCloudData> pc, bool organized);
 
     bool runOnHostVar = true;
     bool initialized = false;
-    bool keepOrganized = false;
     bool colorMode = false;
 
     // Cached frame transformation — used to detect intrinsic/extrinsic/size changes at runtime

@@ -50,7 +50,8 @@ void PointCloud::Impl::computePointCloudDense(const uint8_t* depthData, std::vec
     }
 }
 
-void PointCloud::Impl::applyTransformation(std::vector<Point3f>& points) {
+template <typename PointT>
+void PointCloud::Impl::applyTransformation(std::vector<PointT>& points) {
     if(!hasExtrinsics) {
         if(logger) {
             logger->debug("No extrinsics set, skipping transformation");
@@ -75,8 +76,14 @@ void PointCloud::Impl::applyTransformation(std::vector<Point3f>& points) {
     }
 }
 
-std::vector<Point3f> PointCloud::Impl::filterValidPoints(const std::vector<Point3f>& densePoints) {
-    std::vector<Point3f> sparsePoints;
+// Explicit template instantiations
+template void PointCloud::Impl::applyTransformation(std::vector<Point3f>& points);
+template void PointCloud::Impl::applyTransformation(std::vector<Point3fRGBA>& points);
+
+template <typename PointT>
+std::vector<PointT> PointCloud::Impl::filterValidPoints(const std::vector<PointT>& densePoints) {
+    std::vector<PointT> sparsePoints;
+    // Reserve half capacity as a heuristic - typically ~50% of depth pixels have valid (z > 0) data
     sparsePoints.reserve(densePoints.size() / 2);
 
     for(const auto& p : densePoints) {
@@ -88,18 +95,9 @@ std::vector<Point3f> PointCloud::Impl::filterValidPoints(const std::vector<Point
     return sparsePoints;
 }
 
-std::vector<Point3fRGBA> PointCloud::Impl::filterValidPoints(const std::vector<Point3fRGBA>& densePoints) {
-    std::vector<Point3fRGBA> sparsePoints;
-    sparsePoints.reserve(densePoints.size() / 2);
-
-    for(const auto& p : densePoints) {
-        if(p.z > 0.0f) {
-            sparsePoints.push_back(p);
-        }
-    }
-
-    return sparsePoints;
-}
+// Explicit template instantiations
+template std::vector<Point3f> PointCloud::Impl::filterValidPoints(const std::vector<Point3f>& densePoints);
+template std::vector<Point3fRGBA> PointCloud::Impl::filterValidPoints(const std::vector<Point3fRGBA>& densePoints);
 
 void PointCloud::Impl::computePointCloudDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points) {
     if(!intrinsicsSet) {
@@ -123,30 +121,7 @@ void PointCloud::Impl::computePointCloudDenseColored(const uint8_t* depthData, c
     }
 }
 
-void PointCloud::Impl::applyTransformation(std::vector<Point3fRGBA>& points) {
-    if(!hasExtrinsics) {
-        if(logger) {
-            logger->debug("No extrinsics set, skipping transformation");
-        }
-        return;
-    }
 
-    if(logger) {
-        logger->debug("Applying coordinate system transformation (colored)");
-    }
-
-    switch(computeMethod) {
-        case ComputeMethod::CPU:
-            transformPointsCPU(points);
-            break;
-        case ComputeMethod::CPU_MT:
-            transformPointsCPU(points);
-            break;
-        case ComputeMethod::GPU:
-            transformPointsCPU(points);
-            break;
-    }
-}
 
 void PointCloud::Impl::calcPointsChunkDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points, unsigned int startRow, unsigned int endRow) {
     const float scale = scaleFactor;
@@ -300,7 +275,8 @@ void PointCloud::Impl::initializeGPU(uint32_t device) {
 #endif
 }
 
-void PointCloud::Impl::transformPointsCPU(std::vector<Point3f>& points) {
+template <typename PointT>
+void PointCloud::Impl::transformPointsCPU(std::vector<PointT>& points) {
     // Both points and extrinsics translations are in the same unit (target unit)
     // No conversion needed - just apply the transformation directly
 
@@ -328,28 +304,9 @@ void PointCloud::Impl::transformPointsCPU(std::vector<Point3f>& points) {
     }
 }
 
-void PointCloud::Impl::transformPointsCPU(std::vector<Point3fRGBA>& points) {
-    if(logger) {
-        logger->debug("Applying transformation to {} points (colored)", points.size());
-    }
-
-    size_t transformedCount = 0;
-    for(auto& p : points) {
-        if(p.z > 0.0f) {
-            float x = extrinsics[0][0] * p.x + extrinsics[0][1] * p.y + extrinsics[0][2] * p.z + extrinsics[0][3];
-            float y = extrinsics[1][0] * p.x + extrinsics[1][1] * p.y + extrinsics[1][2] * p.z + extrinsics[1][3];
-            float z = extrinsics[2][0] * p.x + extrinsics[2][1] * p.y + extrinsics[2][2] * p.z + extrinsics[2][3];
-            p.x = x;
-            p.y = y;
-            p.z = z;
-            transformedCount++;
-        }
-    }
-
-    if(logger) {
-        logger->debug("Transformed {} valid points (z > 0)", transformedCount);
-    }
-}
+// Explicit template instantiations
+template void PointCloud::Impl::transformPointsCPU(std::vector<Point3f>& points);
+template void PointCloud::Impl::transformPointsCPU(std::vector<Point3fRGBA>& points);
 
 void PointCloud::Impl::calcPointsChunkDense(const uint8_t* depthData, std::vector<Point3f>& points, unsigned int startRow, unsigned int endRow) {
     const float scale = scaleFactor;
@@ -540,13 +497,13 @@ static void logMatrix4x4(const std::shared_ptr<spdlog::logger>& logger,
 // ── PointCloud helper methods ──
 
 void PointCloud::setIntrinsicsFromFrame(const ImgFrame& frame) {
-    auto width = frame.getWidth();
-    auto height = frame.getHeight();
-    auto intrinsics = frame.transformation.getIntrinsicMatrix();
-    float fx = intrinsics[0][0];
-    float fy = intrinsics[1][1];
-    float cx = intrinsics[0][2];
-    float cy = intrinsics[1][2];
+    const auto width = frame.getWidth();
+    const auto height = frame.getHeight();
+    const auto intrinsics = frame.transformation.getIntrinsicMatrix();
+    const float fx = intrinsics[0][0];
+    const float fy = intrinsics[1][1];
+    const float cx = intrinsics[0][2];
+    const float cy = intrinsics[1][2];
     pimpl->logger->debug("Setting intrinsics: fx={}, fy={}, cx={}, cy={}, size={}x{}", fx, fy, cx, cy, width, height);
     pimplPointCloud->setIntrinsics(fx, fy, cx, cy, width, height);
 }
@@ -614,7 +571,6 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
 
     // Apply the final transform
     if(T_final) {
-        logMatrix4x4(pimpl->logger, spdlog::level::info, "T_final", *T_final);
         pimplPointCloud->setExtrinsics(*T_final);
     } else {
         pimplPointCloud->clearExtrinsics();
@@ -623,18 +579,18 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
 
 // ── Main initialize method ──
 
-void PointCloud::initialize(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudConfig> config) {
+void PointCloud::initialize(const ImgFrame& depthFrame, const PointCloudConfig& config) {
     pimpl->logger->debug("PointCloud::initialize() called");
     pimplPointCloud->setLogger(pimpl->logger);
 
     // Set length unit before intrinsics/extrinsics (they depend on it)
-    pimplPointCloud->setLengthUnit(config->getLengthUnit());
+    pimplPointCloud->setLengthUnit(config.getLengthUnit());
 
     // Set camera intrinsics from the depth frame
-    setIntrinsicsFromFrame(*depthFrame);
+    setIntrinsicsFromFrame(depthFrame);
 
     // Compute and apply coordinate transformation (frame extrinsics + target transform)
-    setCoordinateTransformation(*depthFrame, *config);
+    setCoordinateTransformation(depthFrame, config);
 
     initialized = true;
     pimpl->logger->info("PointCloud::initialize() completed");
@@ -644,14 +600,14 @@ void PointCloud::initialize(std::shared_ptr<ImgFrame> depthFrame, std::shared_pt
 // Processing helpers (depth-only and colorized paths)
 //------------------------------------------------------------------
 
-void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudData> pc) {
-    auto width = depthFrame->getWidth();
-    auto height = depthFrame->getHeight();
+void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudData> pc, bool organized) {
+    const auto width = depthFrame->getWidth();
+    const auto height = depthFrame->getHeight();
     const auto* depthData = depthFrame->getData().data();
 
     std::vector<Point3f> points;
 
-    if(keepOrganized) {
+    if(organized) {
         pimplPointCloud->computePointCloudDense(depthData, points);
         pimplPointCloud->applyTransformation(points);
         pc->setWidth(width);
@@ -668,18 +624,26 @@ void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::sha
     pc->setPoints(std::move(points));
 }
 
-void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<ImgFrame> colorFrame, std::shared_ptr<PointCloudData> pc) {
-    auto width = depthFrame->getWidth();
-    auto height = depthFrame->getHeight();
+void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<ImgFrame> colorFrame, std::shared_ptr<PointCloudData> pc, bool organized) {
+    const auto width = depthFrame->getWidth();
+    const auto height = depthFrame->getHeight();
 
-    // Validate color frame
-    bool colorValid = true;
+    // Validate color frame - early return to depth-only on failure
     if(colorFrame->getWidth() != width || colorFrame->getHeight() != height) {
         pimpl->logger->warn("PointCloud: color frame size ({}x{}) does not match depth ({}x{}) -- skipping colorization",
                             colorFrame->getWidth(), colorFrame->getHeight(), width, height);
-        colorValid = false;
+        processDepthOnly(depthFrame, pc, organized);
+        return;
     }
-    if(colorValid) {
+    if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
+        pimpl->logger->warn("PointCloud: color frame type ({}) is not RGB888i -- skipping colorization",
+                            static_cast<int>(colorFrame->getType()));
+        processDepthOnly(depthFrame, pc, organized);
+        return;
+    }
+
+    // Warn about extrinsics mismatches (non-fatal)
+    {
         auto depthExtrinsics = depthFrame->transformation.getExtrinsics();
         auto colorExtrinsics = colorFrame->transformation.getExtrinsics();
         if(depthExtrinsics.toCameraSocket != colorExtrinsics.toCameraSocket) {
@@ -694,23 +658,12 @@ void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame, std::sha
                                 toString(depthExtrinsics.toCameraSocket));
         }
     }
-    if(colorValid && colorFrame->getType() != ImgFrame::Type::RGB888i) {
-        pimpl->logger->warn("PointCloud: color frame type ({}) is not RGB888i -- skipping colorization",
-                            static_cast<int>(colorFrame->getType()));
-        colorValid = false;
-    }
-
-    if(!colorValid) {
-        // Fall back to depth-only when color validation fails
-        processDepthOnly(depthFrame, pc);
-        return;
-    }
 
     const auto* depthData = depthFrame->getData().data();
     const auto* colorData = colorFrame->getData().data();
     std::vector<Point3fRGBA> coloredPoints;
 
-    if(keepOrganized) {
+    if(organized) {
         pimplPointCloud->computePointCloudDenseColored(depthData, colorData, coloredPoints);
         pimplPointCloud->applyTransformation(coloredPoints);
         pc->setWidth(width);
@@ -761,6 +714,7 @@ void PointCloud::run() {
             auto blockEvent = this->inputBlockEvent();
             group = inSync.get<MessageGroup>();
         }
+        if(!group) continue;
 
         auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(depthInputName));
         if(!depthFrame) {
@@ -783,10 +737,10 @@ void PointCloud::run() {
             initialized = false;
         }
 
-        // Sync organized mode from config
-        keepOrganized = latestConfig->getOrganized();
+        // Read organized mode from config
+        const bool organized = latestConfig->getOrganized();
 
-        uint32_t latestEepromId = getParentPipeline().getEepromId();
+        const uint32_t latestEepromId = getParentPipeline().getEepromId();
         if(latestEepromId > currentEepromId) {
             pimpl->logger->debug("Calibration data changed (ID: {} -> {}), reinitializing...", currentEepromId, latestEepromId);
             initialized = false;
@@ -796,11 +750,11 @@ void PointCloud::run() {
         if(hasTransformationChanged(*depthFrame)) initialized = false;
 
         if(!initialized) {
-            initialize(depthFrame, latestConfig);
+            initialize(*depthFrame, *latestConfig);
         }
 
-        auto width = depthFrame->getWidth();
-        auto height = depthFrame->getHeight();
+        const auto width = depthFrame->getWidth();
+        const auto height = depthFrame->getHeight();
 
         // Validate that the buffer contains packed uint16_t depth data
         const auto expectedBytes = static_cast<std::size_t>(width) * height * sizeof(uint16_t);
@@ -824,9 +778,9 @@ void PointCloud::run() {
         pc->setTransformation(depthFrame->getTransformation());
 
         if(colorFrame) {
-            processColorized(depthFrame, colorFrame, pc);
+            processColorized(depthFrame, colorFrame, pc, organized);
         } else {
-            processDepthOnly(depthFrame, pc);
+            processDepthOnly(depthFrame, pc, organized);
         }
 
         pc->updateBoundingBox();
