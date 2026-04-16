@@ -243,6 +243,9 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     bool initialized = false;
     bool colorMode = false;
 
+    // Extrinsics to set on the output PointCloudData after coordinate transformation
+    std::optional<Extrinsics> targetExtrinsics_;
+
     // Cached frame transformation — used to detect intrinsic/extrinsic/size changes at runtime
     std::optional<ImgTransformation> lastTransformation_;
 };

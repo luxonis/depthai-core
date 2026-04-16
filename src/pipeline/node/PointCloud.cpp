@@ -546,6 +546,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
             pimpl->logger->info("Using CAMERA_SOCKET transformation to {}, via ref camera {}", toString(targetCameraSocket), toString(refCamera));
             auto T_ref_to_target = calibHandler.getCameraExtrinsics(refCamera, targetCameraSocket, useSpecTranslation, unit);
             T_final = matrix::matMul(T_ref_to_target, T_frame_to_ref);
+            targetExtrinsics_ = Extrinsics(T_ref_to_target, targetCameraSocket, unit);
             break;
         }
 
@@ -553,6 +554,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
             pimpl->logger->info("Using HOUSING transformation to housing {}, via ref camera {}", static_cast<int>(targetHousingCS), toString(refCamera));
             auto T_ref_to_housing = calibHandler.getHousingCalibration(refCamera, targetHousingCS, true, unit);
             T_final = matrix::matMul(T_ref_to_housing, T_frame_to_ref);
+            targetExtrinsics_ = Extrinsics(T_ref_to_housing, CameraBoardSocket::AUTO, unit);
             break;
         }
 
@@ -562,11 +564,14 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
             if(!matrix::isIdentity4x4(configMat)) {
                 pimpl->logger->info("Applying custom transform composed with frame extrinsics");
                 T_final = matrix::matMul(configMat, T_frame_to_ref);
+                targetExtrinsics_ = Extrinsics(configMat, refCamera, unit);
             } else if(!matrix::isIdentity4x4(T_frame_to_ref)) {
                 pimpl->logger->info("Applying frame extrinsics (T_frame_to_ref)");
                 T_final = T_frame_to_ref;
+                targetExtrinsics_ = std::nullopt;
             } else {
                 pimpl->logger->debug("No coordinate system transformation applied (identity)");
+                targetExtrinsics_ = std::nullopt;
             }
             break;
         }
@@ -772,7 +777,11 @@ void PointCloud::run() {
         pc->setTimestampDevice(depthFrame->getTimestampDevice());
         pc->setSequenceNum(depthFrame->getSequenceNum());
         pc->setInstanceNum(depthFrame->getInstanceNum());
-        pc->setTransformation(depthFrame->getTransformation());
+        auto outputTransformation = depthFrame->getTransformation();
+        if(targetExtrinsics_) {
+            outputTransformation.setExtrinsics(*targetExtrinsics_);
+        }
+        pc->setTransformation(outputTransformation);
 
         if(colorFrame) {
             processColorized(depthFrame, colorFrame, pc, organized);
