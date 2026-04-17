@@ -62,7 +62,7 @@ class NeuralAssistedStereo : public DeviceNodeGroup {
 
     std::shared_ptr<NeuralAssistedStereo> build(Output& leftInput,
                                                 Output& rightInput,
-                                                DeviceModelZoo neuralModel = DeviceModelZoo::NEURAL_DEPTH_NANO,
+                                                DeviceModelZoo neuralModel = DeviceModelZoo::NEURAL_DEPTH_384X240,
                                                 bool rectifyImages = true);
 
     // /**

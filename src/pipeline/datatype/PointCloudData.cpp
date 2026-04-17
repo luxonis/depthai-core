@@ -1,5 +1,8 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
+#include <algorithm>
+#include <stdexcept>
+
 #include "depthai/common/Point3f.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/PointCloudData.pb.h"
@@ -14,10 +17,14 @@ void PointCloudData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum
     datatype = DatatypeEnum::PointCloudData;
 }
 
-std::vector<Point3f> PointCloudData::getPoints() {
+std::vector<Point3f> PointCloudData::getPoints() const {
     if(isColor()) {
         span<const Point3fRGBA> pointData(reinterpret_cast<Point3fRGBA*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGBA));
         std::vector<Point3fRGBA> points(pointData.begin(), pointData.end());
+        // Organized: points.size() == width * height
+        // Sparse: points.size() <= width (height == 1)
+        assert(isOrganized() || points.size() <= width);
+        assert(!isOrganized() || points.size() == width * height);
         std::vector<Point3f> points3f;
         for(const auto& p : points) {
             points3f.push_back({p.x, p.y, p.z});
@@ -26,20 +33,24 @@ std::vector<Point3f> PointCloudData::getPoints() {
     }
     span<const Point3f> pointData(reinterpret_cast<Point3f*>(data->getData().data()), data->getData().size() / sizeof(Point3f));
     std::vector<Point3f> points(pointData.begin(), pointData.end());
-    assert(isSparse() || points.size() == width * height);
-    assert(!isSparse() || points.size() <= width * height);
+    // Organized: points.size() == width * height
+    // Sparse: points.size() <= width (height == 1)
+    assert(isOrganized() || points.size() <= width);
+    assert(!isOrganized() || points.size() == width * height);
 
     return points;
 }
 
-std::vector<Point3fRGBA> PointCloudData::getPointsRGB() {
+std::vector<Point3fRGBA> PointCloudData::getPointsRGB() const {
     if(!isColor()) {
         throw std::runtime_error("PointCloudData does not contain color data");
     }
     span<const Point3fRGBA> pointData(reinterpret_cast<Point3fRGBA*>(data->getData().data()), data->getData().size() / sizeof(Point3fRGBA));
     std::vector<Point3fRGBA> points(pointData.begin(), pointData.end());
-    assert(isSparse() || points.size() == width * height);
-    assert(!isSparse() || points.size() <= width * height);
+    // Organized: points.size() == width * height
+    // Sparse: points.size() <= width (height == 1)
+    assert(isOrganized() || points.size() <= width);
+    assert(!isOrganized() || points.size() == width * height);
 
     return points;
 }
@@ -88,7 +99,11 @@ float PointCloudData::getMaxZ() const {
     return maxz;
 }
 bool PointCloudData::isSparse() const {
-    return sparse;
+    return !isOrganized();
+}
+
+bool PointCloudData::isOrganized() const {
+    return height > 1;
 }
 
 bool PointCloudData::isColor() const {
@@ -97,6 +112,15 @@ bool PointCloudData::isColor() const {
 
 PointCloudData& PointCloudData::setInstanceNum(unsigned int instanceNum) {
     this->instanceNum = instanceNum;
+    return *this;
+}
+
+const ImgTransformation& PointCloudData::getTransformation() const {
+    return transformation;
+}
+
+PointCloudData& PointCloudData::setTransformation(const ImgTransformation& transformation) {
+    this->transformation = transformation;
     return *this;
 }
 
@@ -141,8 +165,56 @@ PointCloudData& PointCloudData::setMaxZ(float val) {
     this->maxz = val;
     return *this;
 }
-PointCloudData& PointCloudData::setSparse(bool val) {
-    sparse = val;
+PointCloudData& PointCloudData::setSparse(bool /*val*/) {
+    throw std::logic_error(
+        "PointCloudData::setSparse() is deprecated and removed. "
+        "Organization is now determined by width/height: set height=1 for sparse (N×1) or height>1 for organized.");
+}
+
+PointCloudData& PointCloudData::updateBoundingBox() {
+    const auto* rawData = data->getData().data();
+    const auto rawSize = data->getData().size();
+
+    bool foundValid = false;
+    float mnX = 0.f, mnY = 0.f, mnZ = 0.f;
+    float mxX = 0.f, mxY = 0.f, mxZ = 0.f;
+
+    auto update = [&](float x, float y, float z) {
+        if(!foundValid) {
+            mnX = mxX = x;
+            mnY = mxY = y;
+            mnZ = mxZ = z;
+            foundValid = true;
+        } else {
+            mnX = std::min(mnX, x);
+            mnY = std::min(mnY, y);
+            mnZ = std::min(mnZ, z);
+            mxX = std::max(mxX, x);
+            mxY = std::max(mxY, y);
+            mxZ = std::max(mxZ, z);
+        }
+    };
+
+    if(isColor()) {
+        const auto count = rawSize / sizeof(Point3fRGBA);
+        const auto* pts = reinterpret_cast<const Point3fRGBA*>(rawData);
+        for(std::size_t i = 0; i < count; ++i) {
+            update(pts[i].x, pts[i].y, pts[i].z);
+        }
+    } else {
+        const auto count = rawSize / sizeof(Point3f);
+        const auto* pts = reinterpret_cast<const Point3f*>(rawData);
+        for(std::size_t i = 0; i < count; ++i) {
+            update(pts[i].x, pts[i].y, pts[i].z);
+        }
+    }
+
+    minx = mnX;
+    miny = mnY;
+    minz = mnZ;
+    maxx = mxX;
+    maxy = mxY;
+    maxz = mxZ;
     return *this;
 }
 

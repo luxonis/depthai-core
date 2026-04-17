@@ -59,7 +59,7 @@ void bind_neuraldepth(pybind11::module& m, void* pCallstack) {
              &NeuralDepth::build,
              py::arg("leftInput"),
              py::arg("rightInput"),
-             py::arg("model") = DeviceModelZoo::NEURAL_DEPTH_SMALL,
+             py::arg("model") = DeviceModelZoo::NEURAL_DEPTH_480X300,
              DOC(dai, node, NeuralDepth, build))
         .def_property_readonly(
             "sync", [](NeuralDepth& n) { return &(*n.sync); }, py::return_value_policy::reference_internal, DOC(dai, node, NeuralDepth, sync))

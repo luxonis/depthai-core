@@ -6,11 +6,14 @@
 namespace dai {
 namespace node {
 
-class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemuxProperties> {
+class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemuxProperties>, public HostRunnable {
+   private:
+    bool runOnHostVar = false;
+
    public:
     constexpr static const char* NAME = "MessageDemux";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    ~MessageDemux() override;
+
     /**
      * Input message of type MessageGroup
      */
@@ -20,6 +23,19 @@ class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemu
      * A map of outputs, where keys are same as in the input MessageGroup
      */
     OutputMap outputs{*this, "outputs", {DEFAULT_NAME, DEFAULT_GROUP, {{{DatatypeEnum::Buffer, true}}}}};
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
 
     /**
      * Specify on which processor the node should run. RVC2 only.

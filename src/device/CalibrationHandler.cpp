@@ -1,6 +1,5 @@
+#include <vector>
 #define _USE_MATH_DEFINES
-
-#include "device/CalibrationHandler.hpp"
 
 #include <cmath>
 #include <fstream>
@@ -17,6 +16,7 @@
 #include "depthai/common/HousingCoordinateSystem.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/utility/matrixOps.hpp"
+#include "device/CalibrationHandler.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
@@ -412,6 +412,18 @@ std::tuple<std::vector<std::vector<float>>, int, int> CalibrationHandler::getDef
     return {eepromData.cameraData.at(cameraId).intrinsicMatrix, eepromData.cameraData.at(cameraId).width, eepromData.cameraData.at(cameraId).height};
 }
 
+uint32_t CalibrationHandler::getSourceHeight(CameraBoardSocket cameraId) const {
+    if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraId");
+
+    return eepromData.cameraData.at(cameraId).height;
+}
+
+uint32_t CalibrationHandler::getSourceWidth(CameraBoardSocket cameraId) const {
+    if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraId");
+
+    return eepromData.cameraData.at(cameraId).width;
+}
+
 std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSocket cameraId) const {
     if(eepromData.version < 4)
         throw std::runtime_error("Your device contains old calibration which doesn't include Intrinsic data. Please recalibrate your device");
@@ -553,6 +565,16 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
     }
 
     return extrinsics;
+}
+
+CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
+    dai::CameraBoardSocket currentCameraId = eepromData.cameraData.begin()->first;
+    for(const auto& cameraData : eepromData.cameraData) {
+        if(static_cast<int>(cameraData.first) < static_cast<int>(currentCameraId)) {
+            currentCameraId = cameraData.first;
+        }
+    }
+    return currentCameraId;
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,

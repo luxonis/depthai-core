@@ -134,7 +134,9 @@ TEST_CASE("FPS check") {
             // Not implemented on RVC2 REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(8.0).margin(2.0));
             // Not implemented on RVC2 REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.outputStates.at("0").isValid());
-            REQUIRE(nodeState.outputStates.at("0").timing.fps == Catch::Approx(8.0).margin(2.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.outputStates.at("0").timing.fps == Catch::Approx(8.0).margin(2.0));
+            }
         }
         if(std::string(node->getName()) == "NeuralNetwork") {
             ++gotNodes;
@@ -142,11 +144,13 @@ TEST_CASE("FPS check") {
             // Not implemented on RVC2 REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(8.0).margin(2.0));
             // Not implemented on RVC2 REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.inputStates.at("in").isValid());
-            REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.outputStates.at("passthrough").isValid());
-            REQUIRE(nodeState.outputStates.at("passthrough").timing.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.outputStates.at("out").isValid());
-            REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(8.0).margin(2.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.outputStates.at("passthrough").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(8.0).margin(2.0));
+            }
         }
         if(std::string(node->getName()) == "StereoDepth") {
             ++gotNodes;
@@ -154,11 +158,13 @@ TEST_CASE("FPS check") {
             // Not implemented on RVC2 REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(8.0).margin(2.0));
             // Not implemented on RVC2 REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.inputStates.at("left").isValid());
-            REQUIRE(nodeState.inputStates.at("left").timing.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.inputStates.at("right").isValid());
-            REQUIRE(nodeState.inputStates.at("right").timing.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.outputStates.at("depth").isValid());
-            REQUIRE(nodeState.outputStates.at("depth").timing.fps == Catch::Approx(8.0).margin(2.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.inputStates.at("left").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.inputStates.at("right").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.outputStates.at("depth").timing.fps == Catch::Approx(8.0).margin(2.0));
+            }
         }
         if(std::string(node->getName()) == "DetectionParser") {
             ++gotNodes;
@@ -166,9 +172,11 @@ TEST_CASE("FPS check") {
             // Not implemented on RVC2 REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(8.0).margin(2.0));
             // Not implemented on RVC2 REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.inputStates.at("in").isValid());
-            REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.outputStates.at("out").isValid());
-            REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(8.0).margin(2.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(8.0).margin(2.0));
+            }
         }
         if(std::string(node->getName()) == "SpatialDetectionNetwork") {
             ++gotNodes;
@@ -176,15 +184,17 @@ TEST_CASE("FPS check") {
             // Not implemented on RVC2 REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(8.0).margin(2.0));
             // Not implemented on RVC2 REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.inputStates.at("inputDepth").isValid());
-            REQUIRE(nodeState.inputStates.at("inputDepth").timing.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.inputStates.at("inputDetections").isValid());
-            REQUIRE(nodeState.inputStates.at("inputDetections").timing.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.inputStates.at("inputImg").isValid());
-            REQUIRE(nodeState.inputStates.at("inputImg").timing.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.outputStates.at("passthroughDepth").isValid());
-            REQUIRE(nodeState.outputStates.at("passthroughDepth").timing.fps == Catch::Approx(8.0).margin(2.0));
             REQUIRE(nodeState.outputStates.at("out").isValid());
-            REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(8.0).margin(2.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.inputStates.at("inputDepth").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.inputStates.at("inputDetections").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.inputStates.at("inputImg").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.outputStates.at("passthroughDepth").timing.fps == Catch::Approx(8.0).margin(2.0));
+                REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(8.0).margin(2.0));
+            }
         }
     }
 

@@ -151,7 +151,8 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .value("AQUA", CameraControl::EffectMode::AQUA);
 
     camCtrlAttr.push_back("FrameSyncMode");
-    cameraControlFrameSyncMode.value("OFF", CameraControl::FrameSyncMode::OFF)
+    cameraControlFrameSyncMode.value("AUTO", CameraControl::FrameSyncMode::AUTO)
+        .value("OFF", CameraControl::FrameSyncMode::OFF)
         .value("OUTPUT", CameraControl::FrameSyncMode::OUTPUT)
         .value("INPUT", CameraControl::FrameSyncMode::INPUT);
 

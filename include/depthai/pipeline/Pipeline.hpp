@@ -3,6 +3,7 @@
 
 // standard
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
@@ -33,6 +34,12 @@ namespace dai {
 
 namespace fs = std::filesystem;
 
+enum class PipelineAutoCalibrationMode : int {
+    OFF = 0,
+    ON_START = 1,
+    CONTINUOUS = 2,
+};
+
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
@@ -43,6 +50,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     PipelineImpl(bool createImplicitDevice = true) : assetManager("/pipeline/") {
         if(createImplicitDevice) {
             defaultDevice = std::make_shared<Device>();
+        } else {
+            hostProperties = DeviceProperties();
+            defaultDeviceProperties = &hostProperties.value();
         }
     }
     PipelineImpl(std::shared_ptr<Device> device) : assetManager("/pipeline/"), defaultDevice{std::move(device)} {}
@@ -89,11 +99,16 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setXLinkChunkSize(int sizeBytes);
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(GlobalProperties globalProperties);
+    void setDefaultDeviceProperties(const DeviceProperties& deviceProperties);
+    void setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties);
+    std::optional<DeviceProperties> getDefaultDeviceProperties() const;
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
+    void setAutoCalibrationMode(PipelineAutoCalibrationMode mode);
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
     bool hasDynamicCalibration() const;
+    PipelineAutoCalibrationMode getAutoCalibrationMode() const;
 
     BoardConfig getBoardConfig() const;
 
@@ -141,6 +156,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Board configuration
     BoardConfig board;
 
+    // Build-time automatic calibration policy for implicit AutoCalibration node creation.
+    PipelineAutoCalibrationMode autoCalibrationMode = PipelineAutoCalibrationMode::ON_START;
+    bool autoCalibrationModeSetByApi = false;
+
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
 
@@ -158,6 +177,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
+    std::optional<DeviceProperties> hostProperties;
+    DeviceProperties* defaultDeviceProperties = nullptr;
 
     // Queue for tasks
     LockingQueue<std::function<void()>> tasks;
@@ -267,6 +288,8 @@ class Pipeline {
     std::shared_ptr<PipelineImpl> pimpl;
 
    public:
+    using AutoCalibrationMode = PipelineAutoCalibrationMode;
+
     PipelineImpl* impl() {
         return pimpl.get();
     }
@@ -306,6 +329,27 @@ class Pipeline {
      */
     void setGlobalProperties(GlobalProperties globalProperties) {
         impl()->setGlobalProperties(globalProperties);
+    }
+
+    /**
+     * Sets default device properties
+     */
+    void setDefaultDeviceProperties(DeviceProperties deviceProperties) {
+        impl()->setDefaultDeviceProperties(deviceProperties);
+    }
+
+    /**
+     * Sets default device properties reference. The properties should live at least as long as the pipeline.
+     */
+    void setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties) {
+        impl()->setDefaultDevicePropertiesRef(deviceProperties);
+    }
+
+    /**
+     * Gets a copy of default device properties. If pipeline is in host only mode, returns host properties, otherwise returns device properties
+     */
+    std::optional<DeviceProperties> getDefaultDeviceProperties() const {
+        return impl()->getDefaultDeviceProperties();
     }
 
     /**
@@ -408,9 +452,9 @@ class Pipeline {
     }
 
     /**
-     * check if calib data has been set or the default will be returned
-     * @return true - calib data has been set
-     * @return false - calib data has not been set - default will be returned
+     * check if calib data is available on the device
+     * @return true - calib data is available
+     * @return false - calib data is not available
      */
     bool isCalibrationDataAvailable() const {
         return impl()->isCalibrationDataAvailable();
@@ -489,6 +533,26 @@ class Pipeline {
         impl()->setBoardConfig(board);
     }
 
+    /// Sets implicit automatic calibration policy for this pipeline.
+    void setAutoCalibration(AutoCalibrationMode mode) {
+        impl()->setAutoCalibrationMode(mode);
+    }
+
+    /// Gets implicit automatic calibration policy for this pipeline.
+    AutoCalibrationMode getAutoCalibration() const {
+        return impl()->getAutoCalibrationMode();
+    }
+
+    /// Sets implicit automatic calibration policy for this pipeline.
+    void setAutoCalibrationMode(AutoCalibrationMode mode) {
+        impl()->setAutoCalibrationMode(mode);
+    }
+
+    /// Gets implicit automatic calibration policy for this pipeline.
+    AutoCalibrationMode getAutoCalibrationMode() const {
+        return impl()->getAutoCalibrationMode();
+    }
+
     /// Gets board configuration
     BoardConfig getBoardConfig() const {
         return impl()->getBoardConfig();
@@ -543,6 +607,8 @@ class Pipeline {
     /// Record and Replay
     void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
+    bool isHolisticRecordEnabled() const;
+    bool isHolisticReplayEnabled() const;
 
     /// Pipeline debugging
     void enablePipelineDebugging(bool enable = true);

@@ -76,6 +76,8 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, CalibrationHandler, getCameraIntrinsics, 3))
 
         .def("getDefaultIntrinsics", &CalibrationHandler::getDefaultIntrinsics, py::arg("cameraId"), DOC(dai, CalibrationHandler, getDefaultIntrinsics))
+        .def("getSourceHeight", &CalibrationHandler::getSourceHeight, py::arg("cameraId"), DOC(dai, CalibrationHandler, getSourceHeight))
+        .def("getSourceWidth", &CalibrationHandler::getSourceWidth, py::arg("cameraId"), DOC(dai, CalibrationHandler, getSourceWidth))
         .def("getDistortionCoefficients",
              &CalibrationHandler::getDistortionCoefficients,
              py::arg("cameraId"),
@@ -84,7 +86,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("getFov", &CalibrationHandler::getFov, py::arg("cameraId"), py::arg("useSpec") = true, DOC(dai, CalibrationHandler, getFov))
         .def("getLensPosition", &CalibrationHandler::getLensPosition, py::arg("cameraId"), DOC(dai, CalibrationHandler, getLensPosition))
         .def("getDistortionModel", &CalibrationHandler::getDistortionModel, py::arg("cameraId"), DOC(dai, CalibrationHandler, getDistortionModel))
-
+        .def("getCameraWithLowestId", &CalibrationHandler::getCameraWithLowestId, DOC(dai, CalibrationHandler, getCameraWithLowestId))
         .def("getCameraExtrinsics",
              &CalibrationHandler::getCameraExtrinsics,
              py::arg("srcCamera"),
