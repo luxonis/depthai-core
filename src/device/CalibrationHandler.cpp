@@ -412,6 +412,18 @@ std::tuple<std::vector<std::vector<float>>, int, int> CalibrationHandler::getDef
     return {eepromData.cameraData.at(cameraId).intrinsicMatrix, eepromData.cameraData.at(cameraId).width, eepromData.cameraData.at(cameraId).height};
 }
 
+uint32_t CalibrationHandler::getSourceHeight(CameraBoardSocket cameraId) const {
+    if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraId");
+
+    return eepromData.cameraData.at(cameraId).height;
+}
+
+uint32_t CalibrationHandler::getSourceWidth(CameraBoardSocket cameraId) const {
+    if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraId");
+
+    return eepromData.cameraData.at(cameraId).width;
+}
+
 std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSocket cameraId) const {
     if(eepromData.version < 4)
         throw std::runtime_error("Your device contains old calibration which doesn't include Intrinsic data. Please recalibrate your device");

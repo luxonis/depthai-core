@@ -1,5 +1,4 @@
 #include <memory>
-#include <unordered_map>
 
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
@@ -18,6 +17,11 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
 
     // py::class_<RawPointCloudConfig, RawBuffer, std::shared_ptr<RawPointCloudConfig>> rawConfig(m, "RawPointCloudConfig", DOC(dai, RawPointCloudConfig));
     py::class_<PointCloudConfig, Py<PointCloudConfig>, Buffer, std::shared_ptr<PointCloudConfig>> config(m, "PointCloudConfig", DOC(dai, PointCloudConfig));
+
+    py::enum_<PointCloudConfig::CoordinateSystemType>(config, "CoordinateSystemType")
+        .value("DEFAULT", PointCloudConfig::CoordinateSystemType::DEFAULT)
+        .value("CAMERA_SOCKET", PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET)
+        .value("HOUSING", PointCloudConfig::CoordinateSystemType::HOUSING);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -42,22 +46,51 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
     // Message
     config.def(py::init<>())
         .def("__repr__", &PointCloudConfig::str)
-        // .def(py::init<std::shared_ptr<RawPointCloudConfig>>())
-
-        // .def("set", &PointCloudConfig::set, py::arg("config"), DOC(dai, PointCloudConfig, set))
-        // .def("get", &PointCloudConfig::get, DOC(dai, PointCloudConfig, get))
-        .def("getSparse", &PointCloudConfig::getSparse, DOC(dai, PointCloudConfig, getSparse))
+        .def("getOrganized", &PointCloudConfig::getOrganized, DOC(dai, PointCloudConfig, getOrganized))
+        .def("setOrganized", &PointCloudConfig::setOrganized, DOC(dai, PointCloudConfig, setOrganized))
         .def("getTransformationMatrix", &PointCloudConfig::getTransformationMatrix, DOC(dai, PointCloudConfig, getTransformationMatrix))
-        .def("setSparse", &PointCloudConfig::setSparse, DOC(dai, PointCloudConfig, setSparse))
         .def(
             "setTransformationMatrix",
             [](PointCloudConfig& cfg, std::array<std::array<float, 3>, 3> mat) { return cfg.setTransformationMatrix(mat); },
             DOC(dai, PointCloudConfig, setTransformationMatrix))
-
         .def(
             "setTransformationMatrix",
             [](PointCloudConfig& cfg, std::array<std::array<float, 4>, 4> mat) { return cfg.setTransformationMatrix(mat); },
-            DOC(dai, PointCloudConfig, setTransformationMatrix));
+            DOC(dai, PointCloudConfig, setTransformationMatrix))
+        .def("getLengthUnit", &PointCloudConfig::getLengthUnit, DOC(dai, PointCloudConfig, getLengthUnit))
+        .def("setLengthUnit", &PointCloudConfig::setLengthUnit, DOC(dai, PointCloudConfig, setLengthUnit))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<CameraBoardSocket, bool>(&PointCloudConfig::setTargetCoordinateSystem),
+             py::arg("targetCamera"),
+             py::arg("useSpecTranslation") = false,
+             DOC(dai, PointCloudConfig, setTargetCoordinateSystem))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<HousingCoordinateSystem, bool>(&PointCloudConfig::setTargetCoordinateSystem),
+             py::arg("housingCS"),
+             py::arg("useSpecTranslation") = true,
+             DOC(dai, PointCloudConfig, setTargetCoordinateSystem, 2))
+        .def("getCoordinateSystemType", &PointCloudConfig::getCoordinateSystemType, DOC(dai, PointCloudConfig, getCoordinateSystemType))
+        .def("getTargetCameraSocket", &PointCloudConfig::getTargetCameraSocket, DOC(dai, PointCloudConfig, getTargetCameraSocket))
+        .def("getTargetHousingCS", &PointCloudConfig::getTargetHousingCS, DOC(dai, PointCloudConfig, getTargetHousingCS))
+        .def("getUseSpecTranslation", &PointCloudConfig::getUseSpecTranslation, DOC(dai, PointCloudConfig, getUseSpecTranslation))
+        // Deprecated
+        .def(
+            "getSparse",
+            [](const PointCloudConfig& cfg) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, "getSparse() is deprecated, use getOrganized() instead (note: sparse == !organized).", 1) < 0)
+                    throw py::error_already_set();
+                return !cfg.getOrganized();
+            },
+            "**Deprecated:** Use getOrganized() instead (sparse == !organized).")
+        .def(
+            "setSparse",
+            [](PointCloudConfig& cfg, bool sparse) -> PointCloudConfig& {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, "setSparse() is deprecated, use setOrganized() instead (note: sparse == !organized).", 1) < 0)
+                    throw py::error_already_set();
+                return cfg.setOrganized(!sparse);
+            },
+            py::arg("sparse"),
+            "**Deprecated:** Use setOrganized() instead (sparse == !organized).");
 
     // add aliases
 }

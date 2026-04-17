@@ -248,9 +248,9 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     )
 
     private_data(
-        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/holistic_recording.tar"
-        SHA1 "1eb1e6b927fbf52d4f9c13e530697503010c5b96"
-        FILE "holistic_recording.tar"
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/holistic_recording_transformations.tar"
+        SHA1 "be6ef1f24a26d8e604283a6dac59ede035425feb"
+        FILE "holistic_recording_transformations.tar"
         LOCATION holistic_recording
     )
 
@@ -502,6 +502,14 @@ dai_set_test_labels(imgdetections_test onhost ci)
 #ImgFrame tests
 dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
 dai_set_test_labels(imgframe_test onhost ci)
+
+# PointCloudData / PointCloudConfig / PointCloudProperties datatype tests
+dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
+dai_set_test_labels(pointclouddata_test onhost ci)
+
+# PointCloud node tests
+dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
+dai_set_test_labels(point_cloud_test onhost ci)
 
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)

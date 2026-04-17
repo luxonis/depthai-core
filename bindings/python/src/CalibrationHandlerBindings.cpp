@@ -76,6 +76,8 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, CalibrationHandler, getCameraIntrinsics, 3))
 
         .def("getDefaultIntrinsics", &CalibrationHandler::getDefaultIntrinsics, py::arg("cameraId"), DOC(dai, CalibrationHandler, getDefaultIntrinsics))
+        .def("getSourceHeight", &CalibrationHandler::getSourceHeight, py::arg("cameraId"), DOC(dai, CalibrationHandler, getSourceHeight))
+        .def("getSourceWidth", &CalibrationHandler::getSourceWidth, py::arg("cameraId"), DOC(dai, CalibrationHandler, getSourceWidth))
         .def("getDistortionCoefficients",
              &CalibrationHandler::getDistortionCoefficients,
              py::arg("cameraId"),

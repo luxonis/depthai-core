@@ -17,7 +17,7 @@ int main() {
     signal(SIGTERM, signalHandler);
     signal(SIGINT, signalHandler);
 
-    constexpr float FPS = 10.0f;
+    constexpr float FPS = 25.0f;
 
     // Create pipeline
     dai::Pipeline pipeline;

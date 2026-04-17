@@ -33,6 +33,12 @@
 #include "depthai/pipeline/node/host/Replay.hpp"
 
 constexpr unsigned int NUM_MSGS = 150;
+constexpr unsigned int NUM_SMOKE_MSGS = 30;
+
+struct DetectionParserSmokeExpectations {
+    bool decodeSegmentation = false;
+    bool decodeKeypoints = false;
+};
 
 void validateDetections(const std::shared_ptr<dai::ImgDetections>& detections, const std::filesystem::path& groundTruthPath, int frameNumber) {
     std::ifstream gtFile(groundTruthPath);
@@ -179,6 +185,44 @@ void validateDetections(const std::shared_ptr<dai::ImgDetections>& detections, c
     REQUIRE(std::all_of(matched.begin(), matched.end(), [](bool value) { return value; }));
 }
 
+void validateSmokeDetection(const dai::ImgDetection& detection) {
+    REQUIRE(std::isfinite(detection.confidence));
+    REQUIRE(detection.confidence >= 0.F);
+    REQUIRE(detection.confidence <= 1.F);
+
+    REQUIRE(std::isfinite(detection.xmin));
+    REQUIRE(std::isfinite(detection.ymin));
+    REQUIRE(std::isfinite(detection.xmax));
+    REQUIRE(std::isfinite(detection.ymax));
+
+    REQUIRE(detection.xmin >= 0.F);
+    REQUIRE(detection.ymin >= 0.F);
+    REQUIRE(detection.xmax <= 1.F);
+    REQUIRE(detection.ymax <= 1.F);
+    REQUIRE(detection.xmin < detection.xmax);
+    REQUIRE(detection.ymin < detection.ymax);
+}
+
+void validateSmokeKeypoints(const std::vector<dai::Keypoint>& keypoints, std::size_t expectedCount) {
+    REQUIRE(keypoints.size() == expectedCount);
+
+    for(std::size_t i = 0; i < keypoints.size(); ++i) {
+        INFO("Keypoint index: " << i);
+        const auto& keypoint = keypoints.at(i);
+
+        REQUIRE(std::isfinite(keypoint.imageCoordinates.x));
+        REQUIRE(std::isfinite(keypoint.imageCoordinates.y));
+        REQUIRE(std::isfinite(keypoint.confidence));
+
+        REQUIRE(keypoint.imageCoordinates.x >= 0.F);
+        REQUIRE(keypoint.imageCoordinates.x <= 1.F);
+        REQUIRE(keypoint.imageCoordinates.y >= 0.F);
+        REQUIRE(keypoint.imageCoordinates.y <= 1.F);
+        REQUIRE(keypoint.confidence >= 0.F);
+        REQUIRE(keypoint.confidence <= 1.F);
+    }
+}
+
 void runDetectionParserReplayTest(const std::string& modelName, const std::filesystem::path& groundTruthPath, const std::filesystem::path& testVideoPath) {
     dai::Pipeline p;
     auto device = p.getDefaultDevice();
@@ -215,6 +259,97 @@ void runDetectionParserReplayTest(const std::string& modelName, const std::files
             validateDetections(detections, groundTruthPath, i);
         }
     }
+}
+
+void runDetectionParserReplaySmokeTest(const std::string& modelName,
+                                       const std::filesystem::path& testVideoPath,
+                                       const DetectionParserSmokeExpectations& expectations) {
+    dai::Pipeline p;
+    auto device = p.getDefaultDevice();
+    auto replayNode = p.create<dai::node::ReplayVideo>();
+    replayNode->setLoop(false);
+    replayNode->setFps(30);
+    replayNode->setOutFrameType(dai::ImgFrame::Type::BGR888i);
+    replayNode->setReplayVideoFile(testVideoPath);
+
+    auto detectionNetwork = p.create<dai::node::DetectionNetwork>()->build(replayNode, modelName);
+    auto optionalNNArchive = detectionNetwork->neuralNetwork->getNNArchive();
+
+    REQUIRE(optionalNNArchive.has_value());
+    dai::NNArchive nnArchive = *optionalNNArchive;
+
+    auto size = nnArchive.getInputSize();
+    REQUIRE(size.has_value());
+    replayNode->setSize(*size);
+
+    detectionNetwork->detectionParser->setConfidenceThreshold(0.01F);
+
+    REQUIRE(detectionNetwork->detectionParser->properties.parser.decodingFamily == YoloDecodingFamily::YOLO26);
+    REQUIRE(detectionNetwork->detectionParser->properties.parser.decodeSegmentation == expectations.decodeSegmentation);
+    REQUIRE(detectionNetwork->detectionParser->properties.parser.decodeKeypoints == expectations.decodeKeypoints);
+    if(expectations.decodeKeypoints) {
+        REQUIRE(detectionNetwork->detectionParser->properties.parser.nKeypoints.has_value());
+    } else {
+        REQUIRE_FALSE(detectionNetwork->detectionParser->properties.parser.nKeypoints.has_value());
+    }
+
+    auto outputQueue = detectionNetwork->detectionParser->out.createOutputQueue(4, true);
+
+    bool foundDetections = false;
+    bool foundExpectedExtraOutput = false;
+
+    p.start();
+    REQUIRE(p.isRunning());
+
+    for(int i = 0; i < NUM_SMOKE_MSGS; i++) {
+        INFO("Frame number: " << i);
+        if(!p.isRunning()) break;
+        if(outputQueue->isClosed()) break;
+
+        auto detections = outputQueue->get<dai::ImgDetections>();
+        REQUIRE(detections != nullptr);
+        REQUIRE(detections->getSequenceNum() == i);
+
+        if(!detections->detections.empty()) {
+            foundDetections = true;
+            if(!expectations.decodeSegmentation && !expectations.decodeKeypoints) {
+                foundExpectedExtraOutput = true;
+            }
+        }
+
+        for(std::size_t detIdx = 0; detIdx < detections->detections.size(); ++detIdx) {
+            INFO("Detection index: " << detIdx);
+            const auto& detection = detections->detections.at(detIdx);
+            validateSmokeDetection(detection);
+
+            const auto keypoints = detection.getKeypoints();
+            if(expectations.decodeKeypoints) {
+                REQUIRE(detectionNetwork->detectionParser->properties.parser.nKeypoints.has_value());
+                if(!keypoints.empty()) {
+                    validateSmokeKeypoints(keypoints, static_cast<std::size_t>(*detectionNetwork->detectionParser->properties.parser.nKeypoints));
+                    foundExpectedExtraOutput = true;
+                }
+            } else {
+                REQUIRE(keypoints.empty());
+            }
+        }
+
+        if(expectations.decodeSegmentation) {
+            auto maskData = detections->getMaskData();
+            if(maskData.has_value()) {
+                REQUIRE_FALSE(maskData->empty());
+                REQUIRE(detections->getSegmentationMaskWidth() > 0);
+                REQUIRE(detections->getSegmentationMaskHeight() > 0);
+                REQUIRE(maskData->size() == detections->getSegmentationMaskWidth() * detections->getSegmentationMaskHeight());
+                foundExpectedExtraOutput = true;
+            }
+        } else {
+            REQUIRE_FALSE(detections->getMaskData().has_value());
+        }
+    }
+
+    REQUIRE(foundDetections);
+    REQUIRE(foundExpectedExtraOutput);
 }
 
 TEST_CASE("DetectionParser can set properties") {
@@ -336,6 +471,22 @@ TEST_CASE("DetectionParser replay test") {
         INFO("Running DetectionParser replay test for model: " << std::get<0>(testCase));
 
         runDetectionParserReplayTest(std::get<0>(testCase), std::get<1>(testCase), std::get<2>(testCase));
+    }
+}
+
+TEST_CASE("DetectionParser YOLO26 smoke test") {
+    const std::filesystem::path peopleWalkingVideo{PEOPLE_WALKING_VIDEO};
+
+    const std::vector<std::tuple<std::string, DetectionParserSmokeExpectations>> testCases = {
+        {"depthai-test-models/yolo26:detection", DetectionParserSmokeExpectations{}},
+        {"depthai-test-models/yolo26:segmentation", DetectionParserSmokeExpectations{true, false}},
+        {"depthai-test-models/yolo26:pose", DetectionParserSmokeExpectations{false, true}},
+    };
+
+    for(const auto& [modelName, expectations] : testCases) {
+        DYNAMIC_SECTION("Model: " << modelName) {
+            runDetectionParserReplaySmokeTest(modelName, peopleWalkingVideo, expectations);
+        }
     }
 }
 

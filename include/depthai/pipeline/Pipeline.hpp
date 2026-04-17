@@ -34,6 +34,12 @@ namespace dai {
 
 namespace fs = std::filesystem;
 
+enum class PipelineAutoCalibrationMode : int {
+    OFF = 0,
+    ON_START = 1,
+    CONTINUOUS = 2,
+};
+
 class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
@@ -99,8 +105,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
+    void setAutoCalibrationMode(PipelineAutoCalibrationMode mode);
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
     bool hasDynamicCalibration() const;
+    PipelineAutoCalibrationMode getAutoCalibrationMode() const;
 
     BoardConfig getBoardConfig() const;
 
@@ -147,6 +155,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Board configuration
     BoardConfig board;
+
+    // Build-time automatic calibration policy for implicit AutoCalibration node creation.
+    PipelineAutoCalibrationMode autoCalibrationMode = PipelineAutoCalibrationMode::ON_START;
+    bool autoCalibrationModeSetByApi = false;
 
     // Output queues
     std::vector<std::shared_ptr<MessageQueue>> outputQueues;
@@ -276,6 +288,8 @@ class Pipeline {
     std::shared_ptr<PipelineImpl> pimpl;
 
    public:
+    using AutoCalibrationMode = PipelineAutoCalibrationMode;
+
     PipelineImpl* impl() {
         return pimpl.get();
     }
@@ -517,6 +531,26 @@ class Pipeline {
     /// Sets board configuration
     void setBoardConfig(BoardConfig board) {
         impl()->setBoardConfig(board);
+    }
+
+    /// Sets implicit automatic calibration policy for this pipeline.
+    void setAutoCalibration(AutoCalibrationMode mode) {
+        impl()->setAutoCalibrationMode(mode);
+    }
+
+    /// Gets implicit automatic calibration policy for this pipeline.
+    AutoCalibrationMode getAutoCalibration() const {
+        return impl()->getAutoCalibrationMode();
+    }
+
+    /// Sets implicit automatic calibration policy for this pipeline.
+    void setAutoCalibrationMode(AutoCalibrationMode mode) {
+        impl()->setAutoCalibrationMode(mode);
+    }
+
+    /// Gets implicit automatic calibration policy for this pipeline.
+    AutoCalibrationMode getAutoCalibrationMode() const {
+        return impl()->getAutoCalibrationMode();
     }
 
     /// Gets board configuration

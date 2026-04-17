@@ -71,6 +71,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<NodesStateApi> nodesStateApi(m, "NodesStateApi", DOC(dai, NodesStateApi));
     py::class_<NodeStateApi> nodeStateApi(m, "NodeStateApi", DOC(dai, NodeStateApi));
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
+    py::enum_<Pipeline::AutoCalibrationMode> pipelineAutoCalibrationMode(pipeline, "AutoCalibrationMode");
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -84,6 +85,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
+
+    pipelineAutoCalibrationMode.value("OFF", Pipeline::AutoCalibrationMode::OFF)
+        .value("ON_START", Pipeline::AutoCalibrationMode::ON_START)
+        .value("CONTINUOUS", Pipeline::AutoCalibrationMode::CONTINUOUS);
 
     // Bind global properties
     globalProperties.def_readwrite("pipelineName", &GlobalProperties::pipelineName).def_readwrite("pipelineVersion", &GlobalProperties::pipelineVersion);
@@ -246,6 +251,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("serializeToJson", &Pipeline::serializeToJson, DOC(dai, Pipeline, serializeToJson))
         .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))
         .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
+        .def("setAutoCalibration", &Pipeline::setAutoCalibration, py::arg("mode"))
+        .def("getAutoCalibration", &Pipeline::getAutoCalibration)
+        .def("setAutoCalibrationMode", &Pipeline::setAutoCalibrationMode, py::arg("mode"))
+        .def("getAutoCalibrationMode", &Pipeline::getAutoCalibrationMode)
         .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
         // 'Template' create function
         .def(

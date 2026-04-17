@@ -25,11 +25,15 @@
 #include "depthai/pipeline/NodeConnectionSchema.hpp"
 
 // std
+#include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
+#include <string_view>
 #include <unordered_set>
 
 // libraries
@@ -58,6 +62,33 @@ struct hash<::dai::NodeConnectionSchema> {
 namespace dai {
 
 namespace {
+
+const char* autoCalibrationModeToString(PipelineAutoCalibrationMode mode) {
+    switch(mode) {
+        case PipelineAutoCalibrationMode::OFF:
+            return "OFF";
+        case PipelineAutoCalibrationMode::ON_START:
+            return "ON_START";
+        case PipelineAutoCalibrationMode::CONTINUOUS:
+            return "CONTINUOUS";
+    }
+    return "ON_START";
+}
+
+std::optional<PipelineAutoCalibrationMode> parseAutoCalibrationMode(std::string_view mode) {
+    std::string modeStr(mode);
+    std::transform(modeStr.begin(), modeStr.end(), modeStr.begin(), [](char c) { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); });
+    if(modeStr == "OFF") {
+        return PipelineAutoCalibrationMode::OFF;
+    }
+    if(modeStr == "ON_START") {
+        return PipelineAutoCalibrationMode::ON_START;
+    }
+    if(modeStr == "CONTINUOUS") {
+        return PipelineAutoCalibrationMode::CONTINUOUS;
+    }
+    return std::nullopt;
+}
 
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHandler& rhs, CameraBoardSocket socket) {
@@ -522,6 +553,16 @@ void PipelineImpl::setBoardConfig(BoardConfig boardCfg) {
     board = boardCfg;
 }
 
+void PipelineImpl::setAutoCalibrationMode(PipelineAutoCalibrationMode mode) {
+    DAI_CHECK_V(!isBuilt(), "Cannot change auto calibration mode once the pipeline is built.");
+    autoCalibrationMode = mode;
+    autoCalibrationModeSetByApi = true;
+}
+
+PipelineAutoCalibrationMode PipelineImpl::getAutoCalibrationMode() const {
+    return autoCalibrationMode;
+}
+
 BoardConfig PipelineImpl::getBoardConfig() const {
     return board;
 }
@@ -740,7 +781,8 @@ bool PipelineImpl::isBuilt() const {
 bool PipelineImpl::hasDynamicCalibration() const {
     // call this only with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
-        if(node->getName() == dai::node::DynamicCalibration::NAME || node->getName() == dai::node::AutoCalibration::NAME) {
+        const auto nodeName = std::string_view(node->getName());
+        if(nodeName == dai::node::DynamicCalibration::NAME || nodeName == dai::node::AutoCalibration::NAME) {
             return true;
         }
     }
@@ -763,7 +805,7 @@ std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> stereoPair = std::pair(nullptr, nullptr);
     // call this only with locked pipelineBuildMutex
     for(const auto& node : getAllNodes()) {
-        if(node->getName() == dai::node::Camera::NAME) {
+        if(std::string_view(node->getName()) == dai::node::Camera::NAME) {
             auto camera = std::static_pointer_cast<dai::node::Camera>(node);
             auto boardSocket = camera->getBoardSocket();
             if(boardSocket == stereoSockets[0].left) {
@@ -785,9 +827,24 @@ void PipelineImpl::build() {
 
     // start ---Add AutoCalibration block---
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
-    auto autoCalibrationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "ON_START");
+    const auto pipelineAutoCalibrationMode = getAutoCalibrationMode();
+    const auto pipelineAutoCalibrationString = std::string(autoCalibrationModeToString(pipelineAutoCalibrationMode));
+    std::string autoCalibrationString = pipelineAutoCalibrationString;
+    std::optional<PipelineAutoCalibrationMode> autoCalibrationMode = pipelineAutoCalibrationMode;
+    if(!autoCalibrationModeSetByApi) {
+        autoCalibrationString = utility::getEnvAs<std::string>("DEPTHAI_AUTOCALIBRATION", "");
+        if(!autoCalibrationString.empty()) {
+            autoCalibrationMode = parseAutoCalibrationMode(autoCalibrationString);
+        }
+    }
     #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
-    if(autoCalibrationString == "CONTINUOUS" || autoCalibrationString == "ON_START") {
+    if((autoCalibrationMode == PipelineAutoCalibrationMode::CONTINUOUS || autoCalibrationMode == PipelineAutoCalibrationMode::ON_START)
+       && hasDynamicCalibration()) {
+        Logging::getInstance().logger.info("Pipeline contains DynamicCalibration/AutoCalibration node. Disabling implicit AutoCalibration at startup.");
+        autoCalibrationMode = PipelineAutoCalibrationMode::OFF;
+    }
+
+    if(autoCalibrationMode == PipelineAutoCalibrationMode::CONTINUOUS || autoCalibrationMode == PipelineAutoCalibrationMode::ON_START) {
         if(defaultDevice && defaultDevice->tryGetCalibration()) {
             auto stereoPair = getStereoPair();
 
@@ -811,7 +868,7 @@ void PipelineImpl::build() {
                 }
             };
 
-            if(stereoPair.first && stereoPair.second && !hasDynamicCalibration() && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
+            if(stereoPair.first && stereoPair.second && hasStereoPairValidCalibration(defaultDevice->tryGetCalibration())) {
                 auto autoCalibrationNode = create<dai::node::AutoCalibration>(shared_from_this())->build(stereoPair.first, stereoPair.second);
                 Logging::getInstance().logger.info("AutoCalibration is initialized");
 
@@ -851,7 +908,7 @@ void PipelineImpl::build() {
                 }
                 autoCalibrationNode->initialConfig->flashCalibration = allowFlashCalibration;
 
-                if(autoCalibrationString == "CONTINUOUS") {
+                if(autoCalibrationMode == PipelineAutoCalibrationMode::CONTINUOUS) {
                     autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::CONTINUOUS;
                 } else {
                     autoCalibrationNode->initialConfig->mode = dai::AutoCalibrationConfig::Mode::ON_START;
@@ -865,8 +922,8 @@ void PipelineImpl::build() {
                 Logging::getInstance().logger.info("Device has no valid initial calibration. Skipping autocalibration.");
             }
         }
-    } else if(autoCalibrationString != "OFF" && autoCalibrationString != "") {
-        Logging::getInstance().logger.info("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibrationString);
+    } else if(!autoCalibrationMode && !autoCalibrationString.empty()) {
+        Logging::getInstance().logger.warn("DEPTHAI_AUTOCALIBRATION can be CONTINUOUS, ON_START or OFF not {}", autoCalibrationString);
     }
     #endif
 #endif

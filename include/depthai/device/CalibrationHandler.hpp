@@ -192,6 +192,20 @@ class CalibrationHandler {
     std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId) const;
 
     /**
+     * Get the source height of the camera from the calibration data.
+     * @param cameraId Uses the cameraId to identify which camera source height to return
+     * @return the source height of the camera from the calibration data.
+     */
+    uint32_t getSourceHeight(CameraBoardSocket cameraId) const;
+
+    /**
+     * Get the source width of the camera from the calibration data.
+     * @param cameraId Uses the cameraId to identify which camera source width to return
+     * @return the source width of the camera from the calibration data.
+     */
+    uint32_t getSourceWidth(CameraBoardSocket cameraId) const;
+
+    /**
      * Get the Distortion Coefficients object
      *
      * @param cameraId Uses the cameraId to identify which distortion Coefficients to return.
