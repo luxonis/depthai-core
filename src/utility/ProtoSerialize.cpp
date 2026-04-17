@@ -776,7 +776,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
     pointCloudData->set_maxx(message->getMaxX());
     pointCloudData->set_maxy(message->getMaxY());
     pointCloudData->set_maxz(message->getMaxZ());
-    
+
     // Set sparse flag based on height for backward compatibility with protobuf
     pointCloudData->set_sparse(message->getHeight() == 1);
     pointCloudData->set_color(message->isColor());

@@ -1,17 +1,23 @@
 #include "depthai/pipeline/node/PointCloud.hpp"
 
+#include <spdlog/logger.h>
+
 #include <chrono>
 #include <cstring>
 #include <future>
 #include <thread>
 
+#ifdef DEPTHAI_ENABLE_KOMPUTE
+    #include "kompute/Kompute.hpp"
+#endif
+
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
-#include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "device/CalibrationHandler.hpp"
 #include "pipeline/Pipeline.hpp"
@@ -27,7 +33,7 @@ namespace node {
 
 // ── Impl: apply / get methods ──
 
-void PointCloud::Impl::setLogger(std::shared_ptr<spdlog::logger> log) {
+void PointCloud::Impl::setLogger(std::shared_ptr<::spdlog::logger> log) {
     logger = log;
 }
 
@@ -175,7 +181,8 @@ void PointCloud::Impl::computePointCloudDenseCPUMT(const uint8_t* depthData, std
     }
 }
 
-void PointCloud::Impl::calcPointsChunkDenseColored(const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points, unsigned int startRow, unsigned int endRow) {
+void PointCloud::Impl::calcPointsChunkDenseColored(
+    const uint8_t* depthData, const uint8_t* colorData, std::vector<Point3fRGBA>& points, unsigned int startRow, unsigned int endRow) {
     const float scale = scaleFactor;
 
     for(unsigned int row = startRow; row < endRow; row++) {
@@ -488,9 +495,9 @@ bool PointCloud::hasTransformationChanged(const ImgFrame& frame) {
 }
 
 static void logMatrix4x4(const std::shared_ptr<spdlog::logger>& logger,
-                          spdlog::level::level_enum level,
-                          const std::string& name,
-                          const std::vector<std::vector<float>>& m) {
+                         spdlog::level::level_enum level,
+                         const std::string& name,
+                         const std::vector<std::vector<float>>& m) {
     logger->log(level, "{}:", name);
     for(int i = 0; i < 4; i++) {
         logger->log(level, "  [{:8.4f}, {:8.4f}, {:8.4f}, {:8.4f}]", m[i][0], m[i][1], m[i][2], m[i][3]);
@@ -523,8 +530,9 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
     auto frameExtrinsics = depthFrame.transformation.getExtrinsics();
     auto refCamera = frameExtrinsics.toCameraSocket;
     if(refCamera == CameraBoardSocket::AUTO) {
-        throw std::runtime_error("PointCloud: depth frame extrinsics toCameraSocket is AUTO. "
-                                 "Ensure the depth frame has valid extrinsics with a specific camera socket set.");
+        throw std::runtime_error(
+            "PointCloud: depth frame extrinsics toCameraSocket is AUTO. "
+            "Ensure the depth frame has valid extrinsics with a specific camera socket set.");
     }
     auto T_frame_to_ref = matrix::toVecMatrix4x4(frameExtrinsics.getTransformationMatrix(useSpecTranslation, unit));
     logMatrix4x4(pimpl->logger, spdlog::level::debug, "T_frame_to_ref", T_frame_to_ref);
@@ -632,20 +640,25 @@ void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::sha
     pc->setPoints(std::move(points));
 }
 
-void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<ImgFrame> colorFrame, std::shared_ptr<PointCloudData> pc, bool organized) {
+void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
+                                  std::shared_ptr<ImgFrame> colorFrame,
+                                  std::shared_ptr<PointCloudData> pc,
+                                  bool organized) {
     const auto width = depthFrame->getWidth();
     const auto height = depthFrame->getHeight();
 
     // Validate color frame - early return to depth-only on failure
     if(colorFrame->getWidth() != width || colorFrame->getHeight() != height) {
         pimpl->logger->warn("PointCloud: color frame size ({}x{}) does not match depth ({}x{}) -- skipping colorization",
-                            colorFrame->getWidth(), colorFrame->getHeight(), width, height);
+                            colorFrame->getWidth(),
+                            colorFrame->getHeight(),
+                            width,
+                            height);
         processDepthOnly(depthFrame, pc, organized);
         return;
     }
     if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
-        pimpl->logger->warn("PointCloud: color frame type ({}) is not RGB888i -- skipping colorization",
-                            static_cast<int>(colorFrame->getType()));
+        pimpl->logger->warn("PointCloud: color frame type ({}) is not RGB888i -- skipping colorization", static_cast<int>(colorFrame->getType()));
         processDepthOnly(depthFrame, pc, organized);
         return;
     }
@@ -656,14 +669,14 @@ void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame, std::sha
         auto colorExtrinsics = colorFrame->transformation.getExtrinsics();
         if(depthExtrinsics.toCameraSocket != colorExtrinsics.toCameraSocket) {
             pimpl->logger->warn("PointCloud: color extrinsics toCameraSocket ({}) does not match depth ({}) -- colorization may be misaligned",
-                                toString(colorExtrinsics.toCameraSocket), toString(depthExtrinsics.toCameraSocket));
-        } else if(depthExtrinsics.rotationMatrix != colorExtrinsics.rotationMatrix
-                  || depthExtrinsics.translation.x != colorExtrinsics.translation.x
-                  || depthExtrinsics.translation.y != colorExtrinsics.translation.y
-                  || depthExtrinsics.translation.z != colorExtrinsics.translation.z) {
-            pimpl->logger->warn("PointCloud: depth and color extrinsics differ (same toCameraSocket={} but different rotation/translation) "
-                                "-- colorization may be misaligned",
+                                toString(colorExtrinsics.toCameraSocket),
                                 toString(depthExtrinsics.toCameraSocket));
+        } else if(depthExtrinsics.rotationMatrix != colorExtrinsics.rotationMatrix || depthExtrinsics.translation.x != colorExtrinsics.translation.x
+                  || depthExtrinsics.translation.y != colorExtrinsics.translation.y || depthExtrinsics.translation.z != colorExtrinsics.translation.z) {
+            pimpl->logger->warn(
+                "PointCloud: depth and color extrinsics differ (same toCameraSocket={} but different rotation/translation) "
+                "-- colorization may be misaligned",
+                toString(depthExtrinsics.toCameraSocket));
         }
     }
 
@@ -761,13 +774,12 @@ void PointCloud::run() {
         // Validate that the buffer contains packed uint16_t depth data
         const auto expectedBytes = static_cast<std::size_t>(width) * height * sizeof(uint16_t);
         if(depthFrame->getType() != ImgFrame::Type::RAW16 || depthFrame->getData().size() != expectedBytes) {
-            pimpl->logger->warn(
-                "PointCloud: unexpected depth frame (type={}, size={}, expected {} bytes for {}x{} RAW16) -- skipping frame",
-                static_cast<int>(depthFrame->getType()),
-                depthFrame->getData().size(),
-                expectedBytes,
-                width,
-                height);
+            pimpl->logger->warn("PointCloud: unexpected depth frame (type={}, size={}, expected {} bytes for {}x{} RAW16) -- skipping frame",
+                                static_cast<int>(depthFrame->getType()),
+                                depthFrame->getData().size(),
+                                expectedBytes,
+                                width,
+                                height);
             continue;
         }
 

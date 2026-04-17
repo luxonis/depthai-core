@@ -268,7 +268,21 @@ class PointCloudData : public Buffer, public ProtoSerializable {
     }
     ImgTransformation transformation;
 
-    DEPTHAI_SERIALIZE(PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
+    DEPTHAI_SERIALIZE(PointCloudData,
+                      width,
+                      height,
+                      minx,
+                      miny,
+                      minz,
+                      maxx,
+                      maxy,
+                      maxz,
+                      instanceNum,
+                      color,
+                      transformation,
+                      Buffer::ts,
+                      Buffer::tsDevice,
+                      Buffer::sequenceNum);
 };
 
 }  // namespace dai

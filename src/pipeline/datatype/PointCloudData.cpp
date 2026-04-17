@@ -195,18 +195,18 @@ PointCloudData& PointCloudData::updateBoundingBox() {
         }
     };
 
-    auto updatePoints = [&]<typename PointT>() {
-        const auto count = rawSize / sizeof(PointT);
-        const auto* pts = reinterpret_cast<const PointT*>(rawData);
+    if(isColor()) {
+        const auto count = rawSize / sizeof(Point3fRGBA);
+        const auto* pts = reinterpret_cast<const Point3fRGBA*>(rawData);
         for(std::size_t i = 0; i < count; ++i) {
             update(pts[i].x, pts[i].y, pts[i].z);
         }
-    };
-
-    if(isColor()) {
-        updatePoints.operator()<Point3fRGBA>();
     } else {
-        updatePoints.operator()<Point3f>();
+        const auto count = rawSize / sizeof(Point3f);
+        const auto* pts = reinterpret_cast<const Point3f*>(rawData);
+        for(std::size_t i = 0; i < count; ++i) {
+            update(pts[i].x, pts[i].y, pts[i].z);
+        }
     }
 
     minx = mnX;

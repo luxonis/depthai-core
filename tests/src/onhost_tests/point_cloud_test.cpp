@@ -12,7 +12,6 @@
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
-
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/node/PointCloud.hpp"
 
@@ -1050,8 +1049,8 @@ std::vector<uint8_t> makeGradientColor(unsigned int w, unsigned int h) {
 
 /// Convenience: run Impl dense colored compute on synthetic depth + color images.
 std::vector<dai::Point3fRGBA> computeDenseColored(dai::node::PointCloud::Impl& impl,
-                                                   const std::vector<uint16_t>& depthImg,
-                                                   const std::vector<uint8_t>& colorImg) {
+                                                  const std::vector<uint16_t>& depthImg,
+                                                  const std::vector<uint8_t>& colorImg) {
     std::vector<dai::Point3fRGBA> pts;
     impl.computePointCloudDenseColored(asBytes(depthImg), colorImg.data(), pts);
     return pts;
@@ -1288,10 +1287,7 @@ TEST_CASE("Colored transform skips invalid points (z <= 0)", "[PointCloud][Impl]
     dai::node::PointCloud::Impl impl;
     impl.setExtrinsics({{1, 0, 0, 999}, {0, 1, 0, 999}, {0, 0, 1, 999}, {0, 0, 0, 1}});
 
-    std::vector<dai::Point3fRGBA> pts = {
-        {1.f, 2.f, 0.f, 50, 60, 70, 255},
-        {3.f, 4.f, -1.f, 80, 90, 100, 255}
-    };
+    std::vector<dai::Point3fRGBA> pts = {{1.f, 2.f, 0.f, 50, 60, 70, 255}, {3.f, 4.f, -1.f, 80, 90, 100, 255}};
     impl.applyTransformation(pts);
 
     REQUIRE(pts[0].x == Catch::Approx(1.f));
@@ -1697,8 +1693,8 @@ TEST_CASE("updateBoundingBox on colored PointCloudData", "[PointCloud][PointClou
     dai::PointCloudData pcd;
     std::vector<dai::Point3fRGBA> pts = {
         {-5.f, -3.f, 1.f, 255, 0, 0, 255},
-        {10.f,  7.f, 8.f, 0, 255, 0, 255},
-        { 2.f, -1.f, 4.f, 0, 0, 255, 255},
+        {10.f, 7.f, 8.f, 0, 255, 0, 255},
+        {2.f, -1.f, 4.f, 0, 0, 255, 255},
     };
     pcd.setPointsRGB(pts);
     pcd.setWidth(3).setHeight(1);
@@ -1750,9 +1746,9 @@ TEST_CASE("getPoints on colored data returns xyz only", "[PointCloud][PointCloud
 // ============================================================================
 TEST_CASE("setSparse throws logic_error", "[PointCloud][PointCloudData]") {
     dai::PointCloudData pcd;
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     REQUIRE_THROWS_AS(pcd.setSparse(true), std::logic_error);
     REQUIRE_THROWS_AS(pcd.setSparse(false), std::logic_error);
-    #pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 }

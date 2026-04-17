@@ -155,7 +155,10 @@ TEST_CASE("updateBoundingBox empty cloud yields zeros", "[PointCloudData][Boundi
 TEST_CASE("updateBoundingBox on RGBA points", "[PointCloudData][BoundingBox][Color]") {
     dai::PointCloudData pcd;
     std::vector<dai::Point3fRGBA> pts = {
-        {1.f, 2.f, 3.f, 0, 0, 0, 255}, {-4.f, 5.f, 0.1f, 0, 0, 0, 255}, {10.f, -8.f, 20.f, 0, 0, 0, 255}, {0.f, 0.f, 0.f, 0, 0, 0, 255},
+        {1.f, 2.f, 3.f, 0, 0, 0, 255},
+        {-4.f, 5.f, 0.1f, 0, 0, 0, 255},
+        {10.f, -8.f, 20.f, 0, 0, 0, 255},
+        {0.f, 0.f, 0.f, 0, 0, 0, 255},
     };
     pcd.setPointsRGB(pts);
     pcd.setWidth(4).setHeight(1);
