@@ -220,7 +220,7 @@ struct LoopState {
     int64_t seqNumOffset = 0;
     std::chrono::time_point<std::chrono::steady_clock> firstTs;
     std::chrono::time_point<std::chrono::steady_clock> lastTs;
-    std::chrono::milliseconds lastInterval;
+    std::chrono::milliseconds lastInterval{0};
     std::chrono::time_point<std::chrono::steady_clock> tsOffset;
 };
 #endif
