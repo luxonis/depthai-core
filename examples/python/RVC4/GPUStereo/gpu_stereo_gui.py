@@ -974,7 +974,9 @@ class StereoConfigPanel(QWidget):
             (self.G.SpeckleFilterBackend.OPENCV, "OPENCV (StereoDepth-style)"),
         ):
             self.speckle_backend.addItem(label, val)
-        self.speckle_backend.setToolTip("When speckle max size > 0: GPU OpenCL speckle vs host cv::filterSpeckles.")
+        self.speckle_backend.setToolTip(
+            "When speckle max size > 0: GPU OpenCL speckle vs cv::filterSpeckles in-pipeline (mapped buffer, before GPU median)."
+        )
         fl.addRow("Speckle backend", self.speckle_backend)
 
         g, fl = gb("Edge-aware / Hole fill / Region")
