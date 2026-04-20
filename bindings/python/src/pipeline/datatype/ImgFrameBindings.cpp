@@ -102,7 +102,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .value("RAW32", ImgFrame::Type::RAW32)
         .value("NONE", ImgFrame::Type::NONE);
 
-    imgFrameFsync.value("NONE", ImgFrame::Fsync::NONE).value("INPUT", ImgFrame::Fsync::INPUT).value("OUTPUT", ImgFrame::Fsync::OUTPUT);
+    imgFrameFsync.value("NONE", ImgFrame::Fsync::NONE).value("INPUT", ImgFrame::Fsync::INPUT).value("OUTPUT", ImgFrame::Fsync::OUTPUT).value("PTP", ImgFrame::Fsync::PTP);
 
     imgFrameSpecs.def(py::init<>())
         .def_readwrite("type", &ImgFrame::Specs::type)

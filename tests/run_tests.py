@@ -4,7 +4,7 @@ import threading
 import argparse
 from functools import reduce
 import pathlib
-
+import atexit
 
 class ResultThread(threading.Thread):
 
@@ -41,6 +41,32 @@ class ResultThread(threading.Thread):
             self.stderr_lines.append(stderr_output.strip())
 
         self.result = process
+
+def enableUARTonAllDevices(enable):
+    from adbutils import adb
+    regs = ["0x0F11A000", "0x0F11B000"]
+
+    enableValue = "0x00000204"
+    disableValue = "0x00000200"
+
+    devs = adb.device_list()
+
+    if len(devs) == 0:
+        print("WARNING: No devices connected, skipping UART enable/disable")
+        return
+    
+    for dev in devs:
+        dev.root()
+
+        if enable:
+            val = enableValue
+            print(f"Enabling UART on {dev.serial}")
+        else:
+            val = disableValue
+            print(f"Disabling UART on {dev.serial}")
+        
+        for reg in regs:
+            dev.shell(f"devmem {reg} 32 {val}")
 
 # Function to run ctest with specific environment variables and labels
 def run_ctest(env_vars, labels, excluded_labels=None, blocking=True, name=""):
@@ -123,6 +149,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--ptp",
+        action="store_true",
+        required=False,
+    )
+
+    parser.add_argument(
         "--rvc4rgb",
         action="store_true",
         required=False,
@@ -180,6 +212,11 @@ if __name__ == "__main__":
             "labels": ["rvc4fsync"],
         },
         {
+            "name": "RVC4 - PTP",
+            "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
+            "labels": ["rvc4ptp"],
+        },
+        {
             "name": "RVC4 - RGB",
             "env": {"DEPTHAI_PLATFORM": "rvc4", "DEPTHAI_PROTOCOL": "tcpip"},
             "labels": ["rvc4rgb"],
@@ -214,7 +251,11 @@ if __name__ == "__main__":
     elif args.rvc4rgb:
         test_configs = [config for config in all_configs if "rvc4rgb" in config.get("labels", [])]
     elif args.fsync:
+        enableUARTonAllDevices(False)
+        atexit.register(enableUARTonAllDevices, True)
         test_configs = [config for config in all_configs if "rvc4fsync" in config.get("labels", [])]
+    elif args.ptp:
+        test_configs = [config for config in all_configs if "rvc4ptp" in config.get("labels", [])]
     else:
         parser.error("One test target argument is required.")
 

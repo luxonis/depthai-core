@@ -59,6 +59,8 @@ std::string toString(dai::ImgFrame::Fsync fsync) {
             return "INPUT";
         case dai::ImgFrame::Fsync::OUTPUT:
             return "OUTPUT";
+        case dai::ImgFrame::Fsync::PTP:
+            return "PTP";
     }
     return "UNKNOWN";
 }
@@ -383,7 +385,7 @@ TEST_CASE("Fsync metadata state selection", "[fsync][metadata]") {
                                 });
     }
 
-    SECTION("A-A@30 | B-A@23 | C-S@23") {
+    SECTION("failingtest") {
         const std::vector<CameraRequest> requests = {
             {dai::CameraBoardSocket::CAM_A, 30.0f, dai::CameraControl::FrameSyncMode::AUTO},
             {dai::CameraBoardSocket::CAM_B, 23.0f, dai::CameraControl::FrameSyncMode::AUTO},

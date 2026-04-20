@@ -34,6 +34,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         NONE = 0,
         INPUT,
         OUTPUT,
+        PTP
     };
     enum class Type {
         YUV422i,    // interleaved 8 bit

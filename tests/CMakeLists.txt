@@ -723,9 +723,16 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
 dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci noreplayci)
 
-# Fsync Multi-device test
-dai_add_test(fsync_multi_device_test src/onhost_tests/pipeline/fsync_multi_device.cpp)
-dai_set_test_labels(fsync_multi_device_test ondevice rvc4fsync ci noreplayci)
+# Multi-device frame sync test (External and PTP)
+dai_add_test(multi_device_fsync_test src/onhost_tests/multi_device_fsync_test.cpp)
+target_include_directories(multi_device_fsync_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+target_sources(multi_device_fsync_test PRIVATE src/onhost_tests/utility/fsync_ptp_test_utils.cpp)
+dai_set_test_labels(multi_device_fsync_test ondevice rvc4fsync ci noreplayci)
+
+dai_add_test(multi_device_ptp_test src/onhost_tests/multi_device_ptp_test.cpp)
+target_include_directories(multi_device_ptp_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+target_sources(multi_device_ptp_test PRIVATE src/onhost_tests/utility/fsync_ptp_test_utils.cpp)
+dai_set_test_labels(multi_device_ptp_test ondevice rvc4ptp ci noreplayci)
 
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
