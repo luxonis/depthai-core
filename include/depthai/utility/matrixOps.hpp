@@ -1,4 +1,5 @@
 #pragma once
+#include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
 #define _USE_MATH_DEFINES
 
@@ -29,6 +30,7 @@ bool matInv(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>&
 
 std::array<std::array<float, 2>, 2> getMatrixInverse(const std::array<std::array<float, 2>, 2>& matrix);
 std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array<float, 3>, 3>& matrix);
+std::array<std::array<float, 3>, 3> getHomographyMatrix(const std::array<dai::Point2f, 4>& srcPoints, const std::array<dai::Point2f, 4>& dstPoints);
 
 std::vector<std::vector<float>> createRotationMatrix(float theta);
 std::vector<std::vector<float>> createScalingMatrix(float scaleX, float scaleY);

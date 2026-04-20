@@ -434,6 +434,10 @@ dai_set_test_labels(naming_test onhost ci)
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
 dai_set_test_labels(image_transformations_test onhost ci)
 
+# Matrix operations tests
+dai_add_test(matrix_ops_tests src/onhost_tests/matrix_ops_tests.cpp)
+dai_set_test_labels(matrix_ops_tests onhost ci)
+
 # Normalization tests
 dai_add_test(normalization_test src/onhost_tests/normalization_test.cpp)
 dai_set_test_labels(normalization_test onhost ci)
