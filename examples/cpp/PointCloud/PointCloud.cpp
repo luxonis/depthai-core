@@ -1,5 +1,6 @@
 // Minimal PointCloud example: colorized point cloud from stereo depth + RGB.
 #include <iostream>
+
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -16,8 +17,7 @@ int main() {
     right->requestFullResolutionOutput()->link(stereo->right);
 
     // Color output aligned to depth
-    auto colorOut = color->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::RGB888i,
-                                         dai::ImgResizeMode::CROP, std::nullopt, true);
+    auto colorOut = color->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
 
     // Point cloud
     auto pc = pipeline.create<dai::node::PointCloud>();
@@ -49,10 +49,8 @@ int main() {
             auto points = pcd->getPoints();
             std::cout << "Points: " << points.size();
         }
-        std::cout << ", " << pcd->getWidth() << "x" << pcd->getHeight()
-                  << ", color=" << (pcd->isColor() ? "yes" : "no")
-                  << ", Z=[" << pcd->getMinZ() << ", " << pcd->getMaxZ() << "]"
-                  << std::endl;
+        std::cout << ", " << pcd->getWidth() << "x" << pcd->getHeight() << ", color=" << (pcd->isColor() ? "yes" : "no") << ", Z=[" << pcd->getMinZ() << ", "
+                  << pcd->getMaxZ() << "]" << std::endl;
     }
     pipeline.stop();
     return 0;

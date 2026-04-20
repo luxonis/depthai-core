@@ -1,6 +1,7 @@
 #include <vector>
 #define _USE_MATH_DEFINES
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -27,6 +28,9 @@ using namespace matrix;
 
 namespace {
 
+constexpr size_t kImuCalibrationRowCount = 3;
+constexpr size_t kImuCalibrationColumnCount = 4;
+
 std::optional<std::array<float, 3>> lookupHousingEntry(const std::string& productName, HousingCoordinateSystem housingCs) {
     if(productName.empty()) return std::nullopt;
 
@@ -38,6 +42,17 @@ std::optional<std::array<float, 3>> lookupHousingEntry(const std::string& produc
     if(housingIt == productIt->second.end()) return std::nullopt;
 
     return housingIt->second;
+}
+
+void validateImuCalibrationMatrix(const std::vector<std::vector<float>>& calibration, const char* sensorName) {
+    if(calibration.size() != kImuCalibrationRowCount) {
+        throw std::runtime_error(std::string(sensorName) + " calibration must contain exactly 3 rows for canonical 3x4 [Q|b] matrix");
+    }
+    for(const auto& row : calibration) {
+        if(row.size() != kImuCalibrationColumnCount) {
+            throw std::runtime_error(std::string(sensorName) + " calibration must contain exactly 4 columns per row for canonical 3x4 [Q|b] matrix");
+        }
+    }
 }
 
 }  // namespace
@@ -811,16 +826,24 @@ dai::CameraBoardSocket CalibrationHandler::getStereoRightCameraId() const {
     return eepromData.stereoRectificationData.rightCameraSocket;
 }
 
-std::vector<float> CalibrationHandler::getAccelerometerCalibParams() const {
-    return eepromData.accelerometerCalibParams;
+std::vector<std::vector<float>> CalibrationHandler::getAccelerometerCalibration() const {
+    return eepromData.imuCalibrationParams.accelerometer;
 }
 
-std::vector<float> CalibrationHandler::getGyroscopeCalibParams() const {
-    return eepromData.gyroscopeCalibParams;
+std::vector<std::vector<float>> CalibrationHandler::getGyroscopeCalibration() const {
+    return eepromData.imuCalibrationParams.gyroscope;
 }
 
-dai::ImuModelParams CalibrationHandler::getImuModelParams() const {
-    return eepromData.imuModelParams;
+dai::ImuNoiseParameters CalibrationHandler::getImuNoiseParameters() const {
+    return eepromData.imuCalibrationParams.noise;
+}
+
+dai::ImuCalibrationParams CalibrationHandler::getImuParameters() const {
+    dai::ImuCalibrationParams params;
+    params.noise = getImuNoiseParameters();
+    params.accelerometer = getAccelerometerCalibration();
+    params.gyroscope = getGyroscopeCalibration();
+    return params;
 }
 
 bool CalibrationHandler::eepromToJsonFile(std::filesystem::path destPath) const {
@@ -1169,20 +1192,20 @@ bool CalibrationHandler::validateCameraArray() const {
     }
 }
 
-void CalibrationHandler::setAccelerometerCalibParams(const std::vector<float>& calibParams) {
-    constexpr size_t kExpectedParams = 12;
-    if(calibParams.size() > kExpectedParams) {
-        throw std::runtime_error("Accelerometer calibration parameter array size should be at most 12");
-    }
-    eepromData.accelerometerCalibParams = calibParams;
+void CalibrationHandler::setAccelerometerCalibration(const std::vector<std::vector<float>>& calibration) {
+    validateImuCalibrationMatrix(calibration, "Accelerometer");
+    eepromData.imuCalibrationParams.accelerometer = calibration;
 }
 
-void CalibrationHandler::setGyroscopeCalibParams(const std::vector<float>& calibParams) {
-    constexpr size_t kExpectedParams = 12;
-    if(calibParams.size() > kExpectedParams) {
-        throw std::runtime_error("Gyroscope calibration parameter array size should be at most 12");
-    }
-    eepromData.gyroscopeCalibParams = calibParams;
+void CalibrationHandler::setGyroscopeCalibration(const std::vector<std::vector<float>>& calibration) {
+    validateImuCalibrationMatrix(calibration, "Gyroscope");
+    eepromData.imuCalibrationParams.gyroscope = calibration;
+}
+
+void CalibrationHandler::setImuParameters(const ImuCalibrationParams& params) {
+    eepromData.imuCalibrationParams.noise = params.noise;
+    setAccelerometerCalibration(params.accelerometer);
+    setGyroscopeCalibration(params.gyroscope);
 }
 
 bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) const {

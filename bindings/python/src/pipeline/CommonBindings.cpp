@@ -79,11 +79,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Extrinsics> extrinsics(m, "Extrinsics", DOC(dai, Extrinsics));
     py::class_<CameraInfo> cameraInfo(m, "CameraInfo", DOC(dai, CameraInfo));
     py::class_<EepromData> eepromData(m, "EepromData", DOC(dai, EepromData));
-    py::class_<dai::ImuModelParams> imuModelParams(m, "ImuModelParams", DOC(dai, ImuModelParams));
-    py::class_<dai::AccelerometerNoiseParams> accelerometerNoiseParams(m, "AccelerometerNoiseParams", DOC(dai, AccelerometerNoiseParams));
-    py::class_<dai::GyroscopeNoiseParams> gyroscopeNoiseParams(m, "GyroscopeNoiseParams", DOC(dai, GyroscopeNoiseParams));
-    py::class_<dai::AccelAxisNoiseParams> accelAxisNoiseParams(m, "AccelAxisNoiseParams", DOC(dai, AccelAxisNoiseParams));
-    py::class_<dai::GyroAxisNoiseParams> gyroAxisNoiseParams(m, "GyroAxisNoiseParams", DOC(dai, GyroAxisNoiseParams));
+    py::class_<ImuNoiseParameters> imuNoiseParameters(m, "ImuNoiseParameters", DOC(dai, ImuNoiseParameters));
+    py::class_<ImuCalibrationParams> imuCalibrationParams(m, "ImuCalibrationParams", DOC(dai, ImuCalibrationParams));
+    py::class_<AccelerometerNoiseParams> accelerometerNoiseParams(m, "AccelerometerNoiseParams", DOC(dai, AccelerometerNoiseParams));
+    py::class_<GyroscopeNoiseParams> gyroscopeNoiseParams(m, "GyroscopeNoiseParams", DOC(dai, GyroscopeNoiseParams));
+    py::class_<AccelAxisNoiseParams> accelAxisNoiseParams(m, "AccelAxisNoiseParams", DOC(dai, AccelAxisNoiseParams));
+    py::class_<GyroAxisNoiseParams> gyroAxisNoiseParams(m, "GyroAxisNoiseParams", DOC(dai, GyroAxisNoiseParams));
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
@@ -95,6 +96,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("FOOT", LengthUnit::FOOT)
         .value("CUSTOM", LengthUnit::CUSTOM);
     m.attr("DepthUnit") = m.attr("LengthUnit");
+
+    py::enum_<AngleUnit> angleUnitEnum(m, "AngleUnit", DOC(dai, AngleUnit));
+    angleUnitEnum.value("RADIAN", AngleUnit::RADIAN).value("DEGREE", AngleUnit::DEGREE);
     py::enum_<YoloDecodingFamily> yoloDecodingFamily(m, "YoloDecodingFamily");
     py::enum_<SerializationType> serializationType(m, "SerializationType");
     py::class_<DetectionParserOptions> detectionParserOptions(m, "DetectionParserOptions", DOC(dai, DetectionParserOptions));
@@ -581,15 +585,15 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // AccelAxisNoiseParams
     accelAxisNoiseParams.def(py::init<>())
-        .def_readwrite("vrw", &AccelAxisNoiseParams::vrw)
-        .def_readwrite("rrw", &AccelAxisNoiseParams::rrw)
-        .def_readwrite("bi", &AccelAxisNoiseParams::bi);
+        .def_readwrite("noiseDensity", &AccelAxisNoiseParams::noiseDensity)
+        .def_readwrite("randomWalk", &AccelAxisNoiseParams::randomWalk)
+        .def_readwrite("biasStability", &AccelAxisNoiseParams::biasStability);
 
     // GyroAxisNoiseParams
     gyroAxisNoiseParams.def(py::init<>())
-        .def_readwrite("arw", &GyroAxisNoiseParams::arw)
-        .def_readwrite("rrw", &GyroAxisNoiseParams::rrw)
-        .def_readwrite("bi", &GyroAxisNoiseParams::bi);
+        .def_readwrite("noiseDensity", &GyroAxisNoiseParams::noiseDensity)
+        .def_readwrite("randomWalk", &GyroAxisNoiseParams::randomWalk)
+        .def_readwrite("biasStability", &GyroAxisNoiseParams::biasStability);
 
     // AccelerometerNoiseParams
     accelerometerNoiseParams.def(py::init<>())
@@ -603,11 +607,17 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("y", &GyroscopeNoiseParams::y)
         .def_readwrite("z", &GyroscopeNoiseParams::z);
 
-    // ImuModelParams
-    imuModelParams.def(py::init<>())
-        .def_readwrite("name", &ImuModelParams::name)
-        .def_readwrite("accelerometer", &ImuModelParams::accelerometer)
-        .def_readwrite("gyroscope", &ImuModelParams::gyroscope);
+    // ImuNoiseParameters
+    imuNoiseParameters.def(py::init<>())
+        .def_readwrite("name", &ImuNoiseParameters::name)
+        .def_readwrite("accelerometer", &ImuNoiseParameters::accelerometer)
+        .def_readwrite("gyroscope", &ImuNoiseParameters::gyroscope);
+
+    // ImuCalibrationParams
+    imuCalibrationParams.def(py::init<>())
+        .def_readwrite("noise", &ImuCalibrationParams::noise)
+        .def_readwrite("accelerometer", &ImuCalibrationParams::accelerometer)
+        .def_readwrite("gyroscope", &ImuCalibrationParams::gyroscope);
 
     // EepromData
     eepromData.def(py::init<>())
@@ -630,9 +640,10 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("stereoUseSpecTranslation", &EepromData::stereoUseSpecTranslation)
         .def_readwrite("stereoEnableDistortionCorrection", &EepromData::stereoEnableDistortionCorrection)
         .def_readwrite("verticalCameraSocket", &EepromData::verticalCameraSocket)
-        .def_readwrite("accelerometerCalibParams", &EepromData::accelerometerCalibParams)
-        .def_readwrite("gyroscopeCalibParams", &EepromData::gyroscopeCalibParams)
-        .def_readwrite("imuModelParams", &EepromData::imuModelParams);
+        .def_readwrite("imuCalibrationParams", &EepromData::imuCalibrationParams);
+
+    m.attr("ImuParameters") = m.attr("ImuCalibrationParams");
+    m.attr("ImuModelParams") = m.attr("ImuNoiseParameters");
     // UsbSpeed
     usbSpeed.value("UNKNOWN", UsbSpeed::UNKNOWN)
         .value("LOW", UsbSpeed::LOW)

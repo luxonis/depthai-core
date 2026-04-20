@@ -52,8 +52,7 @@ int main() {
     right->requestOutput(size)->link(stereo->right);
 
     // ── Align depth to color camera ──────────────────────────────────
-    auto colorOut = color->requestOutput(size, dai::ImgFrame::Type::RGB888i,
-                                         dai::ImgResizeMode::CROP, std::nullopt, true);
+    auto colorOut = color->requestOutput(size, dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
 
     auto align = pipeline.create<dai::node::ImageAlign>();
     stereo->depth.link(align->input);

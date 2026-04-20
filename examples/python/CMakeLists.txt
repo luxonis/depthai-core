@@ -337,6 +337,9 @@ dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 rvc4rgb ci
 # On slow hosts the examples warns that batch size is too small
 dai_example_test_relax_fail_regex(imu_gyroscope_accelerometer)
 
+add_python_example(imu_rotation_vector IMU/imu_rotation_vector.py)
+dai_set_example_test_labels(imu_rotation_vector ondevice rvc2_all rvc4 rvc4rgb ci)
+
 # Warp node
 add_python_example(warp_mesh Warp/warp_mesh.py)
 dai_set_example_test_labels(warp_mesh rvc2_all rvc4 rvc4rgb ci)

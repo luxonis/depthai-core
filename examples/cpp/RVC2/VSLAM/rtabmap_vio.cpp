@@ -21,7 +21,7 @@ int main() {
     params.insert(std::make_pair<std::string, std::string>("Odom/ResetCountDown", "30"));
 
     odom->setParams(params);
-    imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
+    imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_UNCALIBRATED, dai::IMUSensor::GYROSCOPE_UNCALIBRATED}, 100);
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
 

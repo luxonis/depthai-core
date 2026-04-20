@@ -17,10 +17,10 @@ int main() {
     // Define sources and outputs
     auto imu = pipeline.create<dai::node::IMU>();
 
-    // Enable ACCELEROMETER_RAW at 480 hz rate
-    imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 480);
-    // Enable GYROSCOPE_RAW at 400 hz rate
-    imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
+    // Enable ACCELEROMETER_UNCALIBRATED at 480 hz rate
+    imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_UNCALIBRATED, 480);
+    // Enable GYROSCOPE_UNCALIBRATED at 400 hz rate
+    imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_UNCALIBRATED, 400);
 
     // Set batch report threshold and max batch reports
     imu->setBatchReportThreshold(1);
