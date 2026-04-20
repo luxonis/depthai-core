@@ -8,6 +8,11 @@ Requires: PyQt6, depthai (with GPUStereo), opencv-python, numpy, PyYAML.
 Run:
   python3 gpu_stereo_gui.py --device 10.11.0.51 --resolution 1280x800
 
+Host Ethernet (XLink) bandwidth: at 1280×800@60Hz, disparity+depth (uint16) plus two rectified GRAY8
+streams total about 6.1 MiB per frame (~2.9 Gbit/s payload before protocol overhead), which exceeds
+1 GbE. Use ``--host-streams stereo`` (disparity+depth only) or ``minimal`` (disparity only), lower
+``--fps`` (e.g. 30), smaller ``--resolution``, and ``--no-debug-outputs`` to stay under the link.
+
 Temporal filtering (when 0 < temporalAlpha < 1) uses RVC4-style logic aligned with StereoDepth
 post-processing: EMA when stable, edge test via temporalDelta, and invalid-fill persistency over an
 8-frame history. State is kept in OpenCL on the device (no host previous-frame disparity).
@@ -529,11 +534,11 @@ def _apply_gpustereo_config_header_defaults(c: dai.GPUStereoConfig) -> None:
     c.adaptiveSupportRangeSigma = 0.0
     c.prefilterBilateralSigmaSpatial = 2.0
     c.prefilterBilateralSigmaRange = 0.08
-    c.refinementRadius = 6
-    c.refinementRadiusFull = 3
+    c.refinementRadius = 5
+    c.refinementRadiusFull = 2
     c.subpixelBits = 4
     c.lrCheck = True
-    c.lrCheckFast = False
+    c.lrCheckFast = True
     c.medianSize = 3
     c.minDisp = 0
     c.confidenceThreshold = 10
@@ -596,8 +601,10 @@ VIEW_PYR_LEVELS_UI = 7
 _PYRAMID_DISP_COLORMAP = getattr(cv2, "COLORMAP_TURBO", cv2.COLORMAP_JET)
 
 
-def _pyramid_view_ranges(has_gray: bool, has_disp: bool) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
-    idx = 3
+def _pyramid_view_ranges(
+    first_pyramid_idx: int, has_gray: bool, has_disp: bool
+) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
+    idx = first_pyramid_idx
     gr: tuple[int, int] | None = None
     dr: tuple[int, int] | None = None
     if has_gray:
@@ -700,9 +707,9 @@ class PipelineThread(QThread):
         self,
         pipeline: dai.Pipeline,
         disp_q: dai.OutputQueue,
-        depth_q: dai.OutputQueue,
-        rect_left_q: dai.OutputQueue,
-        rect_right_q: dai.OutputQueue,
+        depth_q: dai.OutputQueue | None,
+        rect_left_q: dai.OutputQueue | None,
+        rect_right_q: dai.OutputQueue | None,
         pyr_q: dai.OutputQueue | None = None,
         match_curve_q: dai.OutputQueue | None = None,
         pyr_disp_q: dai.OutputQueue | None = None,
@@ -719,6 +726,8 @@ class PipelineThread(QThread):
         self._stop = threading.Event()
         self._last_match_curve: dai.ImgFrame | None = None
         self._last_pyr_disp: np.ndarray | None = None
+        self._zero_u8: np.ndarray | None = None
+        self._zero_u16: np.ndarray | None = None
 
     def stop(self) -> None:
         self._stop.set()
@@ -733,21 +742,48 @@ class PipelineThread(QThread):
             while not self._stop.is_set() and self.pipeline.isRunning():
                 try:
                     disp = self.disp_q.get(timeout=0.2)
-                    depth_if = self.depth_q.get(timeout=0.2)
-                    rl_fr = self.rect_left_q.get(timeout=0.2)
-                    rr_fr = self.rect_right_q.get(timeout=0.2)
                 except BaseException:
                     continue
-                if disp is None or depth_if is None or rl_fr is None or rr_fr is None:
+                if disp is None:
                     continue
                 assert isinstance(disp, dai.ImgFrame)
-                assert isinstance(depth_if, dai.ImgFrame)
-                assert isinstance(rl_fr, dai.ImgFrame)
-                assert isinstance(rr_fr, dai.ImgFrame)
                 d_u16 = np.asarray(disp.getFrame())
-                depth_u16 = np.asarray(depth_if.getFrame())
-                rl_gray = np.asarray(rl_fr.getFrame())
-                rr_gray = np.asarray(rr_fr.getFrame())
+                if self.depth_q is not None:
+                    try:
+                        depth_if = self.depth_q.get(timeout=0.2)
+                    except BaseException:
+                        continue
+                    if depth_if is None or not isinstance(depth_if, dai.ImgFrame):
+                        continue
+                    depth_u16 = np.asarray(depth_if.getFrame())
+                else:
+                    if self._zero_u16 is None or self._zero_u16.shape != d_u16.shape:
+                        self._zero_u16 = np.zeros(d_u16.shape, dtype=np.uint16)
+                    depth_u16 = self._zero_u16
+                if self.rect_left_q is not None:
+                    try:
+                        rl_fr = self.rect_left_q.get(timeout=0.2)
+                    except BaseException:
+                        continue
+                    if rl_fr is None or not isinstance(rl_fr, dai.ImgFrame):
+                        continue
+                    rl_gray = np.asarray(rl_fr.getFrame())
+                else:
+                    if self._zero_u8 is None or self._zero_u8.shape != d_u16.shape:
+                        self._zero_u8 = np.zeros(d_u16.shape, dtype=np.uint8)
+                    rl_gray = self._zero_u8
+                if self.rect_right_q is not None:
+                    try:
+                        rr_fr = self.rect_right_q.get(timeout=0.2)
+                    except BaseException:
+                        continue
+                    if rr_fr is None or not isinstance(rr_fr, dai.ImgFrame):
+                        continue
+                    rr_gray = np.asarray(rr_fr.getFrame())
+                else:
+                    if self._zero_u8 is None or self._zero_u8.shape != d_u16.shape:
+                        self._zero_u8 = np.zeros(d_u16.shape, dtype=np.uint8)
+                    rr_gray = self._zero_u8
                 pyr_gray = None
                 if self.pyr_q is not None:
                     pdbg = self.pyr_q.tryGet()
@@ -1322,9 +1358,9 @@ class MainWindow(QMainWindow):
         pipeline: dai.Pipeline,
         gpu: dai.node.GPUStereo,
         disp_q: dai.OutputQueue,
-        depth_q: dai.OutputQueue,
-        rect_left_q: dai.OutputQueue,
-        rect_right_q: dai.OutputQueue,
+        depth_q: dai.OutputQueue | None,
+        rect_left_q: dai.OutputQueue | None,
+        rect_right_q: dai.OutputQueue | None,
         cfg_q,
         left_cam_ctrl_q,
         right_cam_ctrl_q,
@@ -1334,6 +1370,7 @@ class MainWindow(QMainWindow):
         cli_resolution: str,
         cli_fps: float,
         saved: dict | None,
+        host_streams_tag: str = "full",
         pyr_q: dai.OutputQueue | None = None,
         match_curve_q: dai.OutputQueue | None = None,
         pyr_disp_q: dai.OutputQueue | None = None,
@@ -1341,7 +1378,7 @@ class MainWindow(QMainWindow):
         ir_dot_projector: float = 0.9,
     ) -> None:
         super().__init__()
-        self.setWindowTitle("GPUStereo — controls")
+        self.setWindowTitle(f"GPUStereo — controls (host: {host_streams_tag})")
         self._device = device
         self._pipeline = pipeline
         self._gpu = gpu
@@ -1357,6 +1394,9 @@ class MainWindow(QMainWindow):
         self._pyr_q = pyr_q
         self._match_curve_q = match_curve_q
         self._pyr_disp_q = pyr_disp_q
+        self._rectified_on_host = rect_left_q is not None and rect_right_q is not None
+        self._depth_on_host = depth_q is not None
+        self._host_streams_tag = host_streams_tag
         self._pending_plot_xy: tuple[int, int] | None = None
         self._committed_plot_xy: tuple[int, int] | None = None
 
@@ -1365,15 +1405,29 @@ class MainWindow(QMainWindow):
 
         self._last_bundle: tuple | None = None
 
+        self._vm_idx_disp = 0
+        self._vm_idx_rl = -1
+        self._vm_idx_rr = -1
         self._view_mode = QComboBox()
-        self._view_mode.addItems(["Disparity", "Rectified left", "Rectified right"])
+        self._view_mode.addItem("Disparity")
+        vm_i = 1
+        if self._rectified_on_host:
+            self._view_mode.addItem("Rectified left")
+            self._vm_idx_rl = vm_i
+            vm_i += 1
+            self._view_mode.addItem("Rectified right")
+            self._vm_idx_rr = vm_i
+            vm_i += 1
         if pyr_q is not None:
             for li in range(VIEW_PYR_LEVELS_UI):
                 self._view_mode.addItem(f"Pyramid L{li}")
         if pyr_disp_q is not None:
             for li in range(VIEW_PYR_LEVELS_UI):
                 self._view_mode.addItem(f"Pyramid disp L{li}")
-        self._vr_gray, self._vr_disp = _pyramid_view_ranges(self._pyr_q is not None, self._pyr_disp_q is not None)
+        self._first_pyramid_combo_idx = vm_i
+        self._vr_gray, self._vr_disp = _pyramid_view_ranges(
+            self._first_pyramid_combo_idx, self._pyr_q is not None, self._pyr_disp_q is not None
+        )
         self._view_mode.setCurrentIndex(0)
         self._view_mode.currentIndexChanged.connect(self._on_view_mode_changed)
 
@@ -1687,6 +1741,8 @@ class MainWindow(QMainWindow):
             "device": self._cli_device,
             "resolution": self._cli_resolution,
             "fps": float(self._cli_fps),
+            "host_streams": self._host_streams_tag,
+            "no_debug_outputs": not bool(self._pyr_q or self._match_curve_q or self._pyr_disp_q),
             "view_mode": int(self._view_mode.currentIndex()),
             "viz_disp_min": int(self._slider_disp_min.value()),
             "viz_disp_max": int(self._slider_disp_max.value()),
@@ -1757,7 +1813,7 @@ class MainWindow(QMainWindow):
             except (TypeError, ValueError):
                 pass
         self._refresh_left_pane()
-        if self._view_mode.currentIndex() == 0:
+        if self._view_mode.currentIndex() == self._vm_idx_disp:
             self._update_disparity_depth_labels()
         self._sync_disp_colorbar_ramp()
         self._send_view_config_to_device()
@@ -1816,7 +1872,7 @@ class MainWindow(QMainWindow):
 
     def _on_view_mode_changed(self, _i: int) -> None:
         vm = self._view_mode.currentIndex()
-        disp = vm == 0
+        disp = vm == self._vm_idx_disp
         pyr_disp_viz = self._pyr_disp_q is not None and self._vm_disp_pyr(vm)
         self._disp_viz_widget.setVisible(disp or pyr_disp_viz)
         self._colorbar_widget.setVisible(disp or pyr_disp_viz)
@@ -1870,7 +1926,7 @@ class MainWindow(QMainWindow):
             self._lbl_near_depth.setText("Near: —")
             self._lbl_far_depth.setText("Far: —")
             return
-        if self._view_mode.currentIndex() != 0:
+        if self._view_mode.currentIndex() != self._vm_idx_disp:
             return
         b = self._last_bundle
         d_u16, depth_u16 = b[0], b[1]
@@ -1914,9 +1970,9 @@ class MainWindow(QMainWindow):
             if pyr_gray is None or pyr_gray.size == 0:
                 return np.zeros((max(1, rl_gray.shape[0]), max(1, rl_gray.shape[1]), 3), dtype=np.uint8)
             return cv2.cvtColor(pyr_gray, cv2.COLOR_GRAY2BGR)
-        if idx == 1:
+        if self._vm_idx_rl >= 0 and idx == self._vm_idx_rl:
             return cv2.cvtColor(rl_gray, cv2.COLOR_GRAY2BGR)
-        if idx == 2:
+        if self._vm_idx_rr >= 0 and idx == self._vm_idx_rr:
             return cv2.cvtColor(rr_gray, cv2.COLOR_GRAY2BGR)
         return self._disparity_bgr(d_u16)
 
@@ -2108,7 +2164,25 @@ def main() -> None:
         metavar="I",
         help="IR laser dot projector intensity in [0, 1] (step 0.1 in GUI; saved in config file)",
     )
+    _host_streams_default = str(saved.get("host_streams", "full"))
+    if _host_streams_default not in ("full", "stereo", "minimal"):
+        _host_streams_default = "full"
+    parser.add_argument(
+        "--host-streams",
+        type=str,
+        choices=("full", "stereo", "minimal"),
+        default=_host_streams_default,
+        help="XLink outputs to the host: full=disparity+depth+rectified L/R; stereo=disparity+depth; "
+        "minimal=disparity only (see module docstring for bandwidth).",
+    )
+    parser.add_argument(
+        "--no-debug-outputs",
+        action="store_true",
+        help="Omit debugPyramid / debugZnccCurve / debugPyramidDisparity XLink queues.",
+    )
     args = parser.parse_args()
+    if "--no-debug-outputs" not in sys.argv:
+        args.no_debug_outputs = bool(saved.get("no_debug_outputs", False))
     args.ir_dot = max(0.0, min(1.0, float(args.ir_dot)))
     w, h = (int(x) for x in args.resolution.split("x"))
 
@@ -2127,6 +2201,11 @@ def main() -> None:
     except (TypeError, ValueError):
         vm_saved = 0
 
+    rect_host = args.host_streams == "full"
+    depth_host = args.host_streams in ("full", "stereo")
+    if not rect_host and vm_saved in (1, 2):
+        vm_saved = 0
+
     device = dai.Device(args.device)
     device.setIrLaserDotProjectorIntensity(float(args.ir_dot))
 
@@ -2138,20 +2217,21 @@ def main() -> None:
     mono_right.requestOutput((w, h), type=dai.ImgFrame.Type.GRAY8, fps=args.fps).link(gpu.right)
     gpu.setRectification(True)
 
-    disp_q = gpu.disparity.createOutputQueue()
-    depth_q = gpu.depth.createOutputQueue()
-    rect_left_q = gpu.rectifiedLeft.createOutputQueue()
-    rect_right_q = gpu.rectifiedRight.createOutputQueue()
+    disp_q = gpu.disparity.createOutputQueue(2, False)
+    depth_q = gpu.depth.createOutputQueue(2, False) if depth_host else None
+    rect_left_q = gpu.rectifiedLeft.createOutputQueue(2, False) if rect_host else None
+    rect_right_q = gpu.rectifiedRight.createOutputQueue(2, False) if rect_host else None
     pyr_q = None
-    if hasattr(gpu, "debugPyramid"):
+    if not args.no_debug_outputs and hasattr(gpu, "debugPyramid"):
         pyr_q = gpu.debugPyramid.createOutputQueue(maxSize=4, blocking=False)
     match_curve_q = None
-    if hasattr(gpu, "debugZnccCurve"):
+    if not args.no_debug_outputs and hasattr(gpu, "debugZnccCurve"):
         match_curve_q = gpu.debugZnccCurve.createOutputQueue(maxSize=4, blocking=False)
     pyr_disp_q = None
-    if hasattr(gpu, "debugPyramidDisparity"):
+    if not args.no_debug_outputs and hasattr(gpu, "debugPyramidDisparity"):
         pyr_disp_q = gpu.debugPyramidDisparity.createOutputQueue(maxSize=4, blocking=False)
-    vr_gray, vr_disp = _pyramid_view_ranges(pyr_q is not None, pyr_disp_q is not None)
+    _first_pyr_idx = 1 + (2 if rect_host else 0)
+    vr_gray, vr_disp = _pyramid_view_ranges(_first_pyr_idx, pyr_q is not None, pyr_disp_q is not None)
     if hasattr(ic, "debugPyramidLevel"):
         ic.debugPyramidLevel = (vm_saved - vr_gray[0]) if _vm_in_range(vm_saved, vr_gray) else -1
     if hasattr(ic, "debugPyramidDisparityLevel"):
@@ -2178,6 +2258,7 @@ def main() -> None:
         args.resolution,
         float(args.fps),
         saved,
+        str(args.host_streams),
         pyr_q,
         match_curve_q,
         pyr_disp_q,
