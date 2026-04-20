@@ -95,6 +95,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
 
     tensorInfoDataType.value("FP16", TensorInfo::DataType::FP16)
         .value("U8F", TensorInfo::DataType::U8F)
+        .value("U16F", TensorInfo::DataType::U16F)
         .value("INT", TensorInfo::DataType::INT)
         .value("FP32", TensorInfo::DataType::FP32)
         .value("I8", TensorInfo::DataType::I8)
@@ -238,6 +239,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
                     obj.addTensor<uint8_t>(name, tensor.cast<xt::xarray<uint8_t>>(), dai::TensorInfo::DataType::U8F);
                 else if(dataType == dai::TensorInfo::DataType::I8)
                     obj.addTensor<int8_t>(name, tensor.cast<xt::xarray<int8_t>>(), dai::TensorInfo::DataType::I8);
+                else if(dataType == dai::TensorInfo::DataType::U16F)
+                    obj.addTensor<uint16_t>(name, tensor.cast<xt::xarray<uint16_t>>(), dai::TensorInfo::DataType::U16F);
                 else
                     throw std::runtime_error("Unsupported datatype");
             },
@@ -261,6 +264,8 @@ void bind_nndata(pybind11::module& m, void* pCallstack) {
                     obj.addTensor<int8_t>(name, tensor.cast<xt::xarray<int8_t>>(), dai::TensorInfo::DataType::I8);
                 } else if(dtype.is(py::dtype::of<uint8_t>())) {
                     obj.addTensor<uint8_t>(name, tensor.cast<xt::xarray<uint8_t>>(), dai::TensorInfo::DataType::U8F);
+                } else if(dtype.is(py::dtype::of<uint16_t>())) {
+                    obj.addTensor<uint16_t>(name, tensor.cast<xt::xarray<uint16_t>>(), dai::TensorInfo::DataType::U16F);
                 } else
                     throw std::runtime_error("Unsupported object type");
             },
