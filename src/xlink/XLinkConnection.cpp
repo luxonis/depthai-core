@@ -480,6 +480,7 @@ bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, cons
 
 bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd) {
     auto status = XLinkBootMemory(&deviceToBoot, mvcmd.data(), static_cast<unsigned long>(mvcmd.size()));
+    std::cout << "Boot available device status " << status << std::endl;
     return status == X_LINK_SUCCESS;
 }
 
