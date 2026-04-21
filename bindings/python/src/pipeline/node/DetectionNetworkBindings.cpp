@@ -126,15 +126,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             py::arg("fps") = std::nullopt,
             DOC(dai, node, DetectionNetwork, build, 4))
 #endif
-        .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
-                 auto self = getImplicitPipeline()->create<DetectionNetwork>();
-                 self->build(input, nnArchive);
-                 DETECTION_NETWORK_CODE(->)
-                 return self;
-             }),
-             DETECTION_NETWORK_BUILD_PYARGS,
-             DETECTION_NETWORK_PYARGS)
-        // Copied from NN node
+        .def(py::init<const std::shared_ptr<Device>&>(), py::arg("device"))
         .def("setBlobPath", &DetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, DetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &DetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, DetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",

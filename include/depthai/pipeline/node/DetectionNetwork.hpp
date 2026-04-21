@@ -20,7 +20,7 @@ namespace node {
  */
 class DetectionNetwork : public DeviceNodeGroup {
    public:
-    DetectionNetwork(const std::shared_ptr<Device>& device);
+    explicit DetectionNetwork(const std::shared_ptr<Device>& device);
     using Model = NeuralNetwork::Model;
 
     [[nodiscard]] static std::shared_ptr<DetectionNetwork> create(const std::shared_ptr<Device>& device) {

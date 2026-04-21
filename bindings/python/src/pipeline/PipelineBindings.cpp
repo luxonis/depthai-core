@@ -43,6 +43,7 @@
 
 // depthai/
 #include <memory>
+#include <stdexcept>
 
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
@@ -294,10 +295,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                     std::shared_ptr<Node> hostNode;
                     try {
                         hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
-                    } catch(...) {
+                    } catch(std::runtime_error& e) {
                         delCreatingNodeFromPipelineCreate();
                         delImplicitPipeline();
-                        throw;
+                        throw std::runtime_error(std::string("Error creating node: ") + e.what());
                     }
                     delCreatingNodeFromPipelineCreate();
                     delImplicitPipeline();
