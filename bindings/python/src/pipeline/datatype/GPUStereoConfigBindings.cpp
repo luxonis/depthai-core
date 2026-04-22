@@ -117,6 +117,7 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
         .def_readwrite("secondPeakThreshold", &GPUStereoConfig::second_peak_threshold, DOC(dai, GPUStereoConfig, second_peak_threshold))
         .def_readwrite(
             "secondPeakMinDisparityGap", &GPUStereoConfig::second_peak_min_disparity_gap, DOC(dai, GPUStereoConfig, second_peak_min_disparity_gap))
+        .def_readwrite("epipolarVerticalHalfRange", &GPUStereoConfig::epipolar_vertical_half_range)
         .def_readwrite("censusRadiusX", &GPUStereoConfig::census_radius_x, DOC(dai, GPUStereoConfig, census_radius_x))
         .def_readwrite("censusRadiusY", &GPUStereoConfig::census_radius_y, DOC(dai, GPUStereoConfig, census_radius_y))
         .def_readwrite("speckleMaxSize", &GPUStereoConfig::speckle_max_size, DOC(dai, GPUStereoConfig, speckle_max_size))

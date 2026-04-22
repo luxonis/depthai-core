@@ -1,13 +1,15 @@
 device: 10.0.255.224
 resolution: 1280x800
 fps: 30.0
+host_streams: minimal
+no_debug_outputs: false
 view_mode: 0
 viz_disp_min: 0
-viz_disp_max: 1678
+viz_disp_max: 3567
 camera:
   auto_exposure: true
   ae_compensation: -3
-  exposure_us: 8000
+  exposure_us: 3000
   iso: 100
   sharpness: 0
   luma_denoise: 2
@@ -20,14 +22,14 @@ gpustereo:
   adaptiveSupportRangeSigma: 0.0
   prefilterBilateralSigmaSpatial: 2.0
   prefilterBilateralSigmaRange: 0.07999999821186066
-  refinementRadius: 6
-  refinementRadiusFull: 3
-  subpixelBits: 4
+  refinementRadius: 5
+  refinementRadiusFull: 2
+  subpixelBits: 5
   lrCheck: true
   lrCheckFast: true
   medianSize: 3
   minDisp: 0
-  confidenceThreshold: 10
+  confidenceThreshold: 28
   useCostVolume: false
   costVolumeAggregation: 1
   boxAggregationRadius: 2
@@ -40,12 +42,12 @@ gpustereo:
   sgmP2: 2.0
   sgmAdaptiveP2: true
   useFp16: true
-  useQcomAcceleratedOps: false
+  useQcomAcceleratedOps: true
   secondPeakThreshold: 0.0
   secondPeakMinDisparityGap: 0
   censusRadiusX: 2
   censusRadiusY: 2
-  speckleMaxSize: 2
+  speckleMaxSize: 0
   speckleMaxDiff: 1
   speckleFilterBackend: 0
   textureFilterRadius: 0
@@ -55,7 +57,7 @@ gpustereo:
   featureMaskMorphRadius: 1
   edgeAwareRadius: 0
   edgeAwareEps: 0.009999999776482582
-  holeFillRadius: 0
+  holeFillRadius: 1
   holeFillSigmaSpatial: 2.0
   holeFillSigmaRange: 0.05000000074505806
   temporalAlpha: 0.0
@@ -66,4 +68,4 @@ gpustereo:
   regionRefinePlaneResidualThresh: 3.0
   depthUnit: MILLIMETER
   customDepthUnitMultiplier: 1000.0
-ir_dot_projector: 0.5
+ir_dot_projector: 1.0

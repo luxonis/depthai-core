@@ -63,6 +63,7 @@ class GPUStereoConfig : public Buffer {
     int debug_zncc_plot_y = -1;
     float second_peak_threshold = 0.f;
     int second_peak_min_disparity_gap = 0;
+    int epipolar_vertical_half_range = 0;
     int census_radius_x = 2;
     int census_radius_y = 2;
     int speckle_max_size = 0;
@@ -134,6 +135,7 @@ class GPUStereoConfig : public Buffer {
                       debug_zncc_plot_y,
                       second_peak_threshold,
                       second_peak_min_disparity_gap,
+                      epipolar_vertical_half_range,
                       census_radius_x,
                       census_radius_y,
                       speckle_max_size,
