@@ -197,6 +197,8 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
              py::arg("numFramesDiscard"),
              DOC(dai, CameraControl, setExternalTrigger))
         .def("setFrameSyncMode", &CameraControl::setFrameSyncMode, py::arg("mode"), DOC(dai, CameraControl, setFrameSyncMode))
+        .def("setFrameSyncId", &CameraControl::setFrameSyncId, py::arg("id"))
+        .def("setFrameSyncDelayUs", &CameraControl::setFrameSyncDelayUs, py::arg("delayUs"))
         .def("setStrobeSensor", &CameraControl::setStrobeSensor, py::arg("activeLevel"), DOC(dai, CameraControl, setStrobeSensor))
         .def("setStrobeExternal", &CameraControl::setStrobeExternal, py::arg("gpioNumber"), py::arg("activeLevel"), DOC(dai, CameraControl, setStrobeExternal))
         .def("setStrobeDisable", &CameraControl::setStrobeDisable, DOC(dai, CameraControl, setStrobeDisable))

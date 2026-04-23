@@ -38,6 +38,11 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     std::shared_ptr<ToFConfig> initialConfig = std::make_shared<ToFConfig>();
 
     /**
+     * Initial control options to apply to the underlying ToF sensor
+     */
+    CameraControl initialControl;
+
+    /**
      * Input ToFConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
@@ -81,6 +86,7 @@ class ToF : public DeviceNodeGroup {
    public:
     ToF(const std::shared_ptr<Device>& device)
         : DeviceNodeGroup(device),
+          initialControl{tofBase->initialControl},
           rawDepth{tofBase->depth},
           depth{imageFilters->output},
           amplitude{tofBase->amplitude},
@@ -118,6 +124,11 @@ class ToF : public DeviceNodeGroup {
 
     Subnode<ToFBase> tofBase{*this, "tofBase"};
     Subnode<ImageFilters> imageFilters{*this, "imageFilters"};
+
+    /**
+     * Initial control options to apply to the underlying ToF sensor
+     */
+    CameraControl& initialControl;
 
     /**
      * Raw depth output from ToF sensor

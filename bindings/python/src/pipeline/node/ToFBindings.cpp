@@ -27,6 +27,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
 
     // Properties
     tofProperties.def_readwrite("initialConfig", &ToFProperties::initialConfig, DOC(dai, ToFProperties, initialConfig))
+        .def_readwrite("initialControl", &ToFProperties::initialControl)
         .def_readwrite("numFramesPool", &ToFProperties::numFramesPool, DOC(dai, ToFProperties, numFramesPool))
         .def_readwrite("numShaves", &ToFProperties::numShaves, DOC(dai, ToFProperties, numShaves))
         .def_readwrite("warpHwIds", &ToFProperties::warpHwIds, DOC(dai, ToFProperties, warpHwIds));
@@ -38,6 +39,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readonly("intensity", &ToFBase::intensity, DOC(dai, node, ToFBase, intensity), DOC(dai, node, ToFBase, intensity))
         .def_readonly("phase", &ToFBase::phase, DOC(dai, node, ToFBase, phase), DOC(dai, node, ToFBase, phase))
         .def_readonly("initialConfig", &ToFBase::initialConfig, DOC(dai, node, ToFBase, initialConfig), DOC(dai, node, ToFBase, initialConfig))
+        .def_readonly("initialControl", &ToFBase::initialControl)
         .def("build",
              &ToFBase::build,
              "boardSocket"_a = CameraBoardSocket::AUTO,
@@ -48,7 +50,11 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
 
     // ToF Node (DeviceNodeGroup)
     tof.def_property_readonly(
-           "rawDepth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.rawDepth; }, DOC(dai, node, ToF, rawDepth))
+           "initialControl",
+           [](ToF& self) -> CameraControl& { return self.initialControl; },
+           py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "rawDepth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.rawDepth; }, DOC(dai, node, ToF, rawDepth))
         .def_property_readonly(
             "depth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.depth; }, DOC(dai, node, ToF, depth))
         .def_property_readonly(

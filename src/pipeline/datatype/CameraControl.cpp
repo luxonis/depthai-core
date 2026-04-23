@@ -1,6 +1,22 @@
+#include <algorithm>
+
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 
 namespace dai {
+
+namespace {
+
+CameraControl& setOrUpdateMiscControl(CameraControl& control, const std::string& name, std::string value) {
+    auto it = std::find_if(control.miscControls.begin(), control.miscControls.end(), [&](const auto& miscControl) { return miscControl.first == name; });
+    if(it != control.miscControls.end()) {
+        it->second = std::move(value);
+    } else {
+        control.miscControls.emplace_back(name, std::move(value));
+    }
+    return control;
+}
+
+}  // namespace
 
 // Functions to set properties
 CameraControl& CameraControl::setCaptureStill(bool capture) {
@@ -28,6 +44,14 @@ CameraControl& CameraControl::setFrameSyncMode(FrameSyncMode mode) {
     setCommand(Command::FRAME_SYNC);
     frameSyncMode = mode;
     return *this;
+}
+
+CameraControl& CameraControl::setFrameSyncId(int id) {
+    return setOrUpdateMiscControl(*this, "frame-sync-id", std::to_string(id));
+}
+
+CameraControl& CameraControl::setFrameSyncDelayUs(int delayUs) {
+    return setOrUpdateMiscControl(*this, "frame-sync-delay-us", std::to_string(delayUs));
 }
 
 CameraControl& CameraControl::setStrobeSensor(int activeLevel) {

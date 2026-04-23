@@ -455,6 +455,17 @@ class CameraControl : public Buffer {
     CameraControl& setFrameSyncMode(FrameSyncMode mode);
 
     /**
+     * Set the frame sync phase identifier used by ToF frame staggering.
+     * Sensors with the same ID trigger together, while larger IDs add frame-period offsets.
+     */
+    CameraControl& setFrameSyncId(int id);
+
+    /**
+     * Set an additional frame sync delay in microseconds used by ToF frame staggering.
+     */
+    CameraControl& setFrameSyncDelayUs(int delayUs);
+
+    /**
      * Enable STROBE output on sensor pin, optionally configuring the polarity.
      * Note: for many sensors the polarity is high-active and not configurable
      */
