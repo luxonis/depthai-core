@@ -5,6 +5,8 @@ vcpkg_from_github(
     REF d631db2d91ce72f79ac296e3ff724eee98ad0c46
     SHA512 9525b73217335b37c4634a7f03af5478975c901e40bd661ccf2375d02a172702347dbc60035d5c46f17d75084371b239333a9b4adfe8e9b8d5257ac65193d48f
     HEAD_REF cmake-android-mainline
+    PATCHES
+        0001-fix-viewer-issue.patch
 )
 
 if(VCPKG_TARGET_IS_WINDOWS)

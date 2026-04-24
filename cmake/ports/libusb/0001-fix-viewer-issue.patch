@@ -1,0 +1,39 @@
+From 9edb5bf0740fe5950ae3ea19884a27d335904f6c Mon Sep 17 00:00:00 2001
+From: asahtik <asahtik@gmail.com>
+Date: Fri, 24 Apr 2026 12:37:37 +0200
+Subject: [PATCH] Fix viewer issue attempt #1
+
+---
+ libusb/os/windows_winusb.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
+diff --git a/libusb/os/windows_winusb.c b/libusb/os/windows_winusb.c
+index f603126f..2bcd65c6 100644
+--- a/libusb/os/windows_winusb.c
++++ b/libusb/os/windows_winusb.c
+@@ -2012,13 +2012,17 @@ static int winusb_claim_interface(struct libusb_device_handle *dev_handle, uint8
+ 
+ 	CHECK_SUPPORTED_API(priv->apib, claim_interface);
+ 
+-	safe_free(priv->usb_interface[iface].endpoint);
+-	priv->usb_interface[iface].nb_endpoints = 0;
+-
+ 	r = priv->apib->claim_interface(SUB_API_NOTSET, dev_handle, iface);
+ 
+-	if (r == LIBUSB_SUCCESS)
+-		r = windows_assign_endpoints(dev_handle, iface, 0);
++	if (r == LIBUSB_SUCCESS) {
++               if (priv->usb_interface[iface].endpoint != NULL
++                               && priv->usb_interface[iface].current_altsetting == 0) {
++                       if (priv->apib->configure_endpoints)
++                               r = priv->apib->configure_endpoints(SUB_API_NOTSET, dev_handle, iface);
++               } else {
++                       r = windows_assign_endpoints(dev_handle, iface, 0);
++               }
++	}
+ 
+ 	return r;
+ }
+-- 
+2.53.0.windows.3
+
