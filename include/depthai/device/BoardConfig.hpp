@@ -111,6 +111,10 @@ struct BoardConfig {
     /// log device prints
     std::optional<bool> logDevicePrints;
 
+    /// Explicit GPIO number for enabling board-local FSYNC generation on FFC-style boards.
+    /// Unset means disabled. Non-FFC boards ignore this field.
+    std::optional<int> ffcFsyncGeneratorGpio;
+
     bool nonExclusiveMode = false;
 
     // TODO(themarpe) - add later when applicable
@@ -178,6 +182,7 @@ DEPTHAI_SERIALIZE_EXT(BoardConfig,
                       logSizeMax,
                       logVerbosity,
                       logDevicePrints,
+                      ffcFsyncGeneratorGpio,
                       nonExclusiveMode,
                       camera,
                       imu,

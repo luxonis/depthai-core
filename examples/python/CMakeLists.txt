@@ -235,6 +235,11 @@ dai_set_example_test_labels(system_logger ondevice rvc2_all rvc4 ci)
 add_python_example(edge_detector RVC2/EdgeDetector/edge_detector.py)
 dai_set_example_test_labels(edge_detector ondevice rvc2_all ci)
 
+## ToF
+add_python_example(tof_frame_stagger RVC2/ToF/tof_frame_stagger.py)
+add_python_example(tof_multi_device_frame_stagger RVC2/ToF/tof_multi_device_frame_stagger.py)
+add_python_example(tof_ffc4p_r5_internal_trigger RVC2/ToF/tof_ffc4p_r5_internal_trigger.py)
+
 ## Vpp
 add_python_example(virtual_patern_projection Vpp/virtual_patern_projection.py)
 dai_set_example_test_labels(virtual_patern_projection ondevice rvc4 ci)
