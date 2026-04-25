@@ -7,10 +7,12 @@ namespace node {
 
 ToFBase::ToFBase(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties>(std::move(props)),
-      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
+      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)),
+      initialControl(properties.initialControl) {}
 
 ToFBase::Properties& ToFBase::getProperties() {
     properties.initialConfig = *initialConfig;
+    properties.initialControl = initialControl;
     return properties;
 }
 

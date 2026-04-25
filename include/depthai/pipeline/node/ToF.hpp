@@ -3,6 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/datatype/CameraControl.hpp>
 #include <depthai/pipeline/node/ImageFilters.hpp>
 
 // standard
@@ -36,6 +37,11 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
      * Initial config to use for feature tracking.
      */
     std::shared_ptr<ToFConfig> initialConfig = std::make_shared<ToFConfig>();
+
+    /**
+     * Initial control options to apply to sensor.
+     */
+    CameraControl initialControl;
 
     /**
      * Input ToFConfig message with ability to modify parameters in runtime.
@@ -86,6 +92,7 @@ class ToF : public DeviceNodeGroup {
           amplitude{tofBase->amplitude},
           intensity{tofBase->intensity},
           phase{tofBase->phase},
+          initialControl{tofBase->initialControl},
           tofBaseInputConfig{tofBase->inputConfig},
           imageFiltersInputConfig{imageFilters->inputConfig},
           tofBaseNode{*tofBase},
@@ -143,6 +150,11 @@ class ToF : public DeviceNodeGroup {
      * Phase output
      */
     Output& phase;
+
+    /**
+     * Initial control options to apply to sensor.
+     */
+    CameraControl& initialControl;
 
     /**
      * Input config for ToF base node

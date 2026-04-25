@@ -2,6 +2,7 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
+#include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -17,6 +18,11 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
      * Initial ToF config
      */
     ToFConfig initialConfig;
+
+    /**
+     * Initial controls applied to ToF sensor
+     */
+    CameraControl initialControl;
 
     /**
      * Num frames in output pool
@@ -59,6 +65,6 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
     ~ToFProperties() override;
 };
 
-DEPTHAI_SERIALIZE_EXT(ToFProperties, initialConfig, numFramesPool, numShaves, warpHwIds, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);
+DEPTHAI_SERIALIZE_EXT(ToFProperties, initialConfig, initialControl, numFramesPool, numShaves, warpHwIds, boardSocket, cameraName, imageOrientation, fps, numFramesPoolRaw);
 
 }  // namespace dai

@@ -455,6 +455,16 @@ class CameraControl : public Buffer {
     CameraControl& setFrameSyncMode(FrameSyncMode mode);
 
     /**
+     * Set the frame stagger slot id used by sensors which support internal FSYNC delay configuration.
+     */
+    CameraControl& setFrameSyncId(int id);
+
+    /**
+     * Set the extra frame stagger delay in microseconds used by sensors which support it.
+     */
+    CameraControl& setFrameSyncDelayUs(int delayUs);
+
+    /**
      * Enable STROBE output on sensor pin, optionally configuring the polarity.
      * Note: for many sensors the polarity is high-active and not configurable
      */

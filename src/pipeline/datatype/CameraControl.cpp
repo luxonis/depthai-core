@@ -30,6 +30,16 @@ CameraControl& CameraControl::setFrameSyncMode(FrameSyncMode mode) {
     return *this;
 }
 
+CameraControl& CameraControl::setFrameSyncId(int id) {
+    miscControls.emplace_back("frame-sync-id", std::to_string(id));
+    return *this;
+}
+
+CameraControl& CameraControl::setFrameSyncDelayUs(int delayUs) {
+    miscControls.emplace_back("frame-sync-delay-us", std::to_string(delayUs));
+    return *this;
+}
+
 CameraControl& CameraControl::setStrobeSensor(int activeLevel) {
     setCommand(Command::STROBE_CONFIG);
     strobeConfig.enable = true;
