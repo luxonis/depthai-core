@@ -12,7 +12,7 @@ PRESET_MODE = dai.ImageFiltersPresetMode.TOF_HIGH_RANGE
 SYNC_THRESHOLD = timedelta(milliseconds=2)
 
 deviceConfig = dai.Device.Config()
-deviceConfig.board.ffcFsyncGeneratorGpio = 40  # OAK-FFC-4P FSIN/FSYNC generator GPIO
+deviceConfig.board.ffcFsyncGeneratorGpio = 40
 deviceConfig.board.ffcFsyncGeneratorFps = 30
 device = dai.Device(deviceConfig)
 
