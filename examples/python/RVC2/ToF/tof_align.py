@@ -119,6 +119,12 @@ with pipeline:
         assert isinstance(frameRgb, dai.ImgFrame)
         frameDepth = messageGroup["depth_aligned"]
         assert isinstance(frameDepth, dai.ImgFrame)
+        rgbTs = frameRgb.getTimestampDevice()
+        depthTs = frameDepth.getTimestampDevice()
+        print(
+            f"rgb_ts={rgbTs} tof_ts={depthTs} "
+            f"delta_ms={(depthTs - rgbTs).total_seconds() * 1000:.3f}"
+        )
 
         sizeRgb = frameRgb.getData().size
         sizeDepth = frameDepth.getData().size
