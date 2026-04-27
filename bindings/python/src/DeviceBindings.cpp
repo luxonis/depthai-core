@@ -271,6 +271,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("logVerbosity", &BoardConfig::logVerbosity, DOC(dai, BoardConfig, logVerbosity))
         .def_readwrite("logDevicePrints", &BoardConfig::logDevicePrints, DOC(dai, BoardConfig, logDevicePrints))
         .def_readwrite("ffcFsyncGeneratorGpio", &BoardConfig::ffcFsyncGeneratorGpio)
+        .def_readwrite("ffcFsyncGeneratorFps", &BoardConfig::ffcFsyncGeneratorFps)
         .def_readwrite("uvc", &BoardConfig::uvc, DOC(dai, BoardConfig, uvc));
 
     // Bind Device::Config

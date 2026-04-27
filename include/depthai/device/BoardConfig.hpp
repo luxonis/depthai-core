@@ -115,6 +115,9 @@ struct BoardConfig {
     /// Unset means disabled. Non-FFC boards ignore this field.
     std::optional<int> ffcFsyncGeneratorGpio;
 
+    /// Explicit camera FPS for the board-local FSYNC generator before any per-route multiplier is applied.
+    std::optional<float> ffcFsyncGeneratorFps;
+
     bool nonExclusiveMode = false;
 
     // TODO(themarpe) - add later when applicable
@@ -183,6 +186,7 @@ DEPTHAI_SERIALIZE_EXT(BoardConfig,
                       logVerbosity,
                       logDevicePrints,
                       ffcFsyncGeneratorGpio,
+                      ffcFsyncGeneratorFps,
                       nonExclusiveMode,
                       camera,
                       imu,
