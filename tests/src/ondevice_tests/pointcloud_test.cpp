@@ -147,8 +147,214 @@ TEST_CASE("Colorization proceeds despite mismatched frame extrinsics") {
 }
 
 // ============================================================================
-// Consistent 3D point: depth-only vs same-sensor color vs cross-sensor aligned
+// Consistent 3D point using real pipeline-produced ImgTransformations
 // ============================================================================
+TEST_CASE("Consistent 3D point with pipeline-produced transformations") {
+    // Same principle as the synthetic-transform test, but here we capture
+    // one set of real frames from Camera → StereoDepth → ImageAlign and
+    // extract the ImgTransformations the pipeline nodes actually produce.
+    // We then stamp synthetic depth/color frames with those transformations
+    // and verify the three PointCloud paths give the same 3D point.
+
+    dai::Pipeline pipeline;
+
+    constexpr auto DEPTH_SOCKET = dai::CameraBoardSocket::CAM_B;
+    constexpr auto COLOR_SOCKET = dai::CameraBoardSocket::CAM_A;
+
+    // ---- Phase 1: real pipeline to capture ImgTransformations ----
+    auto left = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
+    auto right = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    auto color = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
+
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+
+    left->requestOutput(std::make_pair(640, 400))->link(stereo->left);
+    right->requestOutput(std::make_pair(640, 400))->link(stereo->right);
+
+    auto platform = pipeline.getDefaultDevice()->getPlatform();
+    auto colorOut = color->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::RGB888i,
+                                         dai::ImgResizeMode::CROP, std::nullopt, true);
+
+    dai::Node::Output* alignedDepthOut = nullptr;
+    std::shared_ptr<dai::node::ImageAlign> alignNode;
+
+    if(platform == dai::Platform::RVC4) {
+        alignNode = pipeline.create<dai::node::ImageAlign>();
+        alignNode->setRunOnHost(true);
+        stereo->depth.link(alignNode->input);
+        colorOut->link(alignNode->inputAlignTo);
+        alignedDepthOut = &alignNode->outputAligned;
+    } else {
+        colorOut->link(stereo->inputAlignTo);
+        alignedDepthOut = &stereo->depth;
+    }
+
+    // Queues to capture one frame of each
+    auto colorQ = colorOut->createOutputQueue(4, false);
+    auto alignedDepthQ = alignedDepthOut->createOutputQueue(4, false);
+
+    pipeline.start();
+
+    // Let auto-exposure settle, then grab frames
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    colorQ->tryGetAll();
+    alignedDepthQ->tryGetAll();
+
+    auto colorFrame = colorQ->get<dai::ImgFrame>();
+    auto alignedDepthFrame = alignedDepthQ->get<dai::ImgFrame>();
+
+    REQUIRE(colorFrame != nullptr);
+    REQUIRE(alignedDepthFrame != nullptr);
+
+    // Extract real transformations and sizes
+    auto colorTransform = colorFrame->getTransformation();
+    auto alignedDepthTransform = alignedDepthFrame->getTransformation();
+
+    unsigned colorW = colorFrame->getWidth();
+    unsigned colorH = colorFrame->getHeight();
+    unsigned alignedW = alignedDepthFrame->getWidth();
+    unsigned alignedH = alignedDepthFrame->getHeight();
+
+    INFO("Color size: " << colorW << "x" << colorH);
+    INFO("Aligned depth size: " << alignedW << "x" << alignedH);
+
+    auto colorExtr = colorTransform.getExtrinsics();
+    auto alignedExtr = alignedDepthTransform.getExtrinsics();
+    INFO("Color toCameraSocket: " << static_cast<int>(colorExtr.toCameraSocket));
+    INFO("Aligned depth toCameraSocket: " << static_cast<int>(alignedExtr.toCameraSocket));
+
+    pipeline.stop();
+
+    // ---- Phase 2: synthetic frames with real transformations → PointCloud ----
+    dai::Pipeline pipeline2;
+
+    constexpr unsigned BLOCK_R = 2;
+    constexpr uint16_t DEPTH_MM = 2000;
+    unsigned alignedPX = alignedW / 2, alignedPY = alignedH / 2;
+
+    // Case 1: aligned depth only (using the pipeline-produced aligned depth transformation)
+    auto pc1 = pipeline2.create<dai::node::PointCloud>();
+    pc1->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
+    pc1->initialConfig->setTargetCoordinateSystem(DEPTH_SOCKET);
+    auto depth1Q_in = pc1->inputDepth.createInputQueue();
+    auto out1Q = pc1->outputPointCloud.createOutputQueue(4, false);
+
+    // Case 2: aligned depth + same-transformation color
+    auto pc2 = pipeline2.create<dai::node::PointCloud>();
+    pc2->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
+    pc2->initialConfig->setTargetCoordinateSystem(DEPTH_SOCKET);
+    auto depth2Q_in = pc2->inputDepth.createInputQueue();
+    auto color2Q_in = pc2->getColorInput().createInputQueue();
+    auto out2Q = pc2->outputPointCloud.createOutputQueue(4, false);
+
+    // Case 3: aligned depth + color from color camera (different transformation)
+    auto pc3 = pipeline2.create<dai::node::PointCloud>();
+    pc3->initialConfig->setLengthUnit(dai::LengthUnit::MILLIMETER);
+    pc3->initialConfig->setTargetCoordinateSystem(DEPTH_SOCKET);
+    auto depth3Q_in = pc3->inputDepth.createInputQueue();
+    auto color3Q_in = pc3->getColorInput().createInputQueue();
+    auto out3Q = pc3->outputPointCloud.createOutputQueue(4, false);
+
+    pipeline2.start();
+
+    // ---- Helpers ----
+    auto makeDepthFrame = [&](unsigned w, unsigned h, unsigned px, unsigned py,
+                              const dai::ImgTransformation& t, dai::CameraBoardSocket socket) {
+        auto f = std::make_shared<dai::ImgFrame>();
+        f->setWidth(w);
+        f->setHeight(h);
+        f->setType(dai::ImgFrame::Type::RAW16);
+        f->setInstanceNum(static_cast<unsigned>(socket));
+        std::vector<uint16_t> d(w * h, 0);
+        for(unsigned dy = py - BLOCK_R; dy <= py + BLOCK_R; dy++)
+            for(unsigned dx = px - BLOCK_R; dx <= px + BLOCK_R; dx++)
+                d[dy * w + dx] = DEPTH_MM;
+        std::vector<uint8_t> b(d.size() * sizeof(uint16_t));
+        std::memcpy(b.data(), d.data(), b.size());
+        f->setData(std::move(b));
+        f->setTransformation(t);
+        return f;
+    };
+
+    auto makeColorFrame = [&](unsigned w, unsigned h,
+                              const dai::ImgTransformation& t, dai::CameraBoardSocket socket) {
+        auto f = std::make_shared<dai::ImgFrame>();
+        f->setWidth(w);
+        f->setHeight(h);
+        f->setType(dai::ImgFrame::Type::RGB888i);
+        f->setInstanceNum(static_cast<unsigned>(socket));
+        std::vector<uint8_t> d(w * h * 3);
+        for(unsigned i = 0; i < w * h; i++) {
+            d[i * 3 + 0] = 100;
+            d[i * 3 + 1] = 150;
+            d[i * 3 + 2] = 200;
+        }
+        f->setData(std::move(d));
+        f->setTransformation(t);
+        return f;
+    };
+
+    // ==== Case 1: aligned depth only ====
+    auto alignedSocket = static_cast<dai::CameraBoardSocket>(alignedDepthFrame->getInstanceNum());
+    depth1Q_in->send(makeDepthFrame(alignedW, alignedH, alignedPX, alignedPY, alignedDepthTransform, alignedSocket));
+    auto pcd1 = out1Q->get<dai::PointCloudData>();
+    REQUIRE(pcd1 != nullptr);
+    auto pts1 = pcd1->getPoints();
+    REQUIRE(pts1.size() == (2 * BLOCK_R + 1) * (2 * BLOCK_R + 1));
+    auto point1 = pts1[pts1.size() / 2];
+    REQUIRE(point1.z > 0.f);
+    INFO("Case 1 point: (" << point1.x << ", " << point1.y << ", " << point1.z << ")");
+
+    // ==== Case 2: aligned depth + same-transformation color ====
+    depth2Q_in->send(makeDepthFrame(alignedW, alignedH, alignedPX, alignedPY, alignedDepthTransform, alignedSocket));
+    color2Q_in->send(makeColorFrame(alignedW, alignedH, alignedDepthTransform, alignedSocket));
+    auto pcd2 = out2Q->get<dai::PointCloudData>();
+    REQUIRE(pcd2 != nullptr);
+    REQUIRE(pcd2->isColor());
+    auto pts2 = pcd2->getPointsRGB();
+    REQUIRE(pts2.size() == (2 * BLOCK_R + 1) * (2 * BLOCK_R + 1));
+    auto point2 = pts2[pts2.size() / 2];
+    INFO("Case 2 point: (" << point2.x << ", " << point2.y << ", " << point2.z << ")");
+
+    // ==== Case 3: aligned depth + color from color camera ====
+    depth3Q_in->send(makeDepthFrame(alignedW, alignedH, alignedPX, alignedPY, alignedDepthTransform, alignedSocket));
+    color3Q_in->send(makeColorFrame(colorW, colorH, colorTransform, COLOR_SOCKET));
+    auto pcd3 = out3Q->get<dai::PointCloudData>();
+    REQUIRE(pcd3 != nullptr);
+    REQUIRE(pcd3->isColor());
+    auto pts3 = pcd3->getPointsRGB();
+    REQUIRE(!pts3.empty());
+    INFO("Case 3 num points: " << pts3.size());
+
+    // Find the closest point to point1
+    dai::Point3fRGBA point3 = pts3[0];
+    float minDist2 = std::numeric_limits<float>::max();
+    for(const auto& p : pts3) {
+        float d2 = (p.x - point1.x) * (p.x - point1.x)
+                 + (p.y - point1.y) * (p.y - point1.y)
+                 + (p.z - point1.z) * (p.z - point1.z);
+        if(d2 < minDist2) {
+            minDist2 = d2;
+            point3 = p;
+        }
+    }
+    INFO("Case 3 closest point: (" << point3.x << ", " << point3.y << ", " << point3.z << ")");
+
+    // ---- Verify consistency ----
+    constexpr float TOL = 10.f;  // 10 mm
+
+    // Cases 1 & 2 must be virtually identical
+    REQUIRE(point1.x == Catch::Approx(point2.x).margin(TOL));
+    REQUIRE(point1.y == Catch::Approx(point2.y).margin(TOL));
+    REQUIRE(point1.z == Catch::Approx(point2.z).margin(TOL));
+
+    // Cases 1 & 3 should agree after coordinate-system transform
+    REQUIRE(point1.x == Catch::Approx(point3.x).margin(TOL));
+    REQUIRE(point1.y == Catch::Approx(point3.y).margin(TOL));
+    REQUIRE(point1.z == Catch::Approx(point3.z).margin(TOL));
+
+    pipeline2.stop();
+}
 TEST_CASE("Consistent 3D point across depth-only, same-sensor color, and cross-sensor aligned") {
     // Three ways to obtain a 3D point from the same depth pixel must agree:
     //   1. Depth frame only → PointCloud
