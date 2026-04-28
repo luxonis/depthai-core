@@ -14,8 +14,6 @@ namespace {
 
 constexpr float kStereoMonoFps = 30.f;
 constexpr std::pair<uint32_t, uint32_t> kStereoDepthMonoSize{640, 400};
-/// Fixed NeuralDepth zoo model for RVC4 (``Depth`` does not take a per-pipeline model yet).
-constexpr DeviceModelZoo kRvc4NeuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
 
 std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
     std::shared_ptr<Camera> left;
@@ -45,14 +43,32 @@ StereoPair requireFirstStereoPair(const std::shared_ptr<Device>& device) {
 
 Depth::Depth(const std::shared_ptr<Device>& device) : DeviceNodeGroup(device) {
     DAI_CHECK_V(device != nullptr, "Depth node requires a device.");
+}
+
+Depth::Algorithm Depth::resolveAlgorithm(const std::shared_ptr<Device>& device) const {
+    if(algorithmOverride_ != Algorithm::AUTO) {
+        return algorithmOverride_;
+    }
     if(device->getPlatform() == Platform::RVC4) {
-        neuralBackend_ = std::make_unique<::dai::Subnode<NeuralDepth>>(*this, "neuralDepth");
-        depthOut_ = &(*neuralBackend_)->depth;
-        confidenceOut_ = &(*neuralBackend_)->confidence;
-    } else {
-        stereoBackend_ = std::make_unique<::dai::Subnode<StereoDepth>>(*this, "stereoDepth");
-        depthOut_ = &(*stereoBackend_)->depth;
-        confidenceOut_ = &(*stereoBackend_)->confidenceMap;
+        return Algorithm::NEURAL;
+    }
+    return Algorithm::STEREO;
+}
+
+void Depth::validateAlgorithm(const std::shared_ptr<Device>& device, Algorithm active) const {
+    const auto platform = device->getPlatform();
+    switch(active) {
+        case Algorithm::AUTO:
+            break;
+        case Algorithm::STEREO:
+        case Algorithm::NEURAL:
+            break;
+        case Algorithm::NEURAL_ASSISTED_STEREO:
+        case Algorithm::GPU_STEREO:
+            DAI_CHECK_V(platform == Platform::RVC4, "NeuralAssistedStereo and GPUStereo are only supported on RVC4.");
+            break;
+        case Algorithm::TOF:
+            break;
     }
 }
 
@@ -70,25 +86,60 @@ void Depth::buildInternal() {
     Pipeline pipeline = getParentPipeline();
     DAI_CHECK_V(pipeline.impl() != nullptr, "Depth node must be part of a pipeline.");
 
-    const auto platform = device->getPlatform();
-    const auto pair = requireFirstStereoPair(device);
+    const Algorithm active = resolveAlgorithm(device);
+    validateAlgorithm(device, active);
 
-    std::pair<uint32_t, uint32_t> monoSize;
-    if(platform == Platform::RVC4) {
-        const auto is = NeuralDepth::getInputSize(kRvc4NeuralDepthModel);
-        monoSize = {static_cast<uint32_t>(is.first), static_cast<uint32_t>(is.second)};
-    } else {
-        monoSize = kStereoDepthMonoSize;
-    }
-
-    auto [leftOut, rightOut] = ensureStereoCameraOutputs(pipeline, pair, monoSize, kStereoMonoFps);
-
-    if(platform == Platform::RVC4) {
-        DAI_CHECK_V(neuralBackend_ != nullptr, "NeuralDepth subnode missing on RVC4.");
-        (*neuralBackend_)->build(*leftOut, *rightOut, kRvc4NeuralDepthModel);
-    } else {
-        DAI_CHECK_V(stereoBackend_ != nullptr, "StereoDepth subnode missing.");
-        (*stereoBackend_)->build(*leftOut, *rightOut, StereoDepth::PresetMode::DEFAULT);
+    switch(active) {
+        case Algorithm::AUTO:
+            DAI_CHECK_V(false, "Depth: AUTO must be resolved before wiring.");
+            break;
+        case Algorithm::TOF: {
+            tofBackend_ = ToF::create(device);
+            add(tofBackend_);
+            tofBackend_->build(tofSocket_, tofPreset_, tofFps_);
+            depthOut_ = &tofBackend_->depth;
+            confidenceOut_ = &tofBackend_->amplitude;
+            break;
+        }
+        case Algorithm::NEURAL_ASSISTED_STEREO: {
+            const auto pair = requireFirstStereoPair(device);
+            nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
+            add(nasBackend_);
+            auto [leftOut, rightOut] = ensureStereoFullResolutionOutputs(pipeline, pair, kStereoMonoFps);
+            nasBackend_->build(*leftOut, *rightOut, nasNeuralModel_, nasRectify_);
+            depthOut_ = &nasBackend_->depth;
+            confidenceOut_ = &(*nasBackend_->stereoDepth).confidenceMap;
+            break;
+        }
+        case Algorithm::GPU_STEREO: {
+            const auto pair = requireFirstStereoPair(device);
+            gpuStereoBackend_ = std::make_unique<Subnode<GPUStereo>>(*this, "gpuStereo");
+            auto [leftOut, rightOut] = ensureStereoCameraOutputs(pipeline, pair, kStereoDepthMonoSize, kStereoMonoFps);
+            (*gpuStereoBackend_)->setRectification(true).build(*leftOut, *rightOut);
+            depthOut_ = &(**gpuStereoBackend_).depth;
+            confidenceOut_ = &(**gpuStereoBackend_).disparity;
+            break;
+        }
+        case Algorithm::NEURAL: {
+            const auto pair = requireFirstStereoPair(device);
+            neuralBackend_ = std::make_unique<Subnode<NeuralDepth>>(*this, "neuralDepth");
+            const auto is = NeuralDepth::getInputSize(neuralModel_);
+            const std::pair<uint32_t, uint32_t> monoSize{static_cast<uint32_t>(is.first), static_cast<uint32_t>(is.second)};
+            auto [leftOut, rightOut] = ensureStereoCameraOutputs(pipeline, pair, monoSize, kStereoMonoFps);
+            (*neuralBackend_)->build(*leftOut, *rightOut, neuralModel_);
+            depthOut_ = &(**neuralBackend_).depth;
+            confidenceOut_ = &(**neuralBackend_).confidence;
+            break;
+        }
+        case Algorithm::STEREO: {
+            const auto pair = requireFirstStereoPair(device);
+            stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
+            auto [leftOut, rightOut] = ensureStereoCameraOutputs(pipeline, pair, kStereoDepthMonoSize, kStereoMonoFps);
+            (*stereoBackend_)->build(*leftOut, *rightOut, StereoDepth::PresetMode::DEFAULT);
+            depthOut_ = &(**stereoBackend_).depth;
+            confidenceOut_ = &(**stereoBackend_).confidenceMap;
+            break;
+        }
     }
 
     graphBuilt_ = true;
@@ -113,6 +164,27 @@ std::pair<Node::Output*, Node::Output*> Depth::ensureStereoCameraOutputs(Pipelin
     auto* lo = left->requestOutput(frameSize, std::nullopt, ImgResizeMode::CROP, monoFps);
     auto* ro = right->requestOutput(frameSize, std::nullopt, ImgResizeMode::CROP, monoFps);
     DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera stereo output request failed.");
+    return {lo, ro};
+}
+
+std::pair<Node::Output*, Node::Output*> Depth::ensureStereoFullResolutionOutputs(Pipeline& pipeline,
+                                                                                const StereoPair& pair,
+                                                                                float monoFps) {
+    auto [leftFound, rightFound] = findCamerasForPair(pipeline, pair);
+
+    std::shared_ptr<Camera> left = leftFound;
+    std::shared_ptr<Camera> right = rightFound;
+
+    if(!left) {
+        left = pipeline.create<Camera>()->build(pair.left);
+    }
+    if(!right) {
+        right = pipeline.create<Camera>()->build(pair.right);
+    }
+
+    auto* lo = left->requestFullResolutionOutput(std::nullopt, monoFps, false);
+    auto* ro = right->requestFullResolutionOutput(std::nullopt, monoFps, false);
+    DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera full-resolution stereo output request failed.");
     return {lo, ro};
 }
 
