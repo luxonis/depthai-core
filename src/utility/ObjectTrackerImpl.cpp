@@ -261,9 +261,14 @@ class OCSTracker::State {
         }
         void sync_tracklet_motion(size_t idx) {
             if(idx >= trackers.size() || idx >= tracklets.size()) return;
-            const auto& spatialVelocity = trackers[idx].spatial_velocity;
-            tracklets[idx].velocity = Point3f(spatialVelocity(0) * kMmToM, spatialVelocity(1) * kMmToM, spatialVelocity(2) * kMmToM);
-            tracklets[idx].speed = spatialVelocity.norm() * kMmToM;
+            if(trackers[idx].has_spatial_state) {
+                const auto& spatialVelocity = trackers[idx].spatial_velocity;
+                tracklets[idx].velocity = Point3f(spatialVelocity(0) * kMmToM, spatialVelocity(1) * kMmToM, spatialVelocity(2) * kMmToM);
+                tracklets[idx].speed = spatialVelocity.norm() * kMmToM;
+            } else {
+                tracklets[idx].velocity.reset();
+                tracklets[idx].speed.reset();
+            }
         }
         void remove_tracker(size_t idx) {
             if(idx < trackers.size()) {
@@ -357,7 +362,7 @@ class OCSTracker::State {
           std::string asso_func_ = "iou",
           float inertia_ = 0.2,
           bool use_byte_ = false,
-          bool use_spatial_association_ = true,
+          bool use_spatial_association_ = false,
           float spatial_association_weight_ = 0.5f,
           float spatial_distance_threshold_ = 1500.0f,
           float spatial_depth_aware_scale_ = 0.35f);
@@ -918,8 +923,8 @@ std::vector<Eigen::RowVectorXf> OCSTracker::State::ClassState::update(const std:
                                                      Tracklet::TrackingStatus::NEW,
                                                      detections[index],
                                                      spatialData[index],
-                                                     Point3f(0.0f, 0.0f, 0.0f),
-                                                     0.0f}});
+                                                     std::nullopt,
+                                                     std::nullopt}});
             sync_tracklet_motion(trackers.size() - 1);
         }
     }

@@ -75,7 +75,7 @@ struct ObjectTrackerProperties : PropertiesSerializable<Properties, ObjectTracke
     /**
      * Whether to use spatial coordinates in association when available.
      */
-    bool spatialAssociation = true;
+    bool spatialAssociation = false;
     /**
      * Weight for spatial distance in association cost [0,1].
      */

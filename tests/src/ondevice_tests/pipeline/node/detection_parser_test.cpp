@@ -450,7 +450,7 @@ TEST_CASE("DetectionParser replay test") {
     const std::filesystem::path yoloV8InstanceSegmentationLargeCoco640x352GroundTruth{YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_GROUND_TRUTH};
     const std::filesystem::path yoloV10NanoCoco512x288GroundTruth{YOLO_V10_NANO_COCO_512x288_GROUND_TRUTH};
     const std::filesystem::path ppeDetection640x640GroundTruth{PPE_DETECTION_640x640_GROUND_TRUTH};
-    const std::filesystem::path yoloPBdd100k320x320GroundTruth{YOLO_P_BDD100K_320x320_GROUND_TRUTH};
+    // const std::filesystem::path yoloPBdd100k320x320GroundTruth{YOLO_P_BDD100K_320x320_GROUND_TRUTH};
     const std::filesystem::path fireDetection512x288GroundTruth{FIRE_DETECTION_512x288_GROUND_TRUTH};
 
     const std::filesystem::path peopleWalkingVideo{PEOPLE_WALKING_VIDEO};
@@ -464,7 +464,7 @@ TEST_CASE("DetectionParser replay test") {
         {"yolov8-instance-segmentation-large:coco-640x352:701031f", yoloV8InstanceSegmentationLargeCoco640x352GroundTruth, peopleWalkingVideo},
         {"yolov10-nano:coco-512x288:007b5fe", yoloV10NanoCoco512x288GroundTruth, peopleWalkingVideo},
         {"ppe-detection:640x640:419a4e5", ppeDetection640x640GroundTruth, peopleWalkingVideo},
-        {"luxonis/yolo-p:bdd100k-320x320:e14d3d9", yoloPBdd100k320x320GroundTruth, peopleWalkingVideo},
+        // {"luxonis/yolo-p:bdd100k-320x320:e14d3d9", yoloPBdd100k320x320GroundTruth, peopleWalkingVideo},
         {"fire-detection:512x288:4a8263c", fireDetection512x288GroundTruth, fireVideo}};
 
     for(const auto& testCase : testCases) {

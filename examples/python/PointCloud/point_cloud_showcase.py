@@ -15,13 +15,13 @@ import depthai as dai
 # ---------------------------------------------------------------------------
 # Print helpers
 # ---------------------------------------------------------------------------
-def print_header(title: str) -> None:
+def printHeader(title: str) -> None:
     print("\n╔══════════════════════════════════════════════╗")
     print(f"║  {title:<44s}║")
     print("╚══════════════════════════════════════════════╝")
 
 
-def print_point_cloud_info(pcd: dai.PointCloudData, frameNum: int) -> None:
+def printPointCloudInfo(pcd: dai.PointCloudData, frameNum: int) -> None:
     points = pcd.getPoints()
     print(f"\n--- Frame {frameNum} ---")
     print(f"  Points       : {len(points)}")
@@ -158,35 +158,37 @@ def main() -> None:
     # ------------------------------------------------------------------
 
     # 1 ── Sparse point cloud
-    print_header("1. Basic sparse point cloud")
+    printHeader("1. Basic sparse point cloud")
     print("  Config: METER")
     for i, pcd in enumerate(sparseFrames):
-        print_point_cloud_info(pcd, i)
+        printPointCloudInfo(pcd, i)
 
     # 2 ── Organized point cloud
-    print_header("2. Organized point cloud")
+    printHeader("2. Organized point cloud")
     print("  Config: MILLIMETER, initialConfig.setOrganized(True)")
     for i, pcd in enumerate(organizedFrames):
-        print_point_cloud_info(pcd, i)
+        printPointCloudInfo(pcd, i)
 
     # 3 ── Transform pointcloud into another device's coordinate system
-    print_header("3. Camera-to-camera transform")
+    printHeader("3. Camera-to-camera transform")
     print("  Config: setTargetCoordinateSystem(CAM_A)")
     for i, pcd in enumerate(camFrames):
-        print_point_cloud_info(pcd, i)
+        printPointCloudInfo(pcd, i)
 
     # 4 ── Custom transform + passthrough depth
-    print_header("4. Custom transform matrix + passthrough")
+    printHeader("4. Custom transform matrix + passthrough")
     print("  Config: 90° Z rotation via initialConfig")
-    for i, (pcd, depth) in enumerate(zip(customFrames, depthFrames, strict=True)):
-        print_point_cloud_info(pcd, i)
+    if len(customFrames) != len(depthFrames):
+        raise RuntimeError("customFrames and depthFrames must have the same length")
+    for i, (pcd, depth) in enumerate(zip(customFrames, depthFrames)):
+        printPointCloudInfo(pcd, i)
         print(f"  Depth frame  : {depth.getWidth()} × {depth.getHeight()}")
 
     # 5 ── Colorized point cloud
-    print_header("5. Colorized point cloud (RGB)")
+    printHeader("5. Colorized point cloud (RGB)")
     print("  Config: METER, aligned color camera linked to inputColor")
     for i, pcd in enumerate(colorizedFrames):
-        print_point_cloud_info(pcd, i)
+        printPointCloudInfo(pcd, i)
 
     print("\nAll demos completed.")
 
