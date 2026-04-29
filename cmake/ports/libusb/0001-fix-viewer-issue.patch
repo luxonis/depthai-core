@@ -1,0 +1,14 @@
+diff --git a/libusb/os/windows_winusb.c b/libusb/os/windows_winusb.c
+index f603126f..2373246d 100644
+--- a/libusb/os/windows_winusb.c
++++ b/libusb/os/windows_winusb.c
+@@ -2012,9 +2012,6 @@ static int winusb_claim_interface(struct libusb_device_handle *dev_handle, uint8
+ 
+ 	CHECK_SUPPORTED_API(priv->apib, claim_interface);
+ 
+-	safe_free(priv->usb_interface[iface].endpoint);
+-	priv->usb_interface[iface].nb_endpoints = 0;
+-
+ 	r = priv->apib->claim_interface(SUB_API_NOTSET, dev_handle, iface);
+ 
+ 	if (r == LIBUSB_SUCCESS)
