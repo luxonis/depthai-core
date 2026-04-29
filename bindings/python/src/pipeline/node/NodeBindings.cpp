@@ -62,11 +62,11 @@ bool isCreatingNodeFromPipelineCreate() {
 }
 
 // Map of python node classes and call to pipeline to create it
-std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
+std::vector<std::pair<py::handle, PyNodeCreateFunc>> pyNodeCreateMap;
 py::handle daiNodeModule;
 py::handle daiNodeInternalModule;
 
-std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap() {
+std::vector<std::pair<py::handle, PyNodeCreateFunc>> NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
 }
 

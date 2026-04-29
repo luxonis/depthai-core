@@ -5,6 +5,8 @@ Stereo-style demo using the unified dai.node.Depth group (StereoDepth on RVC2/RV
 - On RVC4 the NeuralDepth zoo model is fixed inside the library (not set via ``build()``).
 - Create host queues on ``depth_node.depth`` / ``confidence`` **before** ``pipeline.build()`` (the pipeline
   rejects new queues after build). The first ``depth``/``confidence`` access wires cameras and the backend.
+- For a non-``AUTO`` backend, pass ``dai.node.Depth.Algorithm`` to ``pipeline.create`` (e.g.
+  ``pipeline.create(dai.node.Depth, dai.node.Depth.Algorithm.TOF)``), or ``algorithm=`` as a keyword.
 """
 
 import cv2
@@ -12,7 +14,7 @@ import depthai as dai
 import numpy as np
 
 pipeline = dai.Pipeline()
-depth_node = pipeline.create(dai.node.Depth)
+depth_node = pipeline.create(dai.node.Depth, dai.node.Depth.Algorithm.NEURAL_ASSISTED_STEREO)
 
 depth_queue = depth_node.depth.createOutputQueue()
 confidence_queue = depth_node.confidence.createOutputQueue()

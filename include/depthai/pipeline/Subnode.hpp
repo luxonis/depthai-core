@@ -18,8 +18,9 @@ class Subnode {
             node = std::make_shared<T>();
             node->setAlias(alias);
 
-            // Add node to parents map
-            parent.nodeMap.push_back(node);
+            // Use Node::add (not raw nodeMap.push_back) so PipelineImpl::adoptSubtree runs when the
+            // parent is already in a pipeline; otherwise lazy subnodes never get parent weak_ptr.
+            parent.add(node);
 
             // If node is DeviceNode, copy device from parent
             if(std::dynamic_pointer_cast<DeviceNode>(node) != nullptr) {

@@ -1,8 +1,13 @@
 #include "depthai/pipeline/node/Depth.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cstring>
+#include <string>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/common/CameraFeatures.hpp"
+#include "depthai/common/CameraSensorType.hpp"
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -11,6 +16,15 @@
 namespace dai {
 namespace node {
 namespace {
+
+// ---------------------------------------------------------------------------
+// Depth algorithm guards (validateAlgorithm)
+//
+// TOF: require an actual ToF sensor in getConnectedCameraFeatures() (same idea
+// as the ToF node), not only a product name.
+// NeuralAssistedStereo / GPUStereo: platform and build rules; GPUStereo also
+// uses a product-name heuristic for Lite SKUs without the GPU stereo path.
+// ---------------------------------------------------------------------------
 
 constexpr float kStereoMonoFps = 30.f;
 constexpr std::pair<uint32_t, uint32_t> kStereoDepthMonoSize{640, 400};
@@ -39,9 +53,53 @@ StereoPair requireFirstStereoPair(const std::shared_ptr<Device>& device) {
     return pairs[0];
 }
 
+/** True if any connected camera advertises CameraSensorType::TOF. */
+bool cameraFeaturesIncludeTof(const std::vector<dai::CameraFeatures>& features) {
+    for(const auto& cf : features) {
+        for(const auto sensorType : cf.supportedTypes) {
+            if(sensorType == dai::CameraSensorType::TOF) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/** Safe wrapper: missing device or RPC errors mean no ToF for validation. */
+bool deviceHasTofSensor(const std::shared_ptr<Device>& device) {
+    if(device == nullptr) {
+        return false;
+    }
+    try {
+        return cameraFeaturesIncludeTof(device->getConnectedCameraFeatures());
+    } catch(...) {
+        return false;
+    }
+}
+
+#if defined(DEPTHAI_ENABLE_KOMPUTE)
+/** RVC4 + Kompute build; excludes Lite-class product names (no GPU block). */
+bool deviceGpuStereoSupported(const std::shared_ptr<Device>& device) {
+    if(device == nullptr || device->getPlatform() != Platform::RVC4) {
+        return false;
+    }
+    try {
+        std::string product = device->getProductName();
+        std::transform(product.begin(), product.end(), product.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        // RVC4 "Lite" SKUs ship without the GPU used by GPUStereo; extend this list as product names are finalized.
+        if(product.find("lite") != std::string::npos) {
+            return false;
+        }
+    } catch(...) {
+        // If product metadata is unavailable, allow GPUStereo on RVC4 when Kompute is enabled.
+    }
+    return true;
+}
+#endif
+
 }  // namespace
 
-Depth::Depth(const std::shared_ptr<Device>& device) : DeviceNodeGroup(device) {
+Depth::Depth(const std::shared_ptr<Device>& device, Algorithm algorithm) : DeviceNodeGroup(device), algorithmOverride_(algorithm) {
     DAI_CHECK_V(device != nullptr, "Depth node requires a device.");
 }
 
@@ -56,7 +114,7 @@ Depth::Algorithm Depth::resolveAlgorithm(const std::shared_ptr<Device>& device) 
 }
 
 void Depth::validateAlgorithm(const std::shared_ptr<Device>& device, Algorithm active) const {
-    const auto platform = device->getPlatform();
+    // Fail fast before buildInternal wires backends (setAlgorithm / create(..., algorithm)).
     switch(active) {
         case Algorithm::AUTO:
             break;
@@ -64,10 +122,21 @@ void Depth::validateAlgorithm(const std::shared_ptr<Device>& device, Algorithm a
         case Algorithm::NEURAL:
             break;
         case Algorithm::NEURAL_ASSISTED_STEREO:
+            DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "NeuralAssistedStereo is only supported on RVC4.");
+            break;
         case Algorithm::GPU_STEREO:
-            DAI_CHECK_V(platform == Platform::RVC4, "NeuralAssistedStereo and GPUStereo are only supported on RVC4.");
+#if defined(DEPTHAI_ENABLE_KOMPUTE)
+            DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "GPUStereo is only supported on RVC4.");
+            DAI_CHECK_V(deviceGpuStereoSupported(device),
+                        "GPUStereo requires an RVC4 device with GPU stereo support (Kompute-enabled build and a SKU that includes the GPU block; Lite variants "
+                        "are excluded).");
+#else
+            DAI_CHECK_V(false, "GPUStereo requires depthai-core built with Kompute (DEPTHAI_ENABLE_KOMPUTE).");
+#endif
             break;
         case Algorithm::TOF:
+            DAI_CHECK_V(deviceHasTofSensor(device),
+                        "Depth Algorithm::TOF requires a connected ToF camera (e.g. OAK-D ToF / OAK-TOF series).");
             break;
     }
 }

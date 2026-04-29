@@ -616,6 +616,10 @@ void Node::add(std::shared_ptr<Node> node) {
     // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
     node->parentId = this->id;
     nodeMap.push_back(node);
+    // If this node group is already in a pipeline, new children must be adopted too (lazy subgraphs).
+    if(auto pipeline = parent.lock()) {
+        pipeline->adoptSubtree(node);
+    }
 }
 
 void Node::remove(std::shared_ptr<Node> node) {

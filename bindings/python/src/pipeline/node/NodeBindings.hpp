@@ -19,7 +19,9 @@ bool isCreatingNodeFromPipelineCreate();
 
 struct NodeBindings {
     static void addToCallstack(std::deque<StackFunction>& callstack);
-    static std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> getNodeCreateMap();
+    // Factory signature matches PyNodeCreateFunc (args/kwargs for Depth and future keyword-only creates).
+    static std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_, const py::args&, const py::kwargs&)>>>
+    getNodeCreateMap();
 
    private:
     static void bind(pybind11::module& m, void* pCallstack);

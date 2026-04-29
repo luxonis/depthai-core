@@ -58,6 +58,17 @@ TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     REQUIRE_NOTHROW((void)&depth->confidence());
 }
 
+TEST_CASE("Depth: create(device, algorithm) exposes algorithm via getAlgorithm") {
+    Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    if(device == nullptr) {
+        WARN("Skipping Depth test: no device connected.");
+        return;
+    }
+    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::TOF);
+    REQUIRE(depth->getAlgorithm() == node::Depth::Algorithm::TOF);
+}
+
 TEST_CASE("Depth: AUTO wires NeuralDepth on RVC4 and StereoDepth otherwise") {
     Pipeline pipeline;
     auto device = pipeline.getDefaultDevice();
@@ -121,6 +132,34 @@ TEST_CASE("Depth: GPU_STEREO requires RVC4") {
         return;
     }
     auto depth = pipeline.create<node::Depth>()->setAlgorithm(node::Depth::Algorithm::GPU_STEREO);
+    REQUIRE_THROWS((void)&depth->depth());
+}
+
+// Mirrors Depth::validateAlgorithm(TOF): requires CameraSensorType::TOF in getConnectedCameraFeatures().
+TEST_CASE("Depth: TOF requires connected ToF camera") {
+    Pipeline pipeline;
+    auto device = pipeline.getDefaultDevice();
+    if(device == nullptr) {
+        WARN("Skipping Depth test: no device connected.");
+        return;
+    }
+    bool hasTof = false;
+    for(const auto& cf : device->getConnectedCameraFeatures()) {
+        for(const auto t : cf.supportedTypes) {
+            if(t == CameraSensorType::TOF) {
+                hasTof = true;
+                break;
+            }
+        }
+        if(hasTof) {
+            break;
+        }
+    }
+    if(hasTof) {
+        WARN("Skipping negative TOF test: device reports a ToF sensor.");
+        return;
+    }
+    auto depth = pipeline.create<node::Depth>()->setAlgorithm(node::Depth::Algorithm::TOF);
     REQUIRE_THROWS((void)&depth->depth());
 }
 
