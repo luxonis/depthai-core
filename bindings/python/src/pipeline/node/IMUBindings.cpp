@@ -3,6 +3,7 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/IMU.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 void bind_imu(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -28,10 +29,17 @@ void bind_imu(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Properties
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     imuSensor.value("ACCELEROMETER_RAW", IMUSensor::ACCELEROMETER_RAW, DOC(dai, IMUSensor, ACCELEROMETER_RAW))
-        .value("ACCELEROMETER", IMUSensor::ACCELEROMETER, DOC(dai, IMUSensor, ACCELEROMETER))
-        .value("LINEAR_ACCELERATION", IMUSensor::LINEAR_ACCELERATION, DOC(dai, IMUSensor, LINEAR_ACCELERATION))
-        .value("GRAVITY", IMUSensor::GRAVITY, DOC(dai, IMUSensor, GRAVITY))
+        .value("ACCELEROMETER_UNCALIBRATED", IMUSensor::ACCELEROMETER_UNCALIBRATED, DOC(dai, IMUSensor, ACCELEROMETER_UNCALIBRATED))
+        .value("ACCELEROMETER_CALIBRATED", IMUSensor::ACCELEROMETER_CALIBRATED, DOC(dai, IMUSensor, ACCELEROMETER_CALIBRATED))
+        .value("ACCELEROMETER", IMUSensor::ACCELEROMETER, "Deprecated: use ACCELEROMETER_CALIBRATED")
+        .value("LINEAR_ACCELERATION",
+               IMUSensor::LINEAR_ACCELERATION,
+               "Deprecated: calibration is incorrect for this gravity-stripped output; use ACCELEROMETER_CALIBRATED and subtract gravity on the host")
+        .value("GRAVITY",
+               IMUSensor::GRAVITY,
+               "Deprecated: calibration is incorrect for this gravity-only output; use ACCELEROMETER_CALIBRATED and estimate gravity on the host")
         .value("GYROSCOPE_RAW", IMUSensor::GYROSCOPE_RAW, DOC(dai, IMUSensor, GYROSCOPE_RAW))
         .value("GYROSCOPE_CALIBRATED", IMUSensor::GYROSCOPE_CALIBRATED, DOC(dai, IMUSensor, GYROSCOPE_CALIBRATED))
         .value("GYROSCOPE_UNCALIBRATED", IMUSensor::GYROSCOPE_UNCALIBRATED, DOC(dai, IMUSensor, GYROSCOPE_UNCALIBRATED))
@@ -44,8 +52,26 @@ void bind_imu(pybind11::module& m, void* pCallstack) {
         .value("ARVR_STABILIZED_ROTATION_VECTOR", IMUSensor::ARVR_STABILIZED_ROTATION_VECTOR, DOC(dai, IMUSensor, ARVR_STABILIZED_ROTATION_VECTOR))
         .value(
             "ARVR_STABILIZED_GAME_ROTATION_VECTOR", IMUSensor::ARVR_STABILIZED_GAME_ROTATION_VECTOR, DOC(dai, IMUSensor, ARVR_STABILIZED_GAME_ROTATION_VECTOR))
+        .def_property_readonly_static("ACCELEROMETER",
+                                      [](py::object) {
+                                          PyErr_WarnEx(PyExc_DeprecationWarning, "ACCELEROMETER is deprecated, use ACCELEROMETER_CALIBRATED instead.", 1);
+                                          return IMUSensor::ACCELEROMETER_CALIBRATED;
+                                      })
+        .def_property_readonly_static(
+            "LINEAR_ACCELERATION",
+            [](py::object) {
+                PyErr_WarnEx(PyExc_DeprecationWarning, "LINEAR_ACCELERATION is deprecated; use ACCELEROMETER_CALIBRATED and subtract gravity on the host.", 1);
+                return IMUSensor::LINEAR_ACCELERATION;
+            })
+        .def_property_readonly_static(
+            "GRAVITY",
+            [](py::object) {
+                PyErr_WarnEx(PyExc_DeprecationWarning, "GRAVITY is deprecated; use ACCELEROMETER_CALIBRATED and estimate gravity on the host.", 1);
+                return IMUSensor::GRAVITY;
+            })
         // .value("GYRO_INTEGRATED_ROTATION_VECTOR", IMUSensor::GYRO_INTEGRATED_ROTATION_VECTOR)
         ;
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
     imuSensorConfig.def(py::init<>())
         .def_readwrite("sensitivityEnabled", &IMUSensorConfig::sensitivityEnabled)

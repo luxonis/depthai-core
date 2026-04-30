@@ -26,6 +26,7 @@ struct DetectionParserOptions {
     bool decodeKeypoints = false;
     bool decodeSegmentation = false;
 
+    // TODO (aljazkonec1): instead of listing every parser property separately, add serialization support to dai::nn_archive::v1::Head and pass the entire head
     int classes;
     std::optional<std::vector<std::string>> classNames;
     int coordinates;

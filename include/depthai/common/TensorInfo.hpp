@@ -38,7 +38,7 @@ struct TensorInfo {
         FP64 = 5,  // Double precision floating point
     };
 
-    void validateStorageOrder() {
+    void validateStorageOrder() const {
         switch(order) {
             case StorageOrder::NHWC:
             case StorageOrder::NHCW:
@@ -75,7 +75,7 @@ struct TensorInfo {
         }
     }
 
-    int getDataTypeSize() {
+    int getDataTypeSize() const {
         switch(dataType) {
             case DataType::U8F:
             case DataType::I8:
@@ -93,7 +93,7 @@ struct TensorInfo {
         }
     }
 
-    int getWidth() {
+    int getWidth() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
@@ -125,7 +125,7 @@ struct TensorInfo {
         }
     }
 
-    int getHeight() {
+    int getHeight() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
@@ -157,7 +157,7 @@ struct TensorInfo {
         }
     }
 
-    std::size_t getTensorSize() {
+    std::size_t getTensorSize() const {
         uint32_t i = 0;
 
         // Handle the edge case if all dimensions are 1
@@ -182,7 +182,7 @@ struct TensorInfo {
         return dims[i] * strides[i];
     }
 
-    int getChannels() {
+    int getChannels() const {
         validateStorageOrder();
         switch(order) {
             case StorageOrder::NHWC:
@@ -210,6 +210,104 @@ struct TensorInfo {
             case StorageOrder::CN:
                 return dims[0];
             case StorageOrder::H:
+            case StorageOrder::W:
+            default:
+                return 0;
+        }
+    }
+
+    size_t getChannelStride() const {
+        validateStorageOrder();
+        switch(order) {
+            case StorageOrder::NHWC:
+                return strides[3];
+            case StorageOrder::NHCW:
+                return strides[2];
+            case StorageOrder::NCHW:
+                return strides[1];
+            case StorageOrder::HWC:
+                return strides[2];
+            case StorageOrder::CHW:
+                return strides[0];
+            case StorageOrder::WHC:
+                return strides[0];
+            case StorageOrder::HCW:
+                return strides[1];
+            case StorageOrder::WCH:
+                return strides[1];
+            case StorageOrder::CWH:
+                return strides[0];
+            case StorageOrder::C:
+                return strides[0];
+            case StorageOrder::NC:
+                return strides[1];
+            case StorageOrder::CN:
+                return strides[0];
+            case StorageOrder::H:
+            case StorageOrder::W:
+            default:
+                return 0;
+        }
+    }
+
+    size_t getWidthStride() const {
+        validateStorageOrder();
+        switch(order) {
+            case StorageOrder::NHWC:
+                return strides[2];
+            case StorageOrder::NHCW:
+                return strides[3];
+            case StorageOrder::NCHW:
+                return strides[3];
+            case StorageOrder::HWC:
+                return strides[1];
+            case StorageOrder::CHW:
+                return strides[2];
+            case StorageOrder::WHC:
+                return strides[0];
+            case StorageOrder::HCW:
+                return strides[1];
+            case StorageOrder::WCH:
+                return strides[0];
+            case StorageOrder::CWH:
+                return strides[1];
+            case StorageOrder::W:
+                return strides[0];
+            case StorageOrder::NC:
+            case StorageOrder::CN:
+            case StorageOrder::H:
+            case StorageOrder::C:
+            default:
+                return 0;
+        }
+    }
+
+    size_t getHeightStride() const {
+        validateStorageOrder();
+        switch(order) {
+            case StorageOrder::NHWC:
+                return strides[1];
+            case StorageOrder::NHCW:
+                return strides[1];
+            case StorageOrder::NCHW:
+                return strides[2];
+            case StorageOrder::HWC:
+                return strides[0];
+            case StorageOrder::CHW:
+                return strides[1];
+            case StorageOrder::WHC:
+                return strides[1];
+            case StorageOrder::HCW:
+                return strides[0];
+            case StorageOrder::WCH:
+                return strides[1];
+            case StorageOrder::CWH:
+                return strides[1];
+            case StorageOrder::H:
+                return strides[0];
+            case StorageOrder::C:
+            case StorageOrder::NC:
+            case StorageOrder::CN:
             case StorageOrder::W:
             default:
                 return 0;

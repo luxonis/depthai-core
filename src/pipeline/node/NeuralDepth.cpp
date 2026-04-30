@@ -28,14 +28,26 @@ std::shared_ptr<NeuralDepth> NeuralDepth::build(Output& leftInput, Output& right
 
 std::pair<int, int> NeuralDepth::getInputSize(DeviceModelZoo model) {
     switch(model) {
-        case DeviceModelZoo::NEURAL_DEPTH_LARGE:
+        case DeviceModelZoo::NEURAL_DEPTH_1248X780:
+            return {1248, 780};
+        case DeviceModelZoo::NEURAL_DEPTH_1056X660:
+            return {1056, 660};
+        case DeviceModelZoo::NEURAL_DEPTH_960X600:
+            return {960, 600};
+        case DeviceModelZoo::NEURAL_DEPTH_864X540:
+            return {864, 540};
+        case DeviceModelZoo::NEURAL_DEPTH_768X480:
             return {768, 480};
-        case DeviceModelZoo::NEURAL_DEPTH_MEDIUM:
+        case DeviceModelZoo::NEURAL_DEPTH_576X360:
             return {576, 360};
-        case DeviceModelZoo::NEURAL_DEPTH_SMALL:
+        case DeviceModelZoo::NEURAL_DEPTH_480X300:
             return {480, 300};
-        case DeviceModelZoo::NEURAL_DEPTH_NANO:
+        case DeviceModelZoo::NEURAL_DEPTH_384X240:
             return {384, 240};
+        case DeviceModelZoo::NEURAL_DEPTH_288X180:
+            return {288, 180};
+        case DeviceModelZoo::NEURAL_DEPTH_192X120:
+            return {192, 120};
         default:
             throw std::runtime_error("Unknown DeviceModelZoo model");
     }
@@ -57,7 +69,7 @@ void NeuralDepth::buildInternal() {
             throw std::runtime_error("NeuralDepth node is not supported on the connected device - please update LuxonisOS to 1.20.4 or higher.");
         }
     }
-    auto defaultModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
+    auto defaultModel = DeviceModelZoo::NEURAL_DEPTH_480X300;
     neuralNetwork->setModelFromDeviceZoo(defaultModel);
     rectification->setOutputSize(getInputSize(defaultModel));
     // Link sync outputs to message demux inputs
@@ -74,6 +86,8 @@ void NeuralDepth::buildInternal() {
     // Link rectification outputs to neural network
     rectification->output1.link(neuralNetwork->inputs["left"]);
     rectification->output2.link(neuralNetwork->inputs["right"]);
+    neuralNetwork->inputs["left"].setBlocking(true);
+    neuralNetwork->inputs["right"].setBlocking(true);
 
     // Link neural network outputs to nnDataInput
     neuralNetwork->out.link(nnDataInput);

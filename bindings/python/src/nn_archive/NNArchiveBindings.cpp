@@ -86,6 +86,7 @@ void NNArchiveBindings::bind(pybind11::module& m, void* pCallstack) {
     nnArchive.def("getInputSize", &NNArchive::getInputSize, py::arg("index") = 0, DOC(dai, NNArchive, getInputSize));
     nnArchive.def("getInputWidth", &NNArchive::getInputWidth, py::arg("index") = 0, DOC(dai, NNArchive, getInputWidth));
     nnArchive.def("getInputHeight", &NNArchive::getInputHeight, py::arg("index") = 0, DOC(dai, NNArchive, getInputHeight));
+    nnArchive.def("getHeadConfig", &NNArchive::getHeadConfig, py::arg("index") = 0, DOC(dai, NNArchive, getHeadConfig));
     nnArchive.def("getSupportedPlatforms", &NNArchive::getSupportedPlatforms, DOC(dai, NNArchive, getSupportedPlatforms));
 
     // Bind NNArchive options

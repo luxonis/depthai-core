@@ -246,20 +246,37 @@ Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size,
     return pimpl->requestOutput(*this, cap, false);
 }
 
+Node::Output* Camera::requestIspOutput(std::optional<float> fps) {
+    ImgFrameCapability cap;
+
+    if(fps.has_value()) {
+        cap.fps.fixed(fps.value());
+    }
+
+    cap.type = std::nullopt;
+    cap.enableUndistortion = false;
+    cap.ispOutput = true;
+    return pimpl->requestOutput(*this, cap, false);
+}
+
 Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
     return pimpl->requestOutput(*this, capability, onHost);
 }
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 Camera& Camera::setMockIsp(ReplayVideo& replay) {
     if(!replay.getReplayVideoFile().empty()) {
         auto [width, height] = replay.getSize();
+        double fps = (double)replay.getFps();
         if(width <= 0 || height <= 0) {
-            const auto& [vidWidth, vidHeight] = utility::getVideoSize(replay.getReplayVideoFile().string());
+            const auto& [vidWidth, vidHeight, vidFps] = utility::getVideoSize(replay.getReplayVideoFile().string());
             width = vidWidth;
             height = vidHeight;
+            fps = vidFps;
         }
         properties.mockIspWidth = width;
         properties.mockIspHeight = height;
+        properties.mockIspFps = fps;
 
         auto device = getParentPipeline().getDefaultDevice();
         if(device) {

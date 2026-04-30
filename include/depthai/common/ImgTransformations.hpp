@@ -1,6 +1,9 @@
 #pragma once
 
+#include <array>
+
 #include "depthai/common/CameraModel.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -20,6 +23,8 @@ struct ImgTransformation {
     std::array<std::array<float, 3>, 3> sourceIntrinsicMatrixInv = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
     CameraModel distortionModel = CameraModel::Perspective;
     std::vector<float> distortionCoefficients;
+    Extrinsics extrinsics = {};
+
     size_t srcWidth = 0;
     size_t srcHeight = 0;
     size_t width = 0;
@@ -50,6 +55,23 @@ struct ImgTransformation {
         : sourceIntrinsicMatrix(sourceIntrinsicMatrix),
           distortionModel(distortionModel),
           distortionCoefficients(distortionCoefficients),
+          srcWidth(width),
+          srcHeight(height),
+          width(width),
+          height(height) {
+        sourceIntrinsicMatrixInv = matrix::getMatrixInverse(sourceIntrinsicMatrix);
+    }
+
+    ImgTransformation(size_t width,
+                      size_t height,
+                      std::array<std::array<float, 3>, 3> sourceIntrinsicMatrix,
+                      CameraModel distortionModel,
+                      std::vector<float> distortionCoefficients,
+                      Extrinsics extrinsics)
+        : sourceIntrinsicMatrix(sourceIntrinsicMatrix),
+          distortionModel(distortionModel),
+          distortionCoefficients(std::move(distortionCoefficients)),
+          extrinsics(std::move(extrinsics)),
           srcWidth(width),
           srcHeight(height),
           width(width),
@@ -123,12 +145,34 @@ struct ImgTransformation {
      */
     std::vector<float> getDistortionCoefficients() const;
     /**
-     * Retrieve the total intrinsic matrix calculated from intrinsic * transform.
+     * Retrieve the extrinsics to the source sensor.
+     * @return Extrinsics
+     */
+    Extrinsics getExtrinsics() const;
+
+    /**
+     * Two transformations are equal if the transformation matrices, intrinsic matrices, distortion models,
+     * distortion coefficients, extrinsics, and sizes are all equal.
+     * @param other Transformation to compare with
+     * @return True if the transformations are equal, false otherwise
+     */
+    bool isEqualTransformation(const ImgTransformation& other) const;
+
+    std::array<std::array<float, 3>, 3> getTransformationMatrix() const {
+        return transformationMatrix;
+    }
+
+    std::array<std::array<float, 3>, 3> getTransformationMatrixInv() const {
+        return transformationMatrixInv;
+    }
+
+    /**
+     * Retrieve the total intrinsic matrix calculated from transform * intrinsic.
      * @return total intrinsic matrix
      */
     std::array<std::array<float, 3>, 3> getIntrinsicMatrix() const;
     /**
-     * Retrieve the inverse of the total intrinsic matrix calculated from intrinsic * transform.
+     * Retrieve the inverse of the total intrinsic matrix.
      * @return inverse total intrinsic matrix
      */
     std::array<std::array<float, 3>, 3> getIntrinsicMatrixInv() const;
@@ -206,15 +250,17 @@ struct ImgTransformation {
     ImgTransformation& addSrcCrops(const std::vector<dai::RotatedRect>& crops);
     ImgTransformation& setSize(size_t width, size_t height);
     ImgTransformation& setSourceSize(size_t width, size_t height);
+    ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
     ImgTransformation& setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix);
     ImgTransformation& setDistortionModel(CameraModel model);
     ImgTransformation& setDistortionCoefficients(std::vector<float> coefficients);
 
     /**
-     * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the intrinsics to
-     * remap the point.
+     * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the
+     * intrinsics to remap the point.
      * @param to Transformation to remap to
      * @param point Point to remap
+     * @note This function assumes both transformations have the same source (eg. same source camera socket). If they don't, remapping will be inaccurate.
      */
     dai::Point2f remapPointTo(const ImgTransformation& to, dai::Point2f point) const;
     /**
@@ -235,9 +281,90 @@ struct ImgTransformation {
      * Remap a rotated rect to this transformation from another. If the intrinsics are different (e.g. different camera), the function will also use the
      * intrinsics to remap the rect.
      * @param from Transformation to remap from
-     * @param point RotatedRect to remap
+     * @param rect RotatedRect to remap
      */
     dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
+
+    /**
+     * Project a 3D spatial point into 2D point in the current frame defined by this transformation.
+     * @param point 3D point to project
+     * @return Projected 2D point in the current frame
+     * @note This function assumes that the point is in the coordinate system of the current frame.
+     */
+    dai::Point2f project3DPoint(const dai::Point3f& point) const;
+
+    /**
+     * Project a 2D point from the source frame defined by this transformation into a 2D point in the target frame defined by the to transformation. This
+     * function will use the depth of the point to project it into 3D space and then reproject it back to 2D in the target frame.
+     * @param to Target transformation to project to
+     * @param point2f Source 2D point in the current frame
+     * @param depth (mm) Depth of the point to project
+     * @return Projected 2D point in the target frame (to transformation)
+     */
+    dai::Point2f projectPointTo(const ImgTransformation& to, dai::Point2f& point, float depth) const;
+
+    /**
+     * Project a 3D spatial point from the source coordinate system (this transformation) into a 2D point in the target frame (to transformation).
+     * @param to Target transformation to project to
+     * @param point3f 3D point to project
+     * @return Projected 2D point in the target frame (to transformation)
+     * @note This function assumes that the point3f is in the coordinate system of the current frame.
+     */
+    dai::Point2f project3DPointTo(const ImgTransformation& to, const dai::Point3f& point) const;
+
+    /**
+     * Project a 3D point from the source frame (from transformation) into a 2D point in the current frame (this transformation).
+     * @param from Transformation to project from
+     * @param point3f 3D point to project
+     * @return Projected 2D point in the current frame
+     * @note This function assumes that the point3f is in the coordinate system of the source frame.
+     */
+    dai::Point2f project3DPointFrom(const ImgTransformation& from, const dai::Point3f& point) const;
+
+    /**
+     * Remap a 3D point from the source coordinate system of this transformation to the coordinate system of the target transformation (to transformation).
+     * @param to Target transformation to remap to
+     * @param point 3D point to remap
+     * @return Remapped 3D point in the target coordinate system
+     * @note This function assumes that the point is in the coordinate system of the current frame.
+     */
+    dai::Point3f remap3DPointTo(const ImgTransformation& to, const dai::Point3f& point) const;
+
+    /**
+     * Remap a 3D point to the coordinate system of this transformation from the source coordinate system of the from transformation.
+     * @param from Transformation to remap from
+     * @param point 3D point to remap
+     * @return Remapped 3D point in the current coordinate system
+     * @note This function assumes that the point is in the coordinate system of the source frame.
+     */
+    dai::Point3f remap3DPointFrom(const ImgTransformation& from, const dai::Point3f& point) const;
+
+    /**
+     * Get the extrinsic transformation matrix from the source coordinate system of this transformation to the target coordinate system of the to
+     * transformation.
+     * @param to Target transformation to get extrinsics to
+     * @return 4x4 homogeneous transformation matrix representing the extrinsics from this transformation to the target transformation
+     * @note Both transformations must have a common toCameraSocket. Otherwise extrinsics cannot be calculated.
+     */
+    std::array<std::array<float, 4>, 4> getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
+                                                                            bool useSpecTranslation = false,
+                                                                            LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+
+    /**
+     * Get the extrinsic rotation matrix from the source coordinate system of this transformation to the target coordinate system of the to transformation.
+     * @param to Transformation to get extrinsics to
+     * @return 3x3 rotation matrix representing the extrinsic rotation from this transformation to the target transformation
+     */
+    std::array<std::array<float, 3>, 3> getRotationMatrixTo(const ImgTransformation& to) const;
+
+    /**
+     * Get the extrinsic translation vector from the source coordinate system of this transformation to the target coordinate system of the to transformation.
+     * @param to Transformation to get extrinsics to
+     * @return 3x1 translation vector representing the extrinsic translation from this transformation to the target transformation
+     */
+    std::array<float, 3> getTranslationVectorTo(const ImgTransformation& to,
+                                                bool useSpecTranslation = false,
+                                                LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
     /**
      * Check if the transformations are aligned
@@ -251,6 +378,7 @@ struct ImgTransformation {
     bool isValid() const;
 
     DEPTHAI_SERIALIZE(ImgTransformation,
+                      extrinsics,
                       transformationMatrix,
                       transformationMatrixInv,
                       sourceIntrinsicMatrix,

@@ -1,10 +1,21 @@
+#include <atomic>
+#include <csignal>
 #include <memory>
 
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main(int argc, char** argv) {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     std::shared_ptr<dai::Device> device = nullptr;
     if(argc <= 1) {
         device = std::make_shared<dai::Device>();
@@ -28,7 +39,7 @@ int main(int argc, char** argv) {
     rgbOut->link(manip->inputImage);
     auto outputQueue = manip->out.createOutputQueue();
     pipeline.start();
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto imgFrame = outputQueue->get<dai::ImgFrame>();
         cv::imshow("Manipulated Frame", imgFrame->getCvFrame());
         int key = cv::waitKey(1);
@@ -36,4 +47,9 @@ int main(int argc, char** argv) {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
+
+    return 0;
 }

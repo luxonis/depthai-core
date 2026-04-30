@@ -58,6 +58,16 @@ class DynamicCalibrationControl : public Buffer {
         };
 
         /**
+         * @brief Command to compute calibration metrics (e.g., calibrationConfidence and dataConfidence).
+         * * Evaluates the provided calibration data and computes relevant quality metrics.
+         */
+        struct ComputeCalibrationMetrics {
+            explicit ComputeCalibrationMetrics(dai::CalibrationHandler& calibration) : calibration(calibration) {}
+            dai::CalibrationHandler calibration;
+            DEPTHAI_SERIALIZE(ComputeCalibrationMetrics, calibration);
+        };
+
+        /**
          * @brief Command to perform a calibration quality check.
          */
         struct CalibrationQuality {
@@ -99,10 +109,11 @@ class DynamicCalibrationControl : public Buffer {
          */
         struct ApplyCalibration {
             ApplyCalibration() = default;
-            explicit ApplyCalibration(const CalibrationHandler& calibration) : calibration(calibration) {}
+            explicit ApplyCalibration(const CalibrationHandler& calibration, bool flash = false) : calibration(calibration), flash(flash) {}
 
             CalibrationHandler calibration;  ///< Calibration data to apply.
-            DEPTHAI_SERIALIZE(ApplyCalibration, calibration);
+            bool flash;
+            DEPTHAI_SERIALIZE(ApplyCalibration, calibration, flash);
         };
 
         /**
@@ -128,15 +139,16 @@ class DynamicCalibrationControl : public Buffer {
      * Only one command may be active at any time. If no command is present,
      * the variant contains `std::monostate`.
      */
-    using Command = std::variant<std::monostate,                ///< No command
-                                 Commands::Calibrate,           ///< Run calibration
-                                 Commands::CalibrationQuality,  ///< Run calibration quality check
-                                 Commands::StartCalibration,    ///< Start periodic calibration
-                                 Commands::StopCalibration,     ///< Stop calibration
-                                 Commands::LoadImage,           ///< Load an image
-                                 Commands::ApplyCalibration,    ///< Apply calibration data
-                                 Commands::ResetData,           ///< Reset calibration data
-                                 Commands::SetPerformanceMode   ///< Set performance mode
+    using Command = std::variant<std::monostate,                      ///< No command
+                                 Commands::Calibrate,                 ///< Run calibration
+                                 Commands::CalibrationQuality,        ///< Run calibration quality check
+                                 Commands::StartCalibration,          ///< Start periodic calibration
+                                 Commands::StopCalibration,           ///< Stop calibration
+                                 Commands::LoadImage,                 ///< Load an image
+                                 Commands::ApplyCalibration,          ///< Apply calibration data
+                                 Commands::ResetData,                 ///< Reset calibration data
+                                 Commands::SetPerformanceMode,        ///< Set performance mode
+                                 Commands::ComputeCalibrationMetrics  ///< Compute reprojection errot and confidence
                                  >;
 
     Command command{};
@@ -166,6 +178,20 @@ class DynamicCalibrationControl : public Buffer {
      */
     [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> calibrationQuality(bool force = false) {
         return std::make_shared<DynamicCalibrationControl>(Commands::CalibrationQuality{force});
+    }
+
+    /**
+     * @brief Create a command to compute metrics for a given calibration.
+     *
+     * This command instructs the device to evaluate the supplied calibration data
+     * and compute metrics such as calibrationConfidence and dataConfidence.
+     *
+     * @param calibration Calibration data to evaluate.
+     * @return Shared pointer to a DynamicCalibrationControl command.
+     */
+
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> computeCalibrationMetrics(dai::CalibrationHandler& calibration) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::ComputeCalibrationMetrics{calibration});
     }
 
     /**
@@ -203,8 +229,8 @@ class DynamicCalibrationControl : public Buffer {
      * @param calibration Calibration data to apply.
      * @return Shared pointer to a DynamicCalibrationControl command.
      */
-    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> applyCalibration(const CalibrationHandler& calibration) {
-        return std::make_shared<DynamicCalibrationControl>(Commands::ApplyCalibration{calibration});
+    [[nodiscard]] static std::shared_ptr<DynamicCalibrationControl> applyCalibration(const CalibrationHandler& calibration, bool flash = false) {
+        return std::make_shared<DynamicCalibrationControl>(Commands::ApplyCalibration{calibration, flash});
     }
 
     /**

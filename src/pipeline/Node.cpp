@@ -1,5 +1,8 @@
+#include <spdlog/spdlog.h>
+
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <memory>
+#include <thread>
 
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -593,6 +596,9 @@ void Node::buildStage2() {
 void Node::buildStage3() {
     return;
 };
+void Node::postBuildStage() {
+    return;
+};
 
 void Node::setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l) {
     for(auto& nodeRef : l) {
@@ -725,8 +731,24 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
 }
 
 void Node::stopPipeline() {
-    auto pipeline = getParentPipeline();
-    pipeline.stop();
+    try {
+        auto pipeline = getParentPipeline();
+        // stopPipeline() is only called from host node threads. Hand shutdown off to a
+        // helper thread so PipelineImpl teardown never tries to join the current node thread.
+        std::thread([pipeline = std::move(pipeline)]() mutable {
+            try {
+                pipeline.stop();
+            } catch(const std::exception& ex) {
+                spdlog::error("Pipeline stop failed in detached shutdown thread: {}", ex.what());
+            } catch(...) {
+                spdlog::error("Pipeline stop failed in detached shutdown thread with an unknown exception");
+            }
+        }).detach();
+    } catch(const std::exception& e) {
+        if(e.what() != std::string("Pipeline is null")) {
+            throw;
+        }
+    }
 }
 
 void Node::Output::link(std::shared_ptr<Node> in) {

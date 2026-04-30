@@ -16,6 +16,14 @@ void Sync::setSyncAttempts(int syncAttempts) {
     properties.syncAttempts = syncAttempts;
 }
 
+void Sync::setProcessor(ProcessorType proc) {
+    properties.processor = proc;
+}
+
+ProcessorType Sync::getProcessor() const {
+    return properties.processor;
+}
+
 std::chrono::nanoseconds Sync::getSyncThreshold() const {
     return std::chrono::nanoseconds(properties.syncThresholdNs);
 }

@@ -6,6 +6,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "depthai/utility/JoiningThread.hpp"
 
@@ -23,6 +24,12 @@ namespace platform {
 uint32_t getIPv4AddressAsBinary(std::string address);
 std::string getIPv4AddressAsString(std::uint32_t binary);
 std::string getLocalIpAddress();
+
+/**
+ * @brief Get the OS platform
+ * @return OS platform string
+ */
+std::string getOSPlatform();
 
 /**
  * @brief Get the temporary path
@@ -66,6 +73,13 @@ std::filesystem::path joinPaths(const std::filesystem::path& path1, const std::f
  * @return directory path
  */
 std::filesystem::path getDirFromPath(const std::filesystem::path& path);
+
+/**
+ * @brief Get list of filenames in a directory
+ * @param path Directory path
+ * @return List of filenames
+ */
+std::vector<std::string> getFilenamesInDirectory(const std::filesystem::path& path);
 
 // TODO change this to std::thread
 void setThreadName(JoiningThread& thread, const std::string& name);

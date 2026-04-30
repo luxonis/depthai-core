@@ -42,7 +42,7 @@ with dai.Pipeline() as p:
     rgbd = p.create(dai.node.RGBD).build()
     align = None
     color.build()
-    rerunViewer = RerunNode()
+    rerunViewer = p.create(RerunNode)
     left.build(dai.CameraBoardSocket.CAM_B)
     right.build(dai.CameraBoardSocket.CAM_C)
     out = None

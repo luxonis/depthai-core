@@ -19,6 +19,7 @@
 #include "depthai/schemas/RGBDData.pb.h"
 #include "depthai/schemas/SpatialImgDetections.pb.h"
 #include "depthai/schemas/common.pb.h"
+#include "pipeline/datatype/SegmentationMask.hpp"
 #include "utility/ProtoSerializable.hpp"
 
 namespace dai {
@@ -58,6 +59,8 @@ template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const EncodedFrame* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const ImgFrame* message, bool metadataOnly);
+template <>
+std::unique_ptr<google::protobuf::Message> getProtoMessage(const SegmentationMask* message, bool metadataOnly);
 template <>
 std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData* message, bool metadataOnly);
 template <>

@@ -9,6 +9,7 @@ enum class DatatypeEnum : std::int32_t {
     Buffer,
     ImgFrame,
     EncodedFrame,
+    SegmentationMask,
     GateControl,
     NNData,
     ImageManipConfig,
@@ -44,13 +45,18 @@ enum class DatatypeEnum : std::int32_t {
     ObjectTrackerConfig,
     DynamicCalibrationControl,
     DynamicCalibrationResult,
+    AutoCalibrationConfig,
+    AutoCalibrationResult,
     CalibrationQuality,
+    CalibrationMetrics,
     CoverageData,
+    SegmentationParserConfig,
     PipelineEvent,
     PipelineState,
     PipelineEventAggregationConfig,
     VppConfig,
-    PacketizedData
+    PacketizedData,
+    COUNT  // Sentinel used by consistency checks; must remain the last enum entry.
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

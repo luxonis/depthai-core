@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 import depthai as dai
 
+
+def timeDeltaToMilliS(delta) -> float:
+    return delta.total_seconds()*1000
+
+
 # Create pipeline
 with dai.Pipeline() as pipeline:
     # Define sources and outputs
     imu = pipeline.create(dai.node.IMU)
 
-    # enable ACCELEROMETER_RAW at 500 hz rate
-    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 480)
-    # enable GYROSCOPE_RAW at 400 hz rate
-    imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_RAW, 400)
+    # enable ACCELEROMETER_UNCALIBRATED at 500 hz rate
+    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_UNCALIBRATED, 480)
+    # enable GYROSCOPE_UNCALIBRATED at 400 hz rate
+    imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_UNCALIBRATED, 400)
     # it's recommended to set both setBatchReportThreshold and setMaxBatchReports to 20 when integrating in a pipeline with a lot of input/output connections
     # above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
     imu.setBatchReportThreshold(1)
@@ -22,11 +27,11 @@ with dai.Pipeline() as pipeline:
 
     pipeline.start()
     baseTs = None
-    def timeDeltaToMilliS(delta) -> float:
-        return delta.total_seconds()*1000
-
     while pipeline.isRunning():
-        imuData = imuQueue.get()
+        try:
+            imuData = imuQueue.get()
+        except KeyboardInterrupt:
+            break
         assert isinstance(imuData, dai.IMUData)
         imuPackets = imuData.packets
         for imuPacket in imuPackets:
@@ -44,3 +49,4 @@ with dai.Pipeline() as pipeline:
             print(f"Accelerometer [m/s^2]: x: {imuF.format(acceleroValues.x)} y: {imuF.format(acceleroValues.y)} z: {imuF.format(acceleroValues.z)}")
             print(f"Gyroscope timestamp: {gyroTs}")
             print(f"Gyroscope [rad/s]: x: {imuF.format(gyroValues.x)} y: {imuF.format(gyroValues.y)} z: {imuF.format(gyroValues.z)} ")
+            print()

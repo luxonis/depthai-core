@@ -27,6 +27,7 @@
 #include "pybind11/stl_bind.h"
 
 std::unordered_map<std::thread::id, std::stack<dai::Pipeline*>> implicitPipelines;
+std::unordered_map<std::thread::id, std::stack<bool>> pipelineCreateNodeGuards;
 dai::Pipeline* getImplicitPipeline() {
     auto rv = implicitPipelines.find(std::this_thread::get_id());
     if(rv == implicitPipelines.end() || rv->second.empty()) throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
@@ -41,6 +42,23 @@ void setImplicitPipeline(dai::Pipeline* pipeline) {
 }
 void delImplicitPipeline() {
     implicitPipelines[std::this_thread::get_id()].pop();
+}
+void setCreatingNodeFromPipelineCreate() {
+    auto stack = pipelineCreateNodeGuards.find(std::this_thread::get_id());
+    if(stack == pipelineCreateNodeGuards.end()) {
+        stack = pipelineCreateNodeGuards.emplace(std::this_thread::get_id(), std::stack<bool>{}).first;
+    }
+    stack->second.push(true);
+}
+void delCreatingNodeFromPipelineCreate() {
+    auto stack = pipelineCreateNodeGuards.find(std::this_thread::get_id());
+    if(stack != pipelineCreateNodeGuards.end() && !stack->second.empty()) {
+        stack->second.pop();
+    }
+}
+bool isCreatingNodeFromPipelineCreate() {
+    auto stack = pipelineCreateNodeGuards.find(std::this_thread::get_id());
+    return stack != pipelineCreateNodeGuards.end() && !stack->second.empty();
 }
 
 // Map of python node classes and call to pipeline to create it
@@ -153,6 +171,7 @@ void bind_edgedetector(pybind11::module& m, void* pCallstack);
 void bind_featuretracker(pybind11::module& m, void* pCallstack);
 void bind_apriltag(pybind11::module& m, void* pCallstack);
 void bind_detectionparser(pybind11::module& m, void* pCallstack);
+void bind_segmentationparser(pybind11::module& m, void* pCallstack);
 void bind_uvc(pybind11::module& m, void* pCallstack);
 void bind_thermal(pybind11::module& m, void* pCallstack);
 void bind_tof(pybind11::module& m, void* pCallstack);
@@ -179,6 +198,7 @@ void bind_rtabmapslamnode(pybind11::module& m, void* pCallstack);
 #endif
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 void bind_dynamic_calibration(pybind11::module& m, void* pCallstack);
+void bind_auto_calibration(pybind11::module& m, void* pCallstack);
 #endif
 void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind Node et al
@@ -207,6 +227,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_featuretracker);
     callstack.push_front(bind_apriltag);
     callstack.push_front(bind_detectionparser);
+    callstack.push_front(bind_segmentationparser);
     callstack.push_front(bind_uvc);
     callstack.push_front(bind_thermal);
     callstack.push_front(bind_tof);
@@ -233,6 +254,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
 #endif
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     callstack.push_front(bind_dynamic_calibration);
+    callstack.push_front(bind_auto_calibration);
 #endif
 }
 

@@ -196,4 +196,12 @@ std::vector<dai::Platform> NNArchive::getSupportedPlatforms() const {
     }
 }
 
+dai::nn_archive::v1::Head NNArchive::getHeadConfig(uint32_t headIndex) const {
+    const auto& configV1 = getConfig<dai::nn_archive::v1::Config>();
+    DAI_CHECK_V(configV1.model.heads, "No heads defined in NNArchive config.");
+    DAI_CHECK_V(headIndex < configV1.model.heads->size(), "Head index out of bounds in NNArchive config.");
+
+    return configV1.model.heads->at(headIndex);
+}
+
 }  // namespace dai

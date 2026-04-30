@@ -42,8 +42,10 @@ TEST_CASE("camera_concurrency") {
         REQUIRE(report);
         if(report) {
             REQUIRE(report->numMessagesReceived == numMessagesToGet);
-            REQUIRE(report->fps >= FPS - MAX_FPS_OFFSET);
-            REQUIRE(report->fps <= FPS + MAX_FPS_OFFSET);
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(report->fps >= FPS - MAX_FPS_OFFSET);
+                REQUIRE(report->fps <= FPS + MAX_FPS_OFFSET);
+            }
         }
         ++idx;
     }

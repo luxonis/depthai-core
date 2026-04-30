@@ -246,7 +246,7 @@ int main(int argc, char** argv) {
     scriptBurn->setProcessor(dai::ProcessorType::LEON_MSS);
 #endif
 
-    // // By default the least mount of resources are allocated
+    // // By default the least amount of resources are allocated
     // // increasing it improves performance when optical flow is enabled
     // auto numShaves = 2;
     // auto numMemorySlices = 2;
@@ -354,7 +354,7 @@ int main(int argc, char** argv) {
                 cout << "\n";
 
                 if(failed) {
-                    cout << "Didn't recieve enough frames in time...\n";
+                    cout << "Didn't receive enough frames in time...\n";
                     exit(1);
                 }
 

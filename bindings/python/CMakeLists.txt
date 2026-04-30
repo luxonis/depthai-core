@@ -66,6 +66,8 @@ set(SOURCE_LIST
     src/nn_archive/NNArchiveBindings.cpp
     src/log/LogBindings.cpp
     src/VersionBindings.cpp
+    src/PlatformBindings.cpp
+    src/CrashDumpBindings.cpp
     src/common/ModelTypeBindings.cpp
 
     src/pipeline/node/NodeBindings.cpp
@@ -93,6 +95,7 @@ set(SOURCE_LIST
     src/pipeline/node/ToFBindings.cpp
     src/pipeline/node/AprilTagBindings.cpp
     src/pipeline/node/DetectionParserBindings.cpp
+    src/pipeline/node/SegmentationParserBindings.cpp
     src/pipeline/node/WarpBindings.cpp
     src/pipeline/node/SyncBindings.cpp
     src/pipeline/node/BenchmarkBindings.cpp
@@ -123,6 +126,8 @@ set(SOURCE_LIST
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp
     src/pipeline/datatype/ImgDetectionsBindings.cpp
+    src/pipeline/datatype/SegmentationParserConfigBindings.cpp
+    src/pipeline/datatype/SegmentationMaskBindings.cpp
     src/pipeline/datatype/ImgFrameBindings.cpp
     src/pipeline/datatype/EncodedFrameBindings.cpp
     src/pipeline/datatype/IMUDataBindings.cpp
@@ -183,6 +188,9 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/node/DynamicCalibrationBindings.cpp
         src/pipeline/datatype/DynamicCalibrationResultsBindings.cpp
         src/pipeline/datatype/DynamicCalibrationControlBindings.cpp
+        src/pipeline/node/AutoCalibrationBindings.cpp
+        src/pipeline/datatype/AutoCalibrationConfigBindings.cpp
+        src/pipeline/datatype/AutoCalibrationResultBindings.cpp
     )
 endif()
 

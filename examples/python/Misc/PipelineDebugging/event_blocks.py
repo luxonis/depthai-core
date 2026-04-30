@@ -26,7 +26,7 @@ with dai.Pipeline() as pipeline:
     # You can also enable it by setting the DEPTHAI_PIPELINE_DEBUGGING environment variable to '1'
     pipeline.enablePipelineDebugging(True)
 
-    gen = Generator("Generator")
+    gen = pipeline.create(Generator, "Generator")
     script = pipeline.create(dai.node.Script)
     # Note: Using event blocks in the script node is only supported on RVC4
     script.setScript(
@@ -58,4 +58,3 @@ with dai.Pipeline() as pipeline:
         print(f"\nScript node state:\n{scriptState}")
     except Exception as e:
         print(f"Could not get pipeline state: {e}")
-

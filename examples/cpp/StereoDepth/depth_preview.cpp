@@ -1,3 +1,4 @@
+#include <csignal>
 #include <iostream>
 
 // Includes common necessary includes for development using depthai library
@@ -12,8 +13,16 @@ static std::atomic<bool> extended_disparity{false};
 static std::atomic<bool> subpixel{false};
 // Better handling for occlusions:
 static std::atomic<bool> lr_check{true};
+static std::atomic<bool> quitEvent{false};
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -40,14 +49,12 @@ int main() {
 
     pipeline.start();
 
-    while(true) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto inDepth = q->get<dai::ImgFrame>();
         auto inLeft = qleft->get<dai::ImgFrame>();
         auto frame = inDepth->getFrame();
         // Normalization for better visualization
         frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig->getMaxDisparity());
-
-        std::cout << "Left type: " << inLeft->fb.str() << std::endl;
 
         cv::imshow("disparity", frame);
 
@@ -61,5 +68,7 @@ int main() {
         }
     }
     pipeline.stop();
+    pipeline.wait();
+
     return 0;
 }

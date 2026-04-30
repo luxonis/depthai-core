@@ -107,7 +107,6 @@ float DepthStats::calculateDepth(SpatialLocationCalculatorAlgorithm algo) {
                         currentCount = 1;
                     }
                 }
-
                 if(currentCount > maxCount) {
                     modeValue = validPixels.back();
                 }

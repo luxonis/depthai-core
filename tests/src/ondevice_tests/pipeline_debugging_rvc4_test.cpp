@@ -130,70 +130,82 @@ TEST_CASE("FPS check") {
         auto node = pipeline.getNode(nodeId);
         if(std::string(node->getName()) == "Camera") {
             ++gotNodes;
-            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("0").isValid());
-            REQUIRE(nodeState.outputStates.at("0").timing.fps == Catch::Approx(30.0).margin(5.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputStates.at("0").timing.fps == Catch::Approx(30.0).margin(5.0));
+            }
         }
         if(std::string(node->getName()) == "NeuralNetwork") {
             ++gotNodes;
-            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.inputStates.at("in").isValid());
-            REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("passthrough").isValid());
-            REQUIRE(nodeState.outputStates.at("passthrough").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("out").isValid());
-            REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputStates.at("passthrough").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
+            }
         }
         if(std::string(node->getName()) == "StereoDepth") {
             ++gotNodes;
-            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.inputStates.at("left").isValid());
-            REQUIRE(nodeState.inputStates.at("left").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.inputStates.at("right").isValid());
-            REQUIRE(nodeState.inputStates.at("right").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("depth").isValid());
-            REQUIRE(nodeState.outputStates.at("depth").timing.fps == Catch::Approx(30.0).margin(5.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputStates.at("left").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputStates.at("right").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputStates.at("depth").timing.fps == Catch::Approx(30.0).margin(5.0));
+            }
         }
         if(std::string(node->getName()) == "DetectionParser") {
             ++gotNodes;
-            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.inputStates.at("in").isValid());
-            REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("out").isValid());
-            REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputStates.at("in").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
+            }
         }
         if(std::string(node->getName()) == "ImageAlign") {
             ++gotNodes;
-            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.inputStates.at("input").isValid());
-            REQUIRE(nodeState.inputStates.at("input").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("outputAligned").isValid());
-            REQUIRE(nodeState.outputStates.at("outputAligned").timing.fps == Catch::Approx(30.0).margin(5.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputStates.at("input").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputStates.at("outputAligned").timing.fps == Catch::Approx(30.0).margin(5.0));
+            }
         }
         if(std::string(node->getName()) == "SpatialLocationCalculator") {
             ++gotNodes;
-            REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
-            REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.inputStates.at("inputDepth").isValid());
-            REQUIRE(nodeState.inputStates.at("inputDepth").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.inputStates.at("inputDetections").isValid());
-            REQUIRE(nodeState.inputStates.at("inputDetections").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("passthroughDepth").isValid());
-            REQUIRE(nodeState.outputStates.at("passthroughDepth").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("outputDetections").isValid());
-            REQUIRE(nodeState.outputStates.at("outputDetections").timing.fps == Catch::Approx(30.0).margin(5.0));
             REQUIRE(nodeState.outputStates.at("out").isValid());
-            REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
+            if(!pipeline.isHolisticReplayEnabled()) {
+                REQUIRE(nodeState.mainLoopTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputsGetTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputsSendTiming.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputStates.at("inputDepth").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.inputStates.at("inputDetections").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputStates.at("passthroughDepth").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputStates.at("outputDetections").timing.fps == Catch::Approx(30.0).margin(5.0));
+                REQUIRE(nodeState.outputStates.at("out").timing.fps == Catch::Approx(30.0).margin(5.0));
+            }
         }
     }
 

@@ -1,8 +1,19 @@
+#include <atomic>
+#include <csignal>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     dai::Pipeline pipeline;
 
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
@@ -24,7 +35,7 @@ int main() {
 
     double maxDisparity = 1.0;
     pipeline.start();
-    while(true) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto disparity = disparityQueue->get<dai::ImgFrame>();
         cv::Mat npDisparity = disparity->getFrame();
 
@@ -51,5 +62,7 @@ int main() {
     }
 
     pipeline.stop();
+    pipeline.wait();
+
     return 0;
 }

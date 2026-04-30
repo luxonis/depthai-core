@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.3.0" LANGUAGES CXX C)
+project(depthai VERSION "3.5.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -271,11 +271,14 @@ set(TARGET_CORE_SOURCES
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
     src/common/ModelType.cpp
+    src/device/CrashDump.cpp
+    src/device/CrashDumpManager.cpp
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
+    src/device/Platform.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/PipelineStateApi.cpp
@@ -319,8 +322,11 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/node/SegmentationParser.cpp
     src/pipeline/utilities/DetectionParser/DetectionParserUtils.cpp
     src/pipeline/utilities/SpatialLocationCalculator/SpatialUtils.cpp
+    src/pipeline/utilities/Alignment/AlignmentUtilities.cpp
+    src/pipeline/utilities/SegmentationParser/SegmentationParserUtils.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
@@ -339,6 +345,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
+    src/pipeline/datatype/Extrinsics.cpp
     src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -347,6 +354,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/ImgDetectionsT.cpp
+    src/pipeline/datatype/SegmentationMask.cpp
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
@@ -354,6 +362,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
+    src/pipeline/datatype/SegmentationParserConfig.cpp
     src/pipeline/datatype/AprilTags.cpp
     src/pipeline/datatype/AprilTagConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
@@ -442,6 +451,9 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/node/DynamicCalibrationNode.cpp
         src/pipeline/datatype/DynamicCalibrationResults.cpp
         src/pipeline/datatype/DynamicCalibrationControl.cpp
+        src/pipeline/node/AutoCalibration.cpp
+        src/pipeline/datatype/AutoCalibrationResult.cpp
+        src/pipeline/datatype/AutoCalibrationConfig.cpp
     )
 endif()
 
@@ -584,7 +596,7 @@ endif()
 
 # Link merged target libraries and add compile definitions
 if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
-    # Link to OpenCV (publically)
+    # Link to OpenCV (publicly)
     target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
@@ -593,7 +605,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_MERGED_TARGET)
 
 endif()
 if(DEPTHAI_HAVE_PCL_SUPPORT AND DEPTHAI_MERGED_TARGET)
-    # Link to PCL (publically)
+    # Link to PCL (publicly)
     target_link_libraries(${TARGET_CORE_NAME} PUBLIC ${PCL_LIBRARIES})
 
     # Specify that we are building target pcl
@@ -986,7 +998,7 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Add default flags
     add_default_flags(${TARGET_OPENCV_NAME})
 
-    # Link to OpenCV (publically)
+    # Link to OpenCV (publicly)
     target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
     # Specify that we are building target opencv
@@ -1018,7 +1030,7 @@ if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         # Add default flags
         add_default_flags(${TARGET_PCL_NAME})
 
-        # Link to PCL (publically)
+        # Link to PCL (publicly)
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARIES})
         target_link_libraries(${TARGET_PCL_NAME} PUBLIC pcl_io_ply)
 
@@ -1063,7 +1075,7 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     # Add default flags
     add_default_flags(${TARGET_RTABMAP_NAME})
     add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
-    # Link to RTABMap (publically)
+    # Link to RTABMap (publicly)
     target_link_libraries(${TARGET_RTABMAP_NAME} PRIVATE rtabmap::core ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME} ${THIRDPARTY_RTABMAP_LIBRARIES} spdlog::spdlog)
 
     target_include_directories(${TARGET_RTABMAP_NAME} PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>")
@@ -1104,7 +1116,7 @@ if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
     add_default_flags(${TARGET_BASALT_NAME})
     add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
 
-    # Link to Basalt (publically)
+    # Link to Basalt (publicly)
     target_link_libraries(${TARGET_BASALT_NAME} PRIVATE ${THIRDPARTY_BASALT_LIBRARIES} ${TARGET_OPENCV_NAME} spdlog::spdlog)
     # Add public compile definition indicating that Basalt support is available
     set(DEPTHAI_HAVE_BASALT_SUPPORT ON)

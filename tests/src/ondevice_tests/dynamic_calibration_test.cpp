@@ -55,7 +55,7 @@ class TestHelper {
         path outRoot = path(testFolder) / "extracted";
         create_directories(outRoot);
 
-        auto recordingFilenames = dai::utility::filenamesInTar(RECORDING_PATH);
+        auto recordingFilenames = dai::utility::filenamesInArchive(RECORDING_PATH);
         std::vector<std::string> srcFiles;  // filtered names from tar (files only)
         std::vector<path> dstFiles;         // matching output paths
 
@@ -81,7 +81,7 @@ class TestHelper {
             dstFiles.push_back(outPath);
         }
         // Extract only file entries; directories already created above
-        dai::utility::untarFiles(RECORDING_PATH, srcFiles, dstFiles);
+        dai::utility::extractFiles(RECORDING_PATH, srcFiles, dstFiles);
     }
 
     ~TestHelper() {
@@ -462,6 +462,44 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     REQUIRE(std::fabs(rvec[0]) < threshold);
     REQUIRE(std::fabs(rvec[1]) < threshold);
     REQUIRE(std::fabs(rvec[2]) < threshold);
+    p.stop();
+    p.wait();
+}
+
+TEST_CASE("DynamicCalibration: Get metrics.") {
+    TestHelper helper;
+
+    auto device = std::make_shared<dai::Device>();
+    std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
+    auto p = makePipeline(device, dynCalib, false);
+
+    auto calibration = getHandler();
+    auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
+    auto commandInput = dynCalib->inputControl.createInputQueue();
+    auto metricsOutput = dynCalib->metricsOutput.createOutputQueue();
+
+    device->setCalibration(calibration);
+    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper));
+    p.start();
+    dynCalib->syncInput.send(group);
+    std::this_thread::sleep_for(0.5s);
+
+    // load image
+    for(int i = 0; i < 7; i++) {
+        auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper));
+        dynCalib->syncInput.send(group);
+        commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
+        auto coverage = coverageOutput->get<dai::CoverageData>();
+    }
+
+    commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::ComputeCalibrationMetrics{calibration}));
+
+    std::chrono::seconds waitingTime(1);
+    bool failed;
+    auto metrics = metricsOutput->get<dai::CalibrationMetrics>(waitingTime, failed);
+
+    REQUIRE(!failed);
+
     p.stop();
     p.wait();
 }
