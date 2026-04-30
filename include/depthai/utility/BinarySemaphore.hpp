@@ -25,8 +25,8 @@ class BinarySemaphore {
         bool notify = false;
         {
             std::lock_guard<std::mutex> lk(mtx);
+            notify = !available;
             available = true;
-            notify = true;
         }
         if(notify) cv.notify_one();
     }

@@ -281,7 +281,7 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
             try {
                 msg = input.tryGet<ADatatype>();
             } catch(QueueException& e) {
-                if(e.what() != CLOSED_QUEUE_MESSAGE) {
+                if(std::string(e.what()) != CLOSED_QUEUE_MESSAGE) {
                     throw;
                 }
             }

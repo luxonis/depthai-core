@@ -13,7 +13,7 @@ namespace utility {
  * @class WaitAnyNotifier
  * @brief Used as a helper struct for waitAny to notify a single waiting thread from multiple notifying threads.
  * Not thread-safe for multiple waiting threads.
- * Should not be used if there is another thread waiting on any of the notifying queues.
+ * Should not be used if there is another thread waiting on (checking) any of the notifying queues.
  */
 class WaitAnyNotifier {
     BinarySemaphore semaphore{false};
