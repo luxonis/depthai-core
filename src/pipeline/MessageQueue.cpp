@@ -278,13 +278,7 @@ std::unordered_map<std::string, std::shared_ptr<ADatatype>> MessageQueue::getAny
         for(const auto& kv : queues) {
             auto& input = kv.second;
             std::shared_ptr<ADatatype> msg = nullptr;
-            try {
-                msg = input.tryGet<ADatatype>();
-            } catch(QueueException& e) {
-                if(std::string(e.what()) != CLOSED_QUEUE_MESSAGE) {
-                    throw;
-                }
-            }
+            msg = input.tryGet<ADatatype>();
             if(msg) inputs[kv.first] = msg;
         }
     }
