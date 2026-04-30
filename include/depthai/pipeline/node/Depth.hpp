@@ -33,6 +33,8 @@ namespace node {
  * Algorithm availability: ``TOF`` requires a connected ToF sensor (see ``Device::getConnectedCameraFeatures()``).
  * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a Kompute-enabled build, and excludes Lite-class SKUs
  * (heuristic on product name); extend checks as hardware matrix evolves.
+ *
+ * See \ref depth_node for a dedicated overview of purpose, behavior, features, and constraints.
  */
 class Depth : public DeviceNodeGroup {
    public:
