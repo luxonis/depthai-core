@@ -91,10 +91,34 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         return *this;
     }
 
+    /**
+     * Blocks until any of the queues contains a message, all queues are closed, or the timeout expires
+     *
+     * @param queues Queues to wait on
+     * @param timeout Maximum time to wait, or no timeout if not specified
+     * @returns True if at least one queue has a message available, false if all queues are closed or the timeout expires first
+     */
     static bool waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues, std::optional<std::chrono::milliseconds> timeout = std::nullopt);
+
+    /**
+     * Waits for messages on any of the provided queues and returns all currently available messages
+     *
+     * @param queues Mapping from output keys to queues to read from
+     * @param timeout Maximum time to wait, or no timeout if not specified
+     * @returns Mapping containing one available message per queue key, or an empty map if all queues are closed or the timeout expires first
+     */
     static std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                               std::optional<std::chrono::milliseconds> timeout = std::nullopt);
     template <typename T>
+
+    /**
+     * Waits for messages on any of the provided queues and returns all currently available messages cast to the requested type
+     *
+     * @tparam T Requested message type
+     * @param queues Mapping from output keys to queues to read from
+     * @param timeout Maximum time to wait, or no timeout if not specified
+     * @returns Mapping containing one available message per queue key that can be cast to `T`, or an empty map if all queues are closed, the timeout expires first, or no available messages match `T`
+     */
     static std::unordered_map<std::string, std::shared_ptr<T>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                       std::optional<std::chrono::milliseconds> timeout = std::nullopt) {
         auto resultADatatype = getAny(queues, timeout);
