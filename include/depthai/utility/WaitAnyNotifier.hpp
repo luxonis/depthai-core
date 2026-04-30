@@ -33,7 +33,8 @@ class WaitAnyNotifier {
     /**
      * @brief Wait until notified
      * If the predicate consists of multiple conditions connected by AND, it should be ensured that the state does not change between the conditions.
-     * This can be achieved either by using a mutex or by ensuring that the condition can only be made false by the waiting thread (e.g. notifying thread fills queues and the waiting thread empties them).
+     * This can be achieved either by using a mutex or by ensuring that the condition can only be made false by the waiting thread (e.g. notifying thread fills
+     * queues and the waiting thread empties them).
      * @arg pred Predicate to check after each notification - IMPORTANT: must be thread-safe
      */
     template <typename Pred>
@@ -53,7 +54,8 @@ class WaitAnyNotifier {
     /**
      * @brief Wait until notified or timeout occurs
      * If the predicate consists of multiple conditions connected by AND, it should be ensured that the state does not change between the conditions.
-     * This can be achieved either by using a mutex or by ensuring that the condition can only be made false by the waiting thread (e.g. notifying thread fills queues and the waiting thread empties them).
+     * This can be achieved either by using a mutex or by ensuring that the condition can only be made false by the waiting thread (e.g. notifying thread fills
+     * queues and the waiting thread empties them).
      * @arg pred Predicate to check after each notification - IMPORTANT: must be thread-safe
      */
     template <typename Pred, typename Rep, typename Period>
@@ -68,7 +70,9 @@ class WaitAnyNotifier {
             WaitingGuard& operator=(const WaitingGuard&) = delete;
             WaitingGuard& operator=(WaitingGuard&&) = delete;
             std::atomic<bool>& waitingRef;
-            ~WaitingGuard() { waitingRef = false; }
+            ~WaitingGuard() {
+                waitingRef = false;
+            }
         } guard{waiting};
 
         try {

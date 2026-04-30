@@ -9,8 +9,8 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/LockingQueue.hpp"
-#include "depthai/utility/WaitAnyNotifier.hpp"
 #include "depthai/utility/PipelineEventDispatcherInterface.hpp"
+#include "depthai/utility/WaitAnyNotifier.hpp"
 
 // shared
 namespace dai {
@@ -62,14 +62,14 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
           name(c.name),
           callbacks(c.callbacks),
           uniqueCallbackId(c.uniqueCallbackId),
-          pipelineEventDispatcher(c.pipelineEventDispatcher) {};
+          pipelineEventDispatcher(c.pipelineEventDispatcher){};
     MessageQueue(MessageQueue&& m) noexcept
         : enable_shared_from_this(m),
           queue(std::move(m.queue)),
           name(std::move(m.name)),
           callbacks(std::move(m.callbacks)),
           uniqueCallbackId(m.uniqueCallbackId),
-          pipelineEventDispatcher(m.pipelineEventDispatcher) {};
+          pipelineEventDispatcher(m.pipelineEventDispatcher){};
 
     MessageQueue& operator=(const MessageQueue& c) {
         queue = c.queue;
@@ -117,7 +117,8 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      * @tparam T Requested message type
      * @param queues Mapping from output keys to queues to read from
      * @param timeout Maximum time to wait, or no timeout if not specified
-     * @returns Mapping containing one available message per queue key that can be cast to `T`, or an empty map if all queues are closed, the timeout expires first, or no available messages match `T`
+     * @returns Mapping containing one available message per queue key that can be cast to `T`, or an empty map if all queues are closed, the timeout expires
+     * first, or no available messages match `T`
      */
     static std::unordered_map<std::string, std::shared_ptr<T>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                       std::optional<std::chrono::milliseconds> timeout = std::nullopt) {
