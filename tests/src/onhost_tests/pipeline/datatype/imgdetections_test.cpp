@@ -15,6 +15,7 @@
     #include <opencv2/imgproc.hpp>
 #endif
 
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -238,6 +239,9 @@ TEST_CASE("ImgDetections transformTo remaps detections and keypoints", "[ImgDete
         ImgDetections detections;
         ImgTransformation source(100, 50);
         ImgTransformation target(100, 50);
+        Extrinsics extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, CameraBoardSocket::CAM_A};
+        source.setExtrinsics(extrinsics);
+        target.setExtrinsics(extrinsics);
         target.addScale(2.0F, 2.0F);
 
         detections.setTransformation(source);
