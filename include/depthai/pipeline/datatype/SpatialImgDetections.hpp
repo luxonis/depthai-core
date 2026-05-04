@@ -155,6 +155,9 @@ struct SpatialImgDetection {
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */
 class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable {
+   protected:
+    void transformToInternal(const ImgTransformation& target) override;
+
    public:
     ~SpatialImgDetections() override;
     using Base = ImgDetectionsT<SpatialImgDetection>;
@@ -169,6 +172,11 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::SpatialImgDetections;
     }
+
+    /**
+     * Placeholder funciton. To be added in separate PR. Currently just passes throught the input detections.
+     */
+    SpatialImgDetections transformTo(const ImgTransformation& target);
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

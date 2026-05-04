@@ -171,6 +171,12 @@ void SpatialImgDetections::serialize(std::vector<std::uint8_t>& metadata, Dataty
     datatype = DatatypeEnum::SpatialImgDetections;
 }
 
+void SpatialImgDetections::transformToInternal(const ImgTransformation& target) {}
+
+SpatialImgDetections SpatialImgDetections::transformTo(const ImgTransformation& target) {
+    return *this;  // placeholder, to be implemented in separate PR. Currently just passes through the input detections.
+}
+
 #ifdef DEPTHAI_ENABLE_PROTOBUF
 std::vector<std::uint8_t> SpatialImgDetections::serializeProto(bool) const {
     return utility::serializeProto(utility::getProtoMessage(this));

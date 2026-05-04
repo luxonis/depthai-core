@@ -25,7 +25,7 @@ class ImgDetectionsT : public TransformableBuffer {
 
    public:
     std::vector<DetectionT> detections;
-    std::optional<ImgTransformation> transformation;
+    using TransformableBuffer::transformation;
 
     ImgDetectionsT() = default;
     virtual ~ImgDetectionsT() = default;

@@ -167,9 +167,6 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::Buffer:
             return parseDatatype<Buffer>(metadataStart, serializedObjectSize, data, fd);
             break;
-        case DatatypeEnum::TrasformableBuffer:
-            return parseDatatype<ITransformableBuffer>(metadataStart, serializedObjectSize, data, fd);
-            break;
 
         case DatatypeEnum::ImgFrame:
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);

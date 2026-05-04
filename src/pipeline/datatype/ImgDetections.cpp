@@ -164,9 +164,9 @@ float ImgDetection::getAngle() const {
 
 void ImgDetection::transform(const ImgTransformation& source, const ImgTransformation& target) {
     setBoundingBox(source.remapRectTo(target, getBoundingBox()));
-    // TODO (aljazkonec1) Possible issue: isNormalized assumes that the bbox and the corresponding keypoints have the same normalization flag. This
-    // might not always be the case.
-    keypoints = keypoints->transformTo(source, target);
+    if(keypoints.has_value()) {
+        keypoints = keypoints->transformTo(source, target);
+    }
 }
 
 // ImgDetections functions
