@@ -34,14 +34,6 @@ message Extrinsics {
     optional LengthUnit lengthUnit = 5;
 }
 
-message Extrinsics {
-    TransformationMatrix rotationMatrix = 1;
-    Point3f translation = 2;
-    Point3f specTranslation = 3;
-    CameraBoardSocket toCameraSocket = 4;
-    optional LengthUnit lengthUnit = 5;
-}
-
 message ImgTransformation {
     TransformationMatrix transformationMatrix = 1;
     TransformationMatrix sourceIntrinsicMatrix = 2;
