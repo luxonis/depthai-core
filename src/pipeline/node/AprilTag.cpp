@@ -147,15 +147,17 @@ void handleErrors(int e) {
     }
 }
 
-void setDetectorConfig(apriltag_detector_t* td, apriltag_family_t* tf, AprilTagConfig::Family& family, const dai::AprilTagConfig& config) {
+void setDetectorConfig(apriltag_detector_t* td, apriltag_family_t*& tf, AprilTagConfig::Family& family, const dai::AprilTagConfig& config) {
     // Remove old detector family
     apriltag_detector_clear_families(td);
 
     // Destroy old detector family
     destroyAprilTagFamily(tf, family);
+    tf = nullptr;
 
     // Set new detector family
-    apriltag_detector_add_family(td, getAprilTagFamily(config.family));
+    tf = getAprilTagFamily(config.family);
+    apriltag_detector_add_family(td, tf);
     family = config.family;
 
     // Set detector config
@@ -196,6 +198,16 @@ void AprilTag::run() {
     apriltag_family_t* tf = nullptr;
     AprilTagConfig::Family tfamily = config.family;
     std::unique_ptr<apriltag_detector_t, void (*)(apriltag_detector_t*)> td(apriltag_detector_create(), apriltag_detector_destroy);
+    struct DetectorFamilyCleanup {
+        apriltag_detector_t* detector;
+        apriltag_family_t*& family;
+        AprilTagConfig::Family& familyType;
+
+        ~DetectorFamilyCleanup() {
+            apriltag_detector_clear_families(detector);
+            destroyAprilTagFamily(family, familyType);
+        }
+    } detectorFamilyCleanup{td.get(), tf, tfamily};
 
     // Set detector properties
     setDetectorProperties(td.get(), properties);
@@ -323,9 +335,6 @@ void AprilTag::run() {
         // Logging
         logger->trace("Detected {} april tags", zarray_size(detections.get()));
     }
-
-    // Destroy AprilTag family
-    destroyAprilTagFamily(tf, tfamily);
 }
 
 #else

@@ -6,7 +6,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraInfo.hpp"
 #include "depthai/common/Extrinsics.hpp"
-#include "depthai/common/ImuModelParams.hpp"
+#include "depthai/common/ImuParameters.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/StereoRectification.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -31,10 +31,9 @@ struct EepromData {
     bool stereoUseSpecTranslation{true};
     bool stereoEnableDistortionCorrection{false};
     CameraBoardSocket verticalCameraSocket = dai::CameraBoardSocket::AUTO;
-    std::vector<float> accelerometerCalibParams;
-    std::vector<float> gyroscopeCalibParams;
-    // Hard-coded IMU model parameters, not really stored to EEPROM but part of the calibration data
-    ImuModelParams imuModelParams;
+    // IMU calibration payload serialized with EepromData via DEPTHAI_SERIALIZE_OPTIONAL_EXT;
+    // includes biases, scale/shear/rotation decomposition, and IMU noise parameters.
+    ImuCalibrationParams imuCalibrationParams;
 };
 
 DEPTHAI_SERIALIZE_OPTIONAL_EXT(EepromData,
@@ -57,8 +56,6 @@ DEPTHAI_SERIALIZE_OPTIONAL_EXT(EepromData,
                                stereoUseSpecTranslation,
                                stereoEnableDistortionCorrection,
                                verticalCameraSocket,
-                               accelerometerCalibParams,
-                               gyroscopeCalibParams,
-                               imuModelParams);
+                               imuCalibrationParams);
 
 }  // namespace dai

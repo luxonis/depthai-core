@@ -1,8 +1,10 @@
 #include "depthai/utility/matrixOps.hpp"
 
+#include <Eigen/Dense>
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <stdexcept>
-#include <string>
 #include <vector>
 
 namespace dai {
@@ -472,6 +474,66 @@ std::array<std::array<float, 3>, 3> getMatrixInverse(const std::array<std::array
     return inv;
 }
 
+std::array<std::array<float, 3>, 3> getHomographyMatrix(const std::array<dai::Point2f, 4>& srcPoints, const std::array<dai::Point2f, 4>& dstPoints) {
+    Eigen::Matrix<double, 8, 8> A = Eigen::Matrix<double, 8, 8>::Zero();
+    Eigen::Matrix<double, 8, 1> b = Eigen::Matrix<double, 8, 1>::Zero();
+
+    for(int i = 0; i < 4; ++i) {
+        const double x = srcPoints[i].x;
+        const double y = srcPoints[i].y;
+        const double u = dstPoints[i].x;
+        const double v = dstPoints[i].y;
+
+        A(2 * i, 0) = x;
+        A(2 * i, 1) = y;
+        A(2 * i, 2) = 1.0;
+        A(2 * i, 6) = -u * x;
+        A(2 * i, 7) = -u * y;
+        b(2 * i) = u;
+
+        A(2 * i + 1, 3) = x;
+        A(2 * i + 1, 4) = y;
+        A(2 * i + 1, 5) = 1.0;
+        A(2 * i + 1, 6) = -v * x;
+        A(2 * i + 1, 7) = -v * y;
+        b(2 * i + 1) = v;
+    }
+
+    Eigen::FullPivLU<Eigen::Matrix<double, 8, 8>> lu(A);
+    if(!lu.isInvertible() || lu.rank() != 8) {
+        throw std::runtime_error("Cannot compute homography matrix from the provided point pairs.");
+    }
+
+    const Eigen::Matrix<double, 8, 1> solution = lu.solve(b);
+    if(!solution.allFinite()) {
+        throw std::runtime_error("Cannot compute homography matrix from the provided point pairs.");
+    }
+
+    const double residual = (A * solution - b).norm();
+    const double scale = std::max({1.0, A.norm() * solution.norm(), b.norm()});
+    const double relativeResidual = residual / scale;
+    if(relativeResidual > 1e-10) {
+        throw std::runtime_error("Cannot compute homography matrix from the provided point pairs.");
+    }
+
+    const Eigen::Matrix<double, 3, 3> homography =
+        (Eigen::Matrix<double, 3, 3>() << solution(0), solution(1), solution(2), solution(3), solution(4), solution(5), solution(6), solution(7), 1.0)
+            .finished();
+
+    if(!homography.allFinite()) {
+        throw std::runtime_error("Computed homography contains non-finite values; cannot construct float result.");
+    }
+
+    std::array<std::array<float, 3>, 3> result{};
+    for(size_t row = 0; row < 3; ++row) {
+        for(size_t col = 0; col < 3; ++col) {
+            result[row][col] = static_cast<float>(homography(row, col));
+        }
+    }
+
+    return result;
+}
+
 void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
     if(mat.size() != 4) {
         throw std::invalid_argument("Expected a 4x4 matrix.");
@@ -578,5 +640,20 @@ cv::Mat matrix4x4ToCvMat(const std::array<std::array<float, 4>, 4>& matrix) {
 }
 
 #endif
+
+std::vector<std::vector<float>> toVecMatrix4x4(const std::array<std::array<float, 4>, 4>& m) {
+    std::vector<std::vector<float>> result(4, std::vector<float>(4));
+    for(int i = 0; i < 4; ++i)
+        for(int j = 0; j < 4; ++j) result[i][j] = m[i][j];
+    return result;
+}
+
+bool isIdentity4x4(const std::vector<std::vector<float>>& m, float epsilon) {
+    for(int i = 0; i < 4; ++i)
+        for(int j = 0; j < 4; ++j)
+            if(std::abs(m[i][j] - (i == j ? 1.0f : 0.0f)) > epsilon) return false;
+    return true;
+}
+
 }  // namespace matrix
 }  // namespace dai

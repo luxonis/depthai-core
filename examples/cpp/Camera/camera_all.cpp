@@ -1,3 +1,5 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -6,7 +8,16 @@
 
 #include "depthai/depthai.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create device
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
 
@@ -26,7 +37,7 @@ int main() {
     }
 
     pipeline.start();
-    while(true) {
+    while(pipeline.isRunning() && !quitEvent) {
         for(const auto& [name, queue] : outputQueues) {
             auto videoIn = queue->get<dai::ImgFrame>();
             if(videoIn != nullptr) {
@@ -39,6 +50,9 @@ int main() {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

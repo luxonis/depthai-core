@@ -4,12 +4,22 @@
 
 namespace {
 
+constexpr float kPi = 3.14159265358979323846f;
+
 float toUnit(float meters, dai::DepthUnit unit) {
     return meters * dai::getLengthUnitMultiplier(unit);
 }
 
 float toMeters(float value, dai::DepthUnit unit) {
     return value / dai::getLengthUnitMultiplier(unit);
+}
+
+float toAngleUnit(float radians, dai::AngleUnit unit) {
+    return radians * dai::getAngleUnitToRadianMultiplier(unit);
+}
+
+float toRadians(float value, dai::AngleUnit unit) {
+    return value / dai::getAngleUnitToRadianMultiplier(unit);
 }
 
 }  // namespace
@@ -32,4 +42,16 @@ TEST_CASE("DepthUnit conversions", "[DepthUnit]") {
 
     constexpr float depthMm = 750.0f;
     REQUIRE(toMeters(depthMm, dai::DepthUnit::MILLIMETER) == Catch::Approx(0.75f));
+}
+
+TEST_CASE("AngleUnit multipliers", "[AngleUnit]") {
+    REQUIRE(dai::getAngleUnitToRadianMultiplier(dai::AngleUnit::RADIAN) == Catch::Approx(1.0f));
+    REQUIRE(dai::getAngleUnitToRadianMultiplier(dai::AngleUnit::DEGREE) == Catch::Approx(180.0f / kPi));
+}
+
+TEST_CASE("AngleUnit conversions", "[AngleUnit]") {
+    constexpr float radians = kPi / 2.0f;
+
+    REQUIRE(toAngleUnit(radians, dai::AngleUnit::DEGREE) == Catch::Approx(90.0f));
+    REQUIRE(toRadians(180.0f, dai::AngleUnit::DEGREE) == Catch::Approx(kPi));
 }

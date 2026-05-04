@@ -31,13 +31,33 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
 
     // Node
     node.def_readonly("inputConfig", &PointCloud::inputConfig, DOC(dai, node, PointCloud, inputConfig), DOC(dai, node, PointCloud, inputConfig))
-        .def_readonly("inputDepth", &PointCloud::inputDepth, DOC(dai, node, PointCloud, inputDepth), DOC(dai, node, PointCloud, inputDepth))
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+        .def_property_readonly(
+            "inputDepth", [](PointCloud& node) -> Node::Input* { return &node.inputDepth; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "inputColor", [](PointCloud& node) -> Node::Input* { return &node.getColorInput(); }, py::return_value_policy::reference_internal)
+#endif
         .def_readonly(
             "outputPointCloud", &PointCloud::outputPointCloud, DOC(dai, node, PointCloud, outputPointCloud), DOC(dai, node, PointCloud, outputPointCloud))
         .def_readonly(
             "passthroughDepth", &PointCloud::passthroughDepth, DOC(dai, node, PointCloud, passthroughDepth), DOC(dai, node, PointCloud, passthroughDepth))
         .def_readonly("initialConfig", &PointCloud::initialConfig, DOC(dai, node, PointCloud, initialConfig), DOC(dai, node, PointCloud, initialConfig))
-        .def("setNumFramesPool", &PointCloud::setNumFramesPool, DOC(dai, node, PointCloud, setNumFramesPool));
+        .def("setNumFramesPool", &PointCloud::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, PointCloud, setNumFramesPool))
+        .def("setRunOnHost", &PointCloud::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, PointCloud, setRunOnHost))
+        .def("useCPU", &PointCloud::useCPU, DOC(dai, node, PointCloud, useCPU))
+        .def("useCPUMT", &PointCloud::useCPUMT, py::arg("numThreads") = 2, DOC(dai, node, PointCloud, useCPUMT))
+        .def("useGPU", &PointCloud::useGPU, py::arg("device") = 0, DOC(dai, node, PointCloud, useGPU))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<CameraBoardSocket, bool>(&PointCloud::setTargetCoordinateSystem),
+             py::arg("targetCamera"),
+             py::arg("useSpecTranslation") = false,
+             DOC(dai, node, PointCloud, setTargetCoordinateSystem))
+        .def("setTargetCoordinateSystem",
+             py::overload_cast<HousingCoordinateSystem, bool>(&PointCloud::setTargetCoordinateSystem),
+             py::arg("housingCS"),
+             py::arg("useSpecTranslation") = true,
+             DOC(dai, node, PointCloud, setTargetCoordinateSystem, 2));
+
     // ALIAS
     daiNodeModule.attr("PointCloud").attr("Properties") = properties;
 }

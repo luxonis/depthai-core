@@ -1,5 +1,6 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
+#include <array>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -190,6 +191,20 @@ class CalibrationHandler {
      *
      */
     std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId) const;
+
+    /**
+     * Get the source height of the camera from the calibration data.
+     * @param cameraId Uses the cameraId to identify which camera source height to return
+     * @return the source height of the camera from the calibration data.
+     */
+    uint32_t getSourceHeight(CameraBoardSocket cameraId) const;
+
+    /**
+     * Get the source width of the camera from the calibration data.
+     * @param cameraId Uses the cameraId to identify which camera source width to return
+     * @return the source width of the camera from the calibration data.
+     */
+    uint32_t getSourceWidth(CameraBoardSocket cameraId) const;
 
     /**
      * Get the Distortion Coefficients object
@@ -408,25 +423,44 @@ class CalibrationHandler {
     dai::CameraBoardSocket getStereoRightCameraId() const;
 
     /**
-     * Get the accelerometer calibration parameters.
+     * Get canonical accelerometer calibration matrix [Q|b].
      *
-     * @return returns a flat vector of up to 12 floats
+     * The linear transform Q is dimensionless. The bias column b is stored in SI
+     * units of [m/s^2].
+     *
+     * @return returns 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
      */
-    std::vector<float> getAccelerometerCalibParams() const;
+    std::vector<std::vector<float>> getAccelerometerCalibration() const;
 
     /**
-     * Get the gyroscope calibration parameters.
+     * Get canonical gyroscope calibration matrix [Q|b].
      *
-     * @return returns a flat vector of up to 12 floats
+     * The linear transform Q is dimensionless. The bias column b is stored in SI
+     * units of [rad/s].
+     *
+     * @return returns 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
      */
-    std::vector<float> getGyroscopeCalibParams() const;
+    std::vector<std::vector<float>> getGyroscopeCalibration() const;
 
     /**
-     * Get the IMU model-specific parameters.
+     * Get complete IMU noise parameters.
      *
-     * @return returns IMU model parameters as ImuModelParams struct
+     * Accelerometer noise terms are stored in [m/s^2]-based units. Gyroscope
+     * noise terms are stored in [rad/s]-based units.
+     *
+     * @return returns IMU noise parameters
      */
-    dai::ImuModelParams getImuModelParams() const;
+    dai::ImuNoiseParameters getImuNoiseParameters() const;
+
+    /**
+     * Get full IMU parameter payload.
+     *
+     * Accelerometer calibration bias terms are stored in [m/s^2]. Gyroscope
+     * calibration bias terms are stored in [rad/s].
+     *
+     * @return returns IMU parameters containing noise + calibration matrices
+     */
+    dai::ImuCalibrationParams getImuParameters() const;
 
     /**
      * Write raw calibration/board data to json file.
@@ -654,18 +688,25 @@ class CalibrationHandler {
     bool validateCameraArray() const;
 
     /**
-     * Set the accelerometer calibration parameters.
+     * Set canonical accelerometer calibration [Q|b].
      *
-     * @param calibParams Up to 12 float array containing accelerometer calibration parameters
+     * @param calibration 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
      */
-    void setAccelerometerCalibParams(const std::vector<float>& calibParams);
+    void setAccelerometerCalibration(const std::vector<std::vector<float>>& calibration);
 
     /**
-     * Set the gyroscope calibration parameters.
+     * Set canonical gyroscope calibration [Q|b].
      *
-     * @param calibParams Up to 12 float array containing gyroscope calibration parameters
+     * @param calibration 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
      */
-    void setGyroscopeCalibParams(const std::vector<float>& calibParams);
+    void setGyroscopeCalibration(const std::vector<std::vector<float>>& calibration);
+
+    /**
+     * Set full IMU parameter payload.
+     *
+     * @param params noise + accelerometer + gyroscope calibration parameters
+     */
+    void setImuParameters(const ImuCalibrationParams& params);
 
     /**
      * Validate Calibration handler properties and how they are set, so there is no:

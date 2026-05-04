@@ -20,6 +20,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
     // py::class_<RawImgFrame, RawBuffer, std::shared_ptr<RawImgFrame>> rawImgFrame(m, "RawImgFrame", DOC(dai, RawImgFrame));
     py::class_<ImgFrame, Py<ImgFrame>, Buffer, std::shared_ptr<ImgFrame>> imgFrame(m, "ImgFrame", DOC(dai, ImgFrame));
     py::enum_<ImgFrame::Type> imgFrameType(imgFrame, "Type");
+    py::enum_<ImgFrame::Fsync> imgFrameFsync(imgFrame, "Fsync");
     py::class_<ImgFrame::Specs> imgFrameSpecs(imgFrame, "Specs", DOC(dai, ImgFrame, Specs));
     py::class_<ImgTransformation> imgTransformation(m, "ImgTransformation", DOC(dai, ImgTransformation));
 
@@ -100,6 +101,11 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .value("HDR", ImgFrame::Type::HDR)
         .value("RAW32", ImgFrame::Type::RAW32)
         .value("NONE", ImgFrame::Type::NONE);
+
+    imgFrameFsync.value("NONE", ImgFrame::Fsync::NONE)
+        .value("INPUT", ImgFrame::Fsync::INPUT)
+        .value("OUTPUT", ImgFrame::Fsync::OUTPUT)
+        .value("PTP", ImgFrame::Fsync::PTP);
 
     imgFrameSpecs.def(py::init<>())
         .def_readwrite("type", &ImgFrame::Specs::type)
@@ -243,6 +249,9 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getColorTemperature", &ImgFrame::getColorTemperature, DOC(dai, ImgFrame, getColorTemperature))
         .def("getLensPosition", &ImgFrame::getLensPosition, DOC(dai, ImgFrame, getLensPosition))
         .def("getLensPositionRaw", &ImgFrame::getLensPositionRaw, DOC(dai, ImgFrame, getLensPositionRaw))
+        .def("getFsync", &ImgFrame::getFsync, DOC(dai, ImgFrame, getFsync))
+        .def("getSensorMode", &ImgFrame::getSensorMode, DOC(dai, ImgFrame, getSensorMode))
+        .def("getFps", &ImgFrame::getFps, DOC(dai, ImgFrame, getFps))
         .def("getSourceHFov", &ImgFrame::getSourceHFov, DOC(dai, ImgFrame, getSourceHFov))
         .def("getSourceVFov", &ImgFrame::getSourceVFov, DOC(dai, ImgFrame, getSourceVFov))
         .def("getSourceDFov", &ImgFrame::getSourceDFov, DOC(dai, ImgFrame, getSourceDFov))

@@ -125,7 +125,7 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
 
     /**
      * Enable or disable spatially-aware association. If disabled, only 2D association is used.
-     * @param enabled `true` enables spatially-aware association, `false` uses 2D-only association. Default is true.
+     * @param enabled `true` enables spatially-aware association, `false` uses 2D-only association. Default is false.
      */
     void setSpatialAssociation(bool enabled);
 

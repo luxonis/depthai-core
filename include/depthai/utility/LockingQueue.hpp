@@ -91,6 +91,7 @@ class LockingQueue {
     }
 
     bool isDestroyed() const {
+        std::unique_lock<std::mutex> lock(guard);
         return destructed;
     }
 

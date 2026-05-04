@@ -297,7 +297,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setConfig(const dai::NNArchiveVersionedConfig& config);
     YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& subtype);
     bool decodeSegmentationResolver(const std::vector<std::string>& outputs);
-
+    void configureYOLONetworkParser(DetectionParserOptions& parser, const nn_archive::v1::Head& metadata);
+    void checkKptExtraParams(DetectionParserOptions& parser, const nlohmann::json& extraParams);
     // host runnable requirements
     void buildStage1() override;
     void decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections);

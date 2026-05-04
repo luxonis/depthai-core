@@ -1,8 +1,19 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 
 #include "depthai/depthai.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -26,7 +37,7 @@ int main() {
 
     pipeline.start();
 
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto messageGroup = outQueue->get<dai::MessageGroup>();
         if(messageGroup == nullptr) continue;
 
@@ -41,6 +52,9 @@ int main() {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

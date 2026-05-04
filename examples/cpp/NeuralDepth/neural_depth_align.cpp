@@ -11,7 +11,7 @@
 #include "depthai/depthai.hpp"
 
 // Define constants from the Python script
-constexpr float FPS = 10.0f;
+constexpr float FPS = 25.0f;
 const dai::CameraBoardSocket RGB_SOCKET = dai::CameraBoardSocket::CAM_A;
 const dai::CameraBoardSocket LEFT_SOCKET = dai::CameraBoardSocket::CAM_B;
 const dai::CameraBoardSocket RIGHT_SOCKET = dai::CameraBoardSocket::CAM_C;

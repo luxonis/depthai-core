@@ -55,12 +55,14 @@ struct Tracklet {
     Point3f spatialCoordinates;
     /**
      * Estimated 3D velocity of the tracklet in m/s.
+     * nullopt when spatial data is unavailable.
      */
-    Point3f velocity;
+    std::optional<Point3f> velocity;
     /**
      * Magnitude of the estimated 3D velocity in m/s.
+     * nullopt when spatial data is unavailable.
      */
-    float speed = 0.0f;
+    std::optional<float> speed;
     DEPTHAI_SERIALIZE(Tracklet, roi, id, label, age, status, srcImgDetection, spatialCoordinates, velocity, speed);
 };
 

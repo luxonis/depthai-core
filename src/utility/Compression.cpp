@@ -105,6 +105,59 @@ std::vector<std::string> filenamesInArchive(const std::filesystem::path& archive
     return result;
 }
 
+std::vector<uint8_t> readFileInArchive(const std::filesystem::path& archivePath, const std::string& fileInArchive) {
+    struct archive* a = nullptr;
+    struct archive_entry* entry = nullptr;
+
+    a = archive_read_new();
+    if(a == nullptr) {
+        throw std::runtime_error("Could not initialize archive.");
+    }
+    archive_read_support_filter_all(a);
+    archive_read_support_format_all(a);
+#if defined(_WIN32)
+    int r = archive_read_open_filename_w(a, archivePath.c_str(), 10240);
+#else
+    int r = archive_read_open_filename(a, archivePath.c_str(), 10240);
+#endif
+
+    bool archiveOpened = false;
+    if(r == ARCHIVE_OK) {
+        archiveOpened = true;
+        while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            if(fileInArchive == archive_entry_pathname(entry)) {
+                std::vector<uint8_t> result;
+                char buff[8192];
+                la_ssize_t bytesRead = 0;
+                while((bytesRead = archive_read_data(a, buff, sizeof(buff))) > 0) {
+                    result.insert(result.end(), buff, buff + bytesRead);
+                }
+                if(bytesRead < 0) {
+                    archive_read_free(a);
+                    throw std::runtime_error(fmt::format("Could not read file {} from archive {}.", fileInArchive, archivePath));
+                }
+
+                r = archive_read_free(a);
+                if(r != ARCHIVE_OK) {
+                    throw std::runtime_error("Could not free archive.");
+                }
+                return result;
+            }
+            archive_read_data_skip(a);
+        }
+    }
+
+    r = archive_read_free(a);
+
+    if(!archiveOpened) {
+        throw std::runtime_error("Could not open archive.");
+    }
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not free archive.");
+    }
+    throw std::runtime_error(fmt::format("File {} not found in archive {}.", fileInArchive, archivePath));
+}
+
 void extractFiles(const std::filesystem::path& archivePath,
                   const std::vector<std::string>& filesInArchive,
                   const std::vector<std::filesystem::path>& filesOnDisk) {

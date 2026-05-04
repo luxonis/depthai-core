@@ -258,6 +258,111 @@ double compareHistograms(const cv::Mat& img1, const cv::Mat& img2) {
     return similarity;
 }
 
+cv::Mat createFourPointTransformInputImage(int width, int height) {
+    cv::Mat image(height, width, CV_8UC1);
+    for(int y = 0; y < height; ++y) {
+        for(int x = 0; x < width; ++x) {
+            image.at<uint8_t>(y, x) = static_cast<uint8_t>((x * 3 + y * 5) % 256);
+        }
+    }
+
+    cv::rectangle(image, cv::Rect(20, 20, 80, 60), cv::Scalar(255), cv::FILLED);
+    cv::circle(image, cv::Point(width - 50, 50), 30, cv::Scalar(32), cv::FILLED);
+    cv::line(image, cv::Point(0, height - 1), cv::Point(width - 1, 0), cv::Scalar(180), 3);
+    cv::putText(image, "4PT", cv::Point(60, height - 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(90), 2);
+
+    return image;
+}
+
+std::array<dai::Point2f, 4> normalizeFourPointCoords(const std::array<dai::Point2f, 4>& points, int width, int height) {
+    std::array<dai::Point2f, 4> normalized = points;
+    for(auto& point : normalized) {
+        point.x /= static_cast<float>(width);
+        point.y /= static_cast<float>(height);
+    }
+    return normalized;
+}
+
+void testManipFourPointTransform(bool normalizedCoords) {
+    constexpr int width = 256;
+    constexpr int height = 192;
+    const auto inputImage = createFourPointTransformInputImage(width, height);
+    const std::array<dai::Point2f, 4> srcPoints = {
+        dai::Point2f(24.0f, 18.0f), dai::Point2f(210.0f, 12.0f), dai::Point2f(228.0f, 166.0f), dai::Point2f(30.0f, 176.0f)};
+    const std::array<dai::Point2f, 4> dstPoints = {
+        dai::Point2f(12.0f, 28.0f), dai::Point2f(240.0f, 20.0f), dai::Point2f(220.0f, 154.0f), dai::Point2f(36.0f, 182.0f)};
+
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    inputFrame->setCvFrame(inputImage, dai::ImgFrame::Type::GRAY8);
+
+    dai::Pipeline p;
+    auto manip = p.create<dai::node::ImageManip>();
+    manip->inputConfig.setWaitForMessage(true);
+    manip->setMaxOutputFrameSize(width * height);
+
+    auto inputQueue = manip->inputImage.createInputQueue();
+    auto configQueue = manip->inputConfig.createInputQueue();
+    auto outputQueue = manip->out.createOutputQueue();
+
+    p.start();
+
+    auto runManip = [&](const std::shared_ptr<dai::ImageManipConfig>& cfg) {
+        configQueue->send(cfg);
+        inputQueue->send(inputFrame);
+        auto outFrame = outputQueue->get<dai::ImgFrame>();
+        REQUIRE(outFrame != nullptr);
+        REQUIRE(outFrame->getWidth() == width);
+        REQUIRE(outFrame->getHeight() == height);
+        return outFrame->getCvFrame().clone();
+    };
+
+    auto fourPointCfg = std::make_shared<dai::ImageManipConfig>();
+    if(normalizedCoords) {
+        fourPointCfg->addTransformFourPoints(normalizeFourPointCoords(srcPoints, width, height), normalizeFourPointCoords(dstPoints, width, height), true);
+    } else {
+        fourPointCfg->addTransformFourPoints(srcPoints, dstPoints, false);
+    }
+    fourPointCfg->setOutputSize(width, height);
+    fourPointCfg->setFrameType(dai::ImgFrame::Type::GRAY8);
+
+    auto referenceCfg = std::make_shared<dai::ImageManipConfig>();
+    if(normalizedCoords) {
+        referenceCfg->addTransformFourPoints(srcPoints, dstPoints, false);
+    } else {
+        cv::Point2f cvSrcPoints[4];
+        cv::Point2f cvDstPoints[4];
+        for(int i = 0; i < 4; ++i) {
+            cvSrcPoints[i] = cv::Point2f(srcPoints[i].x, srcPoints[i].y);
+            cvDstPoints[i] = cv::Point2f(dstPoints[i].x, dstPoints[i].y);
+        }
+        const cv::Mat cvMatrix = cv::getPerspectiveTransform(cvSrcPoints, cvDstPoints);
+        std::array<float, 9> matrix = {
+            static_cast<float>(cvMatrix.at<double>(0, 0)),
+            static_cast<float>(cvMatrix.at<double>(0, 1)),
+            static_cast<float>(cvMatrix.at<double>(0, 2)),
+            static_cast<float>(cvMatrix.at<double>(1, 0)),
+            static_cast<float>(cvMatrix.at<double>(1, 1)),
+            static_cast<float>(cvMatrix.at<double>(1, 2)),
+            static_cast<float>(cvMatrix.at<double>(2, 0)),
+            static_cast<float>(cvMatrix.at<double>(2, 1)),
+            static_cast<float>(cvMatrix.at<double>(2, 2)),
+        };
+        referenceCfg->addTransformPerspective(matrix);
+    }
+    referenceCfg->setOutputSize(width, height);
+    referenceCfg->setFrameType(dai::ImgFrame::Type::GRAY8);
+
+    const auto outImage = runManip(fourPointCfg);
+    const auto referenceImage = runManip(referenceCfg);
+
+    cv::Mat diff;
+    cv::absdiff(outImage, referenceImage, diff);
+    REQUIRE(cv::norm(diff, cv::NORM_INF) <= 1.0);
+    REQUIRE(cv::mean(diff)[0] < 0.01);
+
+    p.stop();
+}
+
 void runManipTests(dai::ImgFrame::Type type, bool undistort, bool useCoeffs = true) {
     dai::Pipeline p;
     auto camera = p.create<dai::node::Camera>()->build();
@@ -458,6 +563,14 @@ void runManipTests(dai::ImgFrame::Type type, bool undistort, bool useCoeffs = tr
 
 TEST_CASE("ImageManip NV12") {
     runManipTests(dai::ImgFrame::Type::NV12, false);
+}
+
+TEST_CASE("ImageManip four point transform") {
+    testManipFourPointTransform(false);
+}
+
+TEST_CASE("ImageManip four point transform normalized coordinates") {
+    testManipFourPointTransform(true);
 }
 
 TEST_CASE("ImageManip GRAY8") {

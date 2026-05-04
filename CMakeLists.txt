@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.5.0" LANGUAGES CXX C)
+project(depthai VERSION "3.6.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -1168,10 +1168,10 @@ if(DEPTHAI_SANITIZE)
     if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_OPENCV_NAME})
     endif()
-    if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_RTABMAP_NAME})
     endif()
-    if(DEPTHAI_HAVE_BASALT_SUPPORT)
+    if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_BASALT_NAME})
     endif()
     if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)

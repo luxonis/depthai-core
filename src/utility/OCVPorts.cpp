@@ -39,7 +39,7 @@
 //
 //M*/
 
-#include "OCVPorts.hpp"
+#include "depthai/utility/OCVPorts.hpp"
 
 #include <stdexcept>
 
