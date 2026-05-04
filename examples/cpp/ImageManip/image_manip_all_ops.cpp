@@ -1,4 +1,5 @@
 #include <atomic>
+#include <csignal>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -7,7 +8,16 @@
 
 #include "depthai/depthai.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     try {
         // Create pipeline
         dai::Pipeline pipeline;
@@ -96,8 +106,10 @@ int main() {
             cv::imshow(name, inFrame->getCvFrame());
         }
 
-        // Wait for key press
-        cv::waitKey(0);
+        // Wait for key press or signal
+        while(!quitEvent) {
+            if(cv::waitKey(50) >= 0) break;
+        }
 
         // Cleanup
         pipeline.stop();

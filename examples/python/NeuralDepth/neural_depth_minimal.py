@@ -4,7 +4,7 @@ import cv2
 import depthai as dai
 import numpy as np
 
-FPS = 10
+FPS = 25
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
@@ -13,7 +13,7 @@ with dai.Pipeline() as pipeline:
     leftOutput = cameraLeft.requestFullResolutionOutput()
     rightOutput = cameraRight.requestFullResolutionOutput()
 
-    neuralDepth = pipeline.create(dai.node.NeuralDepth).build(leftOutput, rightOutput, dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
+    neuralDepth = pipeline.create(dai.node.NeuralDepth).build(leftOutput, rightOutput, dai.DeviceModelZoo.NEURAL_DEPTH_192X120)
 
     disparityQueue = neuralDepth.disparity.createOutputQueue()
 

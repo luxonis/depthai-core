@@ -9,12 +9,29 @@ message Timestamp {
 }
 
 // Shared CameraSettings message
+enum CameraFsync {
+    CAMERA_FSYNC_NONE = 0;
+    CAMERA_FSYNC_INPUT = 1;
+    CAMERA_FSYNC_OUTPUT = 2;
+}
+
 message CameraSettings {
     int32 exposureTimeUs = 1;
     int32 sensitivityIso = 2;
     int32 lensPosition = 3;
     int32 wbColorTemp = 4;
     float lensPositionRaw = 5;
+    CameraFsync fsync = 6;
+    int32 sensorMode = 7;
+    float fps = 8;
+}
+
+message Extrinsics {
+    TransformationMatrix rotationMatrix = 1;
+    Point3f translation = 2;
+    Point3f specTranslation = 3;
+    CameraBoardSocket toCameraSocket = 4;
+    optional LengthUnit lengthUnit = 5;
 }
 
 message Extrinsics {

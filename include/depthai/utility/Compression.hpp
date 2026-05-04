@@ -15,6 +15,14 @@ namespace utility {
 std::vector<std::string> filenamesInArchive(const std::filesystem::path& archivePath);
 
 /**
+ * Reads a single file from an archive into memory.
+ * @param archivePath Path to the archive file to read
+ * @param fileInArchive Path of the file inside the archive
+ * @return File contents as a byte vector
+ */
+std::vector<uint8_t> readFileInArchive(const std::filesystem::path& archivePath, const std::string& fileInArchive);
+
+/**
  * Creates a tar archive containing the specified files.
  * @param archivePath Path where the archive file will be created
  * @param filesOnDisk Vector of paths to file on the host filesystem to include in the archive

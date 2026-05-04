@@ -29,9 +29,15 @@
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/Rect.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/utility/Compression.hpp"
 #include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
+
+// Disable container overflow detection for this test binary (false positive from protobuf)
+extern "C" const char* __asan_default_options() {
+    return "detect_container_overflow=0";
+}
 
 bool isIdentity(const std::array<std::array<float, 3>, 3>& mat) {
     for(int i = 0; i < 3; i++) {
@@ -550,9 +556,11 @@ TEST_CASE("ImgTransformation remap vertical") {
 
     auto sourceDen = rRect.denormalize(frame1->getWidth(), frame1->getHeight());
     auto destDen = remapped.denormalize(frame2->getWidth(), frame2->getHeight());
-    auto sourceAR = sourceDen.size.width / sourceDen.size.height;
-    auto destAR = destDen.size.width / destDen.size.height;
-
+    // Switch to Rect as the remapped RotatedRect can be rotated by 90 degrees
+    dai::Rect sourceOuterRect = sourceDen;
+    dai::Rect destOuterRect = destDen;
+    auto sourceAR = sourceOuterRect.width / sourceOuterRect.height;
+    auto destAR = destOuterRect.width / destOuterRect.height;
     REQUIRE_THAT(sourceAR, Catch::Matchers::WithinAbs(destAR, 0.01));
 
     pipeline.stop();

@@ -8,10 +8,12 @@
 #include <vector>
 
 #include "common/DetectionNetworkType.hpp"
+#include "common/DetectionParserOptions.hpp"
 #include "common/ModelType.hpp"
 #include "common/YoloDecodingFamily.hpp"
 #include "nn_archive/NNArchive.hpp"
 #include "nn_archive/v1/Head.hpp"
+#include "nn_archive/v1/Metadata.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/NNData.hpp"
 #include "pipeline/utilities/DetectionParser/DetectionParserUtils.hpp"
@@ -70,6 +72,82 @@ const NNArchiveVersionedConfig& DetectionParser::getNNArchiveVersionedConfig() c
     return archiveConfig.value();
 }
 
+void resetParser(DetectionParserOptions& parser) {
+    // Reset per-head YOLO overrides before applying optional metadata.
+    parser.subtype.clear();
+    parser.confidenceThreshold = 0.f;
+    parser.decodingFamily = YoloDecodingFamily::TLBR;
+    parser.classes = 0;
+    parser.classNames.reset();
+    parser.anchors.clear();
+    parser.anchorMasks.clear();
+    parser.outputNamesToUse.clear();
+    parser.anchorsV2.clear();
+    parser.decodeSegmentation = false;
+    parser.decodeKeypoints = false;
+    parser.nKeypoints.reset();
+    parser.strides = {8, 16, 32};
+    parser.keypointLabelNames.clear();
+    parser.keypointEdges.clear();
+}
+
+void DetectionParser::checkKptExtraParams(DetectionParserOptions& parser, const nlohmann::json& extraParams) {
+    const auto keypointNamesIt = extraParams.find("keypoint_label_names");
+    if(keypointNamesIt != extraParams.end() && keypointNamesIt->is_array() && !keypointNamesIt->empty()) {
+        pimpl->logger->debug("Found keypoint_label_names in extraParams. Setting keypoint label names and number of keypoints to decode.");
+        std::vector<std::string> keypointLabelNames;
+        for(const auto& labelName : *keypointNamesIt) {
+            if(labelName.is_string()) {
+                keypointLabelNames.emplace_back(labelName.get<std::string>());
+            } else {
+                pimpl->logger->error("Non-string value found in keypoint_label_names array. keypoint_label_names should be an array of only strings.");
+            }
+        }
+        parser.nKeypoints = static_cast<int>(keypointLabelNames.size());  // prefer keypoint label names size
+        parser.decodeKeypoints = true;
+        parser.keypointLabelNames = keypointLabelNames;
+    }
+
+    if(extraParams.contains("skeleton_edges")) {
+        pimpl->logger->debug("Found skeleton_edges in extraParams. Setting keypoint edges for skeleton output.");
+        auto skeletonEdgesJson = extraParams["skeleton_edges"];
+        if(skeletonEdgesJson.is_array()) {
+            std::vector<dai::Edge> skeletonEdges;
+            for(const auto& edge : skeletonEdgesJson) {
+                if(edge.is_array() && edge.size() == 2) {
+                    skeletonEdges.emplace_back(dai::Edge{edge[0].get<uint32_t>(), edge[1].get<uint32_t>()});
+                }
+            }
+            parser.keypointEdges = skeletonEdges;
+        }
+    }
+}
+
+void DetectionParser::configureYOLONetworkParser(DetectionParserOptions& parser, const nn_archive::v1::Head& head) {
+    const nn_archive::v1::Metadata& metadata = head.metadata;
+
+    parser.nnFamily = DetectionNetworkType::YOLO;
+    if(metadata.subtype) {
+        parser.subtype = *metadata.subtype;
+        parser.decodingFamily = yoloDecodingFamilyResolver(*metadata.subtype);
+    }
+
+    parser.outputNamesToUse = metadata.yoloOutputs ? *metadata.yoloOutputs : std::vector<std::string>{};
+
+    if(parser.decodingFamily == YoloDecodingFamily::YOLO26) {
+        parser.strides = {1};
+    }
+
+    parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
+
+    if(metadata.nKeypoints) {
+        parser.decodeKeypoints = true;
+        parser.nKeypoints = metadata.nKeypoints;
+    }
+
+    checkKptExtraParams(parser, metadata.extraParams);
+}
+
 void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     archiveConfig = config;
 
@@ -104,71 +182,15 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     int headIndex = (numYoloHeads > 0) ? yoloHeadIndex : mobilenetHeadIndex;
 
     const auto head = (*model.heads)[headIndex];
+    auto& parser = properties.parser;
+    resetParser(parser);
 
     if(head.parser == "YOLO" || head.parser == "YOLOExtendedParser") {
-        properties.parser.nnFamily = DetectionNetworkType::YOLO;
-        if(head.metadata.subtype) {
-            properties.parser.subtype = *head.metadata.subtype;
-            properties.parser.decodingFamily = yoloDecodingFamilyResolver(*head.metadata.subtype);
-        }
-
-        // check if there are keypoints or segmentations to decode
-        if(head.outputs && !head.outputs->empty()) {
-            properties.parser.decodeSegmentation = decodeSegmentationResolver(*head.outputs);
-        }
-
-        if(head.metadata.nKeypoints) {
-            properties.parser.decodeKeypoints = true;
-            properties.parser.nKeypoints = head.metadata.nKeypoints;
-        }
-
-        const auto keypointNamesIt = head.metadata.extraParams.find("keypoint_label_names");
-        if(keypointNamesIt != head.metadata.extraParams.end() && keypointNamesIt->is_array() && !keypointNamesIt->empty()) {
-            pimpl->logger->debug("Found keypoint_label_names in extraParams");
-            std::vector<std::string> keypointLabelNames;
-            for(const auto& labelName : *keypointNamesIt) {
-                if(labelName.is_string()) {
-                    keypointLabelNames.emplace_back(labelName.get<std::string>());
-                } else {
-                    throw std::runtime_error("Non-string value found in keypoint_label_names array. keypoint_label_names should be an array of only strings.");
-                }
-            }
-            properties.parser.nKeypoints = static_cast<int>(keypointLabelNames.size());  // prefer keypoint label names size
-            properties.parser.decodeKeypoints = true;
-            properties.parser.keypointLabelNames = keypointLabelNames;
-        }
-
-        if(head.metadata.yoloOutputs) {
-            properties.parser.outputNamesToUse = *head.metadata.yoloOutputs;
-        }
+        configureYOLONetworkParser(parser, head);
     } else if(head.parser == "SSD" || head.parser == "MOBILENET") {
         properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
-        properties.parser.subtype.clear();
-        properties.parser.decodingFamily = YoloDecodingFamily::TLBR;
-        properties.parser.decodeSegmentation = false;
-        properties.parser.decodeKeypoints = false;
-        properties.parser.nKeypoints.reset();
-        properties.parser.outputNamesToUse.clear();
-        properties.parser.anchors.clear();
-        properties.parser.anchorsV2.clear();
-        properties.parser.anchorMasks.clear();
-        properties.parser.keypointEdges.clear();
     } else {
         DAI_CHECK_V(false, "Unsupported parser: {}", head.parser);
-    }
-
-    if(head.metadata.extraParams.contains("skeleton_edges")) {
-        pimpl->logger->debug("Found skeleton_edges in extraParams");
-        auto skeletonEdgesJson = head.metadata.extraParams["skeleton_edges"];
-        if(skeletonEdgesJson.is_array()) {
-            std::vector<dai::Edge> skeletonEdges;
-            for(const auto& edge : skeletonEdgesJson) {
-                if(edge.is_array() && edge.size() == 2) {
-                    skeletonEdges.emplace_back(dai::Edge{edge[0].get<uint32_t>(), edge[1].get<uint32_t>()});
-                }
-            }
-            properties.parser.keypointEdges = skeletonEdges;
-        }
     }
 
     if(head.metadata.classes) {
@@ -221,6 +243,7 @@ YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string
         return YoloDecodingFamily::TLBR;
     if(subtypeStr == "yolov3" || subtypeStr == "yolov3-tiny") return YoloDecodingFamily::v3AB;
     if(subtypeStr == "yolov5" || subtypeStr == "yolov7" || subtypeStr == "yolo-p" || subtypeStr == "yolov5-u") return YoloDecodingFamily::v5AB;
+    if(subtypeStr == "yolo26") return YoloDecodingFamily::YOLO26;
 
     pimpl->logger->error("Unknown YOLO subtype '{}', defaulting to TLBR decoding family.", name);
     return YoloDecodingFamily::TLBR;  // default
@@ -616,8 +639,11 @@ void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDet
         case YoloDecodingFamily::TLBR:  // top left bottom right anchor free: yolo v6r2, v8 v10 v11
             utilities::DetectionParserUtils::decodeTLBR(nnData, outDetections, properties, logger);
             break;
+        case YoloDecodingFamily::YOLO26:  // already decoded TLBR model
+            utilities::DetectionParserUtils::decodeEndToEnd(nnData, outDetections, properties, logger);
+            break;
         default:
-            logger->error("Unknown Yolo decoding family. 'R1AF', 'v3AB', 'v5AB' and 'TLBR' are supported.");
+            logger->error("Unknown Yolo decoding family. 'R1AF', 'v3AB', 'v5AB', 'TLBR' and 'YOLO26' are supported.");
             throw std::runtime_error("Unknown Yolo decoding family");
     }
 }

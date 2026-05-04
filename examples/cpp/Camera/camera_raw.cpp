@@ -1,9 +1,17 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
 #include <vector>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 cv::Mat unpackRaw10(const std::vector<uint8_t>& rawData, int width, int height, int stride = -1) {
     if(stride == -1) {
@@ -58,6 +66,9 @@ cv::Mat unpackRaw10(const std::vector<uint8_t>& rawData, int width, int height, 
 }
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create device
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
 
@@ -72,7 +83,7 @@ int main() {
     // Start pipeline
     pipeline.start();
 
-    while(true) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto videoIn = videoQueue->tryGet<dai::ImgFrame>();
         auto rawFrame = rawQueue->tryGet<dai::ImgFrame>();
 
@@ -95,6 +106,9 @@ int main() {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

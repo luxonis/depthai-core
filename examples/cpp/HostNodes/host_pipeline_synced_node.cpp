@@ -1,5 +1,5 @@
-#include <cstddef>
-#include <iostream>
+#include <atomic>
+#include <csignal>
 #include <memory>
 
 // project
@@ -9,12 +9,22 @@
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/host/HostNode.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 class SyncedDisplay : public dai::NodeCRTP<dai::node::HostNode, SyncedDisplay> {
    public:
     Input& inputRgb = inputs["rgb"];
     Input& inputMono = inputs["mono"];
 
     std::shared_ptr<dai::Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
+        if(quitEvent) {
+            stopPipeline();
+            return nullptr;
+        }
         auto mono = in->get<dai::ImgFrame>("mono");
         auto rgb = in->get<dai::ImgFrame>("rgb");
         // Show the frames side by side
@@ -41,6 +51,9 @@ class SyncedDisplay : public dai::NodeCRTP<dai::node::HostNode, SyncedDisplay> {
 };
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     dai::Pipeline pipeline(true);
 

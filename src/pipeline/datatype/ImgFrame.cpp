@@ -127,6 +127,18 @@ float ImgFrame::getLensPositionRaw() const {
     return cam.lensPositionRaw;
 }
 
+ImgFrame::Fsync ImgFrame::getFsync() const {
+    return cam.fsync;
+}
+
+int ImgFrame::getSensorMode() const {
+    return cam.sensorMode;
+}
+
+float ImgFrame::getFps() const {
+    return cam.fps;
+}
+
 unsigned int ImgFrame::getSourceHeight() const {
     return sourceFb.height;
 }

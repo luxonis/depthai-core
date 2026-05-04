@@ -1,11 +1,13 @@
 #include <chrono>
 #include <depthai/depthai.hpp>
 #include <opencv2/opencv.hpp>
+#include <optional>
 
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
 int main() {
     bool fullFrameTracking = false;
+    bool useSpatialAssociation = false;
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -36,6 +38,12 @@ int main() {
     objectTracker->setDetectionLabelsToTrack({0});  // track only person
     objectTracker->setTrackerType(dai::TrackerType::SHORT_TERM_IMAGELESS);
     objectTracker->setTrackerIdAssignmentPolicy(dai::TrackerIdAssignmentPolicy::SMALLEST_ID);
+    if(useSpatialAssociation) {
+        objectTracker->setSpatialAssociation(true);
+        objectTracker->setSpatialAssociationWeight(0.5f);
+        objectTracker->setSpatialDistanceThreshold(1.5f);
+        objectTracker->setSpatialDepthAwareScale(0.1f);
+    }
 
     // Create output queues
     auto preview = objectTracker->passthroughTrackerFrame.createOutputQueue();
@@ -120,6 +128,13 @@ int main() {
                         cv::FONT_HERSHEY_TRIPLEX,
                         0.5,
                         color);
+            if(t.velocity && t.speed) {
+                const auto& velocity = *t.velocity;
+                cv::putText(frame, cv::format("Velocity X: %.2f m/s", velocity.x), cv::Point(x1 + 10, y1 + 110), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+                cv::putText(frame, cv::format("Velocity Y: %.2f m/s", velocity.y), cv::Point(x1 + 10, y1 + 125), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+                cv::putText(frame, cv::format("Velocity Z: %.2f m/s", velocity.z), cv::Point(x1 + 10, y1 + 140), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+                cv::putText(frame, cv::format("Speed: %.2f m/s", *t.speed), cv::Point(x1 + 10, y1 + 155), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            }
         }
 
         cv::putText(frame, "NN fps: " + std::to_string(fps).substr(0, 4), cv::Point(2, frame.rows - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);

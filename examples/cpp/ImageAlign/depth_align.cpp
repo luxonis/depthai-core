@@ -1,5 +1,7 @@
+#include <atomic>
 #include <chrono>
 #include <cmath>
+#include <csignal>
 #include <deque>
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -8,6 +10,12 @@
 #include <vector>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 constexpr float FPS = 25.0f;
 
@@ -86,6 +94,9 @@ void updateBlendWeights(int percentRgb, void*) {
 }
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     dai::Pipeline pipeline;
 
     // Create and configure nodes
@@ -142,7 +153,7 @@ int main() {
     // Start pipeline
     pipeline.start();
 
-    while(true) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto messageGroup = queue->get<dai::MessageGroup>();
         fpsCounter.tick();
 
@@ -175,6 +186,9 @@ int main() {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

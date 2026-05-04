@@ -1,8 +1,19 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 
 #include "depthai/depthai.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline without implicit device
     dai::Pipeline pipeline;
 
@@ -30,10 +41,13 @@ int main() {
     pipeline.start();
     auto imgFrame = std::make_shared<dai::ImgFrame>();
     inputQueue->send(imgFrame);
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto benchmarkReport = outputQueue->get<dai::BenchmarkReport>();
         std::cout << "FPS is " << benchmarkReport->fps << std::endl;
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
 #include <chrono>
 
 // depthai
@@ -31,6 +32,33 @@ inline int addCallbackUnlocked(MessageQueue& queue, const std::function<void(std
 
 inline int addCallbackUnlocked(MessageQueue& queue, const std::function<void()>& callback) {
     return addCallbackUnlocked(queue, [callback](const std::string&, std::shared_ptr<ADatatype>) { callback(); });
+}
+
+inline std::vector<std::reference_wrapper<MessageQueue>> toQueueRefs(const std::vector<std::shared_ptr<MessageQueue>>& queues) {
+    std::vector<std::reference_wrapper<MessageQueue>> refs;
+    refs.reserve(queues.size());
+    for(const auto& queue : queues) {
+        if(!queue) throw py::value_error("Queues must not contain None");
+        refs.emplace_back(*queue);
+    }
+    return refs;
+}
+
+inline std::unordered_map<std::string, MessageQueue&> toQueueRefMap(const std::unordered_map<std::string, std::shared_ptr<MessageQueue>>& queues) {
+    std::unordered_map<std::string, MessageQueue&> refs;
+    for(const auto& [name, queue] : queues) {
+        if(!queue) throw py::value_error("Queues must not contain None");
+        refs.insert_or_assign(name, *queue);
+    }
+    return refs;
+}
+
+inline bool allClosed(const std::vector<std::shared_ptr<MessageQueue>>& queues) {
+    return std::all_of(queues.begin(), queues.end(), [](const auto& queue) { return queue && queue->isClosed(); });
+}
+
+inline bool allClosed(const std::unordered_map<std::string, std::shared_ptr<MessageQueue>>& queues) {
+    return std::all_of(queues.begin(), queues.end(), [](const auto& kv) { return kv.second && kv.second->isClosed(); });
 }
 
 }  // namespace mq_utils
@@ -219,5 +247,79 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
             py::arg("msg"),
             py::arg("timeout"),
             DOC(dai, MessageQueue, send))
-        .def("trySend", &MessageQueue::trySend, py::arg("msg"), DOC(dai, MessageQueue, trySend));
+        .def("trySend", &MessageQueue::trySend, py::arg("msg"), DOC(dai, MessageQueue, trySend))
+        .def_static(
+            "waitAny",
+            [](const std::vector<std::shared_ptr<MessageQueue>>& queues) {
+                auto queueRefs = dai::mq_utils::toQueueRefs(queues);
+                bool hasMessages = false;
+                while(!hasMessages && !dai::mq_utils::allClosed(queues)) {
+                    {
+                        py::gil_scoped_release release;
+                        hasMessages = MessageQueue::waitAny(queueRefs, milliseconds(100));
+                    }
+                    if(PyErr_CheckSignals() != 0) throw py::error_already_set();
+                }
+                return hasMessages;
+            },
+            py::arg("queues"),
+            DOC(dai, MessageQueue, waitAny))
+        .def_static(
+            "waitAny",
+            [](const std::vector<std::shared_ptr<MessageQueue>>& queues, milliseconds timeout) {
+                auto queueRefs = dai::mq_utils::toQueueRefs(queues);
+                bool hasMessages = false;
+                milliseconds timeoutLeft = timeout;
+                while(!hasMessages && timeoutLeft.count() > 0 && !dai::mq_utils::allClosed(queues)) {
+                    {
+                        auto toSleep = std::min(milliseconds(100), timeoutLeft);
+                        py::gil_scoped_release release;
+                        hasMessages = MessageQueue::waitAny(queueRefs, toSleep);
+                        timeoutLeft -= toSleep;
+                    }
+                    if(PyErr_CheckSignals() != 0) throw py::error_already_set();
+                }
+                if(PyErr_CheckSignals() != 0) throw py::error_already_set();
+                return hasMessages;
+            },
+            py::arg("queues"),
+            py::arg("timeout"),
+            DOC(dai, MessageQueue, waitAny))
+        .def_static(
+            "getAny",
+            [](const std::unordered_map<std::string, std::shared_ptr<MessageQueue>>& queues) {
+                auto queueRefs = dai::mq_utils::toQueueRefMap(queues);
+                std::unordered_map<std::string, std::shared_ptr<ADatatype>> messages;
+                while(messages.empty() && !dai::mq_utils::allClosed(queues)) {
+                    {
+                        py::gil_scoped_release release;
+                        messages = MessageQueue::getAny(queueRefs, milliseconds(100));
+                    }
+                    if(PyErr_CheckSignals() != 0) throw py::error_already_set();
+                }
+                return messages;
+            },
+            py::arg("queues"),
+            DOC(dai, MessageQueue, getAny))
+        .def_static(
+            "getAny",
+            [](const std::unordered_map<std::string, std::shared_ptr<MessageQueue>>& queues, milliseconds timeout) {
+                auto queueRefs = dai::mq_utils::toQueueRefMap(queues);
+                std::unordered_map<std::string, std::shared_ptr<ADatatype>> messages;
+                milliseconds timeoutLeft = timeout;
+                while(messages.empty() && timeoutLeft.count() > 0 && !dai::mq_utils::allClosed(queues)) {
+                    {
+                        auto toSleep = std::min(milliseconds(100), timeoutLeft);
+                        py::gil_scoped_release release;
+                        messages = MessageQueue::getAny(queueRefs, toSleep);
+                        timeoutLeft -= toSleep;
+                    }
+                    if(PyErr_CheckSignals() != 0) throw py::error_already_set();
+                }
+                if(PyErr_CheckSignals() != 0) throw py::error_already_set();
+                return messages;
+            },
+            py::arg("queues"),
+            py::arg("timeout"),
+            DOC(dai, MessageQueue, getAny));
 }

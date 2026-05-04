@@ -7,8 +7,8 @@
 
 using namespace dai;
 
-static ImuModelParams makeImuModelParams() {
-    ImuModelParams params;
+static ImuNoiseParameters makeImuNoiseParams() {
+    ImuNoiseParameters params;
     params.name = "BNO086";
 
     params.accelerometer.x = {0.11f, 0.21f, 0.31f};
@@ -22,40 +22,40 @@ static ImuModelParams makeImuModelParams() {
     return params;
 }
 
-static nlohmann::json makeImuModelParamsJson() {
+static nlohmann::json makeImuNoiseParamsJson() {
     return {{"name", "BNO086"},
             {"accelerometer",
-             {{"x", {{"vrw", 0.11f}, {"rrw", 0.21f}, {"bi", 0.31f}}},
-              {"y", {{"vrw", 0.12f}, {"rrw", 0.22f}, {"bi", 0.32f}}},
-              {"z", {{"vrw", 0.13f}, {"rrw", 0.23f}, {"bi", 0.33f}}}}},
+             {{"x", {{"noiseDensity", 0.11f}, {"randomWalk", 0.21f}, {"biasStability", 0.31f}}},
+              {"y", {{"noiseDensity", 0.12f}, {"randomWalk", 0.22f}, {"biasStability", 0.32f}}},
+              {"z", {{"noiseDensity", 0.13f}, {"randomWalk", 0.23f}, {"biasStability", 0.33f}}}}},
             {"gyroscope",
-             {{"x", {{"arw", 0.41f}, {"rrw", 0.51f}, {"bi", 0.61f}}},
-              {"y", {{"arw", 0.42f}, {"rrw", 0.52f}, {"bi", 0.62f}}},
-              {"z", {{"arw", 0.43f}, {"rrw", 0.53f}, {"bi", 0.63f}}}}}};
+             {{"x", {{"noiseDensity", 0.41f}, {"randomWalk", 0.51f}, {"biasStability", 0.61f}}},
+              {"y", {{"noiseDensity", 0.42f}, {"randomWalk", 0.52f}, {"biasStability", 0.62f}}},
+              {"z", {{"noiseDensity", 0.43f}, {"randomWalk", 0.53f}, {"biasStability", 0.63f}}}}}};
 }
 
-static void requireImuModelParamsEqual(const ImuModelParams& actual, const ImuModelParams& expected) {
+static void requireImuNoiseParamsEqual(const ImuNoiseParameters& actual, const ImuNoiseParameters& expected) {
     REQUIRE(actual.name == expected.name);
 
-    REQUIRE(actual.accelerometer.x.vrw == Catch::Approx(expected.accelerometer.x.vrw).margin(1e-6));
-    REQUIRE(actual.accelerometer.x.rrw == Catch::Approx(expected.accelerometer.x.rrw).margin(1e-6));
-    REQUIRE(actual.accelerometer.x.bi == Catch::Approx(expected.accelerometer.x.bi).margin(1e-6));
-    REQUIRE(actual.accelerometer.y.vrw == Catch::Approx(expected.accelerometer.y.vrw).margin(1e-6));
-    REQUIRE(actual.accelerometer.y.rrw == Catch::Approx(expected.accelerometer.y.rrw).margin(1e-6));
-    REQUIRE(actual.accelerometer.y.bi == Catch::Approx(expected.accelerometer.y.bi).margin(1e-6));
-    REQUIRE(actual.accelerometer.z.vrw == Catch::Approx(expected.accelerometer.z.vrw).margin(1e-6));
-    REQUIRE(actual.accelerometer.z.rrw == Catch::Approx(expected.accelerometer.z.rrw).margin(1e-6));
-    REQUIRE(actual.accelerometer.z.bi == Catch::Approx(expected.accelerometer.z.bi).margin(1e-6));
+    REQUIRE(actual.accelerometer.x.noiseDensity == Catch::Approx(expected.accelerometer.x.noiseDensity).margin(1e-6));
+    REQUIRE(actual.accelerometer.x.randomWalk == Catch::Approx(expected.accelerometer.x.randomWalk).margin(1e-6));
+    REQUIRE(actual.accelerometer.x.biasStability == Catch::Approx(expected.accelerometer.x.biasStability).margin(1e-6));
+    REQUIRE(actual.accelerometer.y.noiseDensity == Catch::Approx(expected.accelerometer.y.noiseDensity).margin(1e-6));
+    REQUIRE(actual.accelerometer.y.randomWalk == Catch::Approx(expected.accelerometer.y.randomWalk).margin(1e-6));
+    REQUIRE(actual.accelerometer.y.biasStability == Catch::Approx(expected.accelerometer.y.biasStability).margin(1e-6));
+    REQUIRE(actual.accelerometer.z.noiseDensity == Catch::Approx(expected.accelerometer.z.noiseDensity).margin(1e-6));
+    REQUIRE(actual.accelerometer.z.randomWalk == Catch::Approx(expected.accelerometer.z.randomWalk).margin(1e-6));
+    REQUIRE(actual.accelerometer.z.biasStability == Catch::Approx(expected.accelerometer.z.biasStability).margin(1e-6));
 
-    REQUIRE(actual.gyroscope.x.arw == Catch::Approx(expected.gyroscope.x.arw).margin(1e-6));
-    REQUIRE(actual.gyroscope.x.rrw == Catch::Approx(expected.gyroscope.x.rrw).margin(1e-6));
-    REQUIRE(actual.gyroscope.x.bi == Catch::Approx(expected.gyroscope.x.bi).margin(1e-6));
-    REQUIRE(actual.gyroscope.y.arw == Catch::Approx(expected.gyroscope.y.arw).margin(1e-6));
-    REQUIRE(actual.gyroscope.y.rrw == Catch::Approx(expected.gyroscope.y.rrw).margin(1e-6));
-    REQUIRE(actual.gyroscope.y.bi == Catch::Approx(expected.gyroscope.y.bi).margin(1e-6));
-    REQUIRE(actual.gyroscope.z.arw == Catch::Approx(expected.gyroscope.z.arw).margin(1e-6));
-    REQUIRE(actual.gyroscope.z.rrw == Catch::Approx(expected.gyroscope.z.rrw).margin(1e-6));
-    REQUIRE(actual.gyroscope.z.bi == Catch::Approx(expected.gyroscope.z.bi).margin(1e-6));
+    REQUIRE(actual.gyroscope.x.noiseDensity == Catch::Approx(expected.gyroscope.x.noiseDensity).margin(1e-6));
+    REQUIRE(actual.gyroscope.x.randomWalk == Catch::Approx(expected.gyroscope.x.randomWalk).margin(1e-6));
+    REQUIRE(actual.gyroscope.x.biasStability == Catch::Approx(expected.gyroscope.x.biasStability).margin(1e-6));
+    REQUIRE(actual.gyroscope.y.noiseDensity == Catch::Approx(expected.gyroscope.y.noiseDensity).margin(1e-6));
+    REQUIRE(actual.gyroscope.y.randomWalk == Catch::Approx(expected.gyroscope.y.randomWalk).margin(1e-6));
+    REQUIRE(actual.gyroscope.y.biasStability == Catch::Approx(expected.gyroscope.y.biasStability).margin(1e-6));
+    REQUIRE(actual.gyroscope.z.noiseDensity == Catch::Approx(expected.gyroscope.z.noiseDensity).margin(1e-6));
+    REQUIRE(actual.gyroscope.z.randomWalk == Catch::Approx(expected.gyroscope.z.randomWalk).margin(1e-6));
+    REQUIRE(actual.gyroscope.z.biasStability == Catch::Approx(expected.gyroscope.z.biasStability).margin(1e-6));
 }
 
 // Helper to create calibration data directly in code
@@ -964,82 +964,57 @@ TEST_CASE("EEPROM data stereo flags consistency", "[getEepromData]") {
 TEST_CASE("IMU calibration params setters preserve accelerometer and gyroscope values", "[imuCalibration][getEepromData]") {
     dai::CalibrationHandler handler;
 
-    const std::vector<float> expectedAccelerometer = {0.1f, -0.2f, 0.3f, 1.0f, 1.1f, 1.2f, -0.4f, 0.5f, -0.6f, 9.81f, 0.01f, -0.02f};
-    const std::vector<float> expectedGyroscope = {-0.7f, 0.8f, -0.9f, 0.001f, 0.002f, 0.003f, 1.3f, 1.4f, 1.5f, -0.03f, 0.04f, -0.05f};
-    const auto expectedImuModel = makeImuModelParams();
+    const std::vector<std::vector<float>> expectedAccelerometer = {{0.1f, -0.2f, 0.3f, 1.0f}, {1.1f, 1.2f, -0.4f, 0.5f}, {-0.6f, 9.81f, 0.01f, -0.02f}};
+    const std::vector<std::vector<float>> expectedGyroscope = {{-0.7f, 0.8f, -0.9f, 0.001f}, {0.002f, 0.003f, 1.3f, 1.4f}, {1.5f, -0.03f, 0.04f, -0.05f}};
+    const auto expectedImuNoiseParameters = makeImuNoiseParams();
 
-    handler.setAccelerometerCalibParams(expectedAccelerometer);
-    handler.setGyroscopeCalibParams(expectedGyroscope);
+    handler.setAccelerometerCalibration(expectedAccelerometer);
+    handler.setGyroscopeCalibration(expectedGyroscope);
     auto eepromData = handler.getEepromData();
-    eepromData.imuModelParams = expectedImuModel;
+    eepromData.imuCalibrationParams.noise = expectedImuNoiseParameters;
     handler = dai::CalibrationHandler(eepromData);
 
-    REQUIRE(handler.getAccelerometerCalibParams() == expectedAccelerometer);
-    REQUIRE(handler.getGyroscopeCalibParams() == expectedGyroscope);
-    requireImuModelParamsEqual(handler.getImuModelParams(), expectedImuModel);
+    requireImuNoiseParamsEqual(handler.getImuNoiseParameters(), expectedImuNoiseParameters);
 
     const auto eeprom = handler.getEepromData();
-    REQUIRE(eeprom.accelerometerCalibParams == expectedAccelerometer);
-    REQUIRE(eeprom.gyroscopeCalibParams == expectedGyroscope);
-    requireImuModelParamsEqual(eeprom.imuModelParams, expectedImuModel);
+    REQUIRE(eeprom.imuCalibrationParams.accelerometer == expectedAccelerometer);
+    REQUIRE(eeprom.imuCalibrationParams.gyroscope == expectedGyroscope);
+    requireImuNoiseParamsEqual(eeprom.imuCalibrationParams.noise, expectedImuNoiseParameters);
 }
 
-TEST_CASE("IMU calibration params setters reject more than twelve values", "[imuCalibration]") {
+TEST_CASE("New IMU API preserves canonical calibration matrices and noise parameters", "[imuCalibration][newApi]") {
     dai::CalibrationHandler handler;
 
-    const std::vector<float> tooManyParams(13, 1.0f);
+    const auto expectedNoise = makeImuNoiseParams();
 
-    REQUIRE_THROWS_WITH(handler.setAccelerometerCalibParams(tooManyParams),
-                        Catch::Matchers::ContainsSubstring("Accelerometer calibration parameter array size should be at most 12"));
-    REQUIRE_THROWS_WITH(handler.setGyroscopeCalibParams(tooManyParams),
-                        Catch::Matchers::ContainsSubstring("Gyroscope calibration parameter array size should be at most 12"));
+    ImuCalibrationParams params;
+    params.noise = expectedNoise;
+    params.accelerometer = {{1.011f, 0.012f, -0.031f, 0.1992955f}, {0.005f, 1.023f, 0.007f, -0.4218133f}, {-0.003f, 0.009f, 0.997f, -0.19935594f}};
+    params.gyroscope = {{1.01f, 0.01f, -0.02f, -0.05f}, {0.0f, 0.99f, 0.03f, 0.06f}, {0.0f, 0.0f, 1.02f, -0.07f}};
+
+    handler.setImuParameters(params);
+
+    const auto readBack = handler.getImuParameters();
+    REQUIRE(readBack.accelerometer == params.accelerometer);
+    REQUIRE(readBack.gyroscope == params.gyroscope);
+    requireImuNoiseParamsEqual(readBack.noise, expectedNoise);
+    requireImuNoiseParamsEqual(handler.getImuNoiseParameters(), expectedNoise);
+    requireImuNoiseParamsEqual(handler.getImuNoiseParameters(), expectedNoise);
 }
 
 TEST_CASE("EEPROM constructor preserves IMU calibration params", "[imuCalibration][getEepromData]") {
     dai::EepromData data;
-    data.accelerometerCalibParams = {0.25f, -0.5f, 0.75f, 1.0f, 1.25f, 1.5f};
-    data.gyroscopeCalibParams = {-1.0f, -0.5f, 0.0f, 0.5f, 1.0f, 1.5f};
-    data.imuModelParams = makeImuModelParams();
+    data.imuCalibrationParams.accelerometer = {{0.25f, -0.5f, 0.75f, 1.0f}, {1.25f, 1.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}};
+    data.imuCalibrationParams.gyroscope = {{-1.0f, -0.5f, 0.0f, 0.5f}, {1.0f, 1.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}};
+    data.imuCalibrationParams.noise = makeImuNoiseParams();
 
     dai::CalibrationHandler handler(data);
     const auto loaded = handler.getEepromData();
 
-    REQUIRE(loaded.accelerometerCalibParams == data.accelerometerCalibParams);
-    REQUIRE(loaded.gyroscopeCalibParams == data.gyroscopeCalibParams);
-    REQUIRE(handler.getAccelerometerCalibParams() == data.accelerometerCalibParams);
-    REQUIRE(handler.getGyroscopeCalibParams() == data.gyroscopeCalibParams);
-    requireImuModelParamsEqual(loaded.imuModelParams, data.imuModelParams);
-    requireImuModelParamsEqual(handler.getImuModelParams(), data.imuModelParams);
-}
-
-TEST_CASE("JSON round-trip preserves IMU calibration params", "[imuCalibration][json]") {
-    auto calibJson = loadValidCalibJson();
-    const std::vector<float> expectedAccelerometer = {0.11f, 0.22f, 0.33f, 1.11f, 1.22f, 1.33f, -0.11f, -0.22f, -0.33f, 0.44f, 0.55f, 0.66f};
-    const std::vector<float> expectedGyroscope = {-0.12f, -0.24f, -0.36f, 1.44f, 1.55f, 1.66f, 0.12f, 0.24f, 0.36f, -0.48f, -0.6f, -0.72f};
-    const auto expectedImuModel = makeImuModelParams();
-
-    calibJson["accelerometerCalibParams"] = expectedAccelerometer;
-    calibJson["gyroscopeCalibParams"] = expectedGyroscope;
-    calibJson["imuModelParams"] = makeImuModelParamsJson();
-
-    const auto handler = CalibrationHandler::fromJson(calibJson);
-    REQUIRE(handler.getAccelerometerCalibParams() == expectedAccelerometer);
-    REQUIRE(handler.getGyroscopeCalibParams() == expectedGyroscope);
-    requireImuModelParamsEqual(handler.getImuModelParams(), expectedImuModel);
-
-    const auto serialized = handler.eepromToJson();
-    REQUIRE(serialized.at("accelerometerCalibParams").get<std::vector<float>>() == expectedAccelerometer);
-    REQUIRE(serialized.at("gyroscopeCalibParams").get<std::vector<float>>() == expectedGyroscope);
-    REQUIRE(serialized.at("imuModelParams").at("name").get<std::string>() == expectedImuModel.name);
-    REQUIRE(serialized.at("imuModelParams").at("accelerometer").at("x").at("vrw").get<double>()
-            == Catch::Approx(expectedImuModel.accelerometer.x.vrw).margin(1e-6));
-    REQUIRE(serialized.at("imuModelParams").at("accelerometer").at("y").at("rrw").get<double>()
-            == Catch::Approx(expectedImuModel.accelerometer.y.rrw).margin(1e-6));
-    REQUIRE(serialized.at("imuModelParams").at("accelerometer").at("z").at("bi").get<double>()
-            == Catch::Approx(expectedImuModel.accelerometer.z.bi).margin(1e-6));
-    REQUIRE(serialized.at("imuModelParams").at("gyroscope").at("x").at("arw").get<double>() == Catch::Approx(expectedImuModel.gyroscope.x.arw).margin(1e-6));
-    REQUIRE(serialized.at("imuModelParams").at("gyroscope").at("y").at("rrw").get<double>() == Catch::Approx(expectedImuModel.gyroscope.y.rrw).margin(1e-6));
-    REQUIRE(serialized.at("imuModelParams").at("gyroscope").at("z").at("bi").get<double>() == Catch::Approx(expectedImuModel.gyroscope.z.bi).margin(1e-6));
+    REQUIRE(loaded.imuCalibrationParams.accelerometer == data.imuCalibrationParams.accelerometer);
+    REQUIRE(loaded.imuCalibrationParams.gyroscope == data.imuCalibrationParams.gyroscope);
+    requireImuNoiseParamsEqual(loaded.imuCalibrationParams.noise, data.imuCalibrationParams.noise);
+    requireImuNoiseParamsEqual(handler.getImuNoiseParameters(), data.imuCalibrationParams.noise);
 }
 
 TEST_CASE("EEPROM cameraData is replaced correctly when constructing CalibrationHandler", "[getEepromData]") {

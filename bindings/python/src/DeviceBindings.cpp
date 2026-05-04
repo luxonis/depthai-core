@@ -645,6 +645,47 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.getXLinkChunkSize();
             },
             DOC(dai, DeviceBase, getXLinkChunkSize))
+        .def(
+            "setProperties",
+            [](DeviceBase& d, const DeviceProperties& properties) {
+                py::gil_scoped_release release;
+                d.setProperties(properties);
+            },
+            py::arg("properties"),
+            DOC(dai, DeviceBase, setProperties))
+        .def(
+            "getProperties",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getProperties();
+            },
+            DOC(dai, DeviceBase, getProperties))
+        .def(
+            "setSippBufferSize",
+            [](DeviceBase& d, int sizeBytes) {
+                py::gil_scoped_release release;
+                d.setSippBufferSize(sizeBytes);
+            },
+            py::arg("sizeBytes"),
+            DOC(dai, DeviceBase, setSippBufferSize))
+        .def(
+            "setSippDmaBufferSize",
+            [](DeviceBase& d, int sizeBytes) {
+                py::gil_scoped_release release;
+                d.setSippDmaBufferSize(sizeBytes);
+            },
+            py::arg("sizeBytes"),
+            DOC(dai, DeviceBase, setSippDmaBufferSize))
+        .def(
+            "setXLinkRateLimit",
+            [](DeviceBase& d, int maxRateBytesPerSecond, int burstSize, int waitUs) {
+                py::gil_scoped_release release;
+                d.setXLinkRateLimit(maxRateBytesPerSecond, burstSize, waitUs);
+            },
+            py::arg("maxRateBytesPerSecond"),
+            py::arg("burstSize") = 0,
+            py::arg("waitUs") = 0,
+            DOC(dai, DeviceBase, setXLinkRateLimit))
 
         .def(
             "setIrLaserDotProjectorIntensity",
@@ -860,8 +901,16 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.isNeuralDepthSupported();
             },
             DOC(dai, DeviceBase, isNeuralDepthSupported))
+        .def(
+            "getSupportedDeviceModels",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getSupportedDeviceModels();
+            },
+            DOC(dai, DeviceBase, getSupportedDeviceModels))
         .def("getPlatform", &DeviceBase::getPlatform, DOC(dai, DeviceBase, getPlatform))
         .def("getPlatformAsString", &DeviceBase::getPlatformAsString, DOC(dai, DeviceBase, getPlatformAsString));
+
     // Bind constructors
     bindConstructors<Device>(device);
 

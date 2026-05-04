@@ -266,8 +266,8 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
     initialize();
 
     DeviceInfo devReq = {};
-    devReq.protocol = X_LINK_ANY_PROTOCOL;
-    devReq.platform = X_LINK_ANY_PLATFORM;
+    devReq.protocol = getDefaultProtocol();
+    devReq.platform = getDefaultPlatform();
     devReq.name = "";
     devReq.deviceId = "";
     devReq.state = state;

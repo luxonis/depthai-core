@@ -12,6 +12,11 @@
 #include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/utility/Compression.hpp"
 
+// Disable container overflow detection for this test binary (false positive from protobuf)
+extern "C" const char* __asan_default_options() {
+    return "detect_container_overflow=0";
+}
+
 using namespace std::literals::chrono_literals;
 
 constexpr unsigned int NUM_MSGS = 200;

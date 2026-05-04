@@ -29,7 +29,6 @@ void RTABMapVIO::buildInternal() {
     sync->out.link(inSync);
     sync->setRunOnHost(false);
     pimplRtabmap->localTransform = rtabmap::Transform::getIdentity();
-
     rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
     pimplRtabmap->localTransform = pimplRtabmap->localTransform * opticalTransform.inverse();
 
@@ -179,21 +178,21 @@ void RTABMapVIO::initialize(dai::Pipeline& pipeline, int instanceNum, int width,
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
     pimplRtabmap->model = getRTABMapCameraModel(cameraId, width, height, pimplRtabmap->localTransform, alphaScaling, calibHandler);
 
-    std::vector<std::vector<float>> imuExtr = calibHandler.getImuToCameraExtrinsics(cameraId, true);
-
+    const auto imuExtr = calibHandler.getImuToCameraExtrinsics(cameraId, true, LengthUnit::METER);
     pimplRtabmap->imuLocalTransform = rtabmap::Transform(double(imuExtr[0][0]),
                                                          double(imuExtr[0][1]),
                                                          double(imuExtr[0][2]),
-                                                         double(imuExtr[0][3]) * 0.01,
+                                                         double(imuExtr[0][3]),
                                                          double(imuExtr[1][0]),
                                                          double(imuExtr[1][1]),
                                                          double(imuExtr[1][2]),
-                                                         double(imuExtr[1][3]) * 0.01,
+                                                         double(imuExtr[1][3]),
                                                          double(imuExtr[2][0]),
                                                          double(imuExtr[2][1]),
                                                          double(imuExtr[2][2]),
-                                                         double(imuExtr[2][3]) * 0.01);
+                                                         double(imuExtr[2][3]));
 
+    // First align IMU data via EEPROM extrinsics, then map RDF output frame to FLU.
     pimplRtabmap->imuLocalTransform = pimplRtabmap->localTransform * pimplRtabmap->imuLocalTransform;
     pimplRtabmap->odom.reset(rtabmap::Odometry::create(pimplRtabmap->rtabParams));
     initialized = true;
