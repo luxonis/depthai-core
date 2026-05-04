@@ -84,7 +84,8 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getCenterY", &dai::ImgDetection::getCenterY)
         .def("getWidth", &dai::ImgDetection::getWidth)
         .def("getHeight", &dai::ImgDetection::getHeight)
-        .def("getAngle", &dai::ImgDetection::getAngle);
+        .def("getAngle", &dai::ImgDetection::getAngle)
+        .def("transform", &dai::ImgDetection::transform, py::arg("source"), py::arg("target"), DOC(dai, ImgDetection, transform));
 
     // rawImgDetections
     //     .def(py::init<>())
@@ -152,6 +153,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
              py::return_value_policy::reference_internal)
         .def("getMaskData", &ImgDetections::getMaskData, DOC(dai, ImgDetectionsT, getMaskData))
         .def("getSegmentationMask", &ImgDetections::getSegmentationMask, DOC(dai, ImgDetectionsT, getSegmentationMask))
+        .def("transformTo", &ImgDetections::transformTo, py::arg("target"), DOC(dai, ImgDetections, transformTo))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def("setCvSegmentationMask", &ImgDetections::setCvSegmentationMask, py::arg("mask"), DOC(dai, ImgDetectionsT, setCvSegmentationMask))
         .def(
