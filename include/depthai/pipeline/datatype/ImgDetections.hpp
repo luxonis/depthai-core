@@ -150,6 +150,13 @@ struct ImgDetection {
      */
     float getAngle() const;
 
+    /**
+     * Transforms the detection from the source ImgTransformation to the target ImgTransformation.
+     * @param source Source image transformation.
+     * @param target Target image transformation.
+     */
+    void transform(const ImgTransformation& source, const ImgTransformation& target);
+
     DEPTHAI_SERIALIZE(ImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints);
 };
 
@@ -159,6 +166,9 @@ struct ImgDetection {
  * The value 255 is treated as a background pixel (no instance).
  */
 class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable {
+   protected:
+    void transformToInternal(const ImgTransformation& target) override;
+
    public:
     ~ImgDetections() override;
     using Base = ImgDetectionsT<dai::ImgDetection>;
@@ -172,6 +182,18 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::ImgDetections;
     }
+
+    /**
+     * Transform detections to the target image transformation.
+     *
+     * If the target transformation has a different source coordinate system (eg. different camera socket) than the one the detections were originally generated
+     * in, the remapping will be inaccurate due to the lack of depth information.
+     *
+     * The segmentation mask is not transformed. Use ImageAlign node to transform the segmentation mask to the target transformation if needed.
+     *
+     * @param target Target image transformation.
+     */
+    ImgDetections transformTo(const ImgTransformation& target);
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

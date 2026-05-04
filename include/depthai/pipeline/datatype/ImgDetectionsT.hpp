@@ -5,8 +5,8 @@
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/optional.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/mat.hpp>
@@ -18,7 +18,7 @@
 namespace dai {
 
 template <class DetectionT>
-class ImgDetectionsT : public Buffer {
+class ImgDetectionsT : public TransformableBuffer {
    protected:
     size_t segmentationMaskWidth = 0;
     size_t segmentationMaskHeight = 0;

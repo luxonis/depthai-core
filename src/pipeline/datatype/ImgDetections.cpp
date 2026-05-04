@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "common/ImgTransformations.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Rect.hpp"
@@ -161,12 +162,36 @@ float ImgDetection::getAngle() const {
     return getBoundingBox().angle;
 }
 
+void ImgDetection::transform(const ImgTransformation& source, const ImgTransformation& target) {
+    setBoundingBox(source.remapRectTo(target, getBoundingBox()));
+    // TODO (aljazkonec1) Possible issue: isNormalized assumes that the bbox and the corresponding keypoints have the same normalization flag. This
+    // might not always be the case.
+    keypoints = keypoints->transformTo(source, target);
+}
+
 // ImgDetections functions
 ImgDetections::~ImgDetections() = default;
 
 void ImgDetections::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
     datatype = this->getDatatype();
+}
+
+void ImgDetections::transformToInternal(const ImgTransformation& target) {
+    if(!this->getTransformation().has_value()) {
+        throw std::runtime_error("Source transformation is not set, cannot transform detections.");
+    }
+    ImgTransformation source = *this->getTransformation();
+    for(auto& detection : detections) {
+        detection.transform(source, target);
+    }
+    this->setTransformation(target);
+}
+
+ImgDetections ImgDetections::transformTo(const ImgTransformation& target) {
+    ImgDetections transformedDetections = *this;
+    transformedDetections.transformToInternal(target);
+    return transformedDetections;
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
