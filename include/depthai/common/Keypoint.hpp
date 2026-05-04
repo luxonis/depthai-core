@@ -30,6 +30,9 @@ struct Keypoint {
         : Keypoint(Point3f{x, y, z}, confidence, label, std::move(labelName)) {}
 
     void transform(const ImgTransformation& source, const ImgTransformation& target) {
+        // TODO (aljazkonec1) Possible issue: Keypoint does not store its own normalization flag, so normalization is guessed based on if coordinates are in
+        // range [0,1]. A keypoint can be normalized but outside the [0, 1] range. Possible fix: Add hasNormalized and normalized fields to KeypointsList and
+        // Keypoint.
         Point2f remappedPoint = source.remapPointTo(target, Point2f{imageCoordinates.x, imageCoordinates.y});
         imageCoordinates.x = remappedPoint.x;
         imageCoordinates.y = remappedPoint.y;
