@@ -15,7 +15,7 @@ with dai.Pipeline() as p:
     odom = p.create(dai.node.BasaltVIO)
 
     rerunViewer = p.create(RerunNode)
-    imu.enableIMUSensor([dai.IMUSensor.ACCELEROMETER_UNCALIBRATED, dai.IMUSensor.GYROSCOPE_UNCALIBRATED], 200)
+    imu.enableIMUSensor([dai.IMUSensor.ACCELEROMETER_RAW, dai.IMUSensor.GYROSCOPE_RAW], 200)
     imu.setBatchReportThreshold(1)
     imu.setMaxBatchReports(10)
 

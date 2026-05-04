@@ -232,18 +232,6 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_PIPELINE_DEBUGGING | Enables pipeline debugging with state dumps. DEPTHAI_LEVEL=trace is required to print the state dumps. |
 | DEPTHAI_AUTOCALIBRATION | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)` (or `setAutoCalibration(...)` alias). If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
 
-You can set the mode directly on the pipeline:
-
-```cpp
-dai::Pipeline pipeline;
-pipeline.setAutoCalibrationMode(dai::Pipeline::AutoCalibrationMode::ON_START);
-```
-
-```python
-pipeline = dai.Pipeline()
-pipeline.setAutoCalibrationMode(dai.Pipeline.AutoCalibrationMode.ON_START)
-```
-
 ## Running tests
 
 To run the tests build the library with the following options

@@ -30,12 +30,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
-    enum class Fsync : int32_t {
-        NONE = 0,
-        INPUT,
-        OUTPUT,
-        PTP
-    };
+    enum class Fsync : int32_t { NONE = 0, INPUT, OUTPUT, PTP };
     enum class Type {
         YUV422i,    // interleaved 8 bit
         YUV444p,    // planar 4:4:4 format

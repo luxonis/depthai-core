@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cmath>
+#include <csignal>
 #include <deque>
 #include <iomanip>
 #include <iostream>
@@ -16,6 +18,8 @@ namespace {
 constexpr double windowSeconds = 10.0;
 constexpr double printUpdateHz = 4.0;
 constexpr double kPi = 3.14159265358979323846;
+
+std::atomic<bool> quitEvent(false);
 
 const std::vector<std::vector<float>> kYZSwapRotation = {
     {0.0f, 1.0f, 0.0f},
@@ -51,6 +55,10 @@ std::tuple<double, double, double> quaternionToEulerXYZ(float i, float j, float 
     return {x, y, z};
 }
 
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 dai::CameraBoardSocket resolveImuExtrinsicsDestination(const dai::EepromData& eepromData) {
     const auto socket = eepromData.imuExtrinsics.toCameraSocket;
     if(socket != dai::CameraBoardSocket::AUTO) {
@@ -83,6 +91,9 @@ std::array<double, 3> windowSpans(const std::deque<Sample>& samples) {
 }  // namespace
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     dai::Pipeline pipeline;
     auto device = pipeline.getDefaultDevice();
     const auto imuName = device->getConnectedIMU();
@@ -119,8 +130,8 @@ int main() {
     auto lastPrintTime = startTime;
     std::deque<Sample> samples;
 
-    while(pipeline.isRunning()) {
-        auto imuData = imuQueue->get<dai::IMUData>();
+    while(pipeline.isRunning() && !quitEvent) {
+        auto imuData = imuQueue->tryGet<dai::IMUData>();
         if(imuData == nullptr) continue;
 
         for(const auto& imuPacket : imuData->packets) {

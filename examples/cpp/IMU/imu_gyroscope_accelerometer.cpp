@@ -1,9 +1,17 @@
 #include <atomic>
+#include <chrono>
+#include <csignal>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 // Helper function to convert time delta to milliseconds
 float timeDeltaToMilliS(const std::chrono::steady_clock::duration& delta) {
@@ -11,6 +19,9 @@ float timeDeltaToMilliS(const std::chrono::steady_clock::duration& delta) {
 }
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -36,7 +47,7 @@ int main() {
     // Set up output formatting
     std::cout << std::fixed << std::setprecision(6);
 
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto imuData = imuQueue->get<dai::IMUData>();
         if(imuData == nullptr) continue;
 

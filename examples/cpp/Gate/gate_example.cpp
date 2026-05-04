@@ -1,4 +1,6 @@
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <iostream>
 
 // DepthAI and OpenCV headers
@@ -7,7 +9,16 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/Gate.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     dai::Pipeline pipeline;
 
     auto camera = pipeline.create<dai::node::Camera>()->build();
@@ -26,7 +37,7 @@ int main() {
     auto startTime = std::chrono::steady_clock::now();
     bool openGate = true;
 
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto frame = cameraQueue->tryGet<dai::ImgFrame>();
         if(frame != nullptr) {
             cv::imshow("camera", frame->getCvFrame());
@@ -54,6 +65,9 @@ int main() {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

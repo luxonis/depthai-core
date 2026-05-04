@@ -33,7 +33,9 @@ void bind_spatiallocationcalculator(pybind11::module& m, void* pCallstack) {
         .def_readonly("out", &SpatialLocationCalculator::out, DOC(dai, node, SpatialLocationCalculator, out))
         .def_readonly("outputDetections", &SpatialLocationCalculator::outputDetections, DOC(dai, node, SpatialLocationCalculator, outputDetections))
         .def_readonly("passthroughDepth", &SpatialLocationCalculator::passthroughDepth, DOC(dai, node, SpatialLocationCalculator, passthroughDepth))
-        .def_readonly("initialConfig", &SpatialLocationCalculator::initialConfig, DOC(dai, node, SpatialLocationCalculator, initialConfig));
+        .def_readonly("initialConfig", &SpatialLocationCalculator::initialConfig, DOC(dai, node, SpatialLocationCalculator, initialConfig))
+        .def("setRunOnHost", &SpatialLocationCalculator::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, SpatialLocationCalculator, setRunOnHost))
+        .def("runOnHost", &SpatialLocationCalculator::runOnHost, DOC(dai, node, SpatialLocationCalculator, runOnHost));
     // ALIAS
     daiNodeModule.attr("SpatialLocationCalculator").attr("Properties") = spatialLocationCalculatorProperties;
 }

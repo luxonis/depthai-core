@@ -338,7 +338,7 @@ std::optional<ParsedArgs> parseArguments(int argc, char** argv) {
 
     return parsed;
 }
-}
+}  // namespace
 
 void interruptHandler(int sig) {
     if(running.exchange(false)) {
@@ -420,8 +420,8 @@ int main(int argc, char** argv) {
 
     // Create sync node
     // Sync node groups the frames so that all synced frames are timestamped to within one frame time
-    auto sync =
-        createSyncNode(masterPipeline, *masterNode, *masterName, std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))), outputNames, slaveQueues, inputQueues);
+    auto sync = createSyncNode(
+        masterPipeline, *masterNode, *masterName, std::chrono::nanoseconds(long(round(1e9 * 0.5f / targetFps))), outputNames, slaveQueues, inputQueues);
     auto queue = sync->out.createOutputQueue();
 
     masterPipeline->start();
@@ -574,7 +574,8 @@ int main(int argc, char** argv) {
             }
 
             if(!syncStatus && !waitingForInitialSync) {
-                std::cout << "Sync error: Sync lost, threshold exceeded " << std::chrono::duration_cast<std::chrono::microseconds>(delta).count() << " us" << std::endl;
+                std::cout << "Sync error: Sync lost, threshold exceeded " << std::chrono::duration_cast<std::chrono::microseconds>(delta).count() << " us"
+                          << std::endl;
                 continue;
             }
 

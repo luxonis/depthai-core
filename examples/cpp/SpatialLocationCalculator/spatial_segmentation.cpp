@@ -1,3 +1,5 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
@@ -7,6 +9,12 @@
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 namespace {
 
@@ -69,6 +77,9 @@ cv::Mat makeTopPanel(int width, bool useSegmentation) {
 }  // namespace
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     try {
         auto device = std::make_shared<dai::Device>();
         std::string modelName = "luxonis/yolov8-instance-segmentation-large:coco-640x480";
@@ -118,7 +129,7 @@ int main() {
 
         pipeline.start();
 
-        while(pipeline.isRunning()) {
+        while(pipeline.isRunning() && !quitEvent) {
             auto inSpatialDet = outputDetectionsQueue->get<dai::SpatialImgDetections>();
             auto rgbFrame = camQueue->get<dai::ImgFrame>();
             auto depthFrame = depthQueue->get<dai::ImgFrame>();

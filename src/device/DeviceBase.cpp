@@ -1185,6 +1185,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
         try {
             // Starts and waits for initial timesync
             setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
+            pimpl->rpcCallCheckedVoid("onInit");
         } catch(const std::exception&) {
             // close device (cleanup)
             close();

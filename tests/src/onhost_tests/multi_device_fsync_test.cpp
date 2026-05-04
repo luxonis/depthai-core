@@ -9,7 +9,7 @@ TEST_CASE("Test Multi-device external frame sync with different FPS values", "[f
     auto fps = GENERATE(10.0f, 13.0f, 18.5f, 30.0f, 45.0f);
     CAPTURE(fps);
     struct FsyncTestParameters parameters {};
-    parameters.syncThresholdSec = 1/(2*fps); // lower this limit when we have better accuracy for timestamps
+    parameters.syncThresholdSec = 1 / (2 * fps);  // lower this limit when we have better accuracy for timestamps
     parameters.testDurationSec = 180;
     parameters.recvAllTimeoutSec = 10;
     parameters.initialSyncTimeoutSec = 4;

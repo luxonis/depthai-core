@@ -58,7 +58,9 @@ std::vector<Point3fRGBA> PointCloudData::getPointsRGB() const {
 void PointCloudData::setPoints(const std::vector<Point3f>& points) {
     auto size = points.size();
     std::vector<uint8_t> data(size * sizeof(Point3f));
-    std::memcpy(data.data(), points.data(), size * sizeof(Point3f));
+    if(size > 0) {
+        std::memcpy(data.data(), points.data(), size * sizeof(Point3f));
+    }
     setData(std::move(data));
     setColor(false);
 }
@@ -66,7 +68,9 @@ void PointCloudData::setPoints(const std::vector<Point3f>& points) {
 void PointCloudData::setPointsRGB(const std::vector<Point3fRGBA>& points) {
     auto size = points.size();
     std::vector<uint8_t> data(size * sizeof(Point3fRGBA));
-    std::memcpy(data.data(), points.data(), size * sizeof(Point3fRGBA));
+    if(size > 0) {
+        std::memcpy(data.data(), points.data(), size * sizeof(Point3fRGBA));
+    }
     setData(std::move(data));
     setColor(true);
 }
