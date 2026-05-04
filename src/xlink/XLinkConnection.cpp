@@ -428,7 +428,7 @@ void XLinkConnection::close() {
     if(deviceLinkId != -1 && rebootOnDestruction) {
         auto previousLinkId = deviceLinkId;
 
-        auto ret = XLinkResetRemoteTimeout(deviceLinkId, duration_cast<milliseconds>(RESET_TIMEOUT).count());
+        auto ret = XLinkResetRemoteTimeout(&handler, duration_cast<milliseconds>(RESET_TIMEOUT).count());
         if(ret != X_LINK_SUCCESS) {
             logger::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
         }
@@ -583,14 +583,13 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     // Try to connect to device
     {
-        XLinkHandler_t connectionHandler = {};
         auto desc = lastDeviceInfo.getXLinkDeviceDesc();
-        connectionHandler.devicePath = desc.name;
-        connectionHandler.protocol = lastDeviceInfo.protocol;
+        handler.devicePath = desc.name;
+        handler.protocol = lastDeviceInfo.protocol;
 
         auto tstart = steady_clock::now();
         do {
-            if((rc = XLinkConnect(&connectionHandler)) == X_LINK_SUCCESS) break;
+            if((rc = XLinkConnect(&handler)) == X_LINK_SUCCESS) break;
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < connectTimeout);
 
@@ -609,10 +608,10 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
             }
         }
 
-        deviceLinkId = connectionHandler.linkId;
+        deviceLinkId = handler.linkId;
         deviceInfo = lastDeviceInfo;
         deviceInfo.state = X_LINK_BOOTED;
-        deviceInfo.protocol = connectionHandler.protocol;
+        deviceInfo.protocol = handler.protocol;
     }
 }
 
@@ -638,7 +637,7 @@ ProfilingData XLinkConnection::getGlobalProfilingData() {
 ProfilingData XLinkConnection::getProfilingData() {
     ProfilingData data;
     XLinkProf_t prof;
-    if(XLinkGetProfilingData(deviceLinkId, &prof) != X_LINK_SUCCESS) {
+    if(XLinkGetProfilingData(&handler, &prof) != X_LINK_SUCCESS) {
         throw std::runtime_error("Couldn't retrieve profiling data");
     }
     data.numBytesRead = prof.totalReadBytes;

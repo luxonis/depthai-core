@@ -132,6 +132,7 @@ class XLinkConnection {
    private:
     friend struct XLinkReadError;
     friend struct XLinkWriteError;
+    friend class XLinkStream;
     // static
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::filesystem::path& pathToMvcmd);
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
@@ -153,6 +154,8 @@ class XLinkConnection {
     // closed
     mutable std::mutex closedMtx;
     bool closed{false};
+
+    XLinkHandler_t handler{};
 
     constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{15000};
     constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};
