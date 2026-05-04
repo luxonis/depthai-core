@@ -14,7 +14,7 @@ import depthai as dai
 import numpy as np
 
 pipeline = dai.Pipeline()
-depth_node = pipeline.create(dai.node.Depth, dai.node.Depth.Algorithm.STEREO)
+depth_node = pipeline.create(dai.node.Depth)
 
 depth_queue = depth_node.depth.createOutputQueue()
 confidence_queue = depth_node.confidence.createOutputQueue()
