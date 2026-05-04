@@ -4,6 +4,8 @@
 
 namespace dai {
 
+TransformableBuffer::~TransformableBuffer() = default;
+
 std::optional<ImgTransformation> TransformableBuffer::getTransformation() const {
     return transformation;
 }

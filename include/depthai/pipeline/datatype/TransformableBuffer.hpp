@@ -12,7 +12,7 @@ class TransformableBuffer : public Buffer {
     virtual void transformToInternal(const ImgTransformation& target) = 0;
 
    public:
-    virtual ~TransformableBuffer() = default;
+    virtual ~TransformableBuffer();
     using Buffer::Buffer;
     std::optional<ImgTransformation> transformation;
 
