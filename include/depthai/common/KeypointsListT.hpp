@@ -143,7 +143,7 @@ struct KeypointsListT {
         return coordinates;
     }
 
-   private:
+   protected:
     void validateEdges() {
         const auto n = keypoints.size();
 

@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
@@ -23,6 +24,10 @@ namespace dai {
  * Contains image detection results together with spatial location data.
  */
 struct SpatialImgDetection {
+   private:
+    void transformKeypointsFallback(const ImgTransformation& source, const ImgTransformation& target, const Point3f& spatialCoordinates);
+
+   public:
     uint32_t label = 0;
     std::string labelName;
     float confidence = 0.f;
@@ -147,6 +152,15 @@ struct SpatialImgDetection {
      * Returns the angle of the bounding box.
      */
     float getAngle() const;
+
+    /**
+     * Transforms the spatial detection to the target image transformation.
+     * @param source Source image transformation.
+     * @param target Target image transformation.
+     * @param lengthUnit Length unit to use for the transformation. By default, millimeters are assumed.
+     */
+    void transform(const ImgTransformation& source, const ImgTransformation& target, LengthUnit lengthUnit = LengthUnit::MILLIMETER);
+
     DEPTHAI_SERIALIZE(
         SpatialImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints, spatialCoordinates, boundingBoxMapping);
 };
@@ -167,6 +181,11 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     using Base::segmentationMaskWidth;
     using Base::transformation;
 
+    /**
+     * Length unit used by all imgDetections' `spatialCoordinates` in this list.
+     */
+    LengthUnit unit = LengthUnit::MILLIMETER;
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
@@ -174,7 +193,13 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     }
 
     /**
-     * Placeholder funciton. To be added in separate PR. Currently just passes throught the input detections.
+     * Transform the spatial detections to the target image transformation.
+     *
+     * For each detection, the bounding box is assumed to lie on a plane parallel to the image plane at depth `detection.spatialCoordinates.z` (that is, all
+     * four bounding-box corners are projected using the same depth value). The transformed corners are then fit with the smallest enclosing rotated rectangle
+     * to preserve rectangularity.
+     *
+     * @param target Target image transformation.
      */
     SpatialImgDetections transformTo(const ImgTransformation& target);
 
@@ -201,7 +226,8 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
                       detections,
                       transformation,
                       segmentationMaskWidth,
-                      segmentationMaskHeight);
+                      segmentationMaskHeight,
+                      unit);
 };
 
 }  // namespace dai

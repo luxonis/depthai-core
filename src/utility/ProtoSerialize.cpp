@@ -431,6 +431,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
 
             // Spatial keypoints with spatial coordinates.
             auto* protoSpatialKeypoints = spatialImgDetection->mutable_keypoints();
+            protoSpatialKeypoints->set_unit(static_cast<proto::common::LengthUnit>(keypointsList.unit));
             for(const auto& keypoint : keypointsVec) {
                 auto* protoKeypoint = protoSpatialKeypoints->add_keypoints();
                 auto* coords = protoKeypoint->mutable_imagecoordinates();
@@ -461,6 +462,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
 
     spatialImgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
     spatialImgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
+    spatialImgDetections->set_unit(static_cast<proto::common::LengthUnit>(message->unit));
 
     if(!metadataOnly) {
         std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
