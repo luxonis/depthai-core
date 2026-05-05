@@ -26,7 +26,7 @@ option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
-option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
+option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" ON)
 
 option(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT "Enable Dynamic Calibration support" ON)
 
@@ -49,7 +49,7 @@ if(DEPTHAI_VCPKG_INTERNAL_ONLY)
     set(USE_EXTERNAL_INTERFACE_LIBS_DEFAULT OFF)
 endif()
 
-option(DEPTHAI_JSON_EXTERNAL "Use external nlohmann_json library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
+option(DEPTHAI_JSON_EXTERNAL "Use external nlohmann_json library" ON)
 option(DEPTHAI_LIBNOP_EXTERNAL "Use external libnop library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
 option(DEPTHAI_XTENSOR_EXTERNAL "Use external xtensor library" ${USE_EXTERNAL_INTERFACE_LIBS_DEFAULT})
 
