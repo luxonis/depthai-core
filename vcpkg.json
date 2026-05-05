@@ -6,15 +6,12 @@
             "name": "cpp-httplib",
             "default-features": false
         },
-        "nlohmann-json",
         "yaml-cpp",
-        "spdlog",
         "zlib",
         "bzip2",
         "lz4",
         "liblzma",
         "fp16",
-        "fmt",
         "neargye-semver",
         "magic-enum",
         "eigen3",
@@ -139,14 +136,6 @@
                     "default-features": false
                 },
                 {
-                    "name": "opencv4",
-                    "default-features": false
-                },
-                {
-                    "name": "opencv",
-                    "default-features": false
-                },
-                {
                     "name": "rtabmap",
                     "default-features": false
                 }
@@ -171,10 +160,6 @@
         "basalt": {
             "description": "Enable Basalt support",
             "dependencies": [
-                {
-                    "name": "opencv4",
-                    "default-features": false
-                },
                 {
                     "name": "basalt"
                 }

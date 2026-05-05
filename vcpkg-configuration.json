@@ -15,6 +15,6 @@
 		"./cmake/ports"
 	],
   "overlay-triplets": [
-    "./cmake/triplets"
+    "./cmake/triplets/release"
   ]
 }

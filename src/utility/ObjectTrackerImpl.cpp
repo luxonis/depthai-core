@@ -2,8 +2,6 @@
 
 #include "ObjectTrackerImpl.hpp"
 
-#include <fmt/base.h>
-
 #include <algorithm>
 #include <chrono>
 #include <cmath>
