@@ -8,6 +8,7 @@
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
+#include "pipeline/datatype/TransformableBuffer.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
@@ -20,7 +21,10 @@ namespace dai {
 /**
  * PointCloudData message. Carries point cloud data.
  */
-class PointCloudData : public Buffer, public ProtoSerializable {
+class PointCloudData : public TransformableBuffer, public ProtoSerializable {
+   protected:
+    void transformToInternal(const ImgTransformation& target) override;
+
     unsigned int width = 0;    // width in pixels (for organized) or number of points (for unorganized)
     unsigned int height = 0;   // height in pixels (for organized) or 1 (for unorganized)
     uint32_t instanceNum = 0;  // Which source created this frame
@@ -33,6 +37,9 @@ class PointCloudData : public Buffer, public ProtoSerializable {
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
+    using TransformableBuffer::getTransformation;
+    using TransformableBuffer::setTransformation;
+    using TransformableBuffer::transformation;
 
     /**
      * Construct PointCloudData message.
@@ -266,7 +273,6 @@ class PointCloudData : public Buffer, public ProtoSerializable {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::PointCloudData;
     }
-    ImgTransformation transformation;
 
     DEPTHAI_SERIALIZE(PointCloudData,
                       width,
@@ -279,7 +285,7 @@ class PointCloudData : public Buffer, public ProtoSerializable {
                       maxz,
                       instanceNum,
                       color,
-                      transformation,
+                      TransformableBuffer::transformation,
                       Buffer::ts,
                       Buffer::tsDevice,
                       Buffer::sequenceNum);

@@ -120,7 +120,10 @@ PointCloudData& PointCloudData::setInstanceNum(unsigned int instanceNum) {
 }
 
 const ImgTransformation& PointCloudData::getTransformation() const {
-    return transformation;
+    if(!transformation.has_value()) {
+        throw std::runtime_error("Transformation is not set");
+    }
+    return *transformation;
 }
 
 PointCloudData& PointCloudData::setTransformation(const ImgTransformation& transformation) {
@@ -173,6 +176,10 @@ PointCloudData& PointCloudData::setSparse(bool /*val*/) {
     throw std::logic_error(
         "PointCloudData::setSparse() is deprecated and removed. "
         "Organization is now determined by width/height: set height=1 for sparse (N×1) or height>1 for organized.");
+}
+
+void PointCloudData::transformToInternal(const ImgTransformation&) {
+    throw std::logic_error("PointCloudData transform not implemented yet");
 }
 
 PointCloudData& PointCloudData::updateBoundingBox() {
