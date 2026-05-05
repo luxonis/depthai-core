@@ -75,6 +75,8 @@ class RGBD : public NodeCRTP<ThreadedHostNode, RGBD> {
                                 const std::pair<int, int>& frameSize = std::make_pair(640, 400),
                                 std::optional<float> fps = std::nullopt);
 
+    void runSyncOnHost(bool runOnHost);
+    void setSyncThreshold(std::chrono::nanoseconds syncThreshold);
     void setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit);
     /**
      * @brief Use single-threaded CPU for processing

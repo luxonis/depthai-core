@@ -443,6 +443,12 @@ void RGBD::run() {
         }
     }
 }
+void RGBD::runSyncOnHost(bool runOnHost) {
+    sync->setRunOnHost(runOnHost);
+}
+void RGBD::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
+    sync->setSyncThreshold(syncThreshold);
+}
 void RGBD::setDepthUnit(StereoDepthConfig::AlgorithmControl::DepthUnit depthUnit) {
     pimpl->setDepthUnit(depthUnit);
 }
