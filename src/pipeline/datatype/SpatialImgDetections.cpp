@@ -113,7 +113,7 @@ dai::ImgDetection SpatialImgDetection::getImgDetection() const {
         std::vector<dai::Keypoint> convertedKeypoints;
         convertedKeypoints.reserve(keypoints->size());
         for(const auto& spatialKeypoint : keypoints->getKeypoints()) {
-            convertedKeypoints.emplace_back(spatialKeypoint.imageCoordinates, spatialKeypoint.confidence, spatialKeypoint.label);
+            convertedKeypoints.emplace_back(spatialKeypoint.imageCoordinates, spatialKeypoint.confidence, spatialKeypoint.label, spatialKeypoint.labelName);
         }
         converted.setKeypoints(std::move(convertedKeypoints), keypoints->getEdges());
         imgDetection.keypoints = std::move(converted);
@@ -224,7 +224,7 @@ void SpatialImgDetection::transform(const ImgTransformation& source, const ImgTr
 
 void SpatialImgDetections::transformToInternal(const ImgTransformation& target) {
     if(!this->getTransformation().has_value()) {
-        throw std::runtime_error("Source transformation is not set, cannot transform.");
+        throw std::runtime_error("Source transformation is not set, cannot transform spatial image detections.");
     }
     ImgTransformation source = *this->getTransformation();
 
