@@ -742,9 +742,13 @@ dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4rgb ci)
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 
-# Script node test
+# Common Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
 dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+# RVC4 specific Script node test
+dai_add_test(script_node_rvc4_test src/ondevice_tests/script_node_rvc4_test.cpp)
+dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4rgb ci)
 
 # StereoDepth test
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)

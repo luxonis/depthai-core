@@ -143,6 +143,10 @@ class NNDataViewer {
                 int8_t dataOut = static_cast<int8_t>(data->getData()[index]);
                 return (static_cast<float>(dataOut) - tensor.qpZp) * tensor.qpScale;
             }
+            case TensorInfo::DataType::U16F: {
+                int32_t dataOut = reinterpret_cast<uint16_t*>(data->getData().data())[index / sizeof(uint16_t)];
+                return (static_cast<float>(dataOut) - tensor.qpZp) * tensor.qpScale;
+            }
             case TensorInfo::DataType::INT: {
                 int32_t dataOut = reinterpret_cast<int32_t*>(data->getData().data())[index / sizeof(int32_t)];
                 return (static_cast<float>(dataOut) - tensor.qpZp) * tensor.qpScale;

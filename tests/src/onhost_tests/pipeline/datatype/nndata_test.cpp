@@ -43,6 +43,32 @@ TEST_CASE("a") {
     }());
 }
 
+TEST_CASE("NNData uint16 tensors use U16F storage") {
+    dai::NNData nndata;
+
+    xt::xarray<uint16_t> tensor = {{0U, 2049U, 4097U}, {42U, 511U, 8191U}};
+    std::vector<uint16_t> vector = {0U, 2049U, 4097U, 42U, 511U, 8191U};
+
+    nndata.addTensor("tensor_u16", tensor,dai::TensorInfo::DataType::U16F);
+    nndata.addTensor("vector_u16", vector, dai::TensorInfo::DataType::U16F);
+
+    REQUIRE(nndata.getTensorDatatype("tensor_u16") == dai::TensorInfo::DataType::U16F);
+    REQUIRE(nndata.getTensorDatatype("vector_u16") == dai::TensorInfo::DataType::U16F);
+
+    REQUIRE((nndata.getTensor<uint16_t>("tensor_u16") == tensor));
+
+    const auto vectorRoundTrip = nndata.getTensor<uint16_t>("vector_u16");
+    REQUIRE(vectorRoundTrip.shape() == std::vector<size_t>{1, vector.size()});
+    REQUIRE([&]() {
+        for(uint32_t i = 0; i < vector.size(); i++) {
+            if(vector[i] != vectorRoundTrip[i]) {
+                return 0;
+            }
+        }
+        return 1;
+    }());
+}
+
 TEST_CASE("NNData int storage conversions") {
     dai::NNData nndata;
     xt::xarray<int, xt::layout_type::dynamic> tensorA1 = {{1, 2, 3}, {4, 5, 7}};  // 2x3
