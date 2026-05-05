@@ -32,6 +32,10 @@ void SegmentationMask::setSize(size_t width, size_t height) {
     this->height = height;
 }
 
+void SegmentationMask::transformToInternal(const ImgTransformation&) {
+    throw std::logic_error("SegmentationMask transform not implemented yet");
+}
+
 std::size_t SegmentationMask::getWidth() const {
     return width;
 }
