@@ -5,6 +5,7 @@
 
 #include "depthai/common/Point2f.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "pipeline/datatype/TransformableBuffer.hpp"
 
 namespace dai {
 
@@ -61,14 +62,27 @@ DEPTHAI_SERIALIZE_EXT(AprilTag, id, hamming, decisionMargin, topLeft, topRight, 
 /**
  * AprilTags message.
  */
-class AprilTags : public Buffer {
+class AprilTags : public TransformableBuffer {
+   protected:
+    void transformToInternal(const ImgTransformation& target) override;
+
    public:
+    using TransformableBuffer::transformation;
     /**
      * Construct AprilTags message.
      */
     AprilTags() = default;
 
     ~AprilTags() override;
+
+    /**
+     * Transform the AprilTags detections to the target image transformation.
+     * @param target Target image transformation.
+     * @note If the target transformation has a different coordinate system source (eg. different camera socket) then the remapping will be inaccurate due to
+     * the lack of depth information.
+     */
+    AprilTags transformTo(const ImgTransformation& target);
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
@@ -76,7 +90,7 @@ class AprilTags : public Buffer {
     }
 
     std::vector<AprilTag> aprilTags;
-    DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, aprilTags);
+    DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, TransformableBuffer::transformation, aprilTags);
 };
 
 }  // namespace dai
