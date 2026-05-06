@@ -5,7 +5,7 @@
 
 #include "depthai/common/Point2f.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
 
 namespace dai {
 

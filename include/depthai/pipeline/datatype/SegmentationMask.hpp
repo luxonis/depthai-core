@@ -9,7 +9,7 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/span.hpp"
-#include "pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/mat.hpp>

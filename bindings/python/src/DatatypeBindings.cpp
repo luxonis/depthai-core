@@ -123,6 +123,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     datatypeEnum.value("ADatatype", DatatypeEnum::ADatatype)
         .value("Buffer", DatatypeEnum::Buffer)
+        .value("TransformableBuffer", DatatypeEnum::TransformableBuffer)
         .value("ImgFrame", DatatypeEnum::ImgFrame)
         .value("EncodedFrame", DatatypeEnum::EncodedFrame)
         .value("NNData", DatatypeEnum::NNData)

@@ -92,7 +92,11 @@ void displayFrame(const std::string& name,
         return;
     }
 
-    const auto& sourceTransform = tracklets->transformation;
+    if(!tracklets->getTransformation().has_value()) {
+        return;
+    }
+
+    const auto sourceTransform = tracklets->getTransformation().value();
     const auto& targetTransform = frame->transformation;
 
     for(const auto& tracklet : tracklets->tracklets) {

@@ -248,6 +248,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setSpatialCoordinates",
              &SpatialKeypointsList::setSpatialCoordinates,
              py::arg("spatialCoordinates"),
+             py::arg("spatialUnit") = LengthUnit::MILLIMETER,
              DOC(dai, SpatialKeypointsList, setSpatialCoordinates))
         .def("getSpatialCoordinates", &SpatialKeypointsList::getSpatialCoordinates, DOC(dai, SpatialKeypointsList, getSpatialCoordinates));
 
