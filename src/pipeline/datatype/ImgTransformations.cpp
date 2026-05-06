@@ -9,7 +9,7 @@
 #include <depthai/utility/matrixOps.hpp>
 #include <vector>
 
-#include "common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
