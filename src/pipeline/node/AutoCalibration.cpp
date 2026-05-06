@@ -15,6 +15,29 @@ constexpr int GATE_FPS_DEFAULT = 5;
 constexpr int BYTES_PER_SECOND_LIMIT_DEFAULT = GATE_FPS_DEFAULT * 1280 * 800 * 2;
 constexpr int PACKET_SIZE_DEFAULT = 100000;
 
+bool areLensesWide(std::shared_ptr<Device> device) {
+    auto handler = device->getCalibration();
+    auto eepromData = handler.getEepromData();
+    const auto& hardwareConf = eepromData.hardwareConf;
+    size_t start = 0;
+
+    while(start < hardwareConf.size()) {
+      const size_t end = hardwareConf.find('-', start);
+      const std::string token = hardwareConf.substr(start, end == std::string::npos ? std::string::npos : end - start);
+
+      if(token == "FV01" || token == "FV05") {
+         return true;
+      }
+      if(token.rfind("FV", 0) == 0) {
+         return false;
+      }
+
+      if(end == std::string::npos) break;
+      start = end + 1;
+    }
+    return false;
+}
+
 void AutoCalibration::logReport(const Report& report, unsigned int iteration) const {
     // Define a lambda or a small helper to route to the correct spdlog method
     auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
@@ -157,6 +180,9 @@ std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared
 
 void AutoCalibration::buildInternal() {
     logger = pimpl->logger;
+    if(initialConfig->dataConfidenceThreshold < 0.0) {
+        initialConfig->dataConfidenceThreshold = areLensesWide(device) ? 0.65 : 0.85;
+    }
 }
 
 /**
