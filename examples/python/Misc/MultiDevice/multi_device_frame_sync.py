@@ -11,6 +11,10 @@ import math
 import argparse
 import signal
 import threading
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 
 from typing import Optional, Dict
 from enum import Enum
@@ -60,7 +64,7 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
 
     output = (
         cam.requestOutput(
-            (640, 480), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
+            (640, 480), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.CROP
         )
     )
 
@@ -68,6 +72,7 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
         cam.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.TIME_PTP)
         print(f"Setting PTP for {socket.name}")
 
+    cam.initialControl.setManualExposure(900, 1000)
     return pipeline, output
 
 # ---------------------------------------------------------------------------
@@ -75,7 +80,8 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
 # ---------------------------------------------------------------------------
 def createSyncNode(syncThreshold: datetime.timedelta):
     global masterPipeline, masterNode, masterName, slaveQueues, inputQueues, outputNames, slavePipelines
-    sync = masterPipeline.create(dai.node.Sync)
+    # sync = masterPipeline.create(dai.node.Sync)
+    sync = masterPipeline.create(dai.node.SyncSystem)
 
     # Sync node will run on the host, since it needs to sync multiple devices
     sync.setRunOnHost(True)
@@ -108,7 +114,7 @@ def setUpCameraSocket(
         deviceName: str,
         targetFps: float,
         role: dai.ExternalFrameSyncRole):
-    global masterNode, slaveQueues, camSockets, syncType
+    global masterNode, slaveQueues, camSockets, syncType, ptpMasterDeviceName
     pipeline, outNode = createCameraOutputs(pipeline, socket, targetFps, role)
 
     if syncType == SyncType.EXTERNAL:
@@ -131,6 +137,9 @@ def setUpCameraSocket(
         # Actual PTP master might be different, but it doesn't matter for this example
         if masterNode is None:
             masterNode = {}
+            ptpMasterDeviceName = deviceName
+        
+        if ptpMasterDeviceName == deviceName:
             masterNode[socket.name] = outNode
         else:
             if slaveQueues.get(deviceName) is None:
@@ -173,7 +182,29 @@ def setupDevice(
     print("    Device ID:", device.getDeviceId())
     print("    Num of cameras:", len(device.getConnectedCameras()))
 
+    sensorNames = device.getCameraSensorNames()
     for socket in device.getConnectedCameras():
+        sensorName = ""
+        for sckt, namee in sensorNames.items():
+            if sckt == socket:
+                sensorName = namee
+                break
+        if sensorName == "":
+            print(f"Could not find sensor name for socket {socket} for device {name}")
+            continue
+        if "IMX" in sensorName:
+            print(f"Skipping IMX sensor {sensorName} for device {name}")
+            continue
+        if "OV" in sensorName:
+            print(f"Skipping OV sensor {sensorName} for device {name}")
+            continue
+        # if "OG" in sensorName:
+        #     print(f"Skipping OG sensor {sensorName} for device {name}")
+        #     continue
+        if socket == dai.CameraBoardSocket.CAM_B:
+            print(f"Skipping CAM_B sensor {sensorName} for device {name}")
+            continue
+        print(f"Setting up socket {socket} for device {name}")
         pipeline = setUpCameraSocket(pipeline, socket, name, targetFps, role)
 
     if syncType == SyncType.EXTERNAL:
@@ -201,13 +232,14 @@ def setupDevice(
             slavePipelines[name] = pipeline
 
 
-running = True
+running: threading.Event = threading.Event()
+running.set()
 
 def interruptHandler(sig, frame):
     global running
-    if running:
+    if running.is_set:
         print("Interrupted! Exiting...")
-        running = False
+        running.clear()
     else:
         print("Exiting now!")
         exit(0)
@@ -267,6 +299,8 @@ with contextlib.ExitStack() as stack:
     # keep track of all camera socket names
     camSockets = []
 
+    ptpMasterDeviceName = ""
+
     for idx, deviceInfo in enumerate(deviceInfos):
         setupDevice(stack, deviceInfo, targetFps)
 
@@ -295,14 +329,29 @@ with contextlib.ExitStack() as stack:
     initialSyncTime = None
     waitingForSync = True
 
+    allDeltas = []
+    refTimestamps = []
+    tmpDeltas = []
+    num_tmp_deltas = 1500
+    num_deltas_to_sample = 30
+    steady_state_criterion = 0.05e-3
+    steady_state_reached_index = -1
+    steady_state_timeout = 10 * 60
+    collect_steady_state_stats_interval = 3 * 60
+    steady_state_start_time = datetime.datetime.now()
+
     def data_collector(deviceName, socketName):
         # Send frames from slave output queues to sync node input queues
         camOutputQueue = slaveQueues[deviceName][socketName]
-        while running:
-            if camOutputQueue.has():
-                inputQueues[f"slave_{deviceName}_{socketName}"].send(camOutputQueue.get())
-            else:
-                time.sleep(0.001)
+        while running.is_set():
+            try:
+                if camOutputQueue.has():
+                    inputQueues[f"slave_{deviceName}_{socketName}"].send(camOutputQueue.get())
+                else:
+                    time.sleep(0.001)
+            except Exception as e:
+                print(f"Exception in data_collector {deviceName} {socketName}: {e}")
+                running.clear()
 
     threads = {}
 
@@ -311,7 +360,7 @@ with contextlib.ExitStack() as stack:
             threads[f"slave_{deviceName}_{socketName}"] = threading.Thread(target=data_collector, args=(deviceName, socketName))
             threads[f"slave_{deviceName}_{socketName}"].start()
 
-    while running:
+    while running.is_set():
         # Get frames from sync node output queue
         while queue.has():
             latestFrameGroup = queue.get()
@@ -327,7 +376,7 @@ with contextlib.ExitStack() as stack:
             elapsedSec = (endTime - startTime).total_seconds()
             if elapsedSec >= recvAllTimeoutSec:
                 print(f"Timeout: Didn't receive all frames in time: {elapsedSec:.2f} sec")
-                running = False
+                running.clear()
 
         # -------------------------------------------------------------------
         # Synchronise: we need at least one frame from every camera and their
@@ -336,7 +385,8 @@ with contextlib.ExitStack() as stack:
         if latestFrameGroup is not None and latestFrameGroup.getNumMessages() == len(outputNames):
             tsValues = {}
             for name in outputNames:
-                tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
+                tsValues[name] = (latestFrameGroup[name].getTimestampSystem(dai.CameraExposureOffset.END) - datetime.datetime.fromtimestamp(0)).total_seconds()
+                # tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
             
             # Build individual image arrays for each camera socket, displayed side-by-side
             imgs = []
@@ -346,6 +396,7 @@ with contextlib.ExitStack() as stack:
 
             # calculate the greatest time difference between all frames
             delta = max(tsValues.values()) - min(tsValues.values())
+            refTs = min(tsValues.values())
 
             syncStatus = abs(delta) < syncThresholdSec
             syncStatusStr = "in sync" if syncStatus else "out of sync"
@@ -356,7 +407,7 @@ with contextlib.ExitStack() as stack:
                 elapsedSec = (endTime - initialSyncTime).total_seconds()
                 if elapsedSec >= initialSyncTimeoutSec:
                     print("Timeout: Didn't sync frames in time")
-                    running = False
+                    running.clear()
 
             if syncStatus and waitingForSync:
                 print(f"Frame synced")
@@ -365,6 +416,35 @@ with contextlib.ExitStack() as stack:
             if not syncStatus and not waitingForSync:
                 print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
                 continue
+
+            tmpDeltas.append(delta)
+            if steady_state_reached_index < 0:
+                if len(tmpDeltas) > num_tmp_deltas:
+                    oldest = tmpDeltas.pop(0)
+                    samples = random.sample(tmpDeltas, num_deltas_to_sample)
+                    t1 = min([min(samples), delta])
+                    t2 = max([max(samples), oldest])
+
+                    if abs(t2 - t1) < steady_state_criterion:
+                        print(f"Steady state reached at {len(allDeltas)}, delta: {delta * 1e6} us")
+                        steady_state_reached_index = len(allDeltas)
+                        steady_state_start_time = datetime.datetime.now()
+
+                endTime = datetime.datetime.now()
+                elapsedSec = (endTime - startTime).total_seconds()
+                if elapsedSec > steady_state_timeout:
+                    print(f"PTP did not reach steady state after {elapsedSec} seconds")
+                    running.clear()
+
+            else:
+                endTime = datetime.datetime.now()
+                elapsedSec = (endTime - steady_state_start_time).total_seconds()
+                if elapsedSec > collect_steady_state_stats_interval:
+                    print("Finished collecting steady state stats")
+                    running.clear()
+            
+            allDeltas.append(delta)
+            refTimestamps.append(refTs)
 
             color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
 
@@ -428,10 +508,53 @@ with contextlib.ExitStack() as stack:
             latestFrameGroup = None  # Wait for next batch
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
-            running = False
+            running.clear()
             break
 
     for t in threads.keys():
         threads[t].join()
 
-cv2.destroyAllWindows()
+    cv2.destroyAllWindows()
+
+    if steady_state_reached_index > 0:
+        xAxisTimestamps = [t - refTimestamps[steady_state_reached_index] for t in refTimestamps]
+        prevTs = None
+        numFrames = len(allDeltas[steady_state_reached_index:])
+        lineCutoff = 0
+        definitelyLostFrames = 0
+        possibleLostFrames = 0
+        for i, ts in enumerate(xAxisTimestamps):
+            if prevTs is not None:
+                if i < steady_state_reached_index:
+                    prevTs = ts
+                    continue
+                elif i == steady_state_reached_index:
+                    lineCutoff = ts
+                
+                if ts - prevTs > 2/targetFps:
+                    definitelyLostFrames += math.floor((ts - prevTs) * targetFps - 1)
+                elif ts - prevTs > 1.5/targetFps:
+                    possibleLostFrames += 1
+            prevTs = ts
+
+        meanDelta = np.mean(allDeltas[steady_state_reached_index:])
+        p99Delta = np.percentile(allDeltas[steady_state_reached_index:], 99)
+        maxDelta = np.max(allDeltas[steady_state_reached_index:])
+        print(f"PTP reached steady state after {steady_state_reached_index} frames\n\tmean delta: {meanDelta * 1e3} ms\n\tp99 delta: {p99Delta * 1e3} ms\n\tmax delta: {maxDelta * 1e3} ms")
+        print(f"Possible lost frames: {possibleLostFrames}, definitely lost frames: {definitelyLostFrames}")
+
+        fig, ax = plt.subplots()
+        ax.scatter(xAxisTimestamps, allDeltas, marker="X", s=5)
+        tmp = max(allDeltas)
+        line = mlines.Line2D([lineCutoff, lineCutoff], [0, tmp], color='r')
+        ax.add_line(line)
+        plt.ylabel("Delta (s)")
+        plt.xlabel("time (s)")
+        plt.title("PTP deltas")
+        plt.show()
+
+        # plot histogram of deltas after reaching steady state
+        plt.hist(allDeltas[steady_state_reached_index:], bins=100)
+        plt.show()
+    else:
+        print("PTP did not reach steady state")
