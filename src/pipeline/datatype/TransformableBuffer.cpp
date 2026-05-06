@@ -14,4 +14,14 @@ void TransformableBuffer::setTransformation(const ImgTransformation& transformat
     this->transformation = transformation;
 }
 
+std::shared_ptr<TransformableBuffer> TransformableBuffer::cloneAndTransformTo(const ImgTransformation& target) const {
+    auto out = clone();
+    if(!out) {
+        throw std::logic_error("TransformableBuffer::clone() returned nullptr");
+    }
+
+    out->transformToInternal(target);
+    return out;
+}
+
 }  // namespace dai

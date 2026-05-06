@@ -65,6 +65,7 @@ DEPTHAI_SERIALIZE_EXT(AprilTag, id, hamming, decisionMargin, topLeft, topRight, 
 class AprilTags : public TransformableBuffer {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
+    std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
     using TransformableBuffer::transformation;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
+#include "pipeline/datatype/TransformableBuffer.hpp"
 
 #ifdef DEPTHAI_XTENSOR_SUPPORT
     #include <xtensor/containers/xadapt.hpp>
@@ -168,6 +170,7 @@ struct ImgDetection {
 class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
+    std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
     ~ImgDetections() override;

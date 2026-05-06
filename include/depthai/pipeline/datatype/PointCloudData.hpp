@@ -24,6 +24,7 @@ namespace dai {
 class PointCloudData : public TransformableBuffer, public ProtoSerializable {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
+    std::shared_ptr<TransformableBuffer> clone() const override;
 
     unsigned int width = 0;    // width in pixels (for organized) or number of points (for unorganized)
     unsigned int height = 0;   // height in pixels (for organized) or 1 (for unorganized)

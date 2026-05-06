@@ -1,6 +1,7 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <stdexcept>
 
 #include "depthai/common/Point3f.hpp"
@@ -180,6 +181,10 @@ PointCloudData& PointCloudData::setSparse(bool /*val*/) {
 
 void PointCloudData::transformToInternal(const ImgTransformation&) {
     throw std::logic_error("PointCloudData transform not implemented yet");
+}
+
+std::shared_ptr<TransformableBuffer> PointCloudData::clone() const {
+    return std::make_shared<PointCloudData>(*this);
 }
 
 PointCloudData& PointCloudData::updateBoundingBox() {

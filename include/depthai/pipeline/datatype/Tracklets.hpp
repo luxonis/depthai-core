@@ -81,6 +81,7 @@ struct Tracklet {
 class Tracklets : public TransformableBuffer {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
+    std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
     using TransformableBuffer::transformation;

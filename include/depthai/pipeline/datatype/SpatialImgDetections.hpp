@@ -171,6 +171,7 @@ struct SpatialImgDetection {
 class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
+    std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
     ~SpatialImgDetections() override;

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <vector>
@@ -34,6 +35,10 @@ void SegmentationMask::setSize(size_t width, size_t height) {
 
 void SegmentationMask::transformToInternal(const ImgTransformation&) {
     throw std::logic_error("SegmentationMask transform not implemented yet");
+}
+
+std::shared_ptr<TransformableBuffer> SegmentationMask::clone() const {
+    return std::make_shared<SegmentationMask>(*this);
 }
 
 std::size_t SegmentationMask::getWidth() const {

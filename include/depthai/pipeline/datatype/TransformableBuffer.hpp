@@ -10,6 +10,7 @@ namespace dai {
 class TransformableBuffer : public Buffer {
    protected:
     virtual void transformToInternal(const ImgTransformation& target) = 0;
+    virtual std::shared_ptr<TransformableBuffer> clone() const = 0;
 
    public:
     virtual ~TransformableBuffer();
@@ -19,6 +20,8 @@ class TransformableBuffer : public Buffer {
     std::optional<ImgTransformation> getTransformation() const;
 
     void setTransformation(const ImgTransformation& transformation);
+
+    std::shared_ptr<TransformableBuffer> cloneAndTransformTo(const ImgTransformation& target) const;
 
     DEPTHAI_SERIALIZE(TransformableBuffer, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, transformation);
 };

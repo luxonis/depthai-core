@@ -9,10 +9,13 @@ void AprilTags::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& dat
     datatype = DatatypeEnum::AprilTags;
 };
 
+std::shared_ptr<TransformableBuffer> AprilTags::clone() const {
+    return std::make_shared<AprilTags>(*this);
+}
+
 AprilTags AprilTags::transformTo(const ImgTransformation& target) {
     AprilTags transformedAprilTags = *this;
     transformedAprilTags.transformToInternal(target);
-    transformedAprilTags.setTransformation(target);
     return transformedAprilTags;
 }
 
@@ -28,6 +31,7 @@ void AprilTags::transformToInternal(const ImgTransformation& target) {
         aprilTag.bottomRight = source.remapPointTo(target, aprilTag.bottomRight);
         aprilTag.bottomLeft = source.remapPointTo(target, aprilTag.bottomLeft);
     }
+    setTransformation(target);
 }
 
 }  // namespace dai

@@ -1,5 +1,7 @@
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
+#include <memory>
+
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
@@ -62,6 +64,10 @@ void Tracklets::transformToInternal(const ImgTransformation& target) {
         tracklet.transform(getTransformation().value(), target, unit);
     }
     setTransformation(target);
+}
+
+std::shared_ptr<TransformableBuffer> Tracklets::clone() const {
+    return std::make_shared<Tracklets>(*this);
 }
 
 Tracklets Tracklets::transformTo(const ImgTransformation& target) {

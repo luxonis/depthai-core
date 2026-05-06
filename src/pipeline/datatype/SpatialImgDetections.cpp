@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <memory>
 #include <vector>
 
 #include "common/DepthUnit.hpp"
@@ -232,6 +233,10 @@ void SpatialImgDetections::transformToInternal(const ImgTransformation& target) 
         detection.transform(source, target);
     }
     setTransformation(target);
+}
+
+std::shared_ptr<TransformableBuffer> SpatialImgDetections::clone() const {
+    return std::make_shared<SpatialImgDetections>(*this);
 }
 
 SpatialImgDetections SpatialImgDetections::transformTo(const ImgTransformation& target) {

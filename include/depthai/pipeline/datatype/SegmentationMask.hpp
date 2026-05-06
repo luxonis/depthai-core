@@ -27,6 +27,7 @@ namespace dai {
 class SegmentationMask : public TransformableBuffer, public ProtoSerializable {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
+    std::shared_ptr<TransformableBuffer> clone() const override;
 
     // Optimization option: if network is bottleneck, implement RLE compression for the mask data
    private:
