@@ -76,10 +76,12 @@ class AprilTags : public TransformableBuffer {
     ~AprilTags() override;
 
     /**
-     * Transform the AprilTags detections to the target image transformation.
-     * @param target Target image transformation.
-     * @note If the target transformation has a different coordinate system source (eg. different camera socket) then the remapping will be inaccurate due to
+     * Returns a new AprilTags message with the tags transformed into the target image transformation.
+     *
+     * If the target transformation has a different coordinate system source (eg. different camera socket) then the remapping will be inaccurate due to
      * the lack of depth information.
+     *
+     * @param target Target image transformation.
      */
     AprilTags transformTo(const ImgTransformation& target);
 

@@ -184,7 +184,7 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     }
 
     /**
-     * Transform detections to the target image transformation.
+     * Returns a new ImgDetections message with the detections transformed into the target image transformation.
      *
      * If the target transformation has a different source coordinate system (eg. different camera socket) than the one the detections were originally generated
      * in, the remapping will be inaccurate due to the lack of depth information.

@@ -193,13 +193,14 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     }
 
     /**
-     * Transform the spatial detections to the target image transformation.
+     * Returns a new SpatialImgDetections message with the spatial detections transformed into the target image transformation.
      *
      * For each detection, the bounding box is assumed to lie on a plane parallel to the image plane at depth `detection.spatialCoordinates.z` (that is, all
      * four bounding-box corners are projected using the same depth value). The transformed corners are then fit with the smallest enclosing rotated rectangle
      * to preserve rectangularity.
      *
      * @param target Target image transformation.
+     * @return SpatialImgDetections with transformed detections.
      */
     SpatialImgDetections transformTo(const ImgTransformation& target);
 

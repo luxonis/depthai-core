@@ -103,7 +103,7 @@ class Tracklets : public TransformableBuffer {
     std::vector<Tracklet> tracklets;
 
     /**
-     * Transform tracklets to the target image transformation.
+     * Returns a new Tracklets message with the tracklets transformed into the target image transformation.
      *
      * For each tracklet, the bounding box is assumed to lie on a plane parallel to the image plane at depth `tracklet.spatialCoordinates.z` (that is, all
      * four bounding-box corners are projected using the same depth value). The transformed corners are then fit with the smallest enclosing rotated rectangle

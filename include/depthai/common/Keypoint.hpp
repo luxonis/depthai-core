@@ -83,7 +83,8 @@ struct KeypointsList : KeypointsListT<Keypoint> {
     }
 
     /**
-     * Transforms the keypoints into the target image transformation under the assumption that the keypoints are defined in the source image transformation.
+     * Returns a new KeypointsList with the keypoints transformed into the target image transformation under the assumption that the keypoints are defined in
+     * the source image transformation.
      *
      * If the target transformation has a different source coordinate system (eg. different camera socket) than the one the keypoints were originally generated
      * in, the remapping will be inaccurate due to the lack of depth information.
