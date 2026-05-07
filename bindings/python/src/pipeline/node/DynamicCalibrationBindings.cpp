@@ -32,6 +32,8 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
         .def_readonly("calibrationOutput", &DynamicCalibration::calibrationOutput, DOC(dai, node, DynamicCalibration, calibrationOutput))
         .def_readonly("inputControl", &DynamicCalibration::inputControl, DOC(dai, node, DynamicCalibration, inputControl))
         .def_property_readonly(
+            "inputs", [](DynamicCalibration& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
             "left", [](DynamicCalibration& node) { return &node.left; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "right", [](DynamicCalibration& node) { return &node.right; }, py::return_value_policy::reference_internal)
