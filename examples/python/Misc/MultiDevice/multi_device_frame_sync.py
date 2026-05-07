@@ -337,8 +337,6 @@ with contextlib.ExitStack() as stack:
     steady_state_criterion = 0.05e-3
     steady_state_reached_index = -1
     steady_state_timeout = 10 * 60
-    collect_steady_state_stats_interval = 3 * 60
-    steady_state_start_time = datetime.datetime.now()
 
     def data_collector(deviceName, socketName):
         # Send frames from slave output queues to sync node input queues
@@ -434,13 +432,6 @@ with contextlib.ExitStack() as stack:
                 elapsedSec = (endTime - startTime).total_seconds()
                 if elapsedSec > steady_state_timeout:
                     print(f"PTP did not reach steady state after {elapsedSec} seconds")
-                    running.clear()
-
-            else:
-                endTime = datetime.datetime.now()
-                elapsedSec = (endTime - steady_state_start_time).total_seconds()
-                if elapsedSec > collect_steady_state_stats_interval:
-                    print("Finished collecting steady state stats")
                     running.clear()
             
             allDeltas.append(delta)
