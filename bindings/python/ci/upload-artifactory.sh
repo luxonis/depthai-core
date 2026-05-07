@@ -15,10 +15,21 @@ case "$1" in
         ;;
 esac
 
-# Download jfrog CLI
-curl -fL https://getcli.jfrog.io | sh
+# Download JFrog CLI (v2)
+curl -fL https://getcli.jfrog.io/v2-jf | sh
 
-cd wheelhouse/audited/ || exit 1
+cd wheelhouse/audited/
 
-../../jfrog config add --artifactory-url=$ARTIFACTORY_URL --user=$ARTIFACTORY_USER --password=$ARTIFACTORY_PASS
-../../jfrog rt u "*" "$PATH_PREFIX/"
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) JFROG="../../jf.exe" ;;
+    *)                   JFROG="../../jf" ;;
+esac
+
+"$JFROG" config add luxonis \
+    --artifactory-url="${ARTIFACTORY_URL}" \
+    --user="${ARTIFACTORY_USER}" \
+    --password="${ARTIFACTORY_PASS}" \
+    --interactive=false \
+    --overwrite=true
+
+"$JFROG" rt u "*" "${PATH_PREFIX}/"
