@@ -534,16 +534,6 @@ class Pipeline {
     }
 
     /// Sets implicit automatic calibration policy for this pipeline.
-    void setAutoCalibration(AutoCalibrationMode mode) {
-        impl()->setAutoCalibrationMode(mode);
-    }
-
-    /// Gets implicit automatic calibration policy for this pipeline.
-    AutoCalibrationMode getAutoCalibration() const {
-        return impl()->getAutoCalibrationMode();
-    }
-
-    /// Sets implicit automatic calibration policy for this pipeline.
     void setAutoCalibrationMode(AutoCalibrationMode mode) {
         impl()->setAutoCalibrationMode(mode);
     }
