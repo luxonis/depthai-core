@@ -13,17 +13,83 @@
 #include "depthai/utility/matrixOps.hpp"
 #include "depthai/utility/spimpl.h"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
+#include <algorithm>
+#include <set>
 
 namespace dai {
 namespace node {
+
+#define DCL_PERSPECTIVE_DISTORTION_SIZE (14)
+#define DCL_FISHEYE_DISTORTION_SIZE (4)
+
+namespace {
+
+std::vector<std::vector<float>> extractRotation3x3(const std::vector<std::vector<float>>& transform) {
+    std::vector<std::vector<float>> rotation(3, std::vector<float>(3, 0.0f));
+    for(int row = 0; row < 3; ++row) {
+        for(int col = 0; col < 3; ++col) {
+            rotation[row][col] = transform[row][col];
+        }
+    }
+    return rotation;
+}
+
+std::vector<float> extractTranslation3(const std::vector<std::vector<float>>& transform) {
+    return {transform[0][3], transform[1][3], transform[2][3]};
+}
+
+std::vector<CameraBoardSocket> buildCalibrationSocketChain(const CalibrationHandler& calibrationHandler,
+                                                           const std::vector<CameraBoardSocket>& syncedSockets) {
+    const auto& cameraData = calibrationHandler.getEepromData().cameraData;
+    std::set<CameraBoardSocket> syncedSocketSet(syncedSockets.begin(), syncedSockets.end());
+    std::set<CameraBoardSocket> destinationSockets;
+
+    for(const auto socket : syncedSockets) {
+        auto it = cameraData.find(socket);
+        if(it == cameraData.end()) {
+            continue;
+        }
+        const auto dst = it->second.extrinsics.toCameraSocket;
+        if(syncedSocketSet.count(dst) > 0) {
+            destinationSockets.insert(dst);
+        }
+    }
+
+    std::vector<CameraBoardSocket> chain;
+    std::set<CameraBoardSocket> visited;
+    auto appendFrom = [&](CameraBoardSocket socket) {
+        while(syncedSocketSet.count(socket) > 0 && visited.count(socket) == 0) {
+            chain.push_back(socket);
+            visited.insert(socket);
+            auto it = cameraData.find(socket);
+            if(it == cameraData.end()) {
+                break;
+            }
+            socket = it->second.extrinsics.toCameraSocket;
+        }
+    };
+
+    for(const auto socket : syncedSockets) {
+        if(destinationSockets.count(socket) == 0) {
+            appendFrom(socket);
+        }
+    }
+
+    for(const auto socket : syncedSockets) {
+        appendFrom(socket);
+    }
+
+    return chain;
+}
+
+}  // namespace
 
 class DynamicCalibration::Impl {
    public:
     /**
      * DCL held properties
      */
-    std::shared_ptr<dcl::CameraSensorHandle> sensorA;
-    std::shared_ptr<dcl::CameraSensorHandle> sensorB;
+    std::vector<std::shared_ptr<dcl::CameraSensorHandle>> sensors;
     std::shared_ptr<dcl::Device> device;
 
     dcl::DynamicCalibration dynCalibImpl;
@@ -56,27 +122,56 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
     const CameraBoardSocket boardSocketB,
     const std::pair<int, int>& resolutionA,
     const std::pair<int, int>& resolutionB) {
-    // clang-format off
-    std::shared_ptr<dcl::CameraCalibrationHandle> calibA = DclUtils::createDclCalibration(
-	currentCalibration.getCameraIntrinsics(boardSocketA, resolutionA.first, resolutionA.second, Point2f(), Point2f(),false),
-        currentCalibration.getDistortionCoefficients(boardSocketA),
-	{
-	    {1.0f, 0.0f, 0.0f},
-	    {0.0f, 1.0f, 0.0f},
-	    {0.0f, 0.0f, 1.0f}
-	},
-	{0.0f, 0.0f, 0.0f},
-	currentCalibration.getDistortionModel(boardSocketA)
-    );
-    std::shared_ptr<dcl::CameraCalibrationHandle> calibB = DclUtils::createDclCalibration(
-        currentCalibration.getCameraIntrinsics(boardSocketB, resolutionB.first, resolutionB.second, Point2f(), Point2f(),false),
-        currentCalibration.getDistortionCoefficients(boardSocketB),
-	currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB),
-	currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false, LengthUnit::METER),
-	currentCalibration.getDistortionModel(boardSocketB)
-    );
-    // clang-format on
-    return std::make_pair(calibA, calibB);
+    auto housingToCameraA = currentCalibration.getHousingCalibration(boardSocketA, HousingCoordinateSystem::AUTO, false, LengthUnit::METER);
+    matrix::invertSe3Matrix4x4InPlace(housingToCameraA);
+
+    auto housingToCameraB = currentCalibration.getHousingCalibration(boardSocketB, HousingCoordinateSystem::AUTO, false, LengthUnit::METER);
+    matrix::invertSe3Matrix4x4InPlace(housingToCameraB);
+
+    return std::make_pair(
+        DclUtils::createDclCalibration(currentCalibration.getCameraIntrinsics(boardSocketA, resolutionA.first, resolutionA.second, Point2f(), Point2f(), false),
+                                       currentCalibration.getDistortionCoefficients(boardSocketA),
+                                       extractRotation3x3(housingToCameraA),
+                                       extractTranslation3(housingToCameraA),
+                                       currentCalibration.getDistortionModel(boardSocketA)),
+        DclUtils::createDclCalibration(currentCalibration.getCameraIntrinsics(boardSocketB, resolutionB.first, resolutionB.second, Point2f(), Point2f(), false),
+                                       currentCalibration.getDistortionCoefficients(boardSocketB),
+                                       extractRotation3x3(housingToCameraB),
+                                       extractTranslation3(housingToCameraB),
+                                       currentCalibration.getDistortionModel(boardSocketB)));
+}
+
+std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::convertDaiCalibrationToDcl(const CalibrationHandler& currentCalibration,
+                                                                                    const CameraBoardSocket boardSocket,
+                                                                                    const ImgTransformation& transformation) {
+    auto intrinsicsArray = transformation.getIntrinsicMatrix();
+    std::vector<std::vector<float>> intrinsics = {
+        {intrinsicsArray[0][0], intrinsicsArray[0][1], intrinsicsArray[0][2]},
+        {intrinsicsArray[1][0], intrinsicsArray[1][1], intrinsicsArray[1][2]},
+        {intrinsicsArray[2][0], intrinsicsArray[2][1], intrinsicsArray[2][2]},
+    };
+
+    // Force the RGB principal point to the optical center requested by calibration flow.
+    if(boardSocket == CameraBoardSocket::CAM_A) {
+        intrinsics[0][2] = 2028.0f;
+        intrinsics[1][2] = 1520.0f;
+    }
+
+    auto distortion = transformation.getDistortionCoefficients();
+    if(distortion.empty() && transformation.getDistortionModel() == dai::CameraModel::Perspective) {
+        distortion.assign(DCL_PERSPECTIVE_DISTORTION_SIZE, 0.0f);
+    } else if(distortion.empty() && transformation.getDistortionModel() == dai::CameraModel::Fisheye) {
+        distortion.assign(DCL_FISHEYE_DISTORTION_SIZE, 0.0f);
+    }
+
+    auto housingToCamera = currentCalibration.getHousingCalibration(boardSocket, HousingCoordinateSystem::AUTO, false, LengthUnit::METER);
+    matrix::invertSe3Matrix4x4InPlace(housingToCamera);
+
+    return DclUtils::createDclCalibration(intrinsics,
+                                          distortion,
+                                          extractRotation3x3(housingToCamera),
+                                          extractTranslation3(housingToCamera),
+                                          transformation.getDistortionModel());
 }
 
 dcl::PerformanceMode DclUtils::daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode) {
@@ -96,8 +191,6 @@ dcl::PerformanceMode DclUtils::daiPerformanceModeToDclPerformanceMode(const dai:
     }
 }
 
-#define DCL_PERSPECTIVE_DISTORTION_SIZE (14)
-#define DCL_FISHEYE_DISTORTION_SIZE (4)
 std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(const std::vector<std::vector<float>>& cameraMatrix,
                                                                              const std::vector<float>& distortionCoefficients,
                                                                              const std::vector<std::vector<float>>& rotationMatrix,
@@ -155,6 +248,19 @@ std::vector<float> distortionToVector(const dcl::distortion_t& dist) {
             }
         },
         dist);
+}
+
+void enforceRgbPrincipalPoint(CalibrationHandler& calibHandler,
+                              const CameraBoardSocket socket,
+                              const std::pair<int, int>& resolution) {
+    if(socket != CameraBoardSocket::CAM_A) {
+        return;
+    }
+
+    auto intrinsics = calibHandler.getCameraIntrinsics(socket, resolution.first, resolution.second, Point2f(), Point2f(), false);
+    intrinsics[0][2] = 2028.0f;
+    intrinsics[1][2] = 1520.0f;
+    calibHandler.setCameraIntrinsics(socket, intrinsics, resolution.first, resolution.second);
 }
 
 void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
@@ -279,20 +385,25 @@ dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& sr
 }
 
 void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash) {
+    for(std::size_t index = 0; index < syncedSockets.size(); ++index) {
+        enforceRgbPrincipalPoint(handler, syncedSockets.at(index), syncedResolutions.at(index));
+    }
     logger->trace("Applying calibration to device");
     device->setCalibration(handler);
     if(flash) {
         device->flashCalibration(handler);
     }
-    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
-    pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorA, calibA);
-    pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorB, calibB);
+    for(std::size_t index = 0; index < pimplDCL->sensors.size(); ++index) {
+        auto calibration = DclUtils::convertDaiCalibrationToDcl(handler, syncedSockets.at(index), syncedTransformations.at(index));
+        pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensors.at(index), calibration);
+    }
 }
 
 void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
-    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
-    auto dataConfidence = pimplDCL->dynCalibImpl.computeDataConfidence(pimplDCL->sensorA, pimplDCL->sensorB);
-    auto calibrationConfidence = pimplDCL->dynCalibImpl.computeCalibrationConfidence(calibA, calibB, pimplDCL->sensorA, pimplDCL->sensorB);
+    auto calibA = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, syncedTransformations.at(0));
+    auto calibB = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketB, syncedTransformations.at(1));
+    auto dataConfidence = pimplDCL->dynCalibImpl.computeDataConfidence(pimplDCL->sensors.at(0), pimplDCL->sensors.at(1));
+    auto calibrationConfidence = pimplDCL->dynCalibImpl.computeCalibrationConfidence(calibA, calibB, pimplDCL->sensors.at(0), pimplDCL->sensors.at(1));
     auto metrics = std::make_shared<CalibrationMetrics>();
     if(!dataConfidence.passed()) {
         metrics->dataConfidence = 0.;
@@ -311,7 +422,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
     dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode);
     logger->trace("Running calibration quality check (force={} mode={})", force, static_cast<int>(pm));
 
-    auto dclResult = pimplDCL->dynCalibImpl.checkCalibration(pimplDCL->sensorA, pimplDCL->sensorB, pm);
+    auto dclResult = pimplDCL->dynCalibImpl.checkCalibration(pimplDCL->sensors.at(0), pimplDCL->sensors.at(1), pm);
 
     if(!dclResult.passed()) {
         auto result = std::make_shared<CalibrationQuality>();
@@ -334,7 +445,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
 DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler, const bool force) {
     dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode);
     logger->trace("Running calibration (force={} mode={})", force, static_cast<int>(pm));
-    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(pimplDCL->sensorA, pimplDCL->sensorB, pm);
+    std::vector<std::shared_ptr<const dcl::CameraSensorHandle>> sensorsForCalibration;
+    sensorsForCalibration.reserve(pimplDCL->sensors.size());
+    for(const auto& sensor : pimplDCL->sensors) {
+        sensorsForCalibration.push_back(sensor);
+    }
+    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(sensorsForCalibration, pm);
     if(!dclResult.passed()) {
         auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
         logger->trace("WARNING: Calibration failed: {}", dclResult.errorMessage());
@@ -343,30 +459,42 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
     }
 
-    auto dclCalibrationA = dclResult.value.newCalibration.first;
-    auto dclCalibrationB = dclResult.value.newCalibration.second;
-    // clang-format off
     auto newCalibrationHandler = currentHandler;
 
-    dai::node::DclUtils::convertDclCalibrationToDai(
-	newCalibrationHandler, dclCalibrationA, dclCalibrationB, daiSocketA, daiSocketB, resolutionA, resolutionB);
+    for(std::size_t chainIndex = 1; chainIndex < calibrationSocketChain.size(); ++chainIndex) {
+        const auto previousSocket = calibrationSocketChain.at(chainIndex - 1);
+        const auto currentSocket = calibrationSocketChain.at(chainIndex);
+        const auto previousCalibration = dclResult.value.at(socketToSensorIndex.at(previousSocket));
+        const auto currentCalibration = dclResult.value.at(socketToSensorIndex.at(currentSocket));
+        const auto& previousResolution = syncedResolutions.at(socketToSensorIndex.at(previousSocket));
+        const auto& currentResolution = syncedResolutions.at(socketToSensorIndex.at(currentSocket));
+
+        dai::node::DclUtils::convertDclCalibrationToDai(
+            newCalibrationHandler, previousCalibration, currentCalibration, previousSocket, currentSocket, previousResolution, currentResolution);
+    }
+    for(std::size_t index = 0; index < syncedSockets.size(); ++index) {
+        enforceRgbPrincipalPoint(newCalibrationHandler, syncedSockets.at(index), syncedResolutions.at(index));
+    }
 
     CalibrationQuality::Data qualityData{};
-    qualityData.rotationChange[0] = dclResult.value.calibrationDifference->rotationChange[0];
-    qualityData.rotationChange[1] = dclResult.value.calibrationDifference->rotationChange[1];
-    qualityData.rotationChange[2] = dclResult.value.calibrationDifference->rotationChange[2];
-    qualityData.depthErrorDifference = dclResult.value.calibrationDifference->depthDistanceDifference;
-    qualityData.sampsonErrorCurrent  = dclResult.value.calibrationDifference->sampsonErrorCurrent;
-    qualityData.sampsonErrorNew = dclResult.value.calibrationDifference->sampsonErrorNew;
+    auto qualityDifference = pimplDCL->dynCalibImpl.checkCalibration(pimplDCL->sensors.at(0), pimplDCL->sensors.at(1), pm);
+    if(qualityDifference.passed()) {
+        qualityData.rotationChange[0] = qualityDifference.value.rotationChange[0];
+        qualityData.rotationChange[1] = qualityDifference.value.rotationChange[1];
+        qualityData.rotationChange[2] = qualityDifference.value.rotationChange[2];
+        qualityData.depthErrorDifference = qualityDifference.value.depthDistanceDifference;
+        qualityData.sampsonErrorCurrent = qualityDifference.value.sampsonErrorCurrent;
+        qualityData.sampsonErrorNew = qualityDifference.value.sampsonErrorNew;
+    }
 
     DynamicCalibrationResult::Data resultData{};
-    resultData.newCalibration       = newCalibrationHandler;
-    resultData.currentCalibration   = currentHandler;
+    resultData.newCalibration = newCalibrationHandler;
+    resultData.currentCalibration = currentHandler;
     resultData.calibrationDifference = qualityData;
-    resultData.dataConfidence = dclResult.value.dataConfidence;
+    auto dataConfidence = pimplDCL->dynCalibImpl.computeDataConfidence(pimplDCL->sensors.at(0), pimplDCL->sensors.at(1));
+    resultData.dataConfidence = dataConfidence.passed() ? dataConfidence.value : 0.0;
 
     auto result = std::make_shared<DynamicCalibrationResult>(resultData, dclResult.errorMessage());
-    // clang-format on
     logger->trace(
         "Calibration successful. Rotation Δ=({}, {}, {})", qualityData.rotationChange[0], qualityData.rotationChange[1], qualityData.rotationChange[2]);
     calibrationOutput.send(result);
@@ -377,7 +505,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocking) {
     std::shared_ptr<dai::MessageGroup> inSyncGroup;
-    logger->trace("Attempting to load stereo image pair (blocking={})", blocking);
+    logger->trace("Attempting to load synchronized image set (blocking={})", blocking);
     if(!blocking) {
         inSyncGroup = syncInput.tryGet<dai::MessageGroup>();
     } else {
@@ -387,27 +515,31 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
     if(!inSyncGroup) {
         return DynamicCalibration::ErrorCode::EMPTY_IMAGE_QUEUE;
     }
-    auto leftFrame = inSyncGroup->get<dai::ImgFrame>(leftInputName);
-    auto rightFrame = inSyncGroup->get<dai::ImgFrame>(rightInputName);
+    dcl::DeviceImageList deviceImages;
+    deviceImages.reserve(syncedInputNames.size());
 
-    if(!leftFrame || !rightFrame) {
-        logger->trace("WARNING: Missing image(s) in MessageGroup (left={}, right={})", leftFrame ? "ok" : "missing", rightFrame ? "ok" : "missing");
-        return DynamicCalibration::ErrorCode::MISSING_IMAGE;
+    std::shared_ptr<dai::ImgFrame> referenceFrame;
+    for(std::size_t index = 0; index < syncedInputNames.size(); ++index) {
+        auto frame = inSyncGroup->get<dai::ImgFrame>(syncedInputNames.at(index));
+        if(!frame) {
+            logger->trace("WARNING: Missing image '{}' in MessageGroup", syncedInputNames.at(index));
+            return DynamicCalibration::ErrorCode::MISSING_IMAGE;
+        }
+        if(!referenceFrame) {
+            referenceFrame = frame;
+        }
+        syncedTransformations.at(index) = frame->getTransformation();
+        deviceImages.emplace_back(pimplDCL->sensors.at(index), DclUtils::cvMatToImageData(frame->getCvFrame()));
     }
 
-    dcl::timestamp_t timestamp = leftFrame->getTimestamp().time_since_epoch().count();
-    cv::Mat leftCvFrame = leftFrame->getCvFrame();
-    cv::Mat rightCvFrame = rightFrame->getCvFrame();
+    dcl::timestamp_t timestamp = referenceFrame->getTimestamp().time_since_epoch().count();
+    logger->trace("Loaded synchronized image set with {} frames @ timestamp={}", deviceImages.size(), timestamp);
 
-    logger->trace("Loaded stereo image pair: {}x{} and {}x{} @ timestamp={}",
-                  leftFrame->getWidth(),
-                  leftFrame->getHeight(),
-                  rightFrame->getWidth(),
-                  rightFrame->getHeight(),
-                  timestamp);
-
-    pimplDCL->dynCalibImpl.loadStereoImagePair(
-        DclUtils::cvMatToImageData(leftCvFrame), DclUtils::cvMatToImageData(rightCvFrame), pimplDCL->sensorA, pimplDCL->sensorB, timestamp);
+    auto loadResult = pimplDCL->dynCalibImpl.loadImages(deviceImages, timestamp);
+    if(!loadResult.passed()) {
+        logger->trace("WARNING: Failed to load synchronized image set: {}", loadResult.errorMessage());
+        return DynamicCalibration::ErrorCode::MISSING_IMAGE;
+    }
 
     return DynamicCalibration::ErrorCode::OK;
 }
@@ -415,7 +547,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runLoadImage(const bool blocki
 
 DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     auto resultCoverage =
-        pimplDCL->dynCalibImpl.computeCoverage(pimplDCL->sensorA, pimplDCL->sensorB, DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode));
+        pimplDCL->dynCalibImpl.computeCoverage(pimplDCL->sensors.at(0), pimplDCL->sensors.at(1), DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode));
 
     if(!resultCoverage.passed()) {
         throw std::runtime_error("Coverage check failed!");
@@ -444,42 +576,75 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     if(!inSyncGroup) {
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
-    auto leftFrame = inSyncGroup->get<dai::ImgFrame>(leftInputName);
-    auto rightFrame = inSyncGroup->get<dai::ImgFrame>(rightInputName);
-    if(!leftFrame || !rightFrame) {
+    syncedInputNames = inSyncGroup->getMessageNames();
+    if(syncedInputNames.size() < 2) {
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
     }
-
-    resolutionA = std::make_pair(leftFrame->getWidth(), leftFrame->getHeight());
-    resolutionB = std::make_pair(rightFrame->getWidth(), rightFrame->getHeight());
-
-    daiSocketA = static_cast<CameraBoardSocket>(leftFrame->instanceNum);
-    daiSocketB = static_cast<CameraBoardSocket>(rightFrame->instanceNum);
-    if(daiSocketA == daiSocketB) {
-        logger->error("Both input images are from the same socket: {}", static_cast<int>(daiSocketA));
-        return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+    std::sort(syncedInputNames.begin(), syncedInputNames.end());
+    if(auto leftIt = std::find(syncedInputNames.begin(), syncedInputNames.end(), leftInputName); leftIt != syncedInputNames.end()) {
+        std::iter_swap(syncedInputNames.begin(), leftIt);
     }
+    if(syncedInputNames.size() > 1) {
+        if(auto rightIt = std::find(syncedInputNames.begin() + 1, syncedInputNames.end(), rightInputName); rightIt != syncedInputNames.end()) {
+            std::iter_swap(syncedInputNames.begin() + 1, rightIt);
+        }
+    }
+
+    syncedSockets.clear();
+    syncedResolutions.clear();
+    syncedTransformations.clear();
+    inputNameToSensorIndex.clear();
+    socketToSensorIndex.clear();
+
+    std::set<CameraBoardSocket> uniqueSockets;
+    for(const auto& inputName : syncedInputNames) {
+        auto frame = inSyncGroup->get<dai::ImgFrame>(inputName);
+        if(!frame) {
+            return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+        }
+        const auto socket = static_cast<CameraBoardSocket>(frame->instanceNum);
+        if(!uniqueSockets.insert(socket).second) {
+            logger->error("Multiple synchronized inputs use the same socket: {}", static_cast<int>(socket));
+            return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
+        }
+        inputNameToSensorIndex.emplace(inputName, syncedSockets.size());
+        socketToSensorIndex.emplace(socket, syncedSockets.size());
+        syncedSockets.push_back(socket);
+        syncedResolutions.emplace_back(frame->getWidth(), frame->getHeight());
+        syncedTransformations.push_back(frame->getTransformation());
+    }
+
+    daiSocketA = syncedSockets.at(0);
+    daiSocketB = syncedSockets.at(1);
+    resolutionA = syncedResolutions.at(0);
+    resolutionB = syncedResolutions.at(1);
 
     logger->trace("Converting dai calibration to dcl");
 
     calibrationHandler = daiDevice->getCalibration();
+    for(std::size_t index = 0; index < syncedSockets.size(); ++index) {
+        enforceRgbPrincipalPoint(calibrationHandler, syncedSockets.at(index), syncedResolutions.at(index));
+    }
     auto eepromData = calibrationHandler.getEepromData();
     auto platform = daiDevice->getPlatform();
     if(platform == dai::Platform::RVC2 && !eepromData.stereoEnableDistortionCorrection && !oldCalibrationWarningIssued) {
         logger->trace("The calibration on the device is old (distortion correction is disabled), for optimal performance full re-calibration is recommended!");
         oldCalibrationWarningIssued = true;
     }
-    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, resolutionA, resolutionB);
-
     // set up the dynamic calibration
     pimplDCL->device = pimplDCL->dynCalibImpl.addDevice();
-    dcl::resolution_t resolutionDclA{static_cast<unsigned>(resolutionA.first), static_cast<unsigned>(resolutionA.second)};
-    dcl::resolution_t resolutionDclB{static_cast<unsigned>(resolutionB.first), static_cast<unsigned>(resolutionB.second)};
+    pimplDCL->sensors.clear();
+    pimplDCL->sensors.reserve(syncedSockets.size());
+    calibrationSocketChain = buildCalibrationSocketChain(calibrationHandler, syncedSockets);
 
-    logger->trace("Added sensors to dynCalibImpl");
+    for(std::size_t index = 0; index < syncedSockets.size(); ++index) {
+        auto calibration = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, syncedSockets.at(index), syncedTransformations.at(index));
+        dcl::resolution_t resolutionDcl{static_cast<unsigned>(syncedResolutions.at(index).first), static_cast<unsigned>(syncedResolutions.at(index).second)};
+        pimplDCL->sensors.push_back(
+            pimplDCL->dynCalibImpl.addSensor(pimplDCL->device, calibration, resolutionDcl, static_cast<dcl::socket_t>(syncedSockets.at(index))));
+    }
 
-    pimplDCL->sensorA = pimplDCL->dynCalibImpl.addSensor(pimplDCL->device, calibA, resolutionDclA);
-    pimplDCL->sensorB = pimplDCL->dynCalibImpl.addSensor(pimplDCL->device, calibB, resolutionDclB);
+    logger->trace("Added {} sensors to dynCalibImpl", pimplDCL->sensors.size());
 
     return DynamicCalibration::ErrorCode::OK;
 }
@@ -544,7 +709,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     // Reset/remove accumulated data
     else if(std::holds_alternative<DC::Commands::ResetData>(cmd)) {
         logger->trace("Received RemoveDataCommand: removing the data");
-        pimplDCL->dynCalibImpl.removeAllData(pimplDCL->sensorA, pimplDCL->sensorB);
+        pimplDCL->dynCalibImpl.removeDeviceMeasurements(pimplDCL->device);
         return ErrorCode::OK;
     }
     // Set performance mode

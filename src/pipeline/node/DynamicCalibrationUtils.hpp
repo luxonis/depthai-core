@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DynamicCalibration.hpp>
+#include <depthai/common/ImgTransformations.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
@@ -9,6 +10,10 @@
 namespace dai {
 namespace node {
 struct DclUtils {
+    static std::shared_ptr<dcl::CameraCalibrationHandle> convertDaiCalibrationToDcl(const CalibrationHandler& currentCalibration,
+                                                                                     const CameraBoardSocket boardSocket,
+                                                                                     const ImgTransformation& transformation);
+
     static void convertDclCalibrationToDai(CalibrationHandler& calibHandler,
                                            const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationA,
                                            const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationB,

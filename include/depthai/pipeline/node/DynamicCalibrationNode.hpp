@@ -1,9 +1,12 @@
 #pragma once
 
+#include <depthai/common/ImgTransformations.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
+#include <unordered_map>
+#include <vector>
 
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"
@@ -184,6 +187,13 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
     std::pair<int, int> resolutionA;
     std::pair<int, int> resolutionB;
+    std::vector<std::string> syncedInputNames;
+    std::vector<CameraBoardSocket> syncedSockets;
+    std::vector<std::pair<int, int>> syncedResolutions;
+    std::vector<ImgTransformation> syncedTransformations;
+    std::vector<CameraBoardSocket> calibrationSocketChain;
+    std::unordered_map<std::string, std::size_t> inputNameToSensorIndex;
+    std::unordered_map<CameraBoardSocket, std::size_t> socketToSensorIndex;
     std::shared_ptr<::spdlog::async_logger> logger;
 
     // std::chrono::milliseconds sleepingTime = 250ms;
