@@ -6,6 +6,7 @@
 #include <depthai/properties/ImageAlignProperties.hpp>
 
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
+#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
 
 namespace dai {
 namespace node {
@@ -37,24 +38,24 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
      * Input message.
      * Default queue is non-blocking with size 4.
      */
-    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}}}};
+    Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::TransformableBuffer, true}}}};
 
     /**
      * Input align to message.
      * Default queue is non-blocking with size 1.
      */
-    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}}, true}};
+    Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::TransformableBuffer, true}}, true}};
 
     /**
      * Outputs ImgFrame message that is aligned to inputAlignTo.
      */
-    Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}}}};
+    Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::TransformableBuffer, true}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInput{*this, {"passthroughInput", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}}}};
+    Output passthroughInput{*this, {"passthroughInput", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::TransformableBuffer, true}}}};
 
     /**
      * Specify the output size of the aligned image
@@ -95,7 +96,16 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     void run() override;
 
    private:
+    struct ImgFrameRunState;
     bool runOnHostVar = false;
+
+    void extractCalibrationData(ImgFrameRunState& state, int depthWidth, int depthHeight, int alignWidth, int alignHeight);
+    std::shared_ptr<ImgFrame> alignImgFrameInput(const ImageAlign::ImgFrameRunState state, std::shared_ptr<ImgFrame> inputImg);
+
+    void legacyRun(std::shared_ptr<ImgFrame> firstInputImg,
+                   std::shared_ptr<Buffer> inputAlignToMsg);  // lagacy ImgFrame to ImgFrame alignment
+    void genericAlignRun(std::shared_ptr<Buffer> firstInput,
+                         std::shared_ptr<Buffer> inputAlignToMsg);  // if one of the inputs is transformable buffer
 };
 
 }  // namespace node
