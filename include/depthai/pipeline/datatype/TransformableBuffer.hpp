@@ -23,6 +23,10 @@ class TransformableBuffer : public Buffer {
 
     std::shared_ptr<TransformableBuffer> cloneAndTransformTo(const ImgTransformation& target) const;
 
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::TransformableBuffer;
+    }
+
     DEPTHAI_SERIALIZE(TransformableBuffer, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, transformation);
 };
 
