@@ -1,8 +1,10 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KomputeProject/kompute
-    REF 48c127d37750ed7033bf0f74972adad0ce099716
-    SHA512 d46984e2f49b6b0c3eb313c03a935e2a1e3d480e40295bb2016f82ea1a23b484323f5bb534bffc309e1b09d219a7da8cf6dcea6e0b5ab8ee9f7aa65b6440b87d
+    # Pinned 48c127d fails against current vcpkg Vulkan-Hpp (DispatchLoaderDynamic / debug types).
+    # 6160e788 is current master; includes VK_VERSION_1_4 dispatch-loader fixes.
+    REF 6160e788daec0c8dc74b1f184d94809bf89872a9
+    SHA512 565da26aca4d228be3dd1d56acba5bbf5bf72c531f0ca37b62056fb472175cba7b60bcc08accf41fcb336be6d9484af58469244964a0f924a7bea80ec960f3c2
     HEAD_REF master
 )
 

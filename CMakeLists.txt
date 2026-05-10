@@ -20,8 +20,9 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # Support for CMake 4
 if(CCACHE_PROGRAM)
     message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
 
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+    # Use full path: bare "ccache" breaks when Ninja runs with a minimal PATH (e.g. depthai-device Docker / vcpkg).
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CCACHE_PROGRAM}")
 endif()
 
 

@@ -7,14 +7,31 @@ Stereo-style demo using the unified dai.node.Depth group (StereoDepth on RVC2/RV
   rejects new queues after build). The first ``depth``/``confidence`` access wires cameras and the backend.
 - For a non-``AUTO`` backend, pass ``dai.node.Depth.Algorithm`` to ``pipeline.create`` (e.g.
   ``pipeline.create(dai.node.Depth, dai.node.Depth.Algorithm.TOF)``), or ``algorithm=`` as a keyword.
+- Use ``--ip ADDR`` to connect over Ethernet (e.g. PoE) instead of auto-picking the first USB device.
 """
+
+import argparse
 
 import cv2
 import depthai as dai
 import numpy as np
 
-pipeline = dai.Pipeline()
-depth_node = pipeline.create(dai.node.Depth)
+parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument(
+    "--ip",
+    metavar="ADDR",
+    default=None,
+    help="Device IP for TCP/IP (e.g. PoE). If omitted, the default device search is used (often first USB).",
+)
+args = parser.parse_args()
+
+if args.ip:
+    device = dai.Device(dai.DeviceInfo(args.ip))
+    pipeline = dai.Pipeline(device)
+else:
+    pipeline = dai.Pipeline()
+
+depth_node = pipeline.create(dai.node.Depth, dai.node.Depth.Algorithm.GPU_STEREO)
 
 depth_queue = depth_node.depth.createOutputQueue()
 confidence_queue = depth_node.confidence.createOutputQueue()
