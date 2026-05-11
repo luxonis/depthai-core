@@ -4,6 +4,8 @@
 
 #include <stdexcept>
 
+#include "depthai/pipeline/datatype/AprilTagConfig.hpp"
+#include "depthai/properties/AprilTagProperties.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/AprilTagConfig.hpp"
 #include "properties/AprilTagProperties.hpp"
