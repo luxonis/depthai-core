@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Minimal GPUStereo example — disparity and depth from a stereo camera pair."""
 
+import argparse
 import cv2
 import depthai as dai
 import numpy as np
 
-DEVICE_IP = "10.11.0.51"
+parser = argparse.ArgumentParser(description="GPUStereo disparity example")
+parser.add_argument("--device", "-d", type=str, default="10.11.0.51", help="Device IP address")
+args = parser.parse_args()
+
+DEVICE_IP = args.device
 RESOLUTION = (1280, 800)
 FPS = 30
 
