@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include "common/ImgTransformations.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Rect.hpp"
