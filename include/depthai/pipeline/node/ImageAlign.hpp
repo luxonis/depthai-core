@@ -106,6 +106,8 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
                    std::shared_ptr<Buffer> inputAlignToMsg);  // lagacy ImgFrame to ImgFrame alignment
     void genericAlignRun(std::shared_ptr<TransformableBuffer> firstInput,
                          std::shared_ptr<Buffer> inputAlignToMsg);  // if one of the inputs is transformable buffer
+
+    std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame inputImg, const ImgTransformation& inputTransform, const ImgTransformation& alignToTransform);
 };
 
 }  // namespace node

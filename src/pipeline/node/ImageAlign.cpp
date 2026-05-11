@@ -9,6 +9,8 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/DatatypeEnum.hpp"
+#include "pipeline/datatype/ImgDetections.hpp"
+#include "pipeline/datatype/ImgFrame.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     #include <opencv2/calib3d.hpp>
@@ -771,6 +773,334 @@ ImgTransformation extractTransformationFromBuffer(const std::shared_ptr<Buffer>&
     return transform;
 }
 
+std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg, const ImgTransformation& inputTransform, const ImgTransformation& alignToTransform) {
+    using namespace std::chrono;
+    auto& logger = pimpl->logger;
+
+    bool degenerateStereoTransform = false;
+    bool rotationOnlyDegenerateTransform = false;
+    std::array<std::array<float, 3>, 3> depthSourceIntrinsics = inputTransform.getIntrinsicMatrix();
+    std::array<std::array<float, 3>, 3> alignSourceIntrinsics = alignToTransform.getIntrinsicMatrix();
+    std::array<std::array<float, 4>, 4> depthToAlignExtrinsics = inputTransform.getExtrinsics().getExtrinsicsTransformationTo(alignToTransform.getExtrinsics());
+    std::vector<float> depthDistortionCoefficients = inputTransform.getDistortionCoefficients();
+
+    ImgFrame::Type inputFrameType = inputImg.getType();
+
+    int alignWidth = alignToTransform.getSize().first;
+    int alignHeight = alignToTransform.getSize().second;
+
+    cv::Mat map_x_1, map_y_1;
+    cv::Mat map_x_2, map_y_2;
+
+    bool allocated = false;
+    uint32_t frameSize = 0;
+    uint32_t outFrameSize = 0;
+
+    std::unordered_set<ImgFrame::Type> hwSupportedFrameTypes = {ImgFrame::Type::YUV420p, ImgFrame::Type::NV12, ImgFrame::Type::GRAY8, ImgFrame::Type::RAW8};
+    std::unordered_set<ImgFrame::Type> supportedFrameTypes = hwSupportedFrameTypes;
+    supportedFrameTypes.insert(ImgFrame::Type::RAW16);
+
+    std::unordered_map<ImgFrame::Type, float> frameTypeToBpp = {
+        {ImgFrame::Type::YUV420p, 1.5f},
+        {ImgFrame::Type::NV12, 1.5f},
+        {ImgFrame::Type::GRAY8, 1.0f},
+        {ImgFrame::Type::RAW8, 1.0f},
+        {ImgFrame::Type::RAW16, 2.0f},
+    };
+
+    std::vector<std::vector<float> > depthToAlignRotation = dai::matrix::matrix3x3ToVectorMatrix(inputTransform.getRotationMatrixTo(alignToTransform));
+    auto translation = inputTransform.getTranslationVectorTo(alignToTransform, false, LengthUnit::MILLIMETER);
+    std::vector<float> depthToAlignTranslation = {translation[0], translation[1], translation[2]};
+    std::vector<float> alignDistortionCoefficients;
+
+    auto allocatePools = [&](int width, int height, int alignWidth, int alignHeight, float inputFrameBpp) -> std::pair<bool, std::string> {
+        if(allocated) return {true, ""};
+
+        float bpp = inputFrameBpp;
+
+        frameSize = roundf(width * height * bpp);
+
+        outFrameSize = roundf(alignWidth * alignHeight * bpp);
+
+        allocated = true;
+        return {true, ""};
+    };
+
+    if(depthDistortionCoefficients.empty()) {
+        depthDistortionCoefficients.assign(14, 0.0f);
+    }
+    int depthWidth = static_cast<int>(inputImg.getWidth());
+    int depthHeight = static_cast<int>(inputImg.getHeight());
+
+    auto cv_M1 = arrayToCvMat(3, 3, CV_32FC1, depthSourceIntrinsics);
+    auto cv_M2 = arrayToCvMat(3, 3, CV_32FC1, alignSourceIntrinsics);
+
+    auto cv_d1 = vecToCvMat(1, depthDistortionCoefficients.size(), CV_32FC1, depthDistortionCoefficients);
+    auto cv_dNone = vecToCvMat(
+        1, alignDistortionCoefficients.size(), CV_32FC1, std::vector<float>(alignDistortionCoefficients.size(), 0.0f));  // No distortion for aligned frame
+    // NEED TO WARN IF alignToDistortionCoefficients ARE NOT ZERO, AS THIS MEANS THE ALIGNED IMAGE WILL BE UNDISTORTED, RENDERING THE ALIGNMENT INACCURATE
+    auto cv_R = vecToCvMat(3, 3, CV_32FC1, depthToAlignRotation);
+    auto cv_T = vecToCvMat(1, 3, CV_32FC1, depthToAlignTranslation);
+
+    const float translationNorm = std::sqrt(depthToAlignTranslation[0] * depthToAlignTranslation[0] + depthToAlignTranslation[1] * depthToAlignTranslation[1]
+                                            + depthToAlignTranslation[2] * depthToAlignTranslation[2]);
+    degenerateStereoTransform = translationNorm <= 1e-6f;
+    const std::array<std::array<float, 3>, 3> identityRotation = {{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
+    rotationOnlyDegenerateTransform =
+        degenerateStereoTransform && !dai::matrix::mateq(dai::matrix::vectorMatrixToMatrix3x3(depthToAlignRotation), identityRotation, 1e-4f);
+
+    cv::Mat cv_R1, cv_R2;
+    if(degenerateStereoTransform) {
+        cv_R1 = cv::Mat::eye(3, 3, CV_32FC1);
+        cv_R2 = cv::Mat::eye(3, 3, CV_32FC1);
+    } else {
+        cv::Size imageSize = cv::Size(depthWidth, depthHeight);
+        std::tie(cv_R1, cv_R2) = computeRectificationMatrices(cv_M1, cv_d1, cv_M2, cv_dNone, imageSize, cv_R, cv_T);
+    }
+
+    // dai::CameraModel cameraModel = dai::CameraModel::Perspective;  // todo
+
+    auto cv_targetCamMatrix = cv_M1.clone();
+    auto cv_meshSize = cv::Size(depthWidth, depthHeight);
+
+    cv::initUndistortRectifyMap(cv_M1, cv_d1, cv_R1, cv_targetCamMatrix, cv_meshSize, CV_32FC1, map_x_1, map_y_1);
+
+    cv::Mat cv_newR;
+    cv::Mat cv_newT = cv::Mat::zeros(3, 1, CV_32FC1);
+    if(rotationOnlyDegenerateTransform) {
+        cv_newR = cv_R.clone();
+    } else if(degenerateStereoTransform) {
+        cv_newR = cv::Mat::eye(3, 3, CV_32FC1);
+    } else {
+        cv_newR = cv_R2 * (cv_R * cv_R1.t());
+        cv_newT = cv_R2 * cv_T.t();
+    }
+
+    for(size_t i = 0; i < 3; i++) {
+        for(size_t j = 0; j < 3; j++) {
+            depthToAlignExtrinsics[i][j] = cv_newR.at<float>(i, j);
+        }
+    }
+    for(size_t i = 0; i < 3; i++) {
+        depthToAlignExtrinsics[i][3] = cv_newT.at<float>(i);
+    }
+
+    cv::Mat cv_combinedExtrinsics = cv::Mat::eye(4, 4, CV_32F);
+    cv_newR.copyTo(cv_combinedExtrinsics(cv::Rect(0, 0, 3, 3)));
+    cv_newT.copyTo(cv_combinedExtrinsics(cv::Rect(3, 0, 1, 3)));
+
+    // Rotate the depth to the RGB frame
+    cv::Mat cv_R_back;
+    if(rotationOnlyDegenerateTransform) {
+        cv_R_back = cv_R.clone();
+    } else {
+        cv_R_back = cv_R2.t();
+    }
+
+    cv_meshSize = cv::Size(alignWidth, alignHeight);
+
+    cv::initUndistortRectifyMap(cv_targetCamMatrix, cv_dNone, cv_R_back, cv_M2, cv_meshSize, CV_32FC1, map_x_2, map_y_2);
+
+    auto remapNv12 = [&](cv::Mat& inputNV12, cv::Mat& outputNV12, cv::Mat& map_x, cv::Mat& map_y) {
+        cv::Mat bgrFrame;
+        cv::cvtColor(inputNV12, bgrFrame, cv::COLOR_YUV2BGR_NV12);
+
+        cv::Mat remappedBGR;
+        cv::remap(bgrFrame, remappedBGR, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+
+        cv::cvtColor(remappedBGR, outputNV12, cv::COLOR_BGR2YUV_YV12);
+    };
+
+    auto remapYuv420 = [&](cv::Mat& inputYUV420, cv::Mat& outputYUV420, cv::Mat& map_x, cv::Mat& map_y) {
+        cv::Mat bgrFrame;
+        cv::cvtColor(inputYUV420, bgrFrame, cv::COLOR_YUV2BGR_IYUV);
+
+        cv::Mat remappedBGR;
+        cv::remap(bgrFrame, remappedBGR, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+
+        cv::cvtColor(remappedBGR, outputYUV420, cv::COLOR_BGR2YUV_I420);
+    };
+
+    auto shiftMesh = [](cv::Mat& meshX, int shiftX) { meshX = meshX + cv::Scalar(shiftX); };
+
+    // bool keepAspectRatio = properties.outKeepAspectRatio;
+
+    bool initialized = false;
+
+    auto latestConfig = initialConfig;
+
+    int previousShiftFactor = 0;
+
+    bool inputIsDepth = inputImg.getType() == ImgFrame::Type::RAW16;
+
+    uint32_t width = inputImg.getWidth();
+    uint32_t height = inputImg.getHeight();
+
+    inputFrameType = inputImg.getType();
+
+    depthSourceIntrinsics = inputTransform.getIntrinsicMatrix();
+    depthDistortionCoefficients = inputTransform.getDistortionCoefficients();
+
+    if(!supportedFrameTypes.count(inputFrameType)) {
+        // logger->error("Frame type '{}' is not supported in ImageAlign.", (int)inputFrameType);  // todo toStr
+        throw std::runtime_error("Unsupported frame type in ImageAlign");
+    }
+    float inputFrameBpp = frameTypeToBpp[inputFrameType];
+
+    auto [success, msg] = allocatePools(width, height, alignWidth, alignHeight, inputFrameBpp);
+    if(!success) {
+        // logger->error(msg);
+        throw std::runtime_error(msg);
+    }
+
+    // auto staticDepthPlane = latestConfig->staticDepthPlane;
+    // int constantShiftFactor = 0;
+    // if(staticDepthPlane != 0) {
+    //     constantShiftFactor = roundf((depthToAlignExtrinsics[0][3] * depthSourceIntrinsics[0][0]) / (float)staticDepthPlane);
+    // }
+
+    // int currentShiftFactor = constantShiftFactor - previousShiftFactor;
+
+    // if(currentShiftFactor != 0) {
+    //     shiftMesh(map_x_1, -currentShiftFactor);
+    // }
+
+    // previousShiftFactor = constantShiftFactor;
+
+    decltype(steady_clock::now()) t1, t2, tStart, tStop;
+    tStart = steady_clock::now();
+    if(PRINT_DEBUG) {
+        t1 = steady_clock::now();
+    }
+
+    // warp1
+    auto depthImgRectified = std::make_shared<ImgFrame>();
+    depthImgRectified->setData(std::vector<uint8_t>(frameSize));
+
+    depthImgRectified->setMetadata(inputImg);
+    depthImgRectified->setWidth(inputImg.getWidth());
+    depthImgRectified->setHeight(inputImg.getHeight());
+    depthImgRectified->setType(inputImg.getType());
+    depthImgRectified->fb.stride = depthImgRectified->fb.width * depthImgRectified->getBytesPerPixel();
+
+    auto inputFrame = inputImg.getFrame();
+    auto depthImgRectifiedFrame = depthImgRectified->getFrame();
+
+    if(inputFrameBpp == 1.5f) {
+        auto inputFrameCopy = inputFrame.clone();
+        if(depthImgRectified->getType() == ImgFrame::Type::NV12) {
+            remapNv12(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
+        } else if(depthImgRectified->getType() == ImgFrame::Type::YUV420p) {
+            remapYuv420(inputFrameCopy, depthImgRectifiedFrame, map_x_1, map_y_1);
+        } else {
+            logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)depthImgRectified->getType());
+        }
+    } else {
+        cv::remap(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(255, 255, 255));
+    }
+
+    if(PRINT_DEBUG) {
+        t2 = steady_clock::now();
+        auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
+        logger->warn("Align step1 took '{}' ms.", elapsed);
+    }
+
+    auto shiftedOutput = std::make_shared<ImgFrame>();
+    shiftedOutput->setData(std::vector<uint8_t>(frameSize));
+
+    if(PRINT_DEBUG) {
+        t1 = steady_clock::now();
+    }
+
+    auto warp2Input = depthImgRectified;
+
+    if(inputIsDepth && !degenerateStereoTransform) {
+        shiftedOutput->setMetadata(inputImg);
+        shiftedOutput->setWidth(inputImg.getWidth());
+        shiftedOutput->setHeight(inputImg.getHeight());
+        shiftedOutput->setType(inputImg.getType());
+        shiftedOutput->fb.stride = shiftedOutput->fb.width * shiftedOutput->getBytesPerPixel();
+
+        auto startProcessing = high_resolution_clock::now();
+
+        int nErr = 0;
+        nErr = shiftDepthImg(depthImgRectified, shiftedOutput, depthSourceIntrinsics, depthToAlignExtrinsics);
+
+        if(nErr != 0) {
+            logger->error("alignDepthImg failed with code {}", nErr);
+        }
+
+        auto stopProcessing = high_resolution_clock::now();
+
+        auto durationProcessing = duration_cast<microseconds>(stopProcessing - startProcessing);
+        logger->debug("Processing time: {} ms", durationProcessing.count() / 1000.0f);
+
+        warp2Input = shiftedOutput;
+    }
+
+    if(PRINT_DEBUG) {
+        t2 = steady_clock::now();
+        auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
+        logger->warn("Align step2 took '{}' ms.", elapsed);
+    }
+
+    if(PRINT_DEBUG) {
+        t1 = steady_clock::now();
+    }
+
+    // warp2
+    auto alignedImg = std::make_shared<ImgFrame>();
+    alignedImg->setData(std::vector<uint8_t>(outFrameSize));
+    if(PRINT_DEBUG) {
+        t2 = steady_clock::now();
+        auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
+        logger->warn("Align output pool took '{}' ms.", elapsed);
+        t1 = steady_clock::now();
+    }
+
+    alignedImg->setMetadata(inputImg);
+    alignedImg->setWidth(alignWidth);
+    alignedImg->setHeight(alignHeight);
+    alignedImg->setType(inputImg.getType());
+    alignedImg->fb.stride = alignedImg->fb.width * alignedImg->getBytesPerPixel();
+
+    auto warp2InputFrame = warp2Input->getFrame();
+    auto alignedImgFrame = alignedImg->getFrame();
+    if(inputFrameBpp == 1.5f) {
+        if(alignedImg->getType() == ImgFrame::Type::NV12) {
+            remapNv12(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2);
+        } else if(alignedImg->getType() == ImgFrame::Type::YUV420p) {
+            remapYuv420(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2);
+        } else {
+            logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)alignedImg->getType());
+        }
+    } else {  // TODO: the border needs to be adjusted based on what the bg color actually is!
+        cv::remap(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(255, 255, 255));
+    }
+    if(PRINT_DEBUG) {
+        t2 = steady_clock::now();
+        auto elapsed = duration_cast<microseconds>(t2 - t1).count() / 1000.f;
+        logger->warn("Align step3 took '{}' ms.", elapsed);
+    }
+
+    alignedImg->setInstanceNum((uint32_t)inputImg.getInstanceNum());
+
+    alignedImg->setTimestamp(inputImg.getTimestamp());
+    alignedImg->setTimestampDevice(inputImg.getTimestampDevice());
+    alignedImg->setSequenceNum(inputImg.getSequenceNum());
+
+    alignedImg->transformation = alignToTransform;
+    const auto alignToDistortion = alignToTransform.getDistortionCoefficients();
+    alignedImg->transformation.setDistortionCoefficients(std::vector<float>(alignToDistortion.size(), 0.0f));
+
+    tStop = steady_clock::now();
+    auto runtime = duration_cast<milliseconds>(tStop - tStart).count();
+
+    logger->trace("ImageAlign took {} ms", runtime);
+
+    return alignedImg;
+}
+
 void ImageAlign::genericAlignRun(std::shared_ptr<TransformableBuffer> firstInput, std::shared_ptr<Buffer> firstAlignTo) {
     // transformable -> ImgFrame / Transformable
     auto& logger = pimpl->logger;
@@ -822,7 +1152,17 @@ void ImageAlign::genericAlignRun(std::shared_ptr<TransformableBuffer> firstInput
             logger->error("Input message does not have a transformation, cannot align!");
             throw std::runtime_error("Input message does not have a transformation, cannot align!");
         }
-        alignToTransform = extractTransformationFromBuffer(alignToMsg, alignToDatatype);
+        auto newTransformation = extractTransformationFromBuffer(alignToMsg, alignToDatatype);
+
+        if(inputMsg->getDatatype() == DatatypeEnum::ImgDetections) {
+            auto imgDetectionsInput = std::dynamic_pointer_cast<ImgDetections>(inputMsg);
+            auto segMask = imgDetectionsInput->getSegmentationMask();
+            if(segMask) {  // need to add check if Transformation even changed and not update the rectify map and stuff
+                auto alignedSegMask = alignImgFrame(*segMask, inputMsg->getTransformation().value(), newTransformation);
+                imgDetectionsInput->setSegmentationMask(*alignedSegMask);
+            }
+        }
+        alignToTransform = newTransformation;
 
         auto alignedInputMsg = inputMsg->cloneAndTransformTo(alignToTransform);
 
