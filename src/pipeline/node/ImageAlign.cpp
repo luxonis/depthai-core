@@ -743,132 +743,95 @@ void ImageAlign::run() {
                || isDatatypeSubclassOf(DatatypeEnum::TransformableBuffer, datatype);
     };
 
-    if(inputDatatype == DatatypeEnum::ImgFrame && alignToDatatype == DatatypeEnum::ImgFrame) {
+    if(inputDatatype == DatatypeEnum::ImgFrame) {
         logger->warn("Running legacy");
-        legacyRun(std::dynamic_pointer_cast<ImgFrame>(firstInput), std::dynamic_pointer_cast<ImgFrame>(firstAlignTo));
+        legacyRun(std::dynamic_pointer_cast<ImgFrame>(firstInput), std::dynamic_pointer_cast<Buffer>(firstAlignTo));
     } else if(isImgFrameOrTransformable(inputDatatype) && isImgFrameOrTransformable(alignToDatatype)) {
-        genericAlignRun(std::dynamic_pointer_cast<Buffer>(firstInput), std::dynamic_pointer_cast<Buffer>(firstAlignTo));
+        genericAlignRun(std::dynamic_pointer_cast<TransformableBuffer>(firstInput), std::dynamic_pointer_cast<Buffer>(firstAlignTo));
     }
 }
 
-void ImageAlign::genericAlignRun(std::shared_ptr<Buffer> firstInput, std::shared_ptr<Buffer> firstAlignTo) {
-    {
-        auto blockEvent = this->outputBlockEvent();
-        outputAligned.send(firstAlignTo);
-        passthroughInput.send(firstInput);
+ImgTransformation extractTransformationFromBuffer(const std::shared_ptr<Buffer>& buffer, DatatypeEnum datatype) {
+    ImgTransformation transform;
+    if(datatype == DatatypeEnum::TransformableBuffer) {
+        auto transformable = std::dynamic_pointer_cast<TransformableBuffer>(buffer);
+        if(!transformable || !transformable->getTransformation().has_value()) {
+            // logger->error("Input connected to inputAlignTo does not have a ImgTransformation set, cannot use it as alignTo target!");
+            throw std::runtime_error("Missing ImgTransformation on inputAlignTo");
+        }
+
+        transform = *transformable->getTransformation();
+    } else if(datatype == DatatypeEnum::ImgFrame) {
+        auto alignToImg = std::dynamic_pointer_cast<ImgFrame>(buffer);
+        transform = alignToImg->transformation;
+    } else {
+        // logger->error("Unsupported datatype on inputAlignTo: {}", (int)datatype);
+        throw std::runtime_error("Unsupported datatype on inputAlignTo");
     }
+    return transform;
+}
 
-    // auto nextInputBuffer = [&]() -> std::shared_ptr<TransformableBuffer> {
-    //     if(firstInput) return std::exchange(firstInput, nullptr);
-    //     return input.get<TransformableBuffer>();
-    // };
+void ImageAlign::genericAlignRun(std::shared_ptr<TransformableBuffer> firstInput, std::shared_ptr<Buffer> firstAlignTo) {
+    // transformable -> ImgFrame / Transformable
+    auto& logger = pimpl->logger;
 
-    // auto nextAlignToBuffer = [&]() -> std::shared_ptr<TransformableBuffer> {
-    //     if(firstAlignTo) return std::exchange(firstAlignTo, nullptr);
-    //     return inputAlignTo.get<TransformableBuffer>();
-    // };
-    // DatatypeEnum inputDatatype;
-    // DatatypeEnum alignToDatatype;
+    std::shared_ptr<Buffer> alignToMsg = firstAlignTo;
+    DatatypeEnum alignToDatatype = classifyInputDatatype(alignToMsg);
+    DatatypeEnum inputDatatype = DatatypeEnum::TransformableBuffer;
 
-    // while(mainLoop()) {
-    //     std::shared_ptr<Buffer> inputMsg = nullptr;
-    //     std::shared_ptr<ImageAlignConfig> inConfig = nullptr;
-    //     bool hasConfig = false;
-    //     {
-    //         auto blockEvent = this->inputBlockEvent();
+    auto latestConfig = initialConfig;
 
-    //         inputMsg = input.get<Buffer>();
+    ImgTransformation alignToTransform = extractTransformationFromBuffer(alignToMsg, alignToDatatype);
 
-    //         if(!initialized) {
-    //             initialized = true;
+    auto nextInputMsg = [&]() -> std::shared_ptr<TransformableBuffer> {
+        if(firstInput) return std::exchange(firstInput, nullptr);
+        return input.get<TransformableBuffer>();
+    };
 
-    //             auto inputAlignToMsg = inputAlignTo.get<Buffer>();
-    //             inputDatatype = inputMsg->getDatatype();
-    //             alignToDatatype = inputAlignToMsg->getDatatype();
+    auto nextAlignToMsg = [&]() -> std::shared_ptr<Buffer> {
+        if(firstAlignTo) return std::exchange(firstAlignTo, nullptr);
+        return inputAlignTo.get<Buffer>();
+    };
 
-    //             // get the ImgTransformation of the alignment based on the two types of inputs
-    //             // put it in initCalibration
+    while(mainLoop()) {
+        std::shared_ptr<TransformableBuffer> inputMsg = nullptr;
+        std::shared_ptr<ImageAlignConfig> inConfig = nullptr;
+        bool hasConfig = false;
+        {
+            auto blockEvent = this->inputBlockEvent();
 
-    //             /**
-    //             ** rewrite this entire block because its unreadable
-    //             */
-    //             if(inputDatatype == DatatypeEnum::ImgFrame) {
-    //                 ImgTransformation inputAlignToTransform;
-    //                 if(alignToDatatype == DatatypeEnum::ImgFrame) {  // backwards compatible path
-    //                     auto inputAlignToImg = std::dynamic_pointer_cast<ImgFrame>(inputAlignToMsg);
-    //                     inputAlignToImgFrame = *inputAlignToImg;
-    //                     inputAlignToTransform = inputAlignToImg->transformation;
-    //                     state.alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
+            inputMsg = nextInputMsg();
+            alignToMsg = nextAlignToMsg();
 
-    //                     if(state.alignWidth == 0 || state.alignHeight == 0) {
-    //                         state.alignWidth = inputAlignToImg->getWidth();
-    //                         state.alignHeight = inputAlignToImg->getHeight();
-    //                     }
+            if(inputConfig.getWaitForMessage()) {
+                inConfig = inputConfig.get<ImageAlignConfig>();
+                hasConfig = true;
+            } else {
+                inConfig = inputConfig.tryGet<ImageAlignConfig>();
+                if(inConfig != nullptr) {
+                    hasConfig = true;
+                }
+            }
+        }
 
-    //                 } else if(alignToDatatype == DatatypeEnum::TransformableBuffer) {  // input is ImgFrame, alignment to TransformableBuffer
-    //                     auto inputAlignToTransformable = std::dynamic_pointer_cast<TransformableBuffer>(inputAlignToMsg);
+        if(hasConfig) {
+            latestConfig = inConfig;
+        }
 
-    //                     if(!inputAlignToTransformable->getTransformation().has_value()) {
-    //                                         logger->error("Input connected to inputAlignTo does not have a ImgTransformation set, cannot use it as alignTo
-    //                                         target!");
-    //                     }
-    //                     inputAlignToTransform = *inputAlignToTransformable->getTransformation();
-    //                     state.alignTo = static_cast<CameraBoardSocket>(0);  // default value for ImgFrame
-    //                     auto [w, h] = inputAlignToTransform.getSize();
-    //                     if(state.alignWidth == 0 || state.alignHeight == 0) {
-    //                         state.alignWidth = w;
-    //                         state.alignHeight = h;
-    //                     }
+        if(!inputMsg->getTransformation().has_value()) {
+            logger->error("Input message does not have a transformation, cannot align!");
+            throw std::runtime_error("Input message does not have a transformation, cannot align!");
+        }
+        alignToTransform = extractTransformationFromBuffer(alignToMsg, alignToDatatype);
 
-    //                 } else {
-    //                     logger->error("Unsupported datatype on inputAlignTo: {}", (int)alignToDatatype);  // todo toStr
-    //                     throw std::runtime_error("Unsupported datatype on inputAlignTo");
-    //                 }
+        auto alignedInputMsg = inputMsg->cloneAndTransformTo(alignToTransform);
 
-    //                 const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
-    //                 const bool hasDistortion =
-    //                     std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
-    //                 if(hasDistortion) {  // only matters if aligning an ImgFrame-like message to a message generated from a distorted camera
-    //                                      // if the input is a TransformableBuffer, it can be distorted and it will work no problem
-    //                                     logger->warn(
-    //                                         "The input connected to inputAlignTo is distorted. The aligned image will still be undistorted, meaning it won't
-    //                                         be perfectly " "aligned.");
-    //                 }
-
-    //                 auto alignTransformForIntrinsics = inputAlignToTransform;
-    //                 auto [alignTransformWidth, alignTransformHeight] = alignTransformForIntrinsics.getSize();
-    //                 if(static_cast<int>(alignTransformWidth) != state.alignWidth || static_cast<int>(alignTransformHeight) != state.alignHeight) {
-    //                     float scaleX = static_cast<float>(state.alignWidth) / static_cast<float>(alignTransformWidth);
-    //                     float scaleY = static_cast<float>(state.alignHeight) / static_cast<float>(alignTransformHeight);
-    //                     alignTransformForIntrinsics.addScale(scaleX, scaleY);
-    //                     alignTransformForIntrinsics.setSize(state.alignWidth, state.alignHeight);
-    //                 }
-
-    //                 state.alignSourceIntrinsics = alignTransformForIntrinsics.getIntrinsicMatrix();
-    //                 state.inputAlignToTransform = alignTransformForIntrinsics;
-    //                 currentEepromId = getParentPipeline().getEepromId();
-    //             }
-    //             /**
-    //              * rewrite to here
-    //              */
-    //         }
-
-    //         if(inputConfig.getWaitForMessage()) {
-    //             logger->trace("Receiving ImageAlign config message!");
-    //             inConfig = inputConfig.get<ImageAlignConfig>();
-    //             hasConfig = true;
-    //         } else {
-    //             inConfig = inputConfig.tryGet<ImageAlignConfig>();
-    //             if(inConfig != nullptr) {
-    //                 hasConfig = true;
-    //             }
-    //         }
-    //     }
-
-    //     if(hasConfig) {
-    //         state.latestConfig = inConfig;
-    //     }
-    // }
+        {
+            auto blockEvent = this->outputBlockEvent();
+            outputAligned.send(alignedInputMsg);
+            passthroughInput.send(inputMsg);
+        }
+    }
 }
 
 #endif  // DEPTHAI_HAVE_OPENCV_SUPPORT
