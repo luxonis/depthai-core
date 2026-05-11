@@ -8,16 +8,12 @@ void bind_gpustereo(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    py::class_<GPUStereoProperties> properties(m, "GPUStereoProperties", DOC(dai, GPUStereoProperties));
     auto node = ADD_NODE(GPUStereo);
 
     Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
-
-    properties.def_readwrite("initialConfig", &GPUStereoProperties::initialConfig, DOC(dai, GPUStereoProperties, initialConfig))
-        .def_readwrite("numFramesPool", &GPUStereoProperties::numFramesPool, DOC(dai, GPUStereoProperties, numFramesPool));
 
     node.def_property_readonly(
             "left",
@@ -40,32 +36,8 @@ void bind_gpustereo(pybind11::module& m, void* pCallstack) {
             py::return_value_policy::reference_internal,
             DOC(dai, node, GPUStereo, rectifiedRight))
         .def("setRectification", &GPUStereo::setRectification, py::arg("enable"), DOC(dai, node, GPUStereo, setRectification))
-        .def_readonly("inputConfig", &GPUStereo::inputConfig, DOC(dai, node, GPUStereo, inputConfig))
-        .def_readonly("initialConfig", &GPUStereo::initialConfig, DOC(dai, node, GPUStereo, initialConfig))
-        .def_readonly("disparity", &GPUStereo::disparity, DOC(dai, node, GPUStereo, disparity), DOC(dai, node, GPUStereo, disparity))
-        .def_readonly("depth", &GPUStereo::depth, DOC(dai, node, GPUStereo, depth), DOC(dai, node, GPUStereo, depth))
-        .def_readonly("debugPyramid", &GPUStereo::debugPyramid, py::doc("GRAY8 pyramid slice for debug (see GPUStereoConfig.debugPyramidLevel)."))
-        .def_readonly(
-            "debugPyramidDisparity",
-            &GPUStereo::debugPyramidDisparity,
-            py::doc("RAW16 disparity at pyramid level (see GPUStereoConfig.debugPyramidDisparityLevel)."))
-        .def_readonly(
-            "debugZnccCurve",
-            &GPUStereo::debugZnccCurve,
-            py::doc("RAW32 payload: 3 uint32 header (d_min, d_max, n) + n float32 ZNCC costs (1-rho); see gui."))
-        .def("build", &GPUStereo::build, py::arg("leftInput"), py::arg("rightInput"), DOC(dai, node, GPUStereo, build))
-        .def_property_readonly(
-            "sync", [](GPUStereo& n) { return &(*n.sync); }, py::return_value_policy::reference_internal, DOC(dai, node, GPUStereo, sync))
-        .def_property_readonly(
-            "messageDemux",
-            [](GPUStereo& n) { return &(*n.messageDemux); },
-            py::return_value_policy::reference_internal,
-            DOC(dai, node, GPUStereo, messageDemux))
-        .def_property_readonly(
-            "rectification",
-            [](GPUStereo& n) { return &(*n.rectification); },
-            py::return_value_policy::reference_internal,
-            DOC(dai, node, GPUStereo, rectification));
-
-    daiNodeModule.attr("GPUStereo").attr("Properties") = properties;
+        .def("setConfidenceThreshold", &GPUStereo::setConfidenceThreshold, py::arg("threshold"), DOC(dai, node, GPUStereo, setConfidenceThreshold))
+        .def_readonly("disparity", &GPUStereo::disparity, DOC(dai, node, GPUStereo, disparity))
+        .def_readonly("depth", &GPUStereo::depth, DOC(dai, node, GPUStereo, depth))
+        .def("build", &GPUStereo::build, py::arg("leftInput"), py::arg("rightInput"), DOC(dai, node, GPUStereo, build));
 }

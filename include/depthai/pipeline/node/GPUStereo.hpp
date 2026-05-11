@@ -11,6 +11,13 @@
 namespace dai {
 namespace node {
 
+/**
+ * @brief GPU-accelerated stereo depth node for RVC4.
+ *
+ * Computes disparity and depth maps from a synchronized stereo camera pair using
+ * OpenCL on the Adreno GPU. Supports both rectified and unrectified inputs
+ * (controlled via @ref setRectification).
+ */
 class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperties> {
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -21,10 +28,26 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
     constexpr static const char* NAME = "GPUStereo";
     GPUStereo() = default;
 
-    std::shared_ptr<GPUStereoConfig> initialConfig = std::make_shared<GPUStereoConfig>();
-
+    /**
+     * @brief Build the node by linking left and right camera outputs.
+     */
     std::shared_ptr<GPUStereo> build(Output& left, Output& right);
+
+    /**
+     * @brief Enable or disable built-in stereo rectification.
+     *
+     * When enabled, the node rectifies the input images internally using calibration data.
+     * When disabled, inputs are expected to be already rectified.
+     */
     GPUStereo& setRectification(bool enable);
+
+    /**
+     * @brief Set the confidence threshold for disparity filtering.
+     *
+     * Pixels with a matching cost above this threshold are invalidated.
+     * @param threshold Value in range [0, 255]. 0 disables the filter.
+     */
+    GPUStereo& setConfidenceThreshold(int threshold);
 
     Subnode<Sync> sync{*this, "sync"};
     Subnode<MessageDemux> messageDemux{*this, "messageDemux"};
@@ -38,18 +61,16 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
     Output& rectifiedRight{rectification->output2};
 #endif
 
-    Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, true, 5, {{{DatatypeEnum::GPUStereoConfig, false}}}}};
-
     Input leftInternal{*this, {"leftFrameInternal", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::ImgFrame, false}}}}};
     Input rightInternal{*this, {"rightFrameInternal", DEFAULT_GROUP, false, 1, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     Output disparity{*this, {"disparity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-    Output debugPyramid{*this, {"debugPyramid", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-    Output debugPyramidDisparity{*this, {"debugPyramidDisparity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
-    Output debugZnccCurve{*this, {"debugZnccCurve", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     void buildInternal() override;
+
+   private:
+    std::shared_ptr<GPUStereoConfig> initialConfig = std::make_shared<GPUStereoConfig>();
 };
 
 }  // namespace node

@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/GPUStereo.hpp"
 
+#include <algorithm>
+
 namespace dai {
 namespace node {
 
@@ -22,6 +24,11 @@ std::shared_ptr<GPUStereo> GPUStereo::build(Output& leftInput, Output& rightInpu
 
 GPUStereo& GPUStereo::setRectification(bool enable) {
     rectification->enableRectification(enable);
+    return *this;
+}
+
+GPUStereo& GPUStereo::setConfidenceThreshold(int threshold) {
+    initialConfig->confidence_threshold = std::clamp(threshold, 0, 255);
     return *this;
 }
 
