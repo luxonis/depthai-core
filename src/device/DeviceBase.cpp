@@ -1900,7 +1900,7 @@ std::vector<std::uint8_t> DeviceBase::readCcmEepromRaw(CameraBoardSocket socket,
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
     std::tie(success, errorMsg, eepromDataRaw) =
-        pimpl->rpcClient->call("readCcmEepromRaw", socket, size, offset).as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+        pimpl->rpcCall("readCcmEepromRaw", socket, size, offset).as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1910,7 +1910,7 @@ std::vector<std::uint8_t> DeviceBase::readCcmEepromRaw(CameraBoardSocket socket,
 void DeviceBase::writeCcmEepromRaw(CameraBoardSocket socket, std::vector<uint8_t> data, int offset) {
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcClient->call("writeCcmEepromRaw", socket, data, offset).as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcCall("writeCcmEepromRaw", socket, data, offset).as<std::tuple<bool, std::string>>();
     if(!success) {
         throw EepromError(errorMsg);
     }

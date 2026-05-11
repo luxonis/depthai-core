@@ -835,7 +835,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
 
                 std::string_view sv = buf;
 
-                return d.writeCcmEepromRaw(s, std::vector<uint8_t>(sv.begin(), sv.end()), o);
+                d.writeCcmEepromRaw(s, std::vector<uint8_t>(sv.begin(), sv.end()), o);
             },
             py::arg("socket"),
             py::arg("data"),
