@@ -290,6 +290,14 @@ dai_set_example_test_labels(spatial_location_calculator ondevice rvc2_all rvc4 c
 ## ImageAlign
 add_python_example(depth_align ImageAlign/depth_align.py)
 dai_set_example_test_labels(depth_align ondevice rvc2_all rvc4 ci)
+add_python_example(detections_align ImageAlign/detections_align.py)
+dai_set_example_test_labels(detections_align ondevice rvc2_all rvc4 ci)
+add_python_example(align_cropped_detecitons ImageAlign/align_cropped_detecitons.py)
+dai_set_example_test_labels(align_cropped_detecitons ondevice rvc2_all rvc4 ci)
+add_python_example(spatial_detections_align ImageAlign/spatial_detections_align.py)
+dai_set_example_test_labels(spatial_detections_align ondevice rvc2_all rvc4 ci)
+add_python_example(segmentation_align_rotated ImageAlign/segmentation_align_rotated.py)
+dai_set_example_test_labels(segmentation_align_rotated ondevice rvc2_all rvc4 ci)
 
 ## Visualizer
 
