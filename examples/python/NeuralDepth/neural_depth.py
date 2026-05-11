@@ -4,7 +4,7 @@ import cv2
 import depthai as dai
 import numpy as np
 
-FPS = 10
+FPS = 25
 # Create pipeline
 with dai.Pipeline() as pipeline:
     cameraLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=FPS)

@@ -373,10 +373,12 @@ class CameraControl : public Buffer {
         AQUA,
     };
 
-    enum class FrameSyncMode : uint8_t {
+    enum class FrameSyncMode : int8_t {
+        AUTO = -1,
         OFF = 0,
         OUTPUT,
         INPUT,
+        TIME_PTP,
         // TODO soft sync modes?
     };
 
@@ -448,7 +450,7 @@ class CameraControl : public Buffer {
 
     /**
      * Set the frame sync mode for continuous streaming operation mode,
-     * translating to how the camera pin FSIN/FSYNC is used: input/output/disabled
+     * translating to how the camera pin FSIN/FSYNC is used: auto/input/output/disabled
      */
     CameraControl& setFrameSyncMode(FrameSyncMode mode);
 
@@ -759,7 +761,7 @@ class CameraControl : public Buffer {
     CaptureIntent captureIntent;
     ControlMode controlMode;
     EffectMode effectMode;
-    FrameSyncMode frameSyncMode;
+    FrameSyncMode frameSyncMode = FrameSyncMode::AUTO;
     StrobeConfig strobeConfig;
     StrobeTimings strobeTimings;
     uint32_t aeMaxExposureTimeUs;

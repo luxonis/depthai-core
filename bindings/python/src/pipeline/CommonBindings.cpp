@@ -1,6 +1,10 @@
 #include "CommonBindings.hpp"
 
+#include <pybind11/detail/common.h>
 #include <pybind11/pybind11.h>
+
+#include <array>
+#include <vector>
 
 // Libraries
 #include "hedley/hedley.h"
@@ -75,11 +79,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Extrinsics> extrinsics(m, "Extrinsics", DOC(dai, Extrinsics));
     py::class_<CameraInfo> cameraInfo(m, "CameraInfo", DOC(dai, CameraInfo));
     py::class_<EepromData> eepromData(m, "EepromData", DOC(dai, EepromData));
-    py::class_<dai::ImuModelParams> imuModelParams(m, "ImuModelParams", DOC(dai, ImuModelParams));
-    py::class_<dai::AccelerometerNoiseParams> accelerometerNoiseParams(m, "AccelerometerNoiseParams", DOC(dai, AccelerometerNoiseParams));
-    py::class_<dai::GyroscopeNoiseParams> gyroscopeNoiseParams(m, "GyroscopeNoiseParams", DOC(dai, GyroscopeNoiseParams));
-    py::class_<dai::AccelAxisNoiseParams> accelAxisNoiseParams(m, "AccelAxisNoiseParams", DOC(dai, AccelAxisNoiseParams));
-    py::class_<dai::GyroAxisNoiseParams> gyroAxisNoiseParams(m, "GyroAxisNoiseParams", DOC(dai, GyroAxisNoiseParams));
+    py::class_<ImuNoiseParameters> imuNoiseParameters(m, "ImuNoiseParameters", DOC(dai, ImuNoiseParameters));
+    py::class_<ImuCalibrationParams> imuCalibrationParams(m, "ImuCalibrationParams", DOC(dai, ImuCalibrationParams));
+    py::class_<AccelerometerNoiseParams> accelerometerNoiseParams(m, "AccelerometerNoiseParams", DOC(dai, AccelerometerNoiseParams));
+    py::class_<GyroscopeNoiseParams> gyroscopeNoiseParams(m, "GyroscopeNoiseParams", DOC(dai, GyroscopeNoiseParams));
+    py::class_<AccelAxisNoiseParams> accelAxisNoiseParams(m, "AccelAxisNoiseParams", DOC(dai, AccelAxisNoiseParams));
+    py::class_<GyroAxisNoiseParams> gyroAxisNoiseParams(m, "GyroAxisNoiseParams", DOC(dai, GyroAxisNoiseParams));
     py::enum_<UsbSpeed> usbSpeed(m, "UsbSpeed", DOC(dai, UsbSpeed));
     py::enum_<ProcessorType> processorType(m, "ProcessorType");
     py::enum_<DetectionNetworkType> detectionNetworkType(m, "DetectionNetworkType");
@@ -91,6 +96,9 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("FOOT", LengthUnit::FOOT)
         .value("CUSTOM", LengthUnit::CUSTOM);
     m.attr("DepthUnit") = m.attr("LengthUnit");
+
+    py::enum_<AngleUnit> angleUnitEnum(m, "AngleUnit", DOC(dai, AngleUnit));
+    angleUnitEnum.value("RADIAN", AngleUnit::RADIAN).value("DEGREE", AngleUnit::DEGREE);
     py::enum_<YoloDecodingFamily> yoloDecodingFamily(m, "YoloDecodingFamily");
     py::enum_<SerializationType> serializationType(m, "SerializationType");
     py::class_<DetectionParserOptions> detectionParserOptions(m, "DetectionParserOptions", DOC(dai, DetectionParserOptions));
@@ -515,10 +523,55 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Extrinsics
     extrinsics.def(py::init<>())
+        .def(py::init<std::vector<std::vector<float>>, Point3f, CameraBoardSocket, LengthUnit>(),
+             py::arg("rotationMatrix"),
+             py::arg("translation"),
+             py::arg("toCameraSocket"),
+             py::arg("lengthUnit") = LengthUnit::CENTIMETER)
+        .def(py::init<const std::vector<std::vector<float>>&, CameraBoardSocket, LengthUnit>(),
+             py::arg("extrinsicsMatrix"),
+             py::arg("toCameraSocket"),
+             py::arg("lengthUnit") = LengthUnit::CENTIMETER)
         .def_readwrite("rotationMatrix", &Extrinsics::rotationMatrix)
         .def_readwrite("translation", &Extrinsics::translation)
         .def_readwrite("specTranslation", &Extrinsics::specTranslation)
-        .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket);
+        .def_readwrite("toCameraSocket", &Extrinsics::toCameraSocket)
+        .def_readwrite("lengthUnit", &Extrinsics::lengthUnit)
+        .def("getRotationMatrix", &Extrinsics::getRotationMatrix, DOC(dai, Extrinsics, getRotationMatrix))
+        .def("getInverseRotationMatrix", &Extrinsics::getInverseRotationMatrix, DOC(dai, Extrinsics, getInverseRotationMatrix))
+        .def("getTransformationMatrix",
+             &Extrinsics::getTransformationMatrix,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getTransformationMatrix))
+        .def("getInverseTransformationMatrix",
+             &Extrinsics::getInverseTransformationMatrix,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getInverseTransformationMatrix))
+        .def("setTransformationMatrix",
+             py::overload_cast<const std::vector<std::vector<float>>&, LengthUnit>(&Extrinsics::setTransformationMatrix),
+             py::arg("matrix"),
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, setTransformationMatrix))
+        .def("setTranslationVector",
+             &Extrinsics::setTranslationVector,
+             py::arg("translationVector"),
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             py::arg("useSpecTranslation") = false,
+             DOC(dai, Extrinsics, setTranslationVector))
+        .def("getTranslationVector",
+             &Extrinsics::getTranslationVector,
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getTranslationVector))
+        .def("isEqualExtrinsics", &Extrinsics::isEqualExtrinsics, py::arg("other"), py::arg("epsilon") = 1e-6f, DOC(dai, Extrinsics, isEqualExtrinsics))
+        .def("getExtrinsicsTransformationTo",
+             &Extrinsics::getExtrinsicsTransformationTo,
+             py::arg("to"),
+             py::arg("useSpecTranslation") = false,
+             py::arg("unit") = LengthUnit::CENTIMETER,
+             DOC(dai, Extrinsics, getExtrinsicsTransformationTo));
 
     // CameraInfo
     cameraInfo.def(py::init<>())
@@ -532,15 +585,15 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // AccelAxisNoiseParams
     accelAxisNoiseParams.def(py::init<>())
-        .def_readwrite("vrw", &AccelAxisNoiseParams::vrw)
-        .def_readwrite("rrw", &AccelAxisNoiseParams::rrw)
-        .def_readwrite("bi", &AccelAxisNoiseParams::bi);
+        .def_readwrite("noiseDensity", &AccelAxisNoiseParams::noiseDensity)
+        .def_readwrite("randomWalk", &AccelAxisNoiseParams::randomWalk)
+        .def_readwrite("biasStability", &AccelAxisNoiseParams::biasStability);
 
     // GyroAxisNoiseParams
     gyroAxisNoiseParams.def(py::init<>())
-        .def_readwrite("arw", &GyroAxisNoiseParams::arw)
-        .def_readwrite("rrw", &GyroAxisNoiseParams::rrw)
-        .def_readwrite("bi", &GyroAxisNoiseParams::bi);
+        .def_readwrite("noiseDensity", &GyroAxisNoiseParams::noiseDensity)
+        .def_readwrite("randomWalk", &GyroAxisNoiseParams::randomWalk)
+        .def_readwrite("biasStability", &GyroAxisNoiseParams::biasStability);
 
     // AccelerometerNoiseParams
     accelerometerNoiseParams.def(py::init<>())
@@ -554,11 +607,17 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("y", &GyroscopeNoiseParams::y)
         .def_readwrite("z", &GyroscopeNoiseParams::z);
 
-    // ImuModelParams
-    imuModelParams.def(py::init<>())
-        .def_readwrite("name", &ImuModelParams::name)
-        .def_readwrite("accelerometer", &ImuModelParams::accelerometer)
-        .def_readwrite("gyroscope", &ImuModelParams::gyroscope);
+    // ImuNoiseParameters
+    imuNoiseParameters.def(py::init<>())
+        .def_readwrite("name", &ImuNoiseParameters::name)
+        .def_readwrite("accelerometer", &ImuNoiseParameters::accelerometer)
+        .def_readwrite("gyroscope", &ImuNoiseParameters::gyroscope);
+
+    // ImuCalibrationParams
+    imuCalibrationParams.def(py::init<>())
+        .def_readwrite("noise", &ImuCalibrationParams::noise)
+        .def_readwrite("accelerometer", &ImuCalibrationParams::accelerometer)
+        .def_readwrite("gyroscope", &ImuCalibrationParams::gyroscope);
 
     // EepromData
     eepromData.def(py::init<>())
@@ -581,9 +640,10 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("stereoUseSpecTranslation", &EepromData::stereoUseSpecTranslation)
         .def_readwrite("stereoEnableDistortionCorrection", &EepromData::stereoEnableDistortionCorrection)
         .def_readwrite("verticalCameraSocket", &EepromData::verticalCameraSocket)
-        .def_readwrite("accelerometerCalibParams", &EepromData::accelerometerCalibParams)
-        .def_readwrite("gyroscopeCalibParams", &EepromData::gyroscopeCalibParams)
-        .def_readwrite("imuModelParams", &EepromData::imuModelParams);
+        .def_readwrite("imuCalibrationParams", &EepromData::imuCalibrationParams);
+
+    m.attr("ImuParameters") = m.attr("ImuCalibrationParams");
+    m.attr("ImuModelParams") = m.attr("ImuNoiseParameters");
     // UsbSpeed
     usbSpeed.value("UNKNOWN", UsbSpeed::UNKNOWN)
         .value("LOW", UsbSpeed::LOW)
@@ -671,7 +731,17 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     profilingData.def_readwrite("numBytesWritten", &ProfilingData::numBytesWritten, DOC(dai, ProfilingData, numBytesWritten))
         .def_readwrite("numBytesRead", &ProfilingData::numBytesRead, DOC(dai, ProfilingData, numBytesRead));
 
-    deviceModelZoo.value("NEURAL_DEPTH_EXTRA_LARGE", DeviceModelZoo::NEURAL_DEPTH_EXTRA_LARGE)
+    deviceModelZoo.value("NEURAL_DEPTH_1248X780", DeviceModelZoo::NEURAL_DEPTH_1248X780)
+        .value("NEURAL_DEPTH_1056X660", DeviceModelZoo::NEURAL_DEPTH_1056X660)
+        .value("NEURAL_DEPTH_960X600", DeviceModelZoo::NEURAL_DEPTH_960X600)
+        .value("NEURAL_DEPTH_864X540", DeviceModelZoo::NEURAL_DEPTH_864X540)
+        .value("NEURAL_DEPTH_768X480", DeviceModelZoo::NEURAL_DEPTH_768X480)
+        .value("NEURAL_DEPTH_576X360", DeviceModelZoo::NEURAL_DEPTH_576X360)
+        .value("NEURAL_DEPTH_480X300", DeviceModelZoo::NEURAL_DEPTH_480X300)
+        .value("NEURAL_DEPTH_384X240", DeviceModelZoo::NEURAL_DEPTH_384X240)
+        .value("NEURAL_DEPTH_288X180", DeviceModelZoo::NEURAL_DEPTH_288X180)
+        .value("NEURAL_DEPTH_192X120", DeviceModelZoo::NEURAL_DEPTH_192X120)
+        .value("NEURAL_DEPTH_EXTRA_LARGE", DeviceModelZoo::NEURAL_DEPTH_EXTRA_LARGE)
         .value("NEURAL_DEPTH_LARGE", DeviceModelZoo::NEURAL_DEPTH_LARGE)
         .value("NEURAL_DEPTH_MEDIUM", DeviceModelZoo::NEURAL_DEPTH_MEDIUM)
         .value("NEURAL_DEPTH_SMALL", DeviceModelZoo::NEURAL_DEPTH_SMALL)

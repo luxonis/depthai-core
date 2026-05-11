@@ -88,7 +88,7 @@ void bind_neuralassistedstereo(pybind11::module& m, void* pCallstack) {
              &NeuralAssistedStereo::build,
              py::arg("leftInput"),
              py::arg("rightInput"),
-             py::arg("neuralModel") = DeviceModelZoo::NEURAL_DEPTH_NANO,
+             py::arg("neuralModel") = DeviceModelZoo::NEURAL_DEPTH_384X240,
              py::arg("rectifyImages") = true,
              DOC(dai, node, NeuralAssistedStereo, build))
         .def_property_readonly(

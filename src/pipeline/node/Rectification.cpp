@@ -1,13 +1,18 @@
 #include "depthai/pipeline/node/Rectification.hpp"
 
+#include <array>
 #include <chrono>
+#include <vector>
 
+#include "common/Extrinsics.hpp"
 #include "common/ImgTransformations.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "utility/matrixOps.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     #include <opencv2/calib3d.hpp>
+    #include <opencv2/core.hpp>
 #endif
 
 namespace dai {
@@ -98,6 +103,30 @@ CalibrationHandler Rectification::getCalibrationData() const {
     }
 }
 
+std::vector<std::vector<float> > applyRectificationMatrix(const dai::Extrinsics& extrinsics, const cv::Mat& rectificationMatrix) {
+    cv::Mat rectificationMatrixInv;
+    cv::invert(rectificationMatrix, rectificationMatrixInv);
+    std::array<std::array<float, 3>, 3> arrayR1Inv = dai::matrix::cvMatToMatrix3x3(rectificationMatrixInv);
+    std::array<std::array<float, 3>, 3> inputRotationMatrix = dai::matrix::vectorMatrixToMatrix3x3(extrinsics.getRotationMatrix());
+
+    // inputRotationMatrix points to toCameraSocket, rectificationMatrix points to rectified frame, so multiply by inverse from the right
+    return dai::matrix::matrix3x3ToVectorMatrix(dai::matrix::matMul(inputRotationMatrix, arrayR1Inv));
+}
+
+dai::ImgTransformation createRectifiedImgTransformation(const dai::Extrinsics& extrinsics,
+                                                        const cv::Mat& cvIntrinsicMatrix,
+                                                        uint32_t outputWidth,
+                                                        uint32_t outputHeight) {
+    dai::ImgTransformation outputImgTransformation;
+    // Rectified frame is treated as a brand new camera, so source size is set to output size
+    outputImgTransformation.setSourceSize(outputWidth, outputHeight);
+    outputImgTransformation.setSize(outputWidth, outputHeight);
+    outputImgTransformation.setIntrinsicMatrix(dai::matrix::cvMatToMatrix3x3(cvIntrinsicMatrix));
+    outputImgTransformation.setExtrinsics(extrinsics);
+    outputImgTransformation.setDistortionCoefficients({});
+    return outputImgTransformation;
+}
+
 void Rectification::run() {
     auto& logger = pimpl->logger;
     using namespace std::chrono;
@@ -142,8 +171,8 @@ void Rectification::run() {
         }
 
         if(!initialized) {
-            output1ImgTransformation = input1Frame->transformation;
-            output2ImgTransformation = input2Frame->transformation;
+            dai::ImgTransformation input1ImgTransformation = input1Frame->transformation;
+            dai::ImgTransformation input2ImgTransformation = input2Frame->transformation;
             auto calib = getCalibrationData();
 
             auto leftSocket = (dai::CameraBoardSocket)input1Frame->getInstanceNum();
@@ -178,11 +207,11 @@ void Rectification::run() {
                 auto scale1Y = static_cast<float>(output1FrameHeight) / static_cast<float>(input1Frame->getHeight());
                 auto scale2X = static_cast<float>(output2FrameWidth) / static_cast<float>(input2Frame->getWidth());
                 auto scale2Y = static_cast<float>(output2FrameHeight) / static_cast<float>(input2Frame->getHeight());
-                output1ImgTransformation.addScale(scale1X, scale1Y);
-                output2ImgTransformation.addScale(scale2X, scale2Y);
+                input1ImgTransformation.addScale(scale1X, scale1Y);
+                input2ImgTransformation.addScale(scale2X, scale2Y);
 
-                targetM1 = output1ImgTransformation.getIntrinsicMatrix();
-                targetM2 = output2ImgTransformation.getIntrinsicMatrix();
+                targetM1 = input1ImgTransformation.getIntrinsicMatrix();
+                targetM2 = input2ImgTransformation.getIntrinsicMatrix();
             }
 
             targetM2 = targetM1;  // TODO alignment target
@@ -196,6 +225,11 @@ void Rectification::run() {
                 cv_d1 = cv::Mat::zeros(1, d1.size(), CV_32FC1);
                 cv_d2 = cv::Mat::zeros(1, d2.size(), CV_32FC1);
             }
+
+            dai::Extrinsics output1Extrinsics = input1ImgTransformation.getExtrinsics();
+            dai::Extrinsics output2Extrinsics = input2ImgTransformation.getExtrinsics();
+            output1Extrinsics.rotationMatrix = applyRectificationMatrix(output1Extrinsics, cv_R1);
+            output2Extrinsics.rotationMatrix = applyRectificationMatrix(output2Extrinsics, cv_R2);
 
             cv::initUndistortRectifyMap(cv_M1,
                                         cv_d1,
@@ -213,6 +247,9 @@ void Rectification::run() {
                                         CV_32FC1,
                                         cv_rectificationMap2X,
                                         cv_rectificationMap2Y);
+
+            output1ImgTransformation = createRectifiedImgTransformation(output1Extrinsics, cv_targetCameraMatrix1, output1FrameWidth, output1FrameHeight);
+            output2ImgTransformation = createRectifiedImgTransformation(output2Extrinsics, cv_targetCameraMatrix2, output2FrameWidth, output2FrameHeight);
 
             logger->debug("R = {}", matToString(cv_R));
             logger->debug("T = {}", matToString(cv_T));
@@ -235,6 +272,8 @@ void Rectification::run() {
         rectifiedFrame1->setMetadata(*input1Frame);
         rectifiedFrame1->setWidth(output1FrameWidth);
         rectifiedFrame1->setHeight(output1FrameHeight);
+        rectifiedFrame1->sourceFb.width = output1FrameWidth;
+        rectifiedFrame1->sourceFb.height = output1FrameHeight;
         rectifiedFrame1->setType(dai::ImgFrame::Type::RAW8);
         rectifiedFrame1->fb.stride = rectifiedFrame1->fb.width * rectifiedFrame1->getBytesPerPixel();
 
@@ -246,6 +285,8 @@ void Rectification::run() {
         rectifiedFrame2->setMetadata(*input2Frame);
         rectifiedFrame2->setWidth(output2FrameWidth);
         rectifiedFrame2->setHeight(output2FrameHeight);
+        rectifiedFrame2->sourceFb.width = output2FrameWidth;
+        rectifiedFrame2->sourceFb.height = output2FrameHeight;
         rectifiedFrame2->setType(dai::ImgFrame::Type::RAW8);
         rectifiedFrame2->fb.stride = rectifiedFrame2->fb.width * rectifiedFrame2->getBytesPerPixel();
 
@@ -266,10 +307,7 @@ void Rectification::run() {
             cv_input2, rectifiedFrame2->getFrame(), cv_rectificationMap2X, cv_rectificationMap2Y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
         rectifiedFrame1->transformation = output1ImgTransformation;
-        rectifiedFrame1->transformation.setDistortionCoefficients({});
-
-        rectifiedFrame2->transformation = output1ImgTransformation;  // Set both to same for alignment
-        rectifiedFrame2->transformation.setDistortionCoefficients({});
+        rectifiedFrame2->transformation = output2ImgTransformation;
 
         auto end = steady_clock::now();
         auto duration = duration_cast<milliseconds>(end - start).count();

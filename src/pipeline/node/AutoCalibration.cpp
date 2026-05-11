@@ -339,7 +339,7 @@ bool AutoCalibration::validateIncomingData() {
                 return false;
             }
             if(leftImgFrame->getHeight() != 800 || leftImgFrame->getWidth() != 1280) {
-                logger->warn("AutoCalibration: Not initialized - currently supports only sensors with 1280x800 resolution.");
+                logger->info("AutoCalibration: Not initialized - currently supports only sensors with 1280x800 resolution.");
                 return false;
             }
             return true;

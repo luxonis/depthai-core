@@ -40,17 +40,20 @@
 #include "depthai/device/CrashDump.hpp"
 #include "depthai/log/LogLevel.hpp"
 #include "depthai/log/LogMessage.hpp"
+#include "depthai/properties/GlobalProperties.hpp"
 
 namespace dai {
 
-// Forward declare Pipeline
+// Forward declarations
 class Pipeline;
 class PipelineImpl;
+class CrashDumpManager;
 /**
  * The core of depthai device for RAII, connects to device and maintains watchdog, timesync, ...
  */
 class DeviceBase {
-    friend class PipelineImpl;  // Needed for reconnections
+    friend class PipelineImpl;      // Needed for reconnections
+    friend class CrashDumpManager;  // Needed for gate access during crash dump collection
 
    public:
     // constants
@@ -265,6 +268,18 @@ class DeviceBase {
     virtual ~DeviceBase();
 
     /**
+     * @brief Get the platform of the connected device
+     * @return Platform Platform enum
+     */
+    Platform getPlatform() const;
+
+    /**
+     * @brief Get the platform of the connected device as string
+     * @return std::string String representation of Platform
+     */
+    std::string getPlatformAsString() const;
+
+    /**
      * Gets Bootloader version if it was booted through Bootloader
      *
      * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
@@ -317,6 +332,45 @@ class DeviceBase {
     LogLevel getNodeLogLevel(int64_t id);
 
     /**
+     * Sets properties for the device.
+     *
+     * @param properties DeviceProperties struct with properties to set. Only properties which are supported by the device and have different values than
+     * current ones will be applied. Some properties are only applied before starting the pipeline.
+     */
+    void setProperties(const DeviceProperties& properties);
+
+    /**
+     * Gets current properties set on the device. Some properties might be not supported by the device, in that case they will have default values.
+     *
+     * @returns  DeviceProperties struct with current device properties
+     */
+    DeviceProperties getProperties();
+
+    /**
+     * Sets the camera tuning blob for the device.
+     *
+     * @param uri URI of the tuning blob retrieved using the asset manager
+     * @param size size of the tuning blob in bytes
+     */
+    void setCameraTuningBlob(const std::string& uri, uint32_t size);
+
+    /**
+     * Sets the camera socket specific tuning blobs for the device.
+     *
+     * @param blobs Unordered map of CameraBoardSocket to pair of URI and size of the tuning blob in bytes. The URI should be retrieved using the asset manager
+     */
+    void setCameraSocketTuningBlobs(const std::unordered_map<CameraBoardSocket, std::pair<std::string, uint32_t>>& blobs);
+
+    /**
+     * Sets the camera socket specific tuning blob for the device.
+     *
+     * @param socket CameraBoardSocket for which the tuning blob will be set
+     * @param uri URI of the tuning blob retrieved using the asset manager
+     * @param size size of the tuning blob in bytes
+     */
+    void setCameraSocketTuningBlob(CameraBoardSocket socket, const std::string& uri, uint32_t size);
+
+    /**
      * Sets the chunk size for splitting device-sent XLink packets. A larger value could
      * increase performance, and 0 disables chunking. A negative value is ignored.
      * Device defaults are configured per protocol, currently 64*1024 for both USB and Ethernet.
@@ -331,6 +385,20 @@ class DeviceBase {
      * @returns XLink chunk size in bytes
      */
     int getXLinkChunkSize();
+
+    /**
+     * Sets the size of the SIPP buffer on the device.
+     *
+     * @param sizeBytes SIPP buffer size in bytes. Device default is 18 * 1024 bytes
+     */
+    void setSippBufferSize(int sizeBytes);
+
+    /**
+     * Sets the size of the SIPP DMA buffer on the device.
+     *
+     * @param sizeBytes SIPP DMA buffer size in bytes. Device default is 16 * 1024 bytes
+     */
+    void setSippDmaBufferSize(int sizeBytes);
 
     /**
      * Sets the maximum transmission rate for the XLink connection on device side,
@@ -428,12 +496,14 @@ class DeviceBase {
      * it's best to close the device after this operation.
      * Supported only on RVC2.
      */
-    dai::CrashDump getState();
+    std::unique_ptr<CrashDump> getState();
 
     /**
      * Retrieves crash dump for debugging.
+     * @param clearCrashDump Clear the cached crash dump on device after collection
+     * @return Unique pointer to the CrashDump. Platform-specific crash dump payload may be empty if no crash dump is available.
      */
-    dai::CrashDump getCrashDump(bool clearCrashDump = true);
+    std::unique_ptr<CrashDump> getCrashDump(bool clearCrashDump = true);
 
     /**
      * Retrieves whether the is crash dump stored on device or not.
@@ -621,9 +691,17 @@ class DeviceBase {
 
     /**
      * Check if EEPROM is available
+     *
      * @returns True if EEPROM is present on board, false otherwise
      */
     bool isEepromAvailable();
+
+    /**
+     * Check if Calibration is available on the device
+     *
+     * @returns True if calibration is present on device, false otherwise
+     */
+    bool isCalibrationAvailable();
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM
@@ -650,6 +728,15 @@ class DeviceBase {
      *
      */
     void setCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Sets the Calibration at runtime using EepromData. This is not persistent and will be lost after device reset.
+     *
+     * @throws std::runtime_error if failed to set the calibration
+     * @param eepromData EepromData struct which contains the calibration information.
+     *
+     */
+    void setCalibration(const std::optional<EepromData>& eepromData);
 
     /**
      * Retrieves the CalibrationHandler shared pointer; If can not get calibration returns nullptr
@@ -812,10 +899,39 @@ class DeviceBase {
     bool isClosed() const;
 
     /**
+     * Register a callback that will be called when the device crashes.
+     * The callback receives a shared pointer to the CrashDump, which can be modified
+     * before it is stored. Only one callback can be registered at a time.
+     *
+     * @param callback Callback to call when a crash dump is collected
+     */
+    void registerCrashdumpCallback(std::function<void(std::shared_ptr<CrashDump>)> callback);
+
+    /**
+     * Removes the registered crash dump callback
+     */
+    void removeCrashdumpCallback();
+
+    /**
+     * Check if the device has crashed
+     *
+     * @returns True if the device has crashed (watchdog timeout detected), false otherwise
+     */
+    bool hasCrashed() const;
+
+    /**
      * Crashes the device
      * @warning ONLY FOR TESTING PURPOSES, it causes an unrecoverable crash on the device
      */
     void crashDevice();
+
+    /**
+     * Sets connected camera features.
+     * Used for holistic record and replay
+     * @param features Vector of camera features to set
+     * @param imu IMU type to set (if any)
+     */
+    void overrideCameraFeatures(const std::vector<CameraFeatures>& features, const std::string& imu = "");
 
     /**
      * Returns underlying XLinkConnection
@@ -869,6 +985,11 @@ class DeviceBase {
      * @param enable Enables or disables strobe
      */
     void setExternalStrobeEnable(bool enable);
+
+    /**
+     * Mock camera features from a recording. Used for holistic record and replay.
+     */
+    void mockCameraFeatures(const std::filesystem::path& replayPath);
 
    protected:
     std::shared_ptr<XLinkConnection> connection;
@@ -927,7 +1048,11 @@ class DeviceBase {
         bool hasPipeline;
     };
     void monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev);
-    DeviceInfo deviceInfo = {};
+    void collectAndLogCrashDump(DeviceBase* device = nullptr);
+    void waitForRebootAndCollectCrashDump();
+    void waitForGateAndCollectCrashDump();
+    CrashDumpRVC2::CrashReportCollection getCrashReportCollectionRVC2(bool clear = true);
+    DeviceInfo deviceInfo;
     std::optional<Version> bootloaderVersion;
 
     // Log callback
@@ -935,9 +1060,14 @@ class DeviceBase {
     std::mutex logCallbackMapMtx;
     std::unordered_map<int, std::function<void(LogMessage)>> logCallbackMap;
 
+    // Crash dump callback
+    std::mutex crashdumpCallbackMtx;
+    std::function<void(std::shared_ptr<CrashDump>)> crashdumpCallback;
+
     // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
+    std::atomic<bool> crashed{false};
     std::condition_variable watchdogCondVar;
     std::mutex watchdogMtx;
 
@@ -984,7 +1114,11 @@ class DeviceBase {
     // Reconnection attempts and pointer to reset connections
     int maxReconnectionAttempts = 1;
     std::weak_ptr<PipelineImpl> pipelinePtr;
+    std::atomic<bool> crashDumpHandled{false};
     bool isClosing = false;  // if true, don't attempt to reconnect
     std::function<void(ReconnectionStatus)> reconnectionCallback = nullptr;
+
+    // Mock features
+    bool hasMockedFeatures = false;
 };
 }  // namespace dai

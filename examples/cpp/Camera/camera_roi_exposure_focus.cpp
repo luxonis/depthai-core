@@ -1,9 +1,17 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
 #include <tuple>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 // Global variables for ROI selection
 std::vector<cv::Point> startPoints;
@@ -45,6 +53,9 @@ void selectRoi(int event, int x, int y, int flags, void* userdata) {
 }
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create device
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
 
@@ -63,7 +74,7 @@ int main() {
     cv::namedWindow("video");
     cv::setMouseCallback("video", selectRoi, &camQIn);
 
-    while(true) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto imgHd = streamQ->get<dai::ImgFrame>();
         if(imgHd == nullptr) continue;
 
@@ -89,6 +100,9 @@ int main() {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

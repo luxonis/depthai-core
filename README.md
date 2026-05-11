@@ -196,6 +196,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_LEVEL | Sets logging verbosity, 'trace', 'debug', 'info', 'warn', 'error' and 'off' |
 | XLINK_LEVEL | Sets logging verbosity of XLink library, 'debug'. 'info', 'warn', 'error', 'fatal' and 'off' |
 | DEPTHAI_INSTALL_SIGNAL_HANDLER | Set to 0 to disable installing Backward signal handler for stack trace printing |
+| DEPTHAI_DEBUGGER | Enables debugger-friendly behavior. `ON` is equivalent to `DEPTHAI_WATCHDOG=0` and `DEPTHAI_RPC_READ_TIMEOUT=0`. Explicit values of those variables still take precedence. |
 | DEPTHAI_WATCHDOG | Sets device watchdog timeout. Useful for debugging (`DEPTHAI_WATCHDOG=0`), to prevent device reset while the process is paused. |
 | DEPTHAI_WATCHDOG_INITIAL_DELAY | Specifies delay after which the device watchdog starts. |
 | DEPTHAI_SEARCH_TIMEOUT | Specifies timeout in milliseconds for device searching in blocking functions. |
@@ -215,8 +216,8 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
-| DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
-| DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in milliseconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
+| DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. Automatic crash dump collection is disabled if set to 0. |
+| DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in milliseconds to wait for device reboot when obtaining a crash dump. Automatic crash dump collection is disabled if set to 0. |
 | DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
 | DEPTHAI_HUB_EVENTS_BASE_URL | URL for events of the Luxonis Hub |
@@ -229,7 +230,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
 | DEPTHAI_PROFILING | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print. |
 | DEPTHAI_PIPELINE_DEBUGGING | Enables pipeline debugging with state dumps. DEPTHAI_LEVEL=trace is required to print the state dumps. |
-| DEPTHAI_AUTOCALIBRATION | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). DEPTHAI_AUTOCALIBRATION=CONTINUOUS: runs check repetitively; DEPTHAI_AUTOCALIBRATION=ON_START: runs calibration only at the start of the pipeline; DEPTHAI_AUTOCALIBRATION=OFF: no recalibration. |
+| DEPTHAI_AUTOCALIBRATION | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)`. If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
 
 ## Running tests
 

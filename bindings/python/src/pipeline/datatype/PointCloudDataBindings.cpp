@@ -105,15 +105,23 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
              })
         .def("getWidth", &PointCloudData::getWidth, DOC(dai, PointCloudData, getWidth))
         .def("getHeight", &PointCloudData::getHeight, DOC(dai, PointCloudData, getHeight))
-        .def("isSparse", &PointCloudData::isSparse, DOC(dai, PointCloudData, isSparse))
-        .def("isColor", &PointCloudData::isColor, DOC(dai, PointCloudData, isColor))
         .def("getMinX", &PointCloudData::getMinX, DOC(dai, PointCloudData, getMinX))
         .def("getMinY", &PointCloudData::getMinY, DOC(dai, PointCloudData, getMinY))
         .def("getMinZ", &PointCloudData::getMinZ, DOC(dai, PointCloudData, getMinZ))
         .def("getMaxX", &PointCloudData::getMaxX, DOC(dai, PointCloudData, getMaxX))
         .def("getMaxY", &PointCloudData::getMaxY, DOC(dai, PointCloudData, getMaxY))
         .def("getMaxZ", &PointCloudData::getMaxZ, DOC(dai, PointCloudData, getMaxZ))
-        .def("getInstanceNum", &PointCloudData::getInstanceNum, DOC(dai, PointCloudData, getInstanceNum))
+        .def(
+            "isSparse",
+            [](const PointCloudData& self) {
+                if(PyErr_WarnEx(PyExc_DeprecationWarning, "isSparse() is deprecated, use isOrganized() instead (note: sparse == !organized).", 1) < 0)
+                    throw py::error_already_set();
+                return !self.isOrganized();
+            },
+            DOC(dai, PointCloudData, isSparse))
+        .def("isOrganized", &PointCloudData::isOrganized, DOC(dai, PointCloudData, isOrganized))
+        .def("isColor", &PointCloudData::isColor, DOC(dai, PointCloudData, isColor))
+        .def("setInstanceNum", &PointCloudData::setInstanceNum, py::arg("instanceNum"), DOC(dai, PointCloudData, setInstanceNum))
         .def("getTimestamp", &PointCloudData::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &PointCloudData::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &PointCloudData::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
@@ -169,5 +177,8 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
         .def("setMaxX", &PointCloudData::setMaxX, DOC(dai, PointCloudData, setMaxX))
         .def("setMaxY", &PointCloudData::setMaxY, DOC(dai, PointCloudData, setMaxY))
         .def("setMaxZ", &PointCloudData::setMaxZ, DOC(dai, PointCloudData, setMaxZ))
-        .def("setInstanceNum", &PointCloudData::setInstanceNum, DOC(dai, PointCloudData, setInstanceNum));
+        .def("getInstanceNum", &PointCloudData::getInstanceNum, DOC(dai, PointCloudData, getInstanceNum))
+        .def("updateBoundingBox", &PointCloudData::updateBoundingBox, DOC(dai, PointCloudData, updateBoundingBox))
+        .def("getTransformation", &PointCloudData::getTransformation, py::return_value_policy::reference_internal)
+        .def("setTransformation", &PointCloudData::setTransformation, py::arg("transformation"));
 }

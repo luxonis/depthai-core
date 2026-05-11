@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.5.0" LANGUAGES CXX C)
+project(depthai VERSION "3.6.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -271,11 +271,14 @@ set(TARGET_CORE_SOURCES
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
     src/common/ModelType.cpp
+    src/device/CrashDump.cpp
+    src/device/CrashDumpManager.cpp
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
+    src/device/Platform.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/PipelineStateApi.cpp
@@ -322,6 +325,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/SegmentationParser.cpp
     src/pipeline/utilities/DetectionParser/DetectionParserUtils.cpp
     src/pipeline/utilities/SpatialLocationCalculator/SpatialUtils.cpp
+    src/pipeline/utilities/Alignment/AlignmentUtilities.cpp
     src/pipeline/utilities/SegmentationParser/SegmentationParserUtils.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
@@ -342,6 +346,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
+    src/pipeline/datatype/Extrinsics.cpp
     src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImgAnnotations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -1165,10 +1170,10 @@ if(DEPTHAI_SANITIZE)
     if(DEPTHAI_HAVE_OPENCV_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_OPENCV_NAME})
     endif()
-    if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    if(DEPTHAI_HAVE_RTABMAP_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_RTABMAP_NAME})
     endif()
-    if(DEPTHAI_HAVE_BASALT_SUPPORT)
+    if(DEPTHAI_HAVE_BASALT_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)
         add_sanitizers(${TARGET_BASALT_NAME})
     endif()
     if(DEPTHAI_HAVE_PCL_SUPPORT AND NOT DEPTHAI_MERGED_TARGET)

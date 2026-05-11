@@ -12,6 +12,7 @@ namespace dai {
 namespace utility {
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+bool mockCameraFeatures(DeviceBase& device, std::filesystem::path replayPath);
 bool setupHolisticRecord(Pipeline pipeline,
                          const std::string& deviceId,
                          RecordConfig& recordConfig,

@@ -93,7 +93,6 @@ class RTABMapSLAM::Impl {
         auto* dataPtr = reinterpret_cast<Point3fRGBA*>(data.data());
         pcl->setWidth(cloud->width);
         pcl->setHeight(cloud->height);
-        pcl->setSparse(!cloud->is_dense);
 
         std::for_each(cloud->points.begin(), cloud->points.end(), [dataPtr, &cloud](const pcl::PointXYZRGB& point) mutable {
             size_t i = &point - &cloud->points[0];
@@ -295,6 +294,7 @@ void RTABMapSLAM::run() {
 void RTABMapSLAM::initialize(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
+
     pimplRtabmap->model = getRTABMapCameraModel(cameraId, width, height, pimplRtabmap->localTransform, alphaScaling, calibHandler);
     if(!databasePath.empty()) {
         pimplRtabmap->rtabmap.init(rtabParams, databasePath);
