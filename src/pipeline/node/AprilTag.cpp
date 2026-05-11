@@ -4,6 +4,8 @@
 
 #include <stdexcept>
 
+#include "depthai/pipeline/datatype/AprilTagConfig.hpp"
+#include "depthai/properties/AprilTagProperties.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/AprilTagConfig.hpp"
 #include "properties/AprilTagProperties.hpp"
@@ -323,6 +325,7 @@ void AprilTag::run() {
         aprilTags->setSequenceNum(inFrame->getSequenceNum());
         aprilTags->setTimestamp(inFrame->getTimestamp());
         aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
+        aprilTags->setTransformation(inFrame->transformation);
 
         {
             auto blockEvent = this->outputBlockEvent();

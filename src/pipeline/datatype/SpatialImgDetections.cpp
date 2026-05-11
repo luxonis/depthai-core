@@ -5,15 +5,15 @@
 #include <memory>
 #include <vector>
 
-#include "common/DepthUnit.hpp"
-#include "common/ImgTransformations.hpp"
-#include "common/RotatedRect.hpp"
-#include "common/Size2f.hpp"
-#include "common/SpatialKeypoint.hpp"
+#include "depthai/common/DepthUnit.hpp"
+#include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/RotatedRect.hpp"
+#include "depthai/common/Size2f.hpp"
+#include "depthai/common/SpatialKeypoint.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/common/Point3f.hpp"
-#include "utility/ImageManipImpl.hpp"
-#include "utility/matrixOps.hpp"
+#include "depthai/utility/ImageManipImpl.hpp"
+#include "depthai/utility/matrixOps.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/SpatialImgDetections.pb.h"
     #include "utility/ProtoSerialize.hpp"
