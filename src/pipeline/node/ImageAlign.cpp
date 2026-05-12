@@ -218,7 +218,7 @@ ImgTransformation adjustScale(ImgTransformation t, int w, int h) {
     return t;
 }
 
-void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_ptr<Buffer> firstAlignTo) {
+void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_ptr<ImgFrame> firstAlignTo) {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
 
@@ -231,8 +231,6 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
     std::array<std::array<float, 3>, 3> alignSourceIntrinsics;
     std::array<std::array<float, 4>, 4> depthToAlignExtrinsics;
     std::vector<float> depthDistortionCoefficients;
-    ImgTransformation inputAlignToTransform;
-    ImgTransformation inputTransform;
 
     dai::CameraBoardSocket alignFrom;
     dai::CameraBoardSocket alignTo;
@@ -248,17 +246,14 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
     uint32_t frameSize = 0;
     uint32_t outFrameSize = 0;
 
-    std::shared_ptr<Buffer> alignToMsg = firstAlignTo;
-    DatatypeEnum alignToDatatype = classifyInputDatatype(alignToMsg);
-
     auto nextInputImg = [&]() -> std::shared_ptr<ImgFrame> {
         if(firstInputImg) return std::exchange(firstInputImg, nullptr);
         return input.get<ImgFrame>();
     };
 
-    auto nextAlignToMsg = [&]() -> std::shared_ptr<Buffer> {
+    auto nextAlignToMsg = [&]() -> std::shared_ptr<ImgFrame> {
         if(firstAlignTo) return std::exchange(firstAlignTo, nullptr);
-        return inputAlignTo.get<Buffer>();
+        return inputAlignTo.get<ImgFrame>();
     };
 
     std::unordered_set<ImgFrame::Type> hwSupportedFrameTypes = {ImgFrame::Type::YUV420p, ImgFrame::Type::NV12, ImgFrame::Type::GRAY8, ImgFrame::Type::RAW8};
@@ -289,38 +284,16 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
     auto extractCalibrationData = [&](int depthWidth, int depthHeight, int alignWidth, int alignHeight) {
         if(calibrationSet) return;
 
-        if(alignToDatatype == DatatypeEnum::TransformableBuffer) {
-            auto alignToTransformable = std::dynamic_pointer_cast<TransformableBuffer>(alignToMsg);
-            if(!alignToTransformable || !alignToTransformable->getTransformation().has_value()) {
-                logger->error("Input connected to inputAlignTo does not have a ImgTransformation set, cannot use it as alignTo target!");
-                throw std::runtime_error("Missing ImgTransformation on inputAlignTo");
-            }
-
-            inputAlignToTransform = *alignToTransformable->getTransformation();
-            alignSourceIntrinsics = inputAlignToTransform.getIntrinsicMatrix();
-        }
-
         if(depthDistortionCoefficients.empty()) {
             depthDistortionCoefficients.assign(14, 0.0f);
         }
-        std::vector<float> alignDistortionCoefficients;
-        std::vector<std::vector<float> > depthToAlignRotation;
-        std::vector<float> depthToAlignTranslation;
+        auto alignDistortionCoefficients = calibHandler.getDistortionCoefficients(alignTo);
 
-        if(alignToDatatype == DatatypeEnum::TransformableBuffer) {
-            alignDistortionCoefficients = inputAlignToTransform.getDistortionCoefficients();
-            depthToAlignRotation = dai::matrix::matrix3x3ToVectorMatrix(inputTransform.getRotationMatrixTo(inputAlignToTransform));
+        auto depthToAlignRotation = calibHandler.getCameraRotationMatrix(alignFrom, alignTo);
+        auto depthToAlignTranslation = calibHandler.getCameraTranslationVector(alignFrom, alignTo, false);
 
-            auto translation = inputTransform.getTranslationVectorTo(inputAlignToTransform, false, LengthUnit::MILLIMETER);
-            depthToAlignTranslation = {translation[0], translation[1], translation[2]};
-        } else {
-            alignDistortionCoefficients = calibHandler.getDistortionCoefficients(alignTo);
-            depthToAlignRotation = calibHandler.getCameraRotationMatrix(alignFrom, alignTo);
-            depthToAlignTranslation = calibHandler.getCameraTranslationVector(alignFrom, alignTo, false);
-
-            for(auto& t : depthToAlignTranslation) {
-                t *= 10;  // convert to mm
-            }
+        for(auto& t : depthToAlignTranslation) {
+            t *= 10;  // convert to mm
         }
 
         auto cv_M1 = arrayToCvMat(3, 3, CV_32FC1, depthSourceIntrinsics);
@@ -447,6 +420,7 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
 
     int previousShiftFactor = 0;
 
+    ImgTransformation inputAlignToTransform;
     ImgFrame inputAlignToImgFrame;
     uint32_t currentEepromId = getParentPipeline().getEepromId();
 
@@ -454,51 +428,19 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
         std::shared_ptr<ImgFrame> inputImg = nullptr;
         std::shared_ptr<ImageAlignConfig> inConfig = nullptr;
         bool hasConfig = false;
-
         {
             auto blockEvent = this->inputBlockEvent();
 
             inputImg = nextInputImg();
 
-            if(alignToDatatype == DatatypeEnum::TransformableBuffer) {
-                alignToMsg = nextAlignToMsg();
-            }
-
             if(!initialized) {
                 initialized = true;
 
-                if(!alignToMsg) {
-                    logger->error("No message received on inputAlignTo, cannot initialize calibration!");
-                    continue;
-                }
+                auto inputAlignToImg = nextAlignToMsg();
 
-                if(alignToDatatype == DatatypeEnum::ImgFrame) {  // Legacy path
-                    auto inputAlignToImg = std::dynamic_pointer_cast<ImgFrame>(alignToMsg);
-                    inputAlignToImgFrame = *inputAlignToImg;
-                    inputAlignToTransform = inputAlignToImg->transformation;
-                    alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
+                inputAlignToImgFrame = *inputAlignToImg;
 
-                    if(alignWidth == 0 || alignHeight == 0) {
-                        alignWidth = inputAlignToImg->getWidth();
-                        alignHeight = inputAlignToImg->getHeight();
-                    }
-
-                } else if(alignToDatatype == DatatypeEnum::TransformableBuffer) {  // input is ImgFrame, alignment to TransformableBuffer
-                    auto inputAlignToTransformable = std::dynamic_pointer_cast<TransformableBuffer>(alignToMsg);
-
-                    if(!inputAlignToTransformable || !inputAlignToTransformable->getTransformation().has_value()) {
-                        logger->error("Input connected to inputAlignTo does not have a ImgTransformation set, cannot use it as alignTo target!");
-                        throw std::runtime_error("Missing ImgTransformation on inputAlignTo");
-                    }
-                    inputAlignToTransform = *inputAlignToTransformable->getTransformation();
-                    alignTo = static_cast<CameraBoardSocket>(0);  // default value for ImgFrame
-                    auto [w, h] = inputAlignToTransform.getSize();
-                    if(alignWidth == 0 || alignHeight == 0) {
-                        alignWidth = w;
-                        alignHeight = h;
-                    }
-                }
-
+                inputAlignToTransform = inputAlignToImg->transformation;
                 const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();
                 const bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
                 if(hasDistortion) {
@@ -507,8 +449,23 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
                         "aligned.");
                 }
 
-                inputAlignToTransform = adjustScale(inputAlignToTransform, alignWidth, alignHeight);
-                alignSourceIntrinsics = inputAlignToTransform.getIntrinsicMatrix();
+                alignTo = static_cast<CameraBoardSocket>(inputAlignToImg->getInstanceNum());
+                if(alignWidth == 0 || alignHeight == 0) {
+                    alignWidth = inputAlignToImg->getWidth();
+                    alignHeight = inputAlignToImg->getHeight();
+                }
+
+                auto alignTransformForIntrinsics = inputAlignToTransform;
+                auto [alignTransformWidth, alignTransformHeight] = alignTransformForIntrinsics.getSize();
+                if(static_cast<int>(alignTransformWidth) != alignWidth || static_cast<int>(alignTransformHeight) != alignHeight) {
+                    float scaleX = static_cast<float>(alignWidth) / static_cast<float>(alignTransformWidth);
+                    float scaleY = static_cast<float>(alignHeight) / static_cast<float>(alignTransformHeight);
+                    alignTransformForIntrinsics.addScale(scaleX, scaleY);
+                    alignTransformForIntrinsics.setSize(alignWidth, alignHeight);
+                }
+
+                alignSourceIntrinsics = alignTransformForIntrinsics.getIntrinsicMatrix();
+                inputAlignToTransform = alignTransformForIntrinsics;
             }
 
             if(inputConfig.getWaitForMessage()) {
@@ -535,9 +492,8 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
         alignFrom = (dai::CameraBoardSocket)inputImg->getInstanceNum();
         inputFrameType = inputImg->getType();
 
-        inputTransform = inputImg->transformation;
-        depthSourceIntrinsics = inputTransform.getIntrinsicMatrix();
-        depthDistortionCoefficients = inputTransform.getDistortionCoefficients();
+        depthSourceIntrinsics = inputImg->transformation.getIntrinsicMatrix();
+        depthDistortionCoefficients = inputImg->transformation.getDistortionCoefficients();
 
         if(!supportedFrameTypes.count(inputFrameType)) {
             logger->error("Frame type '{}' is not supported in ImageAlign.", (int)inputFrameType);  // todo toStr
@@ -553,22 +509,10 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
 
         uint32_t latestEepromId = getParentPipeline().getEepromId();
 
-        if(alignToDatatype == DatatypeEnum::TransformableBuffer) {
-            auto alignToTransformable = std::dynamic_pointer_cast<TransformableBuffer>(alignToMsg);
-            if(!alignToTransformable || !alignToTransformable->getTransformation().has_value()) {
-                logger->error("Input connected to inputAlignTo does not have a ImgTransformation set, cannot use it as alignTo target!");
-                throw std::runtime_error("Missing ImgTransformation on inputAlignTo");
-            }
-
-            auto latestAlignToTransform = *alignToTransformable->getTransformation();
-            latestAlignToTransform = adjustScale(latestAlignToTransform, alignWidth, alignHeight);
-            if(!latestAlignToTransform.isEqualTransformation(inputAlignToTransform)) {
-                calibrationSet = false;
-            }
-        } else if(latestEepromId > currentEepromId) {
+        if(latestEepromId > currentEepromId) {
             logger->debug("EEPROM data changed (ID: {} -> {}), reconfiguring ...", currentEepromId, latestEepromId);
             calibrationSet = false;
-            calibHandler = getParentPipeline().getCalibrationData();
+            calibHandler = pipeline.getCalibrationData();
             currentEepromId = latestEepromId;
         }
 
@@ -745,9 +689,9 @@ void ImageAlign::run() {
                || isDatatypeSubclassOf(DatatypeEnum::TransformableBuffer, datatype);
     };
 
-    if(inputDatatype == DatatypeEnum::ImgFrame) {
+    if(inputDatatype == DatatypeEnum::ImgFrame && alignToDatatype == DatatypeEnum::ImgFrame) {
         logger->warn("Running legacy");
-        legacyRun(std::dynamic_pointer_cast<ImgFrame>(firstInput), std::dynamic_pointer_cast<Buffer>(firstAlignTo));
+        legacyRun(std::dynamic_pointer_cast<ImgFrame>(firstInput), std::dynamic_pointer_cast<ImgFrame>(firstAlignTo));
     } else if(isImgFrameOrTransformable(inputDatatype) && isImgFrameOrTransformable(alignToDatatype)) {
         genericAlignRun(std::dynamic_pointer_cast<TransformableBuffer>(firstInput), std::dynamic_pointer_cast<Buffer>(firstAlignTo));
     }

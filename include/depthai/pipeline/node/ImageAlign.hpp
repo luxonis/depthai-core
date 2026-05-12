@@ -103,7 +103,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     std::shared_ptr<ImgFrame> alignImgFrameInput(const ImageAlign::ImgFrameRunState state, std::shared_ptr<ImgFrame> inputImg);
 
     void legacyRun(std::shared_ptr<ImgFrame> firstInputImg,
-                   std::shared_ptr<Buffer> inputAlignToMsg);  // lagacy ImgFrame to ImgFrame alignment
+                   std::shared_ptr<ImgFrame> inputAlignToMsg);  // lagacy ImgFrame to ImgFrame alignment
     void genericAlignRun(std::shared_ptr<TransformableBuffer> firstInput,
                          std::shared_ptr<Buffer> inputAlignToMsg);  // if one of the inputs is transformable buffer
 
