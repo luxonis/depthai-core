@@ -84,6 +84,9 @@ class Tracklets : public TransformableBuffer {
     std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
+    using Buffer::sequenceNum;
+    using Buffer::ts;
+    using Buffer::tsDevice;
     using TransformableBuffer::getTransformation;
     using TransformableBuffer::setTransformation;
     using TransformableBuffer::transformation;

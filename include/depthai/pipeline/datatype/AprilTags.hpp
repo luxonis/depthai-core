@@ -68,6 +68,9 @@ class AprilTags : public TransformableBuffer {
     std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
+    using Buffer::sequenceNum;
+    using Buffer::ts;
+    using Buffer::tsDevice;
     using TransformableBuffer::transformation;
     /**
      * Construct AprilTags message.

@@ -179,7 +179,10 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     using Base::detections;
     using Base::segmentationMaskHeight;
     using Base::segmentationMaskWidth;
+    using Base::sequenceNum;
     using Base::transformation;
+    using Base::ts;
+    using Base::tsDevice;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
     DatatypeEnum getDatatype() const override {

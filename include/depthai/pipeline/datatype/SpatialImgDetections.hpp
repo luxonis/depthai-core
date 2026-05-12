@@ -180,7 +180,10 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     using Base::detections;
     using Base::segmentationMaskHeight;
     using Base::segmentationMaskWidth;
+    using Base::sequenceNum;
     using Base::transformation;
+    using Base::ts;
+    using Base::tsDevice;
 
     /**
      * Length unit used by all imgDetections' `spatialCoordinates` in this list.

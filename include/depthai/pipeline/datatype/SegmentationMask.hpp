@@ -39,6 +39,9 @@ class SegmentationMask : public TransformableBuffer, public ProtoSerializable {
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
+    using Buffer::sequenceNum;
+    using Buffer::ts;
+    using Buffer::tsDevice;
     using TransformableBuffer::transformation;
 
     SegmentationMask();
