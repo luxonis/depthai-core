@@ -287,9 +287,9 @@ class PointCloudData : public TransformableBuffer, public ProtoSerializable {
                       instanceNum,
                       color,
                       TransformableBuffer::transformation,
-                      Buffer::ts,
-                      Buffer::tsDevice,
-                      Buffer::sequenceNum);
+                      ts,
+                      tsDevice,
+                      sequenceNum);
 };
 
 }  // namespace dai

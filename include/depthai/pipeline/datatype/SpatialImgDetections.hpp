@@ -222,9 +222,9 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
 #endif
 
     DEPTHAI_SERIALIZE(SpatialImgDetections,
-                      Base::Buffer::sequenceNum,
-                      Base::Buffer::ts,
-                      Base::Buffer::tsDevice,
+                      sequenceNum,
+                      ts,
+                      tsDevice,
                       detections,
                       transformation,
                       segmentationMaskWidth,

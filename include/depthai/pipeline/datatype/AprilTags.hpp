@@ -93,7 +93,7 @@ class AprilTags : public TransformableBuffer {
     }
 
     std::vector<AprilTag> aprilTags;
-    DEPTHAI_SERIALIZE(AprilTags, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, TransformableBuffer::transformation, aprilTags);
+    DEPTHAI_SERIALIZE(AprilTags, sequenceNum, ts, tsDevice, TransformableBuffer::transformation, aprilTags);
 };
 
 }  // namespace dai

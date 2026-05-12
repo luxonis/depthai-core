@@ -118,7 +118,7 @@ class Tracklets : public TransformableBuffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(Tracklets, tracklets, TransformableBuffer::transformation, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, unit);
+    DEPTHAI_SERIALIZE(Tracklets, tracklets, TransformableBuffer::transformation, ts, tsDevice, sequenceNum, unit);
 };
 
 }  // namespace dai

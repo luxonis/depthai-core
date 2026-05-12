@@ -214,9 +214,9 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
     DEPTHAI_SERIALIZE(ImgDetections,
-                      Base::Buffer::sequenceNum,
-                      Base::Buffer::ts,
-                      Base::Buffer::tsDevice,
+                      sequenceNum,
+                      ts,
+                      tsDevice,
                       detections,
                       transformation,
                       segmentationMaskWidth,
