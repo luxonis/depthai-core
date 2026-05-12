@@ -7,11 +7,11 @@
 
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/Keypoint.hpp"
+#include "depthai/common/Point3f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/Size2f.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
-#include "depthai/common/Keypoint.hpp"
-#include "depthai/common/Point3f.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF

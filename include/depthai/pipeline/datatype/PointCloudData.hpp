@@ -7,8 +7,8 @@
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
