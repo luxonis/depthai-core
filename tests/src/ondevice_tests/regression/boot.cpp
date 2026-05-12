@@ -1,3 +1,4 @@
+#include <atomic>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
@@ -18,6 +19,7 @@ TEST_CASE("Boot while enumerating devices") {
         try {
             while(running) {
                 auto devices = dai::Device::getAllAvailableDevices();
+                (void)devices;
                 std::this_thread::sleep_for(std::chrono::milliseconds(ENUMERATION_SLEEP_MS));
             }
         } catch(...) {
@@ -41,6 +43,7 @@ TEST_CASE("Boot while enumerating devices") {
             rethrowWorkerException();
             {
                 dai::Device dev;
+                (void)dev;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(BOOT_SLEEP_MS));
             rethrowWorkerException();
