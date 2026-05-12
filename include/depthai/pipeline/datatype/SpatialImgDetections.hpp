@@ -221,15 +221,7 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(SpatialImgDetections,
-                      sequenceNum,
-                      ts,
-                      tsDevice,
-                      detections,
-                      transformation,
-                      segmentationMaskWidth,
-                      segmentationMaskHeight,
-                      unit);
+    DEPTHAI_SERIALIZE(SpatialImgDetections, sequenceNum, ts, tsDevice, detections, transformation, segmentationMaskWidth, segmentationMaskHeight, unit);
 };
 
 }  // namespace dai
