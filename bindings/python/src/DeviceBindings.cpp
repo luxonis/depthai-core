@@ -618,18 +618,20 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBase, getProfilingData))
         .def(
             "readCalibration",
-            [](DeviceBase& d) {
+            [](DeviceBase& d, dai::CameraBoardSocket cameraSocket = dai::CameraBoardSocket::AUTO) {
                 py::gil_scoped_release release;
-                return d.readCalibration();
+                return d.readCalibration(cameraSocket);
             },
+            py::arg("cameraSocket") = dai::CameraBoardSocket::AUTO,
             DOC(dai, DeviceBase, readCalibration))
         .def(
             "tryFlashCalibration",
-            [](DeviceBase& d, CalibrationHandler calibrationDataHandler) {
+            [](DeviceBase& d, CalibrationHandler calibrationDataHandler, dai::CameraBoardSocket cameraSocket = dai::CameraBoardSocket::AUTO) {
                 py::gil_scoped_release release;
-                return d.tryFlashCalibration(calibrationDataHandler);
+                return d.tryFlashCalibration(calibrationDataHandler, cameraSocket);
             },
             py::arg("calibrationDataHandler"),
+            py::arg("cameraSocket") = dai::CameraBoardSocket::AUTO,
             DOC(dai, DeviceBase, tryFlashCalibration))
         .def(
             "setXLinkChunkSize",
@@ -722,10 +724,12 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             DOC(dai, DeviceBase, isEepromAvailable))
         .def(
             "flashCalibration",
-            [](DeviceBase& d, CalibrationHandler ch) {
+            [](DeviceBase& d, CalibrationHandler ch, dai::CameraBoardSocket cameraSocket = dai::CameraBoardSocket::AUTO) {
                 py::gil_scoped_release release;
-                return d.flashCalibration(ch);
+                return d.flashCalibration(ch, cameraSocket);
             },
+            py::arg("calibrationDataHandler"),
+            py::arg("cameraSocket") = dai::CameraBoardSocket::AUTO,
             DOC(dai, DeviceBase, flashCalibration))
         .def(
             "setCalibration",

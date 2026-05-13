@@ -1740,9 +1740,9 @@ bool DeviceBase::isCalibrationAvailable() {
     return pimpl->rpcCall("isCalibrationAvailable").as<bool>();
 }
 
-bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
+bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket cameraSocket) {
     try {
-        flashCalibration(calibrationDataHandler);
+        flashCalibration(calibrationDataHandler, cameraSocket);
     } catch(const EepromError& e) {
         pimpl->logger.error("Failed to flash calibration: {}", e.what());
         return false;
@@ -1750,7 +1750,7 @@ bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) 
     return true;
 }
 
-void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket cameraSocket) {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1763,7 +1763,7 @@ void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     bool success;
     std::string errorMsg;
     std::tie(success, errorMsg) =
-        pimpl->rpcCallChecked<std::tuple<bool, std::string>>("storeToEeprom", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions);
+        pimpl->rpcCallChecked<std::tuple<bool, std::string>>("storeToEeprom", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions, cameraSocket);
 
     if(!success) {
         throw EepromError(errorMsg);

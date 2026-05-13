@@ -707,18 +707,21 @@ class DeviceBase {
      * Stores the Calibration and Device information to the Device EEPROM
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @return true on successful flash, false on failure
      */
-    bool tryFlashCalibration(CalibrationHandler calibrationDataHandler);
+    bool tryFlashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket cameraSocket = CameraBoardSocket::AUTO);
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM
      *
      * @throws std::runtime_error if failed to flash the calibration
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
+     *
      */
-    void flashCalibration(CalibrationHandler calibrationDataHandler);
+    void flashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket cameraSocket = CameraBoardSocket::AUTO);
 
     /**
      * Sets the Calibration at runtime. This is not persistent and will be lost after device reset.
