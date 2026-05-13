@@ -6,11 +6,14 @@
 #include <string>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraSensorType.hpp"
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -18,16 +21,22 @@ namespace node {
 namespace {
 
 // ---------------------------------------------------------------------------
-// Depth algorithm guards (validateAlgorithm)
+// Depth: resolveAlgorithm (AUTO) + validateAlgorithm (explicit and resolved AUTO)
 //
-// TOF: require an actual ToF sensor in getConnectedCameraFeatures() (same idea
-// as the ToF node), not only a product name.
-// NeuralAssistedStereo / GPUStereo: platform and build rules; GPUStereo also
-// uses a product-name heuristic for Lite SKUs without the GPU stereo path.
+// TOF: require CameraSensorType::TOF in getConnectedCameraFeatures() (same rule as the ToF node).
+// AUTO: RVC4 -> NEURAL; RVC2 + ToF -> TOF; else -> STEREO (including RVC3).
+// NEURAL_ASSISTED_STEREO / GPU_STEREO: RVC4 and build rules; GPUStereo also uses a product-name
+// heuristic to exclude Lite-class RVC4 SKUs without the GPU block.
 // ---------------------------------------------------------------------------
 
 constexpr float kStereoMonoFps = 30.f;
 constexpr std::pair<uint32_t, uint32_t> kStereoDepthMonoSize{640, 400};
+
+/** Fixed NeuralDepth model for ``Algorithm::NEURAL`` and for ``AUTO`` on RVC4. */
+constexpr DeviceModelZoo kDefaultNeuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
+/** Fixed NeuralAssistedStereo neural model / rectify for ``Algorithm::NEURAL_ASSISTED_STEREO``. */
+constexpr DeviceModelZoo kDefaultNasNeuralModel = DeviceModelZoo::NEURAL_DEPTH_NANO;
+constexpr bool kDefaultNasRectify = true;
 
 std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
     std::shared_ptr<Camera> left;
@@ -99,9 +108,9 @@ bool deviceGpuStereoSupported(const std::shared_ptr<Device>& device) {
 
 }  // namespace
 
-Depth::Depth(const std::shared_ptr<Device>& device, Algorithm algorithm) : DeviceNodeGroup(device), algorithmOverride_(algorithm) {
-    DAI_CHECK_V(device != nullptr, "Depth node requires a device.");
-}
+Depth::Depth(Algorithm algorithm) : DeviceNodeGroup(), algorithmOverride_(algorithm) {}
+
+Depth::Depth() : Depth(Algorithm::AUTO) {}
 
 Depth::Algorithm Depth::resolveAlgorithm(const std::shared_ptr<Device>& device) const {
     if(algorithmOverride_ != Algorithm::AUTO) {
@@ -110,11 +119,14 @@ Depth::Algorithm Depth::resolveAlgorithm(const std::shared_ptr<Device>& device) 
     if(device->getPlatform() == Platform::RVC4) {
         return Algorithm::NEURAL;
     }
+    if(device->getPlatform() == Platform::RVC2 && deviceHasTofSensor(device)) {
+        return Algorithm::TOF;
+    }
     return Algorithm::STEREO;
 }
 
 void Depth::validateAlgorithm(const std::shared_ptr<Device>& device, Algorithm active) const {
-    // Fail fast before buildInternal wires backends (setAlgorithm / create(..., algorithm)).
+    // Fail fast before buildInternal wires backends (`active` is the resolved algorithm from resolveAlgorithm()).
     switch(active) {
         case Algorithm::AUTO:
             break;
@@ -149,10 +161,18 @@ void Depth::buildInternal() {
         return;
     }
 
-    const auto device = getDevice();
-    DAI_CHECK_V(device != nullptr, "Depth node requires a device.");
-
     Pipeline pipeline = getParentPipeline();
+    if(getDevice() == nullptr) {
+        if(pipeline.impl() != nullptr) {
+            if(auto def = pipeline.getDefaultDevice()) {
+                setDevice(std::move(def));
+            }
+        }
+    }
+
+    const auto device = getDevice();
+    DAI_CHECK_V(device != nullptr, "Depth node requires a device (set on create, when added to a pipeline with a default device, or from pipeline at first wiring).");
+
     DAI_CHECK_V(pipeline.impl() != nullptr, "Depth node must be part of a pipeline.");
 
     const Algorithm active = resolveAlgorithm(device);
@@ -165,7 +185,7 @@ void Depth::buildInternal() {
         case Algorithm::TOF: {
             tofBackend_ = ToF::create(device);
             add(tofBackend_);
-            tofBackend_->build(tofSocket_, tofPreset_, tofFps_);
+            tofBackend_->build(CameraBoardSocket::AUTO, ImageFiltersPresetMode::TOF_MID_RANGE, std::nullopt);
             depthOut_ = &tofBackend_->depth;
             confidenceOut_ = &tofBackend_->amplitude;
             break;
@@ -175,7 +195,7 @@ void Depth::buildInternal() {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
             auto [leftOut, rightOut] = ensureStereoFullResolutionOutputs(pipeline, pair, kStereoMonoFps);
-            nasBackend_->build(*leftOut, *rightOut, nasNeuralModel_, nasRectify_);
+            nasBackend_->build(*leftOut, *rightOut, kDefaultNasNeuralModel, kDefaultNasRectify);
             depthOut_ = &nasBackend_->depth;
             confidenceOut_ = &(*nasBackend_->stereoDepth).confidenceMap;
             break;
@@ -192,10 +212,10 @@ void Depth::buildInternal() {
         case Algorithm::NEURAL: {
             const auto pair = requireFirstStereoPair(device);
             neuralBackend_ = std::make_unique<Subnode<NeuralDepth>>(*this, "neuralDepth");
-            const auto is = NeuralDepth::getInputSize(neuralModel_);
+            const auto is = NeuralDepth::getInputSize(kDefaultNeuralDepthModel);
             const std::pair<uint32_t, uint32_t> monoSize{static_cast<uint32_t>(is.first), static_cast<uint32_t>(is.second)};
             auto [leftOut, rightOut] = ensureStereoCameraOutputs(pipeline, pair, monoSize, kStereoMonoFps);
-            (*neuralBackend_)->build(*leftOut, *rightOut, neuralModel_);
+            (*neuralBackend_)->build(*leftOut, *rightOut, kDefaultNeuralDepthModel);
             depthOut_ = &(**neuralBackend_).depth;
             confidenceOut_ = &(**neuralBackend_).confidence;
             break;

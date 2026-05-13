@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Stereo-style demo using the unified dai.node.Depth group (StereoDepth on RVC2/RVC3, NeuralDepth on RVC4).
+Stereo-style demo using the unified dai.node.Depth group (AUTO: NeuralDepth on RVC4, ToF on RVC2 with a ToF sensor,
+otherwise StereoDepth on RVC2/RVC3).
 
-- On RVC4 the NeuralDepth zoo model is fixed inside the library (not set via ``build()``).
+- On RVC4 the NeuralDepth zoo model is fixed inside the ``Depth`` wiring path (not user-configurable).
 - Create host queues on ``depth_node.depth`` / ``confidence`` **before** ``pipeline.build()`` (the pipeline
-  rejects new queues after build). The first ``depth``/``confidence`` access wires cameras and the backend.
+  rejects new queues after build). The first ``depth``/``confidence`` access wires the chosen backend (and stereo cameras when that backend needs them).
 - For a non-``AUTO`` backend, pass ``dai.node.Depth.Algorithm`` to ``pipeline.create`` (e.g.
   ``pipeline.create(dai.node.Depth, dai.node.Depth.Algorithm.TOF)``), or ``algorithm=`` as a keyword.
 - Use ``--ip ADDR`` to connect over Ethernet (e.g. PoE) instead of auto-picking the first USB device.
@@ -31,7 +32,7 @@ if args.ip:
 else:
     pipeline = dai.Pipeline()
 
-depth_node = pipeline.create(dai.node.Depth, dai.node.Depth.Algorithm.GPU_STEREO)
+depth_node = pipeline.create(dai.node.Depth)
 
 depth_queue = depth_node.depth.createOutputQueue()
 confidence_queue = depth_node.confidence.createOutputQueue()

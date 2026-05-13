@@ -22,7 +22,7 @@ extern py::handle daiNodeInternalModule;
 template <typename T, typename DERIVED = dai::DeviceNode>
 py::class_<T, DERIVED, std::shared_ptr<T>> addNode(const char* name, const char* docstring = nullptr) {
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeModule, name, docstring);
-    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object /*class_*/, const py::args& /*args*/, const py::kwargs& /*kwargs*/) {
+    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object, const py::args&, const py::kwargs&) {
         return p.create<T>();
     }));
     return node;
@@ -31,7 +31,7 @@ py::class_<T, DERIVED, std::shared_ptr<T>> addNode(const char* name, const char*
 template <typename T, typename DERIVED = dai::DeviceNode>
 py::class_<T, DERIVED, std::shared_ptr<T>> addNodeInternal(const char* name, const char* docstring = nullptr) {
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeInternalModule, name, docstring);
-    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object /*class_*/, const py::args& /*args*/, const py::kwargs& /*kwargs*/) {
+    pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object, const py::args&, const py::kwargs&) {
         return p.create<T>();
     }));
     return node;

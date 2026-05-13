@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """
-Same flow as unified_depth.py, but left/right Camera nodes are created explicitly on the device's
-first stereo pair. Depth reuses them and adds its own ``requestOutput`` paths for stereo depth (no adoption).
+Same flow as unified_depth.py, but left/right ``Camera`` nodes are created explicitly on the device's
+first stereo pair.
 
-Order is flexible for ``Depth`` vs ``Camera`` creation. Create ``depth_node.depth`` / ``confidence`` output
-queues **before** ``pipeline.build()``. On RVC4 the NeuralDepth model is fixed in the Depth wiring path.
+For stereo backends (``AUTO`` -> ``StereoDepth`` / ``NeuralDepth`` / …, or explicit non-ToF algorithms),
+``Depth`` reuses those cameras and requests stereo-sized outputs (it does not adopt the camera nodes).
+
+On RVC2 with a ToF sensor, ``AUTO`` resolves to the ToF backend: the pre-built stereo cameras are not used
+for depth. On RVC4 the NeuralDepth zoo model inside ``Depth`` is fixed (not user-configurable).
+
+Create ``depth_node.depth`` / ``confidence`` queues **before** ``pipeline.build()``; wiring happens on first access.
+
+This script still requires ``getStereoPairs()`` to be non-empty so the demo can build left/right cameras (they are unused when ``AUTO`` selects ToF on RVC2).
 """
 
 import sys
@@ -30,12 +37,6 @@ pipeline.create(dai.node.Camera).build(sp.left, sensorResolution=(1280, 800), se
 pipeline.create(dai.node.Camera).build(sp.right, sensorResolution=(1280, 800), sensorFps=30)
 
 depth_node = pipeline.create(dai.node.Depth)
-
-stereo = depth_node.getStereoDepth()
-if stereo is not None:
-    stereo.setRectification(True)
-    stereo.setExtendedDisparity(True)
-    stereo.setLeftRightCheck(True)
 
 depth_queue = depth_node.depth.createOutputQueue()
 confidence_queue = depth_node.confidence.createOutputQueue()

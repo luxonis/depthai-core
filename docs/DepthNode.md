@@ -20,12 +20,13 @@ algorithm selection and camera wiring logic inside DepthAI.
 
 ### Backend selection
 
-`Depth` supports explicit algorithm selection via `setAlgorithm()` (or `create(device, algorithm)`)
-and an `AUTO` mode.
+`Depth` supports explicit algorithm selection via `Pipeline::create<Depth>(algorithm)` / `Depth::create(algorithm)` / `explicit Depth(Algorithm)`,
+default `AUTO` via `Pipeline::create<Depth>()` / `Depth()` / `Depth::create()`, and an `AUTO` mode that resolves when the graph is wired. The algorithm is chosen only when the node is created; there is no runtime setter.
 
 - `AUTO` resolves to:
   - `NEURAL` on RVC4
-  - `STEREO` on non-RVC4
+  - `TOF` on RVC2 when a connected camera reports `CameraSensorType::TOF` in `getConnectedCameraFeatures()`
+  - `STEREO` on other platforms (and on RVC2 when no ToF sensor is reported)
 - Explicit values are validated against device/platform constraints before backend wiring.
 
 ### Lazy wiring
@@ -60,41 +61,27 @@ This allows both common wiring styles:
   - `ToF`: `amplitude`
   - `GPUStereo`: `disparity`
 
-### Backend accessors
+Algorithm implementation nodes (`StereoDepth`, `NeuralDepth`, and so on) are not part of the public `Depth` API; they are created when the graph is first wired with fixed defaults (neural zoo model, ToF socket/preset, NAS rectify flag, and so on). The only user-controlled knob is `Algorithm`, fixed at construction via `create` / constructors / `Pipeline::create<Depth>(...)`.
 
-After wiring/build, accessors expose which backend is active:
+### Algorithm configuration
 
-- `getStereoDepth()`
-- `getNeuralDepth()`
-- `getNeuralAssistedStereo()`
-- `getToF()`
-- `getGPUStereo()`
-
-Inactive backends return `nullptr`.
-
-### Configuration helpers
-
-`Depth` provides backend-specific configuration entry points:
-
-- `build(DeviceModelZoo neuralModel)` for NeuralDepth model selection
-- `setNeuralAssistedStereoModel(DeviceModelZoo)`
-- `setNeuralAssistedStereoRectify(bool)`
-- `setTofOptions(CameraBoardSocket, ImageFiltersPresetMode, optional fps)`
+- Use `Pipeline::create<Depth>(algorithm)` (Python: `pipeline.create(dai.node.Depth, …)` or `algorithm=` keyword), `Depth::create(…)`, or `explicit Depth(Algorithm)` to pick the backend. The C++ factory `dai::node::Depth::create` accepts a null device pointer: the pipeline's default device is applied when the node is added, or at first wiring via `getParentPipeline().getDefaultDevice()`. `Pipeline::create<Depth>()` passes the pipeline default device. For automatic algorithm selection, use `Depth::create()`, `Pipeline::create<Depth>()`, or a default-constructed `Depth()` (all use `AUTO`).
+- For per-backend tuning (NeuralDepth model, ToF preset, StereoDepth presets, and so on), use the dedicated node types directly instead of `Depth`.
 
 ## Limitations and constraints
 
 ### Device/platform requirements
 
 - `Depth` requires a real device context (`Pipeline(true)` / default device available).
-- Stereo-based modes require an available stereo pair on the device.
+- Stereo-based algorithms (`STEREO`, `NEURAL`, `GPU_STEREO`, `NEURAL_ASSISTED_STEREO`) require an available stereo pair on the device. `TOF` and `AUTO` when it resolves to `TOF` do not.
 - `NEURAL_ASSISTED_STEREO` is RVC4-only.
 - `GPU_STEREO` is RVC4-only and requires a Kompute-enabled build.
 - `TOF` requires a connected ToF camera sensor.
 
 ### GPU stereo availability
 
-`GPU_STEREO` additionally depends on product/platform support. On unsupported RVC4 SKUs, validation
-fails with an explanatory runtime error.
+`GPU_STEREO` additionally uses a host-side product-name heuristic (for example excluding RVC4 "Lite" SKUs
+without the expected GPU block). On unsupported devices, validation fails with an explanatory runtime error.
 
 ### Backend-specific semantics
 
@@ -113,9 +100,8 @@ Applications that need stable cross-backend behavior should validate output expe
 ```cpp
 dai::Pipeline pipeline;
 auto depth = pipeline.create<dai::node::Depth>();
-
-// Optional explicit selection:
-// depth->setAlgorithm(dai::node::Depth::Algorithm::NEURAL);
+// Or explicit backend at creation:
+// auto depth = pipeline.create<dai::node::Depth>(dai::node::Depth::Algorithm::NEURAL);
 
 auto depthQ = depth->depth().createOutputQueue();
 auto confQ = depth->confidence().createOutputQueue();
