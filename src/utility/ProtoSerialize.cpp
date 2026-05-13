@@ -233,6 +233,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
         case DatatypeEnum::GateControl:
+        case DatatypeEnum::FocusedDepthRoi:
         case DatatypeEnum::ImgDetections:
         case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::SpatialImgDetections:

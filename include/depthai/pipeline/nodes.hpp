@@ -17,6 +17,7 @@
 #endif
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"
+#include "node/FocusedDepth.hpp"
 #include "node/GPUStereo.hpp"
 #include "node/Depth.hpp"
 #include "node/IMU.hpp"

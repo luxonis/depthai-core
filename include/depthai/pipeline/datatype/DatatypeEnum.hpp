@@ -11,6 +11,7 @@ enum class DatatypeEnum : std::int32_t {
     EncodedFrame,
     SegmentationMask,
     GateControl,
+    FocusedDepthRoi,
     NNData,
     ImageManipConfig,
     CameraControl,

@@ -49,6 +49,7 @@ void bind_auto_calibration_result(pybind11::module& m, void* pCallstack);
 #endif  // DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 void bind_vppconfig(pybind11::module& m, void* pCallstack);
 void bind_gate_control(pybind11::module& m, void* pCallstack);
+void bind_focused_depth_roi(pybind11::module& m, void* pCallstack);
 
 void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind common datatypebindings
@@ -95,6 +96,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_mapdata);
     callstack.push_front(bind_vppconfig);
     callstack.push_front(bind_gate_control);
+    callstack.push_front(bind_focused_depth_roi);
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     callstack.push_front(bind_dynamic_calibration_results);
     callstack.push_front(bind_dynamic_calibration_control);
@@ -168,5 +170,6 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("AutoCalibrationConfig", DatatypeEnum::AutoCalibrationConfig)
         .value("AutoCalibrationResult", DatatypeEnum::AutoCalibrationResult)
         .value("CalibrationQuality", DatatypeEnum::CalibrationQuality)
-        .value("CoverageData", DatatypeEnum::CoverageData);
+        .value("CoverageData", DatatypeEnum::CoverageData)
+        .value("FocusedDepthRoi", DatatypeEnum::FocusedDepthRoi);
 }

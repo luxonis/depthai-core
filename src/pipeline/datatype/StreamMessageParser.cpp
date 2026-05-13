@@ -29,6 +29,7 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/GPUStereoConfig.hpp"
+#include "depthai/pipeline/datatype/FocusedDepthRoi.hpp"
 #include "depthai/pipeline/datatype/GateControl.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
@@ -198,6 +199,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::GateControl:
             return parseDatatype<GateControl>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::FocusedDepthRoi:
+            return parseDatatype<FocusedDepthRoi>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::ImgDetections:

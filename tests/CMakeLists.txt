@@ -444,6 +444,7 @@ dai_set_test_labels(normalization_test onhost ci)
 
 # Depth unit tests
 dai_add_test(depth_unit_test src/onhost_tests/depth_unit_test.cpp)
+dai_add_test(focused_depth_model_picker_test src/onhost_tests/focused_depth_model_picker_test.cpp)
 dai_set_test_labels(depth_unit_test onhost ci)
 
 # MessageQueue tests
@@ -652,7 +653,9 @@ dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4rgb ci)
 # No "ci" label: excluded from broad "ctest -L ci". HIL still runs this via run_tests.py (hardware
 # configs match ^(ci|ondevice)$ plus platform labels). Host config requires onhost, so never selected there.
 dai_add_test(depth_node_test src/ondevice_tests/pipeline/node/depth_node_test.cpp)
+dai_add_test(focused_depth_node_test src/ondevice_tests/pipeline/node/focused_depth_node_test.cpp)
 dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4)
+dai_set_test_labels(focused_depth_node_test ondevice rvc4)
 
 # Detection network test
 if(DEPTHAI_FETCH_ARTIFACTS)

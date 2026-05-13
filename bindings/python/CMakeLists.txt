@@ -113,6 +113,7 @@ set(SOURCE_LIST
     src/pipeline/node/NeuralDepthBindings.cpp
     src/pipeline/node/GPUStereoBindings.cpp
     src/pipeline/node/DepthBindings.cpp
+    src/pipeline/node/FocusedDepthBindings.cpp
     src/pipeline/node/NeuralAssistedStereoBindings.cpp
     src/pipeline/FilterParamsBindings.cpp
     src/pipeline/node/VppBindings.cpp
@@ -124,6 +125,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/EdgeDetectorConfigBindings.cpp
     src/pipeline/datatype/FeatureTrackerConfigBindings.cpp
     src/pipeline/datatype/GateControlBindings.cpp
+    src/pipeline/datatype/FocusedDepthRoiBindings.cpp
     src/pipeline/datatype/ThermalConfigBindings.cpp
     src/pipeline/datatype/ToFConfigBindings.cpp
     src/pipeline/datatype/ImageManipConfigBindings.cpp

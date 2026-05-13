@@ -342,6 +342,8 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
     src/pipeline/node/Depth.cpp
+    src/pipeline/node/FocusedDepth.cpp
+    src/pipeline/node/FocusedDepthCrop.cpp
     src/pipeline/node/GPUStereo.cpp
     src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp
@@ -391,9 +393,11 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/TransformData.cpp
     src/pipeline/datatype/PacketizedData.cpp
     src/properties/Properties.cpp
+    src/properties/FocusedDepthCropProperties.cpp
     src/capabilities/Capabilities.cpp
     src/pipeline/datatype/VppConfig.cpp
     src/pipeline/datatype/GateControl.cpp
+    src/pipeline/datatype/FocusedDepthRoi.cpp
     src/utility/H26xParsers.cpp
     src/utility/ImageManipImpl.cpp
     src/utility/ObjectTrackerImpl.cpp
