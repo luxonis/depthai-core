@@ -715,6 +715,9 @@ dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci noreplay
 dai_add_test(regression_message_group_test src/ondevice_tests/regression/message_group.cpp)
 dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
+dai_add_test(regression_boot_test src/ondevice_tests/regression/boot.cpp)
+dai_set_test_labels(regression_boot_test ondevice rvc2 rvc4 usb ci noreplayci)
+
 # Sync test
 dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
 dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)

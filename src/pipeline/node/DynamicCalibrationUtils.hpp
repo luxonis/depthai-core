@@ -13,9 +13,7 @@ struct DclUtils {
                                            const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationA,
                                            const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationB,
                                            const CameraBoardSocket socketSrc,
-                                           const CameraBoardSocket socketDest,
-                                           const std::pair<int, int>& resolutionA,
-                                           const std::pair<int, int>& resolutionB);
+                                           const CameraBoardSocket socketDest);
 
     static std::shared_ptr<dcl::CameraCalibrationHandle> createDclCalibration(const std::vector<std::vector<float>>& cameraMatrix,
                                                                               const std::vector<float>& distortionCoefficients,

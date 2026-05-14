@@ -69,9 +69,9 @@ struct AutoCalibrationConfig : public Buffer {
     double calibrationConfidenceThreshold = 0.9;
 
     /**
-     * @brief Minimum quality threshold (0.0 to 1.0) for input features to be used.
+     * @brief Minimum quality threshold (0.0 to 1.0) for input features to be used. A value below 0 selects the default based on the lens model.
      */
-    double dataConfidenceThreshold = 0.7;
+    double dataConfidenceThreshold = -1.;
 
     /**
      * @brief Maximum number of optimization iterations per calibration cycle.
