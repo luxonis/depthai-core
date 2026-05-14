@@ -694,9 +694,10 @@ void ImageAlign::run() {
     };
 
     if(inputDatatype == DatatypeEnum::ImgFrame && alignToDatatype == DatatypeEnum::ImgFrame) {
-        logger->warn("Running legacy");
+        logger->info("Running ImageAlign in legacy mode with ImgFrame inputs.");
         legacyRun(std::dynamic_pointer_cast<ImgFrame>(firstInput), std::dynamic_pointer_cast<ImgFrame>(firstAlignTo));
     } else if(isImgFrameOrTransformable(inputDatatype) && isImgFrameOrTransformable(alignToDatatype)) {
+        logger->info("Running ImageAlign in generic mode with transformable buffer inputs.");
         genericAlignRun(std::dynamic_pointer_cast<Buffer>(firstInput), std::dynamic_pointer_cast<Buffer>(firstAlignTo));
     }
 }
@@ -1095,7 +1096,6 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
     }
 
     if(inputType == DatatypeEnum::ImgDetections) {
-        logger->warn("Aligning an ImgDetections.");
         std::shared_ptr<ImgDetections> imgDetectionsInput = std::dynamic_pointer_cast<ImgDetections>(inputMsg);
         std::optional<ImgFrame> segMask = imgDetectionsInput->getSegmentationMask();
 
@@ -1115,7 +1115,6 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
     }
 
     if(inputType == DatatypeEnum::SpatialImgDetections) {
-        logger->warn("Aligning an SpatialImgDetections.");
         auto spatialImgDetectionsInput = std::dynamic_pointer_cast<SpatialImgDetections>(inputMsg);
         auto segMask = spatialImgDetectionsInput->getSegmentationMask();
 
@@ -1134,7 +1133,6 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
     }
 
     if(inputType == DatatypeEnum::SegmentationMask) {
-        logger->warn("Aligning an SegmentationMask.");
         auto segMaskInput = std::dynamic_pointer_cast<SegmentationMask>(inputMsg);
         auto segMaskFrame = segMaskInput->getFrame();
 
@@ -1152,13 +1150,11 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
         return alignedSegMask;
     }
 
-    if(inputType == DatatypeEnum::PointCloudData) {  // need to add ? maybe not even that
-        logger->warn("Aligning PointCloudData.");
-    }
+    // if(inputType == DatatypeEnum::PointCloudData) {
+    // }
 
     DatatypeEnum inputClass = classifyInputDatatype(inputMsg);
     if(inputClass == DatatypeEnum::TransformableBuffer) {
-        logger->warn("Aligning TransformableBuffer.");
         auto transformableInput = std::dynamic_pointer_cast<TransformableBuffer>(inputMsg);
         if(transformableInput) {
             return transformableInput->cloneAndTransformTo(outputTransform);
@@ -1213,6 +1209,7 @@ void ImageAlign::genericAlignRun(std::shared_ptr<Buffer> firstInput, std::shared
 
             inConfig = inputConfig.getWaitForMessage() ? inputConfig.get<ImageAlignConfig>() : inputConfig.tryGet<ImageAlignConfig>();
         }
+        auto tStart = std::chrono::steady_clock::now();
 
         if(inConfig) latestConfig = inConfig;
 
@@ -1237,6 +1234,9 @@ void ImageAlign::genericAlignRun(std::shared_ptr<Buffer> firstInput, std::shared
         std::shared_ptr<Buffer> alignedInputMsg = buildAlignedOutputMessage(inputMsg, inputType, alignToTransform, runState, warnedAboutDistortion);
 
         warnedAboutDistortion = true;
+        auto tStop = std::chrono::steady_clock::now();
+        auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(tStop - tStart).count();
+        logger->trace("Generic align step took {} ms", runtime);
 
         {
             auto blockEvent = this->outputBlockEvent();
