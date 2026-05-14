@@ -230,7 +230,7 @@ void SpatialImgDetections::transformToInternal(const ImgTransformation& target) 
     ImgTransformation source = *this->getTransformation();
 
     for(auto& detection : detections) {
-        detection.transform(source, target);
+        detection.transform(source, target, unit);
     }
     setTransformation(target);
 }

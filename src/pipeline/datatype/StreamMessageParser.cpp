@@ -169,7 +169,7 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
 
         case DatatypeEnum::TransformableBuffer:
-            break;
+            throw std::runtime_error("Cannot parse abstract TransformableBuffer; expected a concrete type such as ImgDetections, AprilTags, or Tracklets");
 
         case DatatypeEnum::ImgFrame:
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);
