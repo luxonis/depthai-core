@@ -16,6 +16,6 @@ void bind_gpustereoconfig(pybind11::module& m, void* pCallstack) {
     callstack->pop();
     cb(m, pCallstack);
 
-    // GPUStereoConfig is an internal type — no user-facing fields are exposed.
-    gpuStereoConfig.def(py::init<>());
+    gpuStereoConfig.def(py::init<>())
+        .def_readwrite("confidenceThreshold", &GPUStereoConfig::confidenceThreshold);
 }

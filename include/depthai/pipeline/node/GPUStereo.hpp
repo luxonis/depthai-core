@@ -28,6 +28,9 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
     constexpr static const char* NAME = "GPUStereo";
     GPUStereo() = default;
 
+    /// Initial configuration for the node (user-accessible).
+    std::shared_ptr<GPUStereoConfig> initialConfig = std::make_shared<GPUStereoConfig>();
+
     /**
      * @brief Build the node by linking left and right camera outputs.
      */
@@ -37,7 +40,8 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
      * @brief Enable or disable built-in stereo rectification.
      *
      * When enabled, the node rectifies the input images internally using calibration data.
-     * When disabled, inputs are expected to be already rectified.
+     * When disabled, the Rectification subnode is bypassed and inputs are expected to be
+     * already rectified.
      */
     GPUStereo& setRectification(bool enable);
 
@@ -70,7 +74,7 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
     void buildInternal() override;
 
    private:
-    std::shared_ptr<GPUStereoConfig> initialConfig = std::make_shared<GPUStereoConfig>();
+    bool rectificationEnabled = true;
 };
 
 }  // namespace node

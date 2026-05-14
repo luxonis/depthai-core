@@ -389,3 +389,7 @@ dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
 
 add_python_example(pointcloud_visualizer PointCloud/point_cloud_visualizer.py)
 dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)
+
+## GPUStereo
+add_python_example(gpu_stereo RVC4/GPUStereo/gpu_stereo.py)
+dai_set_example_test_labels(gpu_stereo ondevice rvc4 ci)

@@ -7,14 +7,13 @@ import depthai as dai
 import numpy as np
 
 parser = argparse.ArgumentParser(description="GPUStereo disparity example")
-parser.add_argument("--device", "-d", type=str, default="10.11.0.51", help="Device IP address")
+parser.add_argument("--device", "-d", type=str, default=None, help="Device IP address (optional)")
 args = parser.parse_args()
 
-DEVICE_IP = args.device
 RESOLUTION = (1280, 800)
 FPS = 30
 
-device = dai.Device(DEVICE_IP)
+device = dai.Device(args.device) if args.device else dai.Device()
 device.setIrLaserDotProjectorIntensity(0.9)
 
 pipeline = dai.Pipeline(device)

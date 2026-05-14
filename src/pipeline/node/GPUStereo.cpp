@@ -23,12 +23,13 @@ std::shared_ptr<GPUStereo> GPUStereo::build(Output& leftInput, Output& rightInpu
 }
 
 GPUStereo& GPUStereo::setRectification(bool enable) {
+    rectificationEnabled = enable;
     rectification->enableRectification(enable);
     return *this;
 }
 
 GPUStereo& GPUStereo::setConfidenceThreshold(int threshold) {
-    initialConfig->confidence_threshold = std::clamp(threshold, 0, 255);
+    initialConfig->confidenceThreshold = static_cast<std::uint8_t>(std::clamp(threshold, 0, 255));
     return *this;
 }
 
@@ -36,15 +37,25 @@ void GPUStereo::buildInternal() {
     if(device) {
         auto platform = device->getPlatform();
         if(platform != Platform::RVC4) {
-            throw std::runtime_error("GPUStereo node is not supported on RVC2 devices.");
+            throw std::runtime_error("GPUStereo node is only supported on RVC4 devices.");
         }
     }
 
+    sync->setRunOnHost(false);
+    messageDemux->setRunOnHost(false);
+    rectification->setRunOnHost(false);
+
     sync->out.link(messageDemux->input);
-    messageDemux->outputs["left"].link(rectification->input1);
-    messageDemux->outputs["right"].link(rectification->input2);
-    rectification->output1.link(leftInternal);
-    rectification->output2.link(rightInternal);
+
+    if(rectificationEnabled) {
+        messageDemux->outputs["left"].link(rectification->input1);
+        messageDemux->outputs["right"].link(rectification->input2);
+        rectification->output1.link(leftInternal);
+        rectification->output2.link(rightInternal);
+    } else {
+        messageDemux->outputs["left"].link(leftInternal);
+        messageDemux->outputs["right"].link(rightInternal);
+    }
 }
 
 }  // namespace node

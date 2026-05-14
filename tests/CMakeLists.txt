@@ -848,3 +848,7 @@ dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
 # Crashdump test
 dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
 dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)
+
+# GPUStereo tests
+dai_add_test(gpu_stereo_test src/onhost_tests/gpu_stereo_test.cpp)
+dai_set_test_labels(gpu_stereo_test onhost ci)

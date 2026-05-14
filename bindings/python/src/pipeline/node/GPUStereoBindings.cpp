@@ -37,6 +37,7 @@ void bind_gpustereo(pybind11::module& m, void* pCallstack) {
             DOC(dai, node, GPUStereo, rectifiedRight))
         .def("setRectification", &GPUStereo::setRectification, py::arg("enable"), DOC(dai, node, GPUStereo, setRectification))
         .def("setConfidenceThreshold", &GPUStereo::setConfidenceThreshold, py::arg("threshold"), DOC(dai, node, GPUStereo, setConfidenceThreshold))
+        .def_readonly("initialConfig", &GPUStereo::initialConfig, DOC(dai, node, GPUStereo, initialConfig))
         .def_readonly("disparity", &GPUStereo::disparity, DOC(dai, node, GPUStereo, disparity))
         .def_readonly("depth", &GPUStereo::depth, DOC(dai, node, GPUStereo, depth))
         .def("build", &GPUStereo::build, py::arg("leftInput"), py::arg("rightInput"), DOC(dai, node, GPUStereo, build));
