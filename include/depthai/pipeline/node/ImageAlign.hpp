@@ -99,15 +99,23 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     struct ImgFrameRunState;
     bool runOnHostVar = false;
 
-    void extractCalibrationData(ImgFrameRunState& state, int depthWidth, int depthHeight, int alignWidth, int alignHeight);
+    ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTransform, const ImgTransformation& alignToTransform);
+    static void updateShiftFactor(ImgFrameRunState& state, uint16_t staticDepthPlane);
     std::shared_ptr<ImgFrame> alignImgFrameInput(const ImageAlign::ImgFrameRunState state, std::shared_ptr<ImgFrame> inputImg);
+    ImgTransformation extractTransformationFromBuffer(const std::shared_ptr<Buffer>& buffer, DatatypeEnum datatype);
 
     void legacyRun(std::shared_ptr<ImgFrame> firstInputImg,
                    std::shared_ptr<ImgFrame> inputAlignToMsg);  // lagacy ImgFrame to ImgFrame alignment
-    void genericAlignRun(std::shared_ptr<TransformableBuffer> firstInput,
+    void genericAlignRun(std::shared_ptr<Buffer> firstInput,
                          std::shared_ptr<Buffer> inputAlignToMsg);  // if one of the inputs is transformable buffer
 
-    std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame inputImg, const ImgTransformation& inputTransform, const ImgTransformation& alignToTransform);
+    std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame inputImg, const ImgFrameRunState& state, cv::Scalar bgColor = cv::Scalar(0, 0, 0));
+
+    std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>& inputMsg,
+                                                      DatatypeEnum inputType,
+                                                      const ImgTransformation& targetTransform,
+                                                      const ImgFrameRunState& runState,
+                                                      bool warnedAboutDistortion);
 };
 
 }  // namespace node
