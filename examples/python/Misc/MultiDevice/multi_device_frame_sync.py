@@ -80,8 +80,8 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
 # ---------------------------------------------------------------------------
 def createSyncNode(syncThreshold: datetime.timedelta):
     global masterPipeline, masterNode, masterName, slaveQueues, inputQueues, outputNames, slavePipelines
-    # sync = masterPipeline.create(dai.node.Sync)
-    sync = masterPipeline.create(dai.node.SyncSystem)
+    sync = masterPipeline.create(dai.node.Sync)
+    #sync = masterPipeline.create(dai.node.SyncSystem)
 
     # Sync node will run on the host, since it needs to sync multiple devices
     sync.setRunOnHost(True)
@@ -192,18 +192,18 @@ def setupDevice(
         if sensorName == "":
             print(f"Could not find sensor name for socket {socket} for device {name}")
             continue
-        if "IMX" in sensorName:
-            print(f"Skipping IMX sensor {sensorName} for device {name}")
-            continue
-        if "OV" in sensorName:
-            print(f"Skipping OV sensor {sensorName} for device {name}")
-            continue
+        #if "IMX" in sensorName:
+        #    print(f"Skipping IMX sensor {sensorName} for device {name}")
+        #    continue
+        #if "OV" in sensorName:
+        #    print(f"Skipping OV sensor {sensorName} for device {name}")
+        #    continue
         # if "OG" in sensorName:
         #     print(f"Skipping OG sensor {sensorName} for device {name}")
         #     continue
-        if socket == dai.CameraBoardSocket.CAM_B:
-            print(f"Skipping CAM_B sensor {sensorName} for device {name}")
-            continue
+        #if socket == dai.CameraBoardSocket.CAM_A:
+        #    print(f"Skipping CAM_B sensor {sensorName} for device {name}")
+        #    continue
         print(f"Setting up socket {socket} for device {name}")
         pipeline = setUpCameraSocket(pipeline, socket, name, targetFps, role)
 
@@ -383,8 +383,8 @@ with contextlib.ExitStack() as stack:
         if latestFrameGroup is not None and latestFrameGroup.getNumMessages() == len(outputNames):
             tsValues = {}
             for name in outputNames:
-                tsValues[name] = (latestFrameGroup[name].getTimestampSystem(dai.CameraExposureOffset.END) - datetime.datetime.fromtimestamp(0)).total_seconds()
-                # tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
+                #tsValues[name] = (latestFrameGroup[name].getTimestampSystem(dai.CameraExposureOffset.END) - datetime.datetime.fromtimestamp(0)).total_seconds()
+                tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
             
             # Build individual image arrays for each camera socket, displayed side-by-side
             imgs = []

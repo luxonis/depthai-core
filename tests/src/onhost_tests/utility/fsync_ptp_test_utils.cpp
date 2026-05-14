@@ -144,10 +144,12 @@ dai::Node::Output* createPipeline(std::shared_ptr<dai::Pipeline> pipeline,
     //     height = ;
     // }
     auto output = cam->requestOutput(std::make_pair(width, height), dai::ImgFrame::Type::NV12, dai::ImgResizeMode::STRETCH);
+    cam->initialControl.setManualExposure(900, 1000);
     return output;
 }
 
 std::shared_ptr<dai::node::Sync> createSyncNode(std::shared_ptr<dai::Pipeline>& masterPipeline,
+// std::shared_ptr<dai::node::SyncSystem> createSyncNode(std::shared_ptr<dai::Pipeline>& masterPipeline,
                                                 std::map<std::string, dai::Node::Output*>& masterNode,
                                                 const std::string& masterName,
                                                 std::chrono::nanoseconds syncThreshold,
@@ -155,6 +157,7 @@ std::shared_ptr<dai::node::Sync> createSyncNode(std::shared_ptr<dai::Pipeline>& 
                                                 std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
                                                 std::map<std::string, std::shared_ptr<dai::InputQueue>>& inputQueues) {
     auto sync = masterPipeline->create<dai::node::Sync>();
+    // auto sync = masterPipeline->create<dai::node::SyncSystem>();
     sync->setRunOnHost(true);
     sync->setSyncThreshold(syncThreshold);
     for(auto p : masterNode) {
@@ -183,7 +186,8 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
                        std::optional<dai::ExternalFrameSyncRole> role,
                        std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
                        std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
-                       std::vector<std::string>& camSockets) {
+                       std::vector<std::string>& camSockets,
+                       std::string &ptpMasterDeviceName) {
     auto outNode = createPipeline(pipeline, socket, targetFps, syncType, role);
 
     if(syncType == SyncType::EXTERNAL) {
@@ -207,6 +211,9 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
         // Actual PTP master might be different, but it doesn't matter for this test.
         if(!masterNode.has_value()) {
             masterNode.emplace();
+            ptpMasterDeviceName = name;
+        }
+        if (ptpMasterDeviceName == name) {
             masterNode.value().emplace(dai::toString(socket), outNode);
         } else {
             if(slaveQueues.find(name) == slaveQueues.end()) {
@@ -255,7 +262,8 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
                  std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
                  std::vector<std::string>& camSockets,
                  float targetFps,
-                 SyncType syncType) {
+                 SyncType syncType,
+                 std::string &ptpMasterDeviceName) {
     auto pipeline = std::make_shared<dai::Pipeline>(std::make_shared<dai::Device>(deviceInfo));
     auto device = pipeline->getDefaultDevice();
 
@@ -273,8 +281,40 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     std::cout << "    Device ID: " << device->getDeviceId() << std::endl;
     std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
+    auto sensorNames = device->getCameraSensorNames();
     for(auto socket : device->getConnectedCameras()) {
-        setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets);
+        std::string sensorName = "";
+        for(auto &pair : sensorNames) {
+            auto sckt = pair.first;
+            auto namee = pair.second;
+            if(sckt == socket) {
+                sensorName = namee;
+                break;
+            }
+        }
+        if (sensorName == "") {
+            std::cout << "Could not find sensor name for socket " << socket << " for device " << name << std::endl;
+            continue;
+        }
+        if (sensorName.find("IMX") != std::string::npos) {
+            std::cout << "Skipping IMX sensor " << sensorName << " for device " << name << std::endl;
+            continue;
+        }
+        if (sensorName.find("OV") != std::string::npos) {
+            std::cout << "Skipping OV sensor " << sensorName << " for device " << name << std::endl;
+            continue;
+        }
+        // if (sensorName.find("OG") != std::string::npos) {
+        //     std::cout << "Skipping OG sensor " << sensorName << " for device " << name << std::endl;
+        //     continue;
+        // }
+        if (socket == dai::CameraBoardSocket::CAM_C) {
+            std::cout << "Skipping CAM_C sensor " << sensorName << " for device " << name << std::endl;
+            continue;
+        }
+        std::cout << "Setting up socket " << socket << " for device " << name << std::endl;
+
+        setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets, ptpMasterDeviceName);
     }
 
     setUpIrLeds(device);
@@ -330,8 +370,10 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
     std::vector<std::string> outputNames;
     std::vector<std::string> camSockets;
 
+    std::string ptpMasterDeviceName = "";
+
     for(auto deviceInfo : deviceInfos) {
-        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps, parameters.syncType);
+        setupDevice(deviceInfo, masterPipeline, masterNode, masterName, slavePipelines, slaveQueues, camSockets, targetFps, parameters.syncType, ptpMasterDeviceName);
     }
 
     if(masterPipeline == nullptr || !masterNode.has_value() || !masterName.has_value()) {
@@ -430,6 +472,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
                         "Number of messages received doesn't match number of outputs");
 
             using ts_type = std::chrono::time_point<std::chrono::steady_clock>;
+            // using ts_type = std::chrono::time_point<std::chrono::system_clock>;
             std::map<std::string, ts_type> tsValues;
             for(auto name : outputNames) {
                 auto frame = latestFrameGroup.value()->get<dai::ImgFrame>(name);
@@ -437,6 +480,7 @@ int testFsync(float targetFps, struct FsyncTestParameters parameters) {
                 REQUIRE_MSG(frame->getFsync() == convertSyncType(parameters.syncType),
                     "Frame sync type doesn't match: expected " << toString(convertSyncType(parameters.syncType)) << ", got " << toString(frame->getFsync()));
                 tsValues.emplace(name, frame->getTimestamp(dai::CameraExposureOffset::END));
+                // tsValues.emplace(name, *frame->getTimestampSystem(dai::CameraExposureOffset::END));
             }
 
             auto compFunct = [](const std::pair<std::string, ts_type>& p1, const std::pair<std::string, ts_type>& p2) -> bool { return p1.second < p2.second; };
