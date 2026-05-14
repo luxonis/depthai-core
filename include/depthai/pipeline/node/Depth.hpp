@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/device/Device.hpp"
@@ -76,6 +77,12 @@ class Depth : public DeviceNodeGroup {
         return create(nullptr, algorithm);
     }
 
+    /**
+     * Set requested FPS for stereo camera outputs used by stereo-based backends; ``nullopt`` uses Camera default.
+     * Must be called before the first ``depth()`` / ``confidence()`` access (lazy wiring). Not applied after the graph is built.
+     */
+    std::shared_ptr<Depth> build(std::optional<float> fps = std::nullopt);
+
     /** Current algorithm selection (including AUTO), fixed at construction. */
     [[nodiscard]] Algorithm getAlgorithm() const {
         return algorithmOverride_;
@@ -93,13 +100,14 @@ class Depth : public DeviceNodeGroup {
     std::pair<Node::Output*, Node::Output*> ensureStereoCameraOutputs(Pipeline& pipeline,
                                                                       const StereoPair& pair,
                                                                       std::pair<uint32_t, uint32_t> frameSize,
-                                                                      float monoFps);
+                                                                      const std::optional<float>& fps);
 
     std::pair<Node::Output*, Node::Output*> ensureStereoFullResolutionOutputs(Pipeline& pipeline,
                                                                               const StereoPair& pair,
-                                                                              float monoFps);
+                                                                              const std::optional<float>& fps);
 
     Algorithm algorithmOverride_;
+    std::optional<float> stereoOutputFps_{};
 
     std::unique_ptr<::dai::Subnode<StereoDepth>> stereoBackend_;
     std::unique_ptr<::dai::Subnode<NeuralDepth>> neuralBackend_;

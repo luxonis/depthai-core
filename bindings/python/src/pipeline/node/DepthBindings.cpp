@@ -35,6 +35,16 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
     node.def("getAlgorithm", &Depth::getAlgorithm)
+        .def(
+            "build",
+            [](Depth& self, py::object fps) {
+                std::optional<float> optFps;
+                if(!fps.is_none()) {
+                    optFps = fps.cast<float>();
+                }
+                return self.build(std::move(optFps));
+            },
+            py::arg("fps") = py::none())
         .def_property_readonly("depth", [](Depth& d) -> Node::Output& { return d.depth(); }, py::return_value_policy::reference_internal)
         .def_property_readonly("confidence", [](Depth& d) -> Node::Output& { return d.confidence(); }, py::return_value_policy::reference_internal);
 }
