@@ -20,6 +20,7 @@ This folder contains three minimal, end-to-end examples that use **`dai.node.Dyn
   - `meanCoverage: float` — overall spatial coverage [0–1].
   - `dataAcquired: float` — amount of calibration-relevant data gathered [0–1].
   - `coveragePerCell: dict[CameraBoardSocket, list[list[float]]]` - per-sensor coverage matrices keyed by socket [0-1].
+  - `coveragePerCellA/B: list[list[float]]` - deprecated aliases for the first two connected sensors.
 
 - **DynamicCalibrationResult** (`calibrationOutput`)
   - `newCalibration: dai.CalibrationHanlder` — `CalibrationHandler` with updated parameters.

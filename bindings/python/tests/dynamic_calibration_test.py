@@ -201,6 +201,8 @@ def test_coverage_data_read_write():
     """Verify CoverageData supports correct read/write for all fields."""
     d = dai.CoverageData()
 
+    d.coveragePerCellA = [[1.0], [2.0], [3.0]]
+    d.coveragePerCellB = [[4.0], [5.0], [6.0]]
     d.coveragePerCell = {
         dai.CameraBoardSocket.CAM_A: [[1.0], [2.0], [3.0]],
         dai.CameraBoardSocket.CAM_B: [[4.0], [5.0], [6.0]],
@@ -209,6 +211,8 @@ def test_coverage_data_read_write():
     d.dataAcquired = 1.0
     d.coverageAcquired = 1.0
 
+    assert d.coveragePerCellA == [[1.0], [2.0], [3.0]]
+    assert d.coveragePerCellB == [[4.0], [5.0], [6.0]]
     assert d.coveragePerCell == {
         dai.CameraBoardSocket.CAM_A: [[1.0], [2.0], [3.0]],
         dai.CameraBoardSocket.CAM_B: [[4.0], [5.0], [6.0]],

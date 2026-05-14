@@ -40,6 +40,12 @@ struct CoverageData : public Buffer {
     /** @name Spatial coverage matrices */
     ///@{
 
+    // @deprecated Use coveragePerCell keyed by CameraBoardSocket instead.
+    std::vector<std::vector<float>> coveragePerCellA;
+
+    // @deprecated Use coveragePerCell keyed by CameraBoardSocket instead.
+    std::vector<std::vector<float>> coveragePerCellB;
+
     /** 2D coverage matrix for each connected input, keyed by camera socket. Values are ∈ [0, 1]. */
     std::unordered_map<CameraBoardSocket, std::vector<std::vector<float>>> coveragePerCell;
 
@@ -59,7 +65,7 @@ struct CoverageData : public Buffer {
 
     ///@}
 
-    DEPTHAI_SERIALIZE(CoverageData, coveragePerCell, meanCoverage, dataAcquired, coverageAcquired);
+    DEPTHAI_SERIALIZE(CoverageData, coveragePerCellA, coveragePerCellB, coveragePerCell, meanCoverage, dataAcquired, coverageAcquired);
 };
 
 /**
@@ -78,10 +84,11 @@ struct CalibrationQuality : public Buffer {
      * @ingroup dcl_results
      */
     struct Data {
-        /** Rotation difference between old and new extrinsics (degrees). */
+        /** @deprecated Rotation difference between old and new extrinsics (degrees). */
         std::array<float, 3> rotationChange;
 
         /**
+         * @deprecated
          * Predicted relative depth error difference between current and new calibration.
          * Reported at reference distances [1m, 2m, 5m, 10m].
          * Units: percent [%].

@@ -19,6 +19,8 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     // CoverageData
     py::class_<CoverageData, Buffer, std::shared_ptr<CoverageData>>(m, "CoverageData")
         .def(py::init<>())
+        .def_readwrite("coveragePerCellA", &CoverageData::coveragePerCellA)
+        .def_readwrite("coveragePerCellB", &CoverageData::coveragePerCellB)
         .def_readwrite("coveragePerCell", &CoverageData::coveragePerCell)
         .def_readwrite("meanCoverage", &CoverageData::meanCoverage)
         .def_readwrite("dataAcquired", &CoverageData::dataAcquired)

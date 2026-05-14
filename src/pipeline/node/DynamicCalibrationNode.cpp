@@ -543,6 +543,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     for(size_t idx = 0; idx < coverageCount; ++idx) {
         coverageResult->coveragePerCell[connectedSensors[idx].socket] = coverage.coveragesPerCell[idx];
     }
+    if(coverageCount > 0) {
+        coverageResult->coveragePerCellA = coverage.coveragesPerCell[0];
+    }
+    if(coverageCount > 1) {
+        coverageResult->coveragePerCellB = coverage.coveragesPerCell[1];
+    }
     coverageResult->meanCoverage = coverage.meanCoverage;
     coverageResult->coverageAcquired = coverage.coverageAcquired;
     coverageResult->dataAcquired = coverage.dataAcquired;
