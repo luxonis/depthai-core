@@ -1085,7 +1085,6 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
     };
 
     if(inputType == DatatypeEnum::ImgFrame) {
-        logger->warn("Aligning an ImgFrame.");
         auto imgFrameInput = std::dynamic_pointer_cast<ImgFrame>(inputMsg);
 
         warnAboutDistortion();
