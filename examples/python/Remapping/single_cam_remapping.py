@@ -73,8 +73,6 @@ if __name__ == "__main__":
             undistortedFrame = undistQueue.get()
             assert isinstance(distortedFrame, dai.ImgFrame)
             assert isinstance(undistortedFrame, dai.ImgFrame)
-            assert isinstance(distortedFrame, dai.ImgFrame)
-            assert isinstance(undistortedFrame, dai.ImgFrame)
             assert distortedFrame.validateTransformations()
             assert undistortedFrame.validateTransformations()
 
