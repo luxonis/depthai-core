@@ -97,14 +97,11 @@ class Depth : public DeviceNodeGroup {
     Algorithm resolveAlgorithm(const std::shared_ptr<Device>& device) const;
     void validateAlgorithm(const std::shared_ptr<Device>& device, Algorithm active) const;
 
-    std::pair<Node::Output*, Node::Output*> ensureStereoCameraOutputs(Pipeline& pipeline,
-                                                                      const StereoPair& pair,
-                                                                      std::pair<uint32_t, uint32_t> frameSize,
-                                                                      const std::optional<float>& fps);
-
-    std::pair<Node::Output*, Node::Output*> ensureStereoFullResolutionOutputs(Pipeline& pipeline,
-                                                                              const StereoPair& pair,
-                                                                              const std::optional<float>& fps);
+    /** Ensures stereo cameras exist and returns left/right outputs. Full resolution when @p frameSize is nullopt. */
+    std::pair<Node::Output*, Node::Output*> ensureStereoOutputs(Pipeline& pipeline,
+                                                                const StereoPair& pair,
+                                                                std::optional<std::pair<uint32_t, uint32_t>> frameSize,
+                                                                const std::optional<float>& fps);
 
     Algorithm algorithmOverride_;
     std::optional<float> stereoOutputFps_{};
