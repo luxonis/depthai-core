@@ -24,6 +24,15 @@ def interruptHandler(sig, frame):
         print("Exiting now!")
         exit(0)
 
+def getSensorName(device: dai.Device, socket: dai.CameraBoardSocket) -> str:
+    sensorName = ""
+    for sckt, sName in device.getCameraSensorNames().items():
+        if sckt == socket:
+            sensorName = sName
+            break
+    if sensorName == "":
+        raise RuntimeError(f"No sensor name found for {socket.name} on {deviceName}")
+
 signal.signal(signal.SIGINT, interruptHandler)
 
 def getDeviceName(device : dai.Device) -> str:
@@ -55,18 +64,9 @@ with contextlib.ExitStack() as stack:
         deviceName = getDeviceName(device)
 
         for socket in device.getConnectedCameras():
-            ########################################################################
             # TODO: remove this when OV9282 is supporter for PTP
-            sensorName = ""
-            for sckt, sName in device.getCameraSensorNames().items():
-                if sckt == socket:
-                    sensorName = sName
-                    break
-            if sensorName == "":
-                raise RuntimeError(f"No sensor name found for {socket.name} on {deviceName}")
-            if sensorName == "OV9282":
+            if getSensorName(device, socket) == "OV9282":
                 continue
-            ########################################################################
 
             # create a queue for each camera on the device
             cam = devicePipeline.create(dai.node.Camera).build(socket, sensorFps=targetFps)
