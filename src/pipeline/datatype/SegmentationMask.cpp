@@ -34,7 +34,8 @@ void SegmentationMask::setSize(size_t width, size_t height) {
 }
 
 void SegmentationMask::transformToInternal(const ImgTransformation&) {
-    throw std::logic_error("SegmentationMask transform not implemented yet");
+    throw std::logic_error(
+        "SegmentationMask cannot be remapped with ImgTransformation on host. Use ImageAlign node to align the segmentation mask to the target transformation.");
 }
 
 std::shared_ptr<TransformableBuffer> SegmentationMask::clone() const {

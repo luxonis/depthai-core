@@ -180,7 +180,9 @@ PointCloudData& PointCloudData::setSparse(bool /*val*/) {
 }
 
 void PointCloudData::transformToInternal(const ImgTransformation&) {
-    throw std::logic_error("PointCloudData transform not implemented yet");
+    throw std::logic_error(
+        "PointCloudData cannot be remapped with ImgTransformation on host. Align the source image and depth to the target transformation before generating "
+        "the point cloud.");
 }
 
 std::shared_ptr<TransformableBuffer> PointCloudData::clone() const {
