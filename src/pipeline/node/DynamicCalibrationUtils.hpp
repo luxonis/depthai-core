@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DynamicCalibration.hpp>
+#include <array>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
@@ -15,7 +16,7 @@ struct DclUtils {
                                            const CameraBoardSocket socketSrc,
                                            const CameraBoardSocket socketDest);
 
-    static std::shared_ptr<dcl::CameraCalibrationHandle> createDclCalibration(const std::vector<std::vector<float>>& cameraMatrix,
+    static std::shared_ptr<dcl::CameraCalibrationHandle> createDclCalibration(const std::array<std::array<float, 3>, 3>& cameraMatrix,
                                                                               const std::vector<float>& distortionCoefficients,
                                                                               const std::vector<std::vector<float>>& rotationMatrix,
                                                                               const std::vector<float>& translationVector,
@@ -25,8 +26,8 @@ struct DclUtils {
         const CalibrationHandler& currentCalibration,
         const CameraBoardSocket boardSocketA,
         const CameraBoardSocket boardSocketB,
-        const std::pair<int, int>& resolutionA,
-        const std::pair<int, int>& resolutionB);
+        const ImgTransformation& imgTransformationA,
+        const ImgTransformation& imgTransformationB);
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     static dcl::ImageData cvMatToImageData(const cv::Mat& mat);
