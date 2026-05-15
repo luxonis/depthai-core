@@ -1,8 +1,43 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <iostream>
+#include <unordered_map>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
+
+class CalibrationData {
+   public:
+    explicit CalibrationData(std::shared_ptr<dai::Device> device) : device(std::move(device)) {}
+
+    void capture(dai::CameraBoardSocket cameraSocket = dai::CameraBoardSocket::AUTO) {
+        calibrationData[cameraSocket] = device->readCalibration2(cameraSocket);
+    }
+
+    void restore() {
+        for(const auto& [cameraSocket, data] : calibrationData) {
+            device->flashCalibration(data, cameraSocket);
+        }
+        restored = true;
+    }
+
+    ~CalibrationData() {
+        if(restored) return;
+
+        for(const auto& [cameraSocket, data] : calibrationData) {
+            try {
+                device->flashCalibration(data, cameraSocket);
+            } catch(const std::exception& e) {
+                std::cerr << "[EEPROM RESTORE FAILED] socket " << static_cast<int>(cameraSocket) << ": " << e.what() << std::endl;
+            }
+        }
+    }
+
+   private:
+    std::shared_ptr<dai::Device> device;
+    std::unordered_map<dai::CameraBoardSocket, dai::CalibrationHandler> calibrationData;
+    bool restored = false;
+};
 
 static dai::CalibrationHandler loadGeneralCalibration() {
     dai::EepromData eepromData;
@@ -74,46 +109,33 @@ TEST_CASE("CBA calibrations are merged with the main board's calibration") {
         return;
     }
 
-    // TO DO: Should this test change factory calibration - even though it only does this in case it's not present. It tests the factory calibration reading
-    // tho. Go over the compatible CBAs, check for their factory calibration contents, flash with dummy data if missing
+    // Go over the compatible CBAs, store current flashed calibrations, followed by flashing with dummy data
+    CalibrationData currentEepromData(device);
     for(const auto& cbaSocket : cbaSockets) {
-        if(!device->readFactoryCalibrationOrDefault(cbaSocket).hasCameraCalibration(cbaSocket)) {
-            // Missing factory calibration, flash factory calibration with dummy data
-            device->flashFactoryEepromClear(cbaSocket);
-            device->flashFactoryCalibration(dai::CalibrationHandler::fromJson(loadCamDataCalibrationJson(cbaSocket)), cbaSocket);
-        }
-        // Flash the user calibration with the factory data
+        currentEepromData.capture(cbaSocket);
+
         device->flashEepromClear(cbaSocket);
-        device->factoryResetCalibration(cbaSocket);
+        device->flashCalibration(dai::CalibrationHandler::fromJson(loadCamDataCalibrationJson(cbaSocket)), cbaSocket);
     }
 
     // Apply the same for the main board
     REQUIRE(device->isEepromAvailable());
-    if(!device->readFactoryCalibrationOrDefault(dai::CameraBoardSocket::AUTO).hasCalibrationData()) {
-        // Missing factory calibration, flash general calibration data without synthetic camera entries
-        device->flashFactoryEepromClear();
-        device->flashFactoryCalibration(loadGeneralCalibration());
-    }
-    // Flash the user calibration with the factory data
+    currentEepromData.capture();
+
     device->flashEepromClear();
-    device->factoryResetCalibration();
+    device->flashCalibration(loadGeneralCalibration());
 
-    // Check if the merged calibrations contain the camera data from the CBAs
+    // Check if the merged calibration contains the camera data from the CBAs
     dai::CalibrationHandler mergedCalibration = device->readCalibration2();
-    dai::CalibrationHandler mergedFactoryCalibration = device->readFactoryCalibration();
-
     for(const auto& cbaSocket : cbaSockets) {
         REQUIRE(mergedCalibration.hasCameraCalibration(cbaSocket));
-        REQUIRE(mergedFactoryCalibration.hasCameraCalibration(cbaSocket));
 
         const auto mainCameraData = mergedCalibration.getEepromData().cameraData.at(cbaSocket);
         const auto cbaCameraData = device->readCalibration2(cbaSocket).getEepromData().cameraData.at(cbaSocket);
-        REQUIRE(compareCameraData(mainCameraData, cbaCameraData) == true);
-
-        const auto mainFactoryCameraData = mergedFactoryCalibration.getEepromData().cameraData.at(cbaSocket);
-        const auto cbaFactoryCameraData = device->readFactoryCalibration(cbaSocket).getEepromData().cameraData.at(cbaSocket);
-        REQUIRE(compareCameraData(mainFactoryCameraData, cbaFactoryCameraData) == true);
+        REQUIRE(compareCameraData(mainCameraData, cbaCameraData));
     }
+
+    REQUIRE_NOTHROW(currentEepromData.restore());
 }
 
 TEST_CASE("Calibration's cameraData present on the main board has priority and is not replaced with camera socket data present on the CBAs") {
@@ -135,14 +157,19 @@ TEST_CASE("Calibration's cameraData present on the main board has priority and i
         return;
     }
 
-    // Go over the compatible CBAs, flash with dummy data
+    // Go over the compatible CBAs, store current flashed calibrations, followed by flashing with dummy data
+    CalibrationData currentEepromData(device);
     for(const auto& cbaSocket : cbaSockets) {
+        currentEepromData.capture(cbaSocket);
+
         device->flashEepromClear(cbaSocket);
         device->flashCalibration(dai::CalibrationHandler::fromJson(loadCamDataCalibrationJson(cbaSocket)), cbaSocket);
     }
 
     // Apply the same for the main board
     REQUIRE(device->isEepromAvailable());
+    currentEepromData.capture();
+
     device->flashEepromClear();
     device->flashCalibration(loadGeneralCalibrationDefaultCameraData());
 
@@ -153,6 +180,8 @@ TEST_CASE("Calibration's cameraData present on the main board has priority and i
 
         const auto mainCameraData = mergedCalibration.getEepromData().cameraData.at(cbaSocket);
         const auto cbaCameraData = device->readCalibration2(cbaSocket).getEepromData().cameraData.at(cbaSocket);
-        REQUIRE(compareCameraData(mainCameraData, cbaCameraData) == false);
+        REQUIRE(!compareCameraData(mainCameraData, cbaCameraData));
     }
+
+    REQUIRE_NOTHROW(currentEepromData.restore());
 }
