@@ -1,9 +1,17 @@
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <thread>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 class ImageReplay : public dai::NodeCRTP<dai::node::ThreadedHostNode, ImageReplay> {
    public:
@@ -38,6 +46,9 @@ class ImageReplay : public dai::NodeCRTP<dai::node::ThreadedHostNode, ImageRepla
 };
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -63,7 +74,7 @@ int main() {
     float fps = 0.0f;
 
     // Main loop
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto aprilTagMessage = outQueue->get<dai::AprilTags>();
         auto aprilTags = aprilTagMessage->aprilTags;
 
@@ -113,6 +124,9 @@ int main() {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

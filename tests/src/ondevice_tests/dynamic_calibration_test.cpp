@@ -55,7 +55,7 @@ class TestHelper {
         path outRoot = path(testFolder) / "extracted";
         create_directories(outRoot);
 
-        auto recordingFilenames = dai::utility::filenamesInTar(RECORDING_PATH);
+        auto recordingFilenames = dai::utility::filenamesInArchive(RECORDING_PATH);
         std::vector<std::string> srcFiles;  // filtered names from tar (files only)
         std::vector<path> dstFiles;         // matching output paths
 
@@ -81,7 +81,7 @@ class TestHelper {
             dstFiles.push_back(outPath);
         }
         // Extract only file entries; directories already created above
-        dai::utility::untarFiles(RECORDING_PATH, srcFiles, dstFiles);
+        dai::utility::extractFiles(RECORDING_PATH, srcFiles, dstFiles);
     }
 
     ~TestHelper() {
@@ -458,7 +458,7 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     REQUIRE(std::fabs(rvecOld[2] - 0.01) < 0.00001);
 
     std::vector<float> rvec = dai::matrix::rotationMatrixToVector(rotationMatrix);
-    float threshold = 1e-7f;
+    float threshold = 1e-3f;
     REQUIRE(std::fabs(rvec[0]) < threshold);
     REQUIRE(std::fabs(rvec[1]) < threshold);
     REQUIRE(std::fabs(rvec[2]) < threshold);

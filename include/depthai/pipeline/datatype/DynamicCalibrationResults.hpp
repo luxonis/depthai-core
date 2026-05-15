@@ -140,6 +140,9 @@ struct CalibrationQuality : public Buffer {
  * @ingroup dcl_results
  */
 struct CalibrationMetrics : public Buffer {
+    CalibrationMetrics() : calibrationConfidence(0.0), dataConfidence(0.0) {}
+    virtual ~CalibrationMetrics();
+
     /** * @brief Confidence score of the computed calibration.
      * * A normalized value between 0.0 and 1.0 indicating how much you can
      * trust the resulting calibration.
@@ -151,6 +154,13 @@ struct CalibrationMetrics : public Buffer {
      * trust the data.
      */
     double dataConfidence;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::CalibrationMetrics;
+    }
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
     DEPTHAI_SERIALIZE(CalibrationMetrics, calibrationConfidence, dataConfidence);
 };
 

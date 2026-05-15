@@ -1,5 +1,7 @@
 // Add test case for every transformation + edge cases
 
+#include "depthai/common/CameraModel.hpp"
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #define CATCH_CONFIG_MAIN
@@ -358,8 +360,9 @@ TEST_CASE("interFrameRemap") {
     auto intr1inv = dai::matrix::getMatrixInverse(intr1);
     std::array<std::array<float, 3>, 3> intr2 = {{{3105.2021484375, 0.0, 1877.4822998046875}, {0.0, 3113.031494140625, 1128.080078125}, {0.0, 0.0, 1.0}}};
     auto intr2inv = dai::matrix::getMatrixInverse(intr2);
-    auto tr1 = dai::ImgTransformation(1920, 1080, intr1);
-    auto tr2 = dai::ImgTransformation(1280, 720, intr2);
+    dai::Extrinsics extrinsics{{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}, dai::CameraBoardSocket::CAM_A};
+    auto tr1 = dai::ImgTransformation(1920, 1080, intr1, dai::CameraModel::Perspective, {}, extrinsics);
+    auto tr2 = dai::ImgTransformation(1280, 720, intr2, dai::CameraModel::Perspective, {}, extrinsics);
 
     tr1.addRotation(90, dai::Point2f(960, 540));
     tr2.addRotation(30, dai::Point2f(300, 400));

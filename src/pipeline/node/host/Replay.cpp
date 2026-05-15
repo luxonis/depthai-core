@@ -6,6 +6,7 @@
 #define _USE_MATH_DEFINES
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <memory>
@@ -98,6 +99,8 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::ObjectTrackerConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::AutoCalibrationConfig:
+        case DatatypeEnum::AutoCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CalibrationMetrics:
         case DatatypeEnum::CoverageData:
@@ -108,6 +111,7 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
+        case DatatypeEnum::COUNT:
             break;
     }
     throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
@@ -178,6 +182,8 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::ObjectTrackerConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:
+        case DatatypeEnum::AutoCalibrationConfig:
+        case DatatypeEnum::AutoCalibrationResult:
         case DatatypeEnum::CalibrationQuality:
         case DatatypeEnum::CalibrationMetrics:
         case DatatypeEnum::CoverageData:
@@ -188,10 +194,35 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
+        case DatatypeEnum::COUNT:
             throw std::runtime_error("Cannot replay message type: " + std::to_string((int)datatype));
     }
     return {};
 }
+
+inline std::chrono::milliseconds getReplayFallbackInterval(const std::optional<float>& fps) {
+    if(fps.has_value() && fps.value() > 0.1f) {
+        return std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value()));
+    }
+    return std::chrono::milliseconds(33);
+}
+
+inline std::chrono::milliseconds ensureReplayInterval(std::chrono::milliseconds interval, const std::optional<float>& fps) {
+    if(interval == std::chrono::milliseconds::zero()) {
+        return getReplayFallbackInterval(fps);
+    }
+    return interval;
+}
+
+struct LoopState {
+    int64_t firstSeqNum = 0;
+    int64_t lastSeqNum = 0;
+    int64_t seqNumOffset = 0;
+    std::chrono::time_point<std::chrono::steady_clock> firstTs;
+    std::chrono::time_point<std::chrono::steady_clock> lastTs;
+    std::chrono::milliseconds lastInterval{0};
+    std::chrono::time_point<std::chrono::steady_clock> tsOffset;
+};
 #endif
 
 void ReplayVideo::run() {
@@ -228,6 +259,8 @@ void ReplayVideo::run() {
     bool first = true;
     auto start = std::chrono::steady_clock::now();
     uint64_t index = 0;
+    LoopState loopState;
+
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
     while(mainLoop()) {
@@ -243,6 +276,9 @@ void ReplayVideo::run() {
             } else if(!first) {
                 // End of file
                 if(loop) {
+                    loopState.seqNumOffset = loopState.lastSeqNum + 1;
+                    loopState.lastInterval = ensureReplayInterval(loopState.lastInterval, fps);
+                    loopState.tsOffset = loopState.lastTs + loopState.lastInterval;
                     bytePlayer.restart();
                     if(hasVideo) {
                         videoPlayer.restart();
@@ -264,6 +300,9 @@ void ReplayVideo::run() {
                 // End of file
                 if(loop) {
                     if(hasMetadata) {
+                        loopState.seqNumOffset = loopState.lastSeqNum + 1;
+                        loopState.lastInterval = ensureReplayInterval(loopState.lastInterval, fps);
+                        loopState.tsOffset = loopState.lastTs + loopState.lastInterval;
                         bytePlayer.restart();
                     }
                     videoPlayer.restart();
@@ -306,10 +345,31 @@ void ReplayVideo::run() {
 
         auto buffer = getVideoMessage(*metadata, outFrameType, frame);
 
-        if(first) prevMsgTs = buffer->getTimestampDevice();
+        if(first) {
+            loopState.firstSeqNum = buffer->getSequenceNum() > 0 ? buffer->getSequenceNum() : 0;
+            loopState.seqNumOffset = loopState.firstSeqNum;
+            prevMsgTs = buffer->getTimestampDevice();
+            loopState.firstTs = buffer->getTimestamp();
+            loopState.lastTs = loopState.firstTs;
+            loopState.lastInterval = ensureReplayInterval(std::chrono::milliseconds::zero(), fps);
+            loopState.tsOffset = loopState.firstTs;
+        }
+
+        // Update sequence num and timestamps for looping
+        buffer->setSequenceNum(buffer->getSequenceNum() - loopState.firstSeqNum + loopState.seqNumOffset);
+        loopState.lastSeqNum = buffer->getSequenceNum();
+        auto deviceTsOffset = buffer->getTimestamp() - buffer->getTimestampDevice();
+        buffer->setTimestamp(buffer->getTimestamp() - loopState.firstTs + loopState.tsOffset);
+        buffer->setTimestampDevice(buffer->getTimestamp() - deviceTsOffset);
+        if(!first) {
+            loopState.lastInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestamp() - loopState.lastTs);
+        }
+        loopState.lastTs = buffer->getTimestamp();
 
         if(hasMetadata && !(fps.has_value() && fps.value() > 0.1f)) {
-            std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
+            auto sleepInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestampDevice() - prevMsgTs);
+            sleepInterval = ensureReplayInterval(sleepInterval, fps);
+            std::this_thread::sleep_until(loopStart + sleepInterval);
         }
 
         {
@@ -354,6 +414,8 @@ void ReplayMetadataOnly::run() {
         throw std::runtime_error("Metadata file not found");
     }
     bool first = true;
+    LoopState loopState;
+
     auto loopStart = std::chrono::steady_clock::now();
     auto prevMsgTs = loopStart;
     while(mainLoop()) {
@@ -368,6 +430,9 @@ void ReplayMetadataOnly::run() {
         } else if(!first) {
             // End of file
             if(loop) {
+                loopState.seqNumOffset = loopState.lastSeqNum + 1;
+                loopState.lastInterval = ensureReplayInterval(loopState.lastInterval, fps);
+                loopState.tsOffset = loopState.lastTs + loopState.lastInterval;
                 bytePlayer.restart();
                 continue;
             }
@@ -379,10 +444,31 @@ void ReplayMetadataOnly::run() {
         }
         auto buffer = getMessage(metadata, datatype);
 
-        if(first) prevMsgTs = buffer->getTimestampDevice();
+        if(first) {
+            loopState.firstSeqNum = buffer->getSequenceNum() > 0 ? buffer->getSequenceNum() : 0;
+            loopState.seqNumOffset = loopState.firstSeqNum;
+            prevMsgTs = buffer->getTimestampDevice();
+            loopState.firstTs = buffer->getTimestamp();
+            loopState.lastTs = loopState.firstTs;
+            loopState.lastInterval = ensureReplayInterval(std::chrono::milliseconds::zero(), fps);
+            loopState.tsOffset = loopState.firstTs;
+        }
+
+        // Update sequence num and timestamps for looping
+        buffer->setSequenceNum(buffer->getSequenceNum() - loopState.firstSeqNum + loopState.seqNumOffset);
+        loopState.lastSeqNum = buffer->getSequenceNum();
+        auto deviceTsOffset = buffer->getTimestamp() - buffer->getTimestampDevice();
+        buffer->setTimestamp(buffer->getTimestamp() - loopState.firstTs + loopState.tsOffset);
+        buffer->setTimestampDevice(buffer->getTimestamp() - deviceTsOffset);
+        if(!first) {
+            loopState.lastInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestamp() - loopState.lastTs);
+        }
+        loopState.lastTs = buffer->getTimestamp();
 
         if(!(fps.has_value() && fps.value() > 0.1f)) {
-            std::this_thread::sleep_until(loopStart + (buffer->getTimestampDevice() - prevMsgTs));
+            auto sleepInterval = std::chrono::duration_cast<std::chrono::milliseconds>(buffer->getTimestampDevice() - prevMsgTs);
+            sleepInterval = ensureReplayInterval(sleepInterval, fps);
+            std::this_thread::sleep_until(loopStart + sleepInterval);
         }
 
         {

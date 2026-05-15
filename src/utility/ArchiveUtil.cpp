@@ -215,12 +215,12 @@ void ArchiveUtil::readEntry(struct archive_entry* entry, std::vector<uint8_t>& o
         // Current size, as a offset to write next data to
         auto currentSize = out.size();
 
-        // Resize to accomodate for extra data
+        // Resize to accommodate extra data
         out.resize(currentSize + readSize);
         int64_t size = archive_read_data(aPtr, &out[currentSize], readSize);
 
         // Check that no errors occurred
-        DAI_CHECK(size >= 0, fmt::format("Errors occured when reading from archive using libarchive. Error - {}", size));
+        DAI_CHECK(size >= 0, fmt::format("Errors occurred when reading from archive using libarchive. Error - {}", size));
 
         // Append number of bytes actually read to finalSize
         finalSize += size;

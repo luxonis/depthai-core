@@ -9,12 +9,29 @@ message Timestamp {
 }
 
 // Shared CameraSettings message
+enum CameraFsync {
+    CAMERA_FSYNC_NONE = 0;
+    CAMERA_FSYNC_INPUT = 1;
+    CAMERA_FSYNC_OUTPUT = 2;
+}
+
 message CameraSettings {
     int32 exposureTimeUs = 1;
     int32 sensitivityIso = 2;
     int32 lensPosition = 3;
     int32 wbColorTemp = 4;
     float lensPositionRaw = 5;
+    CameraFsync fsync = 6;
+    int32 sensorMode = 7;
+    float fps = 8;
+}
+
+message Extrinsics {
+    TransformationMatrix rotationMatrix = 1;
+    Point3f translation = 2;
+    Point3f specTranslation = 3;
+    CameraBoardSocket toCameraSocket = 4;
+    optional LengthUnit lengthUnit = 5;
 }
 
 message ImgTransformation {
@@ -26,6 +43,8 @@ message ImgTransformation {
     uint32 srcHeight = 6;
     uint32 width = 7;
     uint32 height = 8;
+    Extrinsics extrinsics = 9;
+    repeated RotatedRect srcCrops = 10;
 }
 
 message TransformationMatrix {
@@ -41,6 +60,31 @@ enum CameraModel {
     FISHEYE = 1;
     EQUIRECTANGULAR = 2;
     RADIALDIVISION = 3;
+}
+
+enum CameraBoardSocket {
+    option allow_alias = true;
+    CAM_A = 0;
+    CAM_B = 1;
+    CAM_C = 2;
+    CAM_D = 3;
+    VERTICAL = 3;
+    CAM_E = 4;
+    CAM_F = 5;
+    CAM_G = 6;
+    CAM_H = 7;
+    CAM_I = 8;
+    CAM_J = 9;
+    AUTO = -1;
+}
+
+enum LengthUnit {
+    METER = 0;
+    CENTIMETER = 1;
+    MILLIMETER = 2;
+    INCH = 3;
+    FOOT = 4;
+    CUSTOM = 5;
 }
 
 message Color {
@@ -101,4 +145,3 @@ message SpatialKeypoint {
     string labelName = 4;
     Point3f spatialCoordinates = 5;
 }
-

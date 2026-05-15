@@ -12,7 +12,7 @@ with dai.Pipeline() as pipeline:
     videoIn = videoQueue.get()
     videoInIsp = videoIsp.get()
     print(
-        "Standart output resolution = "
+        "Standard output resolution = "
         f"{ videoIn.getCvFrame().shape[1]} x { videoIn.getCvFrame().shape[0]}"
     )
     print(

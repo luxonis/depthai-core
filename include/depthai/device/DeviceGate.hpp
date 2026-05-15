@@ -41,8 +41,9 @@ class DeviceGate {
     bool deleteSession();
     bool destroySession();
     SessionState getState();
-    // Waits for the gate session to end and tries to get the logs and crash dump out
-    std::optional<CrashDump> waitForSessionEnd();
+
+    // Waits for the gate session to end
+    void waitForSessionEnd();
 
     std::optional<CrashDump> getCrashDump();
 
@@ -51,8 +52,6 @@ class DeviceGate {
     };
     Version getVersion();
     VersionInfo getAllVersion();
-
-    bool isBootedNonExclusive();
 
    private:
     // private
@@ -87,7 +86,7 @@ class DeviceGate {
         std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename) override;
 
        private:
-	DeviceInfo deviceInfo;
+        DeviceInfo deviceInfo;
         int timeout;
     };
 

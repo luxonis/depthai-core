@@ -1,11 +1,21 @@
 #include <atomic>
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     try {
         // Create pipeline
         dai::Pipeline pipeline;
@@ -54,7 +64,7 @@ int main() {
 
         cv::Scalar color(255, 255, 255);
 
-        while(pipeline.isRunning()) {
+        while(pipeline.isRunning() && !quitEvent) {
             auto spatialData = xoutSpatialQueue->get<dai::SpatialLocationCalculatorData>();
             std::cout << "Use WASD keys to move ROI!" << std::endl;
 
@@ -69,9 +79,13 @@ int main() {
                     if(val > 0) depthValues.push_back(val);
                 }
             }
-            std::sort(depthValues.begin(), depthValues.end());
-            float medianDepth = depthValues[depthValues.size() / 2];
-            std::cout << "Median depth value: " << medianDepth << std::endl;
+            if(depthValues.empty()) {
+                std::cout << "Median depth value: N/A (no valid depth pixels)" << std::endl;
+            } else {
+                std::sort(depthValues.begin(), depthValues.end());
+                float medianDepth = depthValues[depthValues.size() / 2];
+                std::cout << "Median depth value: " << medianDepth << std::endl;
+            }
 
             // Process depth frame for visualization
             cv::Mat depthFrameColor;

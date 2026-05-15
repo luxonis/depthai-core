@@ -7,6 +7,57 @@
 
 using namespace dai;
 
+static ImuNoiseParameters makeImuNoiseParams() {
+    ImuNoiseParameters params;
+    params.name = "BNO086";
+
+    params.accelerometer.x = {0.11f, 0.21f, 0.31f};
+    params.accelerometer.y = {0.12f, 0.22f, 0.32f};
+    params.accelerometer.z = {0.13f, 0.23f, 0.33f};
+
+    params.gyroscope.x = {0.41f, 0.51f, 0.61f};
+    params.gyroscope.y = {0.42f, 0.52f, 0.62f};
+    params.gyroscope.z = {0.43f, 0.53f, 0.63f};
+
+    return params;
+}
+
+static nlohmann::json makeImuNoiseParamsJson() {
+    return {{"name", "BNO086"},
+            {"accelerometer",
+             {{"x", {{"noiseDensity", 0.11f}, {"randomWalk", 0.21f}, {"biasStability", 0.31f}}},
+              {"y", {{"noiseDensity", 0.12f}, {"randomWalk", 0.22f}, {"biasStability", 0.32f}}},
+              {"z", {{"noiseDensity", 0.13f}, {"randomWalk", 0.23f}, {"biasStability", 0.33f}}}}},
+            {"gyroscope",
+             {{"x", {{"noiseDensity", 0.41f}, {"randomWalk", 0.51f}, {"biasStability", 0.61f}}},
+              {"y", {{"noiseDensity", 0.42f}, {"randomWalk", 0.52f}, {"biasStability", 0.62f}}},
+              {"z", {{"noiseDensity", 0.43f}, {"randomWalk", 0.53f}, {"biasStability", 0.63f}}}}}};
+}
+
+static void requireImuNoiseParamsEqual(const ImuNoiseParameters& actual, const ImuNoiseParameters& expected) {
+    REQUIRE(actual.name == expected.name);
+
+    REQUIRE(actual.accelerometer.x.noiseDensity == Catch::Approx(expected.accelerometer.x.noiseDensity).margin(1e-6));
+    REQUIRE(actual.accelerometer.x.randomWalk == Catch::Approx(expected.accelerometer.x.randomWalk).margin(1e-6));
+    REQUIRE(actual.accelerometer.x.biasStability == Catch::Approx(expected.accelerometer.x.biasStability).margin(1e-6));
+    REQUIRE(actual.accelerometer.y.noiseDensity == Catch::Approx(expected.accelerometer.y.noiseDensity).margin(1e-6));
+    REQUIRE(actual.accelerometer.y.randomWalk == Catch::Approx(expected.accelerometer.y.randomWalk).margin(1e-6));
+    REQUIRE(actual.accelerometer.y.biasStability == Catch::Approx(expected.accelerometer.y.biasStability).margin(1e-6));
+    REQUIRE(actual.accelerometer.z.noiseDensity == Catch::Approx(expected.accelerometer.z.noiseDensity).margin(1e-6));
+    REQUIRE(actual.accelerometer.z.randomWalk == Catch::Approx(expected.accelerometer.z.randomWalk).margin(1e-6));
+    REQUIRE(actual.accelerometer.z.biasStability == Catch::Approx(expected.accelerometer.z.biasStability).margin(1e-6));
+
+    REQUIRE(actual.gyroscope.x.noiseDensity == Catch::Approx(expected.gyroscope.x.noiseDensity).margin(1e-6));
+    REQUIRE(actual.gyroscope.x.randomWalk == Catch::Approx(expected.gyroscope.x.randomWalk).margin(1e-6));
+    REQUIRE(actual.gyroscope.x.biasStability == Catch::Approx(expected.gyroscope.x.biasStability).margin(1e-6));
+    REQUIRE(actual.gyroscope.y.noiseDensity == Catch::Approx(expected.gyroscope.y.noiseDensity).margin(1e-6));
+    REQUIRE(actual.gyroscope.y.randomWalk == Catch::Approx(expected.gyroscope.y.randomWalk).margin(1e-6));
+    REQUIRE(actual.gyroscope.y.biasStability == Catch::Approx(expected.gyroscope.y.biasStability).margin(1e-6));
+    REQUIRE(actual.gyroscope.z.noiseDensity == Catch::Approx(expected.gyroscope.z.noiseDensity).margin(1e-6));
+    REQUIRE(actual.gyroscope.z.randomWalk == Catch::Approx(expected.gyroscope.z.randomWalk).margin(1e-6));
+    REQUIRE(actual.gyroscope.z.biasStability == Catch::Approx(expected.gyroscope.z.biasStability).margin(1e-6));
+}
+
 // Helper to create calibration data directly in code
 static nlohmann::json loadCalibJson() {
     nlohmann::json calibJson = {
@@ -253,6 +304,18 @@ static CalibrationHandler loadHandlerWithHousingRotation() {
     return CalibrationHandler::fromJson(calibJson);
 }
 
+// Same camera chain as loadHandlerWithHousing (identity camera rotations, OAK-4-D-AF database)
+// but with a non-identity housing rotation Rz(90°) to exercise the database rotation path.
+static CalibrationHandler loadHandlerWithHousingRotationAndDB() {
+    auto baseHandler = loadHandlerWithHousing();
+    auto eepromData = baseHandler.getEepromData();
+
+    // Patch only housing rotation to Rz(90°), keep shared fixture data from loadHandlerWithHousing().
+    eepromData.housingExtrinsics.rotationMatrix = {{{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
+
+    return CalibrationHandler(eepromData);
+}
+
 static CalibrationHandler loadHandlerWithImuExtrinsics() {
     dai::EepromData data;
     data.cameraData[CameraBoardSocket::CAM_A];
@@ -285,9 +348,65 @@ static CalibrationHandler loadValidHandler() {
     return CalibrationHandler::fromJson(loadValidCalibJson());
 }
 
+static CalibrationHandler loadLegacyHandlerWithCamera() {
+    dai::EepromData data;
+    data.version = 3;
+
+    dai::CameraInfo cam;
+    cam.width = 1920;
+    cam.height = 1080;
+    cam.lensPosition = 120;
+    cam.specHfovDeg = 68.0f;
+    cam.cameraType = CameraModel::Perspective;
+    cam.intrinsicMatrix = {{1000.0f, 0.0f, 960.0f}, {0.0f, 1000.0f, 540.0f}, {0.0f, 0.0f, 1.0f}};
+    cam.extrinsics.rotationMatrix = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    cam.extrinsics.toCameraSocket = CameraBoardSocket::AUTO;
+
+    data.cameraData[CameraBoardSocket::CAM_A] = cam;
+    return CalibrationHandler(data);
+}
+
+TEST_CASE("Calibration availability depends on version and camera entries", "[hasCalibrationData][hasCameraCalibration]") {
+    dai::EepromData data;
+    data.version = 3;
+    data.cameraData[CameraBoardSocket::CAM_A] = dai::CameraInfo{};
+
+    CalibrationHandler legacy(data);
+    REQUIRE_FALSE(legacy.hasCalibrationData());
+    REQUIRE_FALSE(legacy.hasCameraCalibration(CameraBoardSocket::CAM_A));
+
+    data.version = 7;
+    CalibrationHandler valid(data);
+    REQUIRE(valid.hasCalibrationData());
+    REQUIRE(valid.hasCameraCalibration(CameraBoardSocket::CAM_A));
+    REQUIRE_FALSE(valid.hasCameraCalibration(CameraBoardSocket::CAM_B));
+}
+
+TEST_CASE("Legacy calibration version blocks camera-level getters", "[legacyCalibration][getFov][getLensPosition][getDistortionModel][getCameraExtrinsics]") {
+    auto handler = loadLegacyHandlerWithCamera();
+
+    REQUIRE_THROWS_WITH(handler.getFov(CameraBoardSocket::CAM_A, true),
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the requested cameraID"));
+    REQUIRE_THROWS_WITH(handler.getLensPosition(CameraBoardSocket::CAM_A),
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the requested cameraID"));
+    REQUIRE_THROWS_WITH(handler.getDistortionModel(CameraBoardSocket::CAM_A),
+                        Catch::Matchers::ContainsSubstring("There is no Camera data available corresponding to the requested cameraID"));
+    REQUIRE_THROWS_WITH(handler.getCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_A, false),
+                        Catch::Matchers::ContainsSubstring("requested source cameraId"));
+}
+
+TEST_CASE("Missing camera intrinsics reports calibration guidance", "[getCameraIntrinsics]") {
+    dai::EepromData data;
+    data.version = 7;
+    CalibrationHandler handler(data);
+
+    REQUIRE_THROWS_WITH(handler.getCameraIntrinsics(CameraBoardSocket::CAM_A, 640, 480),
+                        Catch::Matchers::ContainsSubstring("Camera data available for the requested cameraID"));
+}
+
 TEST_CASE("Invalid camera ID throws", "[getCameraIntrinsics]") {
     auto handler = loadInvalidHandler();
-    REQUIRE_THROWS_AS(handler.getCameraIntrinsics(CameraBoardSocket::CAM_E, 1280, 800), std::out_of_range);
+    REQUIRE_THROWS_AS(handler.getCameraIntrinsics(CameraBoardSocket::CAM_E, 1280, 800), std::runtime_error);
 }
 
 TEST_CASE("Invalid camera resolution", "[getCameraIntrinsics]") {
@@ -842,6 +961,62 @@ TEST_CASE("EEPROM data stereo flags consistency", "[getEepromData]") {
     REQUIRE(loaded.stereoEnableDistortionCorrection == true);
 }
 
+TEST_CASE("IMU calibration params setters preserve accelerometer and gyroscope values", "[imuCalibration][getEepromData]") {
+    dai::CalibrationHandler handler;
+
+    const std::vector<std::vector<float>> expectedAccelerometer = {{0.1f, -0.2f, 0.3f, 1.0f}, {1.1f, 1.2f, -0.4f, 0.5f}, {-0.6f, 9.81f, 0.01f, -0.02f}};
+    const std::vector<std::vector<float>> expectedGyroscope = {{-0.7f, 0.8f, -0.9f, 0.001f}, {0.002f, 0.003f, 1.3f, 1.4f}, {1.5f, -0.03f, 0.04f, -0.05f}};
+    const auto expectedImuNoiseParameters = makeImuNoiseParams();
+
+    handler.setAccelerometerCalibration(expectedAccelerometer);
+    handler.setGyroscopeCalibration(expectedGyroscope);
+    auto eepromData = handler.getEepromData();
+    eepromData.imuCalibrationParams.noise = expectedImuNoiseParameters;
+    handler = dai::CalibrationHandler(eepromData);
+
+    requireImuNoiseParamsEqual(handler.getImuNoiseParameters(), expectedImuNoiseParameters);
+
+    const auto eeprom = handler.getEepromData();
+    REQUIRE(eeprom.imuCalibrationParams.accelerometer == expectedAccelerometer);
+    REQUIRE(eeprom.imuCalibrationParams.gyroscope == expectedGyroscope);
+    requireImuNoiseParamsEqual(eeprom.imuCalibrationParams.noise, expectedImuNoiseParameters);
+}
+
+TEST_CASE("New IMU API preserves canonical calibration matrices and noise parameters", "[imuCalibration][newApi]") {
+    dai::CalibrationHandler handler;
+
+    const auto expectedNoise = makeImuNoiseParams();
+
+    ImuCalibrationParams params;
+    params.noise = expectedNoise;
+    params.accelerometer = {{1.011f, 0.012f, -0.031f, 0.1992955f}, {0.005f, 1.023f, 0.007f, -0.4218133f}, {-0.003f, 0.009f, 0.997f, -0.19935594f}};
+    params.gyroscope = {{1.01f, 0.01f, -0.02f, -0.05f}, {0.0f, 0.99f, 0.03f, 0.06f}, {0.0f, 0.0f, 1.02f, -0.07f}};
+
+    handler.setImuParameters(params);
+
+    const auto readBack = handler.getImuParameters();
+    REQUIRE(readBack.accelerometer == params.accelerometer);
+    REQUIRE(readBack.gyroscope == params.gyroscope);
+    requireImuNoiseParamsEqual(readBack.noise, expectedNoise);
+    requireImuNoiseParamsEqual(handler.getImuNoiseParameters(), expectedNoise);
+    requireImuNoiseParamsEqual(handler.getImuNoiseParameters(), expectedNoise);
+}
+
+TEST_CASE("EEPROM constructor preserves IMU calibration params", "[imuCalibration][getEepromData]") {
+    dai::EepromData data;
+    data.imuCalibrationParams.accelerometer = {{0.25f, -0.5f, 0.75f, 1.0f}, {1.25f, 1.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}};
+    data.imuCalibrationParams.gyroscope = {{-1.0f, -0.5f, 0.0f, 0.5f}, {1.0f, 1.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}};
+    data.imuCalibrationParams.noise = makeImuNoiseParams();
+
+    dai::CalibrationHandler handler(data);
+    const auto loaded = handler.getEepromData();
+
+    REQUIRE(loaded.imuCalibrationParams.accelerometer == data.imuCalibrationParams.accelerometer);
+    REQUIRE(loaded.imuCalibrationParams.gyroscope == data.imuCalibrationParams.gyroscope);
+    requireImuNoiseParamsEqual(loaded.imuCalibrationParams.noise, data.imuCalibrationParams.noise);
+    requireImuNoiseParamsEqual(handler.getImuNoiseParameters(), data.imuCalibrationParams.noise);
+}
+
 TEST_CASE("EEPROM cameraData is replaced correctly when constructing CalibrationHandler", "[getEepromData]") {
     // Load some real eeprom data to get correct board config
     auto baseHandler = loadInvalidHandler();
@@ -1016,6 +1191,31 @@ TEST_CASE("getHousingCalibration - all cameras with specTranslation", "[housingD
             requireMatrixApproxEqual(result, expected);
         }
     }
+}
+
+TEST_CASE("getHousingCalibration - database with non-identity housing rotation", "[housingDatabase]") {
+    auto handler = loadHandlerWithHousingRotationAndDB();
+
+    // Housing rotation is Rz(90°), so the database translations must be rotated
+    // into the housing-origin frame. Without the rotation, translations would be wrong.
+
+    // CAM_A → FRONT_CAM_A
+    auto camAResult = handler.getHousingCalibration(CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
+    std::vector<std::vector<float>> expectedCamA = {
+        {0.0f, 1.0f, 0.0f, 3.75f}, {-1.0f, 0.0f, 0.0f, 3.75f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    requireMatrixApproxEqual(camAResult, expectedCamA, 1e-3);
+
+    // CAM_C → FRONT_CAM_A
+    auto camCResult = handler.getHousingCalibration(CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
+    std::vector<std::vector<float>> expectedCamC = {
+        {0.0f, 1.0f, 0.0f, 3.75f}, {-1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    requireMatrixApproxEqual(camCResult, expectedCamC, 1e-3);
+
+    // CAM_B → FRONT_CAM_A
+    auto camBResult = handler.getHousingCalibration(CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::FRONT_CAM_A, true);
+    std::vector<std::vector<float>> expectedCamB = {
+        {0.0f, 1.0f, 0.0f, 3.75f}, {-1.0f, 0.0f, 0.0f, 7.5f}, {0.0f, 0.0f, 1.0f, -0.567f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+    requireMatrixApproxEqual(camBResult, expectedCamB, 1e-3);
 }
 
 TEST_CASE("getHousingCalibration - All cameras to housing with specTranslation", "[getHousingCalibration]") {

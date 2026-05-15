@@ -66,6 +66,8 @@ set(SOURCE_LIST
     src/nn_archive/NNArchiveBindings.cpp
     src/log/LogBindings.cpp
     src/VersionBindings.cpp
+    src/PlatformBindings.cpp
+    src/CrashDumpBindings.cpp
     src/common/ModelTypeBindings.cpp
 
     src/pipeline/node/NodeBindings.cpp
@@ -186,6 +188,9 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
         src/pipeline/node/DynamicCalibrationBindings.cpp
         src/pipeline/datatype/DynamicCalibrationResultsBindings.cpp
         src/pipeline/datatype/DynamicCalibrationControlBindings.cpp
+        src/pipeline/node/AutoCalibrationBindings.cpp
+        src/pipeline/datatype/AutoCalibrationConfigBindings.cpp
+        src/pipeline/datatype/AutoCalibrationResultBindings.cpp
     )
 endif()
 

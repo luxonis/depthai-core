@@ -3,12 +3,10 @@ import numpy as np
 import cv2
 
 modelName = "luxonis/yolov8-instance-segmentation-large:coco-640x480"
-setRunOnHost = False
 device = dai.Device()
 fps = 30
 if device.getPlatform() == dai.Platform.RVC2:
     modelName = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
-    setRunOnHost = True
     fps = 10
 
 requiredCamCapabilities = dai.ImgFrameCapability()
@@ -26,9 +24,7 @@ with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
     cameraNode = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-
     detNN = pipeline.create(dai.node.DetectionNetwork).build(cameraNode, modelName, requiredCamCapabilities)
-    detNN.detectionParser.setRunOnHost(setRunOnHost)
 
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)

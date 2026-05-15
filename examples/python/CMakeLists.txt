@@ -337,6 +337,9 @@ dai_set_example_test_labels(imu_gyroscope_accelerometer rvc2_all rvc4 rvc4rgb ci
 # On slow hosts the examples warns that batch size is too small
 dai_example_test_relax_fail_regex(imu_gyroscope_accelerometer)
 
+add_python_example(imu_rotation_vector IMU/imu_rotation_vector.py)
+dai_set_example_test_labels(imu_rotation_vector ondevice rvc2_all rvc4 rvc4rgb ci)
+
 # Warp node
 add_python_example(warp_mesh Warp/warp_mesh.py)
 dai_set_example_test_labels(warp_mesh rvc2_all rvc4 rvc4rgb ci)
@@ -376,3 +379,13 @@ dai_set_example_test_labels(neural_assisted_stereo ondevice rvc4 ci)
 # Ips output
 add_python_example(camera_isp Camera/camera_isp.py)
 dai_set_example_test_labels(camera_isp rvc2_all rvc4 ci)
+
+## PointCloud
+add_python_example(pointcloud PointCloud/point_cloud.py)
+dai_set_example_test_labels(pointcloud ondevice rvc4 ci)
+
+add_python_example(pointcloud_showcase PointCloud/point_cloud_showcase.py)
+dai_set_example_test_labels(pointcloud_showcase ondevice rvc4 ci)
+
+add_python_example(pointcloud_visualizer PointCloud/point_cloud_visualizer.py)
+dai_set_example_test_labels(pointcloud_visualizer ondevice rvc4 ci nowindows)

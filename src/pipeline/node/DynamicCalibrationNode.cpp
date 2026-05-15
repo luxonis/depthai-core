@@ -54,12 +54,11 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
     const CalibrationHandler& currentCalibration,
     const CameraBoardSocket boardSocketA,
     const CameraBoardSocket boardSocketB,
-    const std::pair<int, int>& resolutionA,
-    const std::pair<int, int>& resolutionB) {
+    const ImgTransformation& imgTransformationA,
+    const ImgTransformation& imgTransformationB) {
     // clang-format off
-    std::shared_ptr<dcl::CameraCalibrationHandle> calibA = DclUtils::createDclCalibration(
-	currentCalibration.getCameraIntrinsics(boardSocketA, resolutionA.first, resolutionA.second, Point2f(), Point2f(),false),
-        currentCalibration.getDistortionCoefficients(boardSocketA),
+    std::array<std::array<float, 3>, 3> cameraMatrixA = imgTransformationA.getSourceIntrinsicMatrix();
+    std::shared_ptr<dcl::CameraCalibrationHandle> calibA = DclUtils::createDclCalibration(cameraMatrixA, imgTransformationA.getDistortionCoefficients(),
 	{
 	    {1.0f, 0.0f, 0.0f},
 	    {0.0f, 1.0f, 0.0f},
@@ -68,12 +67,12 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
 	{0.0f, 0.0f, 0.0f},
 	currentCalibration.getDistortionModel(boardSocketA)
     );
-    std::shared_ptr<dcl::CameraCalibrationHandle> calibB = DclUtils::createDclCalibration(
-        currentCalibration.getCameraIntrinsics(boardSocketB, resolutionB.first, resolutionB.second, Point2f(), Point2f(),false),
-        currentCalibration.getDistortionCoefficients(boardSocketB),
-	currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB),
-	currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false, LengthUnit::METER),
-	currentCalibration.getDistortionModel(boardSocketB)
+    std::array<std::array<float, 3>, 3> cameraMatrixB = imgTransformationB.getSourceIntrinsicMatrix();
+    std::shared_ptr<dcl::CameraCalibrationHandle> calibB = DclUtils::createDclCalibration(cameraMatrixB,
+        imgTransformationB.getDistortionCoefficients(),
+	    currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB),
+	    currentCalibration.getCameraTranslationVector(boardSocketA, boardSocketB, false, LengthUnit::METER),
+	    currentCalibration.getDistortionModel(boardSocketB)
     );
     // clang-format on
     return std::make_pair(calibA, calibB);
@@ -98,7 +97,8 @@ dcl::PerformanceMode DclUtils::daiPerformanceModeToDclPerformanceMode(const dai:
 
 #define DCL_PERSPECTIVE_DISTORTION_SIZE (14)
 #define DCL_FISHEYE_DISTORTION_SIZE (4)
-std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(const std::vector<std::vector<float>>& cameraMatrix,
+
+std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::createDclCalibration(const std::array<std::array<float, 3>, 3>& cameraMatrix,
                                                                              const std::vector<float>& distortionCoefficients,
                                                                              const std::vector<std::vector<float>>& rotationMatrix,
                                                                              const std::vector<float>& translationVector,
@@ -161,69 +161,50 @@ void DclUtils::convertDclCalibrationToDai(CalibrationHandler& calibHandler,
                                           const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationA,
                                           const std::shared_ptr<const dcl::CameraCalibrationHandle>& dclCalibrationB,
                                           const CameraBoardSocket socketSrc,
-                                          const CameraBoardSocket socketDest,
-                                          const std::pair<int, int>& resolutionA,
-                                          const std::pair<int, int>& resolutionB) {
+                                          const CameraBoardSocket socketDest) {
+    // Get extrinsics for both cameras (T_left_to_origin and T_right_to_origin)
     dcl::scalar_t tvecA[3];
     dclCalibrationA->getTvec(tvecA);
     dcl::scalar_t rvecA[3];
     dclCalibrationA->getRvec(rvecA);
 
-    constexpr dcl::scalar_t threshold = 1e-10;
-
-    // clang-format off
-    auto isNonZero = [&](const auto& vec) {
-      return std::abs(vec[0]) > threshold || std::abs(vec[1]) > threshold || std::abs(vec[2]) > threshold;
-    };
-    // clang-format on
-
-    if(isNonZero(tvecA) || isNonZero(rvecA)) {
-        throw std::runtime_error("Extrinsics of the left camera are not zero within the allowed threshold.");
-    }
-
-    dcl::distortion_t distortionA;
-    dclCalibrationA->getDistortion(distortionA);
-
-    dcl::scalar_t cameraMatrixA[9];
-    dclCalibrationA->getCameraMatrix(cameraMatrixA);
-    // clang-format off
-    std::vector<std::vector<float>> matA = {
-        {static_cast<float>(cameraMatrixA[0]), static_cast<float>(cameraMatrixA[1]), static_cast<float>(cameraMatrixA[2])},
-        {static_cast<float>(cameraMatrixA[3]), static_cast<float>(cameraMatrixA[4]), static_cast<float>(cameraMatrixA[5])},
-        {static_cast<float>(cameraMatrixA[6]), static_cast<float>(cameraMatrixA[7]), static_cast<float>(cameraMatrixA[8])}
-    };
-    // clang-format on
-
-    dcl::distortion_t distortionB;
-    dclCalibrationB->getDistortion(distortionB);
-
-    dcl::scalar_t cameraMatrixB[9];
-    dclCalibrationB->getCameraMatrix(cameraMatrixB);
-    // clang-format off
-    std::vector<std::vector<float>> matB = {
-        {static_cast<float>(cameraMatrixB[0]), static_cast<float>(cameraMatrixB[1]), static_cast<float>(cameraMatrixB[2])},
-        {static_cast<float>(cameraMatrixB[3]), static_cast<float>(cameraMatrixB[4]), static_cast<float>(cameraMatrixB[5])},
-        {static_cast<float>(cameraMatrixB[6]), static_cast<float>(cameraMatrixB[7]), static_cast<float>(cameraMatrixB[8])}
-    };
-    // clang-format on
-
     dcl::scalar_t tvecB[3];
     dclCalibrationB->getTvec(tvecB);
-    auto translation = std::vector<float>(tvecB, tvecB + 3);
-    for(auto& val : translation) {
-        val *= 100.0f;
-    }
     dcl::scalar_t rvecB[3];
     dclCalibrationB->getRvec(rvecB);
-    auto rotationMatrix = matrix::rvecToRotationMatrix(rvecB);
 
-    calibHandler.setCameraIntrinsics(socketSrc, matA, resolutionA.first, resolutionA.second);
-    calibHandler.setCameraIntrinsics(socketDest, matB, resolutionB.first, resolutionB.second);
-    calibHandler.setDistortionCoefficients(socketSrc, distortionToVector(distortionA));
-    calibHandler.setDistortionCoefficients(socketDest, distortionToVector(distortionB));
+    // Convert rvecs to rotation matrices
+    // DCL uses "origin to camera" convention: p_cam = R_cam * p_origin + t_cam
+    auto rotationMatrixA = matrix::rvecToRotationMatrix(rvecA);
+    auto rotationMatrixB = matrix::rvecToRotationMatrix(rvecB);
+
+    // Compute T_A_to_B (left to right) from per-camera poses:
+    //   p_A = R_A * p_ref + t_A  =>  p_ref = R_A^T * (p_A - t_A)
+    //   p_B = R_B * p_ref + t_B  =>  p_B = R_B * R_A^T * p_A + t_B - R_B * R_A^T * t_A
+    // R_rel = R_B * R_A^T
+    // t_rel = t_B - R_rel * t_A
+    std::vector<std::vector<float>> rotationMatrixAInv(3, std::vector<float>(3, 0.0f));
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            rotationMatrixAInv[i][j] = rotationMatrixA[j][i];  // transpose of rotation = inverse
+        }
+    }
+
+    auto rotationMatrix = matrix::matMul(rotationMatrixB, rotationMatrixAInv);
+
+    // t_rel = t_B - R_rel * t_A, converted from meters to cm
+    std::vector<float> translation(3, 0.0f);
+    for(int i = 0; i < 3; ++i) {
+        float rotationMatrixDotTranslationA = 0.0f;
+        for(int j = 0; j < 3; ++j) {
+            rotationMatrixDotTranslationA += rotationMatrix[i][j] * static_cast<float>(tvecA[j]);
+        }
+        translation[i] = (static_cast<float>(tvecB[i]) - rotationMatrixDotTranslationA) * 100.0f;  // meters to cm
+    }
     auto specTranslation = calibHandler.getCameraTranslationVector(socketSrc, socketDest, true);
     calibHandler.setCameraExtrinsics(socketSrc, socketDest, rotationMatrix, translation, specTranslation);
 }
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
     if(mat.empty()) {
@@ -251,7 +232,19 @@ dcl::ImageData DclUtils::cvMatToImageData(const cv::Mat& mat) {
 }
 #endif
 
-dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& src) {
+float sampsonErrorScalePx(const CalibrationHandler& calibrationHandler, CameraBoardSocket socket, const std::pair<int, int>& resolution) {
+    const auto intrinsics = calibrationHandler.getCameraIntrinsics(socket, resolution.first, resolution.second);
+    return 0.5f * (intrinsics.at(0).at(0) + intrinsics.at(1).at(1));
+}
+
+float sampsonErrorToPixels(float sampsonErrorNormalized, float sampsonErrorScalePixels) {
+    return sampsonErrorNormalized * sampsonErrorScalePixels;
+}
+
+dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& src,
+                                            const CalibrationHandler& calibrationHandler,
+                                            CameraBoardSocket socket,
+                                            const std::pair<int, int>& resolution) {
     dai::CalibrationQuality quality;
 
     CalibrationQuality::Data data{};
@@ -259,8 +252,9 @@ dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& sr
     data.rotationChange[1] = src.rotationChange[1];
     data.rotationChange[2] = src.rotationChange[2];
     data.depthErrorDifference = src.depthDistanceDifference;
-    data.sampsonErrorCurrent = src.sampsonErrorCurrent;
-    data.sampsonErrorNew = src.sampsonErrorNew;
+    const auto sampsonErrorScalePixels = sampsonErrorScalePx(calibrationHandler, socket, resolution);
+    data.sampsonErrorCurrent = sampsonErrorToPixels(src.sampsonErrorCurrent, sampsonErrorScalePixels);
+    data.sampsonErrorNew = sampsonErrorToPixels(src.sampsonErrorNew, sampsonErrorScalePixels);
     quality.qualityData = data;  // optional constructed from value
     return quality;
 }
@@ -271,13 +265,13 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash)
     if(flash) {
         device->flashCalibration(handler);
     }
-    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
+    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, imgTransformationA, imgTransformationB);
     pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorA, calibA);
     pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorB, calibB);
 }
 
 void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
-    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, resolutionA, resolutionB);
+    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, imgTransformationA, imgTransformationB);
     auto dataConfidence = pimplDCL->dynCalibImpl.computeDataConfidence(pimplDCL->sensorA, pimplDCL->sensorB);
     auto calibrationConfidence = pimplDCL->dynCalibImpl.computeCalibrationConfidence(calibA, calibB, pimplDCL->sensorA, pimplDCL->sensorB);
     auto metrics = std::make_shared<CalibrationMetrics>();
@@ -309,7 +303,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
         return DynamicCalibration::ErrorCode::QUALITY_CHECK_FAILED;
     }
 
-    auto result = std::make_shared<CalibrationQuality>(calibQualityfromDCL(dclResult.value));
+    auto result = std::make_shared<CalibrationQuality>(calibQualityfromDCL(dclResult.value, calibrationHandler, daiSocketA, resolutionA));
     result->info = dclResult.errorMessage();
     logger->trace("Quality check passed.");
 
@@ -336,15 +330,18 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     auto newCalibrationHandler = currentHandler;
 
     dai::node::DclUtils::convertDclCalibrationToDai(
-	newCalibrationHandler, dclCalibrationA, dclCalibrationB, daiSocketA, daiSocketB, resolutionA, resolutionB);
+	newCalibrationHandler, dclCalibrationA, dclCalibrationB, daiSocketA, daiSocketB);
 
     CalibrationQuality::Data qualityData{};
     qualityData.rotationChange[0] = dclResult.value.calibrationDifference->rotationChange[0];
     qualityData.rotationChange[1] = dclResult.value.calibrationDifference->rotationChange[1];
     qualityData.rotationChange[2] = dclResult.value.calibrationDifference->rotationChange[2];
     qualityData.depthErrorDifference = dclResult.value.calibrationDifference->depthDistanceDifference;
-    qualityData.sampsonErrorCurrent  = dclResult.value.calibrationDifference->sampsonErrorCurrent;
-    qualityData.sampsonErrorNew = dclResult.value.calibrationDifference->sampsonErrorNew;
+    const auto sampsonErrorScalePixels = sampsonErrorScalePx(currentHandler, daiSocketA, resolutionA);
+    qualityData.sampsonErrorCurrent =
+        sampsonErrorToPixels(dclResult.value.calibrationDifference->sampsonErrorCurrent, sampsonErrorScalePixels);
+    qualityData.sampsonErrorNew =
+        sampsonErrorToPixels(dclResult.value.calibrationDifference->sampsonErrorNew, sampsonErrorScalePixels);
 
     DynamicCalibrationResult::Data resultData{};
     resultData.newCalibration       = newCalibrationHandler;
@@ -440,6 +437,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     resolutionA = std::make_pair(leftFrame->getWidth(), leftFrame->getHeight());
     resolutionB = std::make_pair(rightFrame->getWidth(), rightFrame->getHeight());
 
+    imgTransformationA = leftFrame->getTransformation();
+    imgTransformationB = rightFrame->getTransformation();
+
     daiSocketA = static_cast<CameraBoardSocket>(leftFrame->instanceNum);
     daiSocketB = static_cast<CameraBoardSocket>(rightFrame->instanceNum);
     if(daiSocketA == daiSocketB) {
@@ -456,7 +456,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
         logger->trace("The calibration on the device is old (distortion correction is disabled), for optimal performance full re-calibration is recommended!");
         oldCalibrationWarningIssued = true;
     }
-    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, resolutionA, resolutionB);
+    auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(calibrationHandler, daiSocketA, daiSocketB, imgTransformationA, imgTransformationB);
 
     // set up the dynamic calibration
     pimplDCL->device = pimplDCL->dynCalibImpl.addDevice();

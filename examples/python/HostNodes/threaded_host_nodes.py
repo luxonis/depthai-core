@@ -90,11 +90,11 @@ with dai.Pipeline(False) as p:
     """
 
     # Create nodes
-    source = TestSource("source")
-    passthrough = TestPassthrough("passthrough")
-    passthroughSubnodes = TestPassthroughSubnodes("passthroughSubnodes")
-    sink1 = TestSink("sink1")
-    sink2 = TestSink("sink2")
+    source = p.create(TestSource, "source")
+    passthrough = p.create(TestPassthrough, "passthrough")
+    passthroughSubnodes = p.create(TestPassthroughSubnodes, "passthroughSubnodes")
+    sink1 = p.create(TestSink, "sink1")
+    sink2 = p.create(TestSink, "sink2")
 
     # Link nodes
     source.output.link(passthrough.input)

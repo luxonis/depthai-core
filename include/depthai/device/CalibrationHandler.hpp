@@ -1,5 +1,6 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
+#include <array>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -73,6 +74,24 @@ class CalibrationHandler {
      * @return EepromData object which contains the raw calibration data
      */
     dai::EepromData getEepromData() const;
+
+    /**
+     * @brief Returns true when calibration payload is supported and contains camera calibration entries.
+     *
+     * This check is not presence-only: it returns true only when
+     * `eepromData.version >= 4` (supported by intrinsics-dependent APIs)
+     * and `cameraData` is non-empty.
+     */
+    bool hasCalibrationData() const;
+
+    /**
+     * @brief Returns true when calibration is supported and contains data for a specific camera socket.
+     *
+     * This is a presence-plus-version-compatibility check. It requires
+     * `hasCalibrationData()` to be true (currently `eepromData.version >= 4`)
+     * and a matching entry for `cameraId` in `cameraData`.
+     */
+    bool hasCameraCalibration(CameraBoardSocket cameraId) const;
 
     /**
      * Get the Camera Intrinsics object
@@ -172,6 +191,20 @@ class CalibrationHandler {
      *
      */
     std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId) const;
+
+    /**
+     * Get the source height of the camera from the calibration data.
+     * @param cameraId Uses the cameraId to identify which camera source height to return
+     * @return the source height of the camera from the calibration data.
+     */
+    uint32_t getSourceHeight(CameraBoardSocket cameraId) const;
+
+    /**
+     * Get the source width of the camera from the calibration data.
+     * @param cameraId Uses the cameraId to identify which camera source width to return
+     * @return the source width of the camera from the calibration data.
+     */
+    uint32_t getSourceWidth(CameraBoardSocket cameraId) const;
 
     /**
      * Get the Distortion Coefficients object
@@ -388,6 +421,46 @@ class CalibrationHandler {
      * @return cameraID of the camera used as right camera
      */
     dai::CameraBoardSocket getStereoRightCameraId() const;
+
+    /**
+     * Get canonical accelerometer calibration matrix [Q|b].
+     *
+     * The linear transform Q is dimensionless. The bias column b is stored in SI
+     * units of [m/s^2].
+     *
+     * @return returns 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
+     */
+    std::vector<std::vector<float>> getAccelerometerCalibration() const;
+
+    /**
+     * Get canonical gyroscope calibration matrix [Q|b].
+     *
+     * The linear transform Q is dimensionless. The bias column b is stored in SI
+     * units of [rad/s].
+     *
+     * @return returns 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
+     */
+    std::vector<std::vector<float>> getGyroscopeCalibration() const;
+
+    /**
+     * Get complete IMU noise parameters.
+     *
+     * Accelerometer noise terms are stored in [m/s^2]-based units. Gyroscope
+     * noise terms are stored in [rad/s]-based units.
+     *
+     * @return returns IMU noise parameters
+     */
+    dai::ImuNoiseParameters getImuNoiseParameters() const;
+
+    /**
+     * Get full IMU parameter payload.
+     *
+     * Accelerometer calibration bias terms are stored in [m/s^2]. Gyroscope
+     * calibration bias terms are stored in [rad/s].
+     *
+     * @return returns IMU parameters containing noise + calibration matrices
+     */
+    dai::ImuCalibrationParams getImuParameters() const;
 
     /**
      * Write raw calibration/board data to json file.
@@ -613,6 +686,28 @@ class CalibrationHandler {
      * @return true on proper connection with no loops.
      */
     bool validateCameraArray() const;
+
+    /**
+     * Set canonical accelerometer calibration [Q|b].
+     *
+     * @param calibration 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
+     */
+    void setAccelerometerCalibration(const std::vector<std::vector<float>>& calibration);
+
+    /**
+     * Set canonical gyroscope calibration [Q|b].
+     *
+     * @param calibration 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
+     */
+    void setGyroscopeCalibration(const std::vector<std::vector<float>>& calibration);
+
+    /**
+     * Set full IMU parameter payload.
+     *
+     * @param params noise + accelerometer + gyroscope calibration parameters
+     */
+    void setImuParameters(const ImuCalibrationParams& params);
+
     /**
      * Validate Calibration handler properties and how they are set, so there is no:
      *  - Cycling links
@@ -623,6 +718,12 @@ class CalibrationHandler {
      *
      */
     void validateCalibrationHandler(bool throwOnError = true) const;
+
+    /**
+     * Get the lowest camera socket
+     * @return the lowest camera socket
+     */
+    dai::CameraBoardSocket getCameraWithLowestId() const;
 
    private:
     /** when the user is writing extrinsics do we validate if
@@ -659,6 +760,7 @@ class CalibrationHandler {
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
     void scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const;
+    void validateIntrinsicsMatrix(CameraBoardSocket cameraId) const;
 
    protected:
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;

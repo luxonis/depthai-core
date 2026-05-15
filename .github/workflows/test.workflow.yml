@@ -54,9 +54,11 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.14.1','1.18.3','1.25.3']"
-      luxonis_os_versions_to_test_rgb: "['1.25.3']"
-      luxonis_os_versions_to_test_usb: "['1.27.0-usb+72f1b9e22127abf4f322071739fa5880a7bf2301']"
+      luxonis_os_versions_to_test: "['1.20.5','1.27.1','1.30.1']"
+      luxonis_os_versions_to_test_rgb: "['1.30.1']"
+      luxonis_os_versions_to_test_usb: "['1.30.1']"
+      luxonis_os_versions_to_test_fsync: "['1.27.1']"
+      luxonis_os_versions_to_test_ptp: "['1.30.1']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -67,7 +69,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
-      luxonis_os_versions_to_test: "['1.25.3']"
+      luxonis_os_versions_to_test: "['1.27.1']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -78,7 +80,7 @@ jobs:
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
-      luxonis_os_versions_to_test: "['1.25.3']"
+      luxonis_os_versions_to_test: "['1.27.1']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -88,8 +90,22 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     uses: ./.github/workflows/test_child_windows.yml
     with:
-      luxonis_os_versions_to_test: "['1.25.3']"
-      luxonis_os_versions_to_test_usb: ${{ github.event_name != 'pull_request' && '["1.27.0-usb+72f1b9e22127abf4f322071739fa5880a7bf2301"]' || '[]' }}
+      luxonis_os_versions_to_test: "['1.27.1']"
+      luxonis_os_versions_to_test_usb: ${{ github.event_name != 'pull_request' && '["1.27.1"]' || '[]' }}
+    secrets:
+      CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
+      HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+
+  run_replay_tests:
+    needs: [precheck]
+    if: needs.precheck.outputs.should_run == 'true'
+    uses: ./.github/workflows/test_child.yml
+    with:
+      flavor: "vanilla"
+      job_prefix: "vanilla-replay"
+      enable_replay_tests: true
+      rvc2_timeout_minutes: 1440
+      luxonis_os_versions_to_test: "['1.27.1']"
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
@@ -100,7 +116,7 @@ jobs:
     uses: ./.github/workflows/test_child_mac.yml
     with:
       flavor: "vanilla"
-      luxonis_os_versions_to_test: "['1.25.3']"
-      luxonis_os_versions_to_test_usb: ${{ github.event_name != 'pull_request' && '["1.27.0-usb+72f1b9e22127abf4f322071739fa5880a7bf2301"]' || '[]' }}
+      luxonis_os_versions_to_test: "['1.27.1']"
+      luxonis_os_versions_to_test_usb: ${{ github.event_name != 'pull_request' && '["1.27.1"]' || '[]' }}
     secrets:
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}

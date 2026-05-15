@@ -14,6 +14,7 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
     enum class Profile : std::uint8_t { JPEG, AVC, HEVC };
     enum class FrameType : std::uint8_t { I, P, B, Unknown };
     using CameraSettings = ImgFrame::CameraSettings;
+    using Fsync = ImgFrame::Fsync;
 
     CameraSettings cam;
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
@@ -75,6 +76,21 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
      * Retrieves lens position, range 0.0f..1.0f. Returns -1 if not available
      */
     float getLensPositionRaw() const;
+
+    /**
+     * Retrieves effective frame sync mode for this frame.
+     */
+    Fsync getFsync() const;
+
+    /**
+     * Retrieves selected sensor mode index for this frame.
+     */
+    int getSensorMode() const;
+
+    /**
+     * Retrieves sensor FPS for this frame.
+     */
+    float getFps() const;
 
     /**
      * Retrieves the encoding quality

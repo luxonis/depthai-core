@@ -2,8 +2,8 @@
 
 #include <stdexcept>
 
-#include "OCVPorts.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/utility/OCVPorts.hpp"
 #include "depthai/utility/matrixOps.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -15,6 +15,9 @@
 #else
     #define _RESTRICT __restrict__
 #endif
+
+constexpr size_t MAX_AUTO_WIDTH = 4000;
+constexpr size_t MAX_AUTO_HEIGHT = 3000;
 
 void dai::impl::transformOpenCV(const uint8_t* src,
                                 uint8_t* dst,
@@ -575,12 +578,15 @@ void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 
     float rmaxx = srcOuterMaxx >= srcWidth && srcInnerMaxx < srcWidth ? innerMaxx : outerMaxx;
     float rminy = srcOuterMiny < 0 && srcInnerMiny >= 0 ? innerMiny : outerMiny;
     float rmaxy = srcOuterMaxy >= srcHeight && srcInnerMaxy < srcHeight ? innerMaxy : outerMaxy;
+
+    if(outputWidth > 0 && outputHeight > 0) return;
+
     if(!center) {
-        if(outputWidth == 0) outputWidth = rmaxx;
-        if(outputHeight == 0) outputHeight = rmaxy;
+        if(outputWidth == 0) outputWidth = std::min((size_t)rmaxx, MAX_AUTO_WIDTH);
+        if(outputHeight == 0) outputHeight = std::min((size_t)rmaxy, MAX_AUTO_HEIGHT);
     } else {
-        if(outputWidth == 0) outputWidth = rmaxx - rminx;
-        if(outputHeight == 0) outputHeight = rmaxy - rminy;
+        if(outputWidth == 0) outputWidth = std::min((size_t)std::max(rmaxx - rminx, 0.f), MAX_AUTO_WIDTH);
+        if(outputHeight == 0) outputHeight = std::min((size_t)std::max(rmaxy - rminy, 0.f), MAX_AUTO_HEIGHT);
     }
 }
 
@@ -664,29 +670,29 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                                o.dst[i].x *= width;
                                o.dst[i].y *= height;
                            }
-#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
-                           std::array<float, 9> coeff = {};
-                           std::array<float, 8> srcData = {o.src[0].x, o.src[0].y, o.src[1].x, o.src[1].y, o.src[2].x, o.src[2].y, o.src[3].x, o.src[3].y};
-                           std::array<float, 8> dstData = {o.dst[0].x, o.dst[0].y, o.dst[1].x, o.dst[1].y, o.dst[2].x, o.dst[2].y, o.dst[3].x, o.dst[3].y};
-                           fcvGetPerspectiveTransformf32(srcData.data(), dstData.data(), coeff.data());
-                           mat = {{{coeff[0], coeff[1], coeff[2]}, {coeff[3], coeff[4], coeff[5]}, {coeff[6], coeff[7], coeff[8]}}};
-#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-                           cv::Point2f srcPoints[4] = {cv::Point2f(o.src[0].x, o.src[0].y),
-                                                       cv::Point2f(o.src[1].x, o.src[1].y),
-                                                       cv::Point2f(o.src[2].x, o.src[2].y),
-                                                       cv::Point2f(o.src[3].x, o.src[3].y)};
-                           cv::Point2f dstPoints[4] = {cv::Point2f(o.dst[0].x, o.dst[0].y),
-                                                       cv::Point2f(o.dst[1].x, o.dst[1].y),
-                                                       cv::Point2f(o.dst[2].x, o.dst[2].y),
-                                                       cv::Point2f(o.dst[3].x, o.dst[3].y)};
-                           cv::Mat cvMat = cv::getPerspectiveTransform(srcPoints, dstPoints);
-                           mat = {{{(float)cvMat.at<double>(0, 0), (float)cvMat.at<double>(0, 1), (float)cvMat.at<double>(0, 2)},
-                                   {(float)cvMat.at<double>(1, 0), (float)cvMat.at<double>(1, 1), (float)cvMat.at<double>(1, 2)},
-                                   {(float)cvMat.at<double>(2, 0), (float)cvMat.at<double>(2, 1), (float)cvMat.at<double>(2, 2)}}};
-#else
-                           throw std::runtime_error("FourPoints not supported without OpenCV or FastCV enabled");
-#endif
                        }
+#if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
+                       std::array<float, 9> coeff = {};
+                       std::array<float, 8> srcData = {o.src[0].x, o.src[0].y, o.src[1].x, o.src[1].y, o.src[2].x, o.src[2].y, o.src[3].x, o.src[3].y};
+                       std::array<float, 8> dstData = {o.dst[0].x, o.dst[0].y, o.dst[1].x, o.dst[1].y, o.dst[2].x, o.dst[2].y, o.dst[3].x, o.dst[3].y};
+                       fcvGetPerspectiveTransformf32(srcData.data(), dstData.data(), coeff.data());
+                       mat = {{{coeff[0], coeff[1], coeff[2]}, {coeff[3], coeff[4], coeff[5]}, {coeff[6], coeff[7], coeff[8]}}};
+#elif defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+                       cv::Point2f srcPoints[4] = {cv::Point2f(o.src[0].x, o.src[0].y),
+                                                   cv::Point2f(o.src[1].x, o.src[1].y),
+                                                   cv::Point2f(o.src[2].x, o.src[2].y),
+                                                   cv::Point2f(o.src[3].x, o.src[3].y)};
+                       cv::Point2f dstPoints[4] = {cv::Point2f(o.dst[0].x, o.dst[0].y),
+                                                   cv::Point2f(o.dst[1].x, o.dst[1].y),
+                                                   cv::Point2f(o.dst[2].x, o.dst[2].y),
+                                                   cv::Point2f(o.dst[3].x, o.dst[3].y)};
+                       cv::Mat cvMat = cv::getPerspectiveTransform(srcPoints, dstPoints);
+                       mat = {{{(float)cvMat.at<double>(0, 0), (float)cvMat.at<double>(0, 1), (float)cvMat.at<double>(0, 2)},
+                               {(float)cvMat.at<double>(1, 0), (float)cvMat.at<double>(1, 1), (float)cvMat.at<double>(1, 2)},
+                               {(float)cvMat.at<double>(2, 0), (float)cvMat.at<double>(2, 1), (float)cvMat.at<double>(2, 2)}}};
+#else
+                       mat = matrix::getHomographyMatrix(o.src, o.dst);
+#endif
                    },
                    [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
                    [&](Perspective o) {

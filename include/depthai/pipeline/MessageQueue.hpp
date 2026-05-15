@@ -10,6 +10,7 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/LockingQueue.hpp"
 #include "depthai/utility/PipelineEventDispatcherInterface.hpp"
+#include "depthai/utility/WaitAnyNotifier.hpp"
 
 // shared
 namespace dai {
@@ -33,9 +34,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::string name;
 
-    std::mutex cvNotifyMtx;
-    std::unordered_map<CallbackId, std::shared_ptr<std::condition_variable>> condVars;
-    CallbackId uniqueCondVarId{0};
+    std::mutex notifierMtx;
+    std::unordered_map<CallbackId, std::shared_ptr<utility::WaitAnyNotifier>> notifiers;
+    CallbackId uniqueNotifierId{0};
 
    public:
     std::mutex callbacksMtx;                                                                                 // Only public for the Python bindings
@@ -44,7 +45,7 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
 
    private:
     void callCallbacks(std::shared_ptr<ADatatype> msg);
-    void notifyCondVars();
+    void notifyListeners();
     utility::PipelineEventDispatcherInterface* pipelineEventDispatcher = nullptr;
 
    public:
@@ -83,19 +84,45 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
         queue = std::move(m.queue);
         name = std::move(m.name);
         callbacks = std::move(m.callbacks);
+        notifiers = std::move(m.notifiers);
         uniqueCallbackId = m.uniqueCallbackId;
+        uniqueNotifierId = m.uniqueNotifierId;
         pipelineEventDispatcher = m.pipelineEventDispatcher;
         return *this;
     }
 
-    static bool waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues);
+    /**
+     * Blocks until any of the queues contains a message, all queues are closed, or the timeout expires
+     *
+     * @param queues Queues to wait on
+     * @param timeout Maximum time to wait, or no timeout if not specified
+     * @returns True if at least one queue has a message available, false if all queues are closed or the timeout expires first
+     */
+    static bool waitAny(const std::vector<std::reference_wrapper<MessageQueue>>& queues, std::optional<std::chrono::milliseconds> timeout = std::nullopt);
 
+    /**
+     * Waits for messages on any of the provided queues and returns all currently available messages
+     *
+     * @param queues Mapping from output keys to queues to read from
+     * @param timeout Maximum time to wait, or no timeout if not specified
+     * @returns Mapping containing one available message per queue key, or an empty map if all queues are closed or the timeout expires first
+     */
     static std::unordered_map<std::string, std::shared_ptr<ADatatype>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                               std::optional<std::chrono::milliseconds> timeout = std::nullopt);
     template <typename T>
+
+    /**
+     * Waits for messages on any of the provided queues and returns all currently available messages cast to the requested type
+     *
+     * @tparam T Requested message type
+     * @param queues Mapping from output keys to queues to read from
+     * @param timeout Maximum time to wait, or no timeout if not specified
+     * @returns Mapping containing one available message per queue key that can be cast to `T`, or an empty map if all queues are closed, the timeout expires
+     * first, or no available messages match `T`
+     */
     static std::unordered_map<std::string, std::shared_ptr<T>> getAny(const std::unordered_map<std::string, MessageQueue&>& queues,
                                                                       std::optional<std::chrono::milliseconds> timeout = std::nullopt) {
-        auto resultADatatype = getAny(std::move(queues), timeout);
+        auto resultADatatype = getAny(queues, timeout);
         std::unordered_map<std::string, std::shared_ptr<T>> result;
         for(auto& [k, v] : resultADatatype) {
             auto casted = std::dynamic_pointer_cast<T>(v);
@@ -196,12 +223,12 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     CallbackId addCallback(const std::function<void()>& callback);
 
     /**
-     * Adds a condition variable to be notified on message queue destruction
+     * Adds a notifier to be pinged on message queue updates
      *
-     * @param cv Condition variable to be notified
-     * @returns Condition variable id
+     * @param notifier Notifier to be notified
+     * @returns Notifier id
      */
-    CallbackId addCondVar(std::shared_ptr<std::condition_variable> cv);
+    CallbackId addNotifier(std::shared_ptr<utility::WaitAnyNotifier> notifier);
 
     /**
      * Removes a callback
@@ -212,12 +239,12 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     bool removeCallback(CallbackId callbackId);
 
     /**
-     * Removes a condition variable
+     * Removes a notifier
      *
-     * @param condVarId Id of condition variable to be removed
-     * @returns True if condition variable was removed, false otherwise
+     * @param notifierId Id of notifier to be removed
+     * @returns True if notifier was removed, false otherwise
      */
-    bool removeCondVar(CallbackId condVarId);
+    bool removeNotifier(CallbackId notifierId);
 
     /**
      * Check whether front of the queue has message of type T
