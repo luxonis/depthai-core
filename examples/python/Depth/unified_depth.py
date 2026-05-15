@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Stereo-style demo using the unified dai.node.Depth group (AUTO: NeuralDepth on RVC4, ToF on RVC2 with a ToF sensor,
-otherwise StereoDepth on RVC2/RVC3).
+Stereo-style demo using the unified dai.node.Depth group (AUTO: GPUStereo on RVC4 with board R9+ and stereo pair,
+otherwise NeuralDepth on RVC4; ToF on RVC2 with a ToF sensor; otherwise StereoDepth on RVC2/RVC3).
 
 - On RVC4 the NeuralDepth zoo model is fixed inside the ``Depth`` wiring path (not user-configurable).
 - Create host queues on ``depth_node.depth`` / ``confidence`` **before** ``pipeline.build()`` (the pipeline

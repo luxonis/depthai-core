@@ -3,9 +3,11 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <optional>
 #include <string>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraSensorType.hpp"
@@ -24,14 +26,17 @@ namespace {
 // Depth: resolveAlgorithm (AUTO) + validateAlgorithm (explicit and resolved AUTO)
 //
 // TOF: require CameraSensorType::TOF in getConnectedCameraFeatures() (same rule as the ToF node).
-// AUTO: RVC4 -> NEURAL; RVC2 + ToF -> TOF; else -> STEREO (including RVC3).
-// NEURAL_ASSISTED_STEREO / GPU_STEREO: RVC4 and build rules; GPUStereo also uses a product-name
-// heuristic to exclude Lite-class RVC4 SKUs without the GPU block.
+// AUTO: RVC4 + GPU stereo hardware (R9+, stereo pair, Kompute build) -> GPU_STEREO; else RVC4 -> NEURAL;
+// RVC2 + ToF -> TOF; else -> STEREO (including RVC3).
+// NEURAL_ASSISTED_STEREO / GPU_STEREO: RVC4 and build rules; GPUStereo requires stereo pairs and
+// board revision R9+ (EEPROM boardRev, with product-name fallback).
 // ---------------------------------------------------------------------------
+
+constexpr int kGpuStereoMinBoardRevisionMajor = 9;
 
 constexpr std::pair<uint32_t, uint32_t> kStereoDepthMonoSize{640, 400};
 
-/** Fixed NeuralDepth model for ``Algorithm::NEURAL`` and for ``AUTO`` on RVC4. */
+/** Fixed NeuralDepth model for ``Algorithm::NEURAL`` and for ``AUTO`` on RVC4 when GPU stereo is not selected. */
 constexpr DeviceModelZoo kDefaultNeuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
 /** Fixed NeuralAssistedStereo neural model / rectify for ``Algorithm::NEURAL_ASSISTED_STEREO``. */
 constexpr DeviceModelZoo kDefaultNasNeuralModel = DeviceModelZoo::NEURAL_DEPTH_NANO;
@@ -85,23 +90,119 @@ bool deviceHasTofSensor(const std::shared_ptr<Device>& device) {
     }
 }
 
-#if defined(DEPTHAI_ENABLE_KOMPUTE)
-/** RVC4 + Kompute build; excludes Lite-class product names (no GPU block). */
-bool deviceGpuStereoSupported(const std::shared_ptr<Device>& device) {
+/** Read consecutive decimal digits at @p i; returns nullopt if none. */
+std::optional<int> readDecimalMajorAt(const std::string& s, std::size_t& i) {
+    if(i >= s.size() || std::isdigit(static_cast<unsigned char>(s[i])) == 0) {
+        return std::nullopt;
+    }
+    int major = 0;
+    while(i < s.size() && std::isdigit(static_cast<unsigned char>(s[i])) != 0) {
+        major = major * 10 + (s[i] - '0');
+        ++i;
+    }
+    return major;
+}
+
+/**
+ * Parse major board revision from EEPROM ``boardRev``.
+ * RVC4 uses ``P{n}D*`` (e.g. ``P9D1``, ``P10D0``); older boards use ``R{n}*`` (e.g. ``R9``, ``R2.1``).
+ */
+std::optional<int> parseBoardRevisionMajor(const std::string& boardRev) {
+    if(boardRev.empty()) {
+        return std::nullopt;
+    }
+    std::size_t i = 0;
+    while(i < boardRev.size() && std::isspace(static_cast<unsigned char>(boardRev[i])) != 0) {
+        ++i;
+    }
+    if(i >= boardRev.size()) {
+        return std::nullopt;
+    }
+    const char lead = static_cast<char>(std::tolower(static_cast<unsigned char>(boardRev[i])));
+    ++i;
+    if(lead == 'p') {
+        auto major = readDecimalMajorAt(boardRev, i);
+        if(major && i < boardRev.size() && std::tolower(static_cast<unsigned char>(boardRev[i])) == 'd') {
+            return major;
+        }
+        return std::nullopt;
+    }
+    if(lead == 'r') {
+        while(i < boardRev.size() && std::isspace(static_cast<unsigned char>(boardRev[i])) != 0) {
+            ++i;
+        }
+        return readDecimalMajorAt(boardRev, i);
+    }
+    return std::nullopt;
+}
+
+/** Fallback when EEPROM boardRev is missing (e.g. product name contains ``OAK4-D R9``). */
+std::optional<int> inferBoardRevisionMajorFromProduct(const std::string& productName) {
+    for(std::size_t pos = 0; pos < productName.size(); ++pos) {
+        if(pos > 0) {
+            const char prev = productName[pos - 1];
+            if(std::isalnum(static_cast<unsigned char>(prev)) != 0) {
+                continue;
+            }
+        }
+        if(std::tolower(static_cast<unsigned char>(productName[pos])) != 'r') {
+            continue;
+        }
+        std::size_t i = pos + 1;
+        if(i >= productName.size() || std::isdigit(static_cast<unsigned char>(productName[i])) == 0) {
+            continue;
+        }
+        int major = 0;
+        while(i < productName.size() && std::isdigit(static_cast<unsigned char>(productName[i])) != 0) {
+            major = major * 10 + (productName[i] - '0');
+            ++i;
+        }
+        return major;
+    }
+    return std::nullopt;
+}
+
+std::optional<int> deviceBoardRevisionMajor(const std::shared_ptr<Device>& device) {
+    if(device == nullptr) {
+        return std::nullopt;
+    }
+    try {
+        if(auto major = parseBoardRevisionMajor(device->readCalibrationOrDefault().getEepromData().boardRev)) {
+            return major;
+        }
+    } catch(...) {
+    }
+    try {
+        if(auto major = inferBoardRevisionMajorFromProduct(device->getProductName())) {
+            return major;
+        }
+    } catch(...) {
+    }
+    try {
+        return inferBoardRevisionMajorFromProduct(device->getDeviceName());
+    } catch(...) {
+    }
+    return std::nullopt;
+}
+
+/** RVC4 with stereo pair and board revision R9+ (GPU block present). */
+bool deviceHasGpuStereoHardware(const std::shared_ptr<Device>& device) {
     if(device == nullptr || device->getPlatform() != Platform::RVC4) {
         return false;
     }
-    try {
-        std::string product = device->getProductName();
-        std::transform(product.begin(), product.end(), product.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        // RVC4 "Lite" SKUs ship without the GPU used by GPUStereo; extend this list as product names are finalized.
-        if(product.find("lite") != std::string::npos) {
-            return false;
-        }
-    } catch(...) {
-        // If product metadata is unavailable, allow GPUStereo on RVC4 when Kompute is enabled.
+    if(device->getStereoPairs().empty()) {
+        return false;
     }
-    return true;
+    const auto major = deviceBoardRevisionMajor(device);
+    if(!major) {
+        return false;
+    }
+    return *major >= kGpuStereoMinBoardRevisionMajor;
+}
+
+#if defined(DEPTHAI_ENABLE_KOMPUTE)
+bool deviceGpuStereoSupported(const std::shared_ptr<Device>& device) {
+    return deviceHasGpuStereoHardware(device);
 }
 #endif
 
@@ -122,6 +223,11 @@ Depth::Algorithm Depth::resolveAlgorithm(const std::shared_ptr<Device>& device) 
         return algorithmOverride_;
     }
     if(device->getPlatform() == Platform::RVC4) {
+#if defined(DEPTHAI_ENABLE_KOMPUTE)
+        if(deviceHasGpuStereoHardware(device)) {
+            return Algorithm::GPU_STEREO;
+        }
+#endif
         return Algorithm::NEURAL;
     }
     if(device->getPlatform() == Platform::RVC2 && deviceHasTofSensor(device)) {
@@ -145,8 +251,7 @@ void Depth::validateAlgorithm(const std::shared_ptr<Device>& device, Algorithm a
 #if defined(DEPTHAI_ENABLE_KOMPUTE)
             DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "GPUStereo is only supported on RVC4.");
             DAI_CHECK_V(deviceGpuStereoSupported(device),
-                        "GPUStereo requires an RVC4 device with GPU stereo support (Kompute-enabled build and a SKU that includes the GPU block; Lite variants "
-                        "are excluded).");
+                        "GPUStereo requires an RVC4 device with a stereo camera pair, board revision R9 or newer, and a Kompute-enabled build.");
 #else
             DAI_CHECK_V(false, "GPUStereo requires depthai-core built with Kompute (DEPTHAI_ENABLE_KOMPUTE).");
 #endif

@@ -4,6 +4,7 @@
  */
 #include <catch2/catch_all.hpp>
 
+#include <cctype>
 #include <cstring>
 #include <optional>
 
@@ -38,6 +39,88 @@ int countStereoCamerasInDepthSubtree(const node::Depth& depth, const StereoPair&
         }
     }
     return count;
+}
+
+std::optional<int> readDecimalMajorAt(const std::string& s, std::size_t& i) {
+    if(i >= s.size() || std::isdigit(static_cast<unsigned char>(s[i])) == 0) {
+        return std::nullopt;
+    }
+    int major = 0;
+    while(i < s.size() && std::isdigit(static_cast<unsigned char>(s[i])) != 0) {
+        major = major * 10 + (s[i] - '0');
+        ++i;
+    }
+    return major;
+}
+
+std::optional<int> parseBoardRevisionMajor(const std::string& boardRev) {
+    if(boardRev.empty()) {
+        return std::nullopt;
+    }
+    std::size_t i = 0;
+    while(i < boardRev.size() && std::isspace(static_cast<unsigned char>(boardRev[i])) != 0) {
+        ++i;
+    }
+    if(i >= boardRev.size()) {
+        return std::nullopt;
+    }
+    const char lead = static_cast<char>(std::tolower(static_cast<unsigned char>(boardRev[i])));
+    ++i;
+    if(lead == 'p') {
+        auto major = readDecimalMajorAt(boardRev, i);
+        if(major && i < boardRev.size() && std::tolower(static_cast<unsigned char>(boardRev[i])) == 'd') {
+            return major;
+        }
+        return std::nullopt;
+    }
+    if(lead == 'r') {
+        while(i < boardRev.size() && std::isspace(static_cast<unsigned char>(boardRev[i])) != 0) {
+            ++i;
+        }
+        return readDecimalMajorAt(boardRev, i);
+    }
+    return std::nullopt;
+}
+
+bool deviceReportsGpuStereoBoardRevision(const std::shared_ptr<Device>& device) {
+    if(device == nullptr || device->getPlatform() != Platform::RVC4) {
+        return false;
+    }
+    try {
+        const auto major = parseBoardRevisionMajor(device->readCalibrationOrDefault().getEepromData().boardRev);
+        return major && *major >= 9;
+    } catch(...) {
+        return false;
+    }
+}
+
+bool deviceSupportsGpuStereoForAuto(const std::shared_ptr<Device>& device) {
+    if(device == nullptr || device->getPlatform() != Platform::RVC4) {
+        return false;
+    }
+    if(device->getStereoPairs().empty()) {
+        return false;
+    }
+    return deviceReportsGpuStereoBoardRevision(device);
+}
+
+const char* expectedAutoBackendName(const std::shared_ptr<Device>& device) {
+    if(device == nullptr) {
+        return "StereoDepth";
+    }
+    const auto platform = device->getPlatform();
+    if(platform == Platform::RVC2 && deviceReportsTofSensor(device)) {
+        return "ToF";
+    }
+    if(platform == Platform::RVC4) {
+#if defined(DEPTHAI_ENABLE_KOMPUTE)
+        if(deviceSupportsGpuStereoForAuto(device)) {
+            return "GPUStereo";
+        }
+#endif
+        return "NeuralDepth";
+    }
+    return "StereoDepth";
 }
 
 bool deviceReportsTofSensor(const std::shared_ptr<Device>& device) {
@@ -144,13 +227,7 @@ TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
     REQUIRE_NOTHROW((void)&depth->depth());
     REQUIRE_NOTHROW(pipeline.build());
 
-    if(platform == Platform::RVC4) {
-        requireDepthSingleBackendChild(*depth, "NeuralDepth");
-    } else if(platform == Platform::RVC2 && deviceReportsTofSensor(device)) {
-        requireDepthSingleBackendChild(*depth, "ToF");
-    } else {
-        requireDepthSingleBackendChild(*depth, "StereoDepth");
-    }
+    requireDepthSingleBackendChild(*depth, expectedAutoBackendName(device));
 }
 
 TEST_CASE("Depth: explicit STEREO on RVC4 uses StereoDepth") {
@@ -232,14 +309,7 @@ TEST_CASE("Depth: build reuses stereo cameras created before Depth node") {
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, rightCam));
     REQUIRE(countStereoCamerasInDepthSubtree(*depth, pair) == 0);
 
-    const auto platform = device->getPlatform();
-    if(platform == Platform::RVC4) {
-        requireDepthSingleBackendChild(*depth, "NeuralDepth");
-    } else if(platform == Platform::RVC2 && deviceReportsTofSensor(device)) {
-        requireDepthSingleBackendChild(*depth, "ToF");
-    } else {
-        requireDepthSingleBackendChild(*depth, "StereoDepth");
-    }
+    requireDepthSingleBackendChild(*depth, expectedAutoBackendName(device));
 }
 
 TEST_CASE("Depth: explicit NEURAL wires NeuralDepth when device supports it") {
@@ -342,6 +412,10 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
         WARN("Skipping Depth test: device has no stereo pair.");
         return;
     }
+    if(!deviceReportsGpuStereoBoardRevision(device)) {
+        WARN("Skipping GPU_STEREO positive test: board revision below R9 (or boardRev unavailable).");
+        return;
+    }
 
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::GPU_STEREO);
     try {
@@ -380,14 +454,7 @@ TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline camera
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, rightCam));
     REQUIRE(countStereoCamerasInDepthSubtree(*depth, pair) == 0);
 
-    const auto platform = device->getPlatform();
-    if(platform == Platform::RVC4) {
-        requireDepthSingleBackendChild(*depth, "NeuralDepth");
-    } else if(platform == Platform::RVC2 && deviceReportsTofSensor(device)) {
-        requireDepthSingleBackendChild(*depth, "ToF");
-    } else {
-        requireDepthSingleBackendChild(*depth, "StereoDepth");
-    }
+    requireDepthSingleBackendChild(*depth, expectedAutoBackendName(device));
 }
 
 TEST_CASE("Depth: pipeline with SystemLogger and optional third camera still builds") {

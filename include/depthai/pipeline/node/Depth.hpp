@@ -23,16 +23,17 @@ namespace node {
 /**
  * @brief Composite depth node: StereoDepth, NeuralDepth, NeuralAssistedStereo, ToF, or GPUStereo.
  *
- * ``Algorithm::AUTO`` uses NeuralDepth on RVC4, ToF on RVC2 when a ToF sensor is reported in ``getConnectedCameraFeatures()``,
- * and ``StereoDepth`` on other combinations (including RVC3 and RVC2 without ToF).
+ * ``Algorithm::AUTO`` uses GPUStereo on RVC4 when the device has a stereo pair, board revision R9 or newer, and a
+ * Kompute-enabled build; otherwise NeuralDepth on RVC4. ToF on RVC2 when a ToF sensor is reported in
+ * ``getConnectedCameraFeatures()``, and ``StereoDepth`` on other combinations (including RVC3 and RVC2 without ToF).
  * Use ``Depth()`` / ``Depth::create()`` for automatic algorithm selection, ``explicit Depth(Algorithm)`` / ``create(Algorithm)`` / ``create(device, Algorithm)`` to fix the backend, or ``Pipeline::create<Depth>(…)`` / ``Pipeline::create<Depth>(algorithm)`` to add the node with the pipeline default device. The algorithm is fixed at construction; it cannot be changed after the node is created.
  * ``confidence()`` maps to backend confidence when present; for GPUStereo it uses
  * ``disparity``; for ToF it uses ``amplitude``. Backend implementation nodes are internal and wired with fixed defaults;
  * only ``Algorithm`` selection is configurable at construction (``Depth(...)`` / ``create(...)`` / ``Pipeline::create<Depth>(...)``).
  *
  * Algorithm availability: ``TOF`` requires a connected ToF sensor (see ``Device::getConnectedCameraFeatures()``).
- * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a Kompute-enabled build, and excludes Lite-class SKUs
- * (heuristic on product name); extend checks as hardware matrix evolves.
+ * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a Kompute-enabled build, a stereo pair, and
+ * board revision 9 or newer (EEPROM ``boardRev`` e.g. ``P9D1``, ``P10D0``, or legacy ``R9``).
  *
  * See \ref depth_node for a dedicated overview of purpose, behavior, features, and constraints.
  */
