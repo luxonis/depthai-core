@@ -57,8 +57,8 @@ if __name__ == "__main__":
         distorted = camera.requestOutput(DISTORTED_SIZE, resizeMode=dai.ImgResizeMode.CROP, enableUndistortion=False)
         undistorted = camera.requestOutput(UNDISTORTED_SIZE, resizeMode=dai.ImgResizeMode.CROP, enableUndistortion=True)
 
-        dist_ququeue = distorted.createOutputQueue()
-        undist_ququeue = undistorted.createOutputQueue()
+        distQueue = distorted.createOutputQueue()
+        undistQueue = undistorted.createOutputQueue()
 
         cv2.namedWindow(DISTORTED_WINDOW)
         cv2.namedWindow(UNDISTORTED_WINDOW)
@@ -69,8 +69,8 @@ if __name__ == "__main__":
 
         pipeline.start()
         while pipeline.isRunning():
-            distortedFrame = dist_ququeue.get()
-            undistortedFrame = undist_ququeue.get()
+            distortedFrame = distQueue.get()
+            undistortedFrame = undistQueue.get()
             assert isinstance(distortedFrame, dai.ImgFrame)
             assert isinstance(undistortedFrame, dai.ImgFrame)
             assert isinstance(distortedFrame, dai.ImgFrame)

@@ -189,10 +189,8 @@ std::array<float, 3> undistortPerspective(std::array<float, 3> point, const std:
     const float u = x;
     const float v = y;
 
-    std::array<std::array<float, 3>, 3> invTilt = {};
-    std::array<std::array<float, 3>, 3> tilt = {};
-    invTilt = makeInvTiltMatrix(tauX, tauY);
-    tilt = makeTiltMatrix(tauX, tauY);
+    const std::array<std::array<float, 3>, 3> invTilt = makeInvTiltMatrix(tauX, tauY);
+    const std::array<std::array<float, 3>, 3> tilt = makeTiltMatrix(tauX, tauY);
     const auto untilted = dai::matrix::matVecMul(invTilt, {x, y, 1.0f});
 
     float invProj = std::abs(untilted[2]) > kTiny ? 1.0f / untilted[2] : 1.0f;
@@ -220,8 +218,8 @@ std::array<float, 3> undistortPerspective(std::array<float, 3> point, const std:
         const float deltaX = 2.0f * p1 * x * y + p2 * (r2 + 2.0f * x * x) + s1 * r2 + s2 * r2 * r2;
         const float deltaY = p1 * (r2 + 2.0f * y * y) + 2.0f * p2 * x * y + s3 * r2 + s4 * r2 * r2;
 
-        float newX = (1.0f - alpha) * x + alpha * (x0 - deltaX) * icdist;
-        float newY = (1.0f - alpha) * y + alpha * (y0 - deltaY) * icdist;
+        const float newX = (1.0f - alpha) * x + alpha * (x0 - deltaX) * icdist;
+        const float newY = (1.0f - alpha) * y + alpha * (y0 - deltaY) * icdist;
 
         r2 = newX * newX + newY * newY;
         const float r4 = r2 * r2;
