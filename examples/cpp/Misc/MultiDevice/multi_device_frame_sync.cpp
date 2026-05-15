@@ -136,7 +136,8 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
                        std::optional<dai::ExternalFrameSyncRole> role,
                        std::optional<std::map<std::string, dai::Node::Output*>>& masterNode,
                        std::map<std::string, std::map<std::string, std::shared_ptr<dai::MessageQueue>>>& slaveQueues,
-                       std::vector<std::string>& camSockets) {
+                       std::vector<std::string>& camSockets,
+                       std::optional<std::string>& masterName) {
     auto outNode = createCameraOutputs(pipeline, socket, targetFps, syncType, role);
 
     if(syncType == SyncType::EXTERNAL) {
@@ -162,6 +163,9 @@ void setUpCameraSocket(std::shared_ptr<dai::Pipeline>& pipeline,
         // Actual PTP master might be different, but it doesn't matter for this example.
         if(!masterNode.has_value()) {
             masterNode.emplace();
+            masterName = name;
+        }
+        if (masterName == name) {
             masterNode.value().emplace(dai::toString(socket), outNode);
         } else {
             if(slaveQueues.find(name) == slaveQueues.end()) {
@@ -214,7 +218,7 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
     std::cout << "    Num of cameras: " << device->getConnectedCameras().size() << std::endl;
 
     for(auto socket : device->getConnectedCameras()) {
-        setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets);
+        setUpCameraSocket(pipeline, socket, name, targetFps, syncType, role, masterNode, slaveQueues, camSockets, masterName);
     }
 
     if(syncType == SyncType::EXTERNAL) {
@@ -238,7 +242,6 @@ void setupDevice(dai::DeviceInfo& deviceInfo,
         // Actual PTP master might be different, but it doesn't matter for this example.
         if(masterPipeline == nullptr) {
             masterPipeline = pipeline;
-            masterName = name;
         } else {
             slavePipelines[name] = pipeline;
         }

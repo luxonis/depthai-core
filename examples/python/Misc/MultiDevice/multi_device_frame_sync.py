@@ -108,7 +108,7 @@ def setUpCameraSocket(
         deviceName: str,
         targetFps: float,
         role: dai.ExternalFrameSyncRole):
-    global masterNode, slaveQueues, camSockets, syncType
+    global masterNode, slaveQueues, camSockets, syncType, masterName
     pipeline, outNode = createCameraOutputs(pipeline, socket, targetFps, role)
 
     if syncType == SyncType.EXTERNAL:
@@ -131,6 +131,9 @@ def setUpCameraSocket(
         # Actual PTP master might be different, but it doesn't matter for this example
         if masterNode is None:
             masterNode = {}
+            masterName = deviceName
+
+        if masterName == deviceName:
             masterNode[socket.name] = outNode
         else:
             if slaveQueues.get(deviceName) is None:
@@ -196,7 +199,6 @@ def setupDevice(
         # Actual PTP master might be different, but it doesn't matter for this example
         if masterPipeline is None:
             masterPipeline = pipeline
-            masterName = name
         else:
             slavePipelines[name] = pipeline
 
