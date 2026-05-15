@@ -411,6 +411,10 @@ endif()
 dai_add_test(calibration_handler_test src/onhost_tests/calibration_handler_test.cpp)
 dai_set_test_labels(calibration_handler_test onhost ci)
 
+# Calibration CBA merge test
+dai_add_test(calibration_cba_merge_test src/onhost_tests/calibration_cba_merge_test.cpp)
+dai_set_test_labels(calibration_cba_merge_test onhost ci)
+
 # XLInkInHost test 
 dai_add_test(xlink_in_host_test src/onhost_tests/pipeline/node/internal/XLinkInHostTest.cpp)
 dai_set_test_labels(xlink_in_host_test onhost ci)
