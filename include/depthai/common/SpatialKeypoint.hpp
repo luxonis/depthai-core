@@ -130,7 +130,7 @@ struct SpatialKeypointsList : KeypointsListT<SpatialKeypoint> {
             Point2f imgCoordinates2f{kp.imageCoordinates.x, kp.imageCoordinates.y};
             if(kp.spatialCoordinates.z > 0) {
                 float depth = kp.spatialCoordinates.z * depthScale;
-                // TODO (aljazkonec1): projecting each point seperately is inefficient, possible optimization by loading all the necessarry matrixes once and
+                // TODO (aljazkonec1): projecting each point seperately is inefficient, possible optimization by loading all the necessary matrixes once and
                 // reusing them.
                 Point2f remappedImgCoordinates = source.projectPointTo(target, imgCoordinates2f, depth);
                 kp.imageCoordinates.x = remappedImgCoordinates.x;
