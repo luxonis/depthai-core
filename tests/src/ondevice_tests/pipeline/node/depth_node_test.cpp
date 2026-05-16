@@ -4,6 +4,7 @@
  */
 #include <catch2/catch_all.hpp>
 
+#include <chrono>
 #include <cstring>
 #include <optional>
 
@@ -85,6 +86,39 @@ void requireDepthSingleBackendChild(const node::Depth& depth, const char* expect
     REQUIRE(std::strcmp(children[0]->getName(), expectedNodeName) == 0);
 }
 
+std::shared_ptr<Device> requireDefaultDevice(Pipeline& pipeline) {
+    auto device = pipeline.getDefaultDevice();
+    if(device == nullptr) {
+        SKIP("Skipping Depth test: no device connected.");
+    }
+    return device;
+}
+
+StereoPair requireFirstStereoPairForTest(const std::shared_ptr<Device>& device) {
+    const auto pairs = device->getStereoPairs();
+    if(pairs.empty()) {
+        SKIP("Skipping Depth test: device has no stereo pair.");
+    }
+    return pairs[0];
+}
+
+void startPipelineAndRequireFirstFrames(Pipeline& pipeline, const std::shared_ptr<node::Depth>& depth) {
+    auto depthQueue = depth->depth().createOutputQueue();
+    auto confidenceQueue = depth->confidence().createOutputQueue();
+
+    pipeline.start();
+
+    bool timedOut = false;
+    auto depthFrame = depthQueue->get<dai::ImgFrame>(std::chrono::seconds(15), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(depthFrame != nullptr);
+
+    timedOut = false;
+    auto confidenceFrame = confidenceQueue->get<dai::ImgFrame>(std::chrono::seconds(15), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(confidenceFrame != nullptr);
+}
+
 }  // namespace
 
 TEST_CASE("Depth: host-only pipeline cannot create node") {
@@ -95,11 +129,7 @@ TEST_CASE("Depth: host-only pipeline cannot create node") {
 
 TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW((void)&depth->depth());
     REQUIRE_NOTHROW((void)&depth->confidence());
@@ -107,42 +137,22 @@ TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
 
 TEST_CASE("Depth: create(device, algorithm) exposes algorithm via getAlgorithm") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::TOF);
     REQUIRE(depth->getAlgorithm() == node::Depth::Algorithm::TOF);
 }
 
 TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     const auto platform = device->getPlatform();
-    const auto pairs = device->getStereoPairs();
-
-    if(platform == Platform::RVC4) {
-        if(pairs.empty()) {
-            WARN("Skipping Depth test: device has no stereo pair.");
-            return;
-        }
-    } else if(platform == Platform::RVC2 && deviceReportsTofSensor(device)) {
-        // AUTO -> ToF: no stereo pair required.
-    } else {
-        if(pairs.empty()) {
-            WARN("Skipping Depth test: device has no stereo pair.");
-            return;
-        }
+    const auto autoUsesTof = platform == Platform::RVC2 && deviceReportsTofSensor(device);
+    if(!autoUsesTof) {
+        (void)requireFirstStereoPairForTest(device);
     }
 
     auto depth = pipeline.create<node::Depth>();
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW(pipeline.build());
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
 
     if(platform == Platform::RVC4) {
         requireDepthSingleBackendChild(*depth, "NeuralDepth");
@@ -155,37 +165,22 @@ TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
 
 TEST_CASE("Depth: explicit STEREO on RVC4 uses StereoDepth") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     if(device->getPlatform() != Platform::RVC4) {
-        WARN("Skipping Depth test: not RVC4.");
-        return;
+        SKIP("Skipping Depth test: not RVC4.");
     }
-    const auto pairs = device->getStereoPairs();
-    if(pairs.empty()) {
-        WARN("Skipping Depth test: device has no stereo pair.");
-        return;
-    }
+    (void)requireFirstStereoPairForTest(device);
 
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::STEREO);
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW(pipeline.build());
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "StereoDepth");
 }
 
 TEST_CASE("Depth: GPU_STEREO requires RVC4") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     if(device->getPlatform() == Platform::RVC4) {
-        WARN("Skipping negative GPU_STEREO test on RVC4.");
-        return;
+        SKIP("Skipping negative GPU_STEREO test on RVC4.");
     }
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::GPU_STEREO);
     REQUIRE_THROWS((void)&depth->depth());
@@ -194,14 +189,9 @@ TEST_CASE("Depth: GPU_STEREO requires RVC4") {
 // Mirrors Depth::validateAlgorithm(TOF): requires CameraSensorType::TOF in getConnectedCameraFeatures().
 TEST_CASE("Depth: TOF requires connected ToF camera") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     if(deviceReportsTofSensor(device)) {
-        WARN("Skipping negative TOF test: device reports a ToF sensor.");
-        return;
+        SKIP("Skipping negative TOF test: device reports a ToF sensor.");
     }
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::TOF);
     REQUIRE_THROWS((void)&depth->depth());
@@ -209,24 +199,14 @@ TEST_CASE("Depth: TOF requires connected ToF camera") {
 
 TEST_CASE("Depth: build reuses stereo cameras created before Depth node") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
-    const auto pairs = device->getStereoPairs();
-    if(pairs.empty()) {
-        WARN("Skipping Depth test: device has no stereo pair.");
-        return;
-    }
-    const auto& pair = pairs[0];
+    auto device = requireDefaultDevice(pipeline);
+    const auto pair = requireFirstStereoPairForTest(device);
 
     auto leftCam = pipeline.create<node::Camera>()->build(pair.left);
     auto rightCam = pipeline.create<node::Camera>()->build(pair.right);
 
     auto depth = pipeline.create<node::Depth>();
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW(pipeline.build());
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
 
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, leftCam));
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, rightCam));
@@ -244,38 +224,22 @@ TEST_CASE("Depth: build reuses stereo cameras created before Depth node") {
 
 TEST_CASE("Depth: explicit NEURAL wires NeuralDepth when device supports it") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     if(!device->isNeuralDepthSupported()) {
-        WARN("Skipping Depth test: device does not support NeuralDepth.");
-        return;
+        SKIP("Skipping Depth test: device does not support NeuralDepth.");
     }
-    const auto pairs = device->getStereoPairs();
-    if(pairs.empty()) {
-        WARN("Skipping Depth test: device has no stereo pair.");
-        return;
-    }
+    (void)requireFirstStereoPairForTest(device);
 
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::NEURAL);
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW((void)&depth->confidence());
-    REQUIRE_NOTHROW(pipeline.build());
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
 }
 
 TEST_CASE("Depth: NEURAL_ASSISTED_STEREO rejected off RVC4") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     if(device->getPlatform() == Platform::RVC4) {
-        WARN("Skipping Depth test: RVC4 device (negative NAS test not applicable).");
-        return;
+        SKIP("Skipping Depth test: RVC4 device (negative NAS test not applicable).");
     }
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
     REQUIRE_THROWS((void)&depth->depth());
@@ -283,98 +247,60 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO rejected off RVC4") {
 
 TEST_CASE("Depth: NEURAL_ASSISTED_STEREO wires NeuralAssistedStereo on RVC4") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     if(device->getPlatform() != Platform::RVC4) {
-        WARN("Skipping Depth test: not RVC4.");
-        return;
+        SKIP("Skipping Depth test: not RVC4.");
     }
     if(!device->isNeuralDepthSupported()) {
-        WARN("Skipping Depth test: device does not support NeuralDepth.");
-        return;
+        SKIP("Skipping Depth test: device does not support NeuralDepth.");
     }
-    if(device->getStereoPairs().empty()) {
-        WARN("Skipping Depth test: device has no stereo pair.");
-        return;
-    }
+    (void)requireFirstStereoPairForTest(device);
 
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW((void)&depth->confidence());
-    REQUIRE_NOTHROW(pipeline.build());
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "NeuralAssistedStereo");
 }
 
 TEST_CASE("Depth: TOF algorithm wires ToF backend when ToF sensor present") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     if(!deviceReportsTofSensor(device)) {
-        WARN("Skipping Depth test: no ToF sensor reported.");
-        return;
+        SKIP("Skipping Depth test: no ToF sensor reported.");
     }
 
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::TOF);
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW((void)&depth->confidence());
-    REQUIRE_NOTHROW(pipeline.build());
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "ToF");
 }
 
 TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
+    auto device = requireDefaultDevice(pipeline);
     if(device->getPlatform() != Platform::RVC4) {
-        WARN("Skipping Depth test: not RVC4.");
-        return;
+        SKIP("Skipping Depth test: not RVC4.");
     }
-    if(device->getStereoPairs().empty()) {
-        WARN("Skipping Depth test: device has no stereo pair.");
-        return;
-    }
+    (void)requireFirstStereoPairForTest(device);
 
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::GPU_STEREO);
     try {
         (void)&depth->depth();
     } catch(const std::exception& ex) {
-        WARN("Skipping GPU_STEREO positive test: " << ex.what());
-        return;
+        SKIP(std::string("Skipping GPU_STEREO positive test: ") + ex.what());
     }
-    REQUIRE_NOTHROW((void)&depth->confidence());
-    REQUIRE_NOTHROW(pipeline.build());
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "GPUStereo");
 }
 
 TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline cameras") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
-    const auto pairs = device->getStereoPairs();
-    if(pairs.empty()) {
-        WARN("Skipping Depth test: device has no stereo pair.");
-        return;
-    }
-    const auto& pair = pairs[0];
+    auto device = requireDefaultDevice(pipeline);
+    const auto pair = requireFirstStereoPairForTest(device);
 
     auto depth = pipeline.create<node::Depth>();
     auto leftCam = pipeline.create<node::Camera>()->build(pair.left);
     auto rightCam = pipeline.create<node::Camera>()->build(pair.right);
 
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW(pipeline.build());
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
 
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, leftCam));
     REQUIRE_FALSE(cameraInDepthSubtree(*depth, rightCam));
@@ -392,17 +318,8 @@ TEST_CASE("Depth: stereo cameras created after Depth still reuse pipeline camera
 
 TEST_CASE("Depth: pipeline with SystemLogger and optional third camera still builds") {
     Pipeline pipeline;
-    auto device = pipeline.getDefaultDevice();
-    if(device == nullptr) {
-        WARN("Skipping Depth test: no device connected.");
-        return;
-    }
-    const auto pairs = device->getStereoPairs();
-    if(pairs.empty()) {
-        WARN("Skipping Depth test: device has no stereo pair.");
-        return;
-    }
-    const auto& pair = pairs[0];
+    auto device = requireDefaultDevice(pipeline);
+    const auto pair = requireFirstStereoPairForTest(device);
 
     pipeline.create<node::SystemLogger>();
     if(const auto extra = socketOutsideStereoPair(device, pair)) {
@@ -410,7 +327,5 @@ TEST_CASE("Depth: pipeline with SystemLogger and optional third camera still bui
     }
 
     auto depth = pipeline.create<node::Depth>();
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW((void)&depth->confidence());
-    REQUIRE_NOTHROW(pipeline.build());
+    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
 }

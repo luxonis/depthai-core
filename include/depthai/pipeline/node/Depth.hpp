@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/device/Device.hpp"
@@ -25,14 +26,13 @@ namespace node {
  *
  * ``Algorithm::AUTO`` uses NeuralDepth on RVC4, ToF on RVC2 when a ToF sensor is reported in ``getConnectedCameraFeatures()``,
  * and ``StereoDepth`` on other combinations (including RVC3 and RVC2 without ToF).
- * Use ``Depth()`` / ``Depth::create()`` for automatic algorithm selection, ``explicit Depth(Algorithm)`` / ``create(Algorithm)`` / ``create(device, Algorithm)`` to fix the backend, or ``Pipeline::create<Depth>(…)`` / ``Pipeline::create<Depth>(algorithm)`` to add the node with the pipeline default device. The algorithm is fixed at construction; it cannot be changed after the node is created.
+ * Use ``Depth()`` / ``Depth::create()`` for automatic algorithm selection, ``explicit Depth(Algorithm)`` / ``create(Algorithm)`` / ``create(device, Algorithm)`` to fix the backend, or ``Pipeline::create<Depth>(…)`` / ``Pipeline::create<Depth>(algorithm)`` to add the node with the pipeline default device. The algorithm can also be set before first wiring through ``build(algorithm, ...)``.
  * ``confidence()`` maps to backend confidence when present; for GPUStereo it uses
  * ``disparity``; for ToF it uses ``amplitude``. Backend implementation nodes are internal and wired with fixed defaults;
- * only ``Algorithm`` selection is configurable at construction (``Depth(...)`` / ``create(...)`` / ``Pipeline::create<Depth>(...)``).
+ * only ``Algorithm`` selection is user-configurable, either at construction or through ``build(algorithm, ...)`` before first wiring.
  *
  * Algorithm availability: ``TOF`` requires a connected ToF sensor (see ``Device::getConnectedCameraFeatures()``).
- * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a Kompute-enabled build, and excludes Lite-class SKUs
- * (heuristic on product name); extend checks as hardware matrix evolves.
+ * ``NEURAL_ASSISTED_STEREO`` and ``GPU_STEREO`` are RVC4-only.
  *
  * See \ref depth_node for a dedicated overview of purpose, behavior, features, and constraints.
  */
@@ -56,14 +56,21 @@ class Depth : public DeviceNodeGroup {
 
     /** Default ``Algorithm::AUTO`` (resolved when the graph is wired). */
     Depth();
+
     explicit Depth(Algorithm algorithm);
 
-    /** Create Depth with ``Algorithm::AUTO`` and no device bound yet (pipeline default applies when added or at first wiring). */
+    /**
+     * Create Depth with ``Algorithm::AUTO`` and no device bound yet.
+     * Pipeline default device applies when added or at first wiring.
+     */
     [[nodiscard]] static std::shared_ptr<Depth> create() {
         return std::shared_ptr<Depth>(new Depth());
     }
 
-    /** Create Depth. If \p device is null, the device is taken from the pipeline default when the node is added to a pipeline, or from ``getParentPipeline().getDefaultDevice()`` when the graph is first wired. */
+    /**
+     * Create Depth with an optional fixed device.
+     * If \p device is null, the pipeline default device is used when the node is added.
+     */
     [[nodiscard]] static std::shared_ptr<Depth> create(const std::shared_ptr<Device>& device, Algorithm algorithm = Algorithm::AUTO) {
         auto ptr = std::shared_ptr<Depth>(new Depth(algorithm));
         if(device != nullptr) {
@@ -83,10 +90,22 @@ class Depth : public DeviceNodeGroup {
      */
     std::shared_ptr<Depth> build(std::optional<float> fps = std::nullopt);
 
-    /** Current algorithm selection (including AUTO), fixed at construction. */
+    /**
+     * Set algorithm and optional stereo camera FPS before first wiring.
+     * The algorithm must not be changed after the graph is built.
+     */
+    std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps = std::nullopt);
+
+    /** Current requested algorithm selection (including ``AUTO``). */
     [[nodiscard]] Algorithm getAlgorithm() const {
         return algorithmOverride_;
     }
+
+    /** Returns the stereo pair used by stereo-based Depth backends on the current device. */
+    [[nodiscard]] StereoPair getStereoPair() const;
+
+    /** Returns algorithms supported by the supplied device. */
+    std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device) const;
 
     void buildInternal() override;
 
@@ -94,8 +113,7 @@ class Depth : public DeviceNodeGroup {
     Node::Output& confidence();
 
    private:
-    Algorithm resolveAlgorithm(const std::shared_ptr<Device>& device) const;
-    void validateAlgorithm(const std::shared_ptr<Device>& device, Algorithm active) const;
+    Algorithm selectAlgorithm(const std::shared_ptr<Device>& device) const;
 
     /** Ensures stereo cameras exist and returns left/right outputs. Full resolution when @p frameSize is nullopt. */
     std::pair<Node::Output*, Node::Output*> ensureStereoOutputs(Pipeline& pipeline,
@@ -104,17 +122,17 @@ class Depth : public DeviceNodeGroup {
                                                                 const std::optional<float>& fps);
 
     Algorithm algorithmOverride_;
+    bool graphBuilt_{false};
     std::optional<float> stereoOutputFps_{};
+
+    Node::Output* depthOut_{nullptr};
+    Node::Output* confidenceOut_{nullptr};
 
     std::unique_ptr<::dai::Subnode<StereoDepth>> stereoBackend_;
     std::unique_ptr<::dai::Subnode<NeuralDepth>> neuralBackend_;
     std::unique_ptr<::dai::Subnode<GPUStereo>> gpuStereoBackend_;
     std::shared_ptr<NeuralAssistedStereo> nasBackend_;
     std::shared_ptr<ToF> tofBackend_;
-
-    bool graphBuilt_{false};
-    Node::Output* depthOut_{nullptr};
-    Node::Output* confidenceOut_{nullptr};
 };
 
 }  // namespace node

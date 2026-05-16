@@ -21,7 +21,8 @@ algorithm selection and camera wiring logic inside DepthAI.
 ### Backend selection
 
 `Depth` supports explicit algorithm selection via `Pipeline::create<Depth>(algorithm)` / `Depth::create(algorithm)` / `explicit Depth(Algorithm)`,
-default `AUTO` via `Pipeline::create<Depth>()` / `Depth()` / `Depth::create()`, and an `AUTO` mode that resolves when the graph is wired. The algorithm is chosen only when the node is created; there is no runtime setter.
+default `AUTO` via `Pipeline::create<Depth>()` / `Depth()` / `Depth::create()`, and an `AUTO` mode that resolves when the graph is wired.
+Before first wiring, the algorithm can also be changed through `build(algorithm, ...)`.
 
 - `AUTO` resolves to:
   - `NEURAL` on RVC4
@@ -61,11 +62,11 @@ This allows both common wiring styles:
   - `ToF`: `amplitude`
   - `GPUStereo`: `disparity`
 
-Algorithm implementation nodes (`StereoDepth`, `NeuralDepth`, and so on) are not part of the public `Depth` API; they are created when the graph is first wired with fixed defaults (neural zoo model, ToF socket/preset, NAS rectify flag, and so on). The only user-controlled knob is `Algorithm`, fixed at construction via `create` / constructors / `Pipeline::create<Depth>(...)`.
+Algorithm implementation nodes (`StereoDepth`, `NeuralDepth`, and so on) are not part of the public `Depth` API; they are created when the graph is first wired with fixed defaults (neural zoo model, ToF socket/preset, NAS rectify flag, and so on). The only user-controlled knob is `Algorithm`, set either at construction or through `build(algorithm, ...)` before first wiring.
 
 ### Algorithm configuration
 
-- Use `Pipeline::create<Depth>(algorithm)` (Python: `pipeline.create(dai.node.Depth, …)` or `algorithm=` keyword), `Depth::create(…)`, or `explicit Depth(Algorithm)` to pick the backend. The C++ factory `dai::node::Depth::create` accepts a null device pointer: the pipeline's default device is applied when the node is added, or at first wiring via `getParentPipeline().getDefaultDevice()`. `Pipeline::create<Depth>()` passes the pipeline default device. For automatic algorithm selection, use `Depth::create()`, `Pipeline::create<Depth>()`, or a default-constructed `Depth()` (all use `AUTO`).
+- Use `Pipeline::create<Depth>(algorithm)`, `Depth::create(…)`, or `explicit Depth(Algorithm)` to pick the backend in C++, or `depthNode.build(dai.node.Depth.Algorithm.…)` before first wiring in Python. The C++ factory `dai::node::Depth::create` accepts a null device pointer: the pipeline's default device is applied when the node is added. `Pipeline::create<Depth>()` passes the pipeline default device. For automatic algorithm selection, use `Depth::create()`, `Pipeline::create<Depth>()`, or a default-constructed `Depth()` (all use `AUTO`).
 - For per-backend tuning (NeuralDepth model, ToF preset, StereoDepth presets, and so on), use the dedicated node types directly instead of `Depth`.
 
 ## Limitations and constraints
@@ -75,13 +76,8 @@ Algorithm implementation nodes (`StereoDepth`, `NeuralDepth`, and so on) are not
 - `Depth` requires a real device context (`Pipeline(true)` / default device available).
 - Stereo-based algorithms (`STEREO`, `NEURAL`, `GPU_STEREO`, `NEURAL_ASSISTED_STEREO`) require an available stereo pair on the device. `TOF` and `AUTO` when it resolves to `TOF` do not.
 - `NEURAL_ASSISTED_STEREO` is RVC4-only.
-- `GPU_STEREO` is RVC4-only and requires a Kompute-enabled build.
+- `GPU_STEREO` is RVC4-only.
 - `TOF` requires a connected ToF camera sensor.
-
-### GPU stereo availability
-
-`GPU_STEREO` additionally uses a host-side product-name heuristic (for example excluding RVC4 "Lite" SKUs
-without the expected GPU block). On unsupported devices, validation fails with an explanatory runtime error.
 
 ### Backend-specific semantics
 

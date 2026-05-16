@@ -1,4 +1,0 @@
-numpy>=1.23,<2
-opencv-python
-pyaml
-PyQt6

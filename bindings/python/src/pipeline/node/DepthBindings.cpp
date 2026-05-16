@@ -8,17 +8,6 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
 
     auto node = addNode<Depth, DeviceNodeGroup>("Depth", DOC(dai, node, Depth));
-    // Replace default factory: pipeline.create(Depth, Algorithm) or algorithm= keyword -> Pipeline::create<Depth>(...).
-    pyNodeCreateMap.back().second = [](dai::Pipeline& p, py::object /*class_*/, const py::args& args, const py::kwargs& kwargs) -> std::shared_ptr<dai::Node> {
-        py::object algKw = kwargs.attr("get")("algorithm", py::none());
-        if(!algKw.is_none()) {
-            return p.create<Depth>(algKw.cast<Depth::Algorithm>());
-        }
-        if(args.size() >= 1) {
-            return p.create<Depth>(args[0].cast<Depth::Algorithm>());
-        }
-        return p.create<Depth>();
-    };
 
     // Run nested binders first so Depth::Algorithm is registered before any method uses it as a default type.
     Callstack* callstack = (Callstack*)pCallstack;
@@ -35,6 +24,7 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
     node.def("getAlgorithm", &Depth::getAlgorithm)
+        .def("getStereoPair", &Depth::getStereoPair)
         .def(
             "build",
             [](Depth& self, py::object fps) {
@@ -42,8 +32,19 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
                 if(!fps.is_none()) {
                     optFps = fps.cast<float>();
                 }
-                return self.build(std::move(optFps));
+                return self.build(optFps);
             },
+            py::arg("fps") = py::none())
+        .def(
+            "build",
+            [](Depth& self, Depth::Algorithm algorithm, py::object fps) {
+                std::optional<float> optFps;
+                if(!fps.is_none()) {
+                    optFps = fps.cast<float>();
+                }
+                return self.build(algorithm, optFps);
+            },
+            py::arg("algorithm"),
             py::arg("fps") = py::none())
         .def_property_readonly("depth", [](Depth& d) -> Node::Output& { return d.depth(); }, py::return_value_policy::reference_internal)
         .def_property_readonly("confidence", [](Depth& d) -> Node::Output& { return d.confidence(); }, py::return_value_policy::reference_internal);

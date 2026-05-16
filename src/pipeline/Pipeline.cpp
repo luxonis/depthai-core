@@ -721,19 +721,21 @@ PipelineStateApi PipelineImpl::getPipelineState() {
     return PipelineStateApi(pipelineStateOut, pipelineStateRequest, getAllNodes());
 }
 
-// Register a subtree under an already-added root (e.g. Depth lazily adds StereoDepth via
-// Subnode after the Depth node was added to the pipeline). Without this, child nodes never
-// receive parent = PipelineImpl and host Output::createOutputQueue() fails with "Pipeline is null".
+// Adopt children added after the parent node is already in the pipeline.
 void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
     if(root == nullptr) {
         return;
     }
+
+    // Go through and modify nodes and its children
+    // that they are now part of this pipeline
     std::queue<std::shared_ptr<Node>> search;
-    search.push(std::move(root));
+    search.push(root);
     while(!search.empty()) {
         auto curNode = search.front();
         search.pop();
 
+        // Assign an ID to the node
         if(curNode->id == -1) {
             curNode->id = getNextUniqueId();
         }
@@ -744,12 +746,13 @@ void PipelineImpl::adoptSubtree(std::shared_ptr<Node> root) {
             throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
         }
 
+        // In case we have a device node without an assigned device (usually subnodes in non-DeviceNode nodes), use the default device
         if(std::dynamic_pointer_cast<DeviceNode>(curNode) != nullptr && std::dynamic_pointer_cast<DeviceNode>(curNode)->getDevice() == nullptr) {
             std::dynamic_pointer_cast<DeviceNode>(curNode)->setDevice(defaultDevice);
         }
 
         for(auto& n : curNode->nodeMap) {
-            n->parentId = curNode->id;
+            n->parentId = curNode->id;  // Set node parent id
             search.push(n);
         }
     }
