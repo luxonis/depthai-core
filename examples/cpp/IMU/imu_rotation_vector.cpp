@@ -21,12 +21,6 @@ constexpr double kPi = 3.14159265358979323846;
 
 std::atomic<bool> quitEvent(false);
 
-const std::vector<std::vector<float>> kYZSwapRotation = {
-    {0.0f, 1.0f, 0.0f},
-    {1.0f, 0.0f, 0.0f},
-    {0.0f, 0.0f, 1.0f},
-};
-
 struct Sample {
     double seconds;
     double x;
@@ -57,22 +51,6 @@ std::tuple<double, double, double> quaternionToEulerXYZ(float i, float j, float 
 
 void signalHandler(int) {
     quitEvent = true;
-}
-
-dai::CameraBoardSocket resolveImuExtrinsicsDestination(const dai::EepromData& eepromData) {
-    const auto socket = eepromData.imuExtrinsics.toCameraSocket;
-    if(socket != dai::CameraBoardSocket::AUTO) {
-        return socket;
-    }
-
-    if(eepromData.cameraData.find(dai::CameraBoardSocket::CAM_A) != eepromData.cameraData.end()) {
-        return dai::CameraBoardSocket::CAM_A;
-    }
-    if(!eepromData.cameraData.empty()) {
-        return eepromData.cameraData.begin()->first;
-    }
-
-    return dai::CameraBoardSocket::CAM_A;
 }
 
 bool rotationVectorSupported(const std::shared_ptr<dai::Device>& device) {
@@ -109,19 +87,7 @@ int main() {
     imu->setMaxBatchReports(10);
     auto imuQueue = imu->out.createOutputQueue(50, false);
 
-    auto calibration = device->readCalibration();
-    const auto eepromData = calibration.getEepromData();
-    const auto& imuExtrinsics = eepromData.imuExtrinsics;
-    const auto destinationSocket = resolveImuExtrinsicsDestination(eepromData);
-    calibration.setImuExtrinsics(destinationSocket,
-                                 kYZSwapRotation,
-                                 {imuExtrinsics.translation.x, imuExtrinsics.translation.y, imuExtrinsics.translation.z},
-                                 {imuExtrinsics.specTranslation.x, imuExtrinsics.specTranslation.y, imuExtrinsics.specTranslation.z});
-    device->setCalibration(calibration);
-
     pipeline.start();
-    std::cout << "Applied runtime IMU extrinsics Y/Z swap relative to " << destinationSocket << "." << std::endl;
-    std::cout << "Rotation matrix: [[0, 1, 0], [1, 0, 0], [0, 0, 1]]" << std::endl;
     std::cout << "Rotation vector stream started on IMU " << imuName << "." << std::endl;
     std::cout << "Move the device around each axis and watch the rolling XYZ angle spans respond." << std::endl;
 

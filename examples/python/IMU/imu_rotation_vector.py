@@ -8,11 +8,6 @@ import depthai as dai
 
 windowSeconds = 10.0
 printUpdateHz = 4.0
-yzSwapRotation = [
-    [0.0, 1.0, 0.0],
-    [1.0, 0.0, 0.0],
-    [0.0, 0.0, 1.0],
-]
 
 
 def quaternionToEulerXYZ(i: float, j: float, k: float, real: float) -> tuple[float, float, float]:
@@ -29,20 +24,6 @@ def quaternionToEulerXYZ(i: float, j: float, k: float, real: float) -> tuple[flo
     z = math.degrees(math.atan2(sinyCosp, cosyCosp))
 
     return x, y, z
-
-
-def resolveImuExtrinsicsDestination(eepromData: dai.EepromData) -> dai.CameraBoardSocket:
-    socket = eepromData.imuExtrinsics.toCameraSocket
-    if socket != dai.CameraBoardSocket.AUTO:
-        return socket
-
-    if dai.CameraBoardSocket.CAM_A in eepromData.cameraData:
-        return dai.CameraBoardSocket.CAM_A
-
-    if eepromData.cameraData:
-        return next(iter(eepromData.cameraData))
-
-    return dai.CameraBoardSocket.CAM_A
 
 
 def rotationVectorSupported(device: dai.Device) -> bool:
@@ -84,22 +65,12 @@ with dai.Pipeline() as pipeline:
     imuQueue = imu.out.createOutputQueue(maxSize=50, blocking=False)
     calibration = device.readCalibration()
     eepromData = calibration.getEepromData()
-    imuExtrinsics = eepromData.imuExtrinsics
-
-    destinationSocket = resolveImuExtrinsicsDestination(eepromData)
-    translation = [imuExtrinsics.translation.x, imuExtrinsics.translation.y, imuExtrinsics.translation.z]
-    specTranslation = [imuExtrinsics.specTranslation.x, imuExtrinsics.specTranslation.y, imuExtrinsics.specTranslation.z]
-
-    calibration.setImuExtrinsics(destinationSocket, yzSwapRotation, translation, specTranslation)
-    device.setCalibration(calibration)
 
     pipeline.start()
     startTime = time.monotonic()
     lastPrintTime = 0.0
     samples: deque[tuple[float, float, float, float, float, float, float, float, float]] = deque()
 
-    print(f"Applied runtime IMU extrinsics Y/Z swap relative to {destinationSocket.name}.")
-    print(f"Rotation matrix: {yzSwapRotation}")
     print(f"Rotation vector stream started on IMU {imuName}.")
     print("Move the device around each axis and watch the rolling XYZ angle spans respond.")
     print("Expected use: X/Y/Z spans should match the physical axis you rotate around, without swapped signs.")
