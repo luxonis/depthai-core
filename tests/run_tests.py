@@ -69,13 +69,6 @@ def enableUARTonAllDevices(enable):
             dev.shell(f"devmem {reg} 32 {val}")
 
 # Function to run ctest with specific environment variables and labels
-#
-# CTest label contract (see tests/CMakeLists.txt, dai_set_test_labels):
-# - Each test lists multiple labels. This script passes one or more -L patterns; ctest ANDs them.
-# - First pattern is ^(ci|ondevice)$ so hardware tests can use either label (some device-only tests
-#   omit "ci" to stay out of plain "ctest -L ci" on builders without hardware).
-# - "Host" uses labels ["onhost"] => tests must match ^(ci|ondevice)$ and ^onhost$ (no device).
-# - Hardware configs use e.g. ["rvc4"] => tests must match ^(ci|ondevice)$ and ^rvc4$, etc.
 def run_ctest(env_vars, labels, excluded_labels=None, blocking=True, name=""):
     env = os.environ.copy()
     env_vars["DEPTHAI_PIPELINE_DEBUGGING"] = "1"
@@ -96,7 +89,7 @@ def run_ctest(env_vars, labels, excluded_labels=None, blocking=True, name=""):
         "--no-tests=error",
         "-VV",
         "-L",
-        "^(ci|ondevice)$",
+        "^ci$",
         "--timeout",
         "1000",
         "-C",

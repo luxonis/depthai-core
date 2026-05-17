@@ -26,38 +26,38 @@ if device is None:
     print("Connect a device (host-only pipeline cannot use Depth).", file=sys.stderr)
     sys.exit(1)
 
-pairs = device.getStereoPairs()
-if not pairs:
+stereoPairs = device.getStereoPairs()
+if not stereoPairs:
     print("This device has no stereo pair; Depth cannot run.", file=sys.stderr)
     sys.exit(1)
 
-sp = pairs[0]
+stereoPair = stereoPairs[0]
 
-pipeline.create(dai.node.Camera).build(sp.left, sensorResolution=(1280, 800), sensorFps=30)
-pipeline.create(dai.node.Camera).build(sp.right, sensorResolution=(1280, 800), sensorFps=30)
+pipeline.create(dai.node.Camera).build(stereoPair.left, sensorResolution=(1280, 800), sensorFps=30)
+pipeline.create(dai.node.Camera).build(stereoPair.right, sensorResolution=(1280, 800), sensorFps=30)
 
-depth_node = pipeline.create(dai.node.Depth)
+depthNode = pipeline.create(dai.node.Depth)
 
-depth_queue = depth_node.depth.createOutputQueue()
-confidence_queue = depth_node.confidence.createOutputQueue()
+depthQueue = depthNode.depth.createOutputQueue()
+confidenceQueue = depthNode.confidence.createOutputQueue()
 
 pipeline.build()
 
-color_map = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
-color_map[0] = [0, 0, 0]
+colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
+colorMap[0] = [0, 0, 0]
 
 
-def colorize_depth_mm(frame: np.ndarray) -> np.ndarray:
+def colorizeDepthMm(frame: np.ndarray) -> np.ndarray:
     valid = frame > 0
     if not np.any(valid):
         return np.zeros((*frame.shape, 3), dtype=np.uint8)
     vmax = float(np.max(frame[valid]))
     norm = np.zeros_like(frame, dtype=np.uint8)
     norm[valid] = ((frame[valid].astype(np.float32) / vmax) * 255).astype(np.uint8)
-    return cv2.applyColorMap(norm, color_map)
+    return cv2.applyColorMap(norm, colorMap)
 
 
-def colorize_confidence(frame: np.ndarray) -> np.ndarray:
+def colorizeConfidence(frame: np.ndarray) -> np.ndarray:
     if frame.dtype == np.uint16:
         vmax = int(np.max(frame))
         if vmax <= 0:
@@ -65,19 +65,19 @@ def colorize_confidence(frame: np.ndarray) -> np.ndarray:
         vis = ((frame.astype(np.float32) / vmax) * 255).astype(np.uint8)
     else:
         vis = frame
-    return cv2.applyColorMap(vis, color_map)
+    return cv2.applyColorMap(vis, colorMap)
 
 
 with pipeline:
     pipeline.start()
     while pipeline.isRunning():
-        depth_frame = depth_queue.get()
-        assert isinstance(depth_frame, dai.ImgFrame)
-        cv2.imshow("depth (user cameras)", colorize_depth_mm(depth_frame.getFrame()))
+        depthFrame = depthQueue.get()
+        assert isinstance(depthFrame, dai.ImgFrame)
+        cv2.imshow("depth (user cameras)", colorizeDepthMm(depthFrame.getFrame()))
 
-        conf_frame = confidence_queue.get()
-        assert isinstance(conf_frame, dai.ImgFrame)
-        cv2.imshow("confidence", colorize_confidence(conf_frame.getFrame()))
+        confidenceFrame = confidenceQueue.get()
+        assert isinstance(confidenceFrame, dai.ImgFrame)
+        cv2.imshow("confidence", colorizeConfidence(confidenceFrame.getFrame()))
 
         key = cv2.waitKey(1)
         if key == ord("q"):

@@ -10,15 +10,9 @@ compile_shader(
   INFILE rgbd2pointcloud.comp OUTFILE
   ${SHADER_HEADER_PATH}/rgbd2pointcloud.hpp NAMESPACE
   "dai::shaders")
-compile_shader(
-  INFILE depth2pointcloud.comp OUTFILE
-  ${SHADER_HEADER_PATH}/depth2pointcloud.hpp NAMESPACE
-  "dai::shaders")
 add_library(shaders INTERFACE
-            ${SHADER_HEADER_PATH}/rgbd2pointcloud.hpp
-            ${SHADER_HEADER_PATH}/depth2pointcloud.hpp)
+            ${SHADER_HEADER_PATH}/rgbd2pointcloud.hpp)
 
 target_include_directories(
   shaders INTERFACE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
                     $<INSTALL_INTERFACE:include/shaders>)
-

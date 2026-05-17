@@ -153,8 +153,8 @@ class CMakeBuild(build_ext):
             cmake_args += ['-DDEPTHAI_PCL_SUPPORT=ON']
         if env.get('DEPTHAI_BUILD_RTABMAP') == 'ON':
             cmake_args += ['-DDEPTHAI_RTABMAP_SUPPORT=ON']
-        if env.get('DEPTHAI_BUILD_KOMPUTE') == 'ON' or env.get('DEPTHAI_ENABLE_KOMPUTE') == 'ON':
-            cmake_args += ['-DDEPTHAI_ENABLE_KOMPUTE=ON']
+        if env.get('DEPTHAI_BUILD_KOMPUTE') == 'ON':
+            cmake_args += ['-DDEPTHAI_KOMPUTE_SUPPORT=ON']
         build_args += ['--target=depthai']
 
 

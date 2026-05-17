@@ -42,7 +42,7 @@ git config submodule.recurse true
 Later submodules also need to be updated.
 
 #### Local build with pip
-To build and install using pip (add `-DDEPTHAI_ENABLE_KOMPUTE=ON` via `CMAKE_ARGS` for Kompute / GPUStereo, or set `DEPTHAI_ENABLE_KOMPUTE=ON` / `DEPTHAI_BUILD_KOMPUTE=ON` in the environment):
+To build and install using pip:
 ```
 cd dephai-core/bindings/python
 python3 -m pip install .
@@ -59,7 +59,7 @@ python3 -m pip wheel . -w wheelhouse --no-deps
 #### Shared library
 > ℹ️ This is the recommended way when you are iterating as installing with pip is generally very slow for iteration.
 
-To build a shared library from source perform the following (add `-DDEPTHAI_ENABLE_KOMPUTE=ON` for Kompute / GPUStereo):
+To build a shared library from source perform the following:
 ```
 cd depthai-core
 cmake -H. -Bbuild -DDEPTHAI_BUILD_PYTHON=ON

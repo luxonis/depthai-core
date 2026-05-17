@@ -21,25 +21,25 @@ namespace dai {
 namespace node {
 namespace {
 
-// ---------------------------------------------------------------------------
-// Depth: resolveAlgorithm (AUTO) + validateAlgorithm (explicit and resolved AUTO)
-//
-// TOF: require CameraSensorType::TOF in getConnectedCameraFeatures() (same rule as the ToF node).
-// AUTO: RVC4 + GPU stereo hardware (R9+, stereo pair, Kompute build) -> GPU_STEREO; else RVC4 -> NEURAL;
-// RVC2 + ToF -> TOF; else -> STEREO (including RVC3).
-// NEURAL_ASSISTED_STEREO / GPU_STEREO: RVC4 and build rules; GPUStereo requires stereo pairs and
-// board revision R9+ (EEPROM boardRev, with product-name fallback).
-// ---------------------------------------------------------------------------
+// Depth algorithm selection is device-dependent:
+// - TOF requires a connected ToF sensor.
+// - NEURAL_ASSISTED_STEREO / GPU_STEREO require RVC4 (GPUStereo also requires board R9+ and Kompute build).
+// - AUTO prefers NEURAL on RVC4, TOF on RVC2 with ToF, otherwise STEREO.
 
 constexpr int kGpuStereoMinBoardRevisionMajor = 9;
 
 constexpr std::pair<uint32_t, uint32_t> kStereoDepthMonoSize{640, 400};
 
-/** Fixed NeuralDepth model for ``Algorithm::NEURAL`` and for ``AUTO`` on RVC4 when GPU stereo is not selected. */
+/** Fixed NeuralDepth model for ``Algorithm::NEURAL`` and for ``AUTO`` on RVC4. */
 constexpr DeviceModelZoo kDefaultNeuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
 /** Fixed NeuralAssistedStereo neural model / rectify for ``Algorithm::NEURAL_ASSISTED_STEREO``. */
 constexpr DeviceModelZoo kDefaultNasNeuralModel = DeviceModelZoo::NEURAL_DEPTH_NANO;
 constexpr bool kDefaultNasRectify = true;
+
+constexpr const char* kGpuStereoConfidenceUnavailable =
+    "Depth::confidence() is unavailable when the GPUStereo backend is selected (Algorithm::GPU_STEREO). "
+    "GPUStereo does not provide a confidence map; do not link or create an output queue on confidence(). Use depth() "
+    "only, or choose NEURAL, STEREO, NEURAL_ASSISTED_STEREO, or TOF.";
 
 std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
     std::shared_ptr<Camera> left;
@@ -75,18 +75,6 @@ bool cameraFeaturesIncludeTof(const std::vector<dai::CameraFeatures>& features) 
         }
     }
     return false;
-}
-
-/** Safe wrapper: missing device or RPC errors mean no ToF for validation. */
-bool deviceHasTofSensor(const std::shared_ptr<Device>& device) {
-    if(device == nullptr) {
-        return false;
-    }
-    try {
-        return cameraFeaturesIncludeTof(device->getConnectedCameraFeatures());
-    } catch(...) {
-        return false;
-    }
 }
 
 /** Read consecutive decimal digits at @p i; returns nullopt if none. */
@@ -205,11 +193,6 @@ bool deviceGpuStereoSupported(const std::shared_ptr<Device>& device) {
 }
 #endif
 
-constexpr const char* kGpuStereoConfidenceUnavailable =
-    "Depth::confidence() is unavailable when the GPUStereo backend is selected (Algorithm::GPU_STEREO, or "
-    "Algorithm::AUTO on RVC4 with GPU stereo hardware). GPUStereo does not provide a confidence map; do not link or "
-    "create an output queue on confidence(). Use depth() only, or choose NEURAL, STEREO, NEURAL_ASSISTED_STEREO, or TOF.";
-
 }  // namespace
 
 Depth::Depth(Algorithm algorithm) : DeviceNodeGroup(), algorithmOverride_(algorithm) {}
@@ -218,53 +201,84 @@ Depth::Depth() : Depth(Algorithm::AUTO) {}
 
 std::shared_ptr<Depth> Depth::build(std::optional<float> fps) {
     DAI_CHECK_V(!graphBuilt_, "Depth::build(fps) must be called before the graph is wired (before first depth()/confidence() access).");
-    stereoOutputFps_ = std::move(fps);
+    stereoOutputFps_ = fps;
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
-Depth::Algorithm Depth::resolveAlgorithm(const std::shared_ptr<Device>& device) const {
-    if(algorithmOverride_ != Algorithm::AUTO) {
-        return algorithmOverride_;
-    }
-    if(device->getPlatform() == Platform::RVC4) {
-#if defined(DEPTHAI_ENABLE_KOMPUTE)
-        if(deviceHasGpuStereoHardware(device)) {
-            return Algorithm::GPU_STEREO;
-        }
-#endif
-        return Algorithm::NEURAL;
-    }
-    if(device->getPlatform() == Platform::RVC2 && deviceHasTofSensor(device)) {
-        return Algorithm::TOF;
-    }
-    return Algorithm::STEREO;
+std::shared_ptr<Depth> Depth::build(Algorithm algorithm, std::optional<float> fps) {
+    DAI_CHECK_V(!graphBuilt_, "Depth::build(algorithm, fps) must be called before the graph is wired (before first depth()/confidence() access).");
+    algorithmOverride_ = algorithm;
+    stereoOutputFps_ = fps;
+    return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
-void Depth::validateAlgorithm(const std::shared_ptr<Device>& device, Algorithm active) const {
-    // Fail fast before buildInternal wires backends (`active` is the resolved algorithm from resolveAlgorithm()).
-    switch(active) {
-        case Algorithm::AUTO:
-            break;
-        case Algorithm::STEREO:
-        case Algorithm::NEURAL:
-            break;
+StereoPair Depth::getStereoPair() const {
+    const auto device = getDevice();
+    DAI_CHECK_V(device != nullptr, "Depth node requires a device to query its stereo pair.");
+    return requireFirstStereoPair(device);
+}
+
+std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device) const {
+    std::vector<Algorithm> supported = {Algorithm::STEREO, Algorithm::NEURAL};
+
+    if(device->getPlatform() == Platform::RVC4) {
+        supported.push_back(Algorithm::NEURAL_ASSISTED_STEREO);
+#if defined(DEPTHAI_ENABLE_KOMPUTE)
+        if(deviceGpuStereoSupported(device)) {
+            supported.push_back(Algorithm::GPU_STEREO);
+        }
+#endif
+    }
+    if(cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
+        supported.push_back(Algorithm::TOF);
+    }
+
+    return supported;
+}
+
+Depth::Algorithm Depth::selectAlgorithm(const std::shared_ptr<Device>& device) const {
+    const auto supported = getSupportedAlgorithms(device);
+
+    if(algorithmOverride_ == Algorithm::AUTO) {
+        if(device->getPlatform() == Platform::RVC4) {
+            return Algorithm::NEURAL;
+        }
+        if(device->getPlatform() == Platform::RVC2
+           && std::find(supported.begin(), supported.end(), Algorithm::TOF) != supported.end()) {
+            return Algorithm::TOF;
+        }
+        return Algorithm::STEREO;
+    }
+
+    if(std::find(supported.begin(), supported.end(), algorithmOverride_) != supported.end()) {
+        return algorithmOverride_;
+    }
+
+    switch(algorithmOverride_) {
         case Algorithm::NEURAL_ASSISTED_STEREO:
-            DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "NeuralAssistedStereo is only supported on RVC4.");
+            DAI_CHECK_V(false, "NeuralAssistedStereo is only supported on RVC4.");
             break;
         case Algorithm::GPU_STEREO:
 #if defined(DEPTHAI_ENABLE_KOMPUTE)
             DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "GPUStereo is only supported on RVC4.");
             DAI_CHECK_V(deviceGpuStereoSupported(device),
-                        "GPUStereo requires an RVC4 device with a stereo camera pair, board revision R9 or newer, and a Kompute-enabled build.");
+                        "GPUStereo requires an RVC4 device with a stereo camera pair, board revision R9 or newer, and a "
+                        "Kompute-enabled build.");
 #else
             DAI_CHECK_V(false, "GPUStereo requires depthai-core built with Kompute (DEPTHAI_ENABLE_KOMPUTE).");
 #endif
             break;
         case Algorithm::TOF:
-            DAI_CHECK_V(deviceHasTofSensor(device),
-                        "Depth Algorithm::TOF requires a connected ToF camera (e.g. OAK-D ToF / OAK-TOF series).");
+            DAI_CHECK_V(false, "Depth Algorithm::TOF requires a connected ToF camera (e.g. OAK-D ToF / OAK-TOF series).");
+            break;
+        case Algorithm::AUTO:
+        case Algorithm::STEREO:
+        case Algorithm::NEURAL:
             break;
     }
+
+    DAI_CHECK_V(false, "Depth algorithm is not supported on this device.");
+    return Algorithm::STEREO;
 }
 
 void Depth::buildInternal() {
@@ -276,21 +290,10 @@ void Depth::buildInternal() {
     }
 
     Pipeline pipeline = getParentPipeline();
-    if(getDevice() == nullptr) {
-        if(pipeline.impl() != nullptr) {
-            if(auto def = pipeline.getDefaultDevice()) {
-                setDevice(std::move(def));
-            }
-        }
-    }
-
     const auto device = getDevice();
     DAI_CHECK_V(device != nullptr, "Depth node requires a device (set on create, when added to a pipeline with a default device, or from pipeline at first wiring).");
 
-    DAI_CHECK_V(pipeline.impl() != nullptr, "Depth node must be part of a pipeline.");
-
-    const Algorithm active = resolveAlgorithm(device);
-    validateAlgorithm(device, active);
+    const Algorithm active = selectAlgorithm(device);
 
     switch(active) {
         case Algorithm::AUTO:
@@ -299,7 +302,7 @@ void Depth::buildInternal() {
         case Algorithm::TOF: {
             tofBackend_ = ToF::create(device);
             add(tofBackend_);
-            tofBackend_->build(CameraBoardSocket::AUTO, ImageFiltersPresetMode::TOF_MID_RANGE, std::nullopt);
+            tofBackend_->build(CameraBoardSocket::AUTO, ImageFiltersPresetMode::TOF_MID_RANGE, stereoOutputFps_);
             depthOut_ = &tofBackend_->depth;
             confidenceOut_ = &tofBackend_->amplitude;
             break;
@@ -342,6 +345,8 @@ void Depth::buildInternal() {
             confidenceOut_ = &(**stereoBackend_).confidenceMap;
             break;
         }
+        default:
+            DAI_CHECK_V(false, "Depth: no backend was selected for wiring.");
     }
 
     graphBuilt_ = true;
@@ -351,10 +356,7 @@ std::pair<Node::Output*, Node::Output*> Depth::ensureStereoOutputs(Pipeline& pip
                                                                    const StereoPair& pair,
                                                                    std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                                                    const std::optional<float>& fps) {
-    auto [leftFound, rightFound] = findCamerasForPair(pipeline, pair);
-
-    std::shared_ptr<Camera> left = leftFound;
-    std::shared_ptr<Camera> right = rightFound;
+    auto [left, right] = findCamerasForPair(pipeline, pair);
 
     if(!left) {
         left = pipeline.create<Camera>()->build(pair.left);

@@ -649,10 +649,8 @@ dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
 dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
-# No "ci" label: excluded from broad "ctest -L ci". HIL still runs this via run_tests.py (hardware
-# configs match ^(ci|ondevice)$ plus platform labels). Host config requires onhost, so never selected there.
 dai_add_test(depth_node_test src/ondevice_tests/pipeline/node/depth_node_test.cpp)
-dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4)
+dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci)
 
 # Detection network test
 if(DEPTHAI_FETCH_ARTIFACTS)
