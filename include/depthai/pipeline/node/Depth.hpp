@@ -121,11 +121,23 @@ class Depth : public DeviceNodeGroup {
    private:
     Algorithm selectAlgorithm(const std::shared_ptr<Device>& device) const;
 
-    /** Ensures stereo cameras exist and returns left/right outputs. Full resolution when @p frameSize is nullopt. */
+    /**
+     * Ensures stereo cameras exist and returns left/right outputs.
+     * When both cameras already exist in the pipeline, uses ``Camera::getMaxWidth`` / ``getMaxHeight`` (user
+     * ``sensorResolution`` or sensor maximum) instead of @p frameSize. Otherwise uses @p frameSize, or full resolution
+     * when it is nullopt.
+     */
     std::pair<Node::Output*, Node::Output*> ensureStereoOutputs(Pipeline& pipeline,
                                                                 const StereoPair& pair,
                                                                 std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                                                 const std::optional<float>& fps);
+
+    std::pair<Node::Output*, Node::Output*> stereoCameraOutputs(Pipeline& pipeline,
+                                                                const std::shared_ptr<Device>& device,
+                                                                std::optional<std::pair<uint32_t, uint32_t>> frameSize);
+
+    /** Map active backend depth/confidence outputs after backend nodes are created. */
+    void bindBackendOutputs(Algorithm active);
 
     Algorithm algorithmOverride_;
     bool graphBuilt_{false};
