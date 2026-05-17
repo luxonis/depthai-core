@@ -286,8 +286,17 @@ dai_set_example_test_labels(unified_depth ondevice rvc2_all rvc4 ci)
 add_python_example(unified_depth_user_cameras Depth/unified_depth_user_cameras.py)
 dai_set_example_test_labels(unified_depth_user_cameras ondevice rvc2_all rvc4 ci)
 
-add_python_example(depth_user_cameras_dual_detection_network Depth/depth_user_cameras_dual_detection_network.py)
-dai_set_example_test_labels(depth_user_cameras_dual_detection_network ondevice rvc2_all rvc4 ci)
+add_python_example(unified_depth_algorithm Depth/unified_depth_algorithm.py)
+dai_set_example_test_labels(unified_depth_algorithm ondevice rvc2_all rvc4 ci)
+
+add_python_example(unified_depth_fps Depth/unified_depth_fps.py)
+dai_set_example_test_labels(unified_depth_fps ondevice rvc2_all rvc4 ci)
+
+add_python_example(unified_depth_gpu_stereo Depth/unified_depth_gpu_stereo.py)
+dai_set_example_test_labels(unified_depth_gpu_stereo ondevice rvc4 ci)
+
+add_python_example(unified_depth_spatial_detection Depth/unified_depth_spatial_detection.py)
+dai_set_example_test_labels(unified_depth_spatial_detection ondevice rvc2_all rvc4 rvc4rgb ci)
 
 ## VideoEncoder
 add_python_example(video_encoder VideoEncoder/video_encode.py)
