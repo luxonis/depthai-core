@@ -23,7 +23,7 @@ namespace {
 
 // Depth algorithm selection is device-dependent:
 // - TOF requires a connected ToF sensor.
-// - NEURAL_ASSISTED_STEREO / GPU_STEREO require RVC4 (GPUStereo also requires board R9+ and Kompute build).
+// - NEURAL_ASSISTED_STEREO / GPU_STEREO require RVC4 (GPUStereo also requires board R9+).
 // - AUTO prefers NEURAL on RVC4, TOF on RVC2 with ToF, otherwise STEREO.
 
 constexpr int kGpuStereoMinBoardRevisionMajor = 9;
@@ -187,12 +187,6 @@ bool deviceHasGpuStereoHardware(const std::shared_ptr<Device>& device) {
     return *major >= kGpuStereoMinBoardRevisionMajor;
 }
 
-#if defined(DEPTHAI_ENABLE_KOMPUTE)
-bool deviceGpuStereoSupported(const std::shared_ptr<Device>& device) {
-    return deviceHasGpuStereoHardware(device);
-}
-#endif
-
 }  // namespace
 
 Depth::Depth(Algorithm algorithm) : DeviceNodeGroup(), algorithmOverride_(algorithm) {}
@@ -223,11 +217,9 @@ std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_pt
 
     if(device->getPlatform() == Platform::RVC4) {
         supported.push_back(Algorithm::NEURAL_ASSISTED_STEREO);
-#if defined(DEPTHAI_ENABLE_KOMPUTE)
-        if(deviceGpuStereoSupported(device)) {
+        if(deviceHasGpuStereoHardware(device)) {
             supported.push_back(Algorithm::GPU_STEREO);
         }
-#endif
     }
     if(cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
         supported.push_back(Algorithm::TOF);
@@ -259,14 +251,9 @@ Depth::Algorithm Depth::selectAlgorithm(const std::shared_ptr<Device>& device) c
             DAI_CHECK_V(false, "NeuralAssistedStereo is only supported on RVC4.");
             break;
         case Algorithm::GPU_STEREO:
-#if defined(DEPTHAI_ENABLE_KOMPUTE)
             DAI_CHECK_V(device->getPlatform() == Platform::RVC4, "GPUStereo is only supported on RVC4.");
-            DAI_CHECK_V(deviceGpuStereoSupported(device),
-                        "GPUStereo requires an RVC4 device with a stereo camera pair, board revision R9 or newer, and a "
-                        "Kompute-enabled build.");
-#else
-            DAI_CHECK_V(false, "GPUStereo requires depthai-core built with Kompute (DEPTHAI_ENABLE_KOMPUTE).");
-#endif
+            DAI_CHECK_V(deviceHasGpuStereoHardware(device),
+                        "GPUStereo requires an RVC4 device with a stereo camera pair and board revision R9 or newer.");
             break;
         case Algorithm::TOF:
             DAI_CHECK_V(false, "Depth Algorithm::TOF requires a connected ToF camera (e.g. OAK-D ToF / OAK-TOF series).");

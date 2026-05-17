@@ -33,9 +33,9 @@ namespace node {
  * only ``Algorithm`` selection is user-configurable, either at construction or through ``build(algorithm, ...)`` before first wiring.
  *
  * Algorithm availability: ``TOF`` requires a connected ToF sensor (see ``Device::getConnectedCameraFeatures()``).
- * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a Kompute-enabled build, a stereo pair, and
- * board revision 9 or newer (EEPROM ``boardRev`` e.g. ``P9D1``, ``P10D0``, or legacy ``R9``); it is listed in
- * ``getSupportedAlgorithms()`` only when those requirements are met.
+ * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a stereo pair and board revision 9 or newer
+ * (EEPROM ``boardRev`` e.g. ``P9D1``, ``P10D0``, or legacy ``R9``); it is listed in ``getSupportedAlgorithms()`` only when those
+ * requirements are met.
  *
  * See \ref depth_node for a dedicated overview of purpose, behavior, features, and constraints.
  */
