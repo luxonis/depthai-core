@@ -1,19 +1,26 @@
 /**
  * @file depth_node_test.cpp
- * @brief On-device tests for `dai::node::Depth` (AUTO resolution, explicit algorithms, lazy wiring).
+ * @brief On-device tests for `dai::node::Depth` (algorithms, lazy wiring, user camera coexistence).
  */
 #include <catch2/catch_all.hpp>
 
+#include <cmath>
 #include <cctype>
 #include <chrono>
 #include <cstring>
 #include <optional>
+#include <utility>
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/device/Platform.hpp"
+#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
+#include "depthai/pipeline/node/BenchmarkIn.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/Depth.hpp"
 #include "depthai/pipeline/node/NeuralAssistedStereo.hpp"
+#include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
 
@@ -227,6 +234,146 @@ void startPipelineAndRequireFirstFrames(Pipeline& pipeline, const std::shared_pt
     REQUIRE(confidenceFrame != nullptr);
 }
 
+constexpr std::pair<uint32_t, uint32_t> kUserStereoSensorResolution{1280, 800};
+constexpr float kUserStereoFps = 30.0f;
+constexpr float kDepthStereoFps = 15.0f;
+constexpr float kBenchmarkFpsMarginRatio = 0.15f;
+constexpr std::pair<uint32_t, uint32_t> kStereoDepthMonoSize{640, 400};
+
+constexpr DeviceModelZoo kDepthDefaultNeuralModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
+
+void skipUnlessUserStereoDepthScenario(const std::shared_ptr<Device>& device) {
+    if(device->getPlatform() == Platform::RVC2 && deviceReportsTofSensor(device)) {
+        SKIP("Skipping Depth user-camera test: RVC2 AUTO selects ToF, not user stereo cameras.");
+    }
+    (void)requireFirstStereoPairForTest(device);
+    if(device->getPlatform() == Platform::RVC4 && !device->isNeuralDepthSupported()) {
+        SKIP("Skipping Depth user-camera test: device does not support NeuralDepth.");
+    }
+}
+
+std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline,
+                                                                                                    const StereoPair& pair) {
+    try {
+        auto leftCam = pipeline.create<node::Camera>()->build(pair.left, kUserStereoSensorResolution, kUserStereoFps);
+        auto rightCam = pipeline.create<node::Camera>()->build(pair.right, kUserStereoSensorResolution, kUserStereoFps);
+        return {leftCam, rightCam};
+    } catch(const std::exception& ex) {
+        SKIP(std::string("Skipping Depth user-camera test: cannot build stereo cameras at 1280x800@30: ") + ex.what());
+    }
+    return {{}, {}};  // unreachable (SKIP throws)
+}
+
+void requireBenchmarkFpsNear(const std::shared_ptr<MessageQueue>& reportQueue, float expectedFps, int samples = 3) {
+    REQUIRE(reportQueue != nullptr);
+    (void)reportQueue->get<BenchmarkReport>();  // warmup
+    const auto margin = expectedFps * kBenchmarkFpsMarginRatio;
+    for(int i = 0; i < samples; ++i) {
+        bool timedOut = false;
+        auto report = reportQueue->get<BenchmarkReport>(std::chrono::seconds(30), timedOut);
+        REQUIRE_FALSE(timedOut);
+        REQUIRE(report != nullptr);
+        REQUIRE(report->fps == Catch::Approx(expectedFps).margin(margin));
+    }
+}
+
+struct UserDepthCameraBenchSetup {
+    std::shared_ptr<node::Camera> leftCam;
+    std::shared_ptr<node::Camera> rightCam;
+    std::shared_ptr<MessageQueue> userBenchQueue;
+    std::shared_ptr<MessageQueue> depthBenchQueue;
+    std::shared_ptr<MessageQueue> userFrameQueue;
+    std::shared_ptr<MessageQueue> depthFrameQueue;
+    std::shared_ptr<node::Depth> depth;
+};
+
+UserDepthCameraBenchSetup wireUserStereoCamerasAndDepth(Pipeline& pipeline,
+                                                        const StereoPair& pair,
+                                                        std::optional<float> depthRequestedFps) {
+    UserDepthCameraBenchSetup setup;
+    std::tie(setup.leftCam, setup.rightCam) = buildUserStereoCamerasOrSkip(pipeline, pair);
+
+    auto* userLeftOut =
+        setup.leftCam->requestOutput(kUserStereoSensorResolution, std::nullopt, ImgResizeMode::CROP, kUserStereoFps);
+    REQUIRE(userLeftOut != nullptr);
+    setup.userFrameQueue = userLeftOut->createOutputQueue();
+
+    auto userBench = pipeline.create<node::BenchmarkIn>();
+    userBench->sendReportEveryNMessages(static_cast<uint32_t>(std::lround(kUserStereoFps * 2)));
+    userLeftOut->link(userBench->input);
+    setup.userBenchQueue = userBench->report.createOutputQueue();
+
+    setup.depth = pipeline.create<node::Depth>();
+    if(depthRequestedFps.has_value()) {
+        setup.depth->build(*depthRequestedFps);
+    }
+
+    const float depthBenchTargetFps = depthRequestedFps.value_or(kUserStereoFps);
+    auto depthBench = pipeline.create<node::BenchmarkIn>();
+    depthBench->sendReportEveryNMessages(static_cast<uint32_t>(std::lround(depthBenchTargetFps * 2)));
+    setup.depth->depth().link(depthBench->input);
+    setup.depthBenchQueue = depthBench->report.createOutputQueue();
+    setup.depthFrameQueue = setup.depth->depth().createOutputQueue();
+
+    return setup;
+}
+
+void requireUserAndDepthFrameSizes(const std::shared_ptr<Device>& device,
+                                   const std::shared_ptr<node::Depth>& depth,
+                                   const std::shared_ptr<MessageQueue>& userFrameQueue,
+                                   const std::shared_ptr<MessageQueue>& depthFrameQueue) {
+    bool timedOut = false;
+    auto userFrame = userFrameQueue->get<ImgFrame>(std::chrono::seconds(15), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(userFrame != nullptr);
+    REQUIRE(userFrame->getWidth() == static_cast<int>(kUserStereoSensorResolution.first));
+    REQUIRE(userFrame->getHeight() == static_cast<int>(kUserStereoSensorResolution.second));
+
+    timedOut = false;
+    auto depthFrame = depthFrameQueue->get<ImgFrame>(std::chrono::seconds(15), timedOut);
+    REQUIRE_FALSE(timedOut);
+    REQUIRE(depthFrame != nullptr);
+    REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
+             || depthFrame->getHeight() != static_cast<int>(kUserStereoSensorResolution.second)));
+
+    if(device->getPlatform() == Platform::RVC4) {
+        const auto [expectedW, expectedH] = node::NeuralDepth::getInputSize(kDepthDefaultNeuralModel);
+        requireDepthSingleBackendChild(*depth, "NeuralDepth");
+        REQUIRE(depthFrame->getWidth() == expectedW);
+        REQUIRE(depthFrame->getHeight() == expectedH);
+    } else {
+        requireDepthSingleBackendChild(*depth, "StereoDepth");
+        REQUIRE(depthFrame->getWidth() == static_cast<int>(kStereoDepthMonoSize.first));
+        REQUIRE(depthFrame->getHeight() == static_cast<int>(kStereoDepthMonoSize.second));
+    }
+}
+
+void runUserCameraDepthBenchmarkTest(Pipeline& pipeline,
+                                     const std::shared_ptr<Device>& device,
+                                     const StereoPair& pair,
+                                     std::optional<float> depthRequestedFps,
+                                     bool checkFrameSizes) {
+    PipelineStopGuard guard(pipeline);
+    auto setup = wireUserStereoCamerasAndDepth(pipeline, pair, depthRequestedFps);
+
+    REQUIRE_FALSE(cameraInDepthSubtree(*setup.depth, setup.leftCam));
+    REQUIRE_FALSE(cameraInDepthSubtree(*setup.depth, setup.rightCam));
+    REQUIRE(countStereoCamerasInDepthSubtree(*setup.depth, pair) == 0);
+
+    pipeline.build();
+    pipeline.start();
+
+    requireBenchmarkFpsNear(setup.userBenchQueue, kUserStereoFps);
+    const float expectedDepthFps = depthRequestedFps.value_or(kUserStereoFps);
+    requireBenchmarkFpsNear(setup.depthBenchQueue, expectedDepthFps);
+
+    if(checkFrameSizes) {
+        requireUserAndDepthFrameSizes(device, setup.depth, setup.userFrameQueue, setup.depthFrameQueue);
+    }
+
+    requireDepthAutoBackend(*setup.depth, device);
+}
+
 }  // namespace
 
 TEST_CASE("Depth: host-only pipeline cannot create node") {
@@ -424,4 +571,31 @@ TEST_CASE("Depth: pipeline with SystemLogger and optional third camera still bui
 
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW(requireDepthPipelineBuilds(pipeline, depth));
+}
+
+TEST_CASE("Depth: user stereo cameras keep 30 FPS with AUTO and no build(fps)") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    skipUnlessUserStereoDepthScenario(device);
+    const auto pair = requireFirstStereoPairForTest(device);
+
+    REQUIRE_NOTHROW(runUserCameraDepthBenchmarkTest(pipeline, device, pair, std::nullopt, false));
+}
+
+TEST_CASE("Depth: user cameras stay 30 FPS while depth build(fps) runs at 15 FPS") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    skipUnlessUserStereoDepthScenario(device);
+    const auto pair = requireFirstStereoPairForTest(device);
+
+    REQUIRE_NOTHROW(runUserCameraDepthBenchmarkTest(pipeline, device, pair, kDepthStereoFps, false));
+}
+
+TEST_CASE("Depth: user camera resolution unchanged; depth uses backend size") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    skipUnlessUserStereoDepthScenario(device);
+    const auto pair = requireFirstStereoPairForTest(device);
+
+    REQUIRE_NOTHROW(runUserCameraDepthBenchmarkTest(pipeline, device, pair, std::nullopt, true));
 }
