@@ -16,15 +16,9 @@ void bind_gpustereo(pybind11::module& m, void* pCallstack) {
     cb(m, pCallstack);
 
     node.def_property_readonly(
-            "left",
-            [](const GPUStereo& n) { return &n.sync->inputs["left"]; },
-            py::return_value_policy::reference_internal,
-            DOC(dai, node, GPUStereo, left))
+            "left", [](const GPUStereo& n) { return &n.sync->inputs["left"]; }, py::return_value_policy::reference_internal, DOC(dai, node, GPUStereo, left))
         .def_property_readonly(
-            "right",
-            [](const GPUStereo& n) { return &n.sync->inputs["right"]; },
-            py::return_value_policy::reference_internal,
-            DOC(dai, node, GPUStereo, right))
+            "right", [](const GPUStereo& n) { return &n.sync->inputs["right"]; }, py::return_value_policy::reference_internal, DOC(dai, node, GPUStereo, right))
         .def_property_readonly(
             "rectifiedLeft",
             [](const GPUStereo& n) { return &n.rectification->output1; },
@@ -35,6 +29,7 @@ void bind_gpustereo(pybind11::module& m, void* pCallstack) {
             [](const GPUStereo& n) { return &n.rectification->output2; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, GPUStereo, rectifiedRight))
+        .def_readonly("initialConfig", &GPUStereo::initialConfig, DOC(dai, node, GPUStereo, initialConfig))
         .def("setRectification", &GPUStereo::setRectification, py::arg("enable"), DOC(dai, node, GPUStereo, setRectification))
         .def("setConfidenceThreshold", &GPUStereo::setConfidenceThreshold, py::arg("threshold"), DOC(dai, node, GPUStereo, setConfidenceThreshold))
         .def_readonly("disparity", &GPUStereo::disparity, DOC(dai, node, GPUStereo, disparity))

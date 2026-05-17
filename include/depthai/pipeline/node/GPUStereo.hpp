@@ -69,7 +69,11 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
 
     void buildInternal() override;
 
-   private:
+    /**
+     * Initial config to use for GPUStereo.
+     *
+     * Note: Only `confidenceThreshold` is supported/exposed for this node.
+     */
     std::shared_ptr<GPUStereoConfig> initialConfig = std::make_shared<GPUStereoConfig>();
 };
 

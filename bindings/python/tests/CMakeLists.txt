@@ -19,6 +19,7 @@ set(PYBIND11_TEST_FILES
     "messsage_queue_test.py"
     "imgframe_test.py"
     "inherited_messages_test.py"
+    "gpu_stereo_config_test.py"
     "dynamic_calibration_test.py"
     "auto_calibration_config_test.py"
     "host_node_create_deprecation_test.py"
