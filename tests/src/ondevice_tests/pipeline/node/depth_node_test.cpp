@@ -13,7 +13,9 @@
 #include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/Depth.hpp"
+#include "depthai/pipeline/node/NeuralAssistedStereo.hpp"
 #include "depthai/pipeline/node/SystemLogger.hpp"
+#include "depthai/pipeline/node/ToF.hpp"
 
 using namespace dai;
 
@@ -133,11 +135,21 @@ std::optional<CameraBoardSocket> socketOutsideStereoPair(const std::shared_ptr<D
     return std::nullopt;
 }
 
-/** Depth wires exactly one direct child for the active algorithm (not nested NAS internals). */
+/** Depth wires exactly one direct child for the active algorithm (not nested internals). */
 void requireDepthSingleBackendChild(const node::Depth& depth, const char* expectedNodeName) {
     const auto& children = depth.getNodeMap();
     REQUIRE(children.size() == 1);
-    REQUIRE(std::strcmp(children[0]->getName(), expectedNodeName) == 0);
+    const auto& child = children[0];
+    // DeviceNodeGroup composites (NAS, ToF) report getName() as "DeviceNodeGroup".
+    if(std::strcmp(expectedNodeName, "NeuralAssistedStereo") == 0) {
+        REQUIRE(std::dynamic_pointer_cast<node::NeuralAssistedStereo>(child) != nullptr);
+        return;
+    }
+    if(std::strcmp(expectedNodeName, "ToF") == 0) {
+        REQUIRE(std::dynamic_pointer_cast<node::ToF>(child) != nullptr);
+        return;
+    }
+    REQUIRE(std::strcmp(child->getName(), expectedNodeName) == 0);
 }
 
 std::shared_ptr<Device> requireDefaultDevice(Pipeline& pipeline) {
@@ -167,8 +179,36 @@ void requireDepthAutoBackend(const node::Depth& depth, const std::shared_ptr<Dev
     }
 }
 
+/** Stops the pipeline on scope exit if a prior start() left it running. */
+struct PipelineStopGuard {
+    Pipeline& pipeline;
+    explicit PipelineStopGuard(Pipeline& p) : pipeline(p) {}
+    ~PipelineStopGuard() {
+        if(pipeline.isRunning()) {
+            pipeline.stop();
+        }
+    }
+    PipelineStopGuard(const PipelineStopGuard&) = delete;
+    PipelineStopGuard& operator=(const PipelineStopGuard&) = delete;
+};
+
+/** Host queues must exist before pipeline.start() (start() calls build()). */
+void requireDepthPipelineBuilds(Pipeline& pipeline, const std::shared_ptr<node::Depth>& depth) {
+    REQUIRE_NOTHROW((void)&depth->depth());
+    if(depth->hasConfidence()) {
+        REQUIRE_NOTHROW((void)&depth->confidence());
+    }
+    REQUIRE_NOTHROW(pipeline.build());
+}
+
 void startPipelineAndRequireFirstFrames(Pipeline& pipeline, const std::shared_ptr<node::Depth>& depth) {
+    PipelineStopGuard guard(pipeline);
+
     auto depthQueue = depth->depth().createOutputQueue();
+    std::shared_ptr<MessageQueue> confidenceQueue;
+    if(depth->hasConfidence()) {
+        confidenceQueue = depth->confidence().createOutputQueue();
+    }
 
     pipeline.start();
 
@@ -177,11 +217,10 @@ void startPipelineAndRequireFirstFrames(Pipeline& pipeline, const std::shared_pt
     REQUIRE_FALSE(timedOut);
     REQUIRE(depthFrame != nullptr);
 
-    if(!depth->hasConfidence()) {
+    if(confidenceQueue == nullptr) {
         return;
     }
 
-    auto confidenceQueue = depth->confidence().createOutputQueue();
     timedOut = false;
     auto confidenceFrame = confidenceQueue->get<dai::ImgFrame>(std::chrono::seconds(15), timedOut);
     REQUIRE_FALSE(timedOut);
@@ -384,5 +423,5 @@ TEST_CASE("Depth: pipeline with SystemLogger and optional third camera still bui
     }
 
     auto depth = pipeline.create<node::Depth>();
-    REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
+    REQUIRE_NOTHROW(requireDepthPipelineBuilds(pipeline, depth));
 }
