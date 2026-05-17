@@ -124,8 +124,9 @@ class Depth : public DeviceNodeGroup {
     /**
      * Ensures stereo cameras exist and returns left/right outputs.
      * When both cameras already exist in the pipeline, uses ``Camera::getMaxWidth`` / ``getMaxHeight`` (user
-     * ``sensorResolution`` or sensor maximum) instead of @p frameSize. Otherwise uses @p frameSize, or full resolution
-     * when it is nullopt.
+     * ``sensorResolution`` or sensor maximum) instead of @p frameSize.
+     * When Depth creates the cameras, uses full sensor resolution via ``requestFullResolutionOutput``.
+     * Otherwise uses @p frameSize when set (e.g. NeuralDepth model input size).
      */
     std::pair<Node::Output*, Node::Output*> ensureStereoOutputs(Pipeline& pipeline,
                                                                 const StereoPair& pair,

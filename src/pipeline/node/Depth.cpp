@@ -29,8 +29,6 @@ namespace {
 
 constexpr int kGpuStereoMinBoardRevisionMajor = 9;
 
-constexpr std::pair<uint32_t, uint32_t> kStereoDepthMonoSize{640, 400};
-
 /** Fixed NeuralDepth model for ``Algorithm::NEURAL`` and for ``AUTO`` on RVC4. */
 constexpr DeviceModelZoo kDefaultNeuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
 /** Fixed NeuralAssistedStereo neural model / rectify for ``Algorithm::NEURAL_ASSISTED_STEREO``. */
@@ -319,7 +317,7 @@ void Depth::buildInternal() {
         }
         case Algorithm::GPU_STEREO: {
             gpuStereoBackend_ = std::make_unique<Subnode<GPUStereo>>(*this, "gpuStereo");
-            auto [leftOut, rightOut] = stereoCameraOutputs(pipeline, device, kStereoDepthMonoSize);
+            auto [leftOut, rightOut] = stereoCameraOutputs(pipeline, device, std::nullopt);
             (*gpuStereoBackend_)->setRectification(true).build(*leftOut, *rightOut);
             break;
         }
@@ -333,7 +331,7 @@ void Depth::buildInternal() {
         }
         case Algorithm::STEREO: {
             stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
-            auto [leftOut, rightOut] = stereoCameraOutputs(pipeline, device, kStereoDepthMonoSize);
+            auto [leftOut, rightOut] = stereoCameraOutputs(pipeline, device, std::nullopt);
             (*stereoBackend_)->build(*leftOut, *rightOut, StereoDepth::PresetMode::DEFAULT);
             break;
         }
