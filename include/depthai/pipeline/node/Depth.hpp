@@ -41,15 +41,17 @@ namespace node {
  */
 class Depth : public DeviceNodeGroup {
    public:
+    /** Backend selection for the composite Depth node. */
     enum class Algorithm : std::uint32_t {
-        AUTO = 0,
-        STEREO,
-        NEURAL,
-        NEURAL_ASSISTED_STEREO,
-        TOF,
-        GPU_STEREO,
+        AUTO = 0,  ///< Resolved at wiring via device capabilities (see selectAlgorithm).
+        STEREO,    ///< Classic StereoDepth disparity/depth pipeline.
+        NEURAL,    ///< RVC4 NeuralDepth with a fixed default model.
+        NEURAL_ASSISTED_STEREO,  ///< RVC4 NeuralAssistedStereo (stereo + neural assist).
+        TOF,       ///< Time-of-flight depth when a ToF sensor is connected.
+        GPU_STEREO,  ///< RVC4 GPUStereo (no confidence output).
     };
 
+    // Non-copyable / non-movable: owns pipeline subnodes and output pointers tied to this instance.
     Depth(const Depth&) = delete;
     Depth& operator=(const Depth&) = delete;
     Depth(Depth&&) = delete;
@@ -110,15 +112,22 @@ class Depth : public DeviceNodeGroup {
     /** Returns algorithms supported by the supplied device. */
     std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device) const;
 
+    /** Lazily wires the selected backend subgraph when the node is attached to a pipeline. */
     void buildInternal() override;
 
+    /** Depth map from the active backend; triggers ``buildInternal()`` on first access. */
     Node::Output& depth();
+    /**
+     * Confidence map from the active backend (StereoDepth confidence, NeuralDepth confidence, ToF amplitude).
+     * Throws if the backend has no confidence output (GPUStereo); use ``hasConfidence()`` first.
+     */
     Node::Output& confidence();
 
     /** False when the resolved backend has no confidence map (GPUStereo). Triggers lazy wiring if needed. */
     [[nodiscard]] bool hasConfidence() const;
 
    private:
+    /** Resolve ``AUTO`` or validate a fixed ``algorithmOverride_`` against @p device. */
     Algorithm selectAlgorithm(const std::shared_ptr<Device>& device) const;
 
     /**
@@ -133,6 +142,7 @@ class Depth : public DeviceNodeGroup {
                                                                 std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                                                 const std::optional<float>& fps);
 
+    /** Stereo outputs for the device's first ``StereoPair`` (convenience over ``ensureStereoOutputs``). */
     std::pair<Node::Output*, Node::Output*> stereoCameraOutputs(Pipeline& pipeline,
                                                                 const std::shared_ptr<Device>& device,
                                                                 std::optional<std::pair<uint32_t, uint32_t>> frameSize);
@@ -140,17 +150,27 @@ class Depth : public DeviceNodeGroup {
     /** Map active backend depth/confidence outputs after backend nodes are created. */
     void bindBackendOutputs(Algorithm active);
 
+    /** User-selected or ``AUTO`` algorithm; frozen after ``buildInternal()`` completes. */
     Algorithm algorithmOverride_;
+    /** True after lazy wiring in ``buildInternal()``; blocks further ``build()`` calls. */
     bool graphBuilt_{false};
+    /** Optional FPS for stereo ``Camera`` outputs; set via ``build()`` before wiring. */
     std::optional<float> stereoOutputFps_{};
 
+    /** Resolved backend depth output (set in ``bindBackendOutputs``). */
     Node::Output* depthOut_{nullptr};
+    /** Resolved backend confidence output, or null when the backend has none (GPUStereo). */
     Node::Output* confidenceOut_{nullptr};
 
+    /** Populated when ``Algorithm::STEREO`` is active. */
     std::unique_ptr<::dai::Subnode<StereoDepth>> stereoBackend_;
+    /** Populated when ``Algorithm::NEURAL`` is active. */
     std::unique_ptr<::dai::Subnode<NeuralDepth>> neuralBackend_;
+    /** Populated when ``Algorithm::GPU_STEREO`` is active. */
     std::unique_ptr<::dai::Subnode<GPUStereo>> gpuStereoBackend_;
+    /** Populated when ``Algorithm::NEURAL_ASSISTED_STEREO`` is active. */
     std::shared_ptr<NeuralAssistedStereo> nasBackend_;
+    /** Populated when ``Algorithm::TOF`` is active. */
     std::shared_ptr<ToF> tofBackend_;
 };
 
