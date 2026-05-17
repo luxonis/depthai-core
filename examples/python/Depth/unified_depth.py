@@ -35,7 +35,9 @@ else:
 depth_node = pipeline.create(dai.node.Depth)
 
 depth_queue = depth_node.depth.createOutputQueue()
-confidence_queue = depth_node.confidence.createOutputQueue()
+confidence_queue = None
+if getattr(depth_node, "hasConfidence", lambda: True)():
+    confidence_queue = depth_node.confidence.createOutputQueue()
 
 pipeline.build()
 
@@ -72,9 +74,10 @@ with pipeline:
         assert isinstance(depth_frame, dai.ImgFrame)
         cv2.imshow("depth", colorize_depth_mm(depth_frame.getFrame()))
 
-        conf_frame = confidence_queue.get()
-        assert isinstance(conf_frame, dai.ImgFrame)
-        cv2.imshow("confidence", colorize_confidence(conf_frame.getFrame()))
+        if confidence_queue is not None:
+            conf_frame = confidence_queue.get()
+            assert isinstance(conf_frame, dai.ImgFrame)
+            cv2.imshow("confidence", colorize_confidence(conf_frame.getFrame()))
 
         key = cv2.waitKey(1)
         if key == ord("q"):

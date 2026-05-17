@@ -161,7 +161,7 @@ std::optional<CameraBoardSocket> socketOutsideStereoPair(const std::shared_ptr<D
     return std::nullopt;
 }
 
-/** Depth wires exactly one direct child for the active algorithm (not nested NAS internals). */
+/** Depth wires exactly one backend device node. */
 void requireDepthSingleBackendChild(const node::Depth& depth, const char* expectedNodeName) {
     const auto& children = depth.getNodeMap();
     REQUIRE(children.size() == 1);
@@ -185,7 +185,11 @@ TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     }
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW((void)&depth->confidence());
+    if(depth->hasConfidence()) {
+        REQUIRE_NOTHROW((void)&depth->confidence());
+    } else {
+        REQUIRE_THROWS_WITH((void)&depth->confidence(), Catch::Matchers::ContainsSubstring("GPUStereo"));
+    }
 }
 
 TEST_CASE("Depth: create(device, algorithm) exposes algorithm via getAlgorithm") {
@@ -424,7 +428,8 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
         WARN("Skipping GPU_STEREO positive test: " << ex.what());
         return;
     }
-    REQUIRE_NOTHROW((void)&depth->confidence());
+    REQUIRE_FALSE(depth->hasConfidence());
+    REQUIRE_THROWS_WITH((void)&depth->confidence(), Catch::Matchers::ContainsSubstring("GPUStereo"));
     REQUIRE_NOTHROW(pipeline.build());
     requireDepthSingleBackendChild(*depth, "GPUStereo");
 }

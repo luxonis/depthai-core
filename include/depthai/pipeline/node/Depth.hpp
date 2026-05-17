@@ -27,8 +27,9 @@ namespace node {
  * Kompute-enabled build; otherwise NeuralDepth on RVC4. ToF on RVC2 when a ToF sensor is reported in
  * ``getConnectedCameraFeatures()``, and ``StereoDepth`` on other combinations (including RVC3 and RVC2 without ToF).
  * Use ``Depth()`` / ``Depth::create()`` for automatic algorithm selection, ``explicit Depth(Algorithm)`` / ``create(Algorithm)`` / ``create(device, Algorithm)`` to fix the backend, or ``Pipeline::create<Depth>(…)`` / ``Pipeline::create<Depth>(algorithm)`` to add the node with the pipeline default device. The algorithm is fixed at construction; it cannot be changed after the node is created.
- * ``confidence()`` maps to backend confidence when present; for GPUStereo it uses
- * ``disparity``; for ToF it uses ``amplitude``. Backend implementation nodes are internal and wired with fixed defaults;
+ * ``confidence()`` maps to backend confidence when present. For GPUStereo (Kompute / AUTO path) it is unavailable
+ * (throws); use ``hasConfidence()`` to check before linking or creating a queue. For ToF it uses ``amplitude``.
+ * Backend implementation nodes are internal and wired with fixed defaults;
  * only ``Algorithm`` selection is configurable at construction (``Depth(...)`` / ``create(...)`` / ``Pipeline::create<Depth>(...)``).
  *
  * Algorithm availability: ``TOF`` requires a connected ToF sensor (see ``Device::getConnectedCameraFeatures()``).
@@ -93,6 +94,9 @@ class Depth : public DeviceNodeGroup {
 
     Node::Output& depth();
     Node::Output& confidence();
+
+    /** False when the resolved backend has no confidence map (GPUStereo). Triggers lazy wiring if needed. */
+    [[nodiscard]] bool hasConfidence() const;
 
    private:
     Algorithm resolveAlgorithm(const std::shared_ptr<Device>& device) const;

@@ -7,7 +7,6 @@
 #include <string>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
-#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraSensorType.hpp"
@@ -206,6 +205,11 @@ bool deviceGpuStereoSupported(const std::shared_ptr<Device>& device) {
 }
 #endif
 
+constexpr const char* kGpuStereoConfidenceUnavailable =
+    "Depth::confidence() is unavailable when the GPUStereo backend is selected (Algorithm::GPU_STEREO, or "
+    "Algorithm::AUTO on RVC4 with GPU stereo hardware). GPUStereo does not provide a confidence map; do not link or "
+    "create an output queue on confidence(). Use depth() only, or choose NEURAL, STEREO, NEURAL_ASSISTED_STEREO, or TOF.";
+
 }  // namespace
 
 Depth::Depth(Algorithm algorithm) : DeviceNodeGroup(), algorithmOverride_(algorithm) {}
@@ -316,7 +320,6 @@ void Depth::buildInternal() {
             auto [leftOut, rightOut] = ensureStereoOutputs(pipeline, pair, kStereoDepthMonoSize, stereoOutputFps_);
             (*gpuStereoBackend_)->setRectification(true).build(*leftOut, *rightOut);
             depthOut_ = &(**gpuStereoBackend_).depth;
-            confidenceOut_ = &(**gpuStereoBackend_).disparity;
             break;
         }
         case Algorithm::NEURAL: {
@@ -382,11 +385,20 @@ Node::Output& Depth::depth() {
     return *depthOut_;
 }
 
+bool Depth::hasConfidence() const {
+    if(!graphBuilt_) {
+        const_cast<Depth*>(this)->buildInternal();
+    }
+    return confidenceOut_ != nullptr;
+}
+
 Node::Output& Depth::confidence() {
     if(!graphBuilt_) {
         buildInternal();
     }
-    DAI_CHECK_V(confidenceOut_ != nullptr, "Depth backend confidence output missing.");
+    if(confidenceOut_ == nullptr) {
+        throw std::runtime_error(kGpuStereoConfidenceUnavailable);
+    }
     return *confidenceOut_;
 }
 
