@@ -94,7 +94,7 @@ TEST_CASE("CBA calibrations are merged with the main board's calibration") {
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
     dai::Platform platform = device->getPlatform();
     // Currently available only on RVC2
-    if(platform == dai::Platform::RVC4) {
+    if(platform != dai::Platform::RVC2) {
         return;
     }
 
@@ -146,7 +146,7 @@ TEST_CASE("Calibration's cameraData present on the main board has priority and i
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
     dai::Platform platform = device->getPlatform();
     // Currently available only on RVC2
-    if(platform == dai::Platform::RVC4) {
+    if(platform != dai::Platform::RVC2) {
         return;
     }
 
