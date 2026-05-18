@@ -125,8 +125,12 @@ TEST_CASE("CBA calibrations are merged with the main board's calibration") {
     device->flashEepromClear();
     device->flashCalibration(loadGeneralCalibration());
 
-    // Check if the merged calibration contains the camera data from the CBAs
-    dai::CalibrationHandler mergedCalibration = device->readCalibration2();
+    // Check if the merged runtime calibration contains the camera data from the CBAs after pipeline starts
+    dai::Pipeline pipeline(device);
+    auto logger = pipeline.create<dai::node::SystemLogger>();
+    auto outputQueue = logger->out.createOutputQueue(1, false);
+    pipeline.start();
+    dai::CalibrationHandler mergedCalibration = device->getCalibration();
     for(const auto& cbaSocket : cbaSockets) {
         REQUIRE(mergedCalibration.hasCameraCalibration(cbaSocket));
 
@@ -173,8 +177,13 @@ TEST_CASE("Calibration's cameraData present on the main board has priority and i
     device->flashEepromClear();
     device->flashCalibration(loadGeneralCalibrationDefaultCameraData());
 
-    // Check that the merged calibration doesn't contain the camera data from the CBAs (since the main board should have the priority)
-    dai::CalibrationHandler mergedCalibration = device->readCalibration2();
+    // Check that the merged runtime calibration keeps the main board's camera data after pipeline start (since the main board should have the priority in case
+    // of duplicates)
+    dai::Pipeline pipeline(device);
+    auto logger = pipeline.create<dai::node::SystemLogger>();
+    auto outputQueue = logger->out.createOutputQueue(1, false);
+    pipeline.start();
+    dai::CalibrationHandler mergedCalibration = device->getCalibration();
     for(const auto& cbaSocket : cbaSockets) {
         REQUIRE(mergedCalibration.hasCameraCalibration(cbaSocket));
 

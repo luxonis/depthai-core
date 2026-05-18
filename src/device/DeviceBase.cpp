@@ -1830,13 +1830,7 @@ CalibrationHandler DeviceBase::getCalibration() {
 }
 
 CalibrationHandler DeviceBase::readCalibration() {
-    dai::EepromData eepromData{};
-    try {
-        return readCalibration2();
-    } catch(const EepromError&) {
-        // ignore - use default
-    }
-    return CalibrationHandler(eepromData);
+    return readCalibration(CameraBoardSocket::AUTO);
 }
 
 CalibrationHandler DeviceBase::readCalibration(CameraBoardSocket camSocket) {
@@ -1850,25 +1844,7 @@ CalibrationHandler DeviceBase::readCalibration(CameraBoardSocket camSocket) {
 }
 
 CalibrationHandler DeviceBase::readCalibration2() {
-    dai::EepromData mergedData = readCalibration2(CameraBoardSocket::AUTO).getEepromData();
-
-    // Add missing CBA data (if not already present on the main board)
-    for(const auto& cameraSocket : getConnectedCameras()) {
-        if(mergedData.cameraData.find(cameraSocket) != mergedData.cameraData.end()) continue;
-
-        try {
-            dai::EepromData cbaData = readCalibration2(cameraSocket).getEepromData();
-            if(const auto it = cbaData.cameraData.find(cameraSocket); it != cbaData.cameraData.end()) {
-                mergedData.cameraData.emplace(cameraSocket, it->second);
-            } else {
-                pimpl->logger.warn("Skipping CBA calibration merge for {}: CBA camera data not present for the specified CameraBoardSocket", cameraSocket);
-            }
-        } catch(const EepromError&) {
-            // no EEPROM or calibration for this socket
-        }
-    }
-
-    return CalibrationHandler(mergedData);
+    return readCalibration2(CameraBoardSocket::AUTO);
 }
 
 CalibrationHandler DeviceBase::readCalibration2(CameraBoardSocket camSocket) {
@@ -1883,7 +1859,7 @@ CalibrationHandler DeviceBase::readCalibration2(CameraBoardSocket camSocket) {
 }
 
 CalibrationHandler DeviceBase::readCalibrationOrDefault() {
-    return readCalibration();
+    return readCalibrationOrDefault(CameraBoardSocket::AUTO);
 }
 
 CalibrationHandler DeviceBase::readCalibrationOrDefault(CameraBoardSocket camSocket) {
@@ -1918,25 +1894,7 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
 }
 
 CalibrationHandler DeviceBase::readFactoryCalibration() {
-    dai::EepromData mergedData = readFactoryCalibration(CameraBoardSocket::AUTO).getEepromData();
-
-    // Add missing CBA data (if not already present on the main board)
-    for(const auto& cameraSocket : getConnectedCameras()) {
-        if(mergedData.cameraData.find(cameraSocket) != mergedData.cameraData.end()) continue;
-
-        try {
-            dai::EepromData cbaData = readFactoryCalibration(cameraSocket).getEepromData();
-            if(const auto it = cbaData.cameraData.find(cameraSocket); it != cbaData.cameraData.end()) {
-                mergedData.cameraData.emplace(cameraSocket, it->second);
-            } else {
-                pimpl->logger.warn("Skipping CBA calibration merge for {}: CBA camera data not present for the specified CameraBoardSocket", cameraSocket);
-            }
-        } catch(const EepromError&) {
-            // no EEPROM or calibration for this socket
-        }
-    }
-
-    return CalibrationHandler(mergedData);
+    return readFactoryCalibration(CameraBoardSocket::AUTO);
 }
 
 CalibrationHandler DeviceBase::readFactoryCalibration(CameraBoardSocket camSocket) {
@@ -1950,13 +1908,7 @@ CalibrationHandler DeviceBase::readFactoryCalibration(CameraBoardSocket camSocke
     return CalibrationHandler(eepromData);
 }
 CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
-    dai::EepromData eepromData{};
-    try {
-        return readFactoryCalibration();
-    } catch(const EepromError&) {
-        // ignore - use default
-    }
-    return CalibrationHandler(eepromData);
+    return readFactoryCalibrationOrDefault(CameraBoardSocket::AUTO);
 }
 
 CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault(CameraBoardSocket camSocket) {
@@ -2183,6 +2135,46 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     if(!success) {
         throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
+    }
+
+    try {
+        dai::EepromData eepromData;
+        if(auto runtimeCalibration = tryGetCalibration()) {
+            eepromData = runtimeCalibration->getEepromData();
+        } else {
+            try {
+                eepromData = readCalibration2().getEepromData();
+            } catch(const dai::EepromError& ex) {
+                pimpl->logger.warn("No readable device calibration before pipeline start: {}", ex.what());
+            }
+        }
+        bool merged = false;
+
+        for(const auto& cameraSocket : getConnectedCameras()) {
+            if(cameraSocket == CameraBoardSocket::AUTO || eepromData.cameraData.find(cameraSocket) != eepromData.cameraData.end()) continue;
+
+            try {
+                const auto cbaData = readCalibration2(cameraSocket).getEepromData();
+                if(cbaData.batchTime < eepromData.batchTime) {
+                    pimpl->logger.info("Skipping CBA calibration merge for {}: Newer user calibration data found on device", cameraSocket);
+                    continue;
+                }
+                if(const auto it = cbaData.cameraData.find(cameraSocket); it != cbaData.cameraData.end()) {
+                    eepromData.cameraData.emplace(cameraSocket, it->second);
+                    merged = true;
+                } else {
+                    pimpl->logger.warn("Skipping CBA calibration merge for {}: camera data not present for the specified CameraBoardSocket", cameraSocket);
+                }
+            } catch(const dai::EepromError& ex) {
+                pimpl->logger.warn("No readable CBA calibration on {}: {}", cameraSocket, ex.what());
+            }
+        }
+
+        if(merged) {
+            setCalibration(eepromData);
+        }
+    } catch(const std::exception& ex) {
+        pimpl->logger.warn("Failed to pre-merge CBA calibration before pipeline start: {}", ex.what());
     }
 
     // Build and start the pipeline
