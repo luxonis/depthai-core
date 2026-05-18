@@ -34,5 +34,6 @@ void bind_gpustereo(pybind11::module& m, void* pCallstack) {
         .def("setConfidenceThreshold", &GPUStereo::setConfidenceThreshold, py::arg("threshold"), DOC(dai, node, GPUStereo, setConfidenceThreshold))
         .def_readonly("disparity", &GPUStereo::disparity, DOC(dai, node, GPUStereo, disparity))
         .def_readonly("depth", &GPUStereo::depth, DOC(dai, node, GPUStereo, depth))
+        .def_readonly("confidenceMap", &GPUStereo::confidenceMap, DOC(dai, node, GPUStereo, confidenceMap))
         .def("build", &GPUStereo::build, py::arg("leftInput"), py::arg("rightInput"), DOC(dai, node, GPUStereo, build));
 }

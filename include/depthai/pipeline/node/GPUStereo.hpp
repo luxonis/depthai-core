@@ -66,6 +66,12 @@ class GPUStereo : public DeviceNodeCRTP<DeviceNode, GPUStereo, GPUStereoProperti
 
     Output disparity{*this, {"disparity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
+    /**
+     * Outputs ImgFrame message that carries RAW8 confidence map.
+     * Lower values mean lower confidence of the calculated disparity value.
+     * Note: postprocessing steps like LR-check/median filter are not applied to confidence map.
+     */
+    Output confidenceMap{*this, {"confidenceMap", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     void buildInternal() override;
 
