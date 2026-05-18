@@ -106,9 +106,6 @@ class Depth : public DeviceNodeGroup {
         return algorithmOverride_;
     }
 
-    /** Returns the stereo pair used by stereo-based Depth backends on the current device. */
-    [[nodiscard]] StereoPair getStereoPair() const;
-
     /** Returns algorithms supported by the supplied device. */
     std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device) const;
 
@@ -132,10 +129,11 @@ class Depth : public DeviceNodeGroup {
 
     /**
      * Ensures stereo cameras exist and returns left/right outputs.
-     * When both cameras already exist in the pipeline, uses ``Camera::getMaxWidth`` / ``getMaxHeight`` (user
-     * ``sensorResolution`` or sensor maximum) instead of @p frameSize.
-     * When Depth creates the cameras, uses full sensor resolution via ``requestFullResolutionOutput``.
-     * Otherwise uses @p frameSize when set (e.g. NeuralDepth model input size).
+     * When @p frameSize is set (e.g. NeuralDepth model input size), always requests that size.
+     * When @p frameSize is unset and both stereo cameras already exist, uses ``Camera::getMaxWidth`` /
+     * ``getMaxHeight`` (user ``sensorResolution`` or sensor maximum).
+     * When Depth creates the cameras and @p frameSize is unset, uses full sensor resolution via
+     * ``requestFullResolutionOutput``.
      */
     std::pair<Node::Output*, Node::Output*> ensureStereoOutputs(Pipeline& pipeline,
                                                                 const StereoPair& pair,

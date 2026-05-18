@@ -24,7 +24,6 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
     node.def("getAlgorithm", &Depth::getAlgorithm)
-        .def("getStereoPair", &Depth::getStereoPair)
         .def(
             "build",
             [](Depth& self, py::object fps) {

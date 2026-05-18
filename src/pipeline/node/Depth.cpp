@@ -247,12 +247,6 @@ std::shared_ptr<Depth> Depth::build(Algorithm algorithm, std::optional<float> fp
 
 // --- Device queries ---
 
-StereoPair Depth::getStereoPair() const {
-    const auto device = getDevice();
-    DAI_CHECK_V(device != nullptr, "Depth node requires a device to query its stereo pair.");
-    return requireFirstStereoPair(device);
-}
-
 std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device) const {
     // Baseline backends available on all platforms that expose a stereo pair.
     std::vector<Algorithm> supported = {Algorithm::STEREO, Algorithm::NEURAL};
@@ -436,9 +430,9 @@ std::pair<Node::Output*, Node::Output*> Depth::ensureStereoOutputs(Pipeline& pip
         right = pipeline.create<Camera>()->build(pair.right);
     }
 
-    // Prefer existing camera resolution when the user already added both stereo cameras.
+    // When @p frameSize is unset and both stereo cameras already exist, match their sensor resolution.
     std::optional<std::pair<uint32_t, uint32_t>> outputSize = frameSize;
-    if(stereoCamerasPreexist) {
+    if(stereoCamerasPreexist && !frameSize.has_value()) {
         if(const auto existingSize = stereoSizeFromExistingCameras(left, right)) {
             outputSize = existingSize;
         }
