@@ -624,6 +624,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, readCalibration))
         .def(
+            "readCalibration",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.readCalibration(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, readCalibration, 2))
+        .def(
             "tryFlashCalibration",
             [](DeviceBase& d, CalibrationHandler calibrationDataHandler) {
                 py::gil_scoped_release release;

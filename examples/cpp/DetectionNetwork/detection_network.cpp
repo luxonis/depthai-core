@@ -1,8 +1,16 @@
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 // Helper function to normalize frame coordinates
 cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai::Point2f& bottomRight) {
@@ -11,6 +19,9 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
 }
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -37,7 +48,7 @@ int main() {
     cv::Scalar textColor(255, 255, 255);
 
     pipeline.start();
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto inRgb = qRgb->get<dai::ImgFrame>();
         auto inDet = qDet->get<dai::ImgDetections>();
 
