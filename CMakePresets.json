@@ -7,6 +7,38 @@
       "cacheVariables": {
         "VCPKG_INSTALL_OPTIONS": "--clean-buildtrees-after-build;--clean-packages-after-build"
       }
+    },
+    {
+      "name": "minimal",
+      "displayName": "Minimal host library build",
+      "description": "Build depthai-core with optional host features, firmware downloads, and resource embedding disabled.",
+      "binaryDir": "${sourceDir}/build-minimal",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "DEPTHAI_OPENCV_SUPPORT": "OFF",
+        "DEPTHAI_XTENSOR_SUPPORT": "OFF",
+        "DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT": "OFF",
+        "DEPTHAI_ENABLE_LIBUSB": "OFF",
+        "DEPTHAI_ENABLE_APRIL_TAG": "OFF",
+        "DEPTHAI_ENABLE_PROTOBUF": "OFF",
+        "DEPTHAI_ENABLE_CURL": "OFF",
+        "DEPTHAI_ENABLE_MP4V2": "OFF",
+        "DEPTHAI_ENABLE_BACKWARD": "OFF",
+        "DEPTHAI_ENABLE_DEVICE_FW": "OFF",
+        "DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW": "OFF",
+        "DEPTHAI_ENABLE_DEVICE_RVC4_FW": "OFF",
+        "DEPTHAI_BINARIES_RESOURCE_COMPILE": "OFF",
+        "DEPTHAI_GENERATE_HOUSING_COORDS": "OFF",
+        "VCPKG_INSTALL_OPTIONS": "--clean-buildtrees-after-build;--clean-packages-after-build"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "minimal",
+      "configurePreset": "minimal",
+      "configuration": "Release",
+      "jobs": 4
     }
   ]
 }

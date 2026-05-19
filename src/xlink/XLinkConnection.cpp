@@ -177,7 +177,7 @@ std::vector<DeviceInfo> filterDevices(const std::vector<DeviceInfo>& deviceInfos
                              info.name);
                 continue;
             } else {
-                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(info.state), info.name);
+                logger::warn("skipping {} device having name \"{}\" (status: {})", XLinkDeviceStateToStr(info.state), info.name, XLinkErrorToStr(info.status));
                 continue;
             }
         }
@@ -284,7 +284,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
                              desc.name);
                 return {false, {}};
             } else {
-                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(desc.state), desc.name);
+                logger::warn("skipping {} device having name \"{}\" (status: {})", XLinkDeviceStateToStr(desc.state), desc.name, XLinkErrorToStr(desc.status));
                 return {false, {}};
             }
         }
@@ -313,7 +313,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceById(std::string deviceId
                              desc.name);
                 return {false, {}};
             } else {
-                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(desc.state), desc.name);
+                logger::warn("skipping {} device having name \"{}\" (status: {})", XLinkDeviceStateToStr(desc.state), desc.name, XLinkErrorToStr(desc.status));
                 return {false, {}};
             }
         }
