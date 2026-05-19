@@ -794,6 +794,10 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
     config = cfg;
     firmwarePath = pathToMvcmd;
     crashDumpHandled.store(false);
+    {
+        std::lock_guard<std::mutex> lock(calibrationMergeMtx);
+        runtimeCalibrationMerged = false;
+    }
 
     // Apply nonExclusiveMode
     config.board.nonExclusiveMode = config.nonExclusiveMode;
@@ -1792,6 +1796,7 @@ void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler, Cam
 }
 
 void DeviceBase::setCalibration(const std::optional<EepromData>& eepromData) {
+    std::lock_guard<std::mutex> lock(calibrationMergeMtx);
     bool success;
     std::string errorMsg;
     std::tie(success, errorMsg) = pimpl->rpcCall("setCalibration", eepromData).as<std::tuple<bool, std::string>>();
@@ -1805,6 +1810,7 @@ void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
 }
 
 std::shared_ptr<CalibrationHandler> DeviceBase::tryGetCalibration() {
+    tryPremergeCalibration();
     try {
         bool success;
         std::string errorMsg;
@@ -1819,6 +1825,7 @@ std::shared_ptr<CalibrationHandler> DeviceBase::tryGetCalibration() {
 }
 
 CalibrationHandler DeviceBase::getCalibration() {
+    tryPremergeCalibration();
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
@@ -1827,6 +1834,53 @@ CalibrationHandler DeviceBase::getCalibration() {
         throw EepromError(errorMsg);
     }
     return CalibrationHandler(eepromData);
+}
+
+void DeviceBase::tryPremergeCalibration() {
+    std::lock_guard<std::mutex> lock(calibrationMergeMtx);
+    if(runtimeCalibrationMerged) return;
+
+    try {
+        dai::EepromData eepromData;
+        try {
+            eepromData = readCalibration2().getEepromData();
+        } catch(const dai::EepromError& ex) {
+            pimpl->logger.warn("No readable device calibration before pipeline start: {}", ex.what());
+        }
+        bool merged = false;
+
+        for(const auto& cameraSocket : getConnectedCameras()) {
+            if(cameraSocket == CameraBoardSocket::AUTO || eepromData.cameraData.find(cameraSocket) != eepromData.cameraData.end()) continue;
+
+            try {
+                const auto cbaData = readCalibration2(cameraSocket).getEepromData();
+                if(cbaData.batchTime < eepromData.batchTime) {
+                    pimpl->logger.info("Skipping CBA calibration merge for {}: Newer user calibration data found on device", cameraSocket);
+                    continue;
+                }
+                if(const auto it = cbaData.cameraData.find(cameraSocket); it != cbaData.cameraData.end()) {
+                    eepromData.cameraData.emplace(cameraSocket, it->second);
+                    merged = true;
+                } else {
+                    pimpl->logger.warn("Skipping CBA calibration merge for {}: camera data not present for the specified CameraBoardSocket", cameraSocket);
+                }
+            } catch(const dai::EepromError& ex) {
+                pimpl->logger.warn("No readable CBA calibration on {}: {}", cameraSocket, ex.what());
+            }
+        }
+
+        if(merged) {
+            bool success;
+            std::string errorMsg;
+            std::tie(success, errorMsg) = pimpl->rpcCall("setCalibration", eepromData).as<std::tuple<bool, std::string>>();
+            if(!success) {
+                throw std::runtime_error(errorMsg);
+            }
+        }
+        runtimeCalibrationMerged = true;
+    } catch(const std::exception& ex) {
+        pimpl->logger.warn("Failed to pre-merge CBA calibration before pipeline start: {}", ex.what());
+    }
 }
 
 CalibrationHandler DeviceBase::readCalibration() {
@@ -2137,45 +2191,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         throw std::runtime_error("Device " + getDeviceId() + " not ready: " + errorMsg);
     }
 
-    try {
-        dai::EepromData eepromData;
-        if(auto runtimeCalibration = tryGetCalibration()) {
-            eepromData = runtimeCalibration->getEepromData();
-        } else {
-            try {
-                eepromData = readCalibration2().getEepromData();
-            } catch(const dai::EepromError& ex) {
-                pimpl->logger.warn("No readable device calibration before pipeline start: {}", ex.what());
-            }
-        }
-        bool merged = false;
-
-        for(const auto& cameraSocket : getConnectedCameras()) {
-            if(cameraSocket == CameraBoardSocket::AUTO || eepromData.cameraData.find(cameraSocket) != eepromData.cameraData.end()) continue;
-
-            try {
-                const auto cbaData = readCalibration2(cameraSocket).getEepromData();
-                if(cbaData.batchTime < eepromData.batchTime) {
-                    pimpl->logger.info("Skipping CBA calibration merge for {}: Newer user calibration data found on device", cameraSocket);
-                    continue;
-                }
-                if(const auto it = cbaData.cameraData.find(cameraSocket); it != cbaData.cameraData.end()) {
-                    eepromData.cameraData.emplace(cameraSocket, it->second);
-                    merged = true;
-                } else {
-                    pimpl->logger.warn("Skipping CBA calibration merge for {}: camera data not present for the specified CameraBoardSocket", cameraSocket);
-                }
-            } catch(const dai::EepromError& ex) {
-                pimpl->logger.warn("No readable CBA calibration on {}: {}", cameraSocket, ex.what());
-            }
-        }
-
-        if(merged) {
-            setCalibration(eepromData);
-        }
-    } catch(const std::exception& ex) {
-        pimpl->logger.warn("Failed to pre-merge CBA calibration before pipeline start: {}", ex.what());
-    }
+    tryPremergeCalibration();
 
     // Build and start the pipeline
     std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>("buildPipeline");

@@ -784,6 +784,7 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
@@ -792,6 +793,7 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from the CBA and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
@@ -801,6 +803,7 @@ class DeviceBase {
 
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @throws std::runtime_error if no calibration is flashed
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
@@ -809,6 +812,7 @@ class DeviceBase {
 
     /**
      * Fetches the EEPROM data from the CBA and loads it into CalibrationHandler object
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
@@ -820,6 +824,7 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
@@ -828,6 +833,7 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from the CBA and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
+     * @note This reads EEPROM contents directly and does not merge calibration data from other sources.
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
@@ -1202,6 +1208,7 @@ class DeviceBase {
    private:
     // private functions
     void init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
+    void tryPremergeCalibration();
     void tryGetDevice();
     struct PrevInfo {
         DeviceInfo deviceInfo;
@@ -1259,6 +1266,10 @@ class DeviceBase {
     // closed
     mutable std::mutex closedMtx;
     bool closed{false};
+
+    // Runtime calibration merge state
+    std::mutex calibrationMergeMtx;
+    bool runtimeCalibrationMerged{false};
 
     // pimpl
     class Impl;

@@ -125,7 +125,17 @@ TEST_CASE("CBA calibrations are merged with the main board's calibration") {
     device->flashEepromClear();
     device->flashCalibration(loadGeneralCalibration());
 
-    // Check if the merged runtime calibration contains the camera data from the CBAs after pipeline starts
+    // Check if the merged runtime calibration contains the camera data from the CBAs before pipeline starts
+    dai::CalibrationHandler mergedCalibrationBeforeStart = device->getCalibration();
+    for(const auto& cbaSocket : cbaSockets) {
+        REQUIRE(mergedCalibrationBeforeStart.hasCameraCalibration(cbaSocket));
+
+        const auto mainCameraData = mergedCalibrationBeforeStart.getEepromData().cameraData.at(cbaSocket);
+        const auto cbaCameraData = device->readCalibration2(cbaSocket).getEepromData().cameraData.at(cbaSocket);
+        REQUIRE(compareCameraData(mainCameraData, cbaCameraData));
+    }
+
+    // Starting the pipeline should keep the already prepared runtime calibration intact
     dai::Pipeline pipeline(device);
     auto logger = pipeline.create<dai::node::SystemLogger>();
     auto outputQueue = logger->out.createOutputQueue(1, false);
@@ -177,8 +187,18 @@ TEST_CASE("Calibration's cameraData present on the main board has priority and i
     device->flashEepromClear();
     device->flashCalibration(loadGeneralCalibrationDefaultCameraData());
 
-    // Check that the merged runtime calibration keeps the main board's camera data after pipeline start (since the main board should have the priority in case
-    // of duplicates)
+    // Check that the merged runtime calibration keeps the main board's camera data before pipeline start (since the main board should have the priority in
+    // case of duplicates)
+    dai::CalibrationHandler mergedCalibrationBeforeStart = device->getCalibration();
+    for(const auto& cbaSocket : cbaSockets) {
+        REQUIRE(mergedCalibrationBeforeStart.hasCameraCalibration(cbaSocket));
+
+        const auto mainCameraData = mergedCalibrationBeforeStart.getEepromData().cameraData.at(cbaSocket);
+        const auto cbaCameraData = device->readCalibration2(cbaSocket).getEepromData().cameraData.at(cbaSocket);
+        REQUIRE(!compareCameraData(mainCameraData, cbaCameraData));
+    }
+
+    // Starting the pipeline should keep the already prepared runtime calibration intact
     dai::Pipeline pipeline(device);
     auto logger = pipeline.create<dai::node::SystemLogger>();
     auto outputQueue = logger->out.createOutputQueue(1, false);
