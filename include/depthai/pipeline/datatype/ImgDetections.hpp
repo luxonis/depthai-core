@@ -12,7 +12,7 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
-#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 #ifdef DEPTHAI_XTENSOR_SUPPORT
@@ -167,22 +167,23 @@ struct ImgDetection {
  * The segmentation mask is stored as a single-channel INT8 2-d array, where the value represents the instance index in the list of detections.
  * The value 255 is treated as a background pixel (no instance).
  */
-class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable {
+class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable, public TransformableCRTP<ImgDetections> {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
-    std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
     ~ImgDetections() override;
+    friend class TransformableCRTP<ImgDetections>;
+
     using Base = ImgDetectionsT<dai::ImgDetection>;
     using Base::Base;
     using Base::detections;
     using Base::segmentationMaskHeight;
     using Base::segmentationMaskWidth;
     using Base::sequenceNum;
-    using Base::transformation;
     using Base::ts;
     using Base::tsDevice;
+    using Transformable::transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
     DatatypeEnum getDatatype() const override {
@@ -199,7 +200,7 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
      *
      * @param target Target image transformation.
      */
-    ImgDetections transformTo(const ImgTransformation& target);
+    ImgDetections transformTo(const ImgTransformation& target) const;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

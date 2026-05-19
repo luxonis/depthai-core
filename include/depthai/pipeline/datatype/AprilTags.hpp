@@ -5,7 +5,7 @@
 
 #include "depthai/common/Point2f.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 
 namespace dai {
 
@@ -62,16 +62,16 @@ DEPTHAI_SERIALIZE_EXT(AprilTag, id, hamming, decisionMargin, topLeft, topRight, 
 /**
  * AprilTags message.
  */
-class AprilTags : public TransformableBuffer {
+class AprilTags : public Buffer, public TransformableCRTP<AprilTags> {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
-    std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
+    friend class TransformableCRTP<AprilTags>;
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
-    using TransformableBuffer::transformation;
+    using Transformable::transformation;
     /**
      * Construct AprilTags message.
      */
@@ -96,7 +96,7 @@ class AprilTags : public TransformableBuffer {
     }
 
     std::vector<AprilTag> aprilTags;
-    DEPTHAI_SERIALIZE(AprilTags, sequenceNum, ts, tsDevice, TransformableBuffer::transformation, aprilTags);
+    DEPTHAI_SERIALIZE(AprilTags, sequenceNum, ts, tsDevice, Transformable::transformation, aprilTags);
 };
 
 }  // namespace dai

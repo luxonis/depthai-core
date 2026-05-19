@@ -15,6 +15,7 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 
 namespace dai {
 
@@ -168,12 +169,12 @@ struct SpatialImgDetection {
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */
-class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable {
+class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable, public TransformableCRTP<SpatialImgDetections> {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
-    std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
+    friend class TransformableCRTP<SpatialImgDetections>;
     ~SpatialImgDetections() override;
     using Base = ImgDetectionsT<SpatialImgDetection>;
     using Base::Base;
@@ -181,9 +182,9 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     using Base::segmentationMaskHeight;
     using Base::segmentationMaskWidth;
     using Base::sequenceNum;
-    using Base::transformation;
     using Base::ts;
     using Base::tsDevice;
+    using Transformable::transformation;
 
     /**
      * Length unit used by all imgDetections' `spatialCoordinates` in this list.
@@ -206,7 +207,7 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
      * @param target Target image transformation.
      * @return SpatialImgDetections with transformed detections.
      */
-    SpatialImgDetections transformTo(const ImgTransformation& target);
+    SpatialImgDetections transformTo(const ImgTransformation& target) const;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**

@@ -7,7 +7,8 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/optional.hpp"
-#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/span.hpp"
 
@@ -24,10 +25,9 @@ namespace dai {
  * Segmentation mask of an image is stored as a single-channel UINT8 array, where each value represents a class or instance index.
  * The value 255 is treated as background pixels (no class/instance).
  */
-class SegmentationMask : public TransformableBuffer, public ProtoSerializable {
+class SegmentationMask : public Buffer, public Transformable, public ProtoSerializable {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
-    std::shared_ptr<TransformableBuffer> clone() const override;
 
     // Optimization option: if network is bottleneck, implement RLE compression for the mask data
    private:
@@ -42,7 +42,7 @@ class SegmentationMask : public TransformableBuffer, public ProtoSerializable {
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
-    using TransformableBuffer::transformation;
+    using Transformable::transformation;
 
     SegmentationMask();
     SegmentationMask(const std::vector<std::uint8_t>& data, size_t width, size_t height);

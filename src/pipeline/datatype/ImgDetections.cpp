@@ -11,7 +11,7 @@
 #include "depthai/common/Size2f.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/ImgDetections.pb.h"
@@ -190,14 +190,8 @@ void ImgDetections::transformToInternal(const ImgTransformation& target) {
     this->setTransformation(target);
 }
 
-std::shared_ptr<TransformableBuffer> ImgDetections::clone() const {
-    return std::make_shared<ImgDetections>(*this);
-}
-
-ImgDetections ImgDetections::transformTo(const ImgTransformation& target) {
-    ImgDetections transformedDetections = *this;
-    transformedDetections.transformToInternal(target);
-    return transformedDetections;
+ImgDetections ImgDetections::transformTo(const ImgTransformation& target) const {
+    return TransformableCRTP<ImgDetections>::transformTo(target);
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF

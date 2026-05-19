@@ -180,13 +180,7 @@ PointCloudData& PointCloudData::setSparse(bool /*val*/) {
 }
 
 void PointCloudData::transformToInternal(const ImgTransformation&) {
-    throw std::logic_error(
-        "PointCloudData cannot be remapped with ImgTransformation on host. Align the source image and depth to the target transformation before generating "
-        "the point cloud.");
-}
-
-std::shared_ptr<TransformableBuffer> PointCloudData::clone() const {
-    return std::make_shared<PointCloudData>(*this);
+    // For efficiency reasons, point clouds should be created from aligned messages instead of tranforming them after the fact
 }
 
 PointCloudData& PointCloudData::updateBoundingBox() {

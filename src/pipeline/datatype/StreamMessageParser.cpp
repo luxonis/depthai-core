@@ -18,7 +18,7 @@
 #include "depthai/pipeline/datatype/PipelineEvent.hpp"
 #include "depthai/pipeline/datatype/PipelineEventAggregationConfig.hpp"
 #include "depthai/pipeline/datatype/PipelineState.hpp"
-#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "depthai/pipeline/datatype/AutoCalibrationConfig.hpp"
     #include "depthai/pipeline/datatype/AutoCalibrationResult.hpp"
@@ -168,8 +168,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<Buffer>(metadataStart, serializedObjectSize, data, fd);
             break;
 
-        case DatatypeEnum::TransformableBuffer:
-            throw std::runtime_error("Cannot parse abstract TransformableBuffer; expected a concrete type such as ImgDetections, AprilTags, or Tracklets");
+        case DatatypeEnum::Transformable:
+            throw std::runtime_error("Cannot parse abstract Transformable; expected a concrete type such as ImgDetections, AprilTags, or Tracklets");
 
         case DatatypeEnum::ImgFrame:
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);

@@ -34,12 +34,7 @@ void SegmentationMask::setSize(size_t width, size_t height) {
 }
 
 void SegmentationMask::transformToInternal(const ImgTransformation&) {
-    throw std::logic_error(
-        "SegmentationMask cannot be remapped with ImgTransformation on host. Use ImageAlign node to align the segmentation mask to the target transformation.");
-}
-
-std::shared_ptr<TransformableBuffer> SegmentationMask::clone() const {
-    return std::make_shared<SegmentationMask>(*this);
+    // Transform the segmentation mask by using ImageAlign for faster processing.
 }
 
 std::size_t SegmentationMask::getWidth() const {

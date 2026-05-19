@@ -66,14 +66,8 @@ void Tracklets::transformToInternal(const ImgTransformation& target) {
     setTransformation(target);
 }
 
-std::shared_ptr<TransformableBuffer> Tracklets::clone() const {
-    return std::make_shared<Tracklets>(*this);
-}
-
 Tracklets Tracklets::transformTo(const ImgTransformation& target) {
-    Tracklets transformed = *this;
-    transformed.transformToInternal(target);
-    return transformed;
+    return TransformableCRTP<Tracklets>::transformTo(target);
 }
 
 void Tracklets::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {

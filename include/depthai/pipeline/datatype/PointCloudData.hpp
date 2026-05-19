@@ -7,7 +7,7 @@
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
@@ -21,10 +21,9 @@ namespace dai {
 /**
  * PointCloudData message. Carries point cloud data.
  */
-class PointCloudData : public TransformableBuffer, public ProtoSerializable {
+class PointCloudData : public Buffer, public ProtoSerializable, public TransformableCRTP<PointCloudData> {
    protected:
     void transformToInternal(const ImgTransformation& target) override;
-    std::shared_ptr<TransformableBuffer> clone() const override;
 
     unsigned int width = 0;    // width in pixels (for organized) or number of points (for unorganized)
     unsigned int height = 0;   // height in pixels (for organized) or 1 (for unorganized)
@@ -35,15 +34,16 @@ class PointCloudData : public TransformableBuffer, public ProtoSerializable {
     bool color = false;
 
    public:
+    friend class TransformableCRTP<PointCloudData>;
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
-    using TransformableBuffer::getTransformation;
-    using TransformableBuffer::setTransformation;
-    using TransformableBuffer::transformation;
+    using Transformable::getTransformation;
+    using Transformable::setTransformation;
+    using Transformable::transformation;
 
     /**
      * Construct PointCloudData message.
@@ -279,7 +279,7 @@ class PointCloudData : public TransformableBuffer, public ProtoSerializable {
     }
 
     DEPTHAI_SERIALIZE(
-        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, TransformableBuffer::transformation, ts, tsDevice, sequenceNum);
+        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, Transformable::transformation, ts, tsDevice, sequenceNum);
 };
 
 }  // namespace dai
