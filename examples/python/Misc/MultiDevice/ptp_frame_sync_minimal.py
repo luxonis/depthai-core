@@ -143,6 +143,8 @@ with contextlib.ExitStack() as stack:
 
     # main display loop
     latestFrameGroup = None
+    initialSync = False
+    displayedInitialSyncMessage = False
     while running:
         # Get frames from sync node output queue
         while syncedGroups.has():
@@ -157,8 +159,16 @@ with contextlib.ExitStack() as stack:
             syncStatus = abs(delta) < syncThresholdSec
 
             if not syncStatus:
-                print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
+                if not initialSync:
+                    if not displayedInitialSyncMessage:
+                        print("Waiting for initial sync...")
+                        displayedInitialSyncMessage = True
+                else:
+                    print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
                 continue
+
+            if not initialSync:
+                initialSync = True
 
             for outputName in outputNames:
                 msg = latestFrameGroup[outputName]
