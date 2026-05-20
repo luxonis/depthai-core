@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <memory>
 
 // project
 #include "depthai/utility/span.hpp"
@@ -119,6 +120,17 @@ class Memory {
 
     std::size_t getSize() const {
         return getData().size();
+    };
+};
+
+class OffsetMemory : public Memory {
+   public:
+    virtual void setOffset(std::size_t) = 0;
+    virtual span<std::uint8_t> getOffsetData() = 0;
+    virtual span<const std::uint8_t> getOffsetData() const = 0;
+    virtual std::shared_ptr<OffsetMemory> offset(std::size_t offset) = 0;
+    std::size_t getOffsetSize() const {
+        return getOffsetData().size();
     };
 };
 

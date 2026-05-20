@@ -37,9 +37,14 @@ void ImageManip::run() {
                                  manip.getOutputHeight());
             return manip.getOutputSize();
         },
-        [&](std::shared_ptr<Memory>& src, std::shared_ptr<impl::_ImageManipMemory> dst) {
-            auto srcMem = std::make_shared<impl::_ImageManipMemory>(src->getData());
-            return manip.apply(srcMem, dst);
+        [&](size_t outputSize) {
+            auto outImage = std::make_shared<ImgFrame>();
+            auto outImageData = std::make_shared<impl::_ImageManipMemory>(outputSize);
+            outImage->data = outImageData;
+            return outImage;
+        },
+        [&](const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory>& dst) {
+            return manip.apply(src, dst);
         },
         [&](const ImgFrame& srcFrame, ImgFrame& dstFrame) {
             auto outType = manip.getOutputFrameType();

@@ -53,8 +53,9 @@ void loop(N& node,
           const ImageManipConfig& initialConfig,
           std::shared_ptr<spdlog::async_logger> logger,
           std::function<size_t(const ImageManipConfig&, const ImgFrame&)> build,
-          std::function<bool(std::shared_ptr<Memory>&, std::shared_ptr<ImageManipData>)> apply,
-          std::function<void(const ImgFrame&, ImgFrame&)> getFrame) {
+          std::function<std::shared_ptr<ImgFrame>(size_t)> getFrame,
+          std::function<bool(const std::shared_ptr<OffsetMemory>&, std::shared_ptr<OffsetMemory>&)> apply,
+          std::function<void(const ImgFrame&, ImgFrame&)> setFrame) {
     using namespace std::chrono;
     auto config = initialConfig;
 
@@ -119,17 +120,15 @@ void loop(N& node,
         if(outputSize == 0) {
             node.out.send(inImage);
         } else if((long)outputSize <= (long)node.properties.outputFrameSize) {
-            auto outImage = std::make_shared<ImgFrame>();
-            auto outImageData = std::make_shared<ImageManipData>(node.properties.outputFrameSize);
-            outImage->data = outImageData;
+            auto outImage = getFrame(node.properties.outputFrameSize);
 
             bool success = true;
             {
                 auto t3 = steady_clock::now();
-                success = apply(inImage->data, outImageData);
+                success = apply(inImage->data, outImage->data);
                 auto t4 = steady_clock::now();
 
-                getFrame(*inImage, *outImage);
+                setFrame(*inImage, *outImage);
 
                 logger->trace("Build time: {}us, Process time: {}us, Total time: {}us, image manip id: {}",
                               duration_cast<microseconds>(t2 - t1).count(),
@@ -159,18 +158,11 @@ void loop(N& node,
     }
 }
 
-class _ImageManipMemory : public Memory {
+class _ImageManipMemory : public OffsetMemory {
     std::shared_ptr<std::vector<uint8_t>> _data;
     span<uint8_t> _span;
     size_t _offset = 0;
 
-   public:
-    _ImageManipMemory() = default;
-    _ImageManipMemory(size_t size) {
-        _data = std::make_shared<std::vector<uint8_t>>(size);
-        _span = span(*_data);
-    }
-    _ImageManipMemory(span<uint8_t> data) : _span(data) {}
     uint8_t* data() {
         return _span.data() + _offset;
     }
@@ -180,10 +172,24 @@ class _ImageManipMemory : public Memory {
     size_t size() const {
         return _span.size() - _offset;
     }
+
+   public:
+    _ImageManipMemory() = default;
+    _ImageManipMemory(size_t size) {
+        _data = std::make_shared<std::vector<uint8_t>>(size);
+        _span = span(*_data);
+    }
+    _ImageManipMemory(span<uint8_t> data) : _span(data) {}
     span<uint8_t> getData() override {
-        return span(data(), data() + size());
+        return _span;
     }
     span<const uint8_t> getData() const override {
+        return _span;
+    }
+    span<uint8_t> getOffsetData() override {
+        return span(_span.data() + _offset, _span.data() + _offset + size());
+    }
+    span<const uint8_t> getOffsetData() const override {
         return span(data(), data() + size());
     }
     size_t getMaxSize() const override {
@@ -202,7 +208,7 @@ class _ImageManipMemory : public Memory {
             _span = _span.subspan(0, size);
         }
     }
-    void setOffset(size_t offset) {
+    void setOffset(size_t offset) override {
         _offset = std::min(_offset + offset, _span.size());
     }
     void shallowCopyFrom(_ImageManipMemory& other) {
@@ -212,7 +218,7 @@ class _ImageManipMemory : public Memory {
         _span = other._span;
         _offset = other._offset;
     }
-    std::shared_ptr<_ImageManipMemory> offset(size_t offset) {
+    std::shared_ptr<OffsetMemory> offset(size_t offset) override {
         auto mem = std::make_shared<_ImageManipMemory>();
         mem->shallowCopyFrom(*this);
         mem->setOffset(offset);
@@ -526,7 +532,7 @@ class ImageManipOperations {
                                          const uint32_t dstWidth,
                                          const uint32_t dstHeight);
 
-    bool apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst);
+    bool apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory>& dst);
 
     size_t getOutputPlaneSize(uint8_t plane = 0) const;
     size_t getOutputSize() const;
@@ -2800,9 +2806,9 @@ ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipO
     size_t newWarpedSize =
         getAlignedOutputFrameSize(isSingleChannelu8(type) && base.colormap != Colormap::NONE ? VALID_TYPE_COLOR : type, base.outputWidth, base.outputHeight);
 
-    if(!convertedFrame || convertedFrame->size() < newConvertedSize) convertedFrame = std::make_shared<ImageManipData>(newConvertedSize);
-    if(!colormapFrame || colormapFrame->size() < newColormapSize) colormapFrame = std::make_shared<ImageManipData>(newColormapSize);
-    if(!warpedFrame || warpedFrame->size() < newWarpedSize) warpedFrame = std::make_shared<ImageManipData>(newWarpedSize);
+    if(!convertedFrame || convertedFrame->getSize() < newConvertedSize) convertedFrame = std::make_shared<ImageManipData>(newConvertedSize);
+    if(!colormapFrame || colormapFrame->getSize() < newColormapSize) colormapFrame = std::make_shared<ImageManipData>(newColormapSize);
+    if(!warpedFrame || warpedFrame->getSize() < newWarpedSize) warpedFrame = std::make_shared<ImageManipData>(newWarpedSize);
 
     return *this;
 }  // namespace impl
@@ -2831,10 +2837,10 @@ template <template <typename T> typename ImageManipBuffer,
           typename ImageManipData,
           template <template <typename T> typename Buf, typename Dat>
           typename WarpBackend>
-bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(const std::shared_ptr<ImageManipData> src,
-                                                                                std::shared_ptr<ImageManipData> dst) {
+bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(const std::shared_ptr<OffsetMemory>& src,
+                                                                                std::shared_ptr<OffsetMemory>& dst) {
     size_t requiredSize = getFrameSize(inType, srcSpecs);
-    if(src->size() < requiredSize) throw std::runtime_error("ImageManip not built for the source image specs. Consider rebuilding with the new configuration.");
+    if(src->getSize() < requiredSize) throw std::runtime_error("ImageManip not built for the source image specs. Consider rebuilding with the new configuration.");
     if(mode == 0) {
         std::copy(src->getData().begin(), src->getData().end(), dst->getData().begin());
         return true;
@@ -2848,7 +2854,7 @@ bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(
                              base.colormap != Colormap::NONE ? colormapFrame : (type == outputFrameType ? dst : warpedFrame));
         }
         if(mode & MODE_COLORMAP) {
-            uint8_t* colormapDst = outputFrameType == VALID_TYPE_COLOR ? dst->data() : warpedFrame->data();
+            uint8_t* colormapDst = outputFrameType == VALID_TYPE_COLOR ? dst->getData().data() : warpedFrame->data();
             size_t colormapDstStride = outputFrameType == VALID_TYPE_COLOR ? getOutputStride() : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
             uint8_t* colormapSrc = mode & MODE_WARP ? colormapFrame->data() : (convertInput ? convertedFrame->data() : src->getData().data());
             size_t colormapSrcStride = !(mode & MODE_WARP) && !convertInput ? srcSpecs.p1Stride : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
