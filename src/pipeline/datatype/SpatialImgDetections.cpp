@@ -14,7 +14,7 @@
 #include "depthai/common/SpatialKeypoint.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "pipeline/datatype/Transformable.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/SpatialImgDetections.pb.h"
     #include "utility/ProtoSerialize.hpp"

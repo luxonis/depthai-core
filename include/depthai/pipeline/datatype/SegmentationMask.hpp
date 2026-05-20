@@ -50,6 +50,8 @@ class SegmentationMask : public Buffer, public ProtoSerializable, public Transfo
     using Buffer::tsDevice;
     using Transformable::transformation;
 
+    friend class TransformableCRTP<SegmentationMask>;
+
     SegmentationMask();
     SegmentationMask(const std::vector<std::uint8_t>& data, size_t width, size_t height);
     virtual ~SegmentationMask();
