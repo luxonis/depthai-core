@@ -13,9 +13,9 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/Serialization.hpp"
-#include "depthai/pipeline/datatype/Transformable.hpp"
 
 namespace dai {
 
@@ -171,6 +171,9 @@ struct SpatialImgDetection {
  */
 class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable, public TransformableCRTP<SpatialImgDetections> {
    protected:
+    /**
+     * Internal transform hook used by transformTo() to apply SpatialImgDetections-specific transformation logic.
+     */
     void transformToInternal(const ImgTransformation& target) override;
 
    public:

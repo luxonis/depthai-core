@@ -60,6 +60,7 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
     // Message
     tracklets.def(py::init<>())
         .def("__repr__", &Tracklets::str)
+        .def_readwrite("unit", &Tracklets::unit, DOC(dai, Tracklets, unit))
         .def_property(
             "tracklets",
             [](Tracklets& track) { return &track.tracklets; },
@@ -76,6 +77,7 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
                  return *msg.transformation;
              })
         .def("setTransformation", [](Tracklets& msg, const ImgTransformation& transformation) { msg.transformation = transformation; })
+        .def("transformTo", &Tracklets::transformTo, py::arg("target"), DOC(dai, Tracklets, transformTo))
         // .def("setTimestamp", &Tracklets::setTimestamp, DOC(dai, Tracklets, setTimestamp))
         // .def("setTimestampDevice", &Tracklets::setTimestampDevice, DOC(dai, Tracklets, setTimestampDevice))
         // .def("setSequenceNum", &Tracklets::setSequenceNum, DOC(dai, Tracklets, setSequenceNum))

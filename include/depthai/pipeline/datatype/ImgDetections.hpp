@@ -169,6 +169,9 @@ struct ImgDetection {
  */
 class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable, public TransformableCRTP<ImgDetections> {
    protected:
+    /**
+     * Internal transform hook used by transformTo() to apply ImgDetections-specific transformation logic.
+     */
     void transformToInternal(const ImgTransformation& target) override;
 
    public:

@@ -80,6 +80,9 @@ struct Tracklet {
  */
 class Tracklets : public Buffer, public TransformableCRTP<Tracklets> {
    protected:
+    /**
+     * Internal transform hook used by transformTo() to apply Tracklets-specific transformation logic.
+     */
     void transformToInternal(const ImgTransformation& target) override;
 
    public:

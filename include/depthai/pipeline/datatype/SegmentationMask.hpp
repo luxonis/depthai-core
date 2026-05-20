@@ -27,6 +27,9 @@ namespace dai {
  */
 class SegmentationMask : public Buffer, public Transformable, public ProtoSerializable {
    protected:
+    /**
+     * Internal transform hook used by transformTo() to apply SegmentationMask-specific transformation logic.
+     */
     void transformToInternal(const ImgTransformation& target) override;
 
     // Optimization option: if network is bottleneck, implement RLE compression for the mask data

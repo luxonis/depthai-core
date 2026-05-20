@@ -64,6 +64,9 @@ DEPTHAI_SERIALIZE_EXT(AprilTag, id, hamming, decisionMargin, topLeft, topRight, 
  */
 class AprilTags : public Buffer, public TransformableCRTP<AprilTags> {
    protected:
+    /**
+     * Internal transform hook used by transformTo() to apply AprilTags-specific transformation logic.
+     */
     void transformToInternal(const ImgTransformation& target) override;
 
    public:

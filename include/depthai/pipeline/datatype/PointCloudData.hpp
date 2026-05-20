@@ -23,6 +23,9 @@ namespace dai {
  */
 class PointCloudData : public Buffer, public ProtoSerializable, public TransformableCRTP<PointCloudData> {
    protected:
+    /**
+     * Internal transform hook used by transformTo() to apply PointCloudData-specific transformation logic.
+     */
     void transformToInternal(const ImgTransformation& target) override;
 
     unsigned int width = 0;    // width in pixels (for organized) or number of points (for unorganized)
