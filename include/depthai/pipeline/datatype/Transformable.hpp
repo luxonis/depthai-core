@@ -9,6 +9,9 @@
 namespace dai {
 
 class Transformable {
+   protected:
+    virtual void transformToInternal(const ImgTransformation& target) = 0;
+
    public:
     virtual ~Transformable();
     std::optional<ImgTransformation> transformation;
@@ -16,10 +19,6 @@ class Transformable {
     std::optional<ImgTransformation> getTransformation() const;
 
     void setTransformation(const ImgTransformation& transformation);
-
-    void transformTo(const ImgTransformation& target);
-
-    virtual void transformToInternal(const ImgTransformation& target) = 0;
 
     DEPTHAI_SERIALIZE(Transformable, transformation);
 };
@@ -36,7 +35,7 @@ class TransformableCRTP : public Transformable {
 
 class TransformableBuffer : public Buffer, public Transformable {
    protected:
-    void transformToInternal(const ImgTransformation& target) override = 0;
+    void transformToInternal(const ImgTransformation& target) override;
 
    public:
     using Buffer::sequenceNum;
@@ -52,6 +51,12 @@ class TransformableBuffer : public Buffer, public Transformable {
 
     TransformableBuffer() = default;
     virtual ~TransformableBuffer();
+
+    virtual std::shared_ptr<TransformableBuffer> transformTo(const ImgTransformation& target) const;
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    DEPTHAI_SERIALIZE(TransformableBuffer, sequenceNum, ts, tsDevice, Transformable::transformation);
 };
 
 }  // namespace dai

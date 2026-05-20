@@ -169,7 +169,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
 
         case DatatypeEnum::Transformable:
-            throw std::runtime_error("Cannot parse abstract Transformable; expected a concrete type such as ImgDetections, AprilTags, or Tracklets");
+            throw std::runtime_error(
+                "Cannot parse custom Transformable on device; use a supported type such as ImgDetections, AprilTags, or Tracklets or run as host form custom "
+                "Transformable messages");
 
         case DatatypeEnum::ImgFrame:
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);

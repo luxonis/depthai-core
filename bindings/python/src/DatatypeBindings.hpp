@@ -31,12 +31,12 @@ class Py : public T {
 };
 
 template <typename T>
-class Py<T, std::enable_if_t<std::is_base_of_v<dai::Transformable, T>>> : public T {
+class Py<T, std::enable_if_t<std::is_base_of_v<dai::TransformableBuffer, T>>> : public T {
    public:
     using T::T;
 
-    void transformToInternal(const dai::ImgTransformation& target) override {
-        PYBIND11_OVERRIDE_PURE_NAME(void, T, "transformTo", transformToInternal, target);
+    std::shared_ptr<dai::TransformableBuffer> transformTo(const dai::ImgTransformation& target) const override {
+        PYBIND11_OVERRIDE_NAME(std::shared_ptr<dai::TransformableBuffer>, T, "transformTo", transformTo, target);
     }
 };
 }  // namespace dai
