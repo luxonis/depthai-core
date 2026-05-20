@@ -1523,6 +1523,11 @@ bool DeviceBase::isNeuralDepthSupported() {
     return pimpl->rpcCallChecked<bool>("isNeuralDepthSupported");
 }
 
+bool DeviceBase::hasGPU() {
+    if(getPlatform() != Platform::RVC4) return false;
+    return pimpl->rpcCallChecked<bool>("hasGPU");
+}
+
 std::vector<DeviceModelZoo> DeviceBase::getSupportedDeviceModels() {
     return pimpl->rpcCallChecked<std::vector<DeviceModelZoo>>("getSupportedDeviceModels");
 }
@@ -2143,6 +2148,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 void DeviceBase::mockCameraFeatures(const std::filesystem::path& replayPath) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(!replayPath.empty() && !hasMockedFeatures) hasMockedFeatures = utility::mockCameraFeatures(*this, replayPath);
+#else
+    (void)replayPath;
 #endif
 }
 

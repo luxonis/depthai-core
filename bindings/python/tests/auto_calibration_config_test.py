@@ -17,7 +17,9 @@ def test_auto_calibration_config_bindings():
     assert cfg.mode == dai.AutoCalibrationConfig.Mode.ON_START
     assert cfg.sleepingTime == 30
     assert isclose(cfg.calibrationConfidenceThreshold, 0.9)
-    assert isclose(cfg.dataConfidenceThreshold, 0.7)
+    # Negative value means "use the node/device default", which is resolved
+    # later based on the lens model during AutoCalibration setup.
+    assert isclose(cfg.dataConfidenceThreshold, -1.0)
     assert cfg.maxIterations == 5
     assert cfg.maxImagesPerRecalibration == 10
     assert cfg.flashCalibration is True

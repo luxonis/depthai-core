@@ -57,6 +57,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output confidence{*this, {"confidence", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output phase{*this, {"phase", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
      * Build with a specific board socket
@@ -96,6 +97,7 @@ class ToF : public DeviceNodeGroup {
           confidence{tofBase->confidence},
           phase{tofBase->phase},
           rawInput{tofBase->rawInput},
+          raw{tofBase->raw},
           tofBaseInputConfig{tofBase->inputConfig},
           imageFiltersInputConfig{imageFilters->inputConfig},
           tofBaseNode{*tofBase},
@@ -163,6 +165,11 @@ class ToF : public DeviceNodeGroup {
      * Input for raw sensor frames
      */
     Input& rawInput;
+
+    /**
+     * Raw data coming from the sensor
+     */
+    Output& raw;
 
     /**
      * Input config for ToF base node

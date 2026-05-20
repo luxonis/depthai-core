@@ -1003,6 +1003,14 @@ class DeviceBase {
     bool isNeuralDepthSupported();
 
     /**
+     * Checks if a GPU is available on the device.
+     *
+     * @note This is only meaningful on RVC4 platforms.
+     * @returns True if supported, false otherwise
+     */
+    bool hasGPU();
+
+    /**
      * Returns the subset of device zoo models currently available on the device.
      *
      * @returns Supported device zoo models

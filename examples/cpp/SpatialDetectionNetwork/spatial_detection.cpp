@@ -1,4 +1,5 @@
 #include <argparse/argparse.hpp>
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
@@ -8,6 +9,12 @@
 
 constexpr float NEURAL_FPS = 8.0f;
 constexpr float STEREO_DEFAULT_FPS = 20.0f;
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 // Custom host node for spatial visualization
 class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisualizer> {
@@ -27,6 +34,11 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
     }
 
     std::shared_ptr<dai::Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
+        if(quitEvent) {
+            stopPipeline();
+            return nullptr;
+        }
+
         auto depthFrame = in->get<dai::ImgFrame>("depth");
         auto detections = in->get<dai::SpatialImgDetections>("detections");
         auto rgbFrame = in->get<dai::ImgFrame>("rgb");
@@ -130,6 +142,9 @@ class SpatialVisualizer : public dai::NodeCRTP<dai::node::HostNode, SpatialVisua
 };
 
 int main(int argc, char** argv) {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Initialize argument parser
     argparse::ArgumentParser program("spatial_detection", "1.0.0");
     program.add_description("Spatial detection network example with configurable depth source");

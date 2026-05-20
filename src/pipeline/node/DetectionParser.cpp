@@ -561,6 +561,13 @@ void DetectionParser::buildStage1() {
 void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& outDetections, float confidenceThr) {
     auto& logger = ThreadedNode::pimpl->logger;
 
+#ifndef DEPTHAI_XTENSOR_SUPPORT
+    (void)nnData;
+    (void)outDetections;
+    (void)confidenceThr;
+    logger->error("Mobilenet decoding requires DEPTHAI_XTENSOR_SUPPORT.");
+    return;
+#else
     int maxDetections = 100;
     std::vector<dai::ImgDetection> detections;
     std::string tensorName;
@@ -622,6 +629,7 @@ void DetectionParser::decodeMobilenet(dai::NNData& nnData, dai::ImgDetections& o
             outDetections.detections.push_back(d);
         }
     }
+#endif
 }
 
 void DetectionParser::decodeYolo(dai::NNData& nnData, dai::ImgDetections& outDetections) {
