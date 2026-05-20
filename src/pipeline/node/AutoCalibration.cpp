@@ -6,9 +6,35 @@
 
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
+#include "utility/Telemetry.hpp"
 
 namespace dai {
 namespace node {
+
+namespace {
+
+const char* autoCalibModeToString(AutoCalibrationConfig::Mode mode) {
+    switch(mode) {
+        case AutoCalibrationConfig::Mode::ON_START:
+            return "ON_START";
+        case AutoCalibrationConfig::Mode::CONTINUOUS:
+            return "CONTINUOUS";
+    }
+    return "UNKNOWN";
+}
+
+void emitAutoCalibrationOutputSent(const std::shared_ptr<Device>& device, bool passed, double dataConfidence, double calibrationConfidence) {
+    if(!device) return;
+    dai::utility::Telemetry::getInstance().event(*device,
+                                                 "depthai_auto_calibration_output_sent",
+                                                 nlohmann::json{
+                                                     {"passed", passed},
+                                                     {"dataConfidence", dataConfidence},
+                                                     {"calibrationConfidence", calibrationConfidence},
+                                                 });
+}
+
+}  // namespace
 
 constexpr int MAX_FAILS_PER_RECALIBRATION_DEFAULT = 5;
 constexpr int GATE_FPS_DEFAULT = 5;
@@ -220,6 +246,19 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
                     std::chrono::duration<double> elapsed = endTime - startTime;
                     report.elapsedRecalibrationSeconds = elapsed.count();
                     report.coveragesAcquired.push_back({coverage->coverageAcquired, coverage->dataAcquired});
+                    if(device) {
+                        dai::utility::Telemetry::getInstance().event(
+                            *device,
+                            "depthai_auto_calibration_recalibration_result",
+                            nlohmann::json{
+                                {"passed", true},
+                                {"numIterationPerRecalibration", report.numIterationPerRecalibration},
+                                {"elapsedRecalibrationSeconds", report.elapsedRecalibrationSeconds},
+                                {"dataQualityAfterRecalibration", report.dataQualityAfterRecalibration},
+                                {"rotationDifference",
+                                 nlohmann::json::array({report.rotationDifference.at(0), report.rotationDifference.at(1), report.rotationDifference.at(2)})},
+                            });
+                    }
                     return std::make_shared<dai::CalibrationHandler>(dynCalibrationResult->calibrationData.value().newCalibration);
                 }
                 dynamicCalibrationCommandQueue.send(DCC::resetData());
@@ -243,6 +282,17 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
     report.elapsedRecalibrationSeconds = elapsed.count();
+    if(device) {
+        dai::utility::Telemetry::getInstance().event(
+            *device,
+            "depthai_auto_calibration_recalibration_result",
+            nlohmann::json{
+                {"passed", false},
+                {"numIterationPerRecalibration", report.numIterationPerRecalibration},
+                {"elapsedRecalibrationSeconds", report.elapsedRecalibrationSeconds},
+                {"dataQualityAfterRecalibration", report.dataQualityAfterRecalibration},
+            });
+    }
     return nullptr;
 }
 
@@ -258,6 +308,11 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         throw std::invalid_argument("AutoCalibration: validationSetSize must be non-negative");
     }
 
+    auto updateStartTime = std::chrono::steady_clock::now();
+    double lastDataConfidence = 0.0;
+    double lastCalibrationConfidence = 0.0;
+    bool recalibrationTriggered = false;
+    bool thresholdsPassed = false;
     unsigned int numIterations = 0;
     while(numIterations < initialConfig->maxIterations && mainLoop()) {
         auto startTime = std::chrono::steady_clock::now();  // Start timer
@@ -269,15 +324,36 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
         dynamicCalibrationCommandQueue.send(DCC::resetData());
         if(initialConfig->validationSetSize == 0) {
             auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT, report);
+            if(report.recalibrating) recalibrationTriggered = true;
+            lastDataConfidence = report.dataQualityAfterRecalibration;
             if(newCalibration) {
                 dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*newCalibration, initialConfig->flashCalibration));
                 auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., true, *newCalibration);
+                emitAutoCalibrationOutputSent(device, true, 0.0, 0.0);
                 output.send(resultOutput);
                 report.calibrationUpdated = true;
                 auto endTime = std::chrono::steady_clock::now();
                 std::chrono::duration<double> elapsed = endTime - startTime;
                 report.elapsedSeconds = elapsed.count();  // Set duration
                 logReport(report, numIterations + 1);
+
+                if(device) {
+                    const auto totalElapsed =
+                        std::chrono::duration<double>(std::chrono::steady_clock::now() - updateStartTime).count();
+                    dai::utility::Telemetry::getInstance().event(*device,
+                                                                 "depthai_auto_calibration_calibration_update_result",
+                                                                 nlohmann::json{
+                                                                     {"updated", true},
+                                                                     {"passed", true},
+                                                                     {"elapsedSeconds", totalElapsed},
+                                                                     {"numIterationsUsed", numIterations + 1},
+                                                                     {"dataConfidence", report.dataQualityAfterRecalibration},
+                                                                     {"calibrationConfidence", report.calibrationConfidence},
+                                                                     {"thresholdsPassed", true},
+                                                                     {"recalibration_triggered", recalibrationTriggered},
+                                                                     {"flashCalibration", initialConfig->flashCalibration},
+                                                                 });
+                }
                 return true;
             }
         } else {
@@ -286,20 +362,44 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
             auto metrics = getMetrics(calibration);
             report.dataConfidence = metrics->dataConfidence;
             report.calibrationConfidence = metrics->calibrationConfidence;
+            lastDataConfidence = metrics->dataConfidence;
+            lastCalibrationConfidence = metrics->calibrationConfidence;
+            thresholdsPassed = metrics->dataConfidence > initialConfig->dataConfidenceThreshold
+                               && metrics->calibrationConfidence > initialConfig->calibrationConfidenceThreshold;
             if(metrics->dataConfidence > initialConfig->dataConfidenceThreshold) {
                 if(metrics->calibrationConfidence > initialConfig->calibrationConfidenceThreshold) {
                     dynamicCalibrationCommandQueue.send(DCC::applyCalibration(*calibration, initialConfig->flashCalibration));
                     auto resultOutput = std::make_shared<AutoCalibrationResult>(metrics->dataConfidence, metrics->calibrationConfidence, true, *calibration);
+                    emitAutoCalibrationOutputSent(device, true, metrics->dataConfidence, metrics->calibrationConfidence);
                     output.send(resultOutput);
                     report.calibrationUpdated = true;
                     auto endTime = std::chrono::steady_clock::now();
                     std::chrono::duration<double> elapsed = endTime - startTime;
                     report.elapsedSeconds = elapsed.count();  // Set duration
                     logReport(report, numIterations + 1);
+
+                    if(device) {
+                        const auto totalElapsed =
+                            std::chrono::duration<double>(std::chrono::steady_clock::now() - updateStartTime).count();
+                        dai::utility::Telemetry::getInstance().event(*device,
+                                                                     "depthai_auto_calibration_calibration_update_result",
+                                                                     nlohmann::json{
+                                                                         {"updated", true},
+                                                                         {"passed", true},
+                                                                         {"elapsedSeconds", totalElapsed},
+                                                                         {"numIterationsUsed", numIterations + 1},
+                                                                         {"dataConfidence", metrics->dataConfidence},
+                                                                         {"calibrationConfidence", metrics->calibrationConfidence},
+                                                                         {"thresholdsPassed", true},
+                                                                         {"recalibration_triggered", recalibrationTriggered},
+                                                                         {"flashCalibration", initialConfig->flashCalibration},
+                                                                     });
+                    }
                     return true;
                 }
                 auto newCalibration = getNewCalibration(MAX_FAILS_PER_RECALIBRATION_DEFAULT, report);
                 report.recalibrating = true;
+                recalibrationTriggered = true;
                 if(newCalibration) {
                     calibration = std::move(newCalibration);
                 }
@@ -314,7 +414,25 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
 
     if(mainLoop() && calibration) {
         auto resultOutput = std::make_shared<AutoCalibrationResult>(0., 0., false, *calibration);
+        emitAutoCalibrationOutputSent(device, false, 0.0, 0.0);
         output.send(resultOutput);
+    }
+
+    if(device) {
+        const auto totalElapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - updateStartTime).count();
+        dai::utility::Telemetry::getInstance().event(*device,
+                                                     "depthai_auto_calibration_calibration_update_result",
+                                                     nlohmann::json{
+                                                         {"updated", false},
+                                                         {"passed", false},
+                                                         {"elapsedSeconds", totalElapsed},
+                                                         {"numIterationsUsed", numIterations},
+                                                         {"dataConfidence", lastDataConfidence},
+                                                         {"calibrationConfidence", lastCalibrationConfidence},
+                                                         {"thresholdsPassed", thresholdsPassed},
+                                                         {"recalibration_triggered", recalibrationTriggered},
+                                                         {"flashCalibration", initialConfig->flashCalibration},
+                                                     });
     }
     return false;
 }
@@ -326,6 +444,14 @@ void AutoCalibration::runContinuousMode() {
         auto endTime = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed = endTime - startTime;
         logger->info("AutoCalibration update took: {:.2f}s", elapsed.count());
+        if(device) {
+            dai::utility::Telemetry::getInstance().event(*device,
+                                                         "depthai_auto_calibration_cycle_duration",
+                                                         nlohmann::json{
+                                                             {"elapsedSeconds", elapsed.count()},
+                                                             {"mode", autoCalibModeToString(initialConfig->mode)},
+                                                         });
+        }
         int elapsedSleeping = 0;
         // Continue sleeping only if total time isn't met AND mainLoop is still true
         while(elapsedSleeping < initialConfig->sleepingTime && mainLoop()) {
@@ -341,6 +467,14 @@ void AutoCalibration::runOnStartMode() {
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = endTime - startTime;
     logger->info("AutoCalibration update took: {:.2f}s", elapsed.count());
+    if(device) {
+        dai::utility::Telemetry::getInstance().event(*device,
+                                                     "depthai_auto_calibration_cycle_duration",
+                                                     nlohmann::json{
+                                                         {"elapsedSeconds", elapsed.count()},
+                                                         {"mode", autoCalibModeToString(initialConfig->mode)},
+                                                     });
+    }
 }
 
 bool AutoCalibration::validateIncomingData() {
@@ -385,6 +519,22 @@ bool AutoCalibration::validateIncomingData() {
 
 void AutoCalibration::run() {
     logger->info("AutoCalibration started to work!");
+
+    if(device) {
+        dai::utility::Telemetry::getInstance().event(*device,
+                                                     "depthai_auto_calibration_node_started",
+                                                     nlohmann::json{
+                                                         {"mode", autoCalibModeToString(initialConfig->mode)},
+                                                         {"sleepingTime", initialConfig->sleepingTime},
+                                                         {"maxIterations", initialConfig->maxIterations},
+                                                         {"maxImagesPerRecalibration", initialConfig->maxImagesPerRecalibration},
+                                                         {"validationSetSize", initialConfig->validationSetSize},
+                                                         {"dataConfidenceThreshold", initialConfig->dataConfidenceThreshold},
+                                                         {"calibrationConfidenceThreshold", initialConfig->calibrationConfidenceThreshold},
+                                                         {"flashCalibration", initialConfig->flashCalibration},
+                                                     });
+    }
+
     if(!validateIncomingData()) {
         return;
     }

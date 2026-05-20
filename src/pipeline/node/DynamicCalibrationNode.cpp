@@ -13,9 +13,91 @@
 #include "depthai/utility/matrixOps.hpp"
 #include "depthai/utility/spimpl.h"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
+#include "utility/Telemetry.hpp"
 
 namespace dai {
 namespace node {
+
+namespace {
+
+constexpr std::size_t MAX_TELEMETRY_MESSAGE_LEN = 512;
+
+std::string truncateForTelemetry(std::string value) {
+    if(value.size() <= MAX_TELEMETRY_MESSAGE_LEN) return value;
+    value.resize(MAX_TELEMETRY_MESSAGE_LEN);
+    return value;
+}
+
+const char* performanceModeToString(DynamicCalibrationControl::PerformanceMode mode) {
+    using PM = DynamicCalibrationControl::PerformanceMode;
+    switch(mode) {
+        case PM::DEFAULT:
+            return "DEFAULT";
+        case PM::STATIC_SCENERY:
+            return "STATIC_SCENERY";
+        case PM::OPTIMIZE_SPEED:
+            return "OPTIMIZE_SPEED";
+        case PM::OPTIMIZE_PERFORMANCE:
+            return "OPTIMIZE_PERFORMANCE";
+        case PM::SKIP_CHECKS:
+            return "SKIP_CHECKS";
+    }
+    return "UNKNOWN";
+}
+
+const char* commandTypeToString(const DynamicCalibrationControl::Command& cmd) {
+    using DC = DynamicCalibrationControl;
+    if(std::holds_alternative<DC::Commands::Calibrate>(cmd)) return "Calibrate";
+    if(std::holds_alternative<DC::Commands::CalibrationQuality>(cmd)) return "CalibrationQuality";
+    if(std::holds_alternative<DC::Commands::StartCalibration>(cmd)) return "StartCalibration";
+    if(std::holds_alternative<DC::Commands::StopCalibration>(cmd)) return "StopCalibration";
+    if(std::holds_alternative<DC::Commands::LoadImage>(cmd)) return "LoadImage";
+    if(std::holds_alternative<DC::Commands::ApplyCalibration>(cmd)) return "ApplyCalibration";
+    if(std::holds_alternative<DC::Commands::ResetData>(cmd)) return "ResetData";
+    if(std::holds_alternative<DC::Commands::SetPerformanceMode>(cmd)) return "SetPerformanceMode";
+    if(std::holds_alternative<DC::Commands::ComputeCalibrationMetrics>(cmd)) return "ComputeCalibrationMetrics";
+    return "UNSET";
+}
+
+void emitCommandReceivedTelemetry(const std::shared_ptr<Device>& device,
+                                 const DynamicCalibrationControl::Command& cmd,
+                                 DynamicCalibrationControl::PerformanceMode currentPerformanceMode) {
+    if(!device) return;
+
+    using DC = DynamicCalibrationControl;
+    nlohmann::json props = nlohmann::json::object();
+    props["commandType"] = commandTypeToString(cmd);
+
+    if(std::holds_alternative<DC::Commands::Calibrate>(cmd)) {
+        const auto& c = std::get<DC::Commands::Calibrate>(cmd);
+        props["force"] = c.force;
+    } else if(std::holds_alternative<DC::Commands::CalibrationQuality>(cmd)) {
+        const auto& c = std::get<DC::Commands::CalibrationQuality>(cmd);
+        props["force"] = c.force;
+    } else if(std::holds_alternative<DC::Commands::StartCalibration>(cmd)) {
+        const auto& c = std::get<DC::Commands::StartCalibration>(cmd);
+        props["loadImagePeriod"] = c.loadImagePeriod;
+        props["calibrationPeriod"] = c.calibrationPeriod;
+    } else if(std::holds_alternative<DC::Commands::ApplyCalibration>(cmd)) {
+        const auto& c = std::get<DC::Commands::ApplyCalibration>(cmd);
+        props["flash"] = c.flash;
+    } else if(std::holds_alternative<DC::Commands::SetPerformanceMode>(cmd)) {
+        const auto& c = std::get<DC::Commands::SetPerformanceMode>(cmd);
+        props["performanceMode"] = performanceModeToString(c.performanceMode);
+    } else if(std::holds_alternative<DC::Commands::ComputeCalibrationMetrics>(cmd)) {
+        // No extra params.
+    } else if(std::holds_alternative<DC::Commands::StopCalibration>(cmd) || std::holds_alternative<DC::Commands::LoadImage>(cmd)
+              || std::holds_alternative<DC::Commands::ResetData>(cmd)) {
+        // No extra params.
+    }
+
+    // Include current performanceMode for context (even if command doesn't carry it).
+    props["currentPerformanceMode"] = performanceModeToString(currentPerformanceMode);
+
+    dai::utility::Telemetry::getInstance().event(*device, "depthai_dynamic_calibration_command_received", std::move(props));
+}
+
+}  // namespace
 
 class DynamicCalibration::Impl {
    public:
@@ -261,10 +343,35 @@ dai::CalibrationQuality calibQualityfromDCL(const dcl::CalibrationDifference& sr
 
 void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash) {
     logger->trace("Applying calibration to device");
-    device->setCalibration(handler);
-    if(flash) {
-        device->flashCalibration(handler);
+    bool applied = false;
+    try {
+        device->setCalibration(handler);
+        if(flash) {
+            device->flashCalibration(handler);
+        }
+        applied = true;
+    } catch(const std::exception& ex) {
+        if(device) {
+            dai::utility::Telemetry::getInstance().event(*device,
+                                                         "depthai_dynamic_calibration_calibration_applied",
+                                                         nlohmann::json{
+                                                             {"flash", flash},
+                                                             {"applied", false},
+                                                             {"error", truncateForTelemetry(ex.what())},
+                                                         });
+        }
+        throw;
     }
+
+    if(device) {
+        dai::utility::Telemetry::getInstance().event(*device,
+                                                     "depthai_dynamic_calibration_calibration_applied",
+                                                     nlohmann::json{
+                                                         {"flash", flash},
+                                                         {"applied", applied},
+                                                     });
+    }
+
     auto [calibA, calibB] = DclUtils::convertDaiCalibrationToDcl(handler, daiSocketA, daiSocketB, imgTransformationA, imgTransformationB);
     pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorA, calibA);
     pimplDCL->dynCalibImpl.setCalibration(pimplDCL->sensorB, calibB);
@@ -286,6 +393,15 @@ void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
         metrics->calibrationConfidence = calibrationConfidence.value;
     }
     metricsOutput.send(metrics);
+
+    if(device) {
+        dai::utility::Telemetry::getInstance().event(*device,
+                                                     "depthai_dynamic_calibration_metrics",
+                                                     nlohmann::json{
+                                                         {"dataConfidence", metrics->dataConfidence},
+                                                         {"calibrationConfidence", metrics->calibrationConfidence},
+                                                     });
+    }
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool force) {
@@ -300,6 +416,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
         logger->trace("WARNING: Quality check failed: {}", dclResult.errorMessage());
 
         qualityOutput.send(result);
+        if(device) {
+            dai::utility::Telemetry::getInstance().event(*device,
+                                                         "depthai_dynamic_calibration_quality_result",
+                                                         nlohmann::json{
+                                                             {"passed", false},
+                                                             {"info", truncateForTelemetry(dclResult.errorMessage())},
+                                                         });
+        }
         return DynamicCalibration::ErrorCode::QUALITY_CHECK_FAILED;
     }
 
@@ -308,6 +432,22 @@ DynamicCalibration::ErrorCode DynamicCalibration::runQualityCheck(const bool for
     logger->trace("Quality check passed.");
 
     qualityOutput.send(result);
+
+    if(device && result->qualityData.has_value()) {
+        nlohmann::json props{
+            {"passed", true},
+            {"sampsonErrorCurrent", result->qualityData->sampsonErrorCurrent},
+            {"sampsonErrorNew", result->qualityData->sampsonErrorNew},
+            {"rotationChange", nlohmann::json::array({result->qualityData->rotationChange[0],
+                                                      result->qualityData->rotationChange[1],
+                                                      result->qualityData->rotationChange[2]})},
+            {"depthErrorDifference", result->qualityData->depthErrorDifference},
+        };
+        if(!dclResult.errorMessage().empty()) {
+            props["info"] = truncateForTelemetry(dclResult.errorMessage());
+        }
+        dai::utility::Telemetry::getInstance().event(*device, "depthai_dynamic_calibration_quality_result", std::move(props));
+    }
 
     return DynamicCalibration::ErrorCode::OK;
 }
@@ -321,6 +461,14 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         logger->trace("WARNING: Calibration failed: {}", dclResult.errorMessage());
 
         calibrationOutput.send(result);
+        if(device) {
+            dai::utility::Telemetry::getInstance().event(*device,
+                                                         "depthai_dynamic_calibration_calibration_result",
+                                                         nlohmann::json{
+                                                             {"passed", false},
+                                                             {"info", truncateForTelemetry(dclResult.errorMessage())},
+                                                         });
+        }
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
     }
 
@@ -354,6 +502,21 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     logger->trace(
         "Calibration successful. Rotation Δ=({}, {}, {})", qualityData.rotationChange[0], qualityData.rotationChange[1], qualityData.rotationChange[2]);
     calibrationOutput.send(result);
+
+    if(device) {
+        nlohmann::json props{
+            {"passed", true},
+            {"dataConfidence", resultData.dataConfidence},
+            {"sampsonErrorCurrent", qualityData.sampsonErrorCurrent},
+            {"sampsonErrorNew", qualityData.sampsonErrorNew},
+            {"rotationChange", nlohmann::json::array({qualityData.rotationChange[0], qualityData.rotationChange[1], qualityData.rotationChange[2]})},
+            {"depthErrorDifference", qualityData.depthErrorDifference},
+        };
+        if(!dclResult.errorMessage().empty()) {
+            props["info"] = truncateForTelemetry(dclResult.errorMessage());
+        }
+        dai::utility::Telemetry::getInstance().event(*device, "depthai_dynamic_calibration_calibration_result", std::move(props));
+    }
 
     return DynamicCalibration::ErrorCode::OK;
 }
@@ -418,6 +581,16 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
 
     coverageOutput.send(coverageResult);
 
+    if(device) {
+        dai::utility::Telemetry::getInstance().event(*device,
+                                                     "depthai_dynamic_calibration_coverage",
+                                                     nlohmann::json{
+                                                         {"meanCoverage", coverageResult->meanCoverage},
+                                                         {"coverageAcquired", coverageResult->coverageAcquired},
+                                                         {"dataAcquired", coverageResult->dataAcquired},
+                                                     });
+    }
+
     return DynamicCalibration::ErrorCode::OK;
 }
 
@@ -468,6 +641,18 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     pimplDCL->sensorA = pimplDCL->dynCalibImpl.addSensor(pimplDCL->device, calibA, resolutionDclA);
     pimplDCL->sensorB = pimplDCL->dynCalibImpl.addSensor(pimplDCL->device, calibB, resolutionDclB);
 
+    if(daiDevice && !telemetryNodeStartedEmitted) {
+        telemetryNodeStartedEmitted = true;
+        dai::utility::Telemetry::getInstance().event(*daiDevice,
+                                                     "depthai_dynamic_calibration_node_started",
+                                                     nlohmann::json{
+                                                         {"socketA", toString(daiSocketA)},
+                                                         {"socketB", toString(daiSocketB)},
+                                                         {"resolutionA", nlohmann::json{{"width", resolutionA.first}, {"height", resolutionA.second}}},
+                                                         {"resolutionB", nlohmann::json{{"width", resolutionB.first}, {"height", resolutionB.second}}},
+                                                     });
+    }
+
     return DynamicCalibration::ErrorCode::OK;
 }
 
@@ -475,6 +660,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     using DC = DynamicCalibrationControl;
 
     const auto& cmd = control->command;
+
+    emitCommandReceivedTelemetry(device, cmd, performanceMode);
 
     // Early exit if command is not set
     if(std::holds_alternative<std::monostate>(cmd)) {
@@ -532,6 +719,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     else if(std::holds_alternative<DC::Commands::ResetData>(cmd)) {
         logger->trace("Received RemoveDataCommand: removing the data");
         pimplDCL->dynCalibImpl.removeAllData(pimplDCL->sensorA, pimplDCL->sensorB);
+        if(device) {
+            dai::utility::Telemetry::getInstance().event(*device, "depthai_dynamic_calibration_reset_data", nlohmann::json::object());
+        }
         return ErrorCode::OK;
     }
     // Set performance mode
@@ -539,6 +729,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
         const auto& c = std::get<DC::Commands::SetPerformanceMode>(cmd);
         logger->trace("Received SetPerformanceModeCommand: changing performance mode to {}", static_cast<int>(c.performanceMode));
         performanceMode = c.performanceMode;
+        if(device) {
+            dai::utility::Telemetry::getInstance().event(*device,
+                                                         "depthai_dynamic_calibration_performance_mode_set",
+                                                         nlohmann::json{{"performanceMode", performanceModeToString(performanceMode)}});
+        }
         return ErrorCode::OK;
     } else if(std::holds_alternative<DC::Commands::ComputeCalibrationMetrics>(cmd)) {
         logger->trace("Received ComputerCalibrationMetrics: calculation metricis");

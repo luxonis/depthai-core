@@ -214,6 +214,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     // When old calibration is encountered, issue a warning once
     bool oldCalibrationWarningIssued = false;
+
+    // Telemetry: emit node_started once per node run lifecycle.
+    bool telemetryNodeStartedEmitted = false;
 };
 
 }  // namespace node
