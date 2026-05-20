@@ -18,7 +18,7 @@ ImageManip::ImageManip(std::unique_ptr<Properties> props)
 void ImageManip::run() {
     impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory, impl::WarpH> manip(properties, pimpl->logger);
     auto iConf = runOnHost() ? *initialConfig : properties.initialConfig;
-    impl::loop<ImageManip, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
+    impl::loop<ImageManip, impl::_ImageManipBuffer>(
         *this,
         iConf,
         pimpl->logger,
@@ -43,8 +43,8 @@ void ImageManip::run() {
             outImage->data = outImageData;
             return outImage;
         },
-        [&](const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory>& dst) {
-            return manip.apply(src, dst);
+        [&](const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
+            return manip.apply(src, std::move(dst));
         },
         [&](const ImgFrame& srcFrame, ImgFrame& dstFrame) {
             auto outType = manip.getOutputFrameType();

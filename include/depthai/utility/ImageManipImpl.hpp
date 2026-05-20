@@ -48,13 +48,13 @@
 
 namespace dai {
 namespace impl {
-template <typename N, template <typename T> typename ImageManipBuffer, typename ImageManipData>
+template <typename N, template <typename T> typename ImageManipBuffer>
 void loop(N& node,
           const ImageManipConfig& initialConfig,
           std::shared_ptr<spdlog::async_logger> logger,
           std::function<size_t(const ImageManipConfig&, const ImgFrame&)> build,
           std::function<std::shared_ptr<ImgFrame>(size_t)> getFrame,
-          std::function<bool(const std::shared_ptr<OffsetMemory>&, std::shared_ptr<OffsetMemory>&)> apply,
+          std::function<bool(const std::shared_ptr<OffsetMemory>&, std::shared_ptr<OffsetMemory>)> apply,
           std::function<void(const ImgFrame&, ImgFrame&)> setFrame) {
     using namespace std::chrono;
     auto config = initialConfig;
@@ -307,7 +307,6 @@ class UndistortOpenCvImpl {
 };
 #endif
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
 class Warp {
    protected:
     using Container = std::vector<ManipOp>;
@@ -352,7 +351,7 @@ class Warp {
                                 const uint32_t dstWidth,
                                 const uint32_t dstHeight) = 0;
 
-    virtual void apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) = 0;
+    virtual void apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) = 0;
 
     void setLogger(std::shared_ptr<spdlog::async_logger> logger) {
         this->logger = logger;
@@ -361,10 +360,9 @@ class Warp {
     Warp& setBackgroundColor(uint32_t r, uint32_t g, uint32_t b);
 };
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
-    std::shared_ptr<ImageManipBuffer<uint32_t>> fastCvBorder;
-    std::shared_ptr<ImageManipData> auxFrame;
+class WarpH : public Warp {
+    std::shared_ptr<_ImageManipBuffer<uint32_t>> fastCvBorder;
+    std::shared_ptr<_ImageManipMemory> auxFrame;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     std::unique_ptr<UndistortOpenCvImpl> undistortImpl;
@@ -372,8 +370,8 @@ class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
     std::unique_ptr<uint32_t> dummyUndistortImpl;
 #endif
 
-    void transform(const std::shared_ptr<ImageManipData> srcData,
-                   std::shared_ptr<ImageManipData> dstData,
+    void transform(const std::shared_ptr<OffsetMemory>& srcData,
+                   std::shared_ptr<OffsetMemory> dstData,
                    const size_t srcWidth,
                    const size_t srcHeight,
                    const size_t srcStride,
@@ -401,7 +399,7 @@ class WarpH : public Warp<ImageManipBuffer, ImageManipData> {
                         const uint32_t dstWidth,
                         const uint32_t dstHeight) override;
 
-    void apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) override;
+    void apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) override;
 };
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
@@ -467,16 +465,12 @@ class ColorChange {
 
     void build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo);
 
-    void apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst);
+    void apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst);
 };
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 class ImageManipOperations {
-    static_assert(std::is_base_of<Warp<ImageManipBuffer, ImageManipData>, WarpBackend<ImageManipBuffer, ImageManipData>>::value,
-                  "WarpBackend must be derived from Warp");
+    static_assert(std::is_base_of<Warp, WarpBackend>::value, "WarpBackend must be derived from Warp");
     using Container = std::vector<ManipOp>;
 
     static constexpr uint8_t MODE_CONVERT = 1;
@@ -510,7 +504,7 @@ class ImageManipOperations {
     FrameSpecs srcSpecs;
 
     ColorChange<ImageManipBuffer, ImageManipData> preprocCc;
-    WarpBackend<ImageManipBuffer, ImageManipData> warpEngine;
+    WarpBackend warpEngine;
     ColorChange<ImageManipBuffer, ImageManipData> clrChange;
 
    public:
@@ -532,7 +526,7 @@ class ImageManipOperations {
                                          const uint32_t dstWidth,
                                          const uint32_t dstHeight);
 
-    bool apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory>& dst);
+    bool apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst);
 
     size_t getOutputPlaneSize(uint8_t plane = 0) const;
     size_t getOutputSize() const;
@@ -650,8 +644,8 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(const 
                                                                           dai::ImgFrame::Type from) {
     // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888p;
 
-    auto src = inputFrame->getData().data();
-    auto inputSize = inputFrame->getSize();
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
@@ -720,9 +714,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(const 
                     uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
                     uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
                     uint32_t p3Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
-                    outputFrame->getData()[p1Pos] = src[srcPos + 0];
-                    outputFrame->getData()[p2Pos] = src[srcPos + 1];
-                    outputFrame->getData()[p3Pos] = src[srcPos + 2];
+                    outputFrame->getOffsetData()[p1Pos] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[p2Pos] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[p3Pos] = src[srcPos + 2];
                 }
             }
 #endif
@@ -783,9 +777,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(const 
                     uint32_t p1Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
                     uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
                     uint32_t p3Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
-                    outputFrame->getData()[p1Pos] = src[srcPos + 0];
-                    outputFrame->getData()[p2Pos] = src[srcPos + 1];
-                    outputFrame->getData()[p3Pos] = src[srcPos + 2];
+                    outputFrame->getOffsetData()[p1Pos] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[p2Pos] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[p3Pos] = src[srcPos + 2];
                 }
             }
 #endif
@@ -917,9 +911,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888p(const 
                     float V = src[lineStartV + (uint32_t)(j / 2)];
                     float R, G, B;
                     RGBfromYUV(R, G, B, Y, U, V);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(clampi(roundf(R), 0, 255));
-                    outputFrame->getData()[p2Pos] = static_cast<uint8_t>(clampi(roundf(G), 0, 255));
-                    outputFrame->getData()[p3Pos] = static_cast<uint8_t>(clampi(roundf(B), 0, 255));
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(clampi(roundf(R), 0, 255));
+                    outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(clampi(roundf(G), 0, 255));
+                    outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(clampi(roundf(B), 0, 255));
                 }
             }
 #endif
@@ -968,8 +962,8 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(const 
                                                                           dai::ImgFrame::Type from) {
     // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888p;
 
-    auto src = inputFrame->getData().data();
-    auto inputSize = inputFrame->getSize();
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
@@ -1038,9 +1032,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(const 
                     uint32_t p1Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
                     uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
                     uint32_t p3Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
-                    outputFrame->getData()[p1Pos] = src[srcPos + 0];
-                    outputFrame->getData()[p2Pos] = src[srcPos + 1];
-                    outputFrame->getData()[p3Pos] = src[srcPos + 2];
+                    outputFrame->getOffsetData()[p1Pos] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[p2Pos] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[p3Pos] = src[srcPos + 2];
                 }
             }
 #endif
@@ -1101,9 +1095,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(const 
                     uint32_t p1Pos = dstSpecs.p1Offset + i * dstSpecs.p1Stride + j;
                     uint32_t p2Pos = dstSpecs.p2Offset + i * dstSpecs.p2Stride + j;
                     uint32_t p3Pos = dstSpecs.p3Offset + i * dstSpecs.p3Stride + j;
-                    outputFrame->getData()[p1Pos] = src[srcPos + 0];
-                    outputFrame->getData()[p2Pos] = src[srcPos + 1];
-                    outputFrame->getData()[p3Pos] = src[srcPos + 2];
+                    outputFrame->getOffsetData()[p1Pos] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[p2Pos] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[p3Pos] = src[srcPos + 2];
                 }
             }
 #endif
@@ -1235,9 +1229,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888p(const 
                     float V = src[lineStartV + (uint32_t)(j / 2)];
                     float R, G, B;
                     RGBfromYUV(R, G, B, Y, U, V);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(clampi(roundf(B), 0, 255));
-                    outputFrame->getData()[p2Pos] = static_cast<uint8_t>(clampi(roundf(G), 0, 255));
-                    outputFrame->getData()[p3Pos] = static_cast<uint8_t>(clampi(roundf(R), 0, 255));
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(clampi(roundf(B), 0, 255));
+                    outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(clampi(roundf(G), 0, 255));
+                    outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(clampi(roundf(R), 0, 255));
                 }
             }
 #endif
@@ -1286,8 +1280,8 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(const 
                                                                           dai::ImgFrame::Type from) {
     // dai::ImgFrame::Type to = dai::ImgFrame::Type::RGB888i;
 
-    auto src = inputFrame->getData().data();
-    auto inputSize = inputFrame->getSize();
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
@@ -1320,9 +1314,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(const 
                     uint32_t p1Pos = srcSpecs.p1Offset + i * srcSpecs.p1Stride + j;
                     uint32_t p2Pos = srcSpecs.p2Offset + i * srcSpecs.p2Stride + j;
                     uint32_t p3Pos = srcSpecs.p3Offset + i * srcSpecs.p3Stride + j;
-                    outputFrame->getData()[dstPos + 0] = src[p1Pos];
-                    outputFrame->getData()[dstPos + 1] = src[p2Pos];
-                    outputFrame->getData()[dstPos + 2] = src[p3Pos];
+                    outputFrame->getOffsetData()[dstPos + 0] = src[p1Pos];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[p2Pos];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[p3Pos];
                 }
             }
 #endif
@@ -1357,9 +1351,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(const 
                     uint32_t p1Pos = srcSpecs.p3Offset + i * srcSpecs.p3Stride + j;
                     uint32_t p2Pos = srcSpecs.p2Offset + i * srcSpecs.p2Stride + j;
                     uint32_t p3Pos = srcSpecs.p1Offset + i * srcSpecs.p1Stride + j;
-                    outputFrame->getData()[dstPos + 0] = src[p1Pos];
-                    outputFrame->getData()[dstPos + 1] = src[p2Pos];
-                    outputFrame->getData()[dstPos + 2] = src[p3Pos];
+                    outputFrame->getOffsetData()[dstPos + 0] = src[p1Pos];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[p2Pos];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[p3Pos];
                 }
             }
 #endif
@@ -1385,9 +1379,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(const 
                 for(uint32_t j = 0; j < srcSpecs.width; ++j) {
                     uint32_t dstPos = lineStartDst + j * 3;
                     uint32_t srcPos = lineStartSrc + j * 3;
-                    outputFrame->getData()[dstPos + 0] = src[srcPos + 2];
-                    outputFrame->getData()[dstPos + 1] = src[srcPos + 1];
-                    outputFrame->getData()[dstPos + 2] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[dstPos + 0] = src[srcPos + 2];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[srcPos + 0];
                 }
             }
 #endif
@@ -1441,9 +1435,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToRGB888i(const 
                     float V = src[lineStartV + (uint32_t)(j / 2)];
                     float R, G, B;
                     RGBfromYUV(R, G, B, Y, U, V);
-                    outputFrame->getData()[pos + 0] = static_cast<uint8_t>(clampi(roundf(R), 0, 255.0f));
-                    outputFrame->getData()[pos + 1] = static_cast<uint8_t>(clampi(roundf(G), 0, 255.0f));
-                    outputFrame->getData()[pos + 2] = static_cast<uint8_t>(clampi(roundf(B), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 0] = static_cast<uint8_t>(clampi(roundf(R), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 1] = static_cast<uint8_t>(clampi(roundf(G), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 2] = static_cast<uint8_t>(clampi(roundf(B), 0, 255.0f));
                 }
             }
 #endif
@@ -1492,8 +1486,8 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(const 
                                                                           dai::ImgFrame::Type from) {
     // dai::ImgFrame::Type to = dai::ImgFrame::Type::BGR888i;
 
-    auto src = inputFrame->getData().data();
-    auto inputSize = inputFrame->getSize();
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 #endif
@@ -1528,9 +1522,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(const 
                     uint32_t p1Pos = srcSpecs.p3Offset + i * srcSpecs.p3Stride + j;
                     uint32_t p2Pos = srcSpecs.p2Offset + i * srcSpecs.p2Stride + j;
                     uint32_t p3Pos = srcSpecs.p1Offset + i * srcSpecs.p1Stride + j;
-                    outputFrame->getData()[dstPos + 0] = src[p1Pos];
-                    outputFrame->getData()[dstPos + 1] = src[p2Pos];
-                    outputFrame->getData()[dstPos + 2] = src[p3Pos];
+                    outputFrame->getOffsetData()[dstPos + 0] = src[p1Pos];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[p2Pos];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[p3Pos];
                 }
             }
 #endif
@@ -1565,9 +1559,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(const 
                     uint32_t p1Pos = srcSpecs.p1Offset + i * srcSpecs.p1Stride + j;
                     uint32_t p2Pos = srcSpecs.p2Offset + i * srcSpecs.p2Stride + j;
                     uint32_t p3Pos = srcSpecs.p3Offset + i * srcSpecs.p3Stride + j;
-                    outputFrame->getData()[dstPos + 0] = src[p1Pos];
-                    outputFrame->getData()[dstPos + 1] = src[p2Pos];
-                    outputFrame->getData()[dstPos + 2] = src[p3Pos];
+                    outputFrame->getOffsetData()[dstPos + 0] = src[p1Pos];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[p2Pos];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[p3Pos];
                 }
             }
 #endif
@@ -1589,9 +1583,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(const 
                 for(uint32_t j = 0; j < srcSpecs.width; ++j) {
                     uint32_t dstPos = lineStartDst + j * 3;
                     uint32_t srcPos = lineStartSrc + j * 3;
-                    outputFrame->getData()[dstPos + 0] = src[srcPos + 2];
-                    outputFrame->getData()[dstPos + 1] = src[srcPos + 1];
-                    outputFrame->getData()[dstPos + 2] = src[srcPos + 0];
+                    outputFrame->getOffsetData()[dstPos + 0] = src[srcPos + 2];
+                    outputFrame->getOffsetData()[dstPos + 1] = src[srcPos + 1];
+                    outputFrame->getOffsetData()[dstPos + 2] = src[srcPos + 0];
                 }
             }
 #endif
@@ -1651,9 +1645,9 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToBGR888i(const 
                     float V = src[lineStartV + (uint32_t)(j / 2)];
                     float R, G, B;
                     RGBfromYUV(R, G, B, Y, U, V);
-                    outputFrame->getData()[pos + 0] = static_cast<uint8_t>(clampi(roundf(B), 0, 255.0f));
-                    outputFrame->getData()[pos + 1] = static_cast<uint8_t>(clampi(roundf(G), 0, 255.0f));
-                    outputFrame->getData()[pos + 2] = static_cast<uint8_t>(clampi(roundf(R), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 0] = static_cast<uint8_t>(clampi(roundf(B), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 1] = static_cast<uint8_t>(clampi(roundf(G), 0, 255.0f));
+                    outputFrame->getOffsetData()[pos + 2] = static_cast<uint8_t>(clampi(roundf(R), 0, 255.0f));
                 }
             }
 #endif
@@ -1702,8 +1696,8 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(const std
                                                                        dai::ImgFrame::Type from) {
     // dai::ImgFrame::Type to = dai::ImgFrame::Type::NV12;
 
-    auto src = inputFrame->getData().data();
-    auto inputSize = inputFrame->getSize();
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 #endif
@@ -1744,10 +1738,10 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(const std
                     float B = src[lineStartB + j];
                     float Y, U, V;
                     YUVfromRGB(Y, U, V, R, G, B);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(Y);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
                     if(i % 2 == 0 && j % 2 == 0) {
-                        outputFrame->getData()[p2Pos] = static_cast<uint8_t>(U);
-                        outputFrame->getData()[p3Pos] = static_cast<uint8_t>(V);
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
                     }
                 }
             }
@@ -1789,10 +1783,10 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(const std
                     float B = src[lineStartB + j];
                     float Y, U, V;
                     YUVfromRGB(Y, U, V, R, G, B);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(Y);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
                     if(i % 2 == 0 && j % 2 == 0) {
-                        outputFrame->getData()[p2Pos] = static_cast<uint8_t>(U);
-                        outputFrame->getData()[p3Pos] = static_cast<uint8_t>(V);
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
                     }
                 }
             }
@@ -1824,10 +1818,10 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(const std
                     float B = src[pos + 2];
                     float Y, U, V;
                     YUVfromRGB(Y, U, V, R, G, B);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(Y);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
                     if(i % 2 == 0 && j % 2 == 0) {
-                        outputFrame->getData()[p2Pos] = static_cast<uint8_t>(U);
-                        outputFrame->getData()[p3Pos] = static_cast<uint8_t>(V);
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
                     }
                 }
             }
@@ -1858,10 +1852,10 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToNV12(const std
                     float R = src[pos + 2];
                     float Y, U, V;
                     YUVfromRGB(Y, U, V, R, G, B);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(Y);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
                     if(i % 2 == 0 && j % 2 == 0) {
-                        outputFrame->getData()[p2Pos] = static_cast<uint8_t>(U);
-                        outputFrame->getData()[p3Pos] = static_cast<uint8_t>(V);
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
                     }
                 }
             }
@@ -1956,8 +1950,8 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(const 
                                                                           dai::ImgFrame::Type from) {
     // dai::ImgFrame::Type to = dai::ImgFrame::Type::YUV420p;
 
-    auto src = inputFrame->getData().data();
-    auto inputSize = inputFrame->getSize();
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
 #if defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 #endif
@@ -2000,10 +1994,10 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(const 
                     float B = src[lineStartB + j];
                     float Y, U, V;
                     YUVfromRGB(Y, U, V, R, G, B);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(Y);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
                     if(i % 2 == 0 && j % 2 == 0) {
-                        outputFrame->getData()[p2Pos] = static_cast<uint8_t>(U);
-                        outputFrame->getData()[p3Pos] = static_cast<uint8_t>(V);
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
                     }
                 }
             }
@@ -2047,10 +2041,10 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(const 
                     float R = src[lineStartB + j];
                     float Y, U, V;
                     YUVfromRGB(Y, U, V, R, G, B);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(Y);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
                     if(i % 2 == 0 && j % 2 == 0) {
-                        outputFrame->getData()[p2Pos] = static_cast<uint8_t>(U);
-                        outputFrame->getData()[p3Pos] = static_cast<uint8_t>(V);
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
                     }
                 }
             }
@@ -2084,10 +2078,10 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(const 
                     float B = src[pos + 2];
                     float Y, U, V;
                     YUVfromRGB(Y, U, V, R, G, B);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(Y);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
                     if(i % 2 == 0 && j % 2 == 0) {
-                        outputFrame->getData()[p2Pos] = static_cast<uint8_t>(U);
-                        outputFrame->getData()[p3Pos] = static_cast<uint8_t>(V);
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
                     }
                 }
             }
@@ -2120,10 +2114,10 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToYUV420p(const 
                     float R = src[pos + 2];
                     float Y, U, V;
                     YUVfromRGB(Y, U, V, R, G, B);
-                    outputFrame->getData()[p1Pos] = static_cast<uint8_t>(Y);
+                    outputFrame->getOffsetData()[p1Pos] = static_cast<uint8_t>(Y);
                     if(i % 2 == 0 && j % 2 == 0) {
-                        outputFrame->getData()[p2Pos] = static_cast<uint8_t>(U);
-                        outputFrame->getData()[p3Pos] = static_cast<uint8_t>(V);
+                        outputFrame->getOffsetData()[p2Pos] = static_cast<uint8_t>(U);
+                        outputFrame->getOffsetData()[p3Pos] = static_cast<uint8_t>(V);
                     }
                 }
             }
@@ -2230,8 +2224,8 @@ bool ColorChange<ImageManipBuffer, ImageManipData>::colorConvertToGRAY8(const st
                                                                         dai::ImgFrame::Type from) {
     // dai::ImgFrame::Type to = dai::ImgFrame::Type::GRAY8;
 
-    auto src = inputFrame->getData().data();
-    auto inputSize = inputFrame->getSize();
+    auto src = inputFrame->getOffsetData().data();
+    auto inputSize = inputFrame->getOffsetSize();
     uint32_t auxStride = ALIGN_UP(3 * srcSpecs.width, DEPTHAI_STRIDE_ALIGNMENT);
 
     bool done = false;
@@ -2437,35 +2431,10 @@ void ColorChange<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFr
 }
 
 template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void ColorChange<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) {
+void ColorChange<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
     float bpp;
     int numPlanes;
     getFrameTypeInfo(to, numPlanes, bpp);
-
-    // logger->debug("From {} ({}):\n\t{}x{}\n\tstride {} {} {}\n\toffset {} {} {}\n\ttotal size {}\n",
-    //               (int)from,
-    //               (void*)src.data(),
-    //               (int)srcSpecs.width,
-    //               (int)srcSpecs.height,
-    //               (int)srcSpecs.p1Stride,
-    //               (int)srcSpecs.p2Stride,
-    //               (int)srcSpecs.p3Stride,
-    //               (int)srcSpecs.p1Offset,
-    //               (int)srcSpecs.p2Offset,
-    //               (int)srcSpecs.p3Offset,
-    //               (int)src.size());
-    // logger->debug("To {} ({}):\n\t{}x{}\n\tstride {} {} {}\n\toffset {} {} {}\n\ttotal size {}\n",
-    //               (int)to,
-    //               (void*)dst.data(),
-    //               (int)dstSpecs.width,
-    //               (int)dstSpecs.height,
-    //               (int)dstSpecs.p1Stride,
-    //               (int)dstSpecs.p2Stride,
-    //               (int)dstSpecs.p3Stride,
-    //               (int)dstSpecs.p1Offset,
-    //               (int)dstSpecs.p2Offset,
-    //               (int)dstSpecs.p3Offset,
-    //               (int)dst.size());
 
     bool done = false;
     auto start = std::chrono::steady_clock::now();
@@ -2525,7 +2494,9 @@ void ColorChange<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<
 
     if(!done) {
         if(logger) logger->error("Convert color from {} to {} not supported or failed.", (int)from, (int)to);
-        std::copy(src->data(), src->data() + (src->size() <= dst->size() ? src->size() : dst->size()), dst->data());
+        std::copy(src->getOffsetData().data(),
+                  src->getOffsetData().data() + (src->getOffsetSize() <= dst->getOffsetSize() ? src->getOffsetSize() : dst->getOffsetSize()),
+                  dst->getOffsetData().data());
     }
 }
 
@@ -2704,10 +2675,7 @@ inline dai::ImgFrame::Type getValidType(dai::ImgFrame::Type type) {
     return isSingleChannelu8(type) ? VALID_TYPE_GRAY : VALID_TYPE_COLOR;
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::build(
     const ImageManipOpsBase<Container>& newBase, ImgFrame::Type outType, FrameSpecs srcFrameSpecs, ImgFrame::Type inFrameType) {
     const auto newCfgStr = newBase.str();
@@ -2806,17 +2774,14 @@ ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipO
     size_t newWarpedSize =
         getAlignedOutputFrameSize(isSingleChannelu8(type) && base.colormap != Colormap::NONE ? VALID_TYPE_COLOR : type, base.outputWidth, base.outputHeight);
 
-    if(!convertedFrame || convertedFrame->getSize() < newConvertedSize) convertedFrame = std::make_shared<ImageManipData>(newConvertedSize);
-    if(!colormapFrame || colormapFrame->getSize() < newColormapSize) colormapFrame = std::make_shared<ImageManipData>(newColormapSize);
-    if(!warpedFrame || warpedFrame->getSize() < newWarpedSize) warpedFrame = std::make_shared<ImageManipData>(newWarpedSize);
+    if(!convertedFrame || convertedFrame->getOffsetSize() < newConvertedSize) convertedFrame = std::make_shared<ImageManipData>(newConvertedSize);
+    if(!colormapFrame || colormapFrame->getOffsetSize() < newColormapSize) colormapFrame = std::make_shared<ImageManipData>(newColormapSize);
+    if(!warpedFrame || warpedFrame->getOffsetSize() < newWarpedSize) warpedFrame = std::make_shared<ImageManipData>(newWarpedSize);
 
     return *this;
 }  // namespace impl
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::buildUndistort(
     bool enable,
     const std::array<float, 9>& cameraMatrix,
@@ -2833,16 +2798,13 @@ ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>& ImageManipO
 
 size_t getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs);
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
-bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(const std::shared_ptr<OffsetMemory>& src,
-                                                                                std::shared_ptr<OffsetMemory>& dst) {
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
+bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
     size_t requiredSize = getFrameSize(inType, srcSpecs);
-    if(src->getSize() < requiredSize) throw std::runtime_error("ImageManip not built for the source image specs. Consider rebuilding with the new configuration.");
+    if(src->getOffsetSize() < requiredSize)
+        throw std::runtime_error("ImageManip not built for the source image specs. Consider rebuilding with the new configuration.");
     if(mode == 0) {
-        std::copy(src->getData().begin(), src->getData().end(), dst->getData().begin());
+        std::copy(src->getOffsetData().begin(), src->getOffsetData().end(), dst->getOffsetData().begin());
         return true;
     }
 
@@ -2854,9 +2816,9 @@ bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(
                              base.colormap != Colormap::NONE ? colormapFrame : (type == outputFrameType ? dst : warpedFrame));
         }
         if(mode & MODE_COLORMAP) {
-            uint8_t* colormapDst = outputFrameType == VALID_TYPE_COLOR ? dst->getData().data() : warpedFrame->data();
+            uint8_t* colormapDst = outputFrameType == VALID_TYPE_COLOR ? dst->getOffsetData().data() : warpedFrame->data();
             size_t colormapDstStride = outputFrameType == VALID_TYPE_COLOR ? getOutputStride() : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
-            uint8_t* colormapSrc = mode & MODE_WARP ? colormapFrame->data() : (convertInput ? convertedFrame->data() : src->getData().data());
+            uint8_t* colormapSrc = mode & MODE_WARP ? colormapFrame->data() : (convertInput ? convertedFrame->data() : src->getOffsetData().data());
             size_t colormapSrcStride = !(mode & MODE_WARP) && !convertInput ? srcSpecs.p1Stride : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
             cv::Mat gray(base.outputWidth, base.outputHeight, CV_8UC1, colormapSrc, colormapSrcStride);
             cv::Mat color(base.outputWidth, base.outputHeight, CV_8UC3, colormapDst, colormapDstStride);
@@ -2886,26 +2848,17 @@ bool ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::apply(
 #endif
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputWidth() const {
     return base.outputWidth;
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputHeight() const {
     return base.outputHeight;
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputStride(uint8_t plane) const {
     if(mode == 0) return plane == 0 ? srcSpecs.p1Stride : (plane == 1 ? srcSpecs.p2Stride : (plane == 2 ? srcSpecs.p3Stride : 0));
     auto specs = getOutputFrameSpecs(outputFrameType);
@@ -2919,10 +2872,7 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
         return 0;
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputPlaneSize(uint8_t plane) const {
     if(mode == 0) return 0;
     size_t size = 0;
@@ -2985,10 +2935,7 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
     return size;
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputSize() const {
     if(mode == 0) return 0;
     size_t size = 0;
@@ -3041,10 +2988,7 @@ size_t ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getO
     return size;
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getOutputFrameSpecs(ImgFrame::Type type) const {
     if(mode == 0)
         return srcSpecs;
@@ -3052,10 +2996,7 @@ FrameSpecs ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::
         return getDstFrameSpecs(base.outputWidth, base.outputHeight, type);
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getSrcCrops() const {
     std::vector<RotatedRect> crops;
     for(const auto& corners : srcCorners) {
@@ -3065,18 +3006,12 @@ std::vector<RotatedRect> ImageManipOperations<ImageManipBuffer, ImageManipData, 
     return crops;
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 std::array<std::array<float, 3>, 3> ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::getMatrix() const {
     return matrix;
 }
 
-template <template <typename T> typename ImageManipBuffer,
-          typename ImageManipData,
-          template <template <typename T> typename Buf, typename Dat>
-          typename WarpBackend>
+template <template <typename T> typename ImageManipBuffer, typename ImageManipData, typename WarpBackend>
 std::string ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>::toString() const {
     std::stringstream cStr;
     cStr << getConfigString(base);
@@ -3090,19 +3025,18 @@ std::string ImageManipOperations<ImageManipBuffer, ImageManipData, WarpBackend>:
     return cStr.str();
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void WarpH<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpecs,
-                                                    const FrameSpecs dstFrameSpecs,
-                                                    const ImgFrame::Type type,
-                                                    const std::array<std::array<float, 3>, 3> matrix,
-                                                    std::vector<std::array<std::array<float, 2>, 4>> srcCorners) {
+void WarpH::build(const FrameSpecs srcFrameSpecs,
+                  const FrameSpecs dstFrameSpecs,
+                  const ImgFrame::Type type,
+                  const std::array<std::array<float, 3>, 3> matrix,
+                  std::vector<std::array<std::array<float, 2>, 4>> srcCorners) {
     this->matrix = matrix;
     this->type = type;
     this->srcSpecs = srcFrameSpecs;
     this->dstSpecs = dstFrameSpecs;
 
     if(!fastCvBorder || fastCvBorder->size() < this->dstSpecs.height * 2)
-        fastCvBorder = std::make_shared<ImageManipBuffer<uint32_t>>(this->dstSpecs.height * 2);
+        fastCvBorder = std::make_shared<_ImageManipBuffer<uint32_t>>(this->dstSpecs.height * 2);
 
     const uint32_t inWidth = srcFrameSpecs.width;
     const uint32_t inHeight = srcFrameSpecs.height;
@@ -3120,16 +3054,15 @@ void WarpH<ImageManipBuffer, ImageManipData>::build(const FrameSpecs srcFrameSpe
     if(this->sourceMinX >= this->sourceMaxX || this->sourceMinY >= this->sourceMaxY) throw std::runtime_error("Initial crop is outside the source image");
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable,
-                                                             const std::array<float, 9>& cameraMatrix,
-                                                             const std::array<float, 9>& newCameraMatrix,
-                                                             const std::vector<float>& distCoeffs,
-                                                             const ImgFrame::Type type,
-                                                             const uint32_t srcWidth,
-                                                             const uint32_t srcHeight,
-                                                             const uint32_t dstWidth,
-                                                             const uint32_t dstHeight) {
+void WarpH::buildUndistort(bool enable,
+                           const std::array<float, 9>& cameraMatrix,
+                           const std::array<float, 9>& newCameraMatrix,
+                           const std::vector<float>& distCoeffs,
+                           const ImgFrame::Type type,
+                           const uint32_t srcWidth,
+                           const uint32_t srcHeight,
+                           const uint32_t dstWidth,
+                           const uint32_t dstHeight) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(enable) {
         if(!undistortImpl) undistortImpl = std::make_unique<UndistortOpenCvImpl>(this->logger);
@@ -3156,8 +3089,9 @@ void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable,
 
         if(this->enableUndistort && !this->undistortOneShot) {
             auto frameSize = getAlignedOutputFrameSize(type, srcWidth, srcHeight);
-            if(!auxFrame || auxFrame->size() < frameSize) {
-                auxFrame = std::make_shared<ImageManipData>(frameSize);
+            if(!auxFrame || auxFrame->getOffsetSize() < frameSize) {
+                // When undistort is needed but cannot one shot - undistorted frame must be written to an aux buffer
+                auxFrame = std::make_shared<_ImageManipMemory>(frameSize);
             }
         }
     } else {
@@ -3178,23 +3112,22 @@ void WarpH<ImageManipBuffer, ImageManipData>::buildUndistort(bool enable,
 #endif
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void WarpH<ImageManipBuffer, ImageManipData>::transform(const std::shared_ptr<ImageManipData> src,
-                                                        std::shared_ptr<ImageManipData> dst,
-                                                        const size_t srcWidth,
-                                                        const size_t srcHeight,
-                                                        const size_t srcStride,
-                                                        const size_t dstWidth,
-                                                        const size_t dstHeight,
-                                                        const size_t dstStride,
-                                                        const uint16_t numChannels,
-                                                        const uint16_t bpp,
-                                                        const std::array<std::array<float, 3>, 3> matrix,
-                                                        const std::vector<uint32_t>& background) {
+void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
+                      std::shared_ptr<OffsetMemory> dst,
+                      const size_t srcWidth,
+                      const size_t srcHeight,
+                      const size_t srcStride,
+                      const size_t dstWidth,
+                      const size_t dstHeight,
+                      const size_t dstStride,
+                      const uint16_t numChannels,
+                      const uint16_t bpp,
+                      const std::array<std::array<float, 3>, 3> matrix,
+                      const std::vector<uint32_t>& background) {
     if(1) {
 #ifdef DEPTHAI_IMAGEMANIPV2_OPENCV
-        transformOpenCV(src->data(),
-                        dst->data(),
+        transformOpenCV(src->getOffsetData().data(),
+                        dst->getOffsetData().data(),
                         srcWidth,
                         srcHeight,
                         srcStride,
@@ -3215,8 +3148,8 @@ void WarpH<ImageManipBuffer, ImageManipData>::transform(const std::shared_ptr<Im
 #endif
     } else {
 #ifdef DEPTHAI_IMAGEMANIPV2_FASTCV
-        transformFastCV(src->data()),
-                        dst->data(),
+        transformFastCV(src->getOffsetData().data()),
+                        dst->getOffsetData().data(),
                         srcWidth,
                         srcHeight,
                         srcStride,
@@ -3256,8 +3189,7 @@ void WarpH<ImageManipBuffer, ImageManipData>::transform(const std::shared_ptr<Im
 
 void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageManipData> src, std::shared_ptr<ImageManipData> dst) {
+void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
     auto undistortDst = this->isIdentityWarp() || this->undistortOneShot ? dst : auxFrame;
     auto undistortSpecs =
         this->isIdentityWarp() || this->undistortOneShot ? this->dstSpecs : getDstFrameSpecs(this->srcSpecs.width, this->srcSpecs.height, this->type);
@@ -3270,9 +3202,9 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
 #if DEPTHAI_IMAGEMANIPV2_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT) || DEPTHAI_IMAGEMANIPV2_FASTCV && defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
-                cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC3, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC3, src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(), this->srcSpecs.p1Stride);
                 cv::Mat dstCv(
-                    undistortSpecs.height, undistortSpecs.width, CV_8UC3, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                    undistortSpecs.height, undistortSpecs.width, CV_8UC3, undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(), undistortSpecs.p1Stride);
                 this->undistortImpl->undistort(srcCv, dstCv);
             }
     #endif
@@ -3302,21 +3234,21 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
-                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
-                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p2Offset)->data(), this->srcSpecs.p2Stride);
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p2Offset)->getOffsetData().data(), this->srcSpecs.p2Stride);
                     cv::Mat dstCv(
-                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p2Offset)->data(), undistortSpecs.p2Stride);
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p2Offset)->getOffsetData().data(), undistortSpecs.p2Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
-                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p3Offset)->data(), this->srcSpecs.p3Stride);
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p3Offset)->getOffsetData().data(), this->srcSpecs.p3Stride);
                     cv::Mat dstCv(
-                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p3Offset)->data(), undistortSpecs.p3Stride);
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p3Offset)->getOffsetData().data(), undistortSpecs.p3Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
             }
@@ -3370,28 +3302,28 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
-                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
                     cv::Mat srcCv(
-                        this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC1, src->offset(this->srcSpecs.p2Offset)->data(), this->srcSpecs.p2Stride);
+                        this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC1, src->offset(this->srcSpecs.p2Offset)->getOffsetData().data(), this->srcSpecs.p2Stride);
                     cv::Mat dstCv(undistortSpecs.height / 2,
                                   undistortSpecs.width / 2,
                                   CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p2Offset)->data(),
+                                  undistortDst->offset(undistortSpecs.p2Offset)->getOffsetData().data(),
                                   undistortSpecs.p2Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
                     cv::Mat srcCv(
-                        this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC1, src->offset(this->srcSpecs.p3Offset)->data(), this->srcSpecs.p3Stride);
+                        this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC1, src->offset(this->srcSpecs.p3Offset)->getOffsetData().data(), this->srcSpecs.p3Stride);
                     cv::Mat dstCv(undistortSpecs.height / 2,
                                   undistortSpecs.width / 2,
                                   CV_8UC1,
-                                  undistortDst->offset(undistortSpecs.p3Offset)->data(),
+                                  undistortDst->offset(undistortSpecs.p3Offset)->getOffsetData().data(),
                                   undistortSpecs.p3Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
@@ -3446,18 +3378,18 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
-                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
                 {
                     cv::Mat srcCv(
-                        this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC2, src->offset(this->srcSpecs.p2Offset)->data(), this->srcSpecs.p2Stride);
+                        this->srcSpecs.height / 2, this->srcSpecs.width / 2, CV_8UC2, src->offset(this->srcSpecs.p2Offset)->getOffsetData().data(), this->srcSpecs.p2Stride);
                     cv::Mat dstCv(undistortSpecs.height / 2,
                                   undistortSpecs.width / 2,
                                   CV_8UC2,
-                                  undistortDst->offset(undistortSpecs.p2Offset)->data(),
+                                  undistortDst->offset(undistortSpecs.p2Offset)->getOffsetData().data(),
                                   undistortSpecs.p2Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
@@ -3501,9 +3433,9 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_8UC1, src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
-                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                        undistortSpecs.height, undistortSpecs.width, CV_8UC1, undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
             }
@@ -3533,9 +3465,9 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
             if(this->enableUndistort) {
                 {
-                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_16UC1, src->offset(this->srcSpecs.p1Offset)->data(), this->srcSpecs.p1Stride);
+                    cv::Mat srcCv(this->srcSpecs.height, this->srcSpecs.width, CV_16UC1, src->offset(this->srcSpecs.p1Offset)->getOffsetData().data(), this->srcSpecs.p1Stride);
                     cv::Mat dstCv(
-                        undistortSpecs.height, undistortSpecs.width, CV_16UC1, undistortDst->offset(undistortSpecs.p1Offset)->data(), undistortSpecs.p1Stride);
+                        undistortSpecs.height, undistortSpecs.width, CV_16UC1, undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(), undistortSpecs.p1Stride);
                     this->undistortImpl->undistort(srcCv, dstCv);
                 }
             }
@@ -3594,15 +3526,13 @@ void WarpH<ImageManipBuffer, ImageManipData>::apply(const std::shared_ptr<ImageM
 #endif
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-bool Warp<ImageManipBuffer, ImageManipData>::isIdentityWarp() const {
+bool Warp::isIdentityWarp() const {
     return (matrix[0][0] == 1.0f && matrix[0][1] == 0.0f && matrix[0][2] == 0.0f && matrix[1][0] == 0.0f && matrix[1][1] == 1.0f && matrix[1][2] == 0.0f
             && matrix[2][0] == 0.0f && matrix[2][1] == 0.0f && matrix[2][2] == 1.0f)
            && (srcSpecs.width == dstSpecs.width && srcSpecs.height == dstSpecs.height);
 }
 
-template <template <typename T> typename ImageManipBuffer, typename ImageManipData>
-Warp<ImageManipBuffer, ImageManipData>& Warp<ImageManipBuffer, ImageManipData>::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_t b) {
+Warp& Warp::setBackgroundColor(const uint32_t r, const uint32_t g, const uint32_t b) {
     background = ImageManipOpsBase<Container>::Background::COLOR;
     switch(type) {
         case ImgFrame::Type::YUV420p:
