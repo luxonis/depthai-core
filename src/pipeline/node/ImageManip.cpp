@@ -16,9 +16,9 @@ ImageManip::ImageManip(std::unique_ptr<Properties> props)
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 void ImageManip::run() {
-    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory, impl::WarpH> manip(properties, pimpl->logger);
+    impl::ImageManipOperations<impl::_ImageManipMemory, impl::ColorChangeH, impl::WarpH> manip(properties, pimpl->logger);
     auto iConf = runOnHost() ? *initialConfig : properties.initialConfig;
-    impl::loop<ImageManip, impl::_ImageManipBuffer>(
+    impl::loop<ImageManip>(
         *this,
         iConf,
         pimpl->logger,
