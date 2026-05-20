@@ -208,9 +208,8 @@ void SpatialImgDetection::transform(const ImgTransformation& source, const ImgTr
     float depth = spatialCoordinates.z * getDistanceUnitScale(LengthUnit::MILLIMETER, lengthUnit);
     RotatedRect rect = getBoundingBox();
 
-    const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, false, lengthUnit);
-
     if(depth > 0) {
+        const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, false, lengthUnit);
         setBoundingBox(source.projectRectTo(target, rect, depth));
         setSpatialCoordinate(matrix::transformPoint3f(transMatrix, spatialCoordinates));
     } else {
