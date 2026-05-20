@@ -28,6 +28,10 @@ SegmentationMask::SegmentationMask(const std::vector<std::uint8_t>& data, const 
     setMask(data, width, height);
 }
 
+SegmentationMask SegmentationMask::transformTo(const ImgTransformation& target) const {
+    return TransformableCRTP<SegmentationMask>::transformTo(target);
+}
+
 void SegmentationMask::setSize(size_t width, size_t height) {
     this->width = width;
     this->height = height;

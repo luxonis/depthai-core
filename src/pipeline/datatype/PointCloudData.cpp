@@ -183,6 +183,10 @@ void PointCloudData::transformToInternal(const ImgTransformation&) {
     // For efficiency reasons, point clouds should be created from aligned messages instead of tranforming them after the fact
 }
 
+PointCloudData PointCloudData::transformTo(const ImgTransformation& target) const {
+    return TransformableCRTP<PointCloudData>::transformTo(target);
+}
+
 PointCloudData& PointCloudData::updateBoundingBox() {
     const auto* rawData = data->getData().data();
     const auto rawSize = data->getData().size();
