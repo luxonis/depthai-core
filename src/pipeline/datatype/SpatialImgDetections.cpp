@@ -12,9 +12,9 @@
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/Size2f.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "depthai/utility/matrixOps.hpp"
-#include "depthai/pipeline/datatype/Transformable.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/SpatialImgDetections.pb.h"
     #include "utility/ProtoSerialize.hpp"
