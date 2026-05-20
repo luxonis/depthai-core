@@ -28,17 +28,17 @@ SegmentationMask::SegmentationMask(const std::vector<std::uint8_t>& data, const 
     setMask(data, width, height);
 }
 
+SegmentationMask SegmentationMask::transformTo(const ImgTransformation& target) const {
+    return TransformableCRTP<SegmentationMask>::transformTo(target);
+}
+
 void SegmentationMask::setSize(size_t width, size_t height) {
     this->width = width;
     this->height = height;
 }
 
 void SegmentationMask::transformToInternal(const ImgTransformation&) {
-    throw std::logic_error("SegmentationMask transform not implemented yet");
-}
-
-std::shared_ptr<TransformableBuffer> SegmentationMask::clone() const {
-    return std::make_shared<SegmentationMask>(*this);
+    // Transform the segmentation mask by using ImageAlign for faster processing.
 }
 
 std::size_t SegmentationMask::getWidth() const {

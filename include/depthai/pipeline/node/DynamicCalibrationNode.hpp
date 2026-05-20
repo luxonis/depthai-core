@@ -179,6 +179,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * DAI held properties
      */
     CalibrationHandler calibrationHandler;
+    ImgTransformation imgTransformationA;
+    ImgTransformation imgTransformationB;
 
     CameraBoardSocket daiSocketA = CameraBoardSocket::CAM_B;
     CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;

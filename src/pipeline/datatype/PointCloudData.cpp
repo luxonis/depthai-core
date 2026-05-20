@@ -180,11 +180,11 @@ PointCloudData& PointCloudData::setSparse(bool /*val*/) {
 }
 
 void PointCloudData::transformToInternal(const ImgTransformation&) {
-    throw std::logic_error("PointCloudData transform not implemented yet");
+    // For efficiency reasons, point clouds should be created from aligned messages instead of tranforming them after the fact
 }
 
-std::shared_ptr<TransformableBuffer> PointCloudData::clone() const {
-    return std::make_shared<PointCloudData>(*this);
+PointCloudData PointCloudData::transformTo(const ImgTransformation& target) const {
+    return TransformableCRTP<PointCloudData>::transformTo(target);
 }
 
 PointCloudData& PointCloudData::updateBoundingBox() {

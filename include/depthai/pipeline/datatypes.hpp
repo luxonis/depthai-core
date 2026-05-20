@@ -37,7 +37,7 @@
 #include "datatype/TrackedFeatures.hpp"
 #include "datatype/Tracklets.hpp"
 #include "datatype/TransformData.hpp"
-#include "datatype/TransformableBuffer.hpp"
+#include "datatype/Transformable.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "datatype/DynamicCalibrationControl.hpp"
     #include "datatype/DynamicCalibrationResults.hpp"

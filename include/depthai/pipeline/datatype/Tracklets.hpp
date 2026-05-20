@@ -7,7 +7,7 @@
 #include "depthai/common/Rect.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
-#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 
 namespace dai {
 
@@ -78,15 +78,21 @@ struct Tracklet {
 /**
  * Tracklets message. Carries object tracking information.
  */
-class Tracklets : public TransformableBuffer {
+class Tracklets : public Buffer, public TransformableCRTP<Tracklets> {
    protected:
+    /**
+     * Internal transform hook used by transformTo() to apply Tracklets-specific transformation logic.
+     */
     void transformToInternal(const ImgTransformation& target) override;
-    std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
-    using TransformableBuffer::getTransformation;
-    using TransformableBuffer::setTransformation;
-    using TransformableBuffer::transformation;
+    friend class TransformableCRTP<Tracklets>;
+    using Buffer::sequenceNum;
+    using Buffer::ts;
+    using Buffer::tsDevice;
+    using Transformable::getTransformation;
+    using Transformable::setTransformation;
+    using Transformable::transformation;
 
     /**
      * Measurement unit used by all tracklets' `spatialCoordinates` in this list.
@@ -118,7 +124,7 @@ class Tracklets : public TransformableBuffer {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(Tracklets, tracklets, TransformableBuffer::transformation, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, unit);
+    DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, ts, tsDevice, sequenceNum, unit);
 };
 
 }  // namespace dai

@@ -141,7 +141,8 @@ TEST_CASE("Object Tracker transformation") {
         auto track = tracklets->get<dai::Tracklets>();
         auto frame = trackerFrameQ->get<dai::ImgFrame>();
         REQUIRE(track != nullptr);
-        REQUIRE(track->transformation.has_value());
+        REQUIRE(frame != nullptr);
+        REQUIRE(track->getTransformation().has_value());
         REQUIRE(track->getTransformation()->getSize() == frame->transformation.getSize());
         REQUIRE(track->getTransformation()->getSourceSize() == frame->transformation.getSourceSize());
         REQUIRE(track->getTransformation()->getIntrinsicMatrix() == frame->transformation.getIntrinsicMatrix());

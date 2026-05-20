@@ -7,11 +7,12 @@
 
 #include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/Keypoint.hpp"
+#include "depthai/common/Point3f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/Size2f.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
-#include "depthai/common/Keypoint.hpp"
-#include "depthai/common/Point3f.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ImageManipImpl.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
@@ -207,9 +208,8 @@ void SpatialImgDetection::transform(const ImgTransformation& source, const ImgTr
     float depth = spatialCoordinates.z * getDistanceUnitScale(LengthUnit::MILLIMETER, lengthUnit);
     RotatedRect rect = getBoundingBox();
 
-    const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, false, lengthUnit);
-
     if(depth > 0) {
+        const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, false, lengthUnit);
         setBoundingBox(source.projectRectTo(target, rect, depth));
         setSpatialCoordinate(matrix::transformPoint3f(transMatrix, spatialCoordinates));
     } else {
@@ -230,19 +230,13 @@ void SpatialImgDetections::transformToInternal(const ImgTransformation& target) 
     ImgTransformation source = *this->getTransformation();
 
     for(auto& detection : detections) {
-        detection.transform(source, target);
+        detection.transform(source, target, unit);
     }
     setTransformation(target);
 }
 
-std::shared_ptr<TransformableBuffer> SpatialImgDetections::clone() const {
-    return std::make_shared<SpatialImgDetections>(*this);
-}
-
-SpatialImgDetections SpatialImgDetections::transformTo(const ImgTransformation& target) {
-    SpatialImgDetections transformed = *this;
-    transformed.transformToInternal(target);
-    return transformed;
+SpatialImgDetections SpatialImgDetections::transformTo(const ImgTransformation& target) const {
+    return TransformableCRTP<SpatialImgDetections>::transformTo(target);
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF

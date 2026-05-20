@@ -1,5 +1,6 @@
 #include <algorithm>  // Required for std::sort and std::unique
 #include <cmath>      // Required for std::log, std::isnan, std::isinf
+#include <csignal>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <string>
@@ -8,6 +9,12 @@
 #include "depthai/depthai.hpp"
 #include "xtensor/containers/xadapt.hpp"
 #include "xtensor/core/xmath.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 cv::Mat colorizeDepth(cv::Mat frameDepth) {
     cv::Mat invalidMask = frameDepth == 0;
@@ -127,6 +134,9 @@ void displayFrame(const std::string& name,
 }
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     dai::Pipeline pipeline;
 
     auto cameraNode = pipeline.create<dai::node::Camera>();
@@ -161,7 +171,7 @@ int main() {
 
     pipeline.start();
 
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto inRgb = qRgb->tryGet<dai::ImgFrame>();
         auto inDet = qDet->tryGet<dai::ImgDetections>();
         auto inDepth = qDepth->tryGet<dai::ImgFrame>();

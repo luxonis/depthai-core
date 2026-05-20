@@ -21,6 +21,7 @@
 // hedley
 #include <hedley/hedley.h>
 // STL Bind
+#include <pybind11/numpy.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl_bind.h>
 
@@ -623,6 +624,14 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, readCalibration))
         .def(
+            "readCalibration",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.readCalibration(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, readCalibration, 2))
+        .def(
             "tryFlashCalibration",
             [](DeviceBase& d, CalibrationHandler calibrationDataHandler) {
                 py::gil_scoped_release release;
@@ -720,12 +729,29 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, isEepromAvailable))
         .def(
+            "isEepromAvailable",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.isEepromAvailable(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, isEepromAvailable, 2))
+        .def(
             "flashCalibration",
             [](DeviceBase& d, CalibrationHandler ch) {
                 py::gil_scoped_release release;
                 return d.flashCalibration(ch);
             },
             DOC(dai, DeviceBase, flashCalibration))
+        .def(
+            "flashCalibration",
+            [](DeviceBase& d, CalibrationHandler ch, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.flashCalibration(ch, camSocket);
+            },
+            py::arg("calibrationDataHandler"),
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, flashCalibration, 2))
         .def(
             "setCalibration",
             [](DeviceBase& d, CalibrationHandler ch) {
@@ -748,12 +774,28 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, readCalibration2))
         .def(
+            "readCalibration2",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.readCalibration2(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, readCalibration2, 2))
+        .def(
             "readCalibrationOrDefault",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
                 return d.readCalibrationOrDefault();
             },
             DOC(dai, DeviceBase, readCalibrationOrDefault))
+        .def(
+            "readCalibrationOrDefault",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.readCalibrationOrDefault(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, readCalibrationOrDefault, 2))
         .def(
             "factoryResetCalibration",
             [](DeviceBase& d) {
@@ -762,12 +804,29 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, factoryResetCalibration))
         .def(
+            "factoryResetCalibration",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.factoryResetCalibration(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, factoryResetCalibration, 2))
+        .def(
             "flashFactoryCalibration",
             [](DeviceBase& d, CalibrationHandler ch) {
                 py::gil_scoped_release release;
                 return d.flashFactoryCalibration(ch);
             },
             DOC(dai, DeviceBase, flashFactoryCalibration))
+        .def(
+            "flashFactoryCalibration",
+            [](DeviceBase& d, CalibrationHandler ch, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.flashFactoryCalibration(ch, camSocket);
+            },
+            py::arg("calibrationHandler"),
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, flashFactoryCalibration, 2))
         .def(
             "readFactoryCalibration",
             [](DeviceBase& d) {
@@ -776,12 +835,28 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, readFactoryCalibration))
         .def(
+            "readFactoryCalibration",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.readFactoryCalibration(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, readFactoryCalibration, 2))
+        .def(
             "readFactoryCalibrationOrDefault",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
                 return d.readFactoryCalibrationOrDefault();
             },
             DOC(dai, DeviceBase, readFactoryCalibrationOrDefault))
+        .def(
+            "readFactoryCalibrationOrDefault",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                return d.readFactoryCalibrationOrDefault(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, readFactoryCalibrationOrDefault, 2))
         .def(
             "readCalibrationRaw",
             [](DeviceBase& d) {
@@ -805,6 +880,34 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, readFactoryCalibrationRaw))
         .def(
+            "readCcmEepromRaw",
+            [](DeviceBase& d, CameraBoardSocket s, int sz, int o) {
+                std::vector<uint8_t> data;
+                {
+                    py::gil_scoped_release release;
+                    data = d.readCcmEepromRaw(s, sz, o);
+                }
+                return py::bytes(reinterpret_cast<const char*>(data.data()), data.size());
+            },
+            py::arg("socket"),
+            py::arg("size"),
+            py::arg("offset") = 0,
+            DOC(dai, DeviceBase, readCcmEepromRaw))
+        .def(
+            "writeCcmEepromRaw",
+            [](DeviceBase& d, CameraBoardSocket s, py::bytes buf, int o) {
+                std::string data = buf;
+                std::vector<uint8_t> raw(data.begin(), data.end());
+
+                py::gil_scoped_release release;
+                d.writeCcmEepromRaw(s, raw, o);
+            },
+            py::arg("socket"),
+            py::arg("data"),
+            py::arg("offset") = 0,
+            DOC(dai, DeviceBase, writeCcmEepromRaw))
+
+        .def(
             "flashEepromClear",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
@@ -812,12 +915,28 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
             },
             DOC(dai, DeviceBase, flashEepromClear))
         .def(
+            "flashEepromClear",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                d.flashEepromClear(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, flashEepromClear, 2))
+        .def(
             "flashFactoryEepromClear",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
                 d.flashFactoryEepromClear();
             },
             DOC(dai, DeviceBase, flashFactoryEepromClear))
+        .def(
+            "flashFactoryEepromClear",
+            [](DeviceBase& d, dai::CameraBoardSocket camSocket) {
+                py::gil_scoped_release release;
+                d.flashFactoryEepromClear(camSocket);
+            },
+            py::arg("camSocket"),
+            DOC(dai, DeviceBase, flashFactoryEepromClear, 2))
         .def(
             "setTimesync",
             [](DeviceBase& d, std::chrono::milliseconds p, int s, bool r) {

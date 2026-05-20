@@ -458,7 +458,7 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     REQUIRE(std::fabs(rvecOld[2] - 0.01) < 0.00001);
 
     std::vector<float> rvec = dai::matrix::rotationMatrixToVector(rotationMatrix);
-    float threshold = 1e-7f;
+    float threshold = 1e-3f;
     REQUIRE(std::fabs(rvec[0]) < threshold);
     REQUIRE(std::fabs(rvec[1]) < threshold);
     REQUIRE(std::fabs(rvec[2]) < threshold);

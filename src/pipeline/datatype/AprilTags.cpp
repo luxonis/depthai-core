@@ -9,14 +9,8 @@ void AprilTags::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& dat
     datatype = DatatypeEnum::AprilTags;
 };
 
-std::shared_ptr<TransformableBuffer> AprilTags::clone() const {
-    return std::make_shared<AprilTags>(*this);
-}
-
 AprilTags AprilTags::transformTo(const ImgTransformation& target) {
-    AprilTags transformedAprilTags = *this;
-    transformedAprilTags.transformToInternal(target);
-    return transformedAprilTags;
+    return TransformableCRTP<AprilTags>::transformTo(target);
 }
 
 void AprilTags::transformToInternal(const ImgTransformation& target) {

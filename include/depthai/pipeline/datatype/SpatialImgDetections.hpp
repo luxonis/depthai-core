@@ -13,6 +13,7 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/Serialization.hpp"
 
@@ -168,19 +169,25 @@ struct SpatialImgDetection {
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */
-class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable {
+class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable, public TransformableCRTP<SpatialImgDetections> {
    protected:
+    /**
+     * Internal transform hook used by transformTo() to apply SpatialImgDetections-specific transformation logic.
+     */
     void transformToInternal(const ImgTransformation& target) override;
-    std::shared_ptr<TransformableBuffer> clone() const override;
 
    public:
+    friend class TransformableCRTP<SpatialImgDetections>;
     ~SpatialImgDetections() override;
     using Base = ImgDetectionsT<SpatialImgDetection>;
     using Base::Base;
     using Base::detections;
     using Base::segmentationMaskHeight;
     using Base::segmentationMaskWidth;
-    using Base::transformation;
+    using Base::sequenceNum;
+    using Base::ts;
+    using Base::tsDevice;
+    using Transformable::transformation;
 
     /**
      * Length unit used by all imgDetections' `spatialCoordinates` in this list.
@@ -203,7 +210,7 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
      * @param target Target image transformation.
      * @return SpatialImgDetections with transformed detections.
      */
-    SpatialImgDetections transformTo(const ImgTransformation& target);
+    SpatialImgDetections transformTo(const ImgTransformation& target) const;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
@@ -221,15 +228,7 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(SpatialImgDetections,
-                      Base::Buffer::sequenceNum,
-                      Base::Buffer::ts,
-                      Base::Buffer::tsDevice,
-                      detections,
-                      transformation,
-                      segmentationMaskWidth,
-                      segmentationMaskHeight,
-                      unit);
+    DEPTHAI_SERIALIZE(SpatialImgDetections, sequenceNum, ts, tsDevice, detections, transformation, segmentationMaskWidth, segmentationMaskHeight, unit);
 };
 
 }  // namespace dai

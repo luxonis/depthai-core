@@ -56,7 +56,7 @@ enum class DatatypeEnum : std::int32_t {
     PipelineEventAggregationConfig,
     VppConfig,
     PacketizedData,
-    TransformableBuffer,
+    Transformable,
     COUNT  // Sentinel used by consistency checks; must remain the last enum entry.
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);

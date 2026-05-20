@@ -7,9 +7,10 @@
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/common/optional.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/span.hpp"
-#include "depthai/pipeline/datatype/TransformableBuffer.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/mat.hpp>
@@ -24,10 +25,15 @@ namespace dai {
  * Segmentation mask of an image is stored as a single-channel UINT8 array, where each value represents a class or instance index.
  * The value 255 is treated as background pixels (no class/instance).
  */
-class SegmentationMask : public TransformableBuffer, public ProtoSerializable {
+class SegmentationMask : public Buffer, public ProtoSerializable, public TransformableCRTP<SegmentationMask> {
    protected:
+    /**
+     * Internal transform hook used by transformTo().
+     *
+     * Segmentation mask remapping is currently not implemented here, so this hook is a no-op.
+     * Use ImageAlign to align segmentation masks instead.
+     */
     void transformToInternal(const ImgTransformation& target) override;
-    std::shared_ptr<TransformableBuffer> clone() const override;
 
     // Optimization option: if network is bottleneck, implement RLE compression for the mask data
    private:
@@ -39,7 +45,12 @@ class SegmentationMask : public TransformableBuffer, public ProtoSerializable {
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
-    using TransformableBuffer::transformation;
+    using Buffer::sequenceNum;
+    using Buffer::ts;
+    using Buffer::tsDevice;
+    using Transformable::transformation;
+
+    friend class TransformableCRTP<SegmentationMask>;
 
     SegmentationMask();
     SegmentationMask(const std::vector<std::uint8_t>& data, size_t width, size_t height);
@@ -49,6 +60,18 @@ class SegmentationMask : public TransformableBuffer, public ProtoSerializable {
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::SegmentationMask;
     }
+
+    /**
+     * Returns a copy of this segmentation mask.
+     *
+     * Segmentation mask remapping is not implemented. For optimal performance,
+     * segmentation masks should be generated from already aligned source messages instead
+     * of being transformed after the fact. Use ImageAlign on the source inputs to align
+     * segmentation masks.
+     *
+     * @param target Target image transformation.
+     */
+    SegmentationMask transformTo(const ImgTransformation& target) const;
 
     /**
      * Sets the size of the segmentation mask.
@@ -204,7 +227,7 @@ class SegmentationMask : public TransformableBuffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(SegmentationMask, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, transformation, width, height, labels);
+    DEPTHAI_SERIALIZE(SegmentationMask, ts, tsDevice, sequenceNum, transformation, width, height, labels);
 };
 
 }  // namespace dai

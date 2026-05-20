@@ -5,4 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 ## function: dai_set_example_test_labels(example_name ...)
 
 dai_add_example(point_remapping point_remapping.cpp ON OFF)
+dai_add_example(single_cam_remapping single_cam_remapping.cpp ON OFF)
+
 dai_set_example_test_labels(point_remapping ondevice rvc2_all rvc4 ci)
+dai_set_example_test_labels(single_cam_remapping ondevice rvc2_all rvc4 ci)

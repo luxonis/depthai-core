@@ -63,7 +63,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
      }},
     {DatatypeEnum::Buffer,
      {
-         DatatypeEnum::TransformableBuffer,
+         DatatypeEnum::Transformable,
          DatatypeEnum::ImgFrame,
          DatatypeEnum::EncodedFrame,
          DatatypeEnum::SegmentationMask,
@@ -114,7 +114,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::CalibrationQuality,
          DatatypeEnum::PacketizedData,
      }},
-    {DatatypeEnum::TransformableBuffer,
+    {DatatypeEnum::Transformable,
      {
          DatatypeEnum::SegmentationMask,
          DatatypeEnum::ImgDetections,
