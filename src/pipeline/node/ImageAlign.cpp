@@ -713,10 +713,10 @@ void ImageAlign::run() {
     const auto isImgFrameOrTransformable = [](DatatypeEnum datatype) { return datatype == DatatypeEnum::ImgFrame || isTransformableDatatype(datatype); };
 
     if(inputDatatype == DatatypeEnum::ImgFrame && alignToDatatype == DatatypeEnum::ImgFrame) {
-        logger->warn("Running ImageAlign in legacy mode with ImgFrame inputs.");
+        logger->info("Running ImageAlign in legacy mode with ImgFrame inputs.");
         legacyRun(std::dynamic_pointer_cast<ImgFrame>(firstInput), std::dynamic_pointer_cast<ImgFrame>(firstAlignTo));
     } else if(isImgFrameOrTransformable(inputDatatype) && isImgFrameOrTransformable(alignToDatatype)) {
-        logger->warn("Running ImageAlign in generic mode with transformable inputs.");
+        logger->info("Running ImageAlign in generic mode with transformable inputs.");
         genericAlignRun(std::dynamic_pointer_cast<Buffer>(firstInput), std::dynamic_pointer_cast<Buffer>(firstAlignTo));
     }
 }
