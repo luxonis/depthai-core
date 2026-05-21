@@ -400,8 +400,6 @@ jobs:
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Install combined wheel and run a smoke-test
         if: startsWith(github.ref, 'refs/tags/v') != true
-        env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
         run: |
           set -euo pipefail
 
@@ -417,13 +415,6 @@ jobs:
           python -m pip install --force-reinstall $wheel
 
           EXPECTED_VERSION="$ver" python bindings/python/ci/smoke_depthai.py
-      - name: Upload combined wheels to artifactory
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
-        env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
   # This job builds wheels for x86_64 arch
   build-linux-x86_64:
@@ -527,8 +518,6 @@ jobs:
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Install combined wheel and run a smoke-test
         if: startsWith(github.ref, 'refs/tags/v') != true
-        env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
         run: |
           set -euo pipefail
 
@@ -547,13 +536,6 @@ jobs:
 
           # Smoke test: fail hard on any exception or version mismatch
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
-      - name: Upload combined wheels to artifactory
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
-        env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
   # This job builds wheels for ARM64 arch
   build-linux-arm64:
@@ -661,8 +643,6 @@ jobs:
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Install combined wheel and run a smoke-test
         if: startsWith(github.ref, 'refs/tags/v') != true
-        env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
         run: |
           set -euo pipefail
 
@@ -681,13 +661,6 @@ jobs:
           "$PYBIN" -m pip install --force-reinstall $wheel
 
           EXPECTED_VERSION="$ver" "$PYBIN" bindings/python/ci/smoke_depthai.py
-      - name: Upload combined wheels to artifactory
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
-        env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
@@ -723,8 +696,6 @@ jobs:
       - name: Install combined wheel and run a smoke-test
         if: startsWith(github.ref, 'refs/tags/v') != true
         shell: pwsh
-        env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
         run: |
           $env:PYTHONIOENCODING = 'utf-8'
           $ErrorActionPreference = "Stop"  # Fail on any error
@@ -743,17 +714,29 @@ jobs:
           # Smoke test (no heredoc; YAML-safe). Fail on import error or version mismatch.
           $env:EXPECTED_VERSION = $ver
           python bindings/python/ci/smoke_depthai.py
-      - name: Upload combined wheels to artifactory
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh --snapshot
+
+  upload-wheels-to-ak:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: audited-wheels-combined-*
+          merge-multiple: true
+          path: bindings/python/wheelhouse/audited/
+
+      - name: Upload combined wheels to Artifact Keeper
+        run: cd bindings/python && bash ./ci/upload-ak.sh --snapshot
         env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+          AK_URL: ${{ secrets.AK_URL }}
+          AK_TOKEN: ${{ secrets.AK_TOKEN }}
 
   notify-slack:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-    needs: [combine-macos-wheels, combine-linux-x86_64-wheels, combine-linux-arm64-wheels, combine-windows-x86_64-wheels]
+    needs: [upload-wheels-to-ak]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -816,7 +799,7 @@ jobs:
     - name: Check if version matches
       run: cd bindings/python && python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
 
-  # Deploy to PyPi and Artifactory. Only when a commit is tagged
+  # Deploy to PyPI and Artifact Keeper. Only when a commit is tagged
   deploy:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [release]
@@ -839,12 +822,11 @@ jobs:
           PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
           PYPI_USER: ${{ secrets.PYPI_USER }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      - name: Run deploy to Artifactory
-        run: cd bindings/python && bash ./ci/upload-artifactory.sh --release
+      - name: Run deploy to Artifact Keeper
+        run: cd bindings/python && bash ./ci/upload-ak.sh --release
         env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+          AK_URL: ${{ secrets.AK_URL }}
+          AK_TOKEN: ${{ secrets.AK_TOKEN }}
 
   dispatch-bom-tests:
     needs: [build-linux-x86_64, deploy]
