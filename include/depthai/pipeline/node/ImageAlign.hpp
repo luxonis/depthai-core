@@ -115,7 +115,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
                                                       DatatypeEnum inputType,
                                                       const ImgTransformation& targetTransform,
                                                       const ImgFrameRunState& runState,
-                                                      bool warnedAboutDistortion);
+                                                      bool& warnedAboutDistortion);
 };
 
 }  // namespace node

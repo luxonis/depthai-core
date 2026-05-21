@@ -1085,7 +1085,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
                                                               DatatypeEnum inputType,
                                                               const ImgTransformation& targetTransform,
                                                               const ImgFrameRunState& runState,
-                                                              bool warnedAboutDistortion) {
+                                                              bool& warnedAboutDistortion) {
     auto& logger = pimpl->logger;
 
     const auto alignToDistortion = targetTransform.getDistortionCoefficients();
@@ -1096,6 +1096,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
             logger->warn(
                 "The input connected to inputAlignTo is distorted. The aligned image / segmentation mask will still be undistorted, meaning it won't be "
                 "perfectly aligned.");
+            warnedAboutDistortion = true;
         };
     };
 
@@ -1249,7 +1250,6 @@ void ImageAlign::genericAlignRun(std::shared_ptr<Buffer> firstInput, std::shared
 
         std::shared_ptr<Buffer> alignedInputMsg = buildAlignedOutputMessage(inputMsg, inputType, alignToTransform, runState, warnedAboutDistortion);
 
-        warnedAboutDistortion = true;
         auto tStop = std::chrono::steady_clock::now();
         auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(tStop - tStart).count();
         logger->trace("Generic align step took {} ms", runtime);
