@@ -176,7 +176,22 @@ StereoPair requireFirstStereoPairForTest(const std::shared_ptr<Device>& device) 
 void requireDepthAutoBackend(const node::Depth& depth, const std::shared_ptr<Device>& device) {
     const auto platform = device->getPlatform();
     if(platform == Platform::RVC4) {
-        requireDepthSingleBackendChild(depth, "NeuralDepth");
+        switch(depth.getResolvedAlgorithm()) {
+            case node::Depth::Algorithm::NEURAL:
+                requireDepthSingleBackendChild(depth, "NeuralDepth");
+                break;
+            case node::Depth::Algorithm::NEURAL_ASSISTED_STEREO:
+                requireDepthSingleBackendChild(depth, "NeuralAssistedStereo");
+                break;
+            case node::Depth::Algorithm::GPU_STEREO:
+                requireDepthSingleBackendChild(depth, "GPUStereo");
+                break;
+            case node::Depth::Algorithm::STEREO:
+                requireDepthSingleBackendChild(depth, "StereoDepth");
+                break;
+            default:
+                FAIL("Depth AUTO on RVC4 resolved to an unexpected backend.");
+        }
     } else if(platform == Platform::RVC2 && deviceReportsTofSensor(device)) {
         requireDepthSingleBackendChild(depth, "ToF");
     } else {
@@ -244,8 +259,6 @@ constexpr auto kFpsMeasureWindow = std::chrono::milliseconds(3000);
 /** StereoDepth output size on RVC2/RVC3 when user cameras are at 1280x800 (not neural model size). */
 constexpr std::pair<uint32_t, uint32_t> kRvc2UserCameraDepthOutputSize{640, 400};
 constexpr float kMinFpsMeasureSeconds = 0.5f;
-
-constexpr DeviceModelZoo kDepthDefaultNeuralModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
 
 void skipUnlessUserStereoDepthScenario(const std::shared_ptr<Device>& device) {
     if(device->getPlatform() == Platform::RVC2 && deviceReportsTofSensor(device)) {
@@ -369,12 +382,24 @@ void requireUserAndDepthFrameSizes(const std::shared_ptr<Device>& device,
     REQUIRE(userFrame->getHeight() == static_cast<int>(kUserStereoSensorResolution.second));
 
     if(device->getPlatform() == Platform::RVC4) {
-        const auto [expectedW, expectedH] = node::NeuralDepth::getInputSize(kDepthDefaultNeuralModel);
-        requireDepthSingleBackendChild(*depth, "NeuralDepth");
-        REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
-                 || depthFrame->getHeight() != static_cast<int>(kUserStereoSensorResolution.second)));
-        REQUIRE(depthFrame->getWidth() == expectedW);
-        REQUIRE(depthFrame->getHeight() == expectedH);
+        const auto resolved = depth->getResolvedAlgorithm();
+        if(resolved == node::Depth::Algorithm::NEURAL) {
+            const auto [expectedW, expectedH] = node::NeuralDepth::getInputSize(depth->getResolvedNeuralModel());
+            requireDepthSingleBackendChild(*depth, "NeuralDepth");
+            REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
+                     || depthFrame->getHeight() != static_cast<int>(kUserStereoSensorResolution.second)));
+            REQUIRE(depthFrame->getWidth() == expectedW);
+            REQUIRE(depthFrame->getHeight() == expectedH);
+        } else if(resolved == node::Depth::Algorithm::NEURAL_ASSISTED_STEREO) {
+            requireDepthSingleBackendChild(*depth, "NeuralAssistedStereo");
+            REQUIRE(depthFrame->getWidth() > 0);
+            REQUIRE(depthFrame->getHeight() > 0);
+        } else {
+            const char* backendName = resolved == node::Depth::Algorithm::GPU_STEREO ? "GPUStereo" : "StereoDepth";
+            requireDepthSingleBackendChild(*depth, backendName);
+            REQUIRE(depthFrame->getWidth() > 0);
+            REQUIRE(depthFrame->getHeight() > 0);
+        }
     } else {
         requireDepthSingleBackendChild(*depth, "StereoDepth");
         REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
@@ -643,4 +668,26 @@ TEST_CASE("Depth: user camera resolution unchanged; depth uses backend size") {
     const auto pair = requireFirstStereoPairForTest(device);
 
     REQUIRE_NOTHROW(runUserCameraDepthTest(pipeline, device, pair, std::nullopt, true));
+}
+
+TEST_CASE("Depth: RVC4 AUTO selects neural model from stereo_size and fps") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4) {
+        SKIP("Skipping Depth test: not RVC4.");
+    }
+    if(!device->isNeuralDepthSupported()) {
+        SKIP("Skipping Depth test: device does not support NeuralDepth.");
+    }
+    (void)requireFirstStereoPairForTest(device);
+
+    const auto expected = node::Depth::selectNeuralDepthModel(640, 400, 30.f, device->getSupportedDeviceModels());
+    REQUIRE(expected == DeviceModelZoo::NEURAL_DEPTH_480X300);
+
+    auto depth = pipeline.create<node::Depth>();
+    depth->build(node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32_t>{640, 400});
+    REQUIRE_NOTHROW((void)&depth->depth());
+    REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
+    REQUIRE(depth->getResolvedNeuralModel() == expected);
+    requireDepthSingleBackendChild(*depth, "NeuralDepth");
 }

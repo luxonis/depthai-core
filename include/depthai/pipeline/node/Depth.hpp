@@ -2,8 +2,10 @@
 
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
+#include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/device/Device.hpp"
 #include "depthai/pipeline/DeviceNodeGroup.hpp"
@@ -24,13 +26,14 @@ namespace node {
 /**
  * @brief Composite depth node: StereoDepth, NeuralDepth, NeuralAssistedStereo, ToF, or GPUStereo.
  *
- * ``Algorithm::AUTO`` uses NeuralDepth on RVC4, ToF on RVC2 when a ToF sensor is reported in ``getConnectedCameraFeatures()``,
- * and ``StereoDepth`` on other combinations (including RVC3 and RVC2 without ToF).
- * Use ``Depth()`` / ``Depth::create()`` for automatic algorithm selection, ``explicit Depth(Algorithm)`` / ``create(Algorithm)`` / ``create(device, Algorithm)`` to fix the backend, or ``Pipeline::create<Depth>(…)`` / ``Pipeline::create<Depth>(algorithm)`` to add the node with the pipeline default device. The algorithm can also be set before first wiring through ``build(algorithm, ...)``.
+ * On RVC4 ``Algorithm::AUTO`` picks the algorithm based on user resolution and target FPS,
+ * preferring NeuralDepth → NeuralAssistedStereo → StereoDepth → GPUStereo. The algorithm-specific
+ * "profile" is selected separately: NeuralDepth maps to a ``DeviceModelZoo`` model, StereoDepth maps
+ * to a ``StereoDepth::PresetMode``; NeuralAssistedStereo and GPUStereo have no selectable profile.
+ * On other platforms, AUTO uses ToF (RVC2 with ToF sensor) or ``StereoDepth``.
+ *
  * ``confidence()`` maps to backend confidence when present. For GPUStereo (``Algorithm::GPU_STEREO``) it is unavailable
- * (throws); use ``hasConfidence()`` before linking or creating a queue. For ToF it uses ``amplitude``.
- * Backend implementation nodes are internal and wired with fixed defaults;
- * only ``Algorithm`` selection is user-configurable, either at construction or through ``build(algorithm, ...)`` before first wiring.
+ * (throws); use ``hasConfidence()`` first. For ToF it uses ``amplitude``.
  *
  * Algorithm availability: ``TOF`` requires a connected ToF sensor (see ``Device::getConnectedCameraFeatures()``).
  * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a stereo pair and board revision 9 or newer
@@ -43,9 +46,9 @@ class Depth : public DeviceNodeGroup {
    public:
     /** Backend selection for the composite Depth node. */
     enum class Algorithm : std::uint32_t {
-        AUTO = 0,  ///< Resolved at wiring via device capabilities (see selectAlgorithm).
+        AUTO = 0,  ///< Resolved at wiring via device capabilities and stereo size / FPS (RVC4).
         STEREO,    ///< Classic StereoDepth disparity/depth pipeline.
-        NEURAL,    ///< RVC4 NeuralDepth with a fixed default model.
+        NEURAL,    ///< RVC4 NeuralDepth; model auto-selected on RVC4 unless overridden.
         NEURAL_ASSISTED_STEREO,  ///< RVC4 NeuralAssistedStereo (stereo + neural assist).
         TOF,       ///< Time-of-flight depth when a ToF sensor is connected.
         GPU_STEREO,  ///< RVC4 GPUStereo (no confidence output).
@@ -101,13 +104,56 @@ class Depth : public DeviceNodeGroup {
      */
     std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps = std::nullopt);
 
+    /**
+     * Set algorithm, optional FPS, and stereo frame size used by RVC4 auto-selection
+     * when no upstream ``Camera`` is present.
+     */
+    std::shared_ptr<Depth> build(Algorithm algorithm,
+                                  std::optional<float> fps,
+                                  std::optional<std::pair<uint32_t, uint32_t>> stereoSize);
+
+    /** Pin the NeuralDepth zoo model (skips RVC4 auto model picker). */
+    std::shared_ptr<Depth> build(DeviceModelZoo neuralModel);
+
     /** Current requested algorithm selection (including ``AUTO``). */
     [[nodiscard]] Algorithm getAlgorithm() const {
         return algorithmOverride_;
     }
 
+    /** Algorithm actually wired (``AUTO`` resolved). Valid after first ``depth()`` access. */
+    [[nodiscard]] Algorithm getResolvedAlgorithm() const {
+        return resolvedAlgorithm_;
+    }
+
+    /**
+     * NeuralDepth zoo model used by the resolved backend.
+     * For ``NEURAL`` this is the auto-selected (or overridden) model.
+     * For ``NEURAL_ASSISTED_STEREO`` this is always ``NEURAL_DEPTH_NANO`` (NAS has no selectable profile).
+     * For other backends the value is unspecified.
+     */
+    [[nodiscard]] DeviceModelZoo getResolvedNeuralModel() const {
+        return resolvedNeuralModel_;
+    }
+
+    /** ``StereoDepth`` preset used when the resolved backend is ``STEREO``. */
+    [[nodiscard]] StereoDepth::PresetMode getResolvedStereoPreset() const {
+        return resolvedStereoPreset_;
+    }
+
     /** Returns algorithms supported by the supplied device. */
     std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device) const;
+
+    /** True when @p width or @p height exceeds ``StereoDepth`` RVC4 maximum (1280x1280). */
+    static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
+
+    /** RVC4 NeuralDepth model picker (quality-first under FPS budget; ``supportedModels`` empty = all). */
+    static DeviceModelZoo selectNeuralDepthModel(uint32_t userWidth,
+                                                  uint32_t userHeight,
+                                                  float targetFps,
+                                                  const std::vector<DeviceModelZoo>& supportedModels = {});
+
+    /** RVC4 ``StereoDepth`` preset picker (quality-first under FPS budget). */
+    static StereoDepth::PresetMode selectStereoDepthPreset(float targetFps);
 
     /** Lazily wires the selected backend subgraph when the node is attached to a pipeline. */
     void buildInternal() override;
@@ -126,6 +172,9 @@ class Depth : public DeviceNodeGroup {
    private:
     /** Resolve ``AUTO`` or validate a fixed ``algorithmOverride_`` against @p device. */
     Algorithm selectAlgorithm(const std::shared_ptr<Device>& device) const;
+
+    /** Resolve final algorithm + neural models, considering RVC4 AUTO size/FPS heuristics. */
+    void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
 
     /**
      * Ensures stereo cameras exist and returns left/right outputs.
@@ -150,10 +199,15 @@ class Depth : public DeviceNodeGroup {
 
     /** User-selected or ``AUTO`` algorithm; frozen after ``buildInternal()`` completes. */
     Algorithm algorithmOverride_;
+    Algorithm resolvedAlgorithm_ = Algorithm::AUTO;
     /** True after lazy wiring in ``buildInternal()``; blocks further ``build()`` calls. */
     bool graphBuilt_{false};
     /** Optional FPS for stereo ``Camera`` outputs; set via ``build()`` before wiring. */
     std::optional<float> stereoOutputFps_{};
+    std::optional<std::pair<uint32_t, uint32_t>> stereoSizeOverride_{};
+    std::optional<DeviceModelZoo> neuralModelOverride_{};
+    DeviceModelZoo resolvedNeuralModel_ = DeviceModelZoo::NEURAL_DEPTH_SMALL;
+    StereoDepth::PresetMode resolvedStereoPreset_ = StereoDepth::PresetMode::DEFAULT;
 
     /** Resolved backend depth output (set in ``bindBackendOutputs``). */
     Node::Output* depthOut_{nullptr};
