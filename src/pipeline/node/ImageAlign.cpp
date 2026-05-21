@@ -9,11 +9,14 @@
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
+#include "pipeline/datatype/AprilTags.hpp"
 #include "pipeline/datatype/DatatypeEnum.hpp"
 #include "pipeline/datatype/ImgDetections.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
+#include "pipeline/datatype/PointCloudData.hpp"
 #include "pipeline/datatype/SegmentationMask.hpp"
 #include "pipeline/datatype/SpatialImgDetections.hpp"
+#include "pipeline/datatype/Tracklets.hpp"
 
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
     #include <opencv2/calib3d.hpp>
@@ -79,6 +82,19 @@ std::vector<T> flatten(const std::vector<std::vector<T> >& orig) {
     std::vector<T> ret;
     for(const auto& v : orig) ret.insert(ret.end(), v.begin(), v.end());
     return ret;
+}
+
+bool isTransformableDatatype(DatatypeEnum datatype) {
+    return datatype == DatatypeEnum::Transformable || isDatatypeSubclassOf(DatatypeEnum::Transformable, datatype);
+}
+
+template <typename Message>
+std::shared_ptr<Message> transformMessage(const std::shared_ptr<Buffer>& inputMsg, const ImgTransformation& targetTransform, const char* messageName) {
+    auto typedInput = std::dynamic_pointer_cast<Message>(inputMsg);
+    if(!typedInput) {
+        throw std::logic_error(fmt::format("Failed to cast transformable {} input", messageName));
+    }
+    return std::make_shared<Message>(typedInput->transformTo(targetTransform));
 }
 
 cv::Mat vecToCvMat(int rows, int cols, int type, const std::vector<std::vector<float> >& orig) {
@@ -198,15 +214,11 @@ int shiftDepthImg(std::shared_ptr<dai::ImgFrame> inVec,
 }  // namespace
 
 DatatypeEnum classifyInputDatatype(const std::shared_ptr<Buffer>& buffer) {
-    if(std::dynamic_pointer_cast<TransformableBuffer>(buffer)) {
-        return DatatypeEnum::TransformableBuffer;
+    const auto datatype = buffer->getDatatype();
+    if(datatype == DatatypeEnum::ImgFrame || isTransformableDatatype(datatype)) {
+        return datatype;
     }
 
-    if(std::dynamic_pointer_cast<ImgFrame>(buffer)) {
-        return DatatypeEnum::ImgFrame;
-    }
-
-    // maybe switch to default getDatatype
     throw std::runtime_error("Unsupported datatype on input, cannot initialize calibration!");
 }
 
@@ -688,16 +700,13 @@ void ImageAlign::run() {
     DatatypeEnum inputDatatype = classifyInputDatatype(firstInput);
     DatatypeEnum alignToDatatype = classifyInputDatatype(firstAlignTo);
 
-    const auto isImgFrameOrTransformable = [](DatatypeEnum datatype) {
-        return datatype == DatatypeEnum::ImgFrame || datatype == DatatypeEnum::TransformableBuffer
-               || isDatatypeSubclassOf(DatatypeEnum::TransformableBuffer, datatype);
-    };
+    const auto isImgFrameOrTransformable = [](DatatypeEnum datatype) { return datatype == DatatypeEnum::ImgFrame || isTransformableDatatype(datatype); };
 
     if(inputDatatype == DatatypeEnum::ImgFrame && alignToDatatype == DatatypeEnum::ImgFrame) {
-        logger->info("Running ImageAlign in legacy mode with ImgFrame inputs.");
+        logger->warn("Running ImageAlign in legacy mode with ImgFrame inputs.");
         legacyRun(std::dynamic_pointer_cast<ImgFrame>(firstInput), std::dynamic_pointer_cast<ImgFrame>(firstAlignTo));
     } else if(isImgFrameOrTransformable(inputDatatype) && isImgFrameOrTransformable(alignToDatatype)) {
-        logger->info("Running ImageAlign in generic mode with transformable buffer inputs.");
+        logger->warn("Running ImageAlign in generic mode with transformable inputs.");
         genericAlignRun(std::dynamic_pointer_cast<Buffer>(firstInput), std::dynamic_pointer_cast<Buffer>(firstAlignTo));
     }
 }
@@ -705,8 +714,8 @@ void ImageAlign::run() {
 ImgTransformation ImageAlign::extractTransformationFromBuffer(const std::shared_ptr<Buffer>& buffer, DatatypeEnum datatype) {
     auto logger = pimpl->logger;
     ImgTransformation transform;
-    if(datatype == DatatypeEnum::TransformableBuffer) {
-        auto transformable = std::dynamic_pointer_cast<TransformableBuffer>(buffer);
+    if(isTransformableDatatype(datatype)) {
+        auto transformable = std::dynamic_pointer_cast<Transformable>(buffer);
         if(!transformable || !transformable->getTransformation().has_value()) {
             logger->error("Input connected to inputAlignTo does not have a ImgTransformation set, cannot use it as alignTo target!");
             throw std::runtime_error("Missing ImgTransformation on inputAlignTo");
@@ -1098,10 +1107,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
         std::shared_ptr<ImgDetections> imgDetectionsInput = std::dynamic_pointer_cast<ImgDetections>(inputMsg);
         std::optional<ImgFrame> segMask = imgDetectionsInput->getSegmentationMask();
 
-        auto alignedImg = std::dynamic_pointer_cast<ImgDetections>(imgDetectionsInput->cloneAndTransformTo(outputTransform));
-        if(!alignedImg) {
-            throw std::logic_error("Failed to cast aligned ImgDetections");
-        }
+        auto alignedImg = transformMessage<ImgDetections>(inputMsg, outputTransform, "ImgDetections");
 
         if(segMask) {
             warnAboutDistortion();
@@ -1117,10 +1123,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
         auto spatialImgDetectionsInput = std::dynamic_pointer_cast<SpatialImgDetections>(inputMsg);
         auto segMask = spatialImgDetectionsInput->getSegmentationMask();
 
-        auto alignedSpatialImgDetections = std::dynamic_pointer_cast<SpatialImgDetections>(spatialImgDetectionsInput->cloneAndTransformTo(outputTransform));
-        if(!alignedSpatialImgDetections) {
-            throw std::logic_error("Failed to cast aligned SpatialImgDetections");
-        }
+        auto alignedSpatialImgDetections = transformMessage<SpatialImgDetections>(inputMsg, outputTransform, "SpatialImgDetections");
 
         if(segMask) {
             warnAboutDistortion();
@@ -1149,14 +1152,22 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
         return alignedSegMask;
     }
 
-    // if(inputType == DatatypeEnum::PointCloudData) {
-    // }
+    if(inputType == DatatypeEnum::AprilTags) {
+        return transformMessage<AprilTags>(inputMsg, outputTransform, "AprilTags");
+    }
 
-    DatatypeEnum inputClass = classifyInputDatatype(inputMsg);
-    if(inputClass == DatatypeEnum::TransformableBuffer) {
+    if(inputType == DatatypeEnum::Tracklets) {
+        return transformMessage<Tracklets>(inputMsg, outputTransform, "Tracklets");
+    }
+
+    if(inputType == DatatypeEnum::PointCloudData) {
+        return transformMessage<PointCloudData>(inputMsg, outputTransform, "PointCloudData");
+    }
+
+    if(inputType == DatatypeEnum::Transformable) {  // custom python messages
         auto transformableInput = std::dynamic_pointer_cast<TransformableBuffer>(inputMsg);
         if(transformableInput) {
-            return transformableInput->cloneAndTransformTo(outputTransform);
+            return transformableInput->transformTo(outputTransform);
         }
     }
 
@@ -1219,7 +1230,7 @@ void ImageAlign::genericAlignRun(std::shared_ptr<Buffer> firstInput, std::shared
         const bool transformChanged = !alignToTransform.isEqualTransformation(newAlignToTransform) || !inputTransform.isEqualTransformation(newInputTransform);
 
         if(isFrameLike(inputType) && transformChanged) {
-            logger->debug("Input or alignTo transformation changed, updating rectification maps.");
+            logger->info("Input or alignTo transformation changed, updating rectification maps.");
             runState = prepareRectificationMatrices(newInputTransform, newAlignToTransform);
             warnedAboutDistortion = false;
         }
