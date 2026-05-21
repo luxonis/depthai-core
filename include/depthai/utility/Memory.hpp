@@ -181,14 +181,6 @@ class ConvertedOffsetMemory : public OffsetMemory {
         return memory;
     }
 
-    template<typename T> std::shared_ptr<T> castInternal() {
-        return std::dynamic_pointer_cast<T>(memory);
-    }
-
-    template<typename T>  std::shared_ptr<T> castInternal() const {
-        return std::dynamic_pointer_cast<T>(memory);
-    }
-
     static std::shared_ptr<OffsetMemory> convert(const std::shared_ptr<Memory>& memory) {
         auto dynOffsetMemory = std::dynamic_pointer_cast<OffsetMemory>(memory);
         if(dynOffsetMemory != nullptr) return dynOffsetMemory;

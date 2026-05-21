@@ -40,7 +40,6 @@ inline bool isSingleChannel(const dai::ImgFrame::Type type) {
     return type == dai::ImgFrame::Type::GRAY8 || type == dai::ImgFrame::Type::RAW8 || type == dai::ImgFrame::Type::RAW16 || type == dai::ImgFrame::Type::GRAYF16
            || type == dai::ImgFrame::Type::RAW32;
 }
-bool getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp);
 
 void transformOpenCV(const uint8_t* src,
                                 uint8_t* dst,
@@ -412,7 +411,7 @@ bool dai::impl::isTypeSupported(dai::ImgFrame::Type type) {
 #endif
 }
 
-bool getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp) {
+bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp) {
     using ImgFrame = dai::ImgFrame;
 
     // Set output Bpp and planes by PixelFormat and interleaved options

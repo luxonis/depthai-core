@@ -429,13 +429,6 @@ class ColorChange {
 class ColorChangeH : public ColorChange {
     std::shared_ptr<_ImageManipMemory> ccAuxFrame;
 
-    bool colorConvert(const std::shared_ptr<_ImageManipMemory> inputFrame,
-                      std::shared_ptr<_ImageManipMemory> outputFrame,
-                      FrameSpecs srcSpecs,
-                      FrameSpecs dstSpecs,
-                      ImgFrame::Type from,
-                      ImgFrame::Type to);
-
    public:
     void build(const FrameSpecs srcFrameSpecs, const FrameSpecs dstFrameSpecs, const ImgFrame::Type typeFrom, const ImgFrame::Type typeTo);
 
@@ -536,6 +529,7 @@ FrameSpecs getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type typ
 size_t getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height);
 void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
 size_t getFrameSize(const ImgFrame::Type type, const FrameSpecs& specs);
+bool getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPlanes, float& outBpp);
 
 bool isTypeSupported(dai::ImgFrame::Type type);
 
