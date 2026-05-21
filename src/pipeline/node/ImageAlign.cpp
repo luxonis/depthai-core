@@ -84,6 +84,16 @@ std::vector<T> flatten(const std::vector<std::vector<T> >& orig) {
     return ret;
 }
 
+template <typename T>
+std::string joinValues(const std::vector<T>& values, const char* separator) {
+    std::ostringstream stream;
+    for(size_t i = 0; i < values.size(); ++i) {
+        if(i != 0) stream << separator;
+        stream << values[i];
+    }
+    return stream.str();
+}
+
 bool isTransformableDatatype(DatatypeEnum datatype) {
     return datatype == DatatypeEnum::Transformable || isDatatypeSubclassOf(DatatypeEnum::Transformable, datatype);
 }
@@ -1080,16 +1090,12 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
 
     const auto alignToDistortion = targetTransform.getDistortionCoefficients();
     bool hasDistortion = std::any_of(alignToDistortion.begin(), alignToDistortion.end(), [](float value) { return std::abs(value) > 0.0f; });
-    ImgTransformation outputTransform = targetTransform;
-    if(!alignToDistortion.empty()) {
-        outputTransform.setDistortionCoefficients(std::vector<float>(alignToDistortion.size(), 0.0f));
-    }
 
     auto warnAboutDistortion = [&]() {
         if(!warnedAboutDistortion && hasDistortion) {
             logger->warn(
-                "The input connected to inputAlignTo is distorted. The aligned image will still be undistorted, meaning it won't be perfectly "
-                "aligned.");
+                "The input connected to inputAlignTo is distorted. The aligned image / segmentation mask will still be undistorted, meaning it won't be "
+                "perfectly aligned.");
         };
     };
 
@@ -1099,7 +1105,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
         warnAboutDistortion();
 
         auto alignedImg = alignImgFrame(*imgFrameInput, runState, cv::Scalar(0, 0, 0));
-        alignedImg->setTransformation(outputTransform);
+        alignedImg->setTransformation(targetTransform);
         return alignedImg;
     }
 
@@ -1107,7 +1113,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
         std::shared_ptr<ImgDetections> imgDetectionsInput = std::dynamic_pointer_cast<ImgDetections>(inputMsg);
         std::optional<ImgFrame> segMask = imgDetectionsInput->getSegmentationMask();
 
-        auto alignedImg = transformMessage<ImgDetections>(inputMsg, outputTransform, "ImgDetections");
+        auto alignedImg = transformMessage<ImgDetections>(inputMsg, targetTransform, "ImgDetections");
 
         if(segMask) {
             warnAboutDistortion();
@@ -1123,7 +1129,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
         auto spatialImgDetectionsInput = std::dynamic_pointer_cast<SpatialImgDetections>(inputMsg);
         auto segMask = spatialImgDetectionsInput->getSegmentationMask();
 
-        auto alignedSpatialImgDetections = transformMessage<SpatialImgDetections>(inputMsg, outputTransform, "SpatialImgDetections");
+        auto alignedSpatialImgDetections = transformMessage<SpatialImgDetections>(inputMsg, targetTransform, "SpatialImgDetections");
 
         if(segMask) {
             warnAboutDistortion();
@@ -1147,27 +1153,27 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
         alignedSegMask->setTimestamp(segMaskInput->getTimestamp());
         alignedSegMask->setTimestampDevice(segMaskInput->getTimestampDevice());
         alignedSegMask->setSequenceNum(segMaskInput->getSequenceNum());
-        alignedSegMask->setTransformation(outputTransform);
+        alignedSegMask->setTransformation(targetTransform);
         alignedSegMask->setLabels(segMaskInput->getLabels());
         return alignedSegMask;
     }
 
     if(inputType == DatatypeEnum::AprilTags) {
-        return transformMessage<AprilTags>(inputMsg, outputTransform, "AprilTags");
+        return transformMessage<AprilTags>(inputMsg, targetTransform, "AprilTags");
     }
 
     if(inputType == DatatypeEnum::Tracklets) {
-        return transformMessage<Tracklets>(inputMsg, outputTransform, "Tracklets");
+        return transformMessage<Tracklets>(inputMsg, targetTransform, "Tracklets");
     }
 
     if(inputType == DatatypeEnum::PointCloudData) {
-        return transformMessage<PointCloudData>(inputMsg, outputTransform, "PointCloudData");
+        return transformMessage<PointCloudData>(inputMsg, targetTransform, "PointCloudData");
     }
 
     if(inputType == DatatypeEnum::Transformable) {  // custom python messages
         auto transformableInput = std::dynamic_pointer_cast<TransformableBuffer>(inputMsg);
         if(transformableInput) {
-            return transformableInput->transformTo(outputTransform);
+            return transformableInput->transformTo(targetTransform);
         }
     }
 
