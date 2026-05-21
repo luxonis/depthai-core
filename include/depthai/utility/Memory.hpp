@@ -186,6 +186,15 @@ class ConvertedOffsetMemory : public OffsetMemory {
         if(dynOffsetMemory != nullptr) return dynOffsetMemory;
         return std::make_shared<ConvertedOffsetMemory>(memory);
     }
+
+    template <typename T>
+    static std::shared_ptr<T> cast(std::shared_ptr<OffsetMemory> memory) {
+        auto omem = std::dynamic_pointer_cast<ConvertedOffsetMemory>(memory);
+        if(omem != nullptr) {
+            return std::dynamic_pointer_cast<T>(omem->getInternal());
+        }
+        return std::dynamic_pointer_cast<T>(memory);
+    }
 };
 
 }  // namespace dai
