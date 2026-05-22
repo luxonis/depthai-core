@@ -23,14 +23,36 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("TOF", Depth::Algorithm::TOF)
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
+    // Translate a Depth::Config variant to a Python value (model, preset, or None).
+    auto configToPy = [](const Depth::Config& c) -> py::object {
+        if(const auto* m = std::get_if<DeviceModelZoo>(&c)) return py::cast(*m);
+        if(const auto* p = std::get_if<StereoDepth::PresetMode>(&c)) return py::cast(*p);
+        return py::none();
+    };
+
     node.def("getAlgorithm", &Depth::getAlgorithm)
         .def("getResolvedAlgorithm", &Depth::getResolvedAlgorithm)
         .def("getResolvedNeuralModel", &Depth::getResolvedNeuralModel)
         .def("getResolvedStereoPreset", &Depth::getResolvedStereoPreset)
+        .def("getResolvedConfig", [configToPy](const Depth& d) { return configToPy(d.getResolvedConfig()); })
         .def_static("exceedsStereoDepthMaxResolution", &Depth::exceedsStereoDepthMaxResolution)
-        .def_static("selectNeuralDepthModel", &Depth::selectNeuralDepthModel, py::arg("user_width"), py::arg("user_height"),
-                    py::arg("target_fps"), py::arg("supported_models") = std::vector<DeviceModelZoo>{})
-        .def_static("selectStereoDepthPreset", &Depth::selectStereoDepthPreset, py::arg("target_fps"))
+        .def_static(
+            "selectBackend",
+            [configToPy](py::object resolution,
+                         float targetFps,
+                         const std::vector<Depth::Algorithm>& supportedAlgorithms,
+                         const std::vector<DeviceModelZoo>& supportedModels) {
+                std::optional<std::pair<uint32_t, uint32_t>> optRes;
+                if(!resolution.is_none()) {
+                    optRes = resolution.cast<std::pair<uint32_t, uint32_t>>();
+                }
+                const auto sel = Depth::selectBackend(optRes, targetFps, supportedAlgorithms, supportedModels);
+                return py::make_tuple(sel.algorithm, configToPy(sel.config));
+            },
+            py::arg("resolution") = py::none(),
+            py::arg("target_fps") = 30.f,
+            py::arg("supported_algorithms"),
+            py::arg("supported_models") = std::vector<DeviceModelZoo>{})
         .def(
             "build",
             [](Depth& self, py::object fps) {

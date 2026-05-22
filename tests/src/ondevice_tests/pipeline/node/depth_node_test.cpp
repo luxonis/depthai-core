@@ -10,6 +10,7 @@
 #include <cstring>
 #include <optional>
 #include <utility>
+#include <variant>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/DeviceModelZoo.hpp"
@@ -681,13 +682,18 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from stereo_size and fps") {
     }
     (void)requireFirstStereoPairForTest(device);
 
-    const auto expected = node::Depth::selectNeuralDepthModel(640, 400, 30.f, device->getSupportedDeviceModels());
-    REQUIRE(expected == DeviceModelZoo::NEURAL_DEPTH_480X300);
-
     auto depth = pipeline.create<node::Depth>();
+    const auto supported = depth->getSupportedAlgorithms(device);
+    const auto expected = node::Depth::selectBackend(std::make_pair(640u, 400u),
+                                                      30.f,
+                                                      supported,
+                                                      device->getSupportedDeviceModels());
+    REQUIRE(expected.algorithm == node::Depth::Algorithm::NEURAL);
+    REQUIRE(std::get<DeviceModelZoo>(expected.config) == DeviceModelZoo::NEURAL_DEPTH_480X300);
+
     depth->build(node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32_t>{640, 400});
     REQUIRE_NOTHROW((void)&depth->depth());
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
-    REQUIRE(depth->getResolvedNeuralModel() == expected);
+    REQUIRE(depth->getResolvedNeuralModel() == std::get<DeviceModelZoo>(expected.config));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
 }
