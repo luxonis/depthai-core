@@ -78,3 +78,33 @@ TEST_CASE("Normalized rect remap") {
     REQUIRE(float_eq(rect.size.width, 0.8));
     REQUIRE(float_eq(rect.size.height, 1.0));
 }
+
+TEST_CASE("Normalized point corner outputs keep explicit normalization") {
+    dai::Extrinsics extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, dai::CameraBoardSocket::CAM_A};
+    dai::ImgTransformation transformFrom(2000, 1000);
+    dai::ImgTransformation transformTo(2000, 1000);
+    transformFrom.setExtrinsics(extrinsics);
+    transformTo.setExtrinsics(extrinsics);
+    transformTo.addScale(2, 2);
+    transformTo.addCrop(0, 0, 2000, 1000);
+
+    SECTION("remapPointTo preserves normalized flag at (1, 1)") {
+        dai::Point2f pt(0.5, 0.5, true);
+        const auto remapped = transformFrom.remapPointTo(transformTo, pt);
+
+        REQUIRE(float_eq(remapped.x, 1.0));
+        REQUIRE(float_eq(remapped.y, 1.0));
+        REQUIRE(remapped.hasNormalized);
+        REQUIRE(remapped.isNormalized());
+    }
+
+    SECTION("projectPointTo preserves normalized flag at (1, 1)") {
+        dai::Point2f pt(0.5, 0.5, true);
+        const auto projected = transformFrom.projectPointTo(transformTo, pt, 1000.0f);
+
+        REQUIRE(float_eq(projected.x, 1.0));
+        REQUIRE(float_eq(projected.y, 1.0));
+        REQUIRE(projected.hasNormalized);
+        REQUIRE(projected.isNormalized());
+    }
+}
