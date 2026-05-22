@@ -282,17 +282,25 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
         return inputAlignTo.get<ImgFrame>();
     };
 
-    std::unordered_set<ImgFrame::Type> hwSupportedFrameTypes = {ImgFrame::Type::YUV420p, ImgFrame::Type::NV12, ImgFrame::Type::GRAY8, ImgFrame::Type::RAW8};
-    std::unordered_set<ImgFrame::Type> supportedFrameTypes = hwSupportedFrameTypes;
-    supportedFrameTypes.insert(ImgFrame::Type::RAW16);
+    std::unordered_set<ImgFrame::Type> supportedFrameTypes = {ImgFrame::Type::YUV420p,
+                                                              ImgFrame::Type::NV12,
+                                                              ImgFrame::Type::GRAY8,
+                                                              ImgFrame::Type::RAW8,
+                                                              ImgFrame::Type::RAW16,
+                                                              ImgFrame::Type::RGB888i,
+                                                              ImgFrame::Type::BGR888i,
+                                                              ImgFrame::Type::RGB888p,
+                                                              ImgFrame::Type::BGR888p};
 
-    std::unordered_map<ImgFrame::Type, float> frameTypeToBpp = {
-        {ImgFrame::Type::YUV420p, 1.5f},
-        {ImgFrame::Type::NV12, 1.5f},
-        {ImgFrame::Type::GRAY8, 1.0f},
-        {ImgFrame::Type::RAW8, 1.0f},
-        {ImgFrame::Type::RAW16, 2.0f},
-    };
+    std::unordered_map<ImgFrame::Type, float> frameTypeToBpp = {{ImgFrame::Type::YUV420p, 1.5f},
+                                                                {ImgFrame::Type::NV12, 1.5f},
+                                                                {ImgFrame::Type::GRAY8, 1.0f},
+                                                                {ImgFrame::Type::RAW8, 1.0f},
+                                                                {ImgFrame::Type::RAW16, 2.0f},
+                                                                {ImgFrame::Type::RGB888i, 3.0f},
+                                                                {ImgFrame::Type::BGR888i, 3.0f},
+                                                                {ImgFrame::Type::RGB888p, 3.0f},
+                                                                {ImgFrame::Type::BGR888p, 3.0f}};
 
     auto allocatePools = [&](int width, int height, int alignWidth, int alignHeight, float inputFrameBpp) -> std::pair<bool, std::string> {
         if(allocated) return {true, ""};
@@ -413,7 +421,33 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
         cv::Mat remappedBGR;
         cv::remap(bgrFrame, remappedBGR, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
-        cv::cvtColor(remappedBGR, outputNV12, cv::COLOR_BGR2YUV_YV12);
+        CV_Assert((remappedBGR.cols % 2) == 0 && (remappedBGR.rows % 2) == 0);
+
+        cv::Mat yuv420;
+        cv::cvtColor(remappedBGR, yuv420, cv::COLOR_BGR2YUV_I420);
+        CV_Assert(yuv420.isContinuous());
+
+        const int w = remappedBGR.cols;
+        const int h = remappedBGR.rows;
+        if(h % 2 != 0 || w % 2 != 0) {
+            throw std::runtime_error("Remapped image has odd width or height, cannot convert to NV12");
+        }
+        const int cw = w / 2;
+        const int ch = h / 2;
+
+        cv::Mat yDst(h, w, CV_8UC1, outputNV12.data, outputNV12.step[0]);
+        cv::Mat uvDst(ch, cw, CV_8UC2, outputNV12.data + outputNV12.step[0] * h, outputNV12.step[0]);
+
+        const uint8_t* srcY = yuv420.ptr<uint8_t>();
+        const uint8_t* srcU = srcY + static_cast<size_t>(w) * h;
+        const uint8_t* srcV = srcU + static_cast<size_t>(cw) * ch;
+
+        cv::Mat ySrc(h, w, CV_8UC1, const_cast<uint8_t*>(srcY));
+        cv::Mat uSrc(ch, cw, CV_8UC1, const_cast<uint8_t*>(srcU));
+        cv::Mat vSrc(ch, cw, CV_8UC1, const_cast<uint8_t*>(srcV));
+
+        ySrc.copyTo(yDst);
+        cv::merge(std::vector<cv::Mat>{uSrc, vSrc}, uvDst);
     };
 
     auto remapYuv420 = [&](cv::Mat& inputYUV420, cv::Mat& outputYUV420, cv::Mat& map_x, cv::Mat& map_y) {
@@ -572,7 +606,11 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
         auto depthImgRectified = std::make_shared<ImgFrame>();
         depthImgRectified->setData(std::vector<uint8_t>(frameSize));
 
-        depthImgRectified->setMetadata(*inputImg);
+        depthImgRectified->setTransformation(inputImg->transformation);
+        depthImgRectified->setInstanceNum(inputImg->getInstanceNum());
+        depthImgRectified->setSequenceNum(inputImg->getSequenceNum());
+        depthImgRectified->setTimestamp(inputImg->getTimestamp());
+        depthImgRectified->setTimestampDevice(inputImg->getTimestampDevice());
         depthImgRectified->setWidth(inputImg->getWidth());
         depthImgRectified->setHeight(inputImg->getHeight());
         depthImgRectified->setType(inputImg->getType());
@@ -590,6 +628,11 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
             } else {
                 logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)depthImgRectified->getType());
             }
+        } else if(depthImgRectified->getType() == ImgFrame::Type::RGB888p || depthImgRectified->getType() == ImgFrame::Type::BGR888p) {
+            cv::Mat inputCvFrame = inputImg->getCvFrame();
+            cv::Mat remappedCvFrame;
+            cv::remap(inputCvFrame, remappedCvFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            depthImgRectified->setCvFrame(remappedCvFrame, depthImgRectified->getType());
         } else {
             cv::remap(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
         }
@@ -669,6 +712,11 @@ void ImageAlign::legacyRun(std::shared_ptr<ImgFrame> firstInputImg, std::shared_
             } else {
                 logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)alignedImg->getType());
             }
+        } else if(alignedImg->getType() == ImgFrame::Type::RGB888p || alignedImg->getType() == ImgFrame::Type::BGR888p) {
+            cv::Mat warp2InputCvFrame = warp2Input->getCvFrame();
+            cv::Mat remappedCvFrame;
+            cv::remap(warp2InputCvFrame, remappedCvFrame, map_x_2, map_y_2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            alignedImg->setCvFrame(remappedCvFrame, alignedImg->getType());
         } else {
             cv::remap(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
         }
@@ -768,9 +816,15 @@ std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg, const Ima
     uint32_t frameSize = 0;
     uint32_t outFrameSize = 0;
 
-    std::unordered_set<ImgFrame::Type> hwSupportedFrameTypes = {ImgFrame::Type::YUV420p, ImgFrame::Type::NV12, ImgFrame::Type::GRAY8, ImgFrame::Type::RAW8};
-    std::unordered_set<ImgFrame::Type> supportedFrameTypes = hwSupportedFrameTypes;
-    supportedFrameTypes.insert(ImgFrame::Type::RAW16);
+    std::unordered_set<ImgFrame::Type> supportedFrameTypes = {ImgFrame::Type::YUV420p,
+                                                              ImgFrame::Type::NV12,
+                                                              ImgFrame::Type::GRAY8,
+                                                              ImgFrame::Type::RAW8,
+                                                              ImgFrame::Type::RAW16,
+                                                              ImgFrame::Type::RGB888i,
+                                                              ImgFrame::Type::BGR888i,
+                                                              ImgFrame::Type::RGB888p,
+                                                              ImgFrame::Type::BGR888p};
 
     std::unordered_map<ImgFrame::Type, float> frameTypeToBpp = {
         {ImgFrame::Type::YUV420p, 1.5f},
@@ -778,6 +832,10 @@ std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg, const Ima
         {ImgFrame::Type::GRAY8, 1.0f},
         {ImgFrame::Type::RAW8, 1.0f},
         {ImgFrame::Type::RAW16, 2.0f},
+        {ImgFrame::Type::RGB888i, 3.0f},
+        {ImgFrame::Type::BGR888i, 3.0f},
+        {ImgFrame::Type::RGB888p, 3.0f},
+        {ImgFrame::Type::BGR888p, 3.0f},
     };
 
     auto allocatePools = [&](int width, int height, int alignWidth, int alignHeight, float inputFrameBpp) -> std::pair<bool, std::string> {
@@ -803,7 +861,34 @@ std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg, const Ima
         cv::Mat remappedBGR;
         cv::remap(bgrFrame, remappedBGR, map_x, map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, bgColor);
 
-        cv::cvtColor(remappedBGR, outputNV12, cv::COLOR_BGR2YUV_YV12);
+        CV_Assert((remappedBGR.cols % 2) == 0 && (remappedBGR.rows % 2) == 0);
+
+        cv::Mat yuv420;
+        cv::cvtColor(remappedBGR, yuv420, cv::COLOR_BGR2YUV_I420);
+        CV_Assert(yuv420.isContinuous());
+
+        const int w = remappedBGR.cols;
+        const int h = remappedBGR.rows;
+
+        if(h % 2 != 0 || w % 2 != 0) {
+            throw std::runtime_error("Remapped image has odd width or height, cannot convert to NV12");
+        }
+        const int cw = w / 2;
+        const int ch = h / 2;
+
+        cv::Mat yDst(h, w, CV_8UC1, outputNV12.data, outputNV12.step[0]);
+        cv::Mat uvDst(ch, cw, CV_8UC2, outputNV12.data + outputNV12.step[0] * h, outputNV12.step[0]);
+
+        const uint8_t* srcY = yuv420.ptr<uint8_t>();
+        const uint8_t* srcU = srcY + static_cast<size_t>(w) * h;
+        const uint8_t* srcV = srcU + static_cast<size_t>(cw) * ch;
+
+        cv::Mat ySrc(h, w, CV_8UC1, const_cast<uint8_t*>(srcY));
+        cv::Mat uSrc(ch, cw, CV_8UC1, const_cast<uint8_t*>(srcU));
+        cv::Mat vSrc(ch, cw, CV_8UC1, const_cast<uint8_t*>(srcV));
+
+        ySrc.copyTo(yDst);
+        cv::merge(std::vector<cv::Mat>{uSrc, vSrc}, uvDst);
     };
 
     auto remapYuv420 = [&](cv::Mat& inputYUV420, cv::Mat& outputYUV420, cv::Mat& map_x, cv::Mat& map_y) {
@@ -844,7 +929,11 @@ std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg, const Ima
     auto depthImgRectified = std::make_shared<ImgFrame>();
     depthImgRectified->setData(std::vector<uint8_t>(frameSize));
 
-    depthImgRectified->setMetadata(inputImg);
+    depthImgRectified->setTransformation(inputImg.getTransformation());
+    depthImgRectified->setInstanceNum(inputImg.getInstanceNum());
+    depthImgRectified->setSequenceNum(inputImg.getSequenceNum());
+    depthImgRectified->setTimestamp(inputImg.getTimestamp());
+    depthImgRectified->setTimestampDevice(inputImg.getTimestampDevice());
     depthImgRectified->setWidth(inputImg.getWidth());
     depthImgRectified->setHeight(inputImg.getHeight());
     depthImgRectified->setType(inputImg.getType());
@@ -868,6 +957,11 @@ std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg, const Ima
         } else {
             logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)depthImgRectified->getType());
         }
+    } else if(depthImgRectified->getType() == ImgFrame::Type::RGB888p || depthImgRectified->getType() == ImgFrame::Type::BGR888p) {
+        cv::Mat inputCvFrame = inputImg.getCvFrame();
+        cv::Mat remappedCvFrame;
+        cv::remap(inputCvFrame, remappedCvFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
+        depthImgRectified->setCvFrame(remappedCvFrame, depthImgRectified->getType());
     } else {
         cv::remap(inputFrame, depthImgRectifiedFrame, map_x_1, map_y_1, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
     }
@@ -931,7 +1025,10 @@ std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg, const Ima
         t1 = steady_clock::now();
     }
 
-    alignedImg->setMetadata(inputImg);
+    alignedImg->setTransformation(inputImg.getTransformation());
+    alignedImg->setSequenceNum(inputImg.getSequenceNum());
+    alignedImg->setTimestamp(inputImg.getTimestamp());
+    alignedImg->setTimestampDevice(inputImg.getTimestampDevice());
     alignedImg->setWidth(alignWidth);
     alignedImg->setHeight(alignHeight);
     alignedImg->setType(inputImg.getType());
@@ -947,6 +1044,11 @@ std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg, const Ima
         } else {
             logger->error("Unsupported frame type for NV12/YUV420 remapping: {}", (int)alignedImg->getType());
         }
+    } else if(alignedImg->getType() == ImgFrame::Type::RGB888p || alignedImg->getType() == ImgFrame::Type::BGR888p) {
+        cv::Mat warp2InputCvFrame = warp2Input->getCvFrame();
+        cv::Mat remappedCvFrame;
+        cv::remap(warp2InputCvFrame, remappedCvFrame, map_x_2, map_y_2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
+        alignedImg->setCvFrame(remappedCvFrame, alignedImg->getType());
     } else {
         cv::remap(warp2InputFrame, alignedImgFrame, map_x_2, map_y_2, cv::INTER_NEAREST, cv::BORDER_CONSTANT, bgColor);
     }
