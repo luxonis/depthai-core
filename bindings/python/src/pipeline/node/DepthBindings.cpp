@@ -82,6 +82,5 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             py::arg("stereo_size") = py::none())
         .def("build", py::overload_cast<DeviceModelZoo>(&Depth::build), py::arg("neural_model"))
         .def_property_readonly("depth", [](Depth& d) -> Node::Output& { return d.depth(); }, py::return_value_policy::reference_internal)
-        .def_property_readonly("confidence", [](Depth& d) -> Node::Output& { return d.confidence(); }, py::return_value_policy::reference_internal)
-        .def("hasConfidence", &Depth::hasConfidence);
+        .def_property_readonly("confidence", [](Depth& d) -> Node::Output& { return d.confidence(); }, py::return_value_policy::reference_internal);
 }

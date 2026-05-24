@@ -6,7 +6,7 @@
 
 namespace {
 
-constexpr float kTiny = 1e-12f;
+constexpr float kTiny = 1e-8f;
 
 std::array<std::array<float, 3>, 3> makeRotXY(float tauX, float tauY) {
     const float cTx = std::cos(tauX);
@@ -161,6 +161,13 @@ std::array<float, 3> distortPoint(std::array<float, 3> point, dai::CameraModel m
 
 /////////////////////////////////////////// Undistortions ///////////////////////////////////////////
 
+/**
+ * Based on the distortion inversion approach used in OpenCV's
+ * undistortPointsInternal implementation:
+ * https://github.com/opencv/opencv/blob/4.x/modules/calib3d/src/undistort.dispatch.cpp
+ *
+ * Reimplemented and adapted for this project.
+ */
 std::array<float, 3> undistortPerspective(std::array<float, 3> point, const std::vector<float>& coeffs) {
     const float k1 = coeffAt(coeffs, 0);
     const float k2 = coeffAt(coeffs, 1);
@@ -177,42 +184,75 @@ std::array<float, 3> undistortPerspective(std::array<float, 3> point, const std:
     const float tauX = coeffAt(coeffs, 12);
     const float tauY = coeffAt(coeffs, 13);
 
-    float x = point[0];
-    float y = point[1];
+    float x = point[0] / point[2];
+    float y = point[1] / point[2];
+    const float u = x;
+    const float v = y;
 
-    if(tauX != 0.0f || tauY != 0.0f) {
-        const auto invTilt = makeInvTiltMatrix(tauX, tauY);
-        const auto untilted = dai::matrix::matVecMul(invTilt, {x, y, 1.0f});
-        if(std::abs(untilted[2]) < kTiny) return point;
-        x = untilted[0] / untilted[2];
-        y = untilted[1] / untilted[2];
-    }
+    const std::array<std::array<float, 3>, 3> invTilt = makeInvTiltMatrix(tauX, tauY);
+    const std::array<std::array<float, 3>, 3> tilt = makeTiltMatrix(tauX, tauY);
+    const auto untilted = dai::matrix::matVecMul(invTilt, {x, y, 1.0f});
 
-    const float x0 = x;
-    const float y0 = y;
+    float invProj = std::abs(untilted[2]) > kTiny ? 1.0f / untilted[2] : 1.0f;
+
+    float x0 = x = invProj * untilted[0];
+    float y0 = y = invProj * untilted[1];
+
+    float error = std::numeric_limits<float>::max();
+    float prevError = std::numeric_limits<float>::max();
+    float alpha = 1.0f;
 
     for(int i = 0; i < 50; ++i) {
-        const float r2 = x * x + y * y;
+        if(error < 1e-8f) {
+            break;
+        }
+
+        float r2 = x * x + y * y;
+        const float icdist = (1.0f + ((k6 * r2 + k5) * r2 + k4) * r2) / (1.0f + ((k3 * r2 + k2) * r2 + k1) * r2);
+        if(icdist < 0.0f) {
+            x = u;
+            y = v;
+            break;
+        }
+
+        const float deltaX = 2.0f * p1 * x * y + p2 * (r2 + 2.0f * x * x) + s1 * r2 + s2 * r2 * r2;
+        const float deltaY = p1 * (r2 + 2.0f * y * y) + 2.0f * p2 * x * y + s3 * r2 + s4 * r2 * r2;
+
+        const float newX = (1.0f - alpha) * x + alpha * (x0 - deltaX) * icdist;
+        const float newY = (1.0f - alpha) * y + alpha * (y0 - deltaY) * icdist;
+
+        r2 = newX * newX + newY * newY;
         const float r4 = r2 * r2;
         const float r6 = r4 * r2;
+        const float a1 = 2.0f * newX * newY;
+        const float a2 = r2 + 2.0f * newX * newX;
+        const float a3 = r2 + 2.0f * newY * newY;
+        const float cdist = 1.0f + k1 * r2 + k2 * r4 + k3 * r6;
+        const float icdist2 = 1.0f / (1.0f + k4 * r2 + k5 * r4 + k6 * r6);
+        const float xd0 = newX * cdist * icdist2 + p1 * a1 + p2 * a2 + s1 * r2 + s2 * r4;
+        const float yd0 = newY * cdist * icdist2 + p1 * a3 + p2 * a1 + s3 * r2 + s4 * r4;
 
-        const float num = 1.0f + k4 * r2 + k5 * r4 + k6 * r6;
-        const float den = 1.0f + k1 * r2 + k2 * r4 + k3 * r6;
-        if(std::abs(den) < kTiny) break;
-        const float icdist = num / den;
-        if(!std::isfinite(icdist) || icdist <= 0.0f) break;
+        const auto tilted = dai::matrix::matVecMul(tilt, {xd0, yd0, 1.0f});
+        invProj = std::abs(tilted[2]) > kTiny ? 1.0f / tilted[2] : 1.0f;
 
-        const float deltaX = 2.0f * p1 * x * y + p2 * (r2 + 2.0f * x * x) + s1 * r2 + s2 * r4;
-        const float deltaY = p1 * (r2 + 2.0f * y * y) + 2.0f * p2 * x * y + s3 * r2 + s4 * r4;
+        float xd = invProj * tilted[0];
+        float yd = invProj * tilted[1];
 
-        const float xNew = (x0 - deltaX) * icdist;
-        const float yNew = (y0 - deltaY) * icdist;
+        // opencv project back to pixel coordinates and calculate error in pixel space
+        //  double x_proj = xd * fx + cx;
+        //  double y_proj = yd * fy + cy;
+        //  error = sqrt(pow(x_proj - u, 2) + pow(y_proj - v, 2));
 
-        const float dx = xNew - x;
-        const float dy = yNew - y;
-        x = xNew;
-        y = yNew;
-        if(dx * dx + dy * dy < 1e-14f) break;
+        error = std::hypot(xd - u, yd - v);
+
+        if(error > prevError) {
+            alpha *= 0.5f;
+            continue;
+        }
+
+        x = newX;
+        y = newY;
+        prevError = error;
     }
 
     return {x, y, 1.0f};

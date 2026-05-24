@@ -5,7 +5,6 @@
 #include <catch2/catch_all.hpp>
 
 #include <cmath>
-#include <cctype>
 #include <chrono>
 #include <cstring>
 #include <optional>
@@ -50,54 +49,12 @@ int countStereoCamerasInDepthSubtree(const node::Depth& depth, const StereoPair&
     return count;
 }
 
-std::optional<int> readDecimalMajorAt(const std::string& s, std::size_t& i) {
-    if(i >= s.size() || std::isdigit(static_cast<unsigned char>(s[i])) == 0) {
-        return std::nullopt;
-    }
-    int major = 0;
-    while(i < s.size() && std::isdigit(static_cast<unsigned char>(s[i])) != 0) {
-        major = major * 10 + (s[i] - '0');
-        ++i;
-    }
-    return major;
-}
-
-std::optional<int> parseBoardRevisionMajor(const std::string& boardRev) {
-    if(boardRev.empty()) {
-        return std::nullopt;
-    }
-    std::size_t i = 0;
-    while(i < boardRev.size() && std::isspace(static_cast<unsigned char>(boardRev[i])) != 0) {
-        ++i;
-    }
-    if(i >= boardRev.size()) {
-        return std::nullopt;
-    }
-    const char lead = static_cast<char>(std::tolower(static_cast<unsigned char>(boardRev[i])));
-    ++i;
-    if(lead == 'p') {
-        auto major = readDecimalMajorAt(boardRev, i);
-        if(major && i < boardRev.size() && std::tolower(static_cast<unsigned char>(boardRev[i])) == 'd') {
-            return major;
-        }
-        return std::nullopt;
-    }
-    if(lead == 'r') {
-        while(i < boardRev.size() && std::isspace(static_cast<unsigned char>(boardRev[i])) != 0) {
-            ++i;
-        }
-        return readDecimalMajorAt(boardRev, i);
-    }
-    return std::nullopt;
-}
-
-bool deviceReportsGpuStereoBoardRevision(const std::shared_ptr<Device>& device) {
-    if(device == nullptr || device->getPlatform() != Platform::RVC4) {
+bool deviceSupportsGpuStereo(const std::shared_ptr<Device>& device) {
+    if(device == nullptr) {
         return false;
     }
     try {
-        const auto major = parseBoardRevisionMajor(device->readCalibrationOrDefault().getEepromData().boardRev);
-        return major && *major >= 9;
+        return device->isGpuStereoSupported() && !device->getStereoPairs().empty();
     } catch(...) {
         return false;
     }
@@ -216,9 +173,7 @@ struct PipelineStopGuard {
 /** Host queues must exist before pipeline.start() (start() calls build()). */
 void requireDepthPipelineBuilds(Pipeline& pipeline, const std::shared_ptr<node::Depth>& depth) {
     REQUIRE_NOTHROW((void)&depth->depth());
-    if(depth->hasConfidence()) {
-        REQUIRE_NOTHROW((void)&depth->confidence());
-    }
+    REQUIRE_NOTHROW((void)&depth->confidence());
     REQUIRE_NOTHROW(pipeline.build());
 }
 
@@ -226,10 +181,7 @@ void startPipelineAndRequireFirstFrames(Pipeline& pipeline, const std::shared_pt
     PipelineStopGuard guard(pipeline);
 
     auto depthQueue = depth->depth().createOutputQueue();
-    std::shared_ptr<MessageQueue> confidenceQueue;
-    if(depth->hasConfidence()) {
-        confidenceQueue = depth->confidence().createOutputQueue();
-    }
+    auto confidenceQueue = depth->confidence().createOutputQueue();
 
     pipeline.start();
 
@@ -240,10 +192,6 @@ void startPipelineAndRequireFirstFrames(Pipeline& pipeline, const std::shared_pt
     auto depthFrame = depthQueue->get<dai::ImgFrame>(kFirstDepthFrameTimeout, timedOut);
     REQUIRE_FALSE(timedOut);
     REQUIRE(depthFrame != nullptr);
-
-    if(confidenceQueue == nullptr) {
-        return;
-    }
 
     timedOut = false;
     auto confidenceFrame = confidenceQueue->get<dai::ImgFrame>(std::chrono::seconds(15), timedOut);
@@ -458,11 +406,7 @@ TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     (void)requireDefaultDevice(pipeline);
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW((void)&depth->depth());
-    if(depth->hasConfidence()) {
-        REQUIRE_NOTHROW((void)&depth->confidence());
-    } else {
-        REQUIRE_THROWS_WITH((void)&depth->confidence(), Catch::Matchers::ContainsSubstring("GPUStereo"));
-    }
+    REQUIRE_NOTHROW((void)&depth->confidence());
 }
 
 TEST_CASE("Depth: create(device, algorithm) exposes algorithm via getAlgorithm") {
@@ -596,18 +540,17 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
         SKIP("Skipping Depth test: not RVC4.");
     }
     (void)requireFirstStereoPairForTest(device);
-    if(!deviceReportsGpuStereoBoardRevision(device)) {
-        SKIP("Skipping GPU_STEREO positive test: board revision below R9 (or boardRev unavailable).");
+    if(!deviceSupportsGpuStereo(device)) {
+        SKIP("Skipping GPU_STEREO positive test: device->isGpuStereoSupported() returned false.");
     }
 
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::GPU_STEREO);
     try {
         (void)&depth->depth();
+        (void)&depth->confidence();
     } catch(const std::exception& ex) {
         SKIP(std::string("Skipping GPU_STEREO positive test: ") + ex.what());
     }
-    REQUIRE_FALSE(depth->hasConfidence());
-    REQUIRE_THROWS_WITH((void)&depth->confidence(), Catch::Matchers::ContainsSubstring("GPUStereo"));
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "GPUStereo");
 }

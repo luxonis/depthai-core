@@ -10,6 +10,7 @@ endif()
 set(PYBIND11_TEST_FILES
     "test.py"
     "xlink_exceptions_test.cpp"
+    "xlink_protocol_test.py"
     "utf8_support_test.py"
     # "dai_path_conversion_test.py" requires device
     "nndata_tensor_test.py"

@@ -338,6 +338,13 @@ void computeSegmentationMask(dai::SegmentationMask& outputMask,
                 tensorArgmax<uint8_t, false>(dstData, tensorSpan, tensorInfo, config, logger);
             }
             break;
+        case dai::TensorInfo::DataType::U16F:
+            if(backgroundClass) {
+                tensorArgmax<uint16_t, true>(dstData, tensorSpan, tensorInfo, config, logger);
+            } else {
+                tensorArgmax<uint16_t, false>(dstData, tensorSpan, tensorInfo, config, logger);
+            }
+            break;
         case dai::TensorInfo::DataType::INT:
             if(backgroundClass) {
                 tensorArgmax<int32_t, true>(dstData, tensorSpan, tensorInfo, config, logger);

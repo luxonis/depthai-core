@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 import cv2
 import depthai as dai
@@ -43,11 +43,9 @@ def colorizeConfidence(frame: np.ndarray) -> np.ndarray:
 
 def create_depth_output_queues(
     depth_node: dai.node.Depth,
-) -> Tuple[dai.MessageQueue, Optional[dai.MessageQueue]]:
+) -> Tuple[dai.MessageQueue, dai.MessageQueue]:
     depth_queue = depth_node.depth.createOutputQueue()
-    confidence_queue = None
-    if depth_node.hasConfidence():
-        confidence_queue = depth_node.confidence.createOutputQueue()
+    confidence_queue = depth_node.confidence.createOutputQueue()
     return depth_queue, confidence_queue
 
 

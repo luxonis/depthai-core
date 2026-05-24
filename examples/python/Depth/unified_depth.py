@@ -7,7 +7,8 @@ otherwise StereoDepth on RVC2/RVC3).
 - Create host queues on ``depthNode.depth`` / ``confidence`` **before** ``pipeline.build()`` (the pipeline
   rejects new queues after build). The first ``depth``/``confidence`` access wires the chosen backend (and stereo cameras when that backend needs them).
 - For a non-``AUTO`` backend, see ``unified_depth_algorithm.py`` or call ``depthNode.build(dai.node.Depth.Algorithm.TOF)`` before first
-  ``depth`` / ``confidence`` access. ``Algorithm.GPU_STEREO`` has no confidence output; use ``hasConfidence()`` before creating a confidence queue.
+  ``depth`` / ``confidence`` access. Every backend exposes a confidence-like stream: ``confidence()`` returns StereoDepth/NAS
+  confidence, NeuralDepth confidence, GPUStereo confidence map, or ToF amplitude.
 - Depth is colorized with a fixed 0..15 m range (see ``depth_example_common``).
 - Use ``--ip ADDR`` to connect over Ethernet (e.g. PoE) instead of auto-picking the first USB device.
 """
@@ -49,10 +50,9 @@ with pipeline:
         assert isinstance(depthFrame, dai.ImgFrame)
         cv2.imshow("depth", dec.colorizeDepthMm(depthFrame.getFrame()))
 
-        if confidenceQueue is not None:
-            confidenceFrame = confidenceQueue.get()
-            assert isinstance(confidenceFrame, dai.ImgFrame)
-            cv2.imshow("confidence", dec.colorizeConfidence(confidenceFrame.getFrame()))
+        confidenceFrame = confidenceQueue.get()
+        assert isinstance(confidenceFrame, dai.ImgFrame)
+        cv2.imshow("confidence", dec.colorizeConfidence(confidenceFrame.getFrame()))
 
         key = cv2.waitKey(1)
         if key == ord("q"):

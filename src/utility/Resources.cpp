@@ -153,9 +153,6 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, fs
 
     std::vector<std::uint8_t> finalFwBinary;
 
-    // Get OpenVINO version
-    auto& version = config.version;
-
     // Check if pathToMvcmd variable is set
     fs::path finalFwBinaryPath;
     if(!pathToMvcmd.empty()) {
@@ -183,6 +180,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, fs
 // Binaries are resource compiled
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
+        auto& version = config.version;
         std::unordered_set<OpenVINO::Version> deprecatedVersions(
             {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3});
 
@@ -253,8 +251,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, fs
         finalFwBinary = std::move(depthaiBinary);
 
 #else
-        // Binaries from default path (TODO)
-
+        throw std::runtime_error("DepthAI compiled without embedded MyriadX Device FW resources. Provide firmware with DEPTHAI_DEVICE_BINARY or pathToMvcmd.");
 #endif
     }
 
@@ -316,11 +313,21 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
             break;
 
         case dai::bootloader::Type::USB:
+#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
             return resourceMapBootloader.at(DEVICE_BOOTLOADER_USB_PATH);
+#else
+            throw std::runtime_error(
+                "DepthAI compiled without embedded MyriadX Device Bootloader FW resources. Provide firmware with DEPTHAI_BOOTLOADER_BINARY_USB.");
+#endif
             break;
 
         case dai::bootloader::Type::NETWORK:
+#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
             return resourceMapBootloader.at(DEVICE_BOOTLOADER_ETH_PATH);
+#else
+            throw std::runtime_error(
+                "DepthAI compiled without embedded MyriadX Device Bootloader FW resources. Provide firmware with DEPTHAI_BOOTLOADER_BINARY_ETH.");
+#endif
             break;
 
         default:
@@ -383,10 +390,15 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
         // Read the file and return its contents
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     } else {
+#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
         // Load from resources
         auto fs = cmrc::depthai::get_filesystem();
         auto tarXz = fs.open(fwPath);
         return {tarXz.begin(), tarXz.end()};
+#else
+        (void)fwPath;
+        throw std::runtime_error(fmt::format("DepthAI compiled without embedded device FWP resources. Provide firmware with {}.", envPath));
+#endif
     }
 }
 
@@ -395,6 +407,7 @@ Resources& Resources::getInstance() {
     return instance;
 }
 
+#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 template <typename CV, typename BOOL, typename MTX, typename PATH, typename LIST, typename MAP>
 std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH cmrcPath, LIST& resourceList, MAP& resourceMap) {
     return [&mtx, &cv, &ready, cmrcPath, &resourceList, &resourceMap] {
@@ -452,6 +465,7 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         cv.notify_all();
     };
 }
+#endif
 
 Resources::Resources() {
     // Preinit libarchive
@@ -462,14 +476,14 @@ Resources::Resources() {
     (void)r;
 
 // First check if device kb fw is enabled
-#ifdef DEPTHAI_ENABLE_DEVICE_FW
+#if defined(DEPTHAI_ENABLE_DEVICE_FW) && defined(DEPTHAI_RESOURCE_COMPILED_BINARIES)
     // Device resources
     // Create a thread which lazy-loads firmware resources package
     lazyThreadDevice = std::thread(getLazyTarXzFunction(mtxDevice, cvDevice, readyDevice, CMRC_DEPTHAI_DEVICE_TAR_XZ, RESOURCE_LIST_DEVICE, resourceMapDevice));
 #endif
 
 // First check if device bootloader fw is enabled
-#ifdef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
+#if defined(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW) && defined(DEPTHAI_RESOURCE_COMPILED_BINARIES)
     // Bootloader resources
     // Create a thread which lazy-loads firmware resources package
     lazyThreadBootloader = std::thread(

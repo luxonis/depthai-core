@@ -1,5 +1,8 @@
 #include "depthai/pipeline/node/GPUStereo.hpp"
 
+#include <cstdint>
+#include <stdexcept>
+
 namespace dai {
 namespace node {
 
@@ -21,7 +24,10 @@ std::shared_ptr<GPUStereo> GPUStereo::build(Output& leftInput, Output& rightInpu
 }
 
 GPUStereo& GPUStereo::setRectification(bool enable) {
-    rectification->enableRectification(enable);
+    rectificationEnabled = enable;
+    if(rectification) {
+        (*rectification)->enableRectification(enable);
+    }
     return *this;
 }
 
@@ -29,15 +35,28 @@ void GPUStereo::buildInternal() {
     if(device) {
         auto platform = device->getPlatform();
         if(platform != Platform::RVC4) {
-            throw std::runtime_error("GPUStereo node is not supported on RVC2 devices.");
+            throw std::runtime_error("GPUStereo node is only supported on RVC4 devices.");
         }
     }
 
+    sync->setRunOnHost(false);
+    messageDemux->setRunOnHost(false);
+
     sync->out.link(messageDemux->input);
-    messageDemux->outputs["left"].link(rectification->input1);
-    messageDemux->outputs["right"].link(rectification->input2);
-    rectification->output1.link(leftInternal);
-    rectification->output2.link(rightInternal);
+
+    if(rectificationEnabled) {
+        if(!rectification) rectification = std::make_unique<Subnode<Rectification>>(*this, "rectification");
+        (*rectification)->setRunOnHost(false);
+        (*rectification)->enableRectification(true);
+
+        messageDemux->outputs["left"].link((*rectification)->input1);
+        messageDemux->outputs["right"].link((*rectification)->input2);
+        (*rectification)->output1.link(leftInternal);
+        (*rectification)->output2.link(rightInternal);
+    } else {
+        messageDemux->outputs["left"].link(leftInternal);
+        messageDemux->outputs["right"].link(rightInternal);
+    }
 }
 
 }  // namespace node

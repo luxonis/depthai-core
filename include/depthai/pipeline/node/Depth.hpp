@@ -36,13 +36,12 @@ namespace node {
  * and GPUStereo. Each backend uses a ``Config`` variant (model, preset, or none).
  * On other platforms, AUTO uses ToF when a ToF sensor is connected, otherwise StereoDepth.
  *
- * ``confidence()`` maps to backend confidence when present. For GPUStereo (``Algorithm::GPU_STEREO``) it is unavailable
- * (throws); use ``hasConfidence()`` first. For ToF it uses ``amplitude``.
+ * ``confidence()`` maps to backend confidence when present: StereoDepth/NAS confidence,
+ * NeuralDepth confidence, GPUStereo confidence map, or ToF amplitude.
  *
  * Algorithm availability: ``TOF`` requires a connected ToF sensor (see ``Device::getConnectedCameraFeatures()``).
- * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a stereo pair and board revision 9 or newer
- * (EEPROM ``boardRev`` e.g. ``P9D1``, ``P10D0``, or legacy ``R9``); it is listed in ``getSupportedAlgorithms()`` only when those
- * requirements are met.
+ * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a stereo pair and is gated by
+ * ``Device::isGpuStereoSupported()``; it is listed in ``getSupportedAlgorithms()`` only when those requirements are met.
  *
  * See \ref depth_node for a dedicated overview of purpose, behavior, features, and constraints.
  */
@@ -55,7 +54,7 @@ class Depth : public DeviceNodeGroup {
         NEURAL,    ///< RVC4 NeuralDepth; model auto-selected on RVC4 unless overridden.
         NEURAL_ASSISTED_STEREO,  ///< RVC4 NeuralAssistedStereo (stereo + neural assist).
         TOF,       ///< Time-of-flight depth when a ToF sensor is connected.
-        GPU_STEREO,  ///< RVC4 GPUStereo (no confidence output).
+        GPU_STEREO,  ///< RVC4 GPUStereo (GPU-accelerated disparity/depth with confidence map).
     };
 
     /**
@@ -179,13 +178,10 @@ class Depth : public DeviceNodeGroup {
     /** Depth map from the active backend; triggers ``buildInternal()`` on first access. */
     Node::Output& depth();
     /**
-     * Confidence map from the active backend (StereoDepth confidence, NeuralDepth confidence, ToF amplitude).
-     * Throws if the backend has no confidence output (GPUStereo); use ``hasConfidence()`` first.
+     * Confidence map from the active backend: StereoDepth/NAS confidence, NeuralDepth confidence,
+     * GPUStereo confidence map, or ToF amplitude. Triggers ``buildInternal()`` on first access.
      */
     Node::Output& confidence();
-
-    /** False when the resolved backend has no confidence map (GPUStereo). Triggers lazy wiring if needed. */
-    [[nodiscard]] bool hasConfidence() const;
 
    private:
     /** Resolve algorithm + config, then wire stereo inputs from pipeline cameras / build() overrides. */
@@ -227,7 +223,7 @@ class Depth : public DeviceNodeGroup {
 
     /** Resolved backend depth output (set in ``bindBackendOutputs``). */
     Node::Output* depthOut_{nullptr};
-    /** Resolved backend confidence output, or null when the backend has none (GPUStereo). */
+    /** Resolved backend confidence output (set in ``bindBackendOutputs``). */
     Node::Output* confidenceOut_{nullptr};
 
     /** Populated when ``Algorithm::STEREO`` is active. */

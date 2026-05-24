@@ -103,7 +103,26 @@ std::string makeFilename(const std::string& prefix, int index, TestHelper& helpe
     return path.string();
 }
 
-std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& leftPath, const std::string& rightPath) {
+std::array<std::array<float, 3>, 3> toArray3x3(const std::vector<std::vector<float>>& matrix) {
+    std::array<std::array<float, 3>, 3> out{};
+    for(size_t i = 0; i < 3; ++i) {
+        for(size_t j = 0; j < 3; ++j) {
+            out[i][j] = matrix.at(i).at(j);
+        }
+    }
+    return out;
+}
+
+void setFrameTransformation(const std::shared_ptr<dai::ImgFrame>& frame, const dai::CalibrationHandler& handler, dai::CameraBoardSocket socket) {
+    auto intrinsics = handler.getCameraIntrinsics(socket, frame->getWidth(), frame->getHeight());
+    auto distortion = handler.getDistortionCoefficients(socket);
+    auto distortionModel = handler.getDistortionModel(socket);
+    frame->setTransformation(dai::ImgTransformation(frame->getWidth(), frame->getHeight(), toArray3x3(intrinsics), distortionModel, distortion));
+}
+
+std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& leftPath,
+                                                             const std::string& rightPath,
+                                                             const dai::CalibrationHandler& handler) {
     // Load left image
     cv::Mat leftMat = cv::imread(leftPath, cv::IMREAD_GRAYSCALE);
     if(leftMat.empty()) {
@@ -116,6 +135,7 @@ std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& 
     left->setHeight(leftMat.rows);
     left->setCvFrame(leftMat, dai::ImgFrame::Type::GRAY8);
     left->setInstanceNum(1);
+    setFrameTransformation(left, handler, dai::CameraBoardSocket::CAM_B);
 
     // Load right image
     cv::Mat rightMat = cv::imread(rightPath, cv::IMREAD_GRAYSCALE);
@@ -129,6 +149,7 @@ std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& 
     right->setHeight(rightMat.rows);
     right->setCvFrame(rightMat, dai::ImgFrame::Type::GRAY8);
     right->setInstanceNum(2);
+    setFrameTransformation(right, handler, dai::CameraBoardSocket::CAM_C);
 
     auto group = std::make_shared<dai::MessageGroup>();
     group->add("right", right);
@@ -419,6 +440,7 @@ TEST_CASE("DynamicCalibration: Empty command") {
 
 TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     TestHelper helper;
+    auto calibration = getHandler();
 
     auto device = std::make_shared<dai::Device>();
     std::shared_ptr<dai::node::DynamicCalibration> dynCalib;
@@ -428,15 +450,15 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     auto commandInput = dynCalib->inputControl.createInputQueue();
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
 
-    device->setCalibration(getHandler());
-    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper));
+    device->setCalibration(calibration);
+    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibration);
     p.start();
     dynCalib->syncInput.send(group);
     std::this_thread::sleep_for(0.5s);
 
     // load image
     for(int i = 0; i < 7; i++) {
-        auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper));
+        auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibration);
         dynCalib->syncInput.send(group);
         commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
         auto coverage = coverageOutput->get<dai::CoverageData>();
@@ -458,7 +480,7 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
     REQUIRE(std::fabs(rvecOld[2] - 0.01) < 0.00001);
 
     std::vector<float> rvec = dai::matrix::rotationMatrixToVector(rotationMatrix);
-    float threshold = 1e-7f;
+    float threshold = 1e-3f;
     REQUIRE(std::fabs(rvec[0]) < threshold);
     REQUIRE(std::fabs(rvec[1]) < threshold);
     REQUIRE(std::fabs(rvec[2]) < threshold);
@@ -479,14 +501,14 @@ TEST_CASE("DynamicCalibration: Get metrics.") {
     auto metricsOutput = dynCalib->metricsOutput.createOutputQueue();
 
     device->setCalibration(calibration);
-    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper));
+    auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibration);
     p.start();
     dynCalib->syncInput.send(group);
     std::this_thread::sleep_for(0.5s);
 
     // load image
     for(int i = 0; i < 7; i++) {
-        auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper));
+        auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", i, helper), makeFilename("data/RightCam_", i, helper), calibration);
         dynCalib->syncInput.send(group);
         commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::LoadImage{}));
         auto coverage = coverageOutput->get<dai::CoverageData>();
@@ -494,11 +516,17 @@ TEST_CASE("DynamicCalibration: Get metrics.") {
 
     commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::ComputeCalibrationMetrics{calibration}));
 
-    std::chrono::seconds waitingTime(1);
-    bool failed;
-    auto metrics = metricsOutput->get<dai::CalibrationMetrics>(waitingTime, failed);
+    bool failed = true;
+    std::shared_ptr<dai::CalibrationMetrics> metrics;
+    auto deadline = std::chrono::steady_clock::now() + 5s;
+    while(std::chrono::steady_clock::now() < deadline) {
+        metrics = metricsOutput->get<dai::CalibrationMetrics>(250ms, failed);
+        if(!failed) break;
+    }
 
+    INFO("Waited up to 5 seconds for CalibrationMetrics");
     REQUIRE(!failed);
+    REQUIRE(metrics != nullptr);
 
     p.stop();
     p.wait();

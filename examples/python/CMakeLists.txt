@@ -178,6 +178,13 @@ dai_set_example_test_labels(camera_undistortion ondevice rvc2_all rvc4 ci)
 add_python_example(camera_hdr Camera/camera_hdr.py)
 dai_set_example_test_labels(camera_hdr ondevice rvc4 rvc4rgb ci)
 
+## GPUStereo
+add_python_example(gpu_stereo_rvc4 RVC4/GPUStereo/gpu_stereo.py)
+dai_set_example_test_labels(gpu_stereo_rvc4 ondevice rvc4 ci nowindows)
+
+add_python_example(gpu_stereo_support_rvc4 RVC4/GPUStereo/check_gpu_stereo_support.py)
+dai_set_example_test_labels(gpu_stereo_support_rvc4 ondevice rvc4 ci nowindows)
+
 ## AprilTags
 add_python_example(april_tags_12mp AprilTags/april_tags_12mp.py)
 dai_set_example_test_labels(april_tags_12mp ondevice rvc2_all rvc4 rvc4rgb ci nowindows)

@@ -324,6 +324,7 @@ class NNData : public Buffer {
             case dai::TensorInfo::DataType::INT:
                 sConvertedData *= 4;
                 break;
+            case dai::TensorInfo::DataType::U16F:
             case dai::TensorInfo::DataType::FP16:
                 sConvertedData *= 2;
                 break;
@@ -348,6 +349,10 @@ class NNData : public Buffer {
         if(dataType == dai::TensorInfo::DataType::I8) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
                 vecData->data()[i + offset] = (int8_t)tensor.data()[i];
+            }
+        } else if(dataType == dai::TensorInfo::DataType::U16F) {
+            for(uint32_t i = 0; i < tensor.size(); i++) {
+                *(uint16_t*)(&vecData->data()[2 * i + offset]) = (uint16_t)tensor.data()[i];
             }
         } else if(dataType == dai::TensorInfo::DataType::FP16) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
@@ -426,6 +431,11 @@ class NNData : public Buffer {
             case TensorInfo::DataType::I8:
                 for(uint32_t i = 0; i < tensor.size(); i++) {
                     tensor.data()[i] = reinterpret_cast<int8_t*>(data->getData().data())[it->offset + i];
+                }
+                break;
+            case TensorInfo::DataType::U16F:
+                for(uint32_t i = 0; i < tensor.size(); i++) {
+                    tensor.data()[i] = reinterpret_cast<uint16_t*>(data->getData().data())[it->offset / sizeof(uint16_t) + i];
                 }
                 break;
             case TensorInfo::DataType::INT:

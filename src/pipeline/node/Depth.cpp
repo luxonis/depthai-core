@@ -8,10 +8,8 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cstring>
 #include <optional>
-#include <string>
 #include <utility>
 #include <variant>
 
@@ -29,10 +27,8 @@
 namespace dai {
 namespace node {
 
-// Anonymous helpers: device capability probes, board-revision parsing, and stereo camera discovery.
+// Anonymous helpers: device capability probes and stereo camera discovery.
 namespace {
-
-constexpr int kGpuStereoMinBoardRevisionMajor = 9;
 
 constexpr DeviceModelZoo kDefaultNeuralDepthModel = DeviceModelZoo::NEURAL_DEPTH_SMALL;
 constexpr DeviceModelZoo kDefaultNasNeuralModel = DeviceModelZoo::NEURAL_DEPTH_NANO;
@@ -43,8 +39,6 @@ constexpr uint32_t kStereoDepthMaxHeight = 1280;
 constexpr float kNasMaxFps = 60.f;
 constexpr float kGpuStereoMaxFps = 30.f;
 constexpr float kSelectionFpsSafetyMargin = 0.85f;
-
-bool deviceHasGpuStereoHardware(const std::shared_ptr<Device>& device);
 
 /** Per-model NeuralDepth limits (catalog order = largest / best quality first). */
 struct NeuralModelEntry {
@@ -146,12 +140,6 @@ std::optional<StereoDepth::PresetMode> pickStereoPreset(float requiredFps,
     return std::nullopt;
 }
 
-/** Error text when confidence() is called with GPUStereo as the resolved backend. */
-constexpr const char* kGpuStereoConfidenceUnavailable =
-    "Depth::confidence() is unavailable when the GPUStereo backend is selected (Algorithm::GPU_STEREO). "
-    "GPUStereo does not provide a confidence map; do not link or create an output queue on confidence(). Use depth() "
-    "only, or choose NEURAL, STEREO, NEURAL_ASSISTED_STEREO, or TOF.";
-
 /** Locate existing Camera nodes for @p pair.left / @p pair.right sockets, if already in @p pipeline. */
 std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
     std::shared_ptr<Camera> left;
@@ -208,121 +196,6 @@ bool cameraFeaturesIncludeTof(const std::vector<dai::CameraFeatures>& features) 
     return false;
 }
 
-/** Read consecutive decimal digits at @p i; returns nullopt if none. */
-std::optional<int> readDecimalMajorAt(const std::string& s, std::size_t& i) {
-    if(i >= s.size() || std::isdigit(static_cast<unsigned char>(s[i])) == 0) {
-        return std::nullopt;
-    }
-    int major = 0;
-    while(i < s.size() && std::isdigit(static_cast<unsigned char>(s[i])) != 0) {
-        major = major * 10 + (s[i] - '0');
-        ++i;
-    }
-    return major;
-}
-
-/**
- * Parse major board revision from EEPROM ``boardRev``.
- * RVC4 uses ``P{n}D*`` (e.g. ``P9D1``, ``P10D0``); older boards use ``R{n}*`` (e.g. ``R9``, ``R2.1``).
- */
-std::optional<int> parseBoardRevisionMajor(const std::string& boardRev) {
-    if(boardRev.empty()) {
-        return std::nullopt;
-    }
-    std::size_t i = 0;
-    while(i < boardRev.size() && std::isspace(static_cast<unsigned char>(boardRev[i])) != 0) {
-        ++i;
-    }
-    if(i >= boardRev.size()) {
-        return std::nullopt;
-    }
-    const char lead = static_cast<char>(std::tolower(static_cast<unsigned char>(boardRev[i])));
-    ++i;
-    if(lead == 'p') {
-        // RVC4 pattern: P{major}D{minor} (e.g. P9D1, P10D0).
-        auto major = readDecimalMajorAt(boardRev, i);
-        if(major && i < boardRev.size() && std::tolower(static_cast<unsigned char>(boardRev[i])) == 'd') {
-            return major;
-        }
-        return std::nullopt;
-    }
-    if(lead == 'r') {
-        // Legacy pattern: R{major} with optional fractional suffix (e.g. R9, R2.1).
-        while(i < boardRev.size() && std::isspace(static_cast<unsigned char>(boardRev[i])) != 0) {
-            ++i;
-        }
-        return readDecimalMajorAt(boardRev, i);
-    }
-    return std::nullopt;
-}
-
-/** Fallback when EEPROM boardRev is missing (e.g. product name contains ``OAK4-D R9``). */
-std::optional<int> inferBoardRevisionMajorFromProduct(const std::string& productName) {
-    for(std::size_t pos = 0; pos < productName.size(); ++pos) {
-        if(pos > 0) {
-            const char prev = productName[pos - 1];
-            if(std::isalnum(static_cast<unsigned char>(prev)) != 0) {
-                continue;
-            }
-        }
-        if(std::tolower(static_cast<unsigned char>(productName[pos])) != 'r') {
-            continue;
-        }
-        std::size_t i = pos + 1;
-        if(i >= productName.size() || std::isdigit(static_cast<unsigned char>(productName[i])) == 0) {
-            continue;
-        }
-        int major = 0;
-        while(i < productName.size() && std::isdigit(static_cast<unsigned char>(productName[i])) != 0) {
-            major = major * 10 + (productName[i] - '0');
-            ++i;
-        }
-        return major;
-    }
-    return std::nullopt;
-}
-
-/** Best-effort board major revision: EEPROM boardRev, then product name, then device name. */
-std::optional<int> deviceBoardRevisionMajor(const std::shared_ptr<Device>& device) {
-    if(device == nullptr) {
-        return std::nullopt;
-    }
-    // Prefer calibration EEPROM (authoritative on shipped devices).
-    try {
-        if(auto major = parseBoardRevisionMajor(device->readCalibrationOrDefault().getEepromData().boardRev)) {
-            return major;
-        }
-    } catch(...) {
-    }
-    // Fall back to human-readable product strings when EEPROM is missing or unreadable.
-    try {
-        if(auto major = inferBoardRevisionMajorFromProduct(device->getProductName())) {
-            return major;
-        }
-    } catch(...) {
-    }
-    try {
-        return inferBoardRevisionMajorFromProduct(device->getDeviceName());
-    } catch(...) {
-    }
-    return std::nullopt;
-}
-
-/** RVC4 with stereo pair and board revision R9+ (GPU block present). */
-bool deviceHasGpuStereoHardware(const std::shared_ptr<Device>& device) {
-    if(device == nullptr || device->getPlatform() != Platform::RVC4) {
-        return false;
-    }
-    if(device->getStereoPairs().empty()) {
-        return false;
-    }
-    const auto major = deviceBoardRevisionMajor(device);
-    if(!major) {
-        return false;
-    }
-    return *major >= kGpuStereoMinBoardRevisionMajor;
-}
-
 }  // namespace
 
 // --- Construction ---
@@ -372,7 +245,7 @@ std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_pt
             supported.push_back(Algorithm::NEURAL_ASSISTED_STEREO);
         }
     }
-    if(device->getPlatform() == Platform::RVC4 && deviceHasGpuStereoHardware(device)) {
+    if(device->isGpuStereoSupported() && !device->getStereoPairs().empty()) {
         supported.push_back(Algorithm::GPU_STEREO);
     }
     if(cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
@@ -605,7 +478,7 @@ std::pair<Node::Output*, Node::Output*> Depth::stereoCameraOutputs(Pipeline& pip
     return ensureStereoOutputs(pipeline, requireFirstStereoPair(device), frameSize, stereoOutputFps_);
 }
 
-/** Wire composite outputs to the active backend; GPUStereo leaves confidenceOut_ null. */
+/** Wire composite outputs to the active backend. Every backend provides a confidence-like stream. */
 void Depth::bindBackendOutputs(Algorithm active) {
     switch(active) {
         case Algorithm::TOF:
@@ -618,7 +491,7 @@ void Depth::bindBackendOutputs(Algorithm active) {
             break;
         case Algorithm::GPU_STEREO:
             depthOut_ = &(**gpuStereoBackend_).depth;
-            confidenceOut_ = nullptr;
+            confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
             break;
         case Algorithm::NEURAL:
             depthOut_ = &(**neuralBackend_).depth;
@@ -684,22 +557,11 @@ Node::Output& Depth::depth() {
     return *depthOut_;
 }
 
-bool Depth::hasConfidence() const {
-    if(!graphBuilt_) {
-        // buildInternal is non-const; const API still needs wiring before querying the backend.
-        const_cast<Depth*>(this)->buildInternal();
-    }
-    return confidenceOut_ != nullptr;
-}
-
 Node::Output& Depth::confidence() {
     if(!graphBuilt_) {
         buildInternal();
     }
-    if(confidenceOut_ == nullptr) {
-        // GPUStereo is the only backend without a confidence-like stream.
-        throw std::runtime_error(kGpuStereoConfidenceUnavailable);
-    }
+    DAI_CHECK_V(confidenceOut_ != nullptr, "Depth backend confidence output missing.");
     return *confidenceOut_;
 }
 
