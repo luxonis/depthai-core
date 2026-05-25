@@ -212,9 +212,7 @@ class _ImageManipMemory : public OffsetMemory {
         _offset = std::min(_offset + offset, _span.size());
     }
     void shallowCopyFrom(_ImageManipMemory& other) {
-        if(_data) {
-            _data = other._data;
-        }
+        _data = other._data;
         _span = other._span;
         _offset = other._offset;
     }

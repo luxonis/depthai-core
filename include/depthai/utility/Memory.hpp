@@ -1,9 +1,9 @@
 #pragma once
 
 // std
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <functional>
 #include <memory>
 #include <utility>
 
@@ -157,6 +157,7 @@ class ConvertedOffsetMemory : public OffsetMemory {
     }
     void setSize(std::size_t size) override {
         memory->setSize(size);
+        dataOffset = std::min(dataOffset, memory->getSize());
     }
     void setOffset(std::size_t offset) override {
         dataOffset = std::min(dataOffset + offset, memory->getSize());
@@ -183,6 +184,7 @@ class ConvertedOffsetMemory : public OffsetMemory {
     }
 
     static std::shared_ptr<OffsetMemory> convert(const std::shared_ptr<Memory>& memory) {
+        if(memory == nullptr) return nullptr;
         auto dynOffsetMemory = std::dynamic_pointer_cast<OffsetMemory>(memory);
         if(dynOffsetMemory != nullptr) return dynOffsetMemory;
         return std::make_shared<ConvertedOffsetMemory>(memory);
@@ -190,6 +192,7 @@ class ConvertedOffsetMemory : public OffsetMemory {
 
     template <typename T>
     static std::shared_ptr<T> cast(std::shared_ptr<OffsetMemory> memory) {
+        if(memory == nullptr) return nullptr;
         auto omem = std::dynamic_pointer_cast<ConvertedOffsetMemory>(memory);
         if(omem != nullptr) {
             return std::dynamic_pointer_cast<T>(omem->getInternal());

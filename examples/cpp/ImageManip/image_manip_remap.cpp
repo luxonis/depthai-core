@@ -60,7 +60,6 @@ int main() {
 
         manip2->initialConfig->addRotateDeg(90);
         manip2->initialConfig->setOutputSize(320, 200);
-        manip2->setRunOnHost(true);
 
         // Linking
         camOut->link(manip1->inputImage);
