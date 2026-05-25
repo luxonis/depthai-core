@@ -26,6 +26,7 @@ int main(int argc, char** argv) {
 
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto manip = pipeline.create<dai::node::ImageManip>();
+    manip->setBackend(dai::node::ImageManip::Backend::GPU);
 
     // Resize to 400x400 and avoid stretching by cropping from the center
     manip->initialConfig->setOutputSize(400, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);

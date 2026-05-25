@@ -5,6 +5,7 @@ pipeline = dai.Pipeline()
 
 camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
 manip = pipeline.create(dai.node.ImageManip)
+manip.setBackend(dai.node.ImageManip.Backend.GPU)
 
 manip.initialConfig.setOutputSize(300, 300, dai.ImageManipConfig.ResizeMode.STRETCH)
 

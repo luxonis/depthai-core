@@ -48,6 +48,8 @@ int main() {
 
         auto manip1 = pipeline.create<dai::node::ImageManip>();
         auto manip2 = pipeline.create<dai::node::ImageManip>();
+        manip1->setBackend(dai::node::ImageManip::Backend::GPU);
+        manip2->setBackend(dai::node::ImageManip::Backend::GPU);
 
         // Configure camera output
         auto camOut = cam->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::BGR888i, dai::ImgResizeMode::LETTERBOX, 20, 20);

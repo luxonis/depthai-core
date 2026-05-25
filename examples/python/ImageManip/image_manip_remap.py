@@ -29,6 +29,8 @@ with dai.Pipeline() as pipeline:
     camOut = cam.requestOutput((640, 400), dai.ImgFrame.Type.BGR888i, fps = 30.0)
     manip1 = pipeline.create(dai.node.ImageManip)
     manip2 = pipeline.create(dai.node.ImageManip)
+    manip1.setBackend(dai.node.ImageManip.Backend.GPU)
+    manip2.setBackend(dai.node.ImageManip.Backend.GPU)
 
     camOut.link(manip1.inputImage)
     manip1.out.link(manip2.inputImage)
