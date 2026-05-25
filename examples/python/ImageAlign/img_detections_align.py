@@ -71,7 +71,6 @@ with dai.Pipeline(device) as pipeline:
     alignToSource.link(manip.inputImage)
 
     align = pipeline.create(dai.node.ImageAlign)
-    align.setRunOnHost(True)
     detectionNetwork.out.link(align.input)
     manip.out.link(align.inputAlignTo)
 
