@@ -1,5 +1,7 @@
 #include "depthai/pipeline/datatype/Transformable.hpp"
 
+#include <stdexcept>
+
 #include "depthai/common/ImgTransformations.hpp"
 
 namespace dai {
@@ -7,14 +9,15 @@ namespace dai {
 TransformableBuffer::~TransformableBuffer() = default;
 
 void TransformableBuffer::transformToInternal(const ImgTransformation&) {
-    // Default implementation is a no-op so custom Python subclasses can
-    // opt into copy-return semantics by overriding transformTo().
+    // No-op placeholder for the abstract Transformable interface.
 }
 
 std::shared_ptr<TransformableBuffer> TransformableBuffer::transformTo(const ImgTransformation& target) const {
-    auto out = std::make_shared<TransformableBuffer>(*this);
-    out->transformToInternal(target);
-    return out;
+    static_cast<void>(target);
+    throw std::runtime_error(
+        "TransformableBuffer::transformTo() is not implemented for this message. "
+        "Python subclasses of dai.TransformableBuffer must override transformTo(target) "
+        "and return a transformed instance.");
 }
 
 void TransformableBuffer::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {

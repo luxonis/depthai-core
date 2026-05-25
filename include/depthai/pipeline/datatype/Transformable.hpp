@@ -84,7 +84,8 @@ class TransformableBuffer : public Buffer, public Transformable {
      *
      * Python subclasses of TransformableBuffer should override this method to implement
      * custom transformation logic. Generic callers use this entry point when they need to
-     * transform a custom message without knowing its concrete type.
+     * transform a custom message without knowing its concrete type. The base implementation
+     * throws, because it cannot preserve Python subclass state automatically.
      *
      * @param target Target image transformation.
      */
