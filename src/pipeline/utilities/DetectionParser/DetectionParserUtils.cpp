@@ -19,7 +19,9 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include <xtensor/core/xtensor_forward.hpp>
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_XTENSOR_SUPPORT)
+    #include <xtensor/core/xtensor_forward.hpp>
+#endif
 
 #include "DetectionParserUtils.hpp"
 #include "depthai/common/Keypoint.hpp"
@@ -136,9 +138,7 @@ void decodeR1AF(const dai::NNData& nnData,
     }
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
-    if(keepCandidates.size() == 0) {
-        return;
-    }
+
     if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
             candidate.labelName = (*properties.parser.classNames)[candidate.label];
@@ -148,12 +148,13 @@ void decodeR1AF(const dai::NNData& nnData,
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
 
     if(properties.parser.decodeSegmentation) {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_XTENSOR_SUPPORT)
         logger->trace("Segmentation decoding.");
         segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
-#else
+#elif !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
         throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
-
+#else
+        throw std::runtime_error("Segmentation decoding requested but xtensor support is not available. Skipping");
 #endif
     }
 
@@ -283,9 +284,6 @@ void decodeV3AB(const dai::NNData& nnData,
     }
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
-    if(keepCandidates.size() == 0) {
-        return;
-    }
 
     if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
@@ -296,12 +294,13 @@ void decodeV3AB(const dai::NNData& nnData,
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
 
     if(properties.parser.decodeSegmentation) {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_XTENSOR_SUPPORT)
         logger->trace("Segmentation decoding.");
         segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
-#else
+#elif !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
         throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
-
+#else
+        throw std::runtime_error("Segmentation decoding requested but xtensor support is not available. Skipping");
 #endif
     }
 
@@ -431,9 +430,6 @@ void decodeV5AB(const dai::NNData& nnData,
     }
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
-    if(keepCandidates.size() == 0) {
-        return;
-    }
 
     if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
@@ -444,12 +440,13 @@ void decodeV5AB(const dai::NNData& nnData,
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
 
     if(properties.parser.decodeSegmentation) {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_XTENSOR_SUPPORT)
         logger->trace("Segmentation decoding.");
         segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
-#else
+#elif !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
         throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
-
+#else
+        throw std::runtime_error("Segmentation decoding requested but xtensor support is not available. Skipping");
 #endif
     }
 
@@ -546,9 +543,6 @@ void decodeTLBR(const dai::NNData& nnData,
     }
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
-    if(keepCandidates.size() == 0) {
-        return;
-    }
 
     if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
@@ -559,12 +553,13 @@ void decodeTLBR(const dai::NNData& nnData,
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
 
     if(properties.parser.decodeSegmentation) {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_XTENSOR_SUPPORT)
         logger->trace("Segmentation decoding.");
         segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
-#else
+#elif !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
         throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
-
+#else
+        throw std::runtime_error("Segmentation decoding requested but xtensor support is not available. Skipping");
 #endif
     }
 
@@ -657,9 +652,6 @@ void decodeEndToEnd(const dai::NNData& nnData,
 
     topKFilter(detectionCandidates, 300);
     std::vector<DetectionCandidate> keepCandidates = detectionCandidates;
-    if(keepCandidates.size() == 0) {
-        return;
-    }
 
     if(parser.classNames && !parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
@@ -670,12 +662,13 @@ void decodeEndToEnd(const dai::NNData& nnData,
     createImgDetections(keepCandidates, outDetections, inputWidth, inputHeight);
 
     if(parser.decodeSegmentation) {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_XTENSOR_SUPPORT)
         logger->trace("Segmentation decoding.");
         segmentationDecode(nnData, keepCandidates, outDetections, properties, logger);
-#else
+#elif !defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
         throw std::runtime_error("Segmentation decoding requested but OpenCV support is not available. Skipping");
-
+#else
+        throw std::runtime_error("Segmentation decoding requested but xtensor support is not available. Skipping");
 #endif
     }
 
@@ -849,7 +842,7 @@ void createImgDetections(const std::vector<DetectionCandidate>& detectionCandida
     }
 }
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && defined(DEPTHAI_XTENSOR_SUPPORT)
 void segmentationDecode(const dai::NNData& nnData,
                         std::vector<DetectionCandidate>& detectionCandidates,
                         dai::ImgDetections& outDetections,
@@ -860,6 +853,11 @@ void segmentationDecode(const dai::NNData& nnData,
     int inputHeight = inputSize.second;
 
     cv::Mat indexMask(inputHeight, inputWidth, CV_8U, cv::Scalar(255));
+
+    if(detectionCandidates.size() == 0) {
+        outDetections.setCvSegmentationMask(indexMask);
+        return;
+    }
 
     std::vector<std::string> maskLayerNames = resolveLayerNames(nnData, std::vector<std::string>{}, "mask");
 

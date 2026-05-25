@@ -1,9 +1,16 @@
 #include <chrono>
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 // Helper function to normalize frame coordinates
 cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai::Point2f& bottomRight) {
@@ -12,6 +19,9 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
 }
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
     dai::Pipeline pipeline{device};
@@ -39,7 +49,7 @@ int main() {
     cv::Scalar textColor(255, 255, 255);
 
     pipeline.start();
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto inRgb = qRgb->get<dai::ImgFrame>();
         auto inDet = qDet->get<dai::ImgDetections>();
 

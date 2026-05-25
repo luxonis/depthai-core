@@ -340,6 +340,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
+    src/pipeline/node/GPUStereo.cpp
     src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
@@ -369,6 +370,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/IMUData.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
     src/pipeline/datatype/NeuralDepthConfig.cpp
+    src/pipeline/datatype/GPUStereoConfig.cpp
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
@@ -1281,7 +1283,10 @@ include(CMakePackageConfigHelpers)
 
 # Add additional targets to export group
 if(NOT BUILD_SHARED_LIBS)
-    list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base XLink)
+    list(APPEND targets_to_export XLink)
+    if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
+        list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
+    endif()
     if(DEPTHAI_ENABLE_PROTOBUF)
         list(APPEND targets_to_export messages)
     endif()

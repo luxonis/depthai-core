@@ -515,6 +515,10 @@ dai_set_test_labels(point_cloud_test onhost ci)
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
 
+# GPUStereo node tests
+dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
+dai_set_test_labels(gpu_stereo_node_test onhost ci)
+
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
@@ -548,6 +552,10 @@ endif()
 # Vpp node tests
 dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
 dai_set_test_labels(vpp_test ondevice rvc4 ci)
+
+# GPUStereo node (device execution) test
+dai_add_test(gpu_stereo_device_test src/ondevice_tests/gpu_stereo_node_test.cpp)
+dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
 
 # Dynamic calibration tests
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -644,6 +652,10 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 # Serialization test
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
+
+# GPU availability test
+dai_add_test(gpu_availability_test src/ondevice_tests/gpu_availability_test.cpp)
+dai_set_test_labels(gpu_availability_test ondevice rvc4)
 
 # Subnode test
 dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)

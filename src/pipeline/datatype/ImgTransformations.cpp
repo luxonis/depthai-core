@@ -378,6 +378,7 @@ dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::P
         transformed.x /= to.width;
         transformed.y /= to.height;
         transformed.normalized = true;
+        transformed.hasNormalized = true;
     }
     return transformed;
 }
@@ -452,6 +453,7 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
         targetPoint.x /= to.width;
         targetPoint.y /= to.height;
         targetPoint.normalized = true;
+        targetPoint.hasNormalized = true;
     }
     return targetPoint;
 }

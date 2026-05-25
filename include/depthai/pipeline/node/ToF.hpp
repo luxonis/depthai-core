@@ -49,6 +49,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output phase{*this, {"phase", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
      * Build with a specific board socket
@@ -86,6 +87,7 @@ class ToF : public DeviceNodeGroup {
           amplitude{tofBase->amplitude},
           intensity{tofBase->intensity},
           phase{tofBase->phase},
+          raw{tofBase->raw},
           tofBaseInputConfig{tofBase->inputConfig},
           imageFiltersInputConfig{imageFilters->inputConfig},
           tofBaseNode{*tofBase},
@@ -143,6 +145,11 @@ class ToF : public DeviceNodeGroup {
      * Phase output
      */
     Output& phase;
+
+    /**
+     * Raw data coming from the sensor
+     */
+    Output& raw;
 
     /**
      * Input config for ToF base node

@@ -552,4 +552,56 @@ TEST_CASE("DetectionParser segmentation mask test") {
     cv::absdiff(segmentationMask, kitchenGtSegmentation, diff);
     REQUIRE(cv::countNonZero(diff) <= 5000);
 }
+
+TEST_CASE("DetectionParser segmentation mask is background-only for 0 detections") {
+    const std::string modelName = "yolov8-instance-segmentation-large:coco-640x352:701031f";
+
+    dai::Pipeline p;
+    auto device = p.getDefaultDevice();
+
+    auto description = dai::NNModelDescription{modelName, "RVC4"};
+    auto archivePath = dai::getModelFromZoo(description);
+    dai::NNArchive nnArchive{archivePath};
+
+    const auto inputSize = nnArchive.getInputSize();
+    REQUIRE(inputSize.has_value());
+
+    const cv::Size networkSize{static_cast<int>(inputSize->first), static_cast<int>(inputSize->second)};
+    cv::Mat blackImage = cv::Mat::zeros(networkSize, CV_8UC3);
+
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setModelPath(archivePath);
+
+    auto detectionParser = p.create<dai::node::DetectionParser>()->build(nn->out, nnArchive);
+
+    auto nnInput = nn->input.createInputQueue();
+    auto outputQueue = detectionParser->out.createOutputQueue();
+
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    auto transformation = dai::ImgTransformation{inputSize->first, inputSize->second};
+    inputFrame->setCvFrame(blackImage, dai::ImgFrame::Type::BGR888i);
+    inputFrame->setTimestamp(std::chrono::steady_clock::now());
+    inputFrame->setSequenceNum(0);
+    inputFrame->transformation = transformation;
+
+    p.start();
+    REQUIRE(p.isRunning());
+
+    nnInput->send(inputFrame);
+
+    auto detections = outputQueue->get<dai::ImgDetections>();
+    REQUIRE(detections != nullptr);
+
+    std::optional<cv::Mat> optSegmentationMask = detections->getCvSegmentationMask();
+    REQUIRE(optSegmentationMask.has_value());
+
+    cv::Mat segmentationMask = *optSegmentationMask;
+    REQUIRE_FALSE(segmentationMask.empty());
+    REQUIRE(detections->getSegmentationMaskWidth() == static_cast<std::size_t>(networkSize.width));
+    REQUIRE(detections->getSegmentationMaskHeight() == static_cast<std::size_t>(networkSize.height));
+
+    cv::Mat nonBackgroundMask;
+    cv::compare(segmentationMask, 255, nonBackgroundMask, cv::CMP_NE);
+    REQUIRE(cv::countNonZero(nonBackgroundMask) == 0);
+}
 #endif

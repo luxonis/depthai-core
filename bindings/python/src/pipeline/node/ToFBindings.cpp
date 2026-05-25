@@ -37,6 +37,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readonly("amplitude", &ToFBase::amplitude, DOC(dai, node, ToFBase, amplitude), DOC(dai, node, ToFBase, amplitude))
         .def_readonly("intensity", &ToFBase::intensity, DOC(dai, node, ToFBase, intensity), DOC(dai, node, ToFBase, intensity))
         .def_readonly("phase", &ToFBase::phase, DOC(dai, node, ToFBase, phase), DOC(dai, node, ToFBase, phase))
+        .def_readonly("raw", &ToFBase::raw, DOC(dai, node, ToFBase, raw), DOC(dai, node, ToFBase, raw))
         .def_readonly("initialConfig", &ToFBase::initialConfig, DOC(dai, node, ToFBase, initialConfig), DOC(dai, node, ToFBase, initialConfig))
         .def("build",
              &ToFBase::build,
@@ -57,6 +58,8 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
             "intensity", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.intensity; }, DOC(dai, node, ToF, intensity))
         .def_property_readonly(
             "phase", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.phase; }, DOC(dai, node, ToF, phase))
+        .def_property_readonly(
+            "raw", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.raw; }, DOC(dai, node, ToF, raw))
         .def_property_readonly(
             "tofBaseInputConfig",
             [](const ToF& self) -> const dai::DeviceNode::Input& { return self.tofBaseInputConfig; },
