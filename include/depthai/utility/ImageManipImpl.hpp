@@ -557,8 +557,6 @@ void getTransformImpl(const ManipOp& op,
                       uint32_t& outputWidth,
                       uint32_t& outputHeight);
 
-
-
 }  // namespace impl
 }  // namespace dai
 
@@ -847,7 +845,8 @@ bool ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>::appl
         if(mode & MODE_COLORMAP) {
             uint8_t* colormapDst = outputFrameType == VALID_TYPE_COLOR ? dst->getOffsetData().data() : warpedFrame->getOffsetData().data();
             size_t colormapDstStride = outputFrameType == VALID_TYPE_COLOR ? getOutputStride() : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
-            uint8_t* colormapSrc = mode & MODE_WARP ? colormapFrame->getOffsetData().data() : (convertInput ? convertedFrame->getOffsetData().data() : src->getOffsetData().data());
+            uint8_t* colormapSrc = mode & MODE_WARP ? colormapFrame->getOffsetData().data()
+                                                    : (convertInput ? convertedFrame->getOffsetData().data() : src->getOffsetData().data());
             size_t colormapSrcStride = !(mode & MODE_WARP) && !convertInput ? srcSpecs.p1Stride : ALIGN_UP(base.outputWidth, DEPTHAI_STRIDE_ALIGNMENT);
             cv::Mat gray(base.outputWidth, base.outputHeight, CV_8UC1, colormapSrc, colormapSrcStride);
             cv::Mat color(base.outputWidth, base.outputHeight, CV_8UC3, colormapDst, colormapDstStride);

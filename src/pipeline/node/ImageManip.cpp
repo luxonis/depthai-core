@@ -43,9 +43,7 @@ void ImageManip::run() {
             outImage->data = outImageData;
             return outImage;
         },
-        [&](const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) {
-            return manip.apply(src, std::move(dst));
-        },
+        [&](const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) { return manip.apply(src, std::move(dst)); },
         [&](const ImgFrame& srcFrame, ImgFrame& dstFrame) {
             auto outType = manip.getOutputFrameType();
             auto dstSpecs = manip.getOutputFrameSpecs(outType);

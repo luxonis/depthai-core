@@ -3062,25 +3062,25 @@ void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
                       const std::array<std::array<float, 3>, 3> matrix,
                       const std::vector<uint32_t>& background) {
 #ifdef DEPTHAI_IMAGEMANIPV2_OPENCV
-        transformOpenCV(src->getOffsetData().data(),
-                        dst->getOffsetData().data(),
-                        srcWidth,
-                        srcHeight,
-                        srcStride,
-                        dstWidth,
-                        dstHeight,
-                        dstStride,
-                        numChannels,
-                        bpp,
-                        matrix,
-                        background,
-                        this->srcSpecs,
-                        this->sourceMinX,
-                        this->sourceMinY,
-                        this->sourceMaxX,
-                        this->sourceMaxY);
+    transformOpenCV(src->getOffsetData().data(),
+                    dst->getOffsetData().data(),
+                    srcWidth,
+                    srcHeight,
+                    srcStride,
+                    dstWidth,
+                    dstHeight,
+                    dstStride,
+                    numChannels,
+                    bpp,
+                    matrix,
+                    background,
+                    this->srcSpecs,
+                    this->sourceMinX,
+                    this->sourceMinY,
+                    this->sourceMaxX,
+                    this->sourceMaxY);
 #else
-        throw std::runtime_error("OpenCV backend not available");
+    throw std::runtime_error("OpenCV backend not available");
 #endif
 
 #if !defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && !defined(DEPTHAI_HAVE_FASTCV_SUPPORT)
