@@ -173,6 +173,7 @@ class ConvertedOffsetMemory : public OffsetMemory {
     }
     std::shared_ptr<OffsetMemory> offset(std::size_t offset) override {
         auto mem = std::make_shared<ConvertedOffsetMemory>(memory);
+        mem->dataOffset = dataOffset;
         mem->setOffset(offset);
         return mem;
     }
