@@ -80,7 +80,8 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .value("AF_REGION", CameraControl::Command::AF_REGION)
         .value("LUMA_DENOISE", CameraControl::Command::LUMA_DENOISE)
         .value("CHROMA_DENOISE", CameraControl::Command::CHROMA_DENOISE)
-        .value("WB_COLOR_TEMP", CameraControl::Command::WB_COLOR_TEMP);
+        .value("WB_COLOR_TEMP", CameraControl::Command::WB_COLOR_TEMP)
+        .value("AE_AUTO_GAIN_LIMIT", CameraControl::Command::AE_AUTO_GAIN_LIMIT);
 
     camCtrlAttr.push_back("AutoFocusMode");
     cameraControlAutoFocusMode.value("OFF", CameraControl::AutoFocusMode::OFF)
