@@ -1,5 +1,8 @@
+#include <spdlog/spdlog.h>
+
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <memory>
+#include <thread>
 
 #include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -728,11 +731,19 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
 }
 
 void Node::stopPipeline() {
-    // FIXME - Not the best solution as the node now owns the pipeline. If it is the last reference to the pipeline, destructor will be called from the same
-    // thread and the pipeline will crash.
     try {
         auto pipeline = getParentPipeline();
-        pipeline.stop();
+        // stopPipeline() is only called from host node threads. Hand shutdown off to a
+        // helper thread so PipelineImpl teardown never tries to join the current node thread.
+        std::thread([pipeline = std::move(pipeline)]() mutable {
+            try {
+                pipeline.stop();
+            } catch(const std::exception& ex) {
+                spdlog::error("Pipeline stop failed in detached shutdown thread: {}", ex.what());
+            } catch(...) {
+                spdlog::error("Pipeline stop failed in detached shutdown thread with an unknown exception");
+            }
+        }).detach();
     } catch(const std::exception& e) {
         if(e.what() != std::string("Pipeline is null")) {
             throw;

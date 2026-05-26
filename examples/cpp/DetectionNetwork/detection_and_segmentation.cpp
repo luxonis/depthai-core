@@ -1,6 +1,8 @@
 #include <opencv2/core/hal/interface.h>
 
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <cstddef>
 #include <cstdio>
 #include <iostream>
@@ -11,6 +13,12 @@
 
 #include "depthai/depthai.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 // Helper function to normalize frame coordinates
 cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai::Point2f& bottomRight) {
     float width = frame.cols, height = frame.rows;
@@ -18,6 +26,9 @@ cv::Rect frameNorm(const cv::Mat& frame, const dai::Point2f& topLeft, const dai:
 }
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     std::string modelName = "luxonis/yolov8-instance-segmentation-large:coco-640x352";
     auto device = std::make_shared<dai::Device>();
 
@@ -51,7 +62,7 @@ int main() {
 
     pipeline.start();
     int filteredLabel = -1;
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto inRgb = qRgb->get<dai::ImgFrame>();
         auto inDet = qDet->get<dai::ImgDetections>();
 

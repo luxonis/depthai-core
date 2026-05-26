@@ -1,11 +1,22 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
     using namespace dai;
     using namespace std;
+
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
 
     dai::Pipeline pipeline;
 
@@ -30,7 +41,7 @@ int main() {
     cout << "Isp output resolution = " << videoInIsp->getCvFrame().cols << " x " << videoInIsp->getCvFrame().rows << endl;
 
     // Main loop
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto videoIn = videoQueue->tryGet<dai::ImgFrame>();
         auto videoInIsp = ispQueue->tryGet<dai::ImgFrame>();
 
@@ -43,6 +54,9 @@ int main() {
 
         if(cv::waitKey(1) == 'q') break;
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

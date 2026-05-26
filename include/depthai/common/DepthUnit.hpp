@@ -9,10 +9,15 @@ enum class SIPrefix : int32_t { GIGA, MEGA, KILO, DEKA, DEFAULT, CENTI, MILLI };
  * Measurement unit for depth and calibration data.
  */
 enum class LengthUnit : int32_t { METER, CENTIMETER, MILLIMETER, INCH, FOOT, CUSTOM };
+/**
+ * Measurement unit for angular quantities stored in radians.
+ */
+enum class AngleUnit : int32_t { RADIAN, DEGREE };
 // Backward-compatible aliases.
 using DepthUnit = LengthUnit;
 
 constexpr float getSIPrefixMultiplier(SIPrefix unit);
+constexpr float getAngleUnitToRadianMultiplier(AngleUnit unit);
 
 constexpr float getLengthUnitMultiplier(LengthUnit unit) {
     switch(unit) {
@@ -51,6 +56,15 @@ constexpr float getSIPrefixMultiplier(SIPrefix unit) {
             return 1000.0f;
         default:
             return 1.0f;
+    }
+}
+
+constexpr float getAngleUnitToRadianMultiplier(AngleUnit unit) {
+    switch(unit) {
+        case AngleUnit::RADIAN:
+            return 1.0f;
+        case AngleUnit::DEGREE:
+            return 57.29577951308232f;
     }
 }
 

@@ -174,6 +174,66 @@ def test_get_all():
     assert messages[2] == msg3
 
 
+def test_wait_any():
+    queue1 = MessageQueue("queue1", maxSize=10, blocking=True)
+    queue2 = MessageQueue("queue2", maxSize=10, blocking=True)
+
+    msg = Buffer()
+    queue1.send(msg)
+
+    assert MessageQueue.waitAny([queue1, queue2])
+    assert queue1.has()
+    assert queue1.get() == msg
+
+
+def test_wait_any_timeout():
+    queue1 = MessageQueue("queue1", maxSize=10, blocking=True)
+    queue2 = MessageQueue("queue2", maxSize=10, blocking=True)
+
+    assert not MessageQueue.waitAny([queue1, queue2], timeout=0.1)
+    assert not queue1.has()
+    assert not queue2.has()
+
+
+def test_get_any():
+    queue1 = MessageQueue("queue1", maxSize=10, blocking=True)
+    queue2 = MessageQueue("queue2", maxSize=10, blocking=True)
+    queue3 = MessageQueue("queue3", maxSize=10, blocking=True)
+
+    msg = Buffer()
+    queue2.send(msg)
+
+    messages = MessageQueue.getAny({"queue1": queue1, "queue2": queue2, "queue3": queue3})
+    assert list(messages) == ["queue2"]
+    assert messages["queue2"] == msg
+
+
+def test_get_any_multiple_queues():
+    queue1 = MessageQueue("queue1", maxSize=10, blocking=True)
+    queue2 = MessageQueue("queue2", maxSize=10, blocking=True)
+    queue3 = MessageQueue("queue3", maxSize=10, blocking=True)
+
+    msg1 = Buffer()
+    msg3 = Buffer()
+    queue1.send(msg1)
+    queue3.send(msg3)
+
+    messages = MessageQueue.getAny({"queue1": queue1, "queue2": queue2, "queue3": queue3})
+    assert messages["queue1"] == msg1
+    assert messages["queue3"] == msg3
+    assert not queue1.has()
+    assert not queue3.has()
+
+
+def test_get_any_timeout():
+    queue1 = MessageQueue("queue1", maxSize=10, blocking=True)
+    queue2 = MessageQueue("queue2", maxSize=10, blocking=True)
+    queue3 = MessageQueue("queue3", maxSize=10, blocking=True)
+
+    messages = MessageQueue.getAny({"queue1": queue1, "queue2": queue2, "queue3": queue3}, timeout=0.1)
+    assert messages == {}
+
+
 
 def test_close():
     queue = MessageQueue("test", maxSize=10, blocking=True)

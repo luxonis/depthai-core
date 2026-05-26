@@ -15,6 +15,29 @@ constexpr int GATE_FPS_DEFAULT = 5;
 constexpr int BYTES_PER_SECOND_LIMIT_DEFAULT = GATE_FPS_DEFAULT * 1280 * 800 * 2;
 constexpr int PACKET_SIZE_DEFAULT = 100000;
 
+bool areLensesWide(std::shared_ptr<Device> device) {
+    auto handler = device->getCalibration();
+    auto eepromData = handler.getEepromData();
+    const auto& hardwareConf = eepromData.hardwareConf;
+    size_t start = 0;
+
+    while(start < hardwareConf.size()) {
+        const size_t end = hardwareConf.find('-', start);
+        const std::string token = hardwareConf.substr(start, end == std::string::npos ? std::string::npos : end - start);
+
+        if(token == "FV01" || token == "FV05") {
+            return true;
+        }
+        if(token.rfind("FV", 0) == 0) {
+            return false;
+        }
+
+        if(end == std::string::npos) break;
+        start = end + 1;
+    }
+    return false;
+}
+
 void AutoCalibration::logReport(const Report& report, unsigned int iteration) const {
     // Define a lambda or a small helper to route to the correct spdlog method
     auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
@@ -157,6 +180,9 @@ std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared
 
 void AutoCalibration::buildInternal() {
     logger = pimpl->logger;
+    if(initialConfig->dataConfidenceThreshold < 0.0) {
+        initialConfig->dataConfidenceThreshold = areLensesWide(device) ? 0.65 : 0.85;
+    }
 }
 
 /**
@@ -335,11 +361,20 @@ bool AutoCalibration::validateIncomingData() {
             }
 
             if(leftImgFrame->getWidth() != rightImgFrame->getWidth() || leftImgFrame->getHeight() != rightImgFrame->getHeight()) {
-                logger->warn("AutoCalibration: Not initialized - currently supports only sensors with same resolutions.");
+                logger->info("AutoCalibration: Not initialized - currently supports only sensors with same resolutions.");
                 return false;
             }
-            if(leftImgFrame->getHeight() != 800 || leftImgFrame->getWidth() != 1280) {
-                logger->info("AutoCalibration: Not initialized - currently supports only sensors with 1280x800 resolution.");
+            const auto h = leftImgFrame->getHeight();
+            const auto w = leftImgFrame->getWidth();
+
+            const bool supportedResolution = (h == 800 && w == 1280) || (h == 400 && w == 640);
+
+            if(!supportedResolution) {
+                logger->info(
+                    "AutoCalibration: Not initialized - currently supports only "
+                    "1280x800 or 640x400 resolution not {}x{}.",
+                    w,
+                    h);
                 return false;
             }
             return true;

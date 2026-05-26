@@ -134,6 +134,12 @@ TEST_CASE("Test getEnvAs", "[getEnvAs]") {
 
         dai::utility::setEnv("boolVariable5", "INVALID2");
         REQUIRE(dai::utility::getEnvAs<bool>("boolVariable5", false) == false);
+
+        dai::utility::setEnv("boolVariable6", "ON");
+        REQUIRE(dai::utility::getEnvAs<bool>("boolVariable6", false, false) == true);
+
+        dai::utility::setEnv("boolVariable7", "OFF");
+        REQUIRE(dai::utility::getEnvAs<bool>("boolVariable7", true, false) == false);
     }
 
     SECTION("Float") {

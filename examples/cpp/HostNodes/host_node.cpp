@@ -1,6 +1,14 @@
+#include <atomic>
+#include <csignal>
 #include <memory>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 class Display : public dai::NodeCRTP<dai::node::HostNode, Display> {
    public:
@@ -12,6 +20,10 @@ class Display : public dai::NodeCRTP<dai::node::HostNode, Display> {
         return std::static_pointer_cast<Display>(this->shared_from_this());
     }
     std::shared_ptr<dai::Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
+        if(quitEvent) {
+            stopPipeline();
+            return nullptr;
+        }
         auto frame = in->get<dai::ImgFrame>("in");
         cv::Mat frameCv = frame->getCvFrame();
         cv::imshow("Display", frameCv);
@@ -59,6 +71,9 @@ class StreamMerger : public dai::NodeCRTP<dai::node::HostNode, StreamMerger> {
 };
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     dai::Pipeline pipeline;
 

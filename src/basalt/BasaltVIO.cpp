@@ -52,7 +52,7 @@ void BasaltVIO::buildInternal() {
     R << 0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0;
     Eigen::Quaterniond q(R);
     basalt::PoseState<double>::SE3 initialRotation(q, Eigen::Vector3d(0, 0, 0));
-    // to output pose in FLU world coordinates
+    // Keep Basalt output in FLU world coordinates.
     pimpl->localTransform = std::make_shared<basalt::PoseState<double>::SE3>(initTrans * initialRotation.inverse());
     setDefaultVIOConfig();
 }
@@ -77,7 +77,7 @@ void BasaltVIO::run() {
         if(!data.get()) continue;
         basalt::PoseState<double>::SE3 pose = (*pimpl->localTransform * data->T_w_i * pimpl->calib->T_i_c[0]);
 
-        // pose is in RDF orientation, convert to FLU
+        // Basalt pose is RDF; convert to FLU for API output.
         auto finalPose = pose * opticalTransform.inverse();
         auto trans = finalPose.translation();
         auto rot = finalPose.unit_quaternion();
@@ -216,14 +216,14 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
             basalt::Calibration<Scalar>::SE3 T_i_c(q, trans);
             pimpl->calib->T_i_c.push_back(T_i_c);
         } else {
-            std::vector<std::vector<float>> imuExtr = calibHandler.getCameraToImuExtrinsics(camID, useSpecTranslation);
+            std::vector<std::vector<float>> imuExtr = calibHandler.getCameraToImuExtrinsics(camID, useSpecTranslation, LengthUnit::METER);
 
             Eigen::Matrix<Scalar, 3, 3> R;
             R << double(imuExtr[0][0]), double(imuExtr[0][1]), double(imuExtr[0][2]), double(imuExtr[1][0]), double(imuExtr[1][1]), double(imuExtr[1][2]),
                 double(imuExtr[2][0]), double(imuExtr[2][1]), double(imuExtr[2][2]);
             Eigen::Quaterniond q(R);
 
-            Eigen::Vector3d trans(double(imuExtr[0][3]) * 0.01, double(imuExtr[1][3]) * 0.01, double(imuExtr[2][3]) * 0.01);
+            Eigen::Vector3d trans{double(imuExtr[0][3]), double(imuExtr[1][3]), double(imuExtr[2][3])};
             basalt::Calibration<Scalar>::SE3 T_i_c(q, trans);
             pimpl->calib->T_i_c.push_back(T_i_c);
         }

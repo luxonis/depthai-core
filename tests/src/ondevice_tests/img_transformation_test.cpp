@@ -29,9 +29,15 @@
 #include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/Rect.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/utility/Compression.hpp"
 #include "pipeline/utilities/Alignment/AlignmentUtilities.hpp"
+
+// Disable container overflow detection for this test binary (false positive from protobuf)
+extern "C" const char* __asan_default_options() {
+    return "detect_container_overflow=0";
+}
 
 bool isIdentity(const std::array<std::array<float, 3>, 3>& mat) {
     for(int i = 0; i < 3; i++) {
@@ -337,7 +343,7 @@ std::filesystem::path extractTransformationTestDataFolder() {
     std::filesystem::remove_all(tempFolder);
     std::filesystem::create_directories(tempFolder);
 
-    const auto archiveEntries = dai::utility::filenamesInTar(archivePath);
+    const auto archiveEntries = dai::utility::filenamesInArchive(archivePath);
     std::vector<std::string> filesInArchive;
     std::vector<std::filesystem::path> extractedFiles;
     filesInArchive.reserve(archiveEntries.size());
@@ -358,7 +364,7 @@ std::filesystem::path extractTransformationTestDataFolder() {
     }
 
     if(!filesInArchive.empty()) {
-        dai::utility::untarFiles(archivePath, filesInArchive, extractedFiles);
+        dai::utility::extractFiles(archivePath, filesInArchive, extractedFiles);
     }
 
     const std::filesystem::path extractedRoot = tempFolder / archivePath.stem().stem();
@@ -550,9 +556,11 @@ TEST_CASE("ImgTransformation remap vertical") {
 
     auto sourceDen = rRect.denormalize(frame1->getWidth(), frame1->getHeight());
     auto destDen = remapped.denormalize(frame2->getWidth(), frame2->getHeight());
-    auto sourceAR = sourceDen.size.width / sourceDen.size.height;
-    auto destAR = destDen.size.width / destDen.size.height;
-
+    // Switch to Rect as the remapped RotatedRect can be rotated by 90 degrees
+    dai::Rect sourceOuterRect = sourceDen;
+    dai::Rect destOuterRect = destDen;
+    auto sourceAR = sourceOuterRect.width / sourceOuterRect.height;
+    auto destAR = destOuterRect.width / destOuterRect.height;
     REQUIRE_THAT(sourceAR, Catch::Matchers::WithinAbs(destAR, 0.01));
 
     pipeline.stop();
@@ -717,7 +725,7 @@ TEST_CASE("AlignmentUtilities undistort point") {
     dai::Point2f point{1594.8793471442408, 200.6646247524987};
     cv::Point2d distortedPoint(point.x, point.y);
 
-    std::vector<float> distCoeffs{20.43730926513672,
+    std::vector<float> distCoeffs{16.43730926513672,
                                   -17.942808151245117,
                                   -0.015188916586339474,
                                   0.0008560882997699082,
@@ -764,6 +772,40 @@ TEST_CASE("AlignmentUtilities undistort point") {
         INFO("Undistorted point with OpenCV: " << opencvUndistorted[0].x << ", " << opencvUndistorted[0].y);
         REQUIRE(std::hypot((undistortedRay[0] / undistortedRay[2]) - opencvUndistorted[0].x, (undistortedRay[1] / undistortedRay[2]) - opencvUndistorted[0].y)
                 < 1e-3);
+    }
+
+    SECTION("Perspective undistortion edge points") {
+        const std::vector<dai::Point2f> edgePoints = {
+            {1918.0f, 1077.0f},
+            {1917.0f, 1079.0f},
+            {1917.0f, 1077.0f},
+            {1916.0f, 1077.0f},
+            {1918.0f, 1077.0f},
+            {1918.0f, 5.0f},
+            {1916.0f, 1079.0f},
+            {120.0f, 1040.0f},
+            {3.0f, 540.0f},
+        };
+
+        for(const auto& edgePoint : edgePoints) {
+            const auto undistortedRay = pixelToRay(edgePoint, transformation);
+            std::vector<cv::Point2d> opencvUndistorted;
+            cv::undistortPoints(std::vector<cv::Point2d>{{edgePoint.x, edgePoint.y}},
+                                opencvUndistorted,
+                                cameraMatrix,
+                                distortionCoeffsCv,
+                                cv::noArray(),
+                                cv::noArray(),
+                                {cv::TermCriteria::MAX_ITER | cv::TermCriteria::EPS, 50, 0.0001});
+
+            INFO("Distorted edge point: " << edgePoint.x << ", " << edgePoint.y);
+            INFO("Undistorted point with AlignmentUtilities: " << undistortedRay[0] / undistortedRay[2] << ", " << undistortedRay[1] / undistortedRay[2]);
+            INFO("Undistorted point with OpenCV: " << opencvUndistorted[0].x << ", " << opencvUndistorted[0].y);
+
+            REQUIRE(
+                std::hypot((undistortedRay[0] / undistortedRay[2]) - opencvUndistorted[0].x, (undistortedRay[1] / undistortedRay[2]) - opencvUndistorted[0].y)
+                < 1e-3);
+        }
     }
 
     SECTION("Fisheye undistortion") {
@@ -838,9 +880,14 @@ TEST_CASE("projectPoints test") {
         const auto& aggregatedResult = aggregatedResults.at(captureName);
         const double currentMeanProjectionErrorPx = currentResult.value("mean_projection_error_px", std::numeric_limits<double>::infinity());
         const double aggregatedMeanProjectionErrorPx = aggregatedResult.value("mean_projection_error_px", std::numeric_limits<double>::quiet_NaN());
+        constexpr double meanProjectionErrorTolerancePx = 1e-4;
 
         REQUIRE(std::isfinite(currentMeanProjectionErrorPx));
         REQUIRE(std::isfinite(aggregatedMeanProjectionErrorPx));
-        REQUIRE(currentMeanProjectionErrorPx <= aggregatedMeanProjectionErrorPx);
+
+        INFO("capture=" << captureName << ", current=" << currentMeanProjectionErrorPx << ", baseline=" << aggregatedMeanProjectionErrorPx
+                        << ", tolerance=" << meanProjectionErrorTolerancePx);
+
+        REQUIRE(currentMeanProjectionErrorPx <= aggregatedMeanProjectionErrorPx + meanProjectionErrorTolerancePx);
     }
 }

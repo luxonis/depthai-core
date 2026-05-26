@@ -9,6 +9,7 @@
 #include <depthai/utility/matrixOps.hpp>
 #include <vector>
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
@@ -55,12 +56,13 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
 
     std::array<float, 3> normalizedUndistortedRay = pixelToRay(sourcePt, from);
 
-    const std::array<std::array<float, 4>, 4> extriniscTransformation = from.getExtrinsicsTransformationMatrixTo(to);
+    std::array<std::array<float, 3>, 3> rotationMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    if(from.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO && to.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO) {
+        const std::array<std::array<float, 4>, 4> extriniscTransformation = from.getExtrinsicsTransformationMatrixTo(to);
+        rotationMatrix = matrix::getRotationMatrixFromProjection4x4(extriniscTransformation);
+    }
 
-    std::array<std::array<float, 3>, 3> rotationMatrix = matrix::getRotationMatrixFromProjection4x4(extriniscTransformation);
-
-    const std::array<float, 3> rectifiedRay = matrix::matVecMul(rotationMatrix, normalizedUndistortedRay);
-
+    std::array<float, 3> rectifiedRay = matrix::matVecMul(rotationMatrix, normalizedUndistortedRay);
     return rayToPixel(rectifiedRay, to);
 }
 
@@ -376,6 +378,7 @@ dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::P
         transformed.x /= to.width;
         transformed.y /= to.height;
         transformed.normalized = true;
+        transformed.hasNormalized = true;
     }
     return transformed;
 }
@@ -450,6 +453,7 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
         targetPoint.x /= to.width;
         targetPoint.y /= to.height;
         targetPoint.normalized = true;
+        targetPoint.hasNormalized = true;
     }
     return targetPoint;
 }

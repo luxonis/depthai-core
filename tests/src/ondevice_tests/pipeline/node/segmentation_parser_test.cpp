@@ -26,6 +26,8 @@ size_t dataTypeSize(dai::TensorInfo::DataType type) {
             return sizeof(uint16_t);
         case dai::TensorInfo::DataType::U8F:
             return sizeof(uint8_t);
+        case dai::TensorInfo::DataType::U16F:
+            return sizeof(uint16_t);
         case dai::TensorInfo::DataType::INT:
             return sizeof(int32_t);
         case dai::TensorInfo::DataType::FP32:

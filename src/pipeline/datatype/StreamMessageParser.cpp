@@ -28,6 +28,7 @@
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
+#include "depthai/pipeline/datatype/GPUStereoConfig.hpp"
 #include "depthai/pipeline/datatype/GateControl.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
@@ -249,6 +250,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::NeuralDepthConfig:
             return parseDatatype<NeuralDepthConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::GPUStereoConfig:
+            return parseDatatype<GPUStereoConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::EdgeDetectorConfig:

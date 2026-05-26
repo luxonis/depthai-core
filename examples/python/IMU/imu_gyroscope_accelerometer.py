@@ -11,10 +11,10 @@ with dai.Pipeline() as pipeline:
     # Define sources and outputs
     imu = pipeline.create(dai.node.IMU)
 
-    # enable ACCELEROMETER_RAW at 500 hz rate
-    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_RAW, 480)
-    # enable GYROSCOPE_RAW at 400 hz rate
-    imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_RAW, 400)
+    # enable ACCELEROMETER_UNCALIBRATED at 500 hz rate
+    imu.enableIMUSensor(dai.IMUSensor.ACCELEROMETER_UNCALIBRATED, 480)
+    # enable GYROSCOPE_UNCALIBRATED at 400 hz rate
+    imu.enableIMUSensor(dai.IMUSensor.GYROSCOPE_UNCALIBRATED, 400)
     # it's recommended to set both setBatchReportThreshold and setMaxBatchReports to 20 when integrating in a pipeline with a lot of input/output connections
     # above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
     imu.setBatchReportThreshold(1)
