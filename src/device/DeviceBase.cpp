@@ -1852,20 +1852,23 @@ void DeviceBase::tryPremergeCalibration() {
         for(const auto& cameraSocket : getConnectedCameras()) {
             if(cameraSocket == CameraBoardSocket::AUTO || eepromData.cameraData.find(cameraSocket) != eepromData.cameraData.end()) continue;
 
+            dai::EepromData cbaData;
             try {
-                const auto cbaData = readCalibration2(cameraSocket).getEepromData();
-                if(cbaData.batchTime < eepromData.batchTime) {
-                    pimpl->logger.info("Skipping CBA calibration merge for {}: Newer user calibration data found on device", cameraSocket);
-                    continue;
-                }
-                if(const auto it = cbaData.cameraData.find(cameraSocket); it != cbaData.cameraData.end()) {
-                    eepromData.cameraData.emplace(cameraSocket, it->second);
-                    merged = true;
-                } else {
-                    pimpl->logger.warn("Skipping CBA calibration merge for {}: camera data not present for the specified CameraBoardSocket", cameraSocket);
-                }
+                cbaData = readCalibration2(cameraSocket).getEepromData();
             } catch(const dai::EepromError& ex) {
                 pimpl->logger.warn("No readable CBA calibration on {}: {}", cameraSocket, ex.what());
+                continue;
+            }
+
+            if(cbaData.batchTime < eepromData.batchTime) {
+                pimpl->logger.info("Skipping CBA calibration merge for {}: Newer user calibration data found on device", cameraSocket);
+                continue;
+            }
+            if(const auto it = cbaData.cameraData.find(cameraSocket); it != cbaData.cameraData.end()) {
+                eepromData.cameraData.emplace(cameraSocket, it->second);
+                merged = true;
+            } else {
+                pimpl->logger.warn("Skipping CBA calibration merge for {}: camera data not present for the specified CameraBoardSocket", cameraSocket);
             }
         }
 
