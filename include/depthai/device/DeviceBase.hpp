@@ -21,6 +21,7 @@
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "depthai/device/HealthCheck.hpp"
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
@@ -165,6 +166,19 @@ class DeviceBase {
      * @returns ProfilingData from all devices
      */
     static ProfilingData getGlobalProfilingData();
+
+    /**
+     * Performs a device health check.
+     *
+     * The function connects to the supplied device, gathers device
+     * properties, and runs a short diagnostic pipeline for the checks enabled
+     * in the config.
+     *
+     * @param devInfo DeviceInfo which specifies which device to check
+     * @param config Health-check steps to execute
+     * @returns HealthCheckMetrics with per-check pass/fail status and measured values
+     */
+    static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config = {});
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.

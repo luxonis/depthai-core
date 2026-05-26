@@ -135,6 +135,9 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<DeviceBase, std::shared_ptr<DeviceBase>> deviceBase(m, "DeviceBase", DOC(dai, DeviceBase));
     py::class_<Device, DeviceBase, std::shared_ptr<Device>> device(m, "Device", DOC(dai, Device));
     py::class_<Device::Config> deviceConfig(device, "Config", DOC(dai, DeviceBase, Config));
+    py::class_<HealthCheckConfig> healthCheckConfig(m, "HealthCheckConfig");
+    py::class_<HealthCheckMetrics> healthCheckMetrics(m, "HealthCheckMetrics");
+    py::enum_<UsbGeneration> usbGeneration(m, "UsbGeneration");
     py::class_<BoardConfig> boardConfig(m, "BoardConfig", DOC(dai, BoardConfig));
     py::class_<BoardConfig::USB> boardConfigUsb(boardConfig, "USB", DOC(dai, BoardConfig, USB));
     py::class_<BoardConfig::Network> boardConfigNetwork(boardConfig, "Network", DOC(dai, BoardConfig, Network));
@@ -281,6 +284,39 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("outputLogLevel", &Device::Config::outputLogLevel)
         .def_readwrite("logLevel", &Device::Config::logLevel);
 
+    // Bind UsbGeneration
+    usbGeneration.value("UNKNOWN", UsbGeneration::UNKNOWN)
+        .value("USB_1_0", UsbGeneration::USB_1_0)
+        .value("USB_1_1", UsbGeneration::USB_1_1)
+        .value("USB_2_0", UsbGeneration::USB_2_0)
+        .value("USB_3_0", UsbGeneration::USB_3_0)
+        .value("USB_3_1", UsbGeneration::USB_3_1);
+
+    // Bind HealthCheckConfig
+    healthCheckConfig.def(py::init<>())
+        .def_readwrite("checkUsbSpeed", &HealthCheckConfig::checkUsbSpeed)
+        .def_readwrite("measureBandwidth", &HealthCheckConfig::measureBandwidth)
+        .def_readwrite("verifyCameras", &HealthCheckConfig::verifyCameras)
+        .def_readwrite("verifyIMU", &HealthCheckConfig::verifyIMU)
+        .def_readwrite("verifyMaxPower", &HealthCheckConfig::verifyMaxPower)
+        .def_readwrite("timeout", &HealthCheckConfig::timeout);
+
+    // Bind HealthCheckMetrics
+    healthCheckMetrics.def(py::init<>())
+        .def_readwrite("usbSpeed", &HealthCheckMetrics::usbSpeed)
+        .def_readwrite("usbGeneration", &HealthCheckMetrics::usbGeneration)
+        .def_readwrite("bandwidthMbps", &HealthCheckMetrics::bandwidthMbps)
+        .def_readwrite("cameraCalibration", &HealthCheckMetrics::cameraCalibration)
+        .def_readwrite("imuCalibration", &HealthCheckMetrics::imuCalibration)
+        .def_readwrite("cameraFunctionality", &HealthCheckMetrics::cameraFunctionality)
+        .def_readwrite("imuFunctionality", &HealthCheckMetrics::imuFunctionality)
+        .def_readwrite("maxPowerFunctionality", &HealthCheckMetrics::maxPowerFunctionality)
+        .def_readwrite("appRunningOnDevice", &HealthCheckMetrics::appRunningOnDevice)
+        .def_readwrite("inSetupMode", &HealthCheckMetrics::inSetupMode)
+        .def_readwrite("udevRulesSet", &HealthCheckMetrics::udevRulesSet)
+        .def_readwrite("errors", &HealthCheckMetrics::errors)
+        .def_readwrite("warnings", &HealthCheckMetrics::warnings);
+
     // Bind constructors
     bindConstructors<DeviceBase>(deviceBase);
     // Bind the rest
@@ -339,6 +375,15 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_static("getDeviceById", &DeviceBase::getDeviceById, py::arg("deviceId"), DOC(dai, DeviceBase, getDeviceById))
         .def_static("getAllConnectedDevices", &DeviceBase::getAllConnectedDevices, DOC(dai, DeviceBase, getAllConnectedDevices))
         .def_static("getGlobalProfilingData", &DeviceBase::getGlobalProfilingData, DOC(dai, DeviceBase, getGlobalProfilingData))
+        .def_static(
+            "performHealthCheck",
+            [](const DeviceInfo& deviceInfo, const HealthCheckConfig& config) {
+                py::gil_scoped_release release;
+                return DeviceBase::performHealthCheck(deviceInfo, config);
+            },
+            py::arg("deviceInfo"),
+            py::arg("config") = HealthCheckConfig(),
+            "Performs a device health check and returns HealthCheckMetrics.")
 
         // methods
         .def("getBootloaderVersion", &DeviceBase::getBootloaderVersion, DOC(dai, DeviceBase, getBootloaderVersion))
