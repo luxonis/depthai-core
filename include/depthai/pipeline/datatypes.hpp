@@ -11,6 +11,7 @@
 #include "datatype/EdgeDetectorConfig.hpp"
 #include "datatype/EncodedFrame.hpp"
 #include "datatype/FeatureTrackerConfig.hpp"
+#include "datatype/GPUStereoConfig.hpp"
 #include "datatype/IMUData.hpp"
 #include "datatype/ImageManipConfig.hpp"
 #include "datatype/ImgDetections.hpp"
