@@ -1,4 +1,5 @@
-#include <iostream>
+#include <atomic>
+#include <csignal>
 #include <opencv2/opencv.hpp>
 #include <xtensor/containers/xadapt.hpp>
 #include <xtensor/containers/xarray.hpp>
@@ -6,7 +7,16 @@
 #include "depthai/depthai.hpp"
 #include "depthai/modelzoo/Zoo.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Decode the image using OpenCV
     cv::Mat lenaImageCv = cv::imread(LENNA_PATH);
     cv::resize(lenaImageCv, lenaImageCv, cv::Size(256, 256));
@@ -51,7 +61,7 @@ int main() {
     pipeline.start();
 
     // Main loop
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         nnDataInputQueue->send(inputNNData);
         auto inNNData = qNNData->get<dai::NNData>();
         auto tensor = inNNData->getFirstTensor<float>();
@@ -71,6 +81,9 @@ int main() {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

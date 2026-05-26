@@ -378,6 +378,7 @@ dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::P
         transformed.x /= to.width;
         transformed.y /= to.height;
         transformed.normalized = true;
+        transformed.hasNormalized = true;
     }
     return transformed;
 }
@@ -427,9 +428,9 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
 
     // extrinsics transform
     // center subtraction (-cx, -cy) and normalization by focal length (fx, fy) is already done in pixelToRay
-    auto x_mm = thisRay[0] * depth;
-    auto y_mm = thisRay[1] * depth;
-    dai::Point3f source3dPoint = {x_mm, y_mm, depth};
+    auto xMm = thisRay[0] * depth;
+    auto yMm = thisRay[1] * depth;
+    dai::Point3f source3dPoint = {xMm, yMm, depth};
 
     const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to, false, LengthUnit::MILLIMETER);
     dai::Point3f target3dPoint = matrix::transformPoint3f(extriniscTransformation, source3dPoint);
@@ -451,6 +452,7 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
         targetPoint.x /= to.width;
         targetPoint.y /= to.height;
         targetPoint.normalized = true;
+        targetPoint.hasNormalized = true;
     }
     return targetPoint;
 }

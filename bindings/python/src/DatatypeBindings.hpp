@@ -36,7 +36,7 @@ class Py<T, std::enable_if_t<std::is_base_of_v<dai::TransformableBuffer, T>>> : 
     using T::T;
 
     std::shared_ptr<dai::TransformableBuffer> transformTo(const dai::ImgTransformation& target) const override {
-        PYBIND11_OVERRIDE_NAME(std::shared_ptr<dai::TransformableBuffer>, T, "transformTo", transformTo, target);
+        PYBIND11_OVERLOAD(std::shared_ptr<dai::TransformableBuffer>, T, transformTo, target);
     }
 };
 }  // namespace dai
