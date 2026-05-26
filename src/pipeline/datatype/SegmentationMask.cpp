@@ -52,7 +52,8 @@ void SegmentationMask::setMask(const std::vector<std::uint8_t>& mask, size_t wid
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
-    setData(mask);
+    auto vecMask = mask;
+    setData(std::move(vecMask));
     this->width = width;
     this->height = height;
 }
@@ -249,7 +250,7 @@ void SegmentationMask::setCvMask(cv::Mat mask) {
     } else {
         dataVec.insert(dataVec.begin(), mask.datastart, mask.dataend);
     }
-    setData(dataVec);
+    setData(std::move(dataVec));
     this->width = mask.cols;
     this->height = mask.rows;
 }
