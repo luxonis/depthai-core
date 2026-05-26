@@ -214,17 +214,20 @@ void Rectification::run() {
                 targetM2 = input2ImgTransformation.getIntrinsicMatrix();
             }
 
-            targetM2 = targetM1;  // TODO alignment target
-
-            auto cv_targetCameraMatrix1 = arrayToCvMat(3, 3, CV_32FC1, targetM1);
-            auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2);
-
             if(properties.enableRectification == false) {
+                // When rectification is disabled, use each camera's own scaled intrinsics as target
+                // Do NOT force targetM2 = targetM1 — that would warp the right image to left camera intrinsics
                 cv_R1 = cv::Mat::eye(3, 3, CV_32FC1);
                 cv_R2 = cv::Mat::eye(3, 3, CV_32FC1);
                 cv_d1 = cv::Mat::zeros(1, d1.size(), CV_32FC1);
                 cv_d2 = cv::Mat::zeros(1, d2.size(), CV_32FC1);
+            } else {
+                // When rectification is enabled, align both outputs to the same (left) camera matrix
+                targetM2 = targetM1;
             }
+
+            auto cv_targetCameraMatrix1 = arrayToCvMat(3, 3, CV_32FC1, targetM1);
+            auto cv_targetCameraMatrix2 = arrayToCvMat(3, 3, CV_32FC1, targetM2);
 
             dai::Extrinsics output1Extrinsics = input1ImgTransformation.getExtrinsics();
             dai::Extrinsics output2Extrinsics = input2ImgTransformation.getExtrinsics();
