@@ -231,7 +231,7 @@ std::string matchTo(const std::vector<std::string>& deviceIds, const std::vector
 }
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
-std::tuple<size_t, size_t> getVideoSize(const std::string& filePath) {
+std::tuple<size_t, size_t, double> getVideoSize(const std::string& filePath) {
     (void)filePath;
     throw std::runtime_error("OpenCV is required to get video size");
 }
