@@ -157,7 +157,7 @@ class ConvertedOffsetMemory : public OffsetMemory {
     }
     void setSize(std::size_t size) override {
         memory->setSize(size);
-        dataOffset = std::min(dataOffset, size);
+        dataOffset = std::min(dataOffset, memory->getSize());
     }
     void setOffset(std::size_t offset) override {
         dataOffset = std::min(dataOffset + offset, memory->getSize());

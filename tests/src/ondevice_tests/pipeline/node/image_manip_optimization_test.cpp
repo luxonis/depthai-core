@@ -136,7 +136,9 @@ std::shared_ptr<dai::Pipeline> createPipelineWithGpuOrSkip() {
     }
 
     auto device = pipeline->getDefaultDevice();
-    REQUIRE(device != nullptr);
+    if(device == nullptr) {
+        SKIP("No device available");
+    }
     if(!device->hasGPU()) {
         SKIP("GPU not available on this device");
     }
