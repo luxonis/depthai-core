@@ -295,8 +295,7 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
         return DatatypeEnum::PointCloudData;
     }
 
-    DEPTHAI_SERIALIZE(
-        PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, Transformable::transformation, ts, tsDevice, sequenceNum);
+    DEPTHAI_SERIALIZE(PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation, ts, tsDevice, sequenceNum);
 };
 
 }  // namespace dai
