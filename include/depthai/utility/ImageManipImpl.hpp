@@ -283,7 +283,8 @@ class Undistort {
                       uint32_t srcHeight,
                       uint32_t dstWidth,
                       uint32_t dstHeight) = 0;
-    virtual void undistort(const UndistortInput& srcI, const UndistortInput& dstI) = 0;
+    virtual void undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t planeIndex) = 0;
+    virtual void finish() {}
 
    protected:
     std::shared_ptr<spdlog::async_logger> logger;
@@ -328,7 +329,7 @@ class UndistortOpenCvImpl : public Undistort {
                       uint32_t srcHeight,
                       uint32_t dstWidth,
                       uint32_t dstHeight) override;
-    void undistort(const UndistortInput& srcI, const UndistortInput& dstI) override;
+    void undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t planeIndex) override;
 };
 #endif
 
