@@ -1,9 +1,12 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <optional>
 
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/node/BenchmarkIn.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/NeuralAssistedStereo.hpp"
 
@@ -94,5 +97,51 @@ TEST_CASE("[NeuralAssistedStereo] Case without rectification") {
         REQUIRE(leftOut == nullptr);
         REQUIRE(rightOut == nullptr);
     }
+    p.stop();
+}
+
+TEST_CASE("[NeuralAssistedStereo] Requested 60 FPS reaches at least 50 FPS") {
+    constexpr float requestedFps = 60.0f;
+    constexpr float minOutputFps = 45.0f;
+    constexpr int reportEveryNMessages = 30;
+    constexpr int numReports = 5;
+    constexpr int warmupReports = 1;
+
+    dai::Pipeline p;
+    auto device = p.getDefaultDevice();
+    if(!device->isNeuralDepthSupported()) {
+        WARN("Skipping NeuralAssistedStereo test: device doesn't support NeuralDepth.");
+        return;
+    }
+
+    auto cameraLeft = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B, std::nullopt, requestedFps);
+    auto cameraRight = p.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C, std::nullopt, requestedFps);
+
+    auto cameraLeftOut = cameraLeft->requestFullResolutionOutput(std::nullopt, requestedFps);
+    auto cameraRightOut = cameraRight->requestFullResolutionOutput(std::nullopt, requestedFps);
+
+    auto nn = p.create<dai::node::NeuralAssistedStereo>()->build(*cameraLeftOut, *cameraRightOut, dai::DeviceModelZoo::NEURAL_DEPTH_NANO);
+
+    auto benchmarkIn = p.create<dai::node::BenchmarkIn>();
+    benchmarkIn->setRunOnHost(false);
+    benchmarkIn->sendReportEveryNMessages(reportEveryNMessages);
+    benchmarkIn->logReportsAsWarnings(false);
+    benchmarkIn->measureIndividualLatencies(true);
+    nn->disparity.link(benchmarkIn->input);
+
+    auto benchmarkQueue = benchmarkIn->report.createOutputQueue(15, false);
+
+    p.start();
+
+    for(int i = 0; i < numReports; ++i) {
+        auto report = benchmarkQueue->get<dai::BenchmarkReport>();
+        REQUIRE(report != nullptr);
+        REQUIRE(report->numMessagesReceived >= reportEveryNMessages);
+
+        if(i >= warmupReports) {
+            REQUIRE(report->fps >= minOutputFps);
+        }
+    }
+
     p.stop();
 }
