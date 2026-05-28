@@ -84,6 +84,32 @@ while True:
     break
 )";
 
+const std::string kAprilTagsRoundtripScript = R"(
+while True:
+    src = node.inputs["in"].get()
+    if src is None:
+        break
+
+    dst = src
+
+    copiedTags = []
+    for tag in src.aprilTags:
+        copied = AprilTag()
+        copied.id = tag.id
+        copied.hamming = tag.hamming
+        copied.decisionMargin = tag.decisionMargin
+        copied.topLeft = tag.topLeft
+        copied.topRight = tag.topRight
+        copied.bottomRight = tag.bottomRight
+        copied.bottomLeft = tag.bottomLeft
+        copiedTags.append(copied)
+
+    dst.aprilTags = copiedTags
+
+    node.outputs["out"].send(dst)
+    break
+)";
+
 void runScriptBindingsSmoke(const std::string& scriptText) {
     dai::Pipeline pipeline;
     auto script = pipeline.create<dai::node::Script>();
@@ -262,6 +288,16 @@ void requireSpatialImgDetectionEqual(const dai::SpatialImgDetection& expected, c
     REQUIRE(actual.getEdges() == expected.getEdges());
 }
 
+void requireAprilTagEqual(const dai::AprilTag& expected, const dai::AprilTag& actual) {
+    REQUIRE(actual.id == expected.id);
+    REQUIRE(actual.hamming == expected.hamming);
+    REQUIRE(actual.decisionMargin == Catch::Approx(expected.decisionMargin));
+    requirePoint2fEqual(expected.topLeft, actual.topLeft);
+    requirePoint2fEqual(expected.topRight, actual.topRight);
+    requirePoint2fEqual(expected.bottomRight, actual.bottomRight);
+    requirePoint2fEqual(expected.bottomLeft, actual.bottomLeft);
+}
+
 void requireImgDetectionsEqual(const dai::ImgDetections& expected, const dai::ImgDetections& actual) {
     REQUIRE(actual.getSequenceNum() == expected.getSequenceNum());
     REQUIRE(actual.getSegmentationMaskWidth() == expected.getSegmentationMaskWidth());
@@ -288,6 +324,15 @@ void requireSpatialImgDetectionsEqual(const dai::SpatialImgDetections& expected,
     }
 }
 
+void requireAprilTagsEqual(const dai::AprilTags& expected, const dai::AprilTags& actual) {
+    REQUIRE(actual.getSequenceNum() == expected.getSequenceNum());
+    requireTransformEqual(expected.transformation, actual.transformation);
+    REQUIRE(actual.aprilTags.size() == expected.aprilTags.size());
+    for(std::size_t i = 0; i < expected.aprilTags.size(); i++) {
+        requireAprilTagEqual(expected.aprilTags.at(i), actual.aprilTags.at(i));
+    }
+}
+
 void setCommonMessageFields(dai::ImgDetections& msg, int seqNo, int timestampMs) {
     msg.setSequenceNum(seqNo);
     msg.setTimestamp(std::chrono::steady_clock::now() + std::chrono::milliseconds{timestampMs});
@@ -301,6 +346,14 @@ void setCommonMessageFields(dai::SpatialImgDetections& msg, int seqNo, int times
     msg.setTimestamp(std::chrono::steady_clock::now() + std::chrono::milliseconds{timestampMs});
     dai::ImgTransformation transform(640, 400);
     transform.addCrop(10, 8, 300, 180).addScale(0.8F, 0.75F);
+    msg.transformation = transform;
+}
+
+void setCommonMessageFields(dai::AprilTags& msg, int seqNo, int timestampMs) {
+    msg.setSequenceNum(seqNo);
+    msg.setTimestamp(std::chrono::steady_clock::now() + std::chrono::milliseconds{timestampMs});
+    dai::ImgTransformation transform(640, 400);
+    transform.addCrop(12, 10, 320, 220).addScale(0.85F, 0.8F);
     msg.transformation = transform;
 }
 
@@ -591,4 +644,32 @@ TEST_CASE("SpatialImgDetections roundtrip in Script node", "[script][spatial_img
         auto output = runTypedScriptRoundtrip(input, kSpatialImgDetectionsRoundtripScript);
         requireSpatialImgDetectionsEqual(*input, *output);
     }
+}
+
+TEST_CASE("AprilTags roundtrip in Script node", "[script][apriltags]") {
+    auto input = std::make_shared<dai::AprilTags>();
+    setCommonMessageFields(*input, 301, 1555);
+
+    dai::AprilTag a;
+    a.id = 10;
+    a.hamming = 1;
+    a.decisionMargin = 42.5F;
+    a.topLeft = {10.0F, 20.0F};
+    a.topRight = {30.0F, 20.0F};
+    a.bottomRight = {30.0F, 40.0F};
+    a.bottomLeft = {10.0F, 40.0F};
+
+    dai::AprilTag b;
+    b.id = 11;
+    b.hamming = 0;
+    b.decisionMargin = 55.0F;
+    b.topLeft = {100.0F, 120.0F};
+    b.topRight = {130.0F, 118.0F};
+    b.bottomRight = {132.0F, 148.0F};
+    b.bottomLeft = {102.0F, 150.0F};
+
+    input->aprilTags = {a, b};
+
+    auto output = runTypedScriptRoundtrip(input, kAprilTagsRoundtripScript);
+    requireAprilTagsEqual(*input, *output);
 }

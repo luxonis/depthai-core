@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -11,6 +12,7 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 #ifdef DEPTHAI_XTENSOR_SUPPORT
@@ -150,6 +152,13 @@ struct ImgDetection {
      */
     float getAngle() const;
 
+    /**
+     * Transforms the detection from the source ImgTransformation to the target ImgTransformation.
+     * @param source Source image transformation.
+     * @param target Target image transformation.
+     */
+    void transform(const ImgTransformation& source, const ImgTransformation& target);
+
     DEPTHAI_SERIALIZE(ImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints);
 };
 
@@ -158,20 +167,43 @@ struct ImgDetection {
  * The segmentation mask is stored as a single-channel INT8 2-d array, where the value represents the instance index in the list of detections.
  * The value 255 is treated as a background pixel (no instance).
  */
-class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable {
+class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable, public TransformableCRTP<ImgDetections> {
+   protected:
+    /**
+     * Internal transform hook used by transformTo() to apply ImgDetections-specific transformation logic.
+     */
+    void transformToInternal(const ImgTransformation& target) override;
+
    public:
     ~ImgDetections() override;
+    friend class TransformableCRTP<ImgDetections>;
+
     using Base = ImgDetectionsT<dai::ImgDetection>;
     using Base::Base;
     using Base::detections;
     using Base::segmentationMaskHeight;
     using Base::segmentationMaskWidth;
-    using Base::transformation;
+    using Base::sequenceNum;
+    using Base::ts;
+    using Base::tsDevice;
+    using Transformable::transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::ImgDetections;
     }
+
+    /**
+     * Returns a new ImgDetections message with the detections transformed into the target image transformation.
+     *
+     * If the target transformation has a different source coordinate system (eg. different camera socket) than the one the detections were originally generated
+     * in, the remapping will be inaccurate due to the lack of depth information.
+     *
+     * The segmentation mask is not transformed. Use ImageAlign node to transform the segmentation mask to the target transformation if needed.
+     *
+     * @param target Target image transformation.
+     */
+    ImgDetections transformTo(const ImgTransformation& target) const;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
@@ -188,14 +220,7 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
      */
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
-    DEPTHAI_SERIALIZE(ImgDetections,
-                      Base::Buffer::sequenceNum,
-                      Base::Buffer::ts,
-                      Base::Buffer::tsDevice,
-                      detections,
-                      transformation,
-                      segmentationMaskWidth,
-                      segmentationMaskHeight);
+    DEPTHAI_SERIALIZE(ImgDetections, sequenceNum, ts, tsDevice, detections, transformation, segmentationMaskWidth, segmentationMaskHeight);
 };
 
 }  // namespace dai

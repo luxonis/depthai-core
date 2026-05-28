@@ -20,7 +20,7 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
     // py::class_<RawSpatialImgDetections, RawBuffer, std::shared_ptr<RawSpatialImgDetections>> rawSpatialImgDetections(m, "RawSpatialImgDetections", DOC(dai,
     // RawSpatialImgDetections));
     py::class_<SpatialImgDetection> spatialImgDetection(m, "SpatialImgDetection", DOC(dai, SpatialImgDetection));
-    py::class_<SpatialImgDetections, Py<SpatialImgDetections>, Buffer, std::shared_ptr<SpatialImgDetections>> spatialImgDetections(
+    py::class_<SpatialImgDetections, Py<SpatialImgDetections>, Buffer, Transformable, std::shared_ptr<SpatialImgDetections>> spatialImgDetections(
         m, "SpatialImgDetections", DOC(dai, SpatialImgDetections));
 
     ///////////////////////////////////////////////////////////////////////
@@ -121,6 +121,7 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
     // Message
     spatialImgDetections.def(py::init<>(), DOC(dai, ImgDetectionsT, ImgDetectionsT))
         .def("__repr__", &SpatialImgDetections::str)
+        .def_readwrite("unit", &SpatialImgDetections::unit, DOC(dai, SpatialImgDetections, unit))
         .def_property(
             "detections",
             [](SpatialImgDetections& det) { return &det.detections; },
@@ -142,6 +143,7 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
              py::return_value_policy::reference_internal)
         .def("getMaskData", &SpatialImgDetections::getMaskData, DOC(dai, ImgDetectionsT, getMaskData))
         .def("getSegmentationMask", &SpatialImgDetections::getSegmentationMask, DOC(dai, ImgDetectionsT, getSegmentationMask))
+        .def("transformTo", &SpatialImgDetections::transformTo, py::arg("target"), DOC(dai, SpatialImgDetections, transformTo))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def("setCvSegmentationMask", &SpatialImgDetections::setCvSegmentationMask, py::arg("mask"), DOC(dai, ImgDetectionsT, setCvSegmentationMask))
         .def(

@@ -4,12 +4,15 @@
 #include <string>
 #include <vector>
 
+#include "depthai/common/DepthUnit.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
 
 // project
 #include "depthai/common/KeypointsListT.hpp"
 #include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/matrixOps.hpp"
 
 namespace dai {
 
@@ -32,6 +35,12 @@ struct SpatialKeypoint {
     DEPTHAI_SERIALIZE(dai::SpatialKeypoint, imageCoordinates, confidence, label, labelName, spatialCoordinates);
 };
 
+/**
+ * List of spatial keypoints.
+ *
+ * All `SpatialKeypoint::spatialCoordinates` values stored in this list are expressed in `unit` units. Mixed spatial units within a single list are not
+ * supported.
+ */
 struct SpatialKeypointsList : KeypointsListT<SpatialKeypoint> {
    public:
     using Base = KeypointsListT<SpatialKeypoint>;
@@ -44,6 +53,18 @@ struct SpatialKeypointsList : KeypointsListT<SpatialKeypoint> {
     using Base::keypoints;
     using Base::setEdges;
     using Base::setKeypoints;
+
+    /**
+     * Length unit used by all keypoints' `spatialCoordinates` in this list.
+     */
+    LengthUnit unit = LengthUnit::MILLIMETER;
+
+    explicit SpatialKeypointsList(std::vector<SpatialKeypoint> keypoints, std::vector<Edge> edges, LengthUnit unit = LengthUnit::MILLIMETER)
+        : Base(std::move(keypoints), std::move(edges)), unit(unit) {
+        validateEdges();
+    }
+
+    explicit SpatialKeypointsList(std::vector<SpatialKeypoint> keypoints, LengthUnit unit = LengthUnit::MILLIMETER) : Base(std::move(keypoints)), unit(unit) {}
 
     /**
      * Sets the keypoints list.
@@ -61,16 +82,20 @@ struct SpatialKeypointsList : KeypointsListT<SpatialKeypoint> {
 
     /**
      * Sets the keypoints from a vector of 3D spatial points.
+     *
+     * The size of spatialCoordinates must match the number of keypoints.
+     *
      * @param spatialCoordinates vector of Point3f objects to set as spatial coordinates.
-     * @note The size of spatialCoordinates must match the number of keypoints.
+     * @param spatialUnit The unit of the spatial coordinates. By default, spatial coordinates are in millimeters.
      */
-    void setSpatialCoordinates(const std::vector<Point3f>& spatialCoordinates) {
+    void setSpatialCoordinates(const std::vector<Point3f>& spatialCoordinates, LengthUnit spatialUnit = LengthUnit::MILLIMETER) {
         if(spatialCoordinates.size() != keypoints.size()) {
             throw std::invalid_argument("Size of spatialCoordinates must match the number of keypoints.");
         }
         for(size_t i = 0; i < keypoints.size(); ++i) {
             keypoints[i].spatialCoordinates = spatialCoordinates[i];
         }
+        unit = spatialUnit;
     }
 
     /**
@@ -86,7 +111,42 @@ struct SpatialKeypointsList : KeypointsListT<SpatialKeypoint> {
         return spatialCoordinates;
     }
 
-    DEPTHAI_SERIALIZE(SpatialKeypointsList, keypoints, edges);
+    /**
+     * Transforms the list of keypoints to the target image transformation under the assumption that the keypoints are defined in the source image
+     * transformation.
+     *
+     * If a keypoint does not have valid spatial coordinates (`spatialCoordinates.z <= 0`), the depth-based 3D projection is skipped and
+     * only a 2D remapping is applied to its imageCoordinates.
+     *
+     * @param source Source image transformation.
+     * @param target Target image transformation.
+     */
+    SpatialKeypointsList transformTo(const ImgTransformation& source, const ImgTransformation& target) const {
+        SpatialKeypointsList transformed = *this;
+
+        const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, false, transformed.unit);
+        float depthScale = getDistanceUnitScale(LengthUnit::MILLIMETER, transformed.unit);
+        for(auto& kp : transformed.keypoints) {
+            Point2f imgCoordinates2f{kp.imageCoordinates.x, kp.imageCoordinates.y};
+            if(kp.spatialCoordinates.z > 0) {
+                float depth = kp.spatialCoordinates.z * depthScale;
+                // TODO (aljazkonec1): projecting each point seperately is inefficient, possible optimization by loading all the necessary matrixes once and
+                // reusing them.
+                Point2f remappedImgCoordinates = source.projectPointTo(target, imgCoordinates2f, depth);
+                kp.imageCoordinates.x = remappedImgCoordinates.x;
+                kp.imageCoordinates.y = remappedImgCoordinates.y;
+
+                kp.spatialCoordinates = matrix::transformPoint3f(transMatrix, kp.spatialCoordinates);
+            } else {
+                Point2f remappedPoint = source.remapPointTo(target, Point2f{kp.imageCoordinates.x, kp.imageCoordinates.y});
+                kp.imageCoordinates.x = remappedPoint.x;
+                kp.imageCoordinates.y = remappedPoint.y;
+            }
+        }
+        return transformed;
+    }
+
+    DEPTHAI_SERIALIZE(SpatialKeypointsList, keypoints, edges, unit);
 };
 
 }  // namespace dai

@@ -17,7 +17,7 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<AprilTag> aprilTag(m, "AprilTag", DOC(dai, AprilTag));
-    py::class_<AprilTags, Py<AprilTags>, Buffer, std::shared_ptr<AprilTags>> aprilTags(m, "AprilTags", DOC(dai, AprilTags));
+    py::class_<AprilTags, Py<AprilTags>, Buffer, Transformable, std::shared_ptr<AprilTags>> aprilTags(m, "AprilTags", DOC(dai, AprilTags));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -50,6 +50,7 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
         .def("getTimestamp", &AprilTags::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &AprilTags::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &AprilTags::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
+        .def("transformTo", &AprilTags::transformTo, py::arg("target"), DOC(dai, AprilTags, transformTo))
         // .def("setTimestamp", &AprilTags::setTimestamp, DOC(dai, Buffer, setTimestamp))
         // .def("setTimestampDevice", &AprilTags::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
         // .def("setSequenceNum", &AprilTags::setSequenceNum, DOC(dai, Buffer, setSequenceNum))
