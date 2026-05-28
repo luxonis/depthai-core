@@ -9,6 +9,7 @@
 #include <exception>
 #include <memory>
 #include <optional>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -32,13 +33,11 @@ namespace dai {
 
 constexpr std::uint32_t BANDWIDTH_TEST_BYTES = 1024 * 1024;
 constexpr std::uint32_t BANDWIDTH_REPORT_MESSAGES = 128;
-constexpr std::uint32_t IMU_REPORT_RATE = 100;
-constexpr std::uint32_t IMU_BATCH_REPORT_THRESHOLD = 1;
+constexpr std::uint32_t IMU_REPORT_RATE = 400;
+constexpr std::uint32_t IMU_BATCH_REPORT_THRESHOLD = 10;
 constexpr std::uint32_t IMU_MAX_BATCH_REPORTS = 10;
-constexpr std::uint32_t CAMERA_TEST_WIDTH = 640;
-constexpr std::uint32_t CAMERA_TEST_HEIGHT = 400;
-constexpr float CAMERA_TEST_FPS = 15.0f;
 constexpr float MAX_POWER_IR_INTENSITY = 1.0f;
+constexpr auto POWER_SUPPLY_POLL_INTERVAL = std::chrono::milliseconds(100);
 
 template <typename T>
 std::shared_ptr<T> getUntil(const std::shared_ptr<MessageQueue>& queue, std::chrono::steady_clock::time_point deadline, bool& timedOut) {
@@ -93,22 +92,27 @@ struct IrPowerGuard {
     std::shared_ptr<Device> device;
     bool enabled = false;
 
-    void disable() {
-        if(!enabled || !device) return;
+    bool disable() {
+        if(!enabled || !device) return true;
+
+        bool success = true;
 
         try {
             device->setIrLaserDotProjectorIntensity(0.0f);
         } catch(const std::exception& ex) {
-            logger::warn("Health check maxPower warning: failed to disable IR laser dot projector: {}", ex.what());
+            logger::warn("Health check powerSupply warning: failed to disable IR laser dot projector: {}", ex.what());
+            success = false;
         }
 
         try {
             device->setIrFloodLightIntensity(0.0f);
         } catch(const std::exception& ex) {
-            logger::warn("Health check maxPower warning: failed to disable IR flood light: {}", ex.what());
+            logger::warn("Health check powerSupply warning: failed to disable IR flood light: {}", ex.what());
+            success = false;
         }
 
         enabled = false;
+        return success;
     }
 
     ~IrPowerGuard() {
@@ -116,11 +120,11 @@ struct IrPowerGuard {
     }
 };
 
-void enableMaxPowerLoad(const std::shared_ptr<Device>& device, HealthCheckMetrics& metrics, IrPowerGuard& guard) {
+void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMetrics& metrics, IrPowerGuard& guard) {
     try {
         const auto irDrivers = device->getIrDrivers();
         if(irDrivers.empty()) {
-            setWarning(metrics, "maxPower", "No IR drivers detected; max power check ran without IR load.");
+            setWarning(metrics, "powerSupply", "No IR drivers detected; power supply check ran without IR load.");
             return;
         }
 
@@ -129,25 +133,63 @@ void enableMaxPowerLoad(const std::shared_ptr<Device>& device, HealthCheckMetric
         try {
             laserEnabled = device->setIrLaserDotProjectorIntensity(MAX_POWER_IR_INTENSITY);
         } catch(const std::exception& ex) {
-            setWarning(metrics, "maxPowerIrLaser", std::string("Failed to enable IR laser dot projector: ") + ex.what());
+            setWarning(metrics, "powerSupplyIrLaser", std::string("Failed to enable IR laser dot projector: ") + ex.what());
         }
         try {
             floodEnabled = device->setIrFloodLightIntensity(MAX_POWER_IR_INTENSITY);
         } catch(const std::exception& ex) {
-            setWarning(metrics, "maxPowerIrFlood", std::string("Failed to enable IR flood light: ") + ex.what());
+            setWarning(metrics, "powerSupplyIrFlood", std::string("Failed to enable IR flood light: ") + ex.what());
         }
         guard.enabled = laserEnabled || floodEnabled;
 
         if(!guard.enabled) {
-            metrics.maxPowerFunctionality = false;
-            setError(metrics, "maxPower", "Failed to enable IR laser/flood drivers.");
+            metrics.powerSupplyFunctionality = false;
+            setError(metrics, "powerSupply", "Failed to enable IR laser/flood drivers.");
         } else if(!laserEnabled || !floodEnabled) {
-            setWarning(metrics, "maxPower", "Only one IR driver accepted maximum intensity.");
+            setWarning(metrics, "powerSupply", "Only one IR driver accepted maximum intensity.");
         }
     } catch(const std::exception& ex) {
-        metrics.maxPowerFunctionality = false;
-        setError(metrics, "maxPower", ex.what());
+        metrics.powerSupplyFunctionality = false;
+        setError(metrics, "powerSupply", ex.what());
     }
+}
+
+bool waitForPowerSupplyLoad(const std::shared_ptr<Device>& device, std::chrono::steady_clock::time_point deadline, HealthCheckMetrics& metrics) {
+    while(std::chrono::steady_clock::now() < deadline) {
+        try {
+            if(device->hasCrashed()) {
+                setError(metrics, "powerSupply", "Device crashed during power supply load.");
+                return false;
+            }
+            if(device->isClosed()) {
+                setError(metrics, "powerSupply", "Device connection closed during power supply load.");
+                return false;
+            }
+        } catch(const std::exception& ex) {
+            setError(metrics, "powerSupply", ex.what());
+            return false;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        if(now >= deadline) break;
+        std::this_thread::sleep_for(std::min(POWER_SUPPLY_POLL_INTERVAL, std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now)));
+    }
+
+    try {
+        if(device->hasCrashed()) {
+            setError(metrics, "powerSupply", "Device crashed during power supply load.");
+            return false;
+        }
+        if(device->isClosed()) {
+            setError(metrics, "powerSupply", "Device connection closed during power supply load.");
+            return false;
+        }
+    } catch(const std::exception& ex) {
+        setError(metrics, "powerSupply", ex.what());
+        return false;
+    }
+
+    return true;
 }
 
 void setRequestedChecksFailed(HealthCheckMetrics& metrics, const HealthCheckConfig& config) {
@@ -168,8 +210,8 @@ void setRequestedChecksFailed(HealthCheckMetrics& metrics, const HealthCheckConf
         metrics.imuFunctionality = false;
         metrics.imuCalibration = false;
     }
-    if(config.verifyMaxPower) {
-        metrics.maxPowerFunctionality = false;
+    if(config.verifyPowerSupply) {
+        metrics.powerSupplyFunctionality = false;
     }
 }
 
@@ -285,43 +327,25 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
                            const std::string& imuName,
                            HealthCheckMetrics& metrics) {
     Pipeline pipeline(device);
-    std::shared_ptr<InputQueue> bandwidthInputQueue;
-    std::shared_ptr<MessageQueue> bandwidthReportQueue;
     std::vector<std::pair<CameraBoardSocket, std::shared_ptr<MessageQueue>>> cameraQueues;
     std::shared_ptr<MessageQueue> imuQueue;
 
-    // Prepare bandwidth measurement
-    if(config.measureBandwidth) {
-        auto benchmarkOut = pipeline.create<node::BenchmarkOut>();
-        benchmarkOut->setRunOnHost(false);
-        benchmarkOut->setFps(0.0f);
-
-        auto benchmarkIn = pipeline.create<node::BenchmarkIn>();
-        benchmarkIn->setRunOnHost(true);
-        benchmarkIn->sendReportEveryNMessages(BANDWIDTH_REPORT_MESSAGES);
-        benchmarkIn->logReportsAsWarnings(false);
-
-        benchmarkOut->out.link(benchmarkIn->input);
-        bandwidthInputQueue = benchmarkOut->input.createInputQueue();
-        bandwidthReportQueue = benchmarkIn->report.createOutputQueue(2, false);
-    }
-
     const bool shouldCreateCameraStreams =
-        (config.verifyCameras && !metrics.cameraFunctionality.has_value()) || (config.verifyMaxPower && !metrics.maxPowerFunctionality.has_value());
+        (config.verifyCameras && !metrics.cameraFunctionality.has_value()) || (config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value());
 
-    // Prepare camera streams for camera verification and max-power load
+    // Prepare camera streams for camera verification and power-supply load
     if(shouldCreateCameraStreams) {
         for(auto socket : connectedCameras) {
             auto camera = pipeline.create<node::Camera>()->build(socket);
-            auto* output = camera->requestOutput(std::make_pair(CAMERA_TEST_WIDTH, CAMERA_TEST_HEIGHT), std::nullopt, ImgResizeMode::CROP, CAMERA_TEST_FPS);
+            auto* output = camera->requestFullResolutionOutput();
             if(output == nullptr) {
                 if(config.verifyCameras && !metrics.cameraFunctionality.has_value()) {
                     metrics.cameraFunctionality = false;
                     setError(metrics, "cameraFunctionality", "Failed to create diagnostic output for camera socket " + socketToString(socket) + ".");
                 }
-                if(config.verifyMaxPower && !metrics.maxPowerFunctionality.has_value()) {
-                    metrics.maxPowerFunctionality = false;
-                    setError(metrics, "maxPower", "Failed to create camera load for socket " + socketToString(socket) + ".");
+                if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
+                    metrics.powerSupplyFunctionality = false;
+                    setError(metrics, "powerSupply", "Failed to create camera load for socket " + socketToString(socket) + ".");
                 }
                 break;
             }
@@ -339,21 +363,21 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
         imuQueue = imu->out.createOutputQueue(10, false);
     }
 
-    if(config.verifyMaxPower && !metrics.maxPowerFunctionality.has_value() && cameraQueues.empty()) {
-        metrics.maxPowerFunctionality = false;
-        setError(metrics, "maxPower", "No camera streams were created for max power load.");
+    // Prepare power supply verification
+    if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value() && cameraQueues.empty()) {
+        metrics.powerSupplyFunctionality = false;
+        setError(metrics, "powerSupply", "No camera streams were created for power supply load.");
     }
-
     IrPowerGuard irGuard{device, false};
 
     try {
-        if(config.verifyMaxPower && !metrics.maxPowerFunctionality.has_value()) {
-            enableMaxPowerLoad(device, metrics, irGuard);
+        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
+            enablePowerSupplyLoad(device, metrics, irGuard);
         }
 
         pipeline.start();
 
-        // Verify camera streaming and keep the same streams active for max-power validation
+        // Verify camera streaming and keep the same streams active for power-supply validation
         if(!cameraQueues.empty() && shouldCreateCameraStreams) {
             bool allCamerasStreaming = true;
             for(auto& socketAndQueue : cameraQueues) {
@@ -364,9 +388,9 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
                     if(config.verifyCameras && !metrics.cameraFunctionality.has_value()) {
                         setError(metrics, "cameraFunctionality", "Camera socket " + socketToString(socketAndQueue.first) + " did not stream a frame.");
                     }
-                    if(config.verifyMaxPower && !metrics.maxPowerFunctionality.has_value()) {
-                        metrics.maxPowerFunctionality = false;
-                        setError(metrics, "maxPower", "Camera socket " + socketToString(socketAndQueue.first) + " did not stream during max power load.");
+                    if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
+                        metrics.powerSupplyFunctionality = false;
+                        setError(metrics, "powerSupply", "Camera socket " + socketToString(socketAndQueue.first) + " did not stream during power supply load.");
                     }
                     break;
                 }
@@ -388,49 +412,29 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             }
         }
 
-        // Verify max power
-        if(config.verifyMaxPower && !metrics.maxPowerFunctionality.has_value()) {
-            try {
-                const bool crashed = device->hasCrashed();
-                metrics.maxPowerFunctionality = !crashed;
-                if(crashed) {
-                    setError(metrics, "maxPower", "Device crashed during max power load.");
-                }
-            } catch(const std::exception& ex) {
-                metrics.maxPowerFunctionality = false;
-                setError(metrics, "maxPower", ex.what());
+        // Verify power supply
+        bool sufficientPower = true;
+        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
+            sufficientPower = waitForPowerSupplyLoad(device, std::chrono::steady_clock::now() + config.timeout, metrics);
+            if(!sufficientPower) {
+                metrics.powerSupplyFunctionality = false;
             }
         }
 
-        irGuard.disable();
-
-        // Measure bandwidth last, after runtime validation and max-power cleanup
-        if(bandwidthInputQueue) {
-            auto frame = std::make_shared<ImgFrame>();
-            frame->setType(ImgFrame::Type::RAW8);
-            frame->setSize(BANDWIDTH_TEST_BYTES, 1);
-            frame->setData(std::vector<std::uint8_t>(BANDWIDTH_TEST_BYTES, 0xAA));
-            bandwidthInputQueue->send(frame);
-        }
-        if(bandwidthReportQueue) {
-            bool timedOut = false;
-            auto report = getUntil<BenchmarkReport>(bandwidthReportQueue, std::chrono::steady_clock::now() + config.timeout, timedOut);
-            if(timedOut || report == nullptr || report->fps <= 0.0f) {
-                metrics.bandwidthMbps = 0.0f;
-                setError(metrics, "bandwidth", "Timed out waiting for bandwidth benchmark report.");
-            } else {
-                metrics.bandwidthMbps = report->fps * static_cast<float>(BANDWIDTH_TEST_BYTES) * 8.0f / 1000000.0f;
-            }
+        const bool irDisableSucceeded = irGuard.disable();
+        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value() && !irDisableSucceeded) {
+            metrics.powerSupplyFunctionality = false;
+            setError(metrics, "powerSupply", "Failed to disable IR load after validation; device disconnected during cleanup.");
         }
 
         pipeline.stop();
         pipeline.wait();
 
-    } catch(const std::exception& ex) {
-        if(config.measureBandwidth && !metrics.bandwidthMbps.has_value()) {
-            metrics.bandwidthMbps = 0.0f;
-            setError(metrics, "bandwidth", ex.what());
+        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
+            metrics.powerSupplyFunctionality = true;
         }
+
+    } catch(const std::exception& ex) {
         if(config.verifyCameras && !metrics.cameraFunctionality.has_value()) {
             metrics.cameraFunctionality = false;
             setError(metrics, "cameraFunctionality", ex.what());
@@ -439,9 +443,9 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             metrics.imuFunctionality = false;
             setError(metrics, "imuFunctionality", ex.what());
         }
-        if(config.verifyMaxPower && !metrics.maxPowerFunctionality.has_value()) {
-            metrics.maxPowerFunctionality = false;
-            setError(metrics, "maxPower", ex.what());
+        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
+            metrics.powerSupplyFunctionality = false;
+            setError(metrics, "powerSupply", ex.what());
         }
 
         try {
@@ -454,10 +458,59 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     }
 }
 
+void measureBandwidth(const std::shared_ptr<Device>& device, const HealthCheckConfig& config, HealthCheckMetrics& metrics) {
+    Pipeline pipeline(device);
+
+    auto benchmarkOut = pipeline.create<node::BenchmarkOut>();
+    benchmarkOut->setRunOnHost(false);
+    benchmarkOut->setFps(0.0f);
+
+    auto benchmarkIn = pipeline.create<node::BenchmarkIn>();
+    benchmarkIn->setRunOnHost(true);
+    benchmarkIn->sendReportEveryNMessages(BANDWIDTH_REPORT_MESSAGES);
+    benchmarkIn->logReportsAsWarnings(false);
+
+    benchmarkOut->out.link(benchmarkIn->input);
+    auto bandwidthInputQueue = benchmarkOut->input.createInputQueue();
+    auto bandwidthReportQueue = benchmarkIn->report.createOutputQueue(2, false);
+
+    try {
+        pipeline.start();
+
+        auto frame = std::make_shared<ImgFrame>();
+        frame->setType(ImgFrame::Type::RAW8);
+        frame->setSize(BANDWIDTH_TEST_BYTES, 1);
+        frame->setData(std::vector<std::uint8_t>(BANDWIDTH_TEST_BYTES, 0xAA));
+        bandwidthInputQueue->send(frame);
+
+        bool timedOut = false;
+        auto report = getUntil<BenchmarkReport>(bandwidthReportQueue, std::chrono::steady_clock::now() + config.timeout, timedOut);
+        if(timedOut || report == nullptr || report->fps <= 0.0f) {
+            metrics.bandwidthMbps = 0.0f;
+            setError(metrics, "bandwidth", "Timed out waiting for bandwidth benchmark report.");
+        } else {
+            metrics.bandwidthMbps = report->fps * static_cast<float>(BANDWIDTH_TEST_BYTES) * 8.0f / 1000000.0f;
+        }
+
+        pipeline.stop();
+        pipeline.wait();
+    } catch(const std::exception& ex) {
+        metrics.bandwidthMbps = 0.0f;
+        setError(metrics, "bandwidth", ex.what());
+
+        try {
+            pipeline.stop();
+            pipeline.wait();
+        } catch(const std::exception& cleanupError) {
+            logger::warn("Health check bandwidth pipeline cleanup failed after exception: {}", cleanupError.what());
+        }
+    }
+}
+
 HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const HealthCheckConfig& config) {
     HealthCheckMetrics metrics;
 
-    // Perform device info check
+    // Perform basic device info check
     metrics.appRunningOnDevice = devInfo.status == X_LINK_DEVICE_ALREADY_IN_USE;
     metrics.inSetupMode = devInfo.state == X_LINK_GATE_SETUP;
     metrics.udevRulesSet = devInfo.status != X_LINK_INSUFFICIENT_PERMISSIONS;
@@ -491,9 +544,17 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         }
     }
 
-    const bool requiresDiagnosticPipeline = config.measureBandwidth || config.verifyCameras || config.verifyIMU || config.verifyMaxPower;
-    if(!requiresDiagnosticPipeline) {
-        return metrics;
+    // Measure the bandwidth
+    if(config.measureBandwidth) {
+        measureBandwidth(device, config, metrics);
+        device.reset();
+        try {
+            device = std::make_shared<Device>(devInfo);
+        } catch(const std::exception& ex) {
+            metrics.bandwidthMbps = 0.0f;
+            setError(metrics, "bandwidth", ex.what());
+            return metrics;
+        }
     }
 
     // Read the calibration
@@ -513,10 +574,10 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         }
     }
 
-    // Query cameras for camera verification and max-power load
+    // Query cameras for camera verification and power-supply load
     std::vector<CameraBoardSocket> connectedCameras;
     std::vector<StereoPair> deviceStereoPairs;
-    if(config.verifyCameras || config.verifyMaxPower) {
+    if(config.verifyCameras || config.verifyPowerSupply) {
         try {
             connectedCameras = device->getConnectedCameras();
             if(connectedCameras.empty()) {
@@ -524,21 +585,19 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
                     metrics.cameraFunctionality = false;
                     setError(metrics, "cameraFunctionality", "No connected cameras detected.");
                 }
-                if(config.verifyMaxPower) {
-                    metrics.maxPowerFunctionality = false;
-                    setError(metrics, "maxPower", "No connected cameras detected for max power load.");
+                if(config.verifyPowerSupply) {
+                    metrics.powerSupplyFunctionality = false;
+                    setError(metrics, "powerSupply", "No connected cameras detected for power supply load.");
                 }
             }
         } catch(const std::exception& ex) {
             if(config.verifyCameras) {
                 metrics.cameraFunctionality = false;
-                metrics.cameraCalibration = false;
                 setError(metrics, "cameraFunctionality", ex.what());
-                setError(metrics, "cameraCalibration", ex.what());
             }
-            if(config.verifyMaxPower) {
-                metrics.maxPowerFunctionality = false;
-                setError(metrics, "maxPower", ex.what());
+            if(config.verifyPowerSupply) {
+                metrics.powerSupplyFunctionality = false;
+                setError(metrics, "powerSupply", ex.what());
             }
         }
     }
@@ -576,7 +635,9 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         }
     }
 
-    runDiagnosticPipeline(device, config, connectedCameras, imuName, metrics);
+    if(config.verifyCameras || config.verifyIMU || config.verifyPowerSupply) {
+        runDiagnosticPipeline(device, config, connectedCameras, imuName, metrics);
+    }
 
     return metrics;
 }

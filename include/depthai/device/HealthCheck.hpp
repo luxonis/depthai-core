@@ -24,7 +24,7 @@ struct HealthCheckConfig {
     bool measureBandwidth = true;
     bool verifyCameras = true;
     bool verifyIMU = true;
-    bool verifyMaxPower = true;
+    bool verifyPowerSupply = true;
 
     std::chrono::milliseconds timeout{std::chrono::seconds(10)};
 };
@@ -43,7 +43,7 @@ struct HealthCheckMetrics {
     std::optional<bool> cameraCalibration;
     std::optional<bool> imuFunctionality;
     std::optional<bool> imuCalibration;
-    std::optional<bool> maxPowerFunctionality;
+    std::optional<bool> powerSupplyFunctionality;
 
     bool appRunningOnDevice = false;
     bool inSetupMode = false;
