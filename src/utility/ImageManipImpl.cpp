@@ -935,7 +935,37 @@ dai::impl::UndistortOpenCvImpl::BuildStatus dai::impl::UndistortOpenCvImpl::buil
     }
     return BuildStatus::NOT_USED;
 }
-void dai::impl::UndistortOpenCvImpl::undistort(cv::Mat& src, cv::Mat& dst) {
+
+int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
+    if(bpp == 1) {
+        switch(channels) {
+            case 1:
+                return CV_8UC1;
+            case 2:
+                return CV_8UC2;
+            case 3:
+                return CV_8UC3;
+            default:
+                break;
+        }
+    } else if(bpp == 2) {
+        switch(channels) {
+            case 1:
+                return CV_16UC1;
+            case 2:
+                return CV_16UC2;
+            case 3:
+                return CV_16UC3;
+            default:
+                break;
+        }
+    }
+    throw std::invalid_argument(fmt::format("Unsupported combination of bpp {} and channels {}", bpp, channels));
+}
+
+void dai::impl::UndistortOpenCvImpl::undistort(const UndistortInput& srcI, const UndistortInput& dstI) {
+    cv::Mat src(srcI.height, srcI.width, getCvMatTypeFrom(srcI.bpp, srcI.channels), srcI.data->getOffsetData().data(), srcI.stride);
+    cv::Mat dst(dstI.height, dstI.width, getCvMatTypeFrom(dstI.bpp, dstI.channels), dstI.data->getOffsetData().data(), dstI.stride);
     if(dst.size().width == (int)dstWidth && dst.size().height == (int)dstHeight) {
         cv::remap(src, dst, undistortMap1, undistortMap2, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
     } else if(dst.size().width == (int)dstWidth / 2 && dst.size().height == (int)dstHeight / 2) {
@@ -3122,7 +3152,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                               CV_8UC3,
                               undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
                               undistortSpecs.p1Stride);
-                this->undistortImpl->undistort(srcCv, dstCv);
+                this->undistortImpl->undistort(
+                    {this->srcSpecs.height, this->srcSpecs.width, this->srcSpecs.p1Stride, 1, 3, src->offset(this->srcSpecs.p1Offset)},
+                    {undistortSpecs.height, undistortSpecs.width, undistortSpecs.p1Stride, 1, 3, undistortDst->offset(undistortSpecs.p1Offset)});
             }
     #endif
             if(!this->undistortOneShot && !this->isIdentityWarp()) {
@@ -3161,7 +3193,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_8UC1,
                                   undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
                                   undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height, this->srcSpecs.width, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.height, undistortSpecs.width, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)});
                 }
                 {
                     cv::Mat srcCv(this->srcSpecs.height,
@@ -3174,7 +3208,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_8UC1,
                                   undistortDst->offset(undistortSpecs.p2Offset)->getOffsetData().data(),
                                   undistortSpecs.p2Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height, this->srcSpecs.width, this->srcSpecs.p2Stride, 1, 1, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.height, undistortSpecs.width, undistortSpecs.p2Stride, 1, 1, undistortDst->offset(undistortSpecs.p2Offset)});
                 }
                 {
                     cv::Mat srcCv(this->srcSpecs.height,
@@ -3187,7 +3223,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_8UC1,
                                   undistortDst->offset(undistortSpecs.p3Offset)->getOffsetData().data(),
                                   undistortSpecs.p3Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height, this->srcSpecs.width, this->srcSpecs.p3Stride, 1, 1, src->offset(this->srcSpecs.p3Offset)},
+                        {undistortSpecs.height, undistortSpecs.width, undistortSpecs.p3Stride, 1, 1, undistortDst->offset(undistortSpecs.p3Offset)});
                 }
             }
     #endif
@@ -3250,7 +3288,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_8UC1,
                                   undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
                                   undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height, this->srcSpecs.width, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.height, undistortSpecs.width, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)});
                 }
                 {
                     cv::Mat srcCv(this->srcSpecs.height / 2,
@@ -3263,7 +3303,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_8UC1,
                                   undistortDst->offset(undistortSpecs.p2Offset)->getOffsetData().data(),
                                   undistortSpecs.p2Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height / 2, this->srcSpecs.width / 2, this->srcSpecs.p2Stride, 1, 1, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.height / 2, undistortSpecs.width / 2, undistortSpecs.p2Stride, 1, 1, undistortDst->offset(undistortSpecs.p2Offset)});
                 }
                 {
                     cv::Mat srcCv(this->srcSpecs.height / 2,
@@ -3276,7 +3318,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_8UC1,
                                   undistortDst->offset(undistortSpecs.p3Offset)->getOffsetData().data(),
                                   undistortSpecs.p3Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height / 2, this->srcSpecs.width / 2, this->srcSpecs.p3Stride, 1, 1, src->offset(this->srcSpecs.p3Offset)},
+                        {undistortSpecs.height / 2, undistortSpecs.width / 2, undistortSpecs.p3Stride, 1, 1, undistortDst->offset(undistortSpecs.p3Offset)});
                 }
             }
     #endif
@@ -3339,7 +3383,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_8UC1,
                                   undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
                                   undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height, this->srcSpecs.width, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.height, undistortSpecs.width, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)});
                 }
                 {
                     cv::Mat srcCv(this->srcSpecs.height / 2,
@@ -3352,7 +3398,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_8UC2,
                                   undistortDst->offset(undistortSpecs.p2Offset)->getOffsetData().data(),
                                   undistortSpecs.p2Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height / 2, this->srcSpecs.width / 2, this->srcSpecs.p2Stride, 1, 2, src->offset(this->srcSpecs.p2Offset)},
+                        {undistortSpecs.height / 2, undistortSpecs.width / 2, undistortSpecs.p2Stride, 1, 2, undistortDst->offset(undistortSpecs.p2Offset)});
                 }
             }
     #endif
@@ -3404,7 +3452,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_8UC1,
                                   undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
                                   undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height, this->srcSpecs.width, this->srcSpecs.p1Stride, 1, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.height, undistortSpecs.width, undistortSpecs.p1Stride, 1, 1, undistortDst->offset(undistortSpecs.p1Offset)});
                 }
             }
     #endif
@@ -3443,7 +3493,9 @@ void WarpH::apply(const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<Offs
                                   CV_16UC1,
                                   undistortDst->offset(undistortSpecs.p1Offset)->getOffsetData().data(),
                                   undistortSpecs.p1Stride);
-                    this->undistortImpl->undistort(srcCv, dstCv);
+                    this->undistortImpl->undistort(
+                        {this->srcSpecs.height, this->srcSpecs.width, this->srcSpecs.p1Stride, 2, 1, src->offset(this->srcSpecs.p1Offset)},
+                        {undistortSpecs.height, undistortSpecs.width, undistortSpecs.p1Stride, 2, 1, undistortDst->offset(undistortSpecs.p1Offset)});
                 }
             }
     #endif
