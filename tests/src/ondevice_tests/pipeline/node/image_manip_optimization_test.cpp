@@ -146,17 +146,29 @@ std::shared_ptr<dai::Pipeline> createPipelineWithGpuOrSkip() {
     return pipeline;
 }
 
-std::shared_ptr<dai::ImgFrame> createInputFrame(const cv::Mat& inputImage, dai::ImgFrame::Type type) {
+std::shared_ptr<dai::ImgFrame> createInputFrame(const cv::Mat& inputImage,
+                                                dai::ImgFrame::Type type,
+                                                const std::shared_ptr<dai::ImgFrame>& metadataSource = nullptr) {
     auto inputFrame = std::make_shared<dai::ImgFrame>();
+    if(metadataSource != nullptr) {
+        inputFrame->setMetadata(metadataSource);
+    }
     inputFrame->setCvFrame(inputImage, type);
     return inputFrame;
 }
 
 void runCpuGpuBackendComparison(dai::Pipeline& pipeline,
                                 dai::ImgFrame::Type type,
-                                const std::vector<ManipComparisonCase>& cases) {
+                                const std::vector<ManipComparisonCase>& cases,
+                                bool enableUndistort) {
     auto cpuManip = pipeline.create<dai::node::ImageManip>()->build();
     auto gpuManip = pipeline.create<dai::node::ImageManip>()->build();
+    std::shared_ptr<dai::MessageQueue> cameraOutputQueue;
+
+    if(enableUndistort) {
+        auto camera = pipeline.create<dai::node::Camera>()->build();
+        cameraOutputQueue = camera->requestOutput({960, 540})->createOutputQueue();
+    }
 
     for(const auto& manip : {cpuManip, gpuManip}) {
         manip->inputConfig.setReusePreviousMessage(false);
@@ -177,23 +189,34 @@ void runCpuGpuBackendComparison(dai::Pipeline& pipeline,
 
     auto inputImage = cv::imread(LENNA_PATH);
     REQUIRE_FALSE(inputImage.empty());
-    cv::resize(inputImage, inputImage, cv::Size(960, 540));
 
     pipeline.start();
+
+    std::shared_ptr<dai::ImgFrame> metadataFrame;
+    if(enableUndistort) {
+        metadataFrame = cameraOutputQueue->get<dai::ImgFrame>();
+        REQUIRE(metadataFrame != nullptr);
+        cv::resize(inputImage, inputImage, cv::Size(metadataFrame->getWidth(), metadataFrame->getHeight()));
+    } else {
+        cv::resize(inputImage, inputImage, cv::Size(960, 540));
+    }
 
     for(const auto& testCase : cases) {
         INFO("Input type: " << toString(type));
         INFO("Operation: " << testCase.name);
+        INFO("Undistortion: " << (enableUndistort ? "enabled" : "disabled"));
 
         auto cpuConfig = std::make_shared<dai::ImageManipConfig>();
         auto gpuConfig = std::make_shared<dai::ImageManipConfig>();
         testCase.configure(*cpuConfig);
         testCase.configure(*gpuConfig);
+        cpuConfig->setUndistort(enableUndistort);
+        gpuConfig->setUndistort(enableUndistort);
 
         cpuConfigQueue->send(cpuConfig);
         gpuConfigQueue->send(gpuConfig);
-        cpuInputQueue->send(createInputFrame(inputImage, type));
-        gpuInputQueue->send(createInputFrame(inputImage, type));
+        cpuInputQueue->send(createInputFrame(inputImage, type, metadataFrame));
+        gpuInputQueue->send(createInputFrame(inputImage, type, metadataFrame));
 
         auto cpuFrame = cpuOutputQueue->get<dai::ImgFrame>();
         auto gpuFrame = gpuOutputQueue->get<dai::ImgFrame>();
@@ -404,6 +427,7 @@ TEST_CASE("Host and Device impl comparison") {
 }
 
 TEST_CASE("ImageManip GPU backend matches CPU backend", "[ImageManip][GPU][ondevice]") {
+    const bool enableUndistort = GENERATE(false, true);
     const std::vector<dai::ImgFrame::Type> inputTypes = {
         dai::ImgFrame::Type::NV12,
         dai::ImgFrame::Type::GRAY8,
@@ -460,7 +484,7 @@ TEST_CASE("ImageManip GPU backend matches CPU backend", "[ImageManip][GPU][ondev
 
     for(const auto type : inputTypes) {
         auto pipeline = createPipelineWithGpuOrSkip();
-        runCpuGpuBackendComparison(*pipeline, type, cases);
+        runCpuGpuBackendComparison(*pipeline, type, cases, enableUndistort);
     }
 }
 

@@ -919,19 +919,20 @@ dai::impl::UndistortOpenCvImpl::BuildStatus dai::impl::UndistortOpenCvImpl::buil
         }
         if(!validMatrix(newCameraMatrix)) {
             if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || distCoeffs != this->distCoeffs
-               || cameraMatrix != this->cameraMatrix) {
+               || cameraMatrix != this->cameraMatrix || this->dstWidth != srcWidth || this->dstHeight != srcHeight
+               || this->newCameraMatrix != cameraMatrix) {
                 initMaps(cameraMatrix, cameraMatrix, std::move(distCoeffs), type, srcWidth, srcHeight, srcWidth, srcHeight);
                 return BuildStatus::TWO_SHOT;
             }
             return BuildStatus::NOT_BUILT;
-        } else {
-            if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || dstWidth != this->dstWidth || dstHeight != this->dstHeight
-               || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix || newCameraMatrix != this->newCameraMatrix) {
-                initMaps(std::move(cameraMatrix), std::move(newCameraMatrix), std::move(distCoeffs), type, srcWidth, srcHeight, dstWidth, dstHeight);
-                return BuildStatus::ONE_SHOT;
-            }
-            return BuildStatus::NOT_BUILT;
         }
+
+        if(type != this->type || srcWidth != this->srcWidth || srcHeight != this->srcHeight || dstWidth != this->dstWidth || dstHeight != this->dstHeight
+           || distCoeffs != this->distCoeffs || cameraMatrix != this->cameraMatrix || newCameraMatrix != this->newCameraMatrix) {
+            initMaps(cameraMatrix, newCameraMatrix, std::move(distCoeffs), type, srcWidth, srcHeight, dstWidth, dstHeight);
+            return BuildStatus::ONE_SHOT;
+        }
+        return BuildStatus::NOT_BUILT;
     }
     return BuildStatus::NOT_USED;
 }
@@ -3043,14 +3044,12 @@ void WarpH::buildUndistort(bool enable,
                 this->enableUndistort = true;
                 this->undistortOneShot = false;
                 break;
-            case UndistortOpenCvImpl::BuildStatus::NOT_USED:
-                this->enableUndistort = false;
-                this->undistortOneShot = false;
-                break;
             case UndistortOpenCvImpl::BuildStatus::NOT_BUILT:
                 break;
+            case UndistortOpenCvImpl::BuildStatus::NOT_USED:
             case UndistortOpenCvImpl::BuildStatus::ERROR:
                 this->enableUndistort = false;
+                this->undistortOneShot = false;
                 break;
         }
 
