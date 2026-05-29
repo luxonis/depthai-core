@@ -63,6 +63,14 @@ namespace dai {
 
 namespace {
 
+std::shared_ptr<Device> getAssignedDevice(const std::shared_ptr<Node>& node) {
+    auto deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
+    if(!deviceNode) {
+        return nullptr;
+    }
+    return deviceNode->getDevice();
+}
+
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 const char* autoCalibrationModeToString(PipelineAutoCalibrationMode mode) {
     switch(mode) {
@@ -212,9 +220,10 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getSourceNodes() {
     return sourceNodes;
 }
 
-void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
+void PipelineImpl::serialize(
+    PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type, std::optional<std::string> deviceId) const {
     // Set schema
-    schema = getDevicePipelineSchema(type);
+    schema = getDevicePipelineSchema(type, true, std::move(deviceId));
 
     // Serialize all asset managers into asset storage
     assetStorage.clear();
@@ -325,13 +334,19 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         info.alias = node->getAlias();
         info.parentId = node->parentId;
         info.deviceNode = !node->runOnHost();
-        if(!node->runOnHost()) info.deviceId = defaultDeviceId;
 
         const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
         if(!node->runOnHost() && !deviceNode) {
             throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
         }
         if(deviceNode) {
+            auto device = deviceNode->getDevice();
+            if(!node->runOnHost() && device == nullptr) {
+                throw std::invalid_argument(fmt::format("Device node '{}' has no assigned device", info.name));
+            }
+            if(device != nullptr) {
+                info.deviceId = device->getDeviceId();
+            }
             deviceNode->getProperties().serialize(info.properties, type);
             if(std::string(deviceNode->getName()) == "DeviceNodeGroup") {
                 info.logLevel = LogLevel::OFF;
@@ -465,30 +480,26 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
     return schema;
 }
 
-PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, bool includePipelineDebugging) const {
+PipelineSchema PipelineImpl::getDevicePipelineSchema(SerializationType type, bool includePipelineDebugging, std::optional<std::string> deviceId) const {
     auto schema = getPipelineSchema(type, includePipelineDebugging);
     // Remove bridge info
     schema.bridges.clear();
     // Remove host and group nodes
     for(auto it = schema.nodes.begin(); it != schema.nodes.end();) {
-        if(!it->second.deviceNode || it->second.name == "NodeGroup" || it->second.name == "DeviceNodeGroup") {
+        const bool wrongDevice = deviceId.has_value() && it->second.deviceId != *deviceId;
+        if(!it->second.deviceNode || it->second.name == "NodeGroup" || it->second.name == "DeviceNodeGroup" || wrongDevice) {
             it = schema.nodes.erase(it);
         } else {
             ++it;
         }
     }
-    // Remove connections between host nodes (host - device connections should not exist)
+    // Remove connections touching nodes outside of this device-local schema.
     schema.connections.erase(std::remove_if(schema.connections.begin(),
                                             schema.connections.end(),
                                             [&schema](const NodeConnectionSchema& c) {
                                                 auto node1 = schema.nodes.find(c.node1Id);
                                                 auto node2 = schema.nodes.find(c.node2Id);
-                                                if(node1 == schema.nodes.end() && node2 == schema.nodes.end()) {
-                                                    return true;
-                                                } else if(node1 == schema.nodes.end() || node2 == schema.nodes.end()) {
-                                                    throw std::invalid_argument("Connection from host node to device node should not exist here");
-                                                }
-                                                return false;
+                                                return node1 == schema.nodes.end() || node2 == schema.nodes.end();
                                             }),
                              schema.connections.end());
     return schema;
@@ -707,6 +718,18 @@ bool PipelineImpl::isDeviceOnly() const {
         }
     }
     return deviceOnly;
+}
+
+std::vector<std::shared_ptr<Device>> PipelineImpl::getAllAssignedDevices() const {
+    std::vector<std::shared_ptr<Device>> devices;
+    std::unordered_set<Device*> seen;
+    for(const auto& node : getAllNodes()) {
+        auto device = getAssignedDevice(node);
+        if(device != nullptr && seen.insert(device.get()).second) {
+            devices.push_back(std::move(device));
+        }
+    }
+    return devices;
 }
 
 PipelineStateApi PipelineImpl::getPipelineState() {
@@ -945,6 +968,10 @@ void PipelineImpl::build() {
         node->buildStage3();
     }
 
+    if(getAllAssignedDevices().size() > 1 && (enablePipelineDebugging || utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false))) {
+        throw std::runtime_error("Pipeline debugging is not supported for multi-device pipelines in this MVP");
+    }
+
     utility::PipelineImplHelper::setupPipelineDebuggingPre(shared_from_this());
 
     // Go through all the connections and handle any
@@ -974,6 +1001,8 @@ void PipelineImpl::build() {
     std::unordered_map<dai::Node::Output*, dai::node::internal::XLinkOutBridge> bridgesOut;
     std::unordered_map<dai::Node::Input*, dai::node::internal::XLinkInBridge> bridgesIn;
     std::unordered_set<std::string> uniqueStreamNames;
+    xlinkBridges.clear();
+    bridgeHostDevices.clear();
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
         auto outNode = connection.outputNode.lock();
@@ -981,12 +1010,30 @@ void PipelineImpl::build() {
             throw std::runtime_error(fmt::format(
                 "Input node in connection {}-{}_{}-{} is null", connection.inputName, connection.inputGroup, connection.outputName, connection.outputGroup));
         }
-        if(!outNode->runOnHost() && inNode->runOnHost()) {
+        if(!outNode->runOnHost() && !inNode->runOnHost()) {
+            auto outDevice = getAssignedDevice(outNode);
+            auto inDevice = getAssignedDevice(inNode);
+            if(outDevice == nullptr || inDevice == nullptr) {
+                throw std::runtime_error("Device-to-device connection found with an unassigned device");
+            }
+            if(outDevice != inDevice) {
+                throw std::runtime_error(
+                    fmt::format("Direct connection between device nodes '{}' ({}) and '{}' ({}) on different devices is not supported in this MVP",
+                                outNode->getName(),
+                                outDevice->getDeviceId(),
+                                inNode->getName(),
+                                inDevice->getDeviceId()));
+            }
+        } else if(!outNode->runOnHost() && inNode->runOnHost()) {
+            auto outDevice = getAssignedDevice(outNode);
+            if(outDevice == nullptr) {
+                throw std::runtime_error(fmt::format("Device node '{}' has no assigned device", outNode->getName()));
+            }
             // Check if the bridge already exists
             if(bridgesOut.count(connection.out) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
                 bridgesOut[connection.out] = dai::node::internal::XLinkOutBridge{
-                    create<node::internal::XLinkOut>(shared_from_this()),
+                    create<node::internal::XLinkOut>(shared_from_this(), outDevice),
                     create<node::internal::XLinkInHost>(shared_from_this()),
                 };
                 auto& xLinkBridge = bridgesOut[connection.out];
@@ -999,8 +1046,9 @@ void PipelineImpl::build() {
                 uniqueStreamNames.insert(streamName);
                 xLinkBridge.xLinkOut->setStreamName(streamName);
                 xLinkBridge.xLinkInHost->setStreamName(streamName);
-                xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
+                xLinkBridge.xLinkInHost->setConnection(outDevice->getConnection());
                 connection.out->link(xLinkBridge.xLinkOut->input);
+                bridgeHostDevices[xLinkBridge.xLinkInHost->id] = outDevice;
 
                 // Note the created bridge for serialization (for visualization)
                 xlinkBridges.push_back({xLinkBridge.xLinkOut->id, xLinkBridge.xLinkInHost->id});
@@ -1011,12 +1059,16 @@ void PipelineImpl::build() {
             connection.out->unlink(*connection.in);  // Unlink the connection
             xLinkBridge.xLinkInHost->out.link(*connection.in);
         } else if(!inNode->runOnHost() && outNode->runOnHost()) {
+            auto inDevice = getAssignedDevice(inNode);
+            if(inDevice == nullptr) {
+                throw std::runtime_error(fmt::format("Device node '{}' has no assigned device", inNode->getName()));
+            }
             // Check if the bridge already exists
             if(bridgesIn.count(connection.in) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
                 bridgesIn[connection.in] = dai::node::internal::XLinkInBridge{
                     create<node::internal::XLinkOutHost>(shared_from_this()),
-                    create<node::internal::XLinkIn>(shared_from_this()),
+                    create<node::internal::XLinkIn>(shared_from_this(), inDevice),
                 };
                 auto& xLinkBridge = bridgesIn[connection.in];
                 auto streamName = fmt::format("__x_{}_{}_{}", inNode->id, connection.inputGroup, connection.inputName);
@@ -1028,9 +1080,10 @@ void PipelineImpl::build() {
                 uniqueStreamNames.insert(streamName);
                 xLinkBridge.xLinkOutHost->setStreamName(streamName);
                 xLinkBridge.xLinkIn->setStreamName(streamName);
-                xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
+                xLinkBridge.xLinkOutHost->setConnection(inDevice->getConnection());
                 xLinkBridge.xLinkIn->out.link(*connection.in);
                 xLinkBridge.xLinkOutHost->allowStreamResize(true);
+                bridgeHostDevices[xLinkBridge.xLinkOutHost->id] = inDevice;
 
                 // Note the created bridge for serialization (for visualization)
                 xlinkBridges.push_back({xLinkBridge.xLinkOutHost->id, xLinkBridge.xLinkIn->id});
@@ -1052,11 +1105,15 @@ void PipelineImpl::build() {
         }
         for(auto* output : node->getOutputRefs()) {
             for(auto& queueConnection : output->getQueueConnections()) {
+                auto outputDevice = getAssignedDevice(node);
+                if(outputDevice == nullptr) {
+                    throw std::runtime_error(fmt::format("Device node '{}' has no assigned device", node->getName()));
+                }
                 // For every queue connection, if it's connected to a device node, create a bridge, if it doesn't exist
                 if(bridgesOut.count(queueConnection.output) == 0) {
                     // // Create a new bridge
                     bridgesOut[queueConnection.output] = dai::node::internal::XLinkOutBridge{
-                        create<node::internal::XLinkOut>(shared_from_this()),
+                        create<node::internal::XLinkOut>(shared_from_this(), outputDevice),
                         create<node::internal::XLinkInHost>(shared_from_this()),
                     };
                     auto& xLinkBridge = bridgesOut[queueConnection.output];
@@ -1069,8 +1126,9 @@ void PipelineImpl::build() {
                     uniqueStreamNames.insert(streamName);
                     xLinkBridge.xLinkOut->setStreamName(streamName);
                     xLinkBridge.xLinkInHost->setStreamName(streamName);
-                    xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
+                    xLinkBridge.xLinkInHost->setConnection(outputDevice->getConnection());
                     queueConnection.output->link(xLinkBridge.xLinkOut->input);
+                    bridgeHostDevices[xLinkBridge.xLinkInHost->id] = outputDevice;
 
                     // Note the created bridge for serialization (for visualization)
                     xlinkBridges.push_back({xLinkBridge.xLinkOut->id, xLinkBridge.xLinkInHost->id});
@@ -1113,10 +1171,14 @@ void PipelineImpl::start() {
     // Indicate that pipeline is running
     running = true;
 
+    const auto devices = getAllAssignedDevices();
+
     // Start device pipeline if not host-only
     if(!isHostOnly()) {
-        DAI_CHECK_V(defaultDevice, "Default device is null");
-        defaultDevice->startPipeline(Pipeline(shared_from_this()));
+        DAI_CHECK_V(!devices.empty(), "No devices are assigned to device nodes");
+        for(const auto& device : devices) {
+            device->startPipeline(Pipeline(shared_from_this()));
+        }
     }
 
     // Starts pipeline, go through all nodes and start them
@@ -1127,10 +1189,12 @@ void PipelineImpl::start() {
     }
 
     // Add pointer to the pipeline to the device
-    if(defaultDevice) {
+    if(!devices.empty()) {
         std::shared_ptr<PipelineImpl> shared = shared_from_this();
         const auto weak = std::weak_ptr<PipelineImpl>(shared);
-        defaultDevice->pipelinePtr = weak;
+        for(const auto& device : devices) {
+            device->pipelinePtr = weak;
+        }
     }
 
     // Setup pipeline state trace logging if enabled
@@ -1152,19 +1216,31 @@ void PipelineImpl::start() {
 }
 
 void PipelineImpl::resetConnections() {
+    const auto devices = getAllAssignedDevices();
+
     // reset connection on all nodes
-    if(defaultDevice->getConnection() == nullptr) throw std::runtime_error("Connection lost");
-    auto con = defaultDevice->getConnection();
     for(auto node : getAllNodes()) {
         auto tmp = std::dynamic_pointer_cast<node::internal::XLinkInHost>(node);
-        if(tmp) tmp->setConnection(con);
+        if(tmp) {
+            auto it = bridgeHostDevices.find(tmp->id);
+            auto device = it != bridgeHostDevices.end() ? it->second : defaultDevice;
+            if(device == nullptr || device->getConnection() == nullptr) throw std::runtime_error("Connection lost");
+            tmp->setConnection(device->getConnection());
+        }
         auto tmp2 = std::dynamic_pointer_cast<node::internal::XLinkOutHost>(node);
-        if(tmp2) tmp2->setConnection(con);
+        if(tmp2) {
+            auto it = bridgeHostDevices.find(tmp2->id);
+            auto device = it != bridgeHostDevices.end() ? it->second : defaultDevice;
+            if(device == nullptr || device->getConnection() == nullptr) throw std::runtime_error("Connection lost");
+            tmp2->setConnection(device->getConnection());
+        }
     }
 
     // restart pipeline
     if(!isHostOnly()) {
-        defaultDevice->startPipeline(Pipeline(shared_from_this()));
+        for(const auto& device : devices) {
+            device->startPipeline(Pipeline(shared_from_this()));
+        }
     }
 }
 
@@ -1209,7 +1285,13 @@ void PipelineImpl::stop() {
 
     // Close device if present - a pipeline might be host only and still have a device
     // For example, one only adds host nodes
-    if(defaultDevice) {
+    auto assignedDevices = getAllAssignedDevices();
+    std::unordered_set<Device*> closedDevices;
+    for(const auto& device : assignedDevices) {
+        device->close();
+        closedDevices.insert(device.get());
+    }
+    if(defaultDevice != nullptr && closedDevices.count(defaultDevice.get()) == 0) {
         defaultDevice->close();
     }
 

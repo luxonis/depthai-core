@@ -69,6 +69,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::unordered_map<std::string, std::filesystem::path> recordReplayFilenames;
     bool removeRecordReplayFiles = true;
     std::string defaultDeviceId;
+    std::unordered_map<Node::Id, std::shared_ptr<Device>> bridgeHostDevices;
     // Is the pipeline building on host? Some steps should be skipped when building on device
     bool buildingOnHost = true;
 
@@ -92,7 +93,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
-    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE, bool includePipelineDebugging = true) const;
+    PipelineSchema getDevicePipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE,
+                                           bool includePipelineDebugging = true,
+                                           std::optional<std::string> deviceId = std::nullopt) const;
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const fs::path& path);
     void setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path);
@@ -112,7 +115,11 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     BoardConfig getBoardConfig() const;
 
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    void serialize(PipelineSchema& schema,
+                   Assets& assets,
+                   std::vector<std::uint8_t>& assetStorage,
+                   SerializationType type = DEFAULT_SERIALIZATION_TYPE,
+                   std::optional<std::string> deviceId = std::nullopt) const;
     nlohmann::json serializeToJson(bool includeAssets) const;
     void remove(std::shared_ptr<Node> node);
 
@@ -128,6 +135,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     uint32_t getEepromId() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
+    std::vector<std::shared_ptr<Device>> getAllAssignedDevices() const;
 
     // Pipeline state getters
     PipelineStateApi getPipelineState();
@@ -215,31 +223,66 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         }
     }
 
-    template <typename N, typename... Args>
-    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
-        // N is a subclass of DeviceNode
-        // return N::create();  // Specific create call for DeviceNode subclasses
+    template <typename N>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode() {
         if(defaultDevice == nullptr) {
             throw std::runtime_error("Pipeline is host only, cannot create device node");
         }
-        return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
+        return N::create(defaultDevice);
     }
 
-    template <typename N, typename... Args>
-    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
-        // N is a subclass of DeviceNode
-        // return N::create();  // Specific create call for DeviceNode subclasses
-        if(defaultDevice == nullptr) {
-            return N::create(std::forward<Args>(args)...);  // Generic create call
-        } else {
-            return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
+    template <typename N, typename... Rest>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(
+        std::shared_ptr<Device> device, Rest&&... rest) {
+        if(device == nullptr) {
+            throw std::runtime_error("Explicit device is null");
         }
+        return N::create(device, std::forward<Rest>(rest)...);
+    }
+
+    template <typename N, typename First, typename... Rest>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && !std::is_base_of<HostRunnable, N>::value
+                         && !std::is_same_v<std::decay_t<First>, std::shared_ptr<Device>>,
+                     std::shared_ptr<N>>
+    createNode(First&& first, Rest&&... rest) {
+        if(defaultDevice == nullptr) {
+            throw std::runtime_error("Pipeline is host only, cannot create device node");
+        }
+        return N::create(defaultDevice, std::forward<First>(first), std::forward<Rest>(rest)...);
+    }
+
+    template <typename N>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode() {
+        if(defaultDevice == nullptr) {
+            return N::create();
+        } else {
+            return N::create(defaultDevice);
+        }
+    }
+
+    template <typename N, typename... Rest>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value, std::shared_ptr<N>> createNode(
+        std::shared_ptr<Device> device, Rest&&... rest) {
+        if(device == nullptr) {
+            throw std::runtime_error("Explicit device is null");
+        }
+        return N::create(device, std::forward<Rest>(rest)...);
+    }
+
+    template <typename N, typename First, typename... Rest>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value && std::is_base_of<HostRunnable, N>::value
+                         && !std::is_same_v<std::decay_t<First>, std::shared_ptr<Device>>,
+                     std::shared_ptr<N>>
+    createNode(First&& first, Rest&&... rest) {
+        if(defaultDevice == nullptr) {
+            return N::create(std::forward<First>(first), std::forward<Rest>(rest)...);
+        }
+        return N::create(defaultDevice, std::forward<First>(first), std::forward<Rest>(rest)...);
     }
 
     template <typename N, typename... Args>
     std::enable_if_t<!std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
-        // N is not a subclass of DeviceNode
-        return N::create(std::forward<Args>(args)...);  // Generic create call
+        return N::create(std::forward<Args>(args)...);
     }
 
     // Template create function
@@ -253,6 +296,20 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         // std::shared_ptr<N> node = nullptr;
         add(node);
         // Return shared pointer to this node
+        return node;
+    }
+
+    template <class N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createWithDevice(const std::shared_ptr<PipelineImpl>& itself,
+                                                                                                 std::shared_ptr<Device> device,
+                                                                                                 Args&&... args) {
+        (void)itself;
+        static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
+        if(device == nullptr) {
+            throw std::runtime_error("Explicit device is null");
+        }
+        auto node = N::create(device, std::forward<Args>(args)...);
+        add(node);
         return node;
     }
 
@@ -380,6 +437,16 @@ class Pipeline {
     template <class N, typename... Args>
     std::shared_ptr<N> create(Args&&... args) {
         return impl()->create<N>(pimpl, std::forward<Args>(args)...);
+    }
+
+    template <class N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> create(std::shared_ptr<Device> device, Args&&... args) {
+        return impl()->createWithDevice<N>(pimpl, std::move(device), std::forward<Args>(args)...);
+    }
+
+    template <class N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createForDevice(std::shared_ptr<Device> device, Args&&... args) {
+        return impl()->createWithDevice<N>(pimpl, std::move(device), std::forward<Args>(args)...);
     }
 
     /**

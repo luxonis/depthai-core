@@ -47,13 +47,13 @@
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
-std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_) {
+std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_, const std::shared_ptr<dai::Device>& device = nullptr) {
     auto nodeCreateMap = NodeBindings::getNodeCreateMap();
     for(auto& kv : nodeCreateMap) {
         auto& node = kv.first;
         auto& create = kv.second;
         if(node.is(class_)) {
-            return create(p, class_);
+            return create(p, class_, device);
         }
     }
     return nullptr;
@@ -314,8 +314,26 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                     }
                     return hostNode;
                 }
+                std::shared_ptr<dai::Device> explicitDevice = nullptr;
+                if(args.size() > 0) {
+                    try {
+                        explicitDevice = args[0].cast<std::shared_ptr<dai::Device>>();
+                    } catch(const py::cast_error&) {
+                    }
+                    if(explicitDevice != nullptr) {
+                        if(args.size() > 1 || (kwargs && !kwargs.empty())) {
+                            throw std::invalid_argument("Bound device nodes support only an optional Device positional argument in pipeline.create(...)");
+                        }
+                    }
+                }
+                if(explicitDevice == nullptr && kwargs && kwargs.contains("device")) {
+                    explicitDevice = kwargs["device"].cast<std::shared_ptr<dai::Device>>();
+                    if(args.size() > 0 || kwargs.size() > 1) {
+                        throw std::invalid_argument("Bound device nodes support only the optional 'device' argument in pipeline.create(...)");
+                    }
+                }
                 // Otherwise create the node with `pipeline.create()` method
-                auto node = createNode(p, class_);
+                auto node = createNode(p, class_, explicitDevice);
                 if(node == nullptr) {
                     throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
                 }
