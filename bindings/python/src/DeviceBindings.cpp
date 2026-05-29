@@ -293,7 +293,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("USB_3_1", UsbGeneration::USB_3_1, DOC(dai, UsbGeneration, USB_3_1));
 
     // Bind HealthCheckConfig
-    healthCheckConfig.def(py::init<>(), DOC(dai, HealthCheckConfig, HealthCheckConfig))
+    healthCheckConfig.def(py::init<>())
         .def_readwrite("checkUsbSpeed", &HealthCheckConfig::checkUsbSpeed, DOC(dai, HealthCheckConfig, checkUsbSpeed))
         .def_readwrite("measureBandwidth", &HealthCheckConfig::measureBandwidth, DOC(dai, HealthCheckConfig, measureBandwidth))
         .def_readwrite("verifyCameras", &HealthCheckConfig::verifyCameras, DOC(dai, HealthCheckConfig, verifyCameras))
@@ -302,7 +302,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("timeout", &HealthCheckConfig::timeout, DOC(dai, HealthCheckConfig, timeout));
 
     // Bind HealthCheckMetrics
-    healthCheckMetrics.def(py::init<>(), DOC(dai, HealthCheckMetrics, HealthCheckMetrics))
+    healthCheckMetrics.def(py::init<>())
         .def_readwrite("usbSpeed", &HealthCheckMetrics::usbSpeed, DOC(dai, HealthCheckMetrics, usbSpeed))
         .def_readwrite("usbGeneration", &HealthCheckMetrics::usbGeneration, DOC(dai, HealthCheckMetrics, usbGeneration))
         .def_readwrite("bandwidthMbps", &HealthCheckMetrics::bandwidthMbps, DOC(dai, HealthCheckMetrics, bandwidthMbps))
