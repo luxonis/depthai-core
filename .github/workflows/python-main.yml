@@ -216,7 +216,7 @@ jobs:
   # This job builds wheels for Windows x86_64 arch
   build-windows-x86_64:
     needs: build-docstrings
-    runs-on: windows-latest
+    runs-on: windows-2022
     strategy:
       matrix:
         python-version: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
@@ -237,7 +237,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg
-          key: vcpkg-windows-latest
+          key: vcpkg-windows-2022
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -289,7 +289,17 @@ jobs:
           EXTRA_DLL_PATH=$(find ./build -type d -name "temp.win*" -exec ls -d {} \; | head -n 1)/Release/Release
           echo "delvewheel extra dll path: $EXTRA_DLL_PATH"
           for wheel in ./wheelhouse/*.whl; do
-            delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" --include vcruntime140.dll --include vcruntime140_1.dll --include ucrtbase.dll -w wheelhouse/audited
+            delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" \
+              --include vcruntime140.dll \
+              --include vcruntime140_1.dll \
+              --include msvcp140.dll \
+              --include msvcp140_1.dll \
+              --include msvcp140_2.dll \
+              --include msvcp140_atomic_wait.dll \
+              --include concrt140.dll \
+              --include vcomp140.dll \
+              --include ucrtbase.dll \
+              -w wheelhouse/audited
           done
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
@@ -664,7 +674,7 @@ jobs:
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v3
       - name: Download audited wheels
@@ -677,6 +687,30 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.12"
+      - name: Inspect Windows runner and wheel dependencies
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        shell: pwsh
+        run: |
+          $env:PYTHONIOENCODING = 'utf-8'
+          Write-Host "ImageOS=$env:ImageOS"
+          Write-Host "ImageVersion=$env:ImageVersion"
+          Write-Host "Agent.OS=$env:AGENT_OS"
+          Write-Host "Agent.Version=$env:AGENT_VERSION"
+          python -VV
+          if (Get-Command cl.exe -ErrorAction SilentlyContinue) {
+            cl.exe /Bv
+          }
+          if (Get-Command vswhere.exe -ErrorAction SilentlyContinue) {
+            vswhere.exe -latest -products * -property installationPath
+          }
+      - name: Install delvewheel and show wheel dependencies
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        shell: pwsh
+        run: |
+          $env:PYTHONIOENCODING = 'utf-8'
+          python -m pip install -U pip delvewheel
+          $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl).Name
+          python -m delvewheel show "bindings/python/wheelhouse/audited/$wheel_name"
       - name: Combine wheels
         run: |
           python -m pip install delvewheel # Install delvewheel for patching wheels
@@ -709,9 +743,77 @@ jobs:
 
           # Install combined wheel
           python -m pip install -U pip
+          python -m pip install delvewheel
+          python -m delvewheel show "bindings/python/wheelhouse/audited/$wheel_name"
           python -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
 
+          # Show the installed extension module and adjacent native files before import.
+          $spec = python -c "import importlib.util; spec = importlib.util.find_spec('depthai'); print(spec.origin if spec else '')"
+          Write-Host "depthai_spec=$spec"
+          if ($spec) {
+            $pkgRoot = Split-Path -Parent $spec
+            Write-Host "package_root=$pkgRoot"
+            Get-ChildItem $pkgRoot -Recurse -File | Where-Object { $_.Extension -in '.dll', '.pyd' -and ($_.FullName -match 'depthai|\.libs') } | Sort-Object FullName | ForEach-Object { $_.FullName }
+          }
+
           # Smoke test (no heredoc; YAML-safe). Fail on import error or version mismatch.
+          $env:EXPECTED_VERSION = $ver
+          python bindings/python/ci/smoke_depthai.py
+
+  validate-windows-vs2026-wheel-import:
+    needs: combine-windows-x86_64-wheels
+    runs-on: windows-2025-vs2026
+    continue-on-error: true
+    if: startsWith(github.ref, 'refs/tags/v') != true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download combined wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: audited-wheels-combined-windows-x86_64
+          path: bindings/python/wheelhouse/audited/
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Inspect Windows runner and wheel dependencies
+        shell: pwsh
+        run: |
+          $env:PYTHONIOENCODING = 'utf-8'
+          Write-Host "ImageOS=$env:ImageOS"
+          Write-Host "ImageVersion=$env:ImageVersion"
+          Write-Host "Agent.OS=$env:AGENT_OS"
+          Write-Host "Agent.Version=$env:AGENT_VERSION"
+          python -VV
+          if (Get-Command cl.exe -ErrorAction SilentlyContinue) {
+            cl.exe /Bv
+          }
+          if (Get-Command vswhere.exe -ErrorAction SilentlyContinue) {
+            vswhere.exe -latest -products * -property installationPath
+          }
+      - name: Append build hash if not a tagged commit
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: echo "BUILD_COMMIT_HASH=${{github.sha}}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install combined wheel and run a smoke-test
+        shell: pwsh
+        run: |
+          $env:PYTHONIOENCODING = 'utf-8'
+          $ErrorActionPreference = "Stop"
+
+          $ver = python -c "import os,sys,pathlib; sys.path.insert(0,str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))"
+          $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl).Name
+
+          python -m pip install -U pip delvewheel
+          python -m delvewheel show "bindings/python/wheelhouse/audited/$wheel_name"
+          python -m pip install --force-reinstall "bindings/python/wheelhouse/audited/$wheel_name"
+
+          $spec = python -c "import importlib.util; spec = importlib.util.find_spec('depthai'); print(spec.origin if spec else '')"
+          Write-Host "depthai_spec=$spec"
+          if ($spec) {
+            $pkgRoot = Split-Path -Parent $spec
+            Write-Host "package_root=$pkgRoot"
+            Get-ChildItem $pkgRoot -Recurse -File | Where-Object { $_.Extension -in '.dll', '.pyd' -and ($_.FullName -match 'depthai|\.libs') } | Sort-Object FullName | ForEach-Object { $_.FullName }
+          }
           $env:EXPECTED_VERSION = $ver
           python bindings/python/ci/smoke_depthai.py
 
