@@ -382,6 +382,11 @@ TEST_CASE("Calibration availability depends on version and camera entries", "[ha
     REQUIRE_FALSE(valid.hasCameraCalibration(CameraBoardSocket::CAM_B));
 }
 
+TEST_CASE("Lowest camera id lookup throws for empty camera calibration", "[getCameraWithLowestId]") {
+    dai::CalibrationHandler handler;
+    REQUIRE_THROWS_WITH(handler.getCameraWithLowestId(), Catch::Matchers::ContainsSubstring("No camera data available"));
+}
+
 TEST_CASE("Legacy calibration version blocks camera-level getters", "[legacyCalibration][getFov][getLensPosition][getDistortionModel][getCameraExtrinsics]") {
     auto handler = loadLegacyHandlerWithCamera();
 

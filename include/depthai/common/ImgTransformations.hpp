@@ -304,6 +304,16 @@ struct ImgTransformation {
     dai::Point2f projectPointTo(const ImgTransformation& to, dai::Point2f& point, float depth) const;
 
     /**
+     * Project a rotated rectangle from the source frame defined by this transformation into the target frame defined by the to transformation. This function
+     * assumes the rectangle is parallel to the image plane (i.e. the entire rectangle is at the same depth away). The function fits the smallest possible
+     * rectangle on to the projected corners of the original rectangle.
+     * @param to Target transformation to project to
+     * @param rect Source rotated rectangle in the current frame
+     * @param depth (mm) Depth of the rectangle to project
+     */
+    dai::RotatedRect projectRectTo(const ImgTransformation& to, RotatedRect& rect, float depth) const;
+
+    /**
      * Project a 3D spatial point from the source coordinate system (this transformation) into a 2D point in the target frame (to transformation).
      * @param to Target transformation to project to
      * @param point3f 3D point to project
@@ -343,6 +353,9 @@ struct ImgTransformation {
      * Get the extrinsic transformation matrix from the source coordinate system of this transformation to the target coordinate system of the to
      * transformation.
      * @param to Target transformation to get extrinsics to
+     * @param useSpecTranslation If true, the translation vector w.r.t. the CAD design will be used instead of the translation vector obtained through
+     * calibration.
+     * @param sourceUnit The desired measurement unit in which to return the transformation matrix in.
      * @return 4x4 homogeneous transformation matrix representing the extrinsics from this transformation to the target transformation
      * @note Both transformations must have a common toCameraSocket. Otherwise extrinsics cannot be calculated.
      */
