@@ -151,4 +151,4 @@ class ConvertedOffsetMemory : public OffsetMemory {
     }
 };
 
-}
+}  // namespace dai
