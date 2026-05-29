@@ -344,6 +344,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
+    src/pipeline/datatype/Transformable.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/Extrinsics.cpp

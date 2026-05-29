@@ -18,10 +18,15 @@ int main(int argc, char** argv) {
     }
 
     const auto deviceArg = program.get<std::string>("--device");
-    dai::Device device = deviceArg.empty() ? dai::Device() : dai::Device(deviceArg);
+    std::unique_ptr<dai::Device> device;
+    if(deviceArg.empty()) {
+        device = std::make_unique<dai::Device>();
+    } else {
+        device = std::make_unique<dai::Device>(deviceArg);
+    }
 
-    std::cout << "Product: " << device.getProductName() << std::endl;
-    std::cout << "Platform: " << device.getPlatformAsString() << std::endl;
-    std::cout << "GPU available: " << (device.hasGPU() ? "true" : "false") << std::endl;
+    std::cout << "Product: " << device->getProductName() << std::endl;
+    std::cout << "Platform: " << device->getPlatformAsString() << std::endl;
+    std::cout << "GPU available: " << (device->hasGPU() ? "true" : "false") << std::endl;
     return 0;
 }

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstring>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -27,7 +28,8 @@ void ImgDetectionsT<DetectionT>::setSegmentationMask(const std::vector<std::uint
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
-    setData(mask);
+    auto vecMask = mask;          // Avoid mutating shared storage by moving a copy of the input into a new buffer
+    setData(std::move(vecMask));  // Call the rvalue overload to allocate a new memory holder
     this->segmentationMaskWidth = width;
     this->segmentationMaskHeight = height;
 }
@@ -39,7 +41,7 @@ void ImgDetectionsT<DetectionT>::setSegmentationMask(dai::ImgFrame& frame) {
     }
     auto dataSpan = frame.getData();
     std::vector<std::uint8_t> vecMask(dataSpan.begin(), dataSpan.end());
-    setData(vecMask);
+    setData(std::move(vecMask));  // Call the rvalue overload to allocate a new memory holder
     this->segmentationMaskWidth = frame.getWidth();
     this->segmentationMaskHeight = frame.getHeight();
 }
@@ -87,7 +89,7 @@ void ImgDetectionsT<DetectionT>::setCvSegmentationMask(cv::Mat mask) {
     } else {
         dataVec.insert(dataVec.begin(), mask.datastart, mask.dataend);
     }
-    setData(dataVec);
+    setData(std::move(dataVec));  // Call the rvalue overload to allocate a new memory holder
     this->segmentationMaskWidth = mask.cols;
     this->segmentationMaskHeight = mask.rows;
 }
