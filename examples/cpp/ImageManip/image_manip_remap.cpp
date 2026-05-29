@@ -48,11 +48,14 @@ int main() {
 
         auto manip1 = pipeline.create<dai::node::ImageManip>();
         auto manip2 = pipeline.create<dai::node::ImageManip>();
-        manip1->setBackend(dai::node::ImageManip::Backend::GPU);
-        manip2->setBackend(dai::node::ImageManip::Backend::GPU);
+
+        // GPU is not available on RVC2 and some RVC4 devices
+        auto backend = pipeline.getDefaultDevice()->hasGPU() ? dai::node::ImageManip::Backend::GPU : dai::node::ImageManip::Backend::CPU;
+        manip1->setBackend(backend);
+        manip2->setBackend(backend);
 
         // Configure camera output
-        auto camOut = cam->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::BGR888i, dai::ImgResizeMode::LETTERBOX, 20, 20);
+        auto* camOut = cam->requestOutput(std::make_pair(640, 400), dai::ImgFrame::Type::BGR888i, dai::ImgResizeMode::LETTERBOX, 20, 20);
 
         // Configure image manipulators
         manip1->initialConfig->addRotateDeg(90);
