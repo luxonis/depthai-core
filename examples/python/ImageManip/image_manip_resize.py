@@ -2,10 +2,14 @@ import depthai as dai
 import cv2
 
 pipeline = dai.Pipeline()
+device = pipeline.getDefaultDevice()
 
 camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
 manip = pipeline.create(dai.node.ImageManip)
-manip.setBackend(dai.node.ImageManip.Backend.GPU)
+
+# GPU is not available on RVC2 and some RVC4 devices
+manip.setBackend(dai.node.ImageManip.Backend.GPU if device.hasGPU() else
+                 dai.node.ImageManip.Backkend.CPU)
 
 manip.initialConfig.setOutputSize(300, 300, dai.ImageManipConfig.ResizeMode.STRETCH)
 
