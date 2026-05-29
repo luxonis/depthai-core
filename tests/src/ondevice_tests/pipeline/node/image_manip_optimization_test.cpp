@@ -1,9 +1,8 @@
+#include <catch2/catch_all.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <functional>
 #include <string>
 #include <vector>
-
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/depthai.hpp"
@@ -106,8 +105,7 @@ double calculateImageDifference(const cv::Mat& img1, const cv::Mat& img2, int bl
 ImageSimilarityMetrics calculateSimilarityMetrics(const cv::Mat& reference, const cv::Mat& candidate) {
     ImageSimilarityMetrics metrics;
     metrics.blockHistogramDifference = calculateImageDifference(reference, candidate);
-    metrics.normalizedL1Difference =
-        cv::norm(reference, candidate, cv::NORM_L1) / (reference.total() * reference.channels() * 255.0);
+    metrics.normalizedL1Difference = cv::norm(reference, candidate, cv::NORM_L1) / (reference.total() * reference.channels() * 255.0);
     metrics.psnr = cv::PSNR(reference, candidate);
     return metrics;
 }
@@ -157,10 +155,7 @@ std::shared_ptr<dai::ImgFrame> createInputFrame(const cv::Mat& inputImage,
     return inputFrame;
 }
 
-void runCpuGpuBackendComparison(dai::Pipeline& pipeline,
-                                dai::ImgFrame::Type type,
-                                const std::vector<ManipComparisonCase>& cases,
-                                bool enableUndistort) {
+void runCpuGpuBackendComparison(dai::Pipeline& pipeline, dai::ImgFrame::Type type, const std::vector<ManipComparisonCase>& cases, bool enableUndistort) {
     auto cpuManip = pipeline.create<dai::node::ImageManip>()->build();
     auto gpuManip = pipeline.create<dai::node::ImageManip>()->build();
     std::shared_ptr<dai::MessageQueue> cameraOutputQueue;
@@ -437,16 +432,12 @@ TEST_CASE("ImageManip GPU backend matches CPU backend", "[ImageManip][GPU][ondev
         {
             "stretch down",
             cv::Size(640, 360),
-            [](dai::ImageManipConfig& cfg) {
-                cfg.setOutputSize(640, 360, dai::ImageManipConfig::ResizeMode::STRETCH);
-            },
+            [](dai::ImageManipConfig& cfg) { cfg.setOutputSize(640, 360, dai::ImageManipConfig::ResizeMode::STRETCH); },
         },
         {
             "stretch up",
             cv::Size(1280, 720),
-            [](dai::ImageManipConfig& cfg) {
-                cfg.setOutputSize(1280, 720, dai::ImageManipConfig::ResizeMode::STRETCH);
-            },
+            [](dai::ImageManipConfig& cfg) { cfg.setOutputSize(1280, 720, dai::ImageManipConfig::ResizeMode::STRETCH); },
         },
         {
             "crop and resize",
@@ -468,9 +459,7 @@ TEST_CASE("ImageManip GPU backend matches CPU backend", "[ImageManip][GPU][ondev
         {
             "affine rotated crop",
             cv::Size(520, 320),
-            [](dai::ImageManipConfig& cfg) {
-                cfg.addCropRotatedRect(dai::RotatedRect(dai::Point2f(470.0f, 255.0f), dai::Size2f(520.0f, 320.0f), 18.0f));
-            },
+            [](dai::ImageManipConfig& cfg) { cfg.addCropRotatedRect(dai::RotatedRect(dai::Point2f(470.0f, 255.0f), dai::Size2f(520.0f, 320.0f), 18.0f)); },
         },
         {
             "letterbox with background",
