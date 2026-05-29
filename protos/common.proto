@@ -136,6 +136,7 @@ message Edge {
 message SpatialKeypointsList {
     repeated SpatialKeypoint keypoints = 1;
     repeated Edge edges = 2;
+    LengthUnit unit = 3;
 }
 
 message SpatialKeypoint {

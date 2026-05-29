@@ -7,6 +7,7 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/mat.hpp>
@@ -25,10 +26,9 @@ class ImgDetectionsT : public Buffer {
 
    public:
     std::vector<DetectionT> detections;
-    std::optional<ImgTransformation> transformation;
 
     ImgDetectionsT() = default;
-    virtual ~ImgDetectionsT() = default;
+    ~ImgDetectionsT() override = default;
 
     /*
      * Common API

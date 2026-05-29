@@ -1,9 +1,20 @@
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 
+#include <array>
+#include <cstddef>
+#include <memory>
 #include <vector>
 
+#include "depthai/common/DepthUnit.hpp"
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/RotatedRect.hpp"
+#include "depthai/common/Size2f.hpp"
+#include "depthai/common/SpatialKeypoint.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
+#include "depthai/utility/ImageManipImpl.hpp"
+#include "depthai/utility/matrixOps.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/SpatialImgDetections.pb.h"
     #include "utility/ProtoSerialize.hpp"
@@ -104,7 +115,7 @@ dai::ImgDetection SpatialImgDetection::getImgDetection() const {
         std::vector<dai::Keypoint> convertedKeypoints;
         convertedKeypoints.reserve(keypoints->size());
         for(const auto& spatialKeypoint : keypoints->getKeypoints()) {
-            convertedKeypoints.emplace_back(spatialKeypoint.imageCoordinates, spatialKeypoint.confidence, spatialKeypoint.label);
+            convertedKeypoints.emplace_back(spatialKeypoint.imageCoordinates, spatialKeypoint.confidence, spatialKeypoint.label, spatialKeypoint.labelName);
         }
         converted.setKeypoints(std::move(convertedKeypoints), keypoints->getEdges());
         imgDetection.keypoints = std::move(converted);
@@ -169,6 +180,63 @@ SpatialImgDetections::~SpatialImgDetections() = default;
 void SpatialImgDetections::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
     datatype = DatatypeEnum::SpatialImgDetections;
+}
+
+void SpatialImgDetection::transformKeypointsFallback(const ImgTransformation& source, const ImgTransformation& target, const Point3f& spatialCoordinates) {
+    SpatialKeypointsList kpCopy = keypoints.value();
+    std::vector<Point3f> originalCoordinates = kpCopy.getSpatialCoordinates();
+    std::vector<size_t> changedIndices;
+    changedIndices.reserve(kpCopy.keypoints.size());
+
+    for(size_t i = 0; i < kpCopy.keypoints.size(); ++i) {
+        if(kpCopy.keypoints[i].spatialCoordinates.z <= 0) {
+            kpCopy.keypoints[i].spatialCoordinates = spatialCoordinates;
+            changedIndices.push_back(i);
+        }
+    }
+
+    auto kpTransformed = kpCopy.transformTo(source, target);
+
+    for(size_t i : changedIndices) {
+        kpTransformed.keypoints[i].spatialCoordinates = originalCoordinates[i];
+    }
+    keypoints = kpTransformed;
+}
+
+void SpatialImgDetection::transform(const ImgTransformation& source, const ImgTransformation& target, LengthUnit lengthUnit) {
+    Point3f spatialCoordinates = this->spatialCoordinates;
+    float depth = spatialCoordinates.z * getDistanceUnitScale(LengthUnit::MILLIMETER, lengthUnit);
+    RotatedRect rect = getBoundingBox();
+
+    if(depth > 0) {
+        const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, false, lengthUnit);
+        setBoundingBox(source.projectRectTo(target, rect, depth));
+        setSpatialCoordinate(matrix::transformPoint3f(transMatrix, spatialCoordinates));
+    } else {
+        setBoundingBox(source.remapRectTo(target, rect));
+    }
+
+    if(keypoints.has_value()) {
+        float s = getDistanceUnitScale(keypoints->unit, lengthUnit);
+        dai::Point3f scaledFallbackCoordinates{spatialCoordinates.x * s, spatialCoordinates.y * s, spatialCoordinates.z * s};
+        transformKeypointsFallback(source, target, scaledFallbackCoordinates);
+    }
+}
+
+void SpatialImgDetections::transformToInternal(const ImgTransformation& target) {
+    if(!this->getTransformation().has_value()) {
+        throw std::runtime_error("Source transformation is not set, cannot transform spatial image detections.");
+    }
+    ImgTransformation source = *this->getTransformation();
+
+    for(auto& detection : detections) {
+        detection.transform(source, target, unit);
+    }
+    setTransformation(target);
+}
+
+SpatialImgDetections SpatialImgDetections::transformTo(const ImgTransformation& target) const {
+    return TransformableCRTP<SpatialImgDetections>::transformTo(target);
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF

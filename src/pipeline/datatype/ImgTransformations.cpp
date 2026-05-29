@@ -428,12 +428,11 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
 
     // extrinsics transform
     // center subtraction (-cx, -cy) and normalization by focal length (fx, fy) is already done in pixelToRay
-    auto z_cm = depth / 10.0f;
-    auto x_cm = thisRay[0] * z_cm;
-    auto y_cm = thisRay[1] * z_cm;
-    dai::Point3f source3dPoint = {x_cm, y_cm, z_cm};
+    auto xMm = thisRay[0] * depth;
+    auto yMm = thisRay[1] * depth;
+    dai::Point3f source3dPoint = {xMm, yMm, depth};
 
-    const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to);
+    const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to, false, LengthUnit::MILLIMETER);
     dai::Point3f target3dPoint = matrix::transformPoint3f(extriniscTransformation, source3dPoint);
     if(target3dPoint.z <= 0) {
         throw std::runtime_error(fmt::format("Projected point is behind the target camera socket. Cannot project to 2D. Target spatial point: ({}, {}, {})",
@@ -456,6 +455,28 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
         targetPoint.hasNormalized = true;
     }
     return targetPoint;
+}
+
+dai::RotatedRect ImgTransformation::projectRectTo(const ImgTransformation& to, RotatedRect& rect, float depth) const {
+    bool normalized = rect.isNormalized();
+    if(normalized) {
+        rect = rect.denormalize(width, height);
+    }
+
+    auto points = rect.getPoints();
+
+    std::vector<std::array<float, 2>> projectedPoints(points.size());
+    for(size_t i = 0; i < points.size(); ++i) {
+        auto projectedPoint = projectPointTo(to, points[i], depth);
+        projectedPoints[i] = {projectedPoint.x, projectedPoint.y};
+    }
+    dai::RotatedRect transformed = impl::getOuterRotatedRect(projectedPoints);
+    if(normalized) {
+        auto targetSize = to.getSize();
+        transformed = transformed.normalize(targetSize.first, targetSize.second);
+    }
+
+    return transformed;
 }
 
 dai::Point2f ImgTransformation::project3DPoint(const dai::Point3f& point3f) const {

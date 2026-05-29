@@ -119,6 +119,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/AprilTagConfigBindings.cpp
     src/pipeline/datatype/AprilTagsBindings.cpp
     src/pipeline/datatype/BufferBindings.cpp
+    src/pipeline/datatype/TransformableBindings.cpp
     src/pipeline/datatype/CameraControlBindings.cpp
     src/pipeline/datatype/EdgeDetectorConfigBindings.cpp
     src/pipeline/datatype/FeatureTrackerConfigBindings.cpp
