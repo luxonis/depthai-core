@@ -6,13 +6,14 @@
 #include <stdint.h>
 
 #include <cmath>
-#include <depthai/pipeline/datatype/ImageManipConfig.hpp>
-#include <depthai/pipeline/datatype/ImgFrame.hpp>
-#include <depthai/properties/ImageManipProperties.hpp>
-#include <depthai/utility/matrixOps.hpp>
 #include <sstream>
 
 #include "depthai/common/RotatedRect.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/properties/ImageManipProperties.hpp"
+#include "depthai/utility/OffsetMemory.hpp"
+#include "depthai/utility/matrixOps.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/base.hpp>
