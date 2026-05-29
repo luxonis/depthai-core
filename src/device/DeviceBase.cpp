@@ -2469,7 +2469,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     PipelineSchema schema;
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
-    pipeline.serialize(schema, assets, assetStorage);
+    pipeline.impl()->serialize(schema, assets, assetStorage, DEFAULT_SERIALIZATION_TYPE, getDeviceId());
 
     // if debug or lower
     if(getLogOutputLevel() <= LogLevel::DEBUG) {
