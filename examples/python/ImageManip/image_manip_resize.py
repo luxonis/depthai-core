@@ -9,7 +9,7 @@ manip = pipeline.create(dai.node.ImageManip)
 
 # GPU is not available on RVC2 and some RVC4 devices
 manip.setBackend(dai.node.ImageManip.Backend.GPU if device.hasGPU() else
-                 dai.node.ImageManip.Backkend.CPU)
+                 dai.node.ImageManip.Backend.CPU)
 
 manip.initialConfig.setOutputSize(300, 300, dai.ImageManipConfig.ResizeMode.STRETCH)
 
