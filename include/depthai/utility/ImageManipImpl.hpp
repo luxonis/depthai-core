@@ -6,13 +6,14 @@
 #include <stdint.h>
 
 #include <cmath>
-#include <depthai/pipeline/datatype/ImageManipConfig.hpp>
-#include <depthai/pipeline/datatype/ImgFrame.hpp>
-#include <depthai/properties/ImageManipProperties.hpp>
-#include <depthai/utility/matrixOps.hpp>
 #include <sstream>
 
 #include "depthai/common/RotatedRect.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/properties/ImageManipProperties.hpp"
+#include "depthai/utility/OffsetMemory.hpp"
+#include "depthai/utility/matrixOps.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/core/base.hpp>
@@ -276,13 +277,13 @@ class Undistort {
     virtual ~Undistort() = default;
 
     virtual BuildStatus build(std::array<float, 9> cameraMatrix,
-                      std::array<float, 9> newCameraMatrix,
-                      std::vector<float> distCoeffs,
-                      dai::ImgFrame::Type type,
-                      uint32_t srcWidth,
-                      uint32_t srcHeight,
-                      uint32_t dstWidth,
-                      uint32_t dstHeight) = 0;
+                              std::array<float, 9> newCameraMatrix,
+                              std::vector<float> distCoeffs,
+                              dai::ImgFrame::Type type,
+                              uint32_t srcWidth,
+                              uint32_t srcHeight,
+                              uint32_t dstWidth,
+                              uint32_t dstHeight) = 0;
     virtual void undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t planeIndex) = 0;
     virtual void finish() {}
 
@@ -308,7 +309,6 @@ class UndistortOpenCvImpl : public Undistort {
     cv::Mat undistortMap2Half;
 
     using Undistort::Undistort;
-
 
     bool validMatrix(std::array<float, 9> matrix) const;
     void initMaps(std::array<float, 9> cameraMatrix,
