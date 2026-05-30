@@ -279,12 +279,13 @@ jobs:
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Install delvewheel
-        run: python -m pip install delvewheel
+        run: python -m pip install "delvewheel==1.9.0"
       - name: List wheelhouse
         run: cd bindings/python && ls ./wheelhouse
       - name: Auditing wheels
         shell: bash
         run: |
+          set -euo pipefail
           cd bindings/python
           EXTRA_DLL_PATH=$(find ./build -type d -name "temp.win*" -exec ls -d {} \; | head -n 1)/Release/Release
           echo "delvewheel extra dll path: $EXTRA_DLL_PATH"
@@ -459,7 +460,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar ninja-build  zlib-devel curl-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel libxkbcommon-devel mesa-libGL-devel libegl-devel libXdamage-devel openssl openssl-devel
       - name: Create folder structure
         run: cd bindings/python && mkdir -p wheelhouse/audited/
 
@@ -583,7 +584,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Installing libusb1-devel dependency
-        run: yum install -y libusb1-devel perl-core curl zip unzip tar zlib-devel curl-devel libxcb-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel mesa-libGL-devel libxkbcommon-devel libxkbcommon-x11-devel libXi-devel libXrandr-devel libXtst-devel libudev-devel lapack-devel nasm libtool autoconf automake libX11-devel pkgconfig 
+        run: yum install -y libusb1-devel perl-core curl zip unzip tar zlib-devel curl-devel libxcb-devel xcb-util-renderutil-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-wm-devel libxkbcommon-devel mesa-libGL-devel libegl-devel libXdamage-devel openssl openssl-devel
       - name: Setup ninja required for arm64 builds
         run: |
           git clone https://github.com/ninja-build/ninja.git
@@ -708,13 +709,14 @@ jobs:
         shell: pwsh
         run: |
           $env:PYTHONIOENCODING = 'utf-8'
-          python -m pip install -U pip delvewheel
+          python -m pip install -U pip
+          python -m pip install "delvewheel==1.9.0"
           Get-ChildItem bindings/python/wheelhouse/audited/*.whl | Sort-Object Name | ForEach-Object {
             python -m delvewheel show $_.FullName
           }
       - name: Combine wheels
         run: |
-          python -m pip install delvewheel # Install delvewheel for patching wheels
+          python -m pip install "delvewheel==1.9.0" # Install pinned delvewheel for patching wheels
           cd bindings/python
           mv wheelhouse/audited wheelhouse/audited_pre
           mkdir -p wheelhouse/audited
@@ -744,7 +746,7 @@ jobs:
 
           # Install combined wheel
           python -m pip install -U pip
-          python -m pip install delvewheel
+          python -m pip install "delvewheel==1.9.0"
           python -m delvewheel show "bindings/python/wheelhouse/audited/$wheel_name"
           python -m pip install --force-reinstall bindings/python/wheelhouse/audited/$wheel_name
 
@@ -804,7 +806,8 @@ jobs:
           $ver = python -c "import os,sys,pathlib; sys.path.insert(0,str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))"
           $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl | Select-Object -First 1).Name
 
-          python -m pip install -U pip delvewheel
+          python -m pip install -U pip
+          python -m pip install "delvewheel==1.9.0"
           python -m delvewheel show "bindings/python/wheelhouse/audited/$wheel_name"
           python -m pip install --force-reinstall "bindings/python/wheelhouse/audited/$wheel_name"
 
@@ -967,7 +970,7 @@ jobs:
           workflow: "dispatch_main.yml"
           workflow_timeout_seconds: 120
           workflow_job_steps_retry_seconds: 2
-          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_experiments": "true" }'
+          workflow_inputs: '{"depthai": "${{ github.ref_name }}", "depthai_version_dependencies": "${{ steps.get_version.outputs.version }}", "depthai_nodes": "latest", "luxonis_os": "latest", "test_depthai": "latest"}'
 
       - name: Wait for the dispatched workflow to complete
         id: get_runner
