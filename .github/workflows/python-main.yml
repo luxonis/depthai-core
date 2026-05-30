@@ -709,8 +709,9 @@ jobs:
         run: |
           $env:PYTHONIOENCODING = 'utf-8'
           python -m pip install -U pip delvewheel
-          $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl).Name
-          python -m delvewheel show "bindings/python/wheelhouse/audited/$wheel_name"
+          Get-ChildItem bindings/python/wheelhouse/audited/*.whl | Sort-Object Name | ForEach-Object {
+            python -m delvewheel show $_.FullName
+          }
       - name: Combine wheels
         run: |
           python -m pip install delvewheel # Install delvewheel for patching wheels
@@ -739,7 +740,7 @@ jobs:
           Write-Host "Installing depthai==$ver using:"; python -VV
 
           # Get the name of the one file in bindings/python/wheelhouse/audited
-          $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl).Name
+          $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl | Select-Object -First 1).Name
 
           # Install combined wheel
           python -m pip install -U pip
@@ -801,7 +802,7 @@ jobs:
           $ErrorActionPreference = "Stop"
 
           $ver = python -c "import os,sys,pathlib; sys.path.insert(0,str(pathlib.Path('bindings/python').resolve())); import find_version as v; print(v.get_package_dev_version(os.environ['BUILD_COMMIT_HASH']))"
-          $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl).Name
+          $wheel_name = (Get-ChildItem bindings/python/wheelhouse/audited/*.whl | Select-Object -First 1).Name
 
           python -m pip install -U pip delvewheel
           python -m delvewheel show "bindings/python/wheelhouse/audited/$wheel_name"
