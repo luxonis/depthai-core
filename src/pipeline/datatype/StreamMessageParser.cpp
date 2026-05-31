@@ -54,6 +54,7 @@
 #include "depthai/pipeline/datatype/SystemInformationRVC4.hpp"
 #include "depthai/pipeline/datatype/ThermalConfig.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
+#include "depthai/pipeline/datatype/TofFusionConfig.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
@@ -270,6 +271,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::ToFConfig:
             return parseDatatype<ToFConfig>(metadataStart, serializedObjectSize, data, fd);
+            break;
+        case DatatypeEnum::TofFusionConfig:
+            return parseDatatype<TofFusionConfig>(metadataStart, serializedObjectSize, data, fd);
             break;
         case DatatypeEnum::PointCloudConfig:
             return parseDatatype<PointCloudConfig>(metadataStart, serializedObjectSize, data, fd);

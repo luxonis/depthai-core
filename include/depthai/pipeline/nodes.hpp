@@ -34,6 +34,7 @@
 #include "node/SystemLogger.hpp"
 #include "node/Thermal.hpp"
 #include "node/ToF.hpp"
+#include "node/TofFusion.hpp"
 #include "node/UVC.hpp"
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"

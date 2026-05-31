@@ -60,6 +60,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::CalibrationMetrics,
          DatatypeEnum::CalibrationQuality,
          DatatypeEnum::PacketizedData,
+        DatatypeEnum::TofFusionConfig,
      }},
     {DatatypeEnum::Buffer,
      {
@@ -112,6 +113,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::CalibrationMetrics,
          DatatypeEnum::CalibrationQuality,
          DatatypeEnum::PacketizedData,
+        DatatypeEnum::TofFusionConfig,
      }},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
@@ -162,6 +164,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::CoverageData, {}},
     {DatatypeEnum::CalibrationQuality, {}},
     {DatatypeEnum::PacketizedData, {}},
+    {DatatypeEnum::TofFusionConfig, {}},
 };
 
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children) {

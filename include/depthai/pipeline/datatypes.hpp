@@ -34,6 +34,7 @@
 #include "datatype/SystemInformationRVC4.hpp"
 #include "datatype/ThermalConfig.hpp"
 #include "datatype/ToFConfig.hpp"
+#include "datatype/TofFusionConfig.hpp"
 #include "datatype/TrackedFeatures.hpp"
 #include "datatype/Tracklets.hpp"
 #include "datatype/TransformData.hpp"

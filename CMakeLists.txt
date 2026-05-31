@@ -341,6 +341,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
     src/pipeline/node/NeuralAssistedStereo.cpp
+    src/pipeline/node/TofFusion.cpp
     src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
@@ -373,6 +374,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
+    src/pipeline/datatype/TofFusionConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/ObjectTrackerConfig.cpp

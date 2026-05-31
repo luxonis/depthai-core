@@ -12,6 +12,7 @@ void bind_edgedetectorconfig(pybind11::module& m, void* pCallstack);
 void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack);
 void bind_thermalconfig(pybind11::module& m, void* pCallstack);
 void bind_tofconfig(pybind11::module& m, void* pCallstack);
+void bind_toffusionconfig(pybind11::module& m, void* pCallstack);
 void bind_imagemanipconfig(pybind11::module& m, void* pCallstack);
 void bind_imgdetections(pybind11::module& m, void* pCallstack);
 void bind_imgframe(pybind11::module& m, void* pCallstack);
@@ -63,6 +64,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_featuretrackerconfig);
     callstack.push_front(bind_thermalconfig);
     callstack.push_front(bind_tofconfig);
+    callstack.push_front(bind_toffusionconfig);
     callstack.push_front(bind_imagemanipconfig);
     callstack.push_front(bind_imgdetections);
     callstack.push_front(bind_imgframe);
@@ -165,5 +167,6 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("AutoCalibrationConfig", DatatypeEnum::AutoCalibrationConfig)
         .value("AutoCalibrationResult", DatatypeEnum::AutoCalibrationResult)
         .value("CalibrationQuality", DatatypeEnum::CalibrationQuality)
-        .value("CoverageData", DatatypeEnum::CoverageData);
+        .value("CoverageData", DatatypeEnum::CoverageData)
+        .value("TofFusionConfig", DatatypeEnum::TofFusionConfig);
 }

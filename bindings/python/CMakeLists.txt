@@ -112,6 +112,7 @@ set(SOURCE_LIST
     src/pipeline/node/RectificationBindings.cpp
     src/pipeline/node/NeuralDepthBindings.cpp
     src/pipeline/node/NeuralAssistedStereoBindings.cpp
+    src/pipeline/node/TofFusionBindings.cpp
     src/pipeline/FilterParamsBindings.cpp
     src/pipeline/node/VppBindings.cpp
     src/pipeline/datatype/ADatatypeBindings.cpp
@@ -135,6 +136,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/MessageGroupBindings.cpp
     src/pipeline/datatype/NNDataBindings.cpp
     src/pipeline/datatype/NeuralDepthConfigBindings.cpp
+    src/pipeline/datatype/TofFusionConfigBindings.cpp
     src/pipeline/datatype/RGBDDataBindings.cpp
     src/pipeline/datatype/SpatialImgDetectionsBindings.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfigBindings.cpp

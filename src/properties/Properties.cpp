@@ -33,6 +33,7 @@
 #include "depthai/properties/SystemLoggerProperties.hpp"
 #include "depthai/properties/ThermalProperties.hpp"
 #include "depthai/properties/ToFProperties.hpp"
+#include "depthai/properties/TofFusionProperties.hpp"
 #include "depthai/properties/UVCProperties.hpp"
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/properties/VppProperties.hpp"
@@ -92,6 +93,7 @@ SyncProperties::~SyncProperties() = default;
 SystemLoggerProperties::~SystemLoggerProperties() = default;
 ThermalProperties::~ThermalProperties() = default;
 ToFProperties::~ToFProperties() = default;
+TofFusionProperties::~TofFusionProperties() = default;
 UVCProperties::~UVCProperties() = default;
 VideoEncoderProperties::~VideoEncoderProperties() = default;
 WarpProperties::~WarpProperties() = default;
