@@ -9,16 +9,20 @@ The `dai::node::Depth` node provides a single API over multiple depth backends (
 **Inputs**
 
 - **Target FPS** (always applied): `build(fps)` → upstream stereo cameras' max requested FPS → **30**.
-- **Resolution** (optional gate): `build(..., stereoSize)` → upstream stereo cameras' configured size → unset (no resolution check).
+- **Resolution** (always derived): `build(..., stereoSize)` → upstream stereo cameras' configured size → device's `getConnectedCameraFeatures()` for the stereo pair sockets (sensor native). Set to unknown only when none of those sources advertise a size.
 
-**Rules** (hard-coded, single pass)
+**Rules** (single scan over one unified `BackendProfile` catalog)
 
-1. **NeuralDepth** — walk models largest-first. Pick the first model whose `maxFps` covers `targetFps × 0.85`. When resolution is set, the model must also cover that frame size (per-axis ≈ tensor ± √2).
-2. **NeuralAssistedStereo** — if step 1 found nothing, require the same FPS budget and resolution ≤ 1280×1280 (no selectable profile; always uses `NEURAL_DEPTH_NANO` internally).
-3. **StereoDepth** — quality-ordered presets (`ACCURACY` … `FAST_ACCURACY`) with the same FPS and resolution rules.
-4. **GPUStereo** — if step 3 found nothing, require FPS only (any resolution).
+Every backend has one (or several) row(s) in `kBackendProfiles` in `src/pipeline/node/Depth.cpp`. Each row is `{algorithm, config, maxWidth, maxHeight, maxFps}`. Selection walks rows in this priority order and returns the first row whose algorithm is in `supportedAlgorithms`, whose `maxFps ≥ targetFps × 0.85`, and (when a resolution is provided) whose resolution rule passes:
 
-Each result is an `Algorithm` plus a `Config` variant: `DeviceModelZoo` for `NEURAL`, `StereoDepth::PresetMode` for `STEREO`, `std::monostate` for NAS / GPUStereo / ToF.
+1. **NeuralDepth** — 10 rows, largest tensor first. Resolution rule is a tensor-cover band (≈ tensor ± √2 per axis). Model must also appear in `supportedModels` when that filter is non-empty.
+2. **NeuralAssistedStereo** — single row: **1280×800 @ 55 FPS** (no selectable profile; always uses `NEURAL_DEPTH_NANO` internally).
+3. **StereoDepth** — 8 quality-ordered presets (`ACCURACY` / `HIGH_DETAIL` @ 15 → `DENSITY` / `DEFAULT` / `FACE` / `ROBOTICS` @ 30 → `FAST_DENSITY` / `FAST_ACCURACY` @ 60), all capped at 1280×1280.
+4. **GPUStereo** — 3 rows: **2592×1944 @ 5.5 FPS**, **1280×800 @ 34 FPS**, **640×400 @ 60 FPS**.
+
+If no row qualifies the priority scan, a second pass picks the catalog row that **covers the requested resolution with the highest available `maxFps`** (resolution-fit fallback). This keeps high-resolution sensors (e.g. 2592×1944) on `GPUStereo` rather than dropping back to a `StereoDepth` preset that cannot serve the resolution. If no row covers the resolution at all, the result is the fastest `StereoDepth` preset (or `{STEREO, FAST_ACCURACY}` as a last resort).
+
+Each result is an `Algorithm` plus a `Config` variant: `DeviceModelZoo` for `NEURAL`, `StereoDepth::PresetMode` for `STEREO`, `std::monostate` for NAS / GPUStereo / ToF. (For GPUStereo with multiple resolution rows, `Config` does not currently expose which row matched.)
 
 Non-RVC4 `AUTO`: ToF when a ToF sensor is connected on RVC2, otherwise `StereoDepth`.
 
@@ -31,9 +35,17 @@ depth->build(dai::node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32
 (void)depth->depth();  // triggers wiring
 
 depth->getResolvedAlgorithm();
-depth->getResolvedConfig();           // variant
-depth->getResolvedNeuralModel();      // NEURAL / NAS convenience
-depth->getResolvedStereoPreset();     // STEREO convenience
+depth->getResolvedPreset();           // variant: model, preset, or std::monostate
+```
+
+Python: `pipeline.create(dai.node.Depth, ...)` accepts the same selection hints as keyword arguments and forwards them to `Depth::build(...)` before lazy wiring runs (so AUTO sees them on the first scan):
+
+- `fps=` / `FPS=` — target stereo FPS (same as `build(fps)`)
+- `resolution=` / `stereo_size=` — `(width, height)` tuple used by AUTO selection when no upstream `Camera` is wired
+- `algorithm=` — pin a specific `dai.node.Depth.Algorithm` (skip AUTO)
+
+```python
+depth = pipeline.create(dai.node.Depth, FPS=10.0, resolution=(640, 400))  # AUTO → NeuralDepth on RVC4
 ```
 
 Static helpers:

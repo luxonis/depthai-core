@@ -333,7 +333,7 @@ void requireUserAndDepthFrameSizes(const std::shared_ptr<Device>& device,
     if(device->getPlatform() == Platform::RVC4) {
         const auto resolved = depth->getResolvedAlgorithm();
         if(resolved == node::Depth::Algorithm::NEURAL) {
-            const auto [expectedW, expectedH] = node::NeuralDepth::getInputSize(depth->getResolvedNeuralModel());
+            const auto [expectedW, expectedH] = node::NeuralDepth::getInputSize(std::get<DeviceModelZoo>(depth->getResolvedPreset()));
             requireDepthSingleBackendChild(*depth, "NeuralDepth");
             REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
                      || depthFrame->getHeight() != static_cast<int>(kUserStereoSensorResolution.second)));
@@ -637,6 +637,41 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from stereo_size and fps") {
     depth->build(node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32_t>{640, 400});
     REQUIRE_NOTHROW((void)&depth->depth());
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
-    REQUIRE(depth->getResolvedNeuralModel() == std::get<DeviceModelZoo>(expected.config));
+    REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedPreset()) == std::get<DeviceModelZoo>(expected.config));
+    requireDepthSingleBackendChild(*depth, "NeuralDepth");
+}
+
+TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo cameras") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(device->getPlatform() != Platform::RVC4) {
+        SKIP("Skipping Depth test: not RVC4.");
+    }
+    if(!device->isNeuralDepthSupported()) {
+        SKIP("Skipping Depth test: device does not support NeuralDepth.");
+    }
+    const auto pair = requireFirstStereoPairForTest(device);
+
+    auto left = pipeline.create<node::Camera>()->build(pair.left, std::nullopt, 20.f);
+    auto right = pipeline.create<node::Camera>()->build(pair.right, std::nullopt, 20.f);
+    auto* leftOut = left->requestOutput({640, 400}, std::nullopt, ImgResizeMode::CROP, 20.f);
+    auto* rightOut = right->requestOutput({640, 400}, std::nullopt, ImgResizeMode::CROP, 20.f);
+    REQUIRE(leftOut != nullptr);
+    REQUIRE(rightOut != nullptr);
+    auto leftQueue = leftOut->createOutputQueue();
+    auto rightQueue = rightOut->createOutputQueue();
+    (void)leftQueue;
+    (void)rightQueue;
+
+    auto depth = pipeline.create<node::Depth>();
+    const auto expected = node::Depth::selectBackend(std::make_pair(640u, 400u),
+                                                      20.f,
+                                                      depth->getSupportedAlgorithms(device),
+                                                      device->getSupportedDeviceModels());
+    REQUIRE(expected.algorithm == node::Depth::Algorithm::NEURAL);
+
+    REQUIRE_NOTHROW((void)&depth->depth());
+    REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
+    REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedPreset()) == std::get<DeviceModelZoo>(expected.config));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
 }

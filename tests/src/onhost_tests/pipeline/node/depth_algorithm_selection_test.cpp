@@ -61,10 +61,49 @@ TEST_CASE("Depth::selectBackend falls back to NAS when no NeuralDepth model meet
     REQUIRE(std::holds_alternative<std::monostate>(sel.config));
 }
 
-TEST_CASE("Depth::selectBackend forces GPUStereo when resolution exceeds 1280x1280", "[Depth]") {
+TEST_CASE("Depth::selectBackend picks GPUStereo (highest FPS at the resolution) when no backend meets target FPS", "[Depth]") {
+    // 1920x1440 exceeds every backend's 30 FPS-capable cap, but fits the GPUStereo 2592x1944 row (5.5 FPS).
     const auto sel = select(std::make_pair(1920u, 1440u), 30.f);
     REQUIRE(sel.algorithm == Depth::Algorithm::GPU_STEREO);
     REQUIRE(std::holds_alternative<std::monostate>(sel.config));
+}
+
+TEST_CASE("Depth::selectBackend picks GPUStereo at sensor native resolution above 1280x800", "[Depth]") {
+    // 2592x1944 sensors trigger the GPUStereo 2592x1944 @ 5.5 FPS row via the resolution-fit fallback.
+    const auto sel = select(std::make_pair(2592u, 1944u), 30.f);
+    REQUIRE(sel.algorithm == Depth::Algorithm::GPU_STEREO);
+    REQUIRE(std::holds_alternative<std::monostate>(sel.config));
+}
+
+TEST_CASE("Depth::selectBackend falls back to FAST_ACCURACY when no backend covers the resolution at all", "[Depth]") {
+    const std::vector<Depth::Algorithm> noGpu = {Depth::Algorithm::NEURAL, Depth::Algorithm::NEURAL_ASSISTED_STEREO, Depth::Algorithm::STEREO};
+    // 1920x1440 exceeds every non-GPU backend's resolution cap; without GPUStereo the last-resort fallback kicks in.
+    const auto sel = select(std::make_pair(1920u, 1440u), 30.f, noGpu);
+    REQUIRE(sel.algorithm == Depth::Algorithm::STEREO);
+    REQUIRE(std::get<StereoDepth::PresetMode>(sel.config) == StereoDepth::PresetMode::FAST_ACCURACY);
+}
+
+TEST_CASE("Depth::selectBackend picks GPUStereo when it is the only backend that fits both FPS and resolution", "[Depth]") {
+    const std::vector<Depth::Algorithm> gpuOnly = {Depth::Algorithm::GPU_STEREO};
+    SECTION("1280x800 @ 30fps -> first GPUStereo profile") {
+        const auto sel = select(std::make_pair(1280u, 800u), 30.f, gpuOnly);
+        REQUIRE(sel.algorithm == Depth::Algorithm::GPU_STEREO);
+        REQUIRE(std::holds_alternative<std::monostate>(sel.config));
+    }
+    SECTION("640x400 @ 50fps -> second GPUStereo profile (the higher-FPS row)") {
+        // First row (1280x800@34) fails the FPS gate (34 < 50*0.85=42.5); second row (640x400@60) wins.
+        const auto sel = select(std::make_pair(640u, 400u), 50.f, gpuOnly);
+        REQUIRE(sel.algorithm == Depth::Algorithm::GPU_STEREO);
+        REQUIRE(std::holds_alternative<std::monostate>(sel.config));
+    }
+}
+
+TEST_CASE("Depth::selectBackend rejects NeuralAssistedStereo above its 1280x800 cap", "[Depth]") {
+    const std::vector<Depth::Algorithm> nasOnly = {Depth::Algorithm::NEURAL_ASSISTED_STEREO};
+    // 1280x1000 exceeds NAS height cap (800).
+    const auto sel = select(std::make_pair(1280u, 1000u), 30.f, nasOnly);
+    REQUIRE(sel.algorithm == Depth::Algorithm::STEREO);
+    REQUIRE(std::get<StereoDepth::PresetMode>(sel.config) == StereoDepth::PresetMode::FAST_ACCURACY);
 }
 
 TEST_CASE("Depth::selectBackend without resolution picks largest NeuralDepth meeting FPS", "[Depth]") {
@@ -74,8 +113,8 @@ TEST_CASE("Depth::selectBackend without resolution picks largest NeuralDepth mee
 }
 
 TEST_CASE("Depth::selectBackend without NeuralDepth falls through to StereoDepth presets by quality and FPS", "[Depth]") {
-    REQUIRE(std::get<StereoDepth::PresetMode>(select(std::nullopt, 15.f, kStereoOnly).config) == StereoDepth::PresetMode::ACCURACY);
-    REQUIRE(std::get<StereoDepth::PresetMode>(select(std::nullopt, 30.f, kStereoOnly).config) == StereoDepth::PresetMode::DENSITY);
+    REQUIRE(std::get<StereoDepth::PresetMode>(select(std::nullopt, 15.f, kStereoOnly).config) == StereoDepth::PresetMode::DEFAULT);
+    REQUIRE(std::get<StereoDepth::PresetMode>(select(std::nullopt, 30.f, kStereoOnly).config) == StereoDepth::PresetMode::DEFAULT);
     REQUIRE(std::get<StereoDepth::PresetMode>(select(std::nullopt, 60.f, kStereoOnly).config) == StereoDepth::PresetMode::FAST_DENSITY);
 }
 

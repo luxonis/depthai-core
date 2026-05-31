@@ -34,62 +34,56 @@ constexpr DeviceModelZoo kDefaultNeuralDepthModel = DeviceModelZoo::NEURAL_DEPTH
 constexpr DeviceModelZoo kDefaultNasNeuralModel = DeviceModelZoo::NEURAL_DEPTH_NANO;
 constexpr bool kDefaultNasRectify = true;
 
+/** Backwards-compat with the public Depth::exceedsStereoDepthMaxResolution(w,h) check (StereoDepth alone). */
 constexpr uint32_t kStereoDepthMaxWidth = 1280;
 constexpr uint32_t kStereoDepthMaxHeight = 1280;
-constexpr float kNasMaxFps = 60.f;
-constexpr float kGpuStereoMaxFps = 30.f;
 constexpr float kSelectionFpsSafetyMargin = 0.85f;
 
-/** Per-model NeuralDepth limits (catalog order = largest / best quality first). */
-struct NeuralModelEntry {
-    DeviceModelZoo model;
-    uint32_t tensorWidth;
-    uint32_t tensorHeight;
-    float maxFps;
-};
-
-constexpr std::array<NeuralModelEntry, 10> kNeuralModels = {{
-    {DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780, 1.6f},
-    {DeviceModelZoo::NEURAL_DEPTH_1056X660, 1056, 660, 3.0f},
-    {DeviceModelZoo::NEURAL_DEPTH_960X600, 960, 600, 5.0f},
-    {DeviceModelZoo::NEURAL_DEPTH_864X540, 864, 540, 8.0f},
-    {DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480, 10.f},
-    {DeviceModelZoo::NEURAL_DEPTH_576X360, 576, 360, 24.f},
-    {DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300, 40.f},
-    {DeviceModelZoo::NEURAL_DEPTH_384X240, 384, 240, 55.f},
-    {DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180, 55.f},
-    {DeviceModelZoo::NEURAL_DEPTH_192X120, 192, 120, 55.f},
-}};
-
-/** StereoDepth presets in quality order (same FPS tier: first listed wins). */
-struct StereoPresetEntry {
-    StereoDepth::PresetMode preset;
-    float maxFps;
-};
-
-constexpr std::array<StereoPresetEntry, 8> kStereoPresets = {{
-    {StereoDepth::PresetMode::ACCURACY, 15.f},
-    {StereoDepth::PresetMode::HIGH_DETAIL, 15.f},
-    {StereoDepth::PresetMode::DENSITY, 30.f},
-    {StereoDepth::PresetMode::DEFAULT, 30.f},
-    {StereoDepth::PresetMode::FACE, 30.f},
-    {StereoDepth::PresetMode::ROBOTICS, 30.f},
-    {StereoDepth::PresetMode::FAST_DENSITY, 60.f},
-    {StereoDepth::PresetMode::FAST_ACCURACY, 60.f},
-}};
-
 /**
- * True when a user frame can be resized into this model's tensor without aggressive scaling.
- * Per axis the acceptable range is roughly tensor / sqrt(2) … tensor * sqrt(2).
+ * Unified backend-profile catalog.
+ *
+ * One row per (algorithm, sub-profile) describes everything ``Depth`` needs to score a candidate:
+ * the user-visible config (a ``DeviceModelZoo`` for ``NEURAL``, a ``StereoDepth::PresetMode``
+ * for ``STEREO``, or ``std::monostate`` for backends with no selectable profile), the maximum
+ * input resolution, and the maximum sustained FPS.
+ *
+ * For ``NEURAL`` rows ``maxWidth/maxHeight`` is the model's native tensor size: the resolution
+ * check uses a tensor-cover band (resize without aggressive up/down-scaling) rather than a plain
+ * cap. Every other algorithm uses a simple ``user <= max`` cap.
+ *
+ * Rows are listed in selection priority order (NEURAL → NEURAL_ASSISTED_STEREO → STEREO →
+ * GPU_STEREO); within a single algorithm rows are ordered best-quality first.
  */
-bool neuralModelCoversUserResolution(const NeuralModelEntry& entry, uint32_t userWidth, uint32_t userHeight) {
-    constexpr float kScale = 1.4142135f;
-    const uint32_t minW = static_cast<uint32_t>(static_cast<float>(entry.tensorWidth) / kScale);
-    const uint32_t maxW = static_cast<uint32_t>(static_cast<float>(entry.tensorWidth) * kScale);
-    const uint32_t minH = static_cast<uint32_t>(static_cast<float>(entry.tensorHeight) / kScale);
-    const uint32_t maxH = static_cast<uint32_t>(static_cast<float>(entry.tensorHeight) * kScale);
-    return userWidth >= minW && userWidth <= maxW && userHeight >= minH && userHeight <= maxH;
-}
+struct BackendProfile {
+    Depth::Algorithm algorithm;
+    Depth::Config config;
+    uint32_t maxWidth;
+    uint32_t maxHeight;
+    float maxFps;
+};
+
+inline const std::array<BackendProfile, 17> kBackendProfiles = {{
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780, 1.6f},
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_1056X660, 1056, 660, 3.0f},
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_960X600, 960, 600, 5.0f},
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_864X540, 864, 540, 8.0f},
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480, 10.f},
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_576X360, 576, 360, 24.f},
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300, 40.f},
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_384X240, 384, 240, 55.f},
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180, 55.f},
+    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_192X120, 192, 120, 55.f},
+
+    {Depth::Algorithm::NEURAL_ASSISTED_STEREO, std::monostate{}, 1280, 800, 55.f},
+
+    {Depth::Algorithm::STEREO, StereoDepth::PresetMode::DEFAULT, 1280, 1280, 30.f},
+    {Depth::Algorithm::STEREO, StereoDepth::PresetMode::FAST_DENSITY, 1280, 1280, 60.f},
+    {Depth::Algorithm::STEREO, StereoDepth::PresetMode::FAST_ACCURACY, 1280, 1280, 60.f},
+
+    {Depth::Algorithm::GPU_STEREO, std::monostate{}, 2592, 1944, 5.f},
+    {Depth::Algorithm::GPU_STEREO, std::monostate{}, 1280, 800, 30.f},
+    {Depth::Algorithm::GPU_STEREO, std::monostate{}, 640, 400, 55.f},
+}};
 
 bool isModelOnDevice(DeviceModelZoo model, const std::vector<DeviceModelZoo>& supportedModels) {
     if(supportedModels.empty()) {
@@ -98,44 +92,122 @@ bool isModelOnDevice(DeviceModelZoo model, const std::vector<DeviceModelZoo>& su
     return std::find(supportedModels.begin(), supportedModels.end(), model) != supportedModels.end();
 }
 
-bool userResolutionWithinStereoCap(uint32_t userWidth, uint32_t userHeight) {
-    return userWidth <= kStereoDepthMaxWidth && userHeight <= kStereoDepthMaxHeight;
-}
-
 bool supportsAlgorithm(const std::vector<Depth::Algorithm>& supported, Depth::Algorithm algorithm) {
     return std::find(supported.begin(), supported.end(), algorithm) != supported.end();
 }
 
-/** Best NeuralDepth model meeting @p requiredFps; when @p resolution is set it must also be covered. */
-std::optional<DeviceModelZoo> pickNeuralModel(float requiredFps,
-                                               std::optional<std::pair<uint32_t, uint32_t>> resolution,
-                                               const std::vector<DeviceModelZoo>& supportedModels) {
-    for(const auto& entry : kNeuralModels) {
-        if(entry.maxFps < requiredFps) {
-            continue;
+DeviceModelZoo neuralModelFromConfig(const Depth::Config& config) {
+    if(const auto* m = std::get_if<DeviceModelZoo>(&config)) {
+        return *m;
+    }
+    return kDefaultNeuralDepthModel;
+}
+
+StereoDepth::PresetMode stereoPresetFromConfig(const Depth::Config& config) {
+    if(const auto* p = std::get_if<StereoDepth::PresetMode>(&config)) {
+        return *p;
+    }
+    return StereoDepth::PresetMode::DEFAULT;
+}
+
+/**
+ * Per-algorithm resolution semantics: NEURAL uses a tensor-cover band (±sqrt(2)) around the
+ * model's native size; everything else is a simple ``user <= max`` cap.
+ */
+bool resolutionFits(const BackendProfile& profile, std::pair<uint32_t, uint32_t> resolution) {
+    if(profile.algorithm == Depth::Algorithm::NEURAL) {
+        constexpr float kScale = 1.4142135f;
+        const uint32_t minW = static_cast<uint32_t>(static_cast<float>(profile.maxWidth) / kScale);
+        const uint32_t maxW = static_cast<uint32_t>(static_cast<float>(profile.maxWidth) * kScale);
+        const uint32_t minH = static_cast<uint32_t>(static_cast<float>(profile.maxHeight) / kScale);
+        const uint32_t maxH = static_cast<uint32_t>(static_cast<float>(profile.maxHeight) * kScale);
+        return resolution.first >= minW && resolution.first <= maxW && resolution.second >= minH && resolution.second <= maxH;
+    }
+    return resolution.first <= profile.maxWidth && resolution.second <= profile.maxHeight;
+}
+
+/** True when @p profile would accept this (algorithm, model, fps, resolution) request. */
+bool profileMatches(const BackendProfile& profile,
+                    const std::vector<Depth::Algorithm>& supportedAlgorithms,
+                    const std::vector<DeviceModelZoo>& supportedModels,
+                    float requiredFps,
+                    std::optional<std::pair<uint32_t, uint32_t>> resolution) {
+    if(!supportsAlgorithm(supportedAlgorithms, profile.algorithm)) {
+        return false;
+    }
+    if(profile.maxFps < requiredFps) {
+        return false;
+    }
+    if(const auto* model = std::get_if<DeviceModelZoo>(&profile.config)) {
+        if(!isModelOnDevice(*model, supportedModels)) {
+            return false;
         }
-        if(!isModelOnDevice(entry.model, supportedModels)) {
-            continue;
+    }
+    if(resolution.has_value() && !resolutionFits(profile, *resolution)) {
+        return false;
+    }
+    return true;
+}
+
+/** Walks the catalog in priority order and returns the first row that satisfies the request. */
+std::optional<BackendProfile> pickBackendProfile(std::optional<std::pair<uint32_t, uint32_t>> resolution,
+                                                  float requiredFps,
+                                                  const std::vector<Depth::Algorithm>& supportedAlgorithms,
+                                                  const std::vector<DeviceModelZoo>& supportedModels) {
+    for(const auto& profile : kBackendProfiles) {
+        if(profileMatches(profile, supportedAlgorithms, supportedModels, requiredFps, resolution)) {
+            return profile;
         }
-        if(resolution.has_value() && !neuralModelCoversUserResolution(entry, resolution->first, resolution->second)) {
-            continue;
-        }
-        return entry.model;
     }
     return std::nullopt;
 }
 
-/** Best StereoDepth preset meeting @p requiredFps; when @p resolution is set it must fit 1280x1280. */
+/**
+ * Among catalog rows that accept @p resolution (and pass algorithm/model gates), pick the one with
+ * the highest ``maxFps``. Used when the priority scan finds no row meeting the requested FPS, so
+ * the algorithm able to serve the resolution at the highest available FPS is preferred over the
+ * generic StereoDepth last-resort.
+ */
+std::optional<BackendProfile> pickHighestFpsForResolution(std::pair<uint32_t, uint32_t> resolution,
+                                                          const std::vector<Depth::Algorithm>& supportedAlgorithms,
+                                                          const std::vector<DeviceModelZoo>& supportedModels) {
+    std::optional<BackendProfile> best;
+    for(const auto& profile : kBackendProfiles) {
+        if(!supportsAlgorithm(supportedAlgorithms, profile.algorithm)) continue;
+        if(const auto* model = std::get_if<DeviceModelZoo>(&profile.config); model && !isModelOnDevice(*model, supportedModels)) continue;
+        if(!resolutionFits(profile, resolution)) continue;
+        if(!best || profile.maxFps > best->maxFps) {
+            best = profile;
+        }
+    }
+    return best;
+}
+
+/** NeuralDepth model lookup for the explicit-algorithm path (skips non-NEURAL rows). */
+std::optional<DeviceModelZoo> pickNeuralModel(float requiredFps,
+                                               std::optional<std::pair<uint32_t, uint32_t>> resolution,
+                                               const std::vector<DeviceModelZoo>& supportedModels) {
+    for(const auto& profile : kBackendProfiles) {
+        if(profile.algorithm != Depth::Algorithm::NEURAL) continue;
+        if(profile.maxFps < requiredFps) continue;
+        const auto* model = std::get_if<DeviceModelZoo>(&profile.config);
+        if(model == nullptr || !isModelOnDevice(*model, supportedModels)) continue;
+        if(resolution.has_value() && !resolutionFits(profile, *resolution)) continue;
+        return *model;
+    }
+    return std::nullopt;
+}
+
+/** StereoDepth preset lookup for the explicit-algorithm path (skips non-STEREO rows). */
 std::optional<StereoDepth::PresetMode> pickStereoPreset(float requiredFps,
                                                          std::optional<std::pair<uint32_t, uint32_t>> resolution) {
-    for(const auto& entry : kStereoPresets) {
-        if(entry.maxFps < requiredFps) {
-            continue;
-        }
-        if(resolution.has_value() && !userResolutionWithinStereoCap(resolution->first, resolution->second)) {
-            continue;
-        }
-        return entry.preset;
+    for(const auto& profile : kBackendProfiles) {
+        if(profile.algorithm != Depth::Algorithm::STEREO) continue;
+        if(profile.maxFps < requiredFps) continue;
+        if(resolution.has_value() && !resolutionFits(profile, *resolution)) continue;
+        const auto* preset = std::get_if<StereoDepth::PresetMode>(&profile.config);
+        if(preset == nullptr) continue;
+        return *preset;
     }
     return std::nullopt;
 }
@@ -160,21 +232,44 @@ std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(c
 }
 
 /**
- * When both stereo cameras exist before Depth wiring, use their configured size.
- * ``Camera::getMaxWidth`` / ``getMaxHeight`` return ``build(..., sensorResolution)`` when set,
- * otherwise the sensor maximum for that socket.
+ * When both stereo cameras exist before Depth wiring, use their requested output size if the user
+ * already requested camera outputs. Otherwise fall back to the cameras' configured sensor size.
  */
 std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromExistingCameras(const std::shared_ptr<Camera>& left,
                                                                            const std::shared_ptr<Camera>& right) {
     if(!left || !right) {
         return std::nullopt;
     }
-    const uint32_t width = left->getMaxWidth();
-    const uint32_t height = left->getMaxHeight();
-    if(width > 0 && height > 0 && width == right->getMaxWidth() && height == right->getMaxHeight()) {
+    const uint32_t width = left->getMaxRequestedWidth();
+    const uint32_t height = left->getMaxRequestedHeight();
+    if(width > 0 && height > 0 && width == right->getMaxRequestedWidth() && height == right->getMaxRequestedHeight()) {
         return {{width, height}};
     }
     return std::nullopt;
+}
+
+/**
+ * Sensor native max for the stereo pair sockets, queried directly from the device when no
+ * upstream ``Camera`` nodes are present and the user has not provided a ``stereoSize`` override.
+ * Returns the smaller of ``left`` / ``right`` per axis when both sockets advertise features;
+ * ``std::nullopt`` if neither socket is advertised.
+ */
+std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromDeviceFeatures(const std::shared_ptr<Device>& device, const StereoPair& pair) {
+    const auto features = device->getConnectedCameraFeatures();
+    auto findSocket = [&](CameraBoardSocket socket) -> std::optional<std::pair<uint32_t, uint32_t>> {
+        for(const auto& f : features) {
+            if(f.socket == socket && f.width > 0 && f.height > 0) {
+                return std::make_pair(static_cast<uint32_t>(f.width), static_cast<uint32_t>(f.height));
+            }
+        }
+        return std::nullopt;
+    };
+    const auto leftSize = findSocket(pair.left);
+    const auto rightSize = findSocket(pair.right);
+    if(!leftSize && !rightSize) return std::nullopt;
+    if(leftSize && !rightSize) return leftSize;
+    if(rightSize && !leftSize) return rightSize;
+    return std::make_pair(std::min(leftSize->first, rightSize->first), std::min(leftSize->second, rightSize->second));
 }
 
 /** Returns the device's primary stereo pair; fails if none are configured. */
@@ -261,23 +356,6 @@ bool Depth::exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height) {
     return width > kStereoDepthMaxWidth || height > kStereoDepthMaxHeight;
 }
 
-DeviceModelZoo Depth::getResolvedNeuralModel() const {
-    if(const auto* m = std::get_if<DeviceModelZoo>(&resolved_.config)) {
-        return *m;
-    }
-    if(resolved_.algorithm == Algorithm::NEURAL_ASSISTED_STEREO) {
-        return kDefaultNasNeuralModel;
-    }
-    return kDefaultNeuralDepthModel;
-}
-
-StereoDepth::PresetMode Depth::getResolvedStereoPreset() const {
-    if(const auto* p = std::get_if<StereoDepth::PresetMode>(&resolved_.config)) {
-        return *p;
-    }
-    return StereoDepth::PresetMode::DEFAULT;
-}
-
 Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                        float targetFps,
                                        const std::vector<Algorithm>& supportedAlgorithms,
@@ -287,35 +365,20 @@ Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t
     }
     const float requiredFps = targetFps * kSelectionFpsSafetyMargin;
 
-    // 1. NeuralDepth — keep FPS; when resolution is set, pick the best model that also covers it.
-    if(supportsAlgorithm(supportedAlgorithms, Algorithm::NEURAL)) {
-        if(const auto model = pickNeuralModel(requiredFps, resolution, supportedModels)) {
-            return {Algorithm::NEURAL, *model};
+    // 1. Priority scan honoring the requested FPS and (optional) resolution.
+    if(const auto picked = pickBackendProfile(resolution, requiredFps, supportedAlgorithms, supportedModels)) {
+        return {picked->algorithm, picked->config};
+    }
+
+    // 2. No backend can serve the resolution at the requested FPS: pick the algorithm whose
+    //    catalog row covers the resolution with the highest available maxFps.
+    if(resolution.has_value()) {
+        if(const auto picked = pickHighestFpsForResolution(*resolution, supportedAlgorithms, supportedModels)) {
+            return {picked->algorithm, picked->config};
         }
     }
 
-    // 2. NeuralAssistedStereo — same FPS and resolution rules (1280x1280 cap).
-    if(supportsAlgorithm(supportedAlgorithms, Algorithm::NEURAL_ASSISTED_STEREO) && kNasMaxFps >= requiredFps) {
-        const bool resolutionOk = !resolution.has_value()
-                                  || userResolutionWithinStereoCap(resolution->first, resolution->second);
-        if(resolutionOk) {
-            return {Algorithm::NEURAL_ASSISTED_STEREO, std::monostate{}};
-        }
-    }
-
-    // 3. StereoDepth — quality-ordered presets that keep FPS (and resolution when set).
-    if(supportsAlgorithm(supportedAlgorithms, Algorithm::STEREO)) {
-        if(const auto preset = pickStereoPreset(requiredFps, resolution)) {
-            return {Algorithm::STEREO, *preset};
-        }
-    }
-
-    // 4. GPUStereo — unlimited resolution; only FPS is checked.
-    if(supportsAlgorithm(supportedAlgorithms, Algorithm::GPU_STEREO) && kGpuStereoMaxFps >= requiredFps) {
-        return {Algorithm::GPU_STEREO, std::monostate{}};
-    }
-
-    // Requested FPS exceeds every backend: still honor resolution, return the fastest stereo preset.
+    // 3. Last-resort fallback: drop the FPS gate, honor resolution if possible, else fastest StereoDepth preset.
     if(supportsAlgorithm(supportedAlgorithms, Algorithm::STEREO)) {
         if(const auto preset = pickStereoPreset(0.f, resolution)) {
             return {Algorithm::STEREO, *preset};
@@ -332,15 +395,16 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 
     if(device->getPlatform() != Platform::RVC4) {
-        if(algorithmOverride_ == Algorithm::AUTO) {
-            if(supportsAlgorithm(supported, Algorithm::TOF)) {
-                resolved_ = {Algorithm::TOF, std::monostate{}};
-            } else {
-                resolved_ = {Algorithm::STEREO, std::monostate{}};
-            }
-        } else {
-            resolved_ = {algorithmOverride_, std::monostate{}};
+        // Non-RVC4 has no catalog scan; pick the algorithm and populate the preset that
+        // actually goes into the backend's build() (so getResolvedPreset() matches reality).
+        const Algorithm chosen = (algorithmOverride_ == Algorithm::AUTO)
+                                     ? (supportsAlgorithm(supported, Algorithm::TOF) ? Algorithm::TOF : Algorithm::STEREO)
+                                     : algorithmOverride_;
+        Config config = std::monostate{};
+        if(chosen == Algorithm::STEREO) {
+            config = StereoDepth::PresetMode::DEFAULT;
         }
+        resolved_ = {chosen, config};
         return;
     }
 
@@ -356,10 +420,17 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         targetFps = 30.f;
     }
 
-    // User resolution from build() override or upstream stereo cameras (unset = no resolution gate).
+    // Resolution comes from (in order): build() override, upstream stereo cameras' requested output
+    // size (falling back to configured/native sensor size), or device features. Falling back to
+    // device features lets AUTO see the camera resolution even when the user wires only the Depth
+    // node, so e.g. a 2592x1944 sensor steers selection toward GPUStereo via the resolution-fit
+    // fallback in ``selectBackend``.
     std::optional<std::pair<uint32_t, uint32_t>> resolution = stereoSizeOverride_;
     if(!resolution) {
         resolution = stereoSizeFromExistingCameras(left, right);
+    }
+    if(!resolution) {
+        resolution = stereoSizeFromDeviceFeatures(device, pair);
     }
 
     const auto supportedModels = device->getSupportedDeviceModels();
@@ -377,9 +448,25 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     resolved_.config = std::monostate{};
 
     if(resolution
-       && (resolved_.algorithm == Algorithm::STEREO || resolved_.algorithm == Algorithm::NEURAL_ASSISTED_STEREO)) {
-        DAI_CHECK_V(!exceedsStereoDepthMaxResolution(resolution->first, resolution->second),
-                    "Depth: resolution exceeds StereoDepth maximum 1280x1280; use GPUStereo or lower resolution.");
+       && (resolved_.algorithm == Algorithm::STEREO || resolved_.algorithm == Algorithm::NEURAL_ASSISTED_STEREO
+           || resolved_.algorithm == Algorithm::GPU_STEREO)) {
+        bool anyProfileFits = false;
+        uint32_t maxW = 0;
+        uint32_t maxH = 0;
+        for(const auto& profile : kBackendProfiles) {
+            if(profile.algorithm != resolved_.algorithm) continue;
+            maxW = std::max(maxW, profile.maxWidth);
+            maxH = std::max(maxH, profile.maxHeight);
+            if(resolutionFits(profile, *resolution)) {
+                anyProfileFits = true;
+                break;
+            }
+        }
+        DAI_CHECK_V(anyProfileFits,
+                    "Depth: resolution exceeds the maximum supported by the requested algorithm "
+                    "(largest profile: {}x{}).",
+                    maxW,
+                    maxH);
     }
 
     switch(resolved_.algorithm) {
@@ -448,7 +535,7 @@ void Depth::buildInternal() {
             break;
         }
         case Algorithm::NEURAL: {
-            const auto model = getResolvedNeuralModel();
+            const auto model = neuralModelFromConfig(resolved_.config);
             const auto is = NeuralDepth::getInputSize(model);
             const std::pair<uint32_t, uint32_t> monoSize{static_cast<uint32_t>(is.first), static_cast<uint32_t>(is.second)};
             neuralBackend_ = std::make_unique<Subnode<NeuralDepth>>(*this, "neuralDepth");
@@ -459,7 +546,7 @@ void Depth::buildInternal() {
         case Algorithm::STEREO: {
             stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
             auto [leftOut, rightOut] = stereoCameraOutputs(pipeline, device, std::nullopt);
-            (*stereoBackend_)->build(*leftOut, *rightOut, getResolvedStereoPreset());
+            (*stereoBackend_)->build(*leftOut, *rightOut, stereoPresetFromConfig(resolved_.config));
             break;
         }
         default:

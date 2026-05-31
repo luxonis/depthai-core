@@ -27,13 +27,13 @@ namespace node {
 /**
  * @brief Composite depth node: StereoDepth, NeuralDepth, NeuralAssistedStereo, ToF, or GPUStereo.
  *
- * On RVC4 ``Algorithm::AUTO`` is resolved in one pass from target FPS and optional user
- * resolution. FPS is taken from ``build(fps)``, upstream stereo cameras, or defaults to 30.
- * Resolution comes from ``build(..., stereoSize)`` or upstream cameras when set.
+ * On RVC4 ``Algorithm::AUTO`` is resolved from target FPS and stereo resolution. FPS is taken
+ * from ``build(fps)``, upstream stereo cameras, or defaults to 30. Resolution comes from
+ * ``build(..., stereoSize)``, upstream cameras, or device camera features.
  *
- * Selection keeps the requested FPS, tries NeuralDepth first (best model that meets FPS and,
- * when resolution is set, covers that resolution), then NeuralAssistedStereo, StereoDepth,
- * and GPUStereo. Each backend uses a ``Config`` variant (model, preset, or none).
+ * Selection keeps the requested FPS first; if no backend can serve the resolution at that FPS,
+ * it picks the highest-FPS backend profile that covers the resolution. Each backend uses a
+ * ``Config`` variant (model, preset, or none).
  * On other platforms, AUTO uses ToF when a ToF sensor is connected, otherwise StereoDepth.
  *
  * ``confidence()`` maps to backend confidence when present: StereoDepth/NAS confidence,
@@ -141,21 +141,10 @@ class Depth : public DeviceNodeGroup {
         return resolved_.algorithm;
     }
 
-    /** Resolved (algorithm-specific) profile: see ``Config``. */
-    [[nodiscard]] const Config& getResolvedConfig() const {
+    /** Resolved algorithm-specific preset/profile: see ``Config``. */
+    [[nodiscard]] const Config& getResolvedPreset() const {
         return resolved_.config;
     }
-
-    /**
-     * NeuralDepth zoo model used by the resolved backend.
-     * For ``NEURAL`` this is the auto-selected (or overridden) model.
-     * For ``NEURAL_ASSISTED_STEREO`` this is always ``NEURAL_DEPTH_NANO`` (NAS has no selectable profile).
-     * For other backends the value is unspecified.
-     */
-    [[nodiscard]] DeviceModelZoo getResolvedNeuralModel() const;
-
-    /** ``StereoDepth`` preset used when the resolved backend is ``STEREO``; ``DEFAULT`` otherwise. */
-    [[nodiscard]] StereoDepth::PresetMode getResolvedStereoPreset() const;
 
     /** Returns algorithms supported by the supplied device. */
     std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device) const;
