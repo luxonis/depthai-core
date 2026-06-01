@@ -30,6 +30,7 @@ std::string getLocalIpAddress();
  * @return OS platform string
  */
 std::string getOSPlatform();
+std::string getOSVersion();
 
 /**
  * @brief Get the temporary path

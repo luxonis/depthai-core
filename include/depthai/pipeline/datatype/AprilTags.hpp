@@ -99,7 +99,7 @@ class AprilTags : public Buffer, public TransformableCRTP<AprilTags> {
     }
 
     std::vector<AprilTag> aprilTags;
-    DEPTHAI_SERIALIZE(AprilTags, sequenceNum, ts, tsDevice, Transformable::transformation, aprilTags);
+    DEPTHAI_SERIALIZE(AprilTags, sequenceNum, ts, tsDevice, transformation, aprilTags);
 };
 
 }  // namespace dai

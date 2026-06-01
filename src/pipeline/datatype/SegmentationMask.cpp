@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "depthai/common/RotatedRect.hpp"
@@ -52,8 +53,8 @@ void SegmentationMask::setMask(const std::vector<std::uint8_t>& mask, size_t wid
     if(mask.size() != width * height) {
         throw std::runtime_error("SegmentationMask: data size does not match width*height");
     }
-    auto vecMask = mask;
-    setData(std::move(vecMask));
+    auto vecMask = mask;          // Avoid mutating shared storage by moving a copy of the input into a new buffer
+    setData(std::move(vecMask));  // Call the rvalue overload to allocate a new memory holder
     this->width = width;
     this->height = height;
 }
@@ -250,7 +251,7 @@ void SegmentationMask::setCvMask(cv::Mat mask) {
     } else {
         dataVec.insert(dataVec.begin(), mask.datastart, mask.dataend);
     }
-    setData(std::move(dataVec));
+    setData(std::move(dataVec));  // Call the rvalue overload to allocate a new memory holder
     this->width = mask.cols;
     this->height = mask.rows;
 }

@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <thread>
 #include <tuple>
@@ -287,6 +288,13 @@ class DeviceBase {
     std::optional<Version> getBootloaderVersion();
 
     /**
+     * Gets device OS version if supported by the connected device.
+     *
+     * @returns OS version string, for example "1.32.0"
+     */
+    std::string getOSVersion();
+
+    /**
      * Checks if devices pipeline is already running
      *
      * @returns True if running, false otherwise
@@ -442,6 +450,9 @@ class DeviceBase {
      * @returns DeviceId of connected device
      */
     std::string getDeviceId();
+
+    std::string getTemporaryTelemetryDeviceId() const;
+    std::optional<std::string> getActiveTelemetryPipelineId() const;
 
     /**
      * Sets logging level which decides printing level to standard output.
@@ -1203,6 +1214,10 @@ class DeviceBase {
     // private functions
     void init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
     void tryGetDevice();
+    void startTelemetryLifecycle(bool reconnect);
+    void stopTelemetryLifecycle();
+    void telemetryEventLoop();
+    void telemetryPingLoop();
     struct PrevInfo {
         DeviceInfo deviceInfo;
         Config cfg;
@@ -1269,6 +1284,19 @@ class DeviceBase {
 
     std::filesystem::path firmwarePath;
     bool dumpOnly = false;
+
+    // Telemetry
+    std::thread telemetryEventThread;
+    std::atomic<bool> telemetryEventRunning{false};
+    std::mutex telemetryEventStreamMtx;
+    std::shared_ptr<XLinkStream> telemetryEventStream;
+    std::thread telemetryPingThread;
+    std::atomic<bool> telemetryPingRunning{false};
+    std::condition_variable telemetryPingCondVar;
+    std::mutex telemetryPingMtx;
+    std::string tmpDeviceId;
+    std::chrono::steady_clock::time_point telemetryCreatedAt;
+    bool telemetryLifecycleStarted = false;
 
     // Started pipeline
     std::optional<PipelineSchema> pipelineSchema;

@@ -4,11 +4,16 @@
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/fmt/ostr.h>
 
+#include <array>
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <optional>
+#include <random>
+#include <sstream>
 #include <stdexcept>
 #include <system_error>
 #include <thread>
@@ -55,6 +60,7 @@
 #include "spdlog/spdlog.h"
 #include "utility/LogCollection.hpp"
 #include "utility/Logging.hpp"
+#include "utility/Telemetry.hpp"
 
 namespace {
 
@@ -83,6 +89,54 @@ std::optional<std::chrono::milliseconds> currentRpcTimeout() {
 
 bool isDebuggerEnabled() {
     return dai::utility::getEnvAs<bool>("DEPTHAI_DEBUGGER", false);
+}
+
+std::string lowercase(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return value;
+}
+
+std::string telemetryProtocolName(XLinkProtocol_t protocol) {
+    switch(protocol) {
+        case X_LINK_USB_VSC:
+        case X_LINK_USB_CDC:
+        case X_LINK_USB_EP:
+            return "usb";
+        case X_LINK_TCP_IP:
+        case X_LINK_TCP_IP_OR_LOCAL_SHDMEM:
+            return "ethernet";
+        case X_LINK_PCIE:
+        case X_LINK_IPC:
+        case X_LINK_LOCAL_SHDMEM:
+        case X_LINK_ANY_PROTOCOL:
+        case X_LINK_NMB_OF_PROTOCOLS:
+            return "unknown";
+        default:
+            return "unknown";
+    }
+}
+
+std::string telemetryProtocolSpeed(XLinkProtocol_t protocol, dai::UsbSpeed speed) {
+    if(protocol == X_LINK_USB_VSC || protocol == X_LINK_USB_CDC || protocol == X_LINK_USB_EP) {
+        switch(speed) {
+            case dai::UsbSpeed::SUPER:
+            case dai::UsbSpeed::SUPER_PLUS:
+                return "usb3";
+            case dai::UsbSpeed::LOW:
+            case dai::UsbSpeed::FULL:
+            case dai::UsbSpeed::HIGH:
+                return "usb2";
+            case dai::UsbSpeed::UNKNOWN:
+            default:
+                return "unknown";
+        }
+    }
+    return "unknown";
+}
+
+bool isLoopbackDeviceName(std::string name) {
+    name = lowercase(std::move(name));
+    return name == "localhost" || name == "::1" || name == "[::1]" || name.rfind("127.", 0) == 0;
 }
 
 }  // namespace
@@ -486,9 +540,152 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(de
 void DeviceBase::close() {
     std::unique_lock<std::mutex> lock(closedMtx);
     if(!closed) {
+        if(telemetryLifecycleStarted) {
+            // Match the shutdown behavior of the other long-lived XLink threads:
+            // request stop now, but only join after closeImpl() closes the
+            // connection and unblocks any blocking XLink reads.
+            telemetryEventRunning = false;
+            telemetryPingRunning = false;
+            telemetryPingCondVar.notify_all();
+        }
         closeImpl();
+        stopTelemetryLifecycle();
         closed = true;
     }
+}
+
+void DeviceBase::telemetryEventLoop() {
+    using namespace std::chrono_literals;
+
+    while(telemetryEventRunning) {
+        std::shared_ptr<XLinkStream> stream;
+        {
+            std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+            stream = telemetryEventStream;
+        }
+        if(!stream) {
+            std::this_thread::sleep_for(50ms);
+            continue;
+        }
+
+        try {
+            std::vector<std::uint8_t> data;
+            stream->read(data);
+            if(!telemetryEventRunning) break;
+
+            try {
+                auto payload = nlohmann::json::parse(data.begin(), data.end());
+                if(!payload.is_object()) {
+                    continue;
+                }
+
+                auto eventName = payload.value("event", std::string{});
+                auto properties = payload.value("properties", nlohmann::json::object());
+                if(!properties.is_object()) {
+                    properties = nlohmann::json::object();
+                }
+                dai::utility::Telemetry::getInstance().event(*this, eventName, std::move(properties));
+            } catch(const std::exception& ex) {
+                pimpl->logger.debug("Failed to parse telemetry event from device: {}", ex.what());
+            }
+        } catch(const XLinkReadError& ex) {
+            {
+                std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+                if(telemetryEventStream == stream) {
+                    telemetryEventStream.reset();
+                }
+            }
+            if(ex.status == X_LINK_COMMUNICATION_NOT_OPEN && !telemetryEventRunning) {
+                // Expected during shutdown once the XLink connection is closed
+                // while the telemetry thread is blocked in a stream read.
+                continue;
+            }
+            if(telemetryEventRunning) {
+                pimpl->logger.debug("Telemetry event thread exception caught: {}", ex.what());
+            }
+        } catch(const std::exception& ex) {
+            {
+                std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+                if(telemetryEventStream == stream) {
+                    telemetryEventStream.reset();
+                }
+            }
+            if(telemetryEventRunning) {
+                pimpl->logger.debug("Telemetry event thread exception caught: {}", ex.what());
+            }
+        }
+    }
+}
+
+void DeviceBase::telemetryPingLoop() {
+    using namespace std::chrono_literals;
+    constexpr auto TELEMETRY_PING_INTERVAL = 5min;
+
+    std::unique_lock<std::mutex> lock(telemetryPingMtx);
+    while(telemetryPingRunning) {
+        if(telemetryPingCondVar.wait_for(lock, TELEMETRY_PING_INTERVAL, [this]() { return !telemetryPingRunning.load(); })) {
+            break;
+        }
+
+        lock.unlock();
+        dai::utility::Telemetry::getInstance().event(*this, "depthai_ping", nlohmann::json::object());
+        lock.lock();
+    }
+}
+
+void DeviceBase::startTelemetryLifecycle(bool reconnect) {
+    if(reconnect || dumpOnly || telemetryLifecycleStarted || !dai::utility::Telemetry::isTelemetryEnabled()) {
+        return;
+    }
+
+    telemetryCreatedAt = std::chrono::steady_clock::now();
+    try {
+        tmpDeviceId = pimpl->rpcCallChecked<std::string>("getAnonymousTelemetryId");
+    } catch(const std::exception& ex) {
+        pimpl->logger.debug("Failed to get anonymous telemetry id from device: {}", ex.what());
+    }
+    if(tmpDeviceId.empty()) {
+        tmpDeviceId = utility::Telemetry::getTemporaryTelemetryDeviceId(deviceInfo.getDeviceId());
+    }
+    telemetryLifecycleStarted = true;
+    try {
+        nlohmann::json properties{
+            {"device_model", lowercase(getProductName())},
+            {"platform", lowercase(getPlatformAsString())},
+            {"protocol", telemetryProtocolName(deviceInfo.protocol)},
+            {"protocol_speed", telemetryProtocolSpeed(deviceInfo.protocol, getUsbSpeed())},
+            {"standalone", isLoopbackDeviceName(deviceInfo.name)},
+        };
+        properties["device_os_version"] = getOSVersion();
+        dai::utility::Telemetry::getInstance().event(*this, "depthai_device_constructor", std::move(properties));
+    } catch(const std::exception& ex) {
+        pimpl->logger.debug("Failed to emit device constructor telemetry: {}", ex.what());
+    }
+
+    telemetryEventRunning = true;
+    telemetryEventThread = std::thread(&DeviceBase::telemetryEventLoop, this);
+    telemetryPingRunning = true;
+    telemetryPingThread = std::thread(&DeviceBase::telemetryPingLoop, this);
+}
+
+void DeviceBase::stopTelemetryLifecycle() {
+    if(!telemetryLifecycleStarted) {
+        return;
+    }
+
+    telemetryEventRunning = false;
+    if(telemetryEventThread.joinable()) {
+        telemetryEventThread.join();
+    }
+    telemetryPingRunning = false;
+    telemetryPingCondVar.notify_all();
+    if(telemetryPingThread.joinable()) {
+        telemetryPingThread.join();
+    }
+
+    const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - telemetryCreatedAt).count();
+    dai::utility::Telemetry::getInstance().event(*this, "depthai_device_destructor", nlohmann::json{{"duration_ms", durationMs}});
+    telemetryLifecycleStarted = false;
 }
 
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
@@ -710,6 +907,10 @@ void DeviceBase::closeImpl() {
     // Close rpcStream
     pimpl->rpcStream = nullptr;
     pimpl->rpcClient = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+        telemetryEventStream = nullptr;
+    }
 
     if(!dumpOnly) {
         // Get crash dump if needed
@@ -976,6 +1177,10 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
     // prepare rpc for both attached and host controlled mode
     pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
+    {
+        std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+        telemetryEventStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_TELEMETRY, device::XLINK_USB_BUFFER_MAX_SIZE);
+    }
     auto rpcStream = pimpl->rpcStream;
 
     pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
@@ -1186,6 +1391,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             // Starts and waits for initial timesync
             setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
             pimpl->rpcCallCheckedVoid("onInit");
+            startTelemetryLifecycle(reconnect);
         } catch(const std::exception&) {
             // close device (cleanup)
             close();
@@ -1326,6 +1532,20 @@ std::string DeviceBase::getMxId() {
 
 std::string DeviceBase::getDeviceId() {
     return pimpl->rpcCallChecked<std::string>("getMxId");
+}
+
+std::string DeviceBase::getTemporaryTelemetryDeviceId() const {
+    if(!tmpDeviceId.empty()) {
+        return tmpDeviceId;
+    }
+    return utility::Telemetry::getTemporaryTelemetryDeviceId(deviceInfo.getDeviceId());
+}
+
+std::optional<std::string> DeviceBase::getActiveTelemetryPipelineId() const {
+    if(auto pipeline = pipelinePtr.lock()) {
+        return pipeline->telemetryPipelineId;
+    }
+    return std::nullopt;
 }
 
 std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
@@ -1540,6 +1760,11 @@ std::optional<Version> DeviceBase::getBootloaderVersion() {
     return bootloaderVersion;
 }
 
+std::string DeviceBase::getOSVersion() {
+    isClosed();
+    return pimpl->rpcCallChecked<std::string>("getOSVersion");
+}
+
 bool DeviceBase::isPipelineRunning() {
     return pimpl->rpcCallChecked<bool>("isPipelineRunning");
 }
@@ -1625,11 +1850,15 @@ LogLevel DeviceBase::getLogOutputLevel() {
 }
 
 bool DeviceBase::setIrLaserDotProjectorIntensity(float intensity, int mask) {
-    return pimpl->rpcCallChecked<bool>("setIrLaserDotProjectorBrightness", intensity, mask, true);
+    auto success = pimpl->rpcCallChecked<bool>("setIrLaserDotProjectorBrightness", intensity, mask, true);
+    dai::utility::Telemetry::getInstance().event(*this, "depthai_ir_intensity", nlohmann::json{{"value", intensity}});
+    return success;
 }
 
 bool DeviceBase::setIrFloodLightIntensity(float intensity, int mask) {
-    return pimpl->rpcCallChecked<bool>("setIrFloodLightBrightness", intensity, mask, true);
+    auto success = pimpl->rpcCallChecked<bool>("setIrFloodLightBrightness", intensity, mask, true);
+    dai::utility::Telemetry::getInstance().event(*this, "depthai_flood_intensity", nlohmann::json{{"value", intensity}});
+    return success;
 }
 
 std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {

@@ -62,6 +62,8 @@ jobs:
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+      CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
+      CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_tsan_tests:
     needs: [precheck]
@@ -73,6 +75,8 @@ jobs:
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+      CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
+      CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_asan-ubsan_tests:
     needs: [precheck]
@@ -84,6 +88,8 @@ jobs:
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+      CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
+      CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_windows_tests:
     needs: [precheck]
@@ -95,6 +101,8 @@ jobs:
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+      CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
+      CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_replay_tests:
     needs: [precheck]
@@ -109,6 +117,8 @@ jobs:
     secrets:
       CONTAINER_REGISTRY: ${{ secrets.CONTAINER_REGISTRY }}
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+      CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
+      CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
 
   run_vanilla_mac_tests:
     needs: [precheck]
@@ -120,3 +130,5 @@ jobs:
       luxonis_os_versions_to_test_usb: ${{ github.event_name != 'pull_request' && '["1.27.1"]' || '[]' }}
     secrets:
       HIL_PAT_TOKEN: ${{ secrets.HIL_PAT_TOKEN }}
+      CI_TELEMETRY_URL: ${{ secrets.CI_TELEMETRY_URL }}
+      CI_TELEMETRY_API_KEY: ${{ secrets.CI_TELEMETRY_API_KEY }}
