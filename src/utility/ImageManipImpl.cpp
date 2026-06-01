@@ -936,7 +936,7 @@ dai::impl::UndistortOpenCvImpl::BuildStatus dai::impl::UndistortOpenCvImpl::buil
     return BuildStatus::NOT_USED;
 }
 
-int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
+static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
     if(bpp == 1) {
         switch(channels) {
             case 1:

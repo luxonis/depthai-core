@@ -291,14 +291,14 @@ class Undistort {
     std::shared_ptr<spdlog::async_logger> logger;
 
     std::vector<float> distCoeffs;
-    dai::ImgFrame::Type type;
-    uint32_t srcWidth;
-    uint32_t srcHeight;
-    uint32_t dstWidth;
-    uint32_t dstHeight;
+    dai::ImgFrame::Type type = dai::ImgFrame::Type::NONE;
+    uint32_t srcWidth = 0;
+    uint32_t srcHeight = 0;
+    uint32_t dstWidth = 0;
+    uint32_t dstHeight = 0;
 
-    std::array<float, 9> cameraMatrix;
-    std::array<float, 9> newCameraMatrix;
+    std::array<float, 9> cameraMatrix{};
+    std::array<float, 9> newCameraMatrix{};
 };
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
