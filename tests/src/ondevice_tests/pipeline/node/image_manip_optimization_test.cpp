@@ -1,10 +1,42 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <functional>
+#include <string>
+#include <vector>
 
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/properties/ImageManipProperties.hpp"
+
+namespace {
+
+struct ImageSimilarityMetrics {
+    double blockHistogramDifference = 0.0;
+    double normalizedL1Difference = 0.0;
+    double psnr = 0.0;
+};
+
+struct ManipComparisonCase {
+    std::string name;
+    cv::Size expectedOutputSize;
+    std::function<void(dai::ImageManipConfig&)> configure;
+};
+
+std::string toString(dai::ImgFrame::Type type) {
+    switch(type) {
+        case dai::ImgFrame::Type::NV12:
+            return "NV12";
+        case dai::ImgFrame::Type::GRAY8:
+            return "GRAY8";
+        case dai::ImgFrame::Type::RGB888i:
+            return "RGB888i";
+        case dai::ImgFrame::Type::RGB888p:
+            return "RGB888p";
+        default:
+            return std::to_string(static_cast<int>(type));
+    }
+}
 
 double calculateImageDifference(const cv::Mat& img1, const cv::Mat& img2, int blockSize = 8) {
     if(img1.empty() || img2.empty()) {
@@ -69,6 +101,116 @@ double calculateImageDifference(const cv::Mat& img1, const cv::Mat& img2, int bl
 
     return count > 0 ? totalDiff / count : 0.0;
 }
+
+ImageSimilarityMetrics calculateSimilarityMetrics(const cv::Mat& reference, const cv::Mat& candidate) {
+    ImageSimilarityMetrics metrics;
+    metrics.blockHistogramDifference = calculateImageDifference(reference, candidate);
+    metrics.normalizedL1Difference = cv::norm(reference, candidate, cv::NORM_L1) / (reference.total() * reference.channels() * 255.0);
+    metrics.psnr = cv::PSNR(reference, candidate);
+    return metrics;
+}
+
+void requireImagesSimilar(const cv::Mat& cpuImage, const cv::Mat& gpuImage) {
+    REQUIRE(cpuImage.size() == gpuImage.size());
+    REQUIRE(cpuImage.type() == gpuImage.type());
+    REQUIRE(cpuImage.channels() == gpuImage.channels());
+
+    const auto metrics = calculateSimilarityMetrics(cpuImage, gpuImage);
+    INFO("Block histogram difference: " << metrics.blockHistogramDifference);
+    INFO("Normalized L1 difference: " << metrics.normalizedL1Difference);
+    INFO("PSNR: " << metrics.psnr);
+
+    REQUIRE(metrics.blockHistogramDifference < 1.0);
+    REQUIRE(metrics.normalizedL1Difference < 0.08);
+    REQUIRE(metrics.psnr > 20.0);
+}
+
+std::shared_ptr<dai::Pipeline> createPipelineWithGpuOrSkip() {
+    std::shared_ptr<dai::Pipeline> pipeline;
+    try {
+        pipeline = std::make_shared<dai::Pipeline>();
+    } catch(const std::exception& e) {
+        SKIP(std::string("No device available: ") + e.what());
+    }
+
+    auto device = pipeline->getDefaultDevice();
+    if(device == nullptr) {
+        SKIP("No device available");
+    }
+    if(!device->hasGPU()) {
+        SKIP("GPU not available on this device");
+    }
+
+    return pipeline;
+}
+
+std::shared_ptr<dai::ImgFrame> createInputFrame(const cv::Mat& inputImage, dai::ImgFrame::Type type) {
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    inputFrame->setCvFrame(inputImage, type);
+    return inputFrame;
+}
+
+void runCpuGpuBackendComparison(dai::Pipeline& pipeline, dai::ImgFrame::Type type, const std::vector<ManipComparisonCase>& cases) {
+    auto cpuManip = pipeline.create<dai::node::ImageManip>()->build();
+    auto gpuManip = pipeline.create<dai::node::ImageManip>()->build();
+
+    for(const auto& manip : {cpuManip, gpuManip}) {
+        manip->inputConfig.setReusePreviousMessage(false);
+        manip->inputConfig.setWaitForMessage(true);
+        manip->setMaxOutputFrameSize(8 * 1024 * 1024);
+        manip->setNumFramesPool(1);
+        manip->setPerformanceMode(dai::ImageManipProperties::PerformanceMode::PERFORMANCE);
+    }
+    cpuManip->setBackend(dai::ImageManipProperties::Backend::CPU);
+    gpuManip->setBackend(dai::ImageManipProperties::Backend::GPU);
+
+    auto cpuConfigQueue = cpuManip->inputConfig.createInputQueue();
+    auto cpuInputQueue = cpuManip->inputImage.createInputQueue();
+    auto cpuOutputQueue = cpuManip->out.createOutputQueue(4);
+    auto gpuConfigQueue = gpuManip->inputConfig.createInputQueue();
+    auto gpuInputQueue = gpuManip->inputImage.createInputQueue();
+    auto gpuOutputQueue = gpuManip->out.createOutputQueue(4);
+
+    auto inputImage = cv::imread(LENNA_PATH);
+    REQUIRE_FALSE(inputImage.empty());
+    cv::resize(inputImage, inputImage, cv::Size(960, 540));
+
+    pipeline.start();
+
+    for(const auto& testCase : cases) {
+        INFO("Input type: " << toString(type));
+        INFO("Operation: " << testCase.name);
+
+        auto cpuConfig = std::make_shared<dai::ImageManipConfig>();
+        auto gpuConfig = std::make_shared<dai::ImageManipConfig>();
+        testCase.configure(*cpuConfig);
+        testCase.configure(*gpuConfig);
+
+        cpuConfigQueue->send(cpuConfig);
+        gpuConfigQueue->send(gpuConfig);
+        cpuInputQueue->send(createInputFrame(inputImage, type));
+        gpuInputQueue->send(createInputFrame(inputImage, type));
+
+        auto cpuFrame = cpuOutputQueue->get<dai::ImgFrame>();
+        auto gpuFrame = gpuOutputQueue->get<dai::ImgFrame>();
+
+        REQUIRE(cpuFrame != nullptr);
+        REQUIRE(gpuFrame != nullptr);
+        REQUIRE(cpuFrame->getWidth() == testCase.expectedOutputSize.width);
+        REQUIRE(cpuFrame->getHeight() == testCase.expectedOutputSize.height);
+        REQUIRE(gpuFrame->getWidth() == testCase.expectedOutputSize.width);
+        REQUIRE(gpuFrame->getHeight() == testCase.expectedOutputSize.height);
+        REQUIRE(cpuFrame->getWidth() == gpuFrame->getWidth());
+        REQUIRE(cpuFrame->getHeight() == gpuFrame->getHeight());
+        REQUIRE(cpuFrame->getType() == gpuFrame->getType());
+
+        requireImagesSimilar(cpuFrame->getCvFrame(), gpuFrame->getCvFrame());
+    }
+
+    pipeline.stop();
+}
+
+}  // namespace
 
 TEST_CASE("Host and Device impl comparison") {
     dai::Pipeline p;
@@ -255,6 +397,61 @@ TEST_CASE("Host and Device impl comparison") {
     }
 
     p.stop();
+}
+
+TEST_CASE("ImageManip GPU backend matches CPU backend", "[ImageManip][GPU][ondevice]") {
+    const std::vector<dai::ImgFrame::Type> inputTypes = {
+        dai::ImgFrame::Type::NV12,
+        dai::ImgFrame::Type::GRAY8,
+        dai::ImgFrame::Type::RGB888i,
+    };
+    const std::vector<ManipComparisonCase> cases = {
+        {
+            "stretch down",
+            cv::Size(640, 360),
+            [](dai::ImageManipConfig& cfg) { cfg.setOutputSize(640, 360, dai::ImageManipConfig::ResizeMode::STRETCH); },
+        },
+        {
+            "stretch up",
+            cv::Size(1280, 720),
+            [](dai::ImageManipConfig& cfg) { cfg.setOutputSize(1280, 720, dai::ImageManipConfig::ResizeMode::STRETCH); },
+        },
+        {
+            "crop and resize",
+            cv::Size(512, 256),
+            [](dai::ImageManipConfig& cfg) {
+                cfg.addCrop(140, 60, 680, 340);
+                cfg.setOutputSize(512, 256, dai::ImageManipConfig::ResizeMode::STRETCH);
+            },
+        },
+        {
+            "affine shear",
+            cv::Size(960, 540),
+            [](dai::ImageManipConfig& cfg) {
+                cfg.addTransformAffine({1.0f, 0.08f, -0.06f, 1.0f});
+                cfg.setOutputSize(960, 540, dai::ImageManipConfig::ResizeMode::NONE);
+                cfg.setBackgroundColor(8, 24, 40);
+            },
+        },
+        {
+            "affine rotated crop",
+            cv::Size(520, 320),
+            [](dai::ImageManipConfig& cfg) { cfg.addCropRotatedRect(dai::RotatedRect(dai::Point2f(470.0f, 255.0f), dai::Size2f(520.0f, 320.0f), 18.0f)); },
+        },
+        {
+            "letterbox with background",
+            cv::Size(700, 700),
+            [](dai::ImageManipConfig& cfg) {
+                cfg.setOutputSize(700, 700, dai::ImageManipConfig::ResizeMode::LETTERBOX);
+                cfg.setBackgroundColor(16, 32, 192);
+            },
+        },
+    };
+
+    for(const auto type : inputTypes) {
+        auto pipeline = createPipelineWithGpuOrSkip();
+        runCpuGpuBackendComparison(*pipeline, type, cases);
+    }
 }
 
 void runManipTests(dai::ImageManipProperties::Backend backend, dai::ImageManipProperties::PerformanceMode perfMode, dai::ImgFrame::Type type) {

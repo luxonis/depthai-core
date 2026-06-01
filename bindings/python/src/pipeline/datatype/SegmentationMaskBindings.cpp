@@ -39,7 +39,7 @@ py::array_t<std::uint8_t> toNumpyMask(const dai::SegmentationMask& mask, const s
 void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<SegmentationMask, Py<SegmentationMask>, Buffer, std::shared_ptr<SegmentationMask>> segmentationMask(
+    py::class_<SegmentationMask, Py<SegmentationMask>, Buffer, Transformable, std::shared_ptr<SegmentationMask>> segmentationMask(
         m, "SegmentationMask", DOC(dai, SegmentationMask));
 
     ///////////////////////////////////////////////////////////////////////
@@ -112,6 +112,7 @@ void bind_segmentationmask(pybind11::module& m, void* pCallstack) {
             py::arg("label"),
             DOC(dai, SegmentationMask, getMaskByLabel))
         .def("hasValidMask", &SegmentationMask::hasValidMask, DOC(dai, SegmentationMask, hasValidMask))
+        .def("transformTo", &SegmentationMask::transformTo, py::arg("target"), DOC(dai, SegmentationMask, transformTo))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def("setCvMask", &SegmentationMask::setCvMask, py::arg("mask"), DOC(dai, SegmentationMask, setCvMask))
         .def(

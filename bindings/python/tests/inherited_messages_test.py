@@ -28,10 +28,25 @@ message_types = [
     dai.Tracklets
 ]
 
+transformable_message_types = [
+    dai.AprilTags,
+    dai.ImgDetections,
+    dai.PointCloudData,
+    dai.SegmentationMask,
+    dai.SpatialImgDetections,
+    dai.Tracklets,
+]
+
 def test_constructable():
     for message_type in message_types:
         message = message_type()
         assert message is not None
+
+def test_transformable_messages_are_instances_of_both_bases():
+    for message_type in transformable_message_types:
+        message = message_type()
+        assert isinstance(message, dai.Buffer)
+        assert isinstance(message, dai.Transformable)
 
 
 def test_messages_can_be_inherited():
@@ -62,6 +77,35 @@ def test_python_is_kept_alive():
             message : CustomMessage = messageQueue.get()
             assert isinstance(message, CustomMessage)
             assert message.test_field == i
+
+def test_transformable_buffer_dispatches_to_python_override():
+    class CustomTransformableBuffer(dai.TransformableBuffer):
+        def __init__(self):
+            super().__init__()
+            self.override_called = False
+
+        def transformTo(self, target):
+            self.override_called = True
+            transformed = CustomTransformableBuffer()
+            transformed.setTransformation(target)
+            transformed.override_called = True
+            return transformed
+
+    source = dai.ImgTransformation(640, 480)
+    target = dai.ImgTransformation(1280, 720)
+
+    message = CustomTransformableBuffer()
+    message.setTransformation(source)
+
+    transformed = dai.TransformableBuffer.transformTo(message, target)
+
+    assert isinstance(message, dai.Buffer)
+    assert isinstance(message, dai.Transformable)
+    assert isinstance(message, dai.TransformableBuffer)
+    assert isinstance(transformed, CustomTransformableBuffer)
+    assert message.override_called
+    assert message.getTransformation().isEqualTransformation(source)
+    assert transformed.getTransformation().isEqualTransformation(target)
 
 def test_with_host_nodes():
     import time

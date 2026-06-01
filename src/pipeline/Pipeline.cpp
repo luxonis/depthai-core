@@ -20,6 +20,9 @@
 #include "utility/Platform.hpp"
 #include "utility/RecordReplayImpl.hpp"
 #include "utility/Serialization.hpp"
+#include "utility/Telemetry.hpp"
+#include "utility/Uuid.hpp"
+#include "utility/depthai_nodes_names.hpp"
 
 // shared
 #include "depthai/pipeline/NodeConnectionSchema.hpp"
@@ -92,6 +95,71 @@ std::optional<PipelineAutoCalibrationMode> parseAutoCalibrationMode(std::string_
 }
 #endif
 
+PipelineSchema anonymizeCustomNodesForTelemetry(PipelineSchema schema) {
+    for(auto& node : schema.nodes) {
+        const auto isDepthaiNodesNode =
+            std::find(utility::depthaiNodesNames.begin(), utility::depthaiNodesNames.end(), node.second.name) != utility::depthaiNodesNames.end();
+        if(!node.second.builtInNode && !isDepthaiNodesNode) {
+            node.second.name = "CUSTOM";
+        }
+    }
+    return schema;
+}
+
+bool redactTelemetryNodeProperties(const std::string& nodeName) {
+    return nodeName == "CUSTOM" || nodeName == "DetectionParser" || nodeName == "SegmentationParser";
+}
+
+nlohmann::json makeTelemetrySchemaJson(PipelineSchema schema) {
+    auto telemetrySchema = nlohmann::json(anonymizeCustomNodesForTelemetry(std::move(schema)));
+    for(auto& node : telemetrySchema["nodes"]) {
+        auto& nodeInfo = node.at(1);
+        const auto nodeName = nodeInfo.value("name", std::string{});
+        if(redactTelemetryNodeProperties(nodeName)) {
+            nodeInfo["properties"] = "REDACTED";
+        }
+    }
+    return telemetrySchema;
+}
+
+nlohmann::json makeTelemetryNodePropertiesJson(const nlohmann::json& properties) {
+    if(properties.is_string() && properties.get<std::string>() == "REDACTED") {
+        return nlohmann::json{{"redacted", true}};
+    }
+    if(properties.is_object()) {
+        return properties;
+    }
+    if(!properties.is_array() || properties.empty()) {
+        return nlohmann::json::object();
+    }
+
+    try {
+        const auto propertyBytes = properties.get<std::vector<std::uint8_t>>();
+        if(propertyBytes.empty()) {
+            return nlohmann::json::object();
+        }
+        auto parsedProperties = nlohmann::json::parse(propertyBytes.begin(), propertyBytes.end());
+        if(parsedProperties.is_object()) {
+            return parsedProperties;
+        }
+    } catch(const std::exception& ex) {
+        logger::debug("Failed to parse node telemetry properties as JSON: {}", ex.what());
+    }
+    return nlohmann::json::object();
+}
+
+void emitTelemetryNodeCreatedEvents(const Pipeline& pipeline, const nlohmann::json& telemetrySchema) {
+    for(const auto& node : telemetrySchema.at("nodes")) {
+        const auto& nodeInfo = node.at(1);
+        dai::utility::Telemetry::getInstance().event(pipeline,
+                                                     "depthai_node_created",
+                                                     nlohmann::json{
+                                                         {"name", nodeInfo.value("name", std::string{})},
+                                                         {"properties", makeTelemetryNodePropertiesJson(nodeInfo.value("properties", nlohmann::json{}))},
+                                                     });
+    }
+}
+
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHandler& rhs, CameraBoardSocket socket) {
     if(!lhs.hasCameraCalibration(socket) || !rhs.hasCameraCalibration(socket)) {
@@ -128,6 +196,10 @@ bool hasDifferentDistortion(const CalibrationHandler& lhs, const CalibrationHand
 namespace fs = std::filesystem;
 
 std::mutex pipelineBuildMutex;
+
+std::string PipelineImpl::createTelemetryPipelineId() {
+    return utility::generateUuidV7();
+}
 
 Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
@@ -325,6 +397,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type, bool incl
         info.alias = node->getAlias();
         info.parentId = node->parentId;
         info.deviceNode = !node->runOnHost();
+        info.builtInNode = node->isBuiltInNode();
         if(!node->runOnHost()) info.deviceId = defaultDeviceId;
 
         const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
@@ -1113,6 +1186,13 @@ void PipelineImpl::start() {
     // Indicate that pipeline is running
     running = true;
 
+    // Add pointer to the pipeline to the device before device-side startup can emit telemetry.
+    if(defaultDevice) {
+        std::shared_ptr<PipelineImpl> shared = shared_from_this();
+        const auto weak = std::weak_ptr<PipelineImpl>(shared);
+        defaultDevice->pipelinePtr = weak;
+    }
+
     // Start device pipeline if not host-only
     if(!isHostOnly()) {
         DAI_CHECK_V(defaultDevice, "Default device is null");
@@ -1126,12 +1206,17 @@ void PipelineImpl::start() {
         }
     }
 
-    // Add pointer to the pipeline to the device
-    if(defaultDevice) {
-        std::shared_ptr<PipelineImpl> shared = shared_from_this();
-        const auto weak = std::weak_ptr<PipelineImpl>(shared);
-        defaultDevice->pipelinePtr = weak;
-    }
+    telemetryPipelineStartedAt = std::chrono::steady_clock::now();
+
+    const auto pipeline = Pipeline(shared_from_this());
+    const auto telemetrySchema = makeTelemetrySchemaJson(getPipelineSchema(SerializationType::JSON, false));
+    emitTelemetryNodeCreatedEvents(pipeline, telemetrySchema);
+    dai::utility::Telemetry::getInstance().event(pipeline,
+                                                 "depthai_pipeline_start",
+                                                 nlohmann::json{
+                                                     {"host_only", isHostOnly()},
+                                                     {"pipeline_schema", telemetrySchema},
+                                                 });
 
     // Setup pipeline state trace logging if enabled
     if(buildingOnHost && utility::getEnvAs<bool>("DEPTHAI_PIPELINE_DEBUGGING", false)) {
@@ -1192,6 +1277,28 @@ void PipelineImpl::stop() {
     if(!running) {
         return;
     }
+
+    if(telemetryPipelineStartedAt.has_value()) {
+        const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - *telemetryPipelineStartedAt).count();
+        nlohmann::json properties{
+            {"host_only", isHostOnly()},
+            {"pipeline_id", telemetryPipelineId},
+            {"duration_ms", durationMs},
+        };
+        try {
+            if(auto self = weak_from_this().lock()) {
+                dai::utility::Telemetry::getInstance().event(Pipeline(std::move(self)), "depthai_pipeline_stop", std::move(properties));
+            } else if(defaultDevice) {
+                dai::utility::Telemetry::getInstance().event(*defaultDevice, "depthai_pipeline_stop", std::move(properties));
+            } else {
+                dai::utility::Telemetry::getInstance().event("depthai_pipeline_stop", std::move(properties));
+            }
+        } catch(const std::exception& ex) {
+            Logging::getInstance().logger.debug("Failed to emit pipeline stop telemetry: {}", ex.what());
+        }
+        telemetryPipelineStartedAt.reset();
+    }
+
     // Stops the pipeline execution
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {

@@ -341,9 +341,11 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
+    src/pipeline/node/GPUStereo.cpp
     src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
+    src/pipeline/datatype/Transformable.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/Extrinsics.cpp
@@ -370,6 +372,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/IMUData.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
     src/pipeline/datatype/NeuralDepthConfig.cpp
+    src/pipeline/datatype/GPUStereoConfig.cpp
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
@@ -407,6 +410,8 @@ set(TARGET_CORE_SOURCES
     src/utility/McapImpl.cpp
     src/utility/Environment.cpp
     src/utility/Compression.cpp
+    src/utility/Telemetry.cpp
+    src/utility/Uuid.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
     src/utility/Checksum.cpp

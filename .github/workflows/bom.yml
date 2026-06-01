@@ -116,4 +116,4 @@ jobs:
           if [[ "${{ github.event.inputs.usb_test }}" == 'true' ]]; then
             USB_TEST="usb" #TODO: this is a bit of a hack to pass the USB testing argument, can be refactored when more test arguments are needed
           fi
-          exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait $ADDITIONAL_OPTIONS --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "./tests/run_tests_entrypoint.sh rvc4$RGB$USB_TEST"
+          exec hil $HOLD_RESERVATION --models "$MODELS" $RESERVATION_OPTION --wait $ADDITIONAL_OPTIONS --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4$RGB$USB_TEST"

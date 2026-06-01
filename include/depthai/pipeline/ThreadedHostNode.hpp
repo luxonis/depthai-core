@@ -32,6 +32,6 @@ class ThreadedHostNode : public ThreadedNode {
  * @endcode
  */
 template <typename T>
-using CustomThreadedNode = NodeCRTP<ThreadedHostNode, T>;
+using CustomThreadedNode = NodeCRTP<ThreadedHostNode, T, false>;
 }  // namespace node
 }  // namespace dai

@@ -350,7 +350,6 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
     if(!areAligned) centerPoint = depthTransformation->remapPointTo(detectionsTransformation, centerPoint);
     dai::Point3f spatialCoordinates =
         calculateSpatialCoordinates(depthStats.calculateDepth(calculationAlgorithm), detectionsTransformation.getIntrinsicMatrix(), centerPoint);
-    logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
     dai::SpatialImgDetection spatialDetection = createSpatialDetection(detection, spatialCoordinates);
 
@@ -418,9 +417,6 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     }
 
     std::vector<dai::ImgDetection> imgDetectionsVector = imgDetections.detections;
-    if(imgDetectionsVector.size() == 0) {
-        return;
-    }
     spatialDetections.detections.resize(imgDetectionsVector.size());
 
     const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config.globalCalculationAlgorithm;
@@ -432,7 +428,11 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     const std::size_t segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
 
     span<const std::uint8_t> maskSpan = imgDetections.getData();
-    const bool passthroughSegmentation = config.segmentationPassthrough && !maskSpan.empty();
+
+    if(imgDetectionsVector.size() == 0) {
+        return;
+    }
+
     if(!config.useSegmentation) {  // ignore segmentation mask even if provided
         maskSpan = span<const std::uint8_t>{};
     }
@@ -457,12 +457,6 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                                                                                static_cast<int>(segmentationMaskHeight),
                                                                                logger);
         spatialDetections.detections[i] = spatialImgDetection;
-    }
-
-    if(passthroughSegmentation) {
-        spatialDetections.data = imgDetections.data;
-        spatialDetections.segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
-        spatialDetections.segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
     }
 }
 

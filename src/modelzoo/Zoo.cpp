@@ -14,10 +14,13 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
+#include <optional>
+#include <string_view>
 
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
 #include "utility/Platform.hpp"
+#include "utility/Telemetry.hpp"
 #include "utility/YamlHelpers.hpp"
 #include "utility/sha1.hpp"
 
@@ -188,6 +191,22 @@ class ZooManager {
     nlohmann::json fetchModelDownloadLinks();
 
     /**
+     * @brief Fetch model details from Hub
+     *
+     * @param modelId: Model ID returned by the download endpoint
+     * @return nlohmann::json: JSON with model details
+     */
+    nlohmann::json fetchModelDetails(const std::string& modelId) const;
+
+    /**
+     * @brief Create telemetry properties for a successfully loaded model
+     *
+     * @param responseJson: JSON returned by the download endpoint
+     * @return std::optional<nlohmann::json>: Telemetry properties, if model details could be fetched
+     */
+    std::optional<nlohmann::json> getModelLoadedTelemetryProperties(const nlohmann::json& responseJson) const;
+
+    /**
      * @brief Get files in folder
      *
      * @return std::vector<std::filesystem::path>: Files in folder
@@ -265,6 +284,43 @@ bool checkIsErrorHub(const cpr::Response& response) {
 
     // All checks passed - no errors yay
     return false;
+}
+
+cpr::Header makeHubHeaders(const std::string& apiKey) {
+    cpr::Header headers = {
+        {"Content-Type", "application/json"},
+    };
+    if(!apiKey.empty()) {
+        headers["Authorization"] = "Bearer " + apiKey;
+    }
+    return headers;
+}
+
+std::string getModelDetailsEndpoint(const std::string& modelId) {
+    auto endpoint = dai::modelzoo::getDownloadEndpoint();
+    while(!endpoint.empty() && endpoint.back() == '/') {
+        endpoint.pop_back();
+    }
+
+    constexpr std::string_view downloadSuffix = "/download";
+    if(endpoint.size() >= downloadSuffix.size() && endpoint.compare(endpoint.size() - downloadSuffix.size(), downloadSuffix.size(), downloadSuffix) == 0) {
+        endpoint.erase(endpoint.size() - downloadSuffix.size());
+    }
+
+    return endpoint + "/" + modelId;
+}
+
+void emitZooModelLoadedTelemetry(std::optional<nlohmann::json> properties, bool fromCache) {
+    if(!properties.has_value()) {
+        return;
+    }
+
+    try {
+        (*properties)["from_cache"] = fromCache;
+        utility::Telemetry::getInstance().event("depthai_zoo_model_loaded", std::move(*properties));
+    } catch(const std::exception& ex) {
+        logger::debug("Failed to emit zoo model loaded telemetry: {}", ex.what());
+    }
 }
 
 std::vector<fs::path> ZooManager::getFilesInFolder(const fs::path& folder) const {
@@ -364,12 +420,7 @@ nlohmann::json ZooManager::fetchModelDownloadLinks() {
     }
 
     // Set the Authorization headers
-    cpr::Header headers = {
-        {"Content-Type", "application/json"},
-    };
-    if(!apiKey.empty()) {
-        headers["Authorization"] = "Bearer " + apiKey;
-    }
+    auto headers = makeHubHeaders(apiKey);
 
     // Send HTTP GET request to REST endpoint
     cpr::Response response = cpr::Get(cpr::Url{dai::modelzoo::getDownloadEndpoint()}, headers, params);
@@ -381,6 +432,41 @@ nlohmann::json ZooManager::fetchModelDownloadLinks() {
     // Extract download links from response
     nlohmann::json responseJson = nlohmann::json::parse(response.text);
     return responseJson;
+}
+
+nlohmann::json ZooManager::fetchModelDetails(const std::string& modelId) const {
+    const auto timeoutMs = utility::getEnvAs<int>("DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT", 1000);
+    cpr::Response response = cpr::Get(cpr::Url{getModelDetailsEndpoint(modelId)}, makeHubHeaders(apiKey), cpr::Timeout{timeoutMs});
+    if(response.status_code != cpr::status::HTTP_OK) {
+        throw std::runtime_error(generateErrorMessageHub(response));
+    }
+
+    auto responseJson = nlohmann::json::parse(response.text);
+    if(!responseJson.is_object()) {
+        throw std::runtime_error("Model details response is not a JSON object");
+    }
+    return responseJson;
+}
+
+std::optional<nlohmann::json> ZooManager::getModelLoadedTelemetryProperties(const nlohmann::json& responseJson) const {
+    const auto modelId = responseJson.value("model_id", std::string{});
+    if(modelId.empty()) {
+        logger::debug("Skipping zoo model loaded telemetry: download response does not contain model_id");
+        return std::nullopt;
+    }
+
+    try {
+        const auto modelDetails = fetchModelDetails(modelId);
+        const auto isOfficial = modelDetails.value("is_official", false);
+        return nlohmann::json{
+            {"is_official", isOfficial},
+            {"model_slug", isOfficial ? modelDetails.value("slug", std::string{}) : "REDACTED"},
+            {"team_slug", isOfficial ? modelDetails.value("team_slug", std::string{}) : "REDACTED"},
+        };
+    } catch(const std::exception& ex) {
+        logger::debug("Failed to fetch zoo model details for telemetry: {}", ex.what());
+        return std::nullopt;
+    }
 }
 
 void ZooManager::downloadModel(const nlohmann::json& responseJson, std::unique_ptr<cpr::ProgressCallback> cprCallback) {
@@ -618,6 +704,7 @@ fs::path getModelFromZoo(
     // Check if internet is available
     bool internetIsAvailable = performInternetCheck && ZooManager::connectionToZooAvailable();
     nlohmann::json responseJson;
+    std::optional<nlohmann::json> modelLoadedTelemetryProperties;
 
     logger::info(
         "Model is cached: {} | Metadata present: {} | Use cached model: {} | Perform internet check: {} | Internet is available: {} | useCached: {} | has "
@@ -632,6 +719,9 @@ fs::path getModelFromZoo(
 
     if(internetIsAvailable) {
         responseJson = zooManager.fetchModelDownloadLinks();
+        if(utility::Telemetry::isTelemetryEnabled()) {
+            modelLoadedTelemetryProperties = zooManager.getModelLoadedTelemetryProperties(responseJson);
+        }
     }
 
     // Use cached model if present and useCached is true
@@ -650,6 +740,7 @@ fs::path getModelFromZoo(
         if(responseHash == metadataHash) {
             fs::path modelPath = zooManager.loadModelFromCache();
             logger::info("Using cached model located at {}", modelPath);
+            emitZooModelLoadedTelemetry(std::move(modelLoadedTelemetryProperties), true);
             return modelPath;
         }
 
@@ -689,6 +780,7 @@ fs::path getModelFromZoo(
 
     // Find path to model in cache
     fs::path modelPath = zooManager.loadModelFromCache();
+    emitZooModelLoadedTelemetry(std::move(modelLoadedTelemetryProperties), false);
     return modelPath;
 }
 

@@ -7,6 +7,7 @@ void bind_adatatype(pybind11::module& m, void* pCallstack);
 void bind_apriltagconfig(pybind11::module& m, void* pCallstack);
 void bind_apriltags(pybind11::module& m, void* pCallstack);
 void bind_buffer(pybind11::module& m, void* pCallstack);
+void bind_transformable(pybind11::module& m, void* pCallstack);
 void bind_cameracontrol(pybind11::module& m, void* pCallstack);
 void bind_edgedetectorconfig(pybind11::module& m, void* pCallstack);
 void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack);
@@ -20,6 +21,7 @@ void bind_imudata(pybind11::module& m, void* pCallstack);
 void bind_message_group(pybind11::module& m, void* pCallstack);
 void bind_nndata(pybind11::module& m, void* pCallstack);
 void bind_neuraldepthconfig(pybind11::module& m, void* pCallstack);
+void bind_gpustereoconfig(pybind11::module& m, void* pCallstack);
 void bind_spatialimgdetections(pybind11::module& m, void* pCallstack);
 void bind_segmentationparserconfig(pybind11::module& m, void* pCallstack);
 void bind_segmentationmask(pybind11::module& m, void* pCallstack);
@@ -56,6 +58,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind all datatypes (order matters)
     callstack.push_front(bind_adatatype);
     callstack.push_front(bind_buffer);
+    callstack.push_front(bind_transformable);
     callstack.push_front(bind_apriltagconfig);
     callstack.push_front(bind_apriltags);
     callstack.push_front(bind_cameracontrol);
@@ -71,6 +74,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_message_group);
     callstack.push_front(bind_nndata);
     callstack.push_front(bind_neuraldepthconfig);
+    callstack.push_front(bind_gpustereoconfig);
     callstack.push_front(bind_spatialimgdetections);
     callstack.push_front(bind_segmentationparserconfig);
     callstack.push_front(bind_segmentationmask);
@@ -123,6 +127,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     datatypeEnum.value("ADatatype", DatatypeEnum::ADatatype)
         .value("Buffer", DatatypeEnum::Buffer)
+        .value("Transformable", DatatypeEnum::Transformable)
         .value("ImgFrame", DatatypeEnum::ImgFrame)
         .value("EncodedFrame", DatatypeEnum::EncodedFrame)
         .value("NNData", DatatypeEnum::NNData)
@@ -142,6 +147,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("Tracklets", DatatypeEnum::Tracklets)
         .value("IMUData", DatatypeEnum::IMUData)
         .value("StereoDepthConfig", DatatypeEnum::StereoDepthConfig)
+        .value("GPUStereoConfig", DatatypeEnum::GPUStereoConfig)
         .value("FeatureTrackerConfig", DatatypeEnum::FeatureTrackerConfig)
         .value("ThermalConfig", DatatypeEnum::ThermalConfig)
         .value("ToFConfig", DatatypeEnum::ToFConfig)

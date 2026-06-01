@@ -388,6 +388,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         // methods
         .def("getBootloaderVersion", &DeviceBase::getBootloaderVersion, DOC(dai, DeviceBase, getBootloaderVersion))
         .def(
+            "getOSVersion",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.getOSVersion();
+            },
+            DOC(dai, DeviceBase, getOSVersion))
+        .def(
             "isPipelineRunning",
             [](DeviceBase& d) {
                 py::gil_scoped_release release;
@@ -1072,6 +1079,13 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                 return d.hasGPU();
             },
             DOC(dai, DeviceBase, hasGPU))
+        .def(
+            "isGpuStereoSupported",
+            [](DeviceBase& d) {
+                py::gil_scoped_release release;
+                return d.isGpuStereoSupported();
+            },
+            DOC(dai, DeviceBase, isGpuStereoSupported))
         .def(
             "getSupportedDeviceModels",
             [](DeviceBase& d) {

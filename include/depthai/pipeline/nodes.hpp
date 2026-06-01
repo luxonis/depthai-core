@@ -16,6 +16,7 @@
 #endif
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"
+#include "node/GPUStereo.hpp"
 #include "node/IMU.hpp"
 #include "node/ImageManip.hpp"
 #include "node/MessageDemux.hpp"

@@ -11,6 +11,7 @@
 #include "datatype/EdgeDetectorConfig.hpp"
 #include "datatype/EncodedFrame.hpp"
 #include "datatype/FeatureTrackerConfig.hpp"
+#include "datatype/GPUStereoConfig.hpp"
 #include "datatype/IMUData.hpp"
 #include "datatype/ImageManipConfig.hpp"
 #include "datatype/ImgDetections.hpp"
@@ -37,6 +38,7 @@
 #include "datatype/TrackedFeatures.hpp"
 #include "datatype/Tracklets.hpp"
 #include "datatype/TransformData.hpp"
+#include "datatype/Transformable.hpp"
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
     #include "datatype/DynamicCalibrationControl.hpp"
     #include "datatype/DynamicCalibrationResults.hpp"
