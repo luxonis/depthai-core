@@ -724,6 +724,13 @@ class Node : public std::enable_shared_from_this<Node> {
      */
     virtual bool runOnHost() const = 0;
 
+    /**
+     * @brief Returns whether this node is provided by depthai-core.
+     */
+    virtual bool isBuiltInNode() const {
+        return false;
+    }
+
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }
@@ -745,7 +752,7 @@ class SourceNode {
 };
 
 // Node CRTP class
-template <typename Base, typename Derived>
+template <typename Base, typename Derived, bool BuiltInNode = true>
 class NodeCRTP : public Base {
    public:
     virtual ~NodeCRTP() = default;
@@ -753,6 +760,11 @@ class NodeCRTP : public Base {
     const char* getName() const override {
         return Derived::NAME;
     };
+
+    bool isBuiltInNode() const override {
+        return BuiltInNode;
+    }
+
     // std::unique_ptr<Node> clone() const override {
     //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
     // };
