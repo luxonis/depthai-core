@@ -7,6 +7,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "common/ImgTransformations.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/AprilTags.hpp"
@@ -82,16 +83,6 @@ std::vector<T> flatten(const std::vector<std::vector<T> >& orig) {
     std::vector<T> ret;
     for(const auto& v : orig) ret.insert(ret.end(), v.begin(), v.end());
     return ret;
-}
-
-template <typename T>
-std::string joinValues(const std::vector<T>& values, const char* separator) {
-    std::ostringstream stream;
-    for(size_t i = 0; i < values.size(); ++i) {
-        if(i != 0) stream << separator;
-        stream << values[i];
-    }
-    return stream.str();
 }
 
 bool isTransformableDatatype(DatatypeEnum datatype) {
@@ -770,6 +761,9 @@ void ImageAlign::run() {
 }
 
 ImgTransformation ImageAlign::extractTransformationFromBuffer(const std::shared_ptr<Buffer>& buffer, DatatypeEnum datatype) {
+    if(buffer == nullptr) {
+        throw std::runtime_error("Message is nullptr, cannot extract transformation");
+    }
     auto logger = pimpl->logger;
     ImgTransformation transform;
     if(isTransformableDatatype(datatype)) {
@@ -1270,6 +1264,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
     }
 
     if(inputType == DatatypeEnum::PointCloudData) {
+        logger->warn("Alignment of PointCloudData should be handled before PointCloud node creates the message. Returning identity transformation");
         return transformMessage<PointCloudData>(inputMsg, targetTransform, "PointCloudData");
     }
 
@@ -1301,6 +1296,7 @@ void ImageAlign::genericAlignRun(std::shared_ptr<Buffer> firstInput, std::shared
     };
 
     ImgTransformation alignToTransform = adjustAlignToTransform(extractTransformationFromBuffer(alignToMsg, alignToDatatype));
+    dai::ImgTransformation newAlignToTransform = alignToTransform;
     ImgTransformation inputTransform = extractTransformationFromBuffer(firstInput, inputDatatype);
 
     ImgFrameRunState runState = prepareRectificationMatrices(inputTransform, alignToTransform);
@@ -1313,7 +1309,7 @@ void ImageAlign::genericAlignRun(std::shared_ptr<Buffer> firstInput, std::shared
 
     auto nextAlignToMsg = [&]() -> std::shared_ptr<Buffer> {
         if(firstAlignTo) return std::exchange(firstAlignTo, nullptr);
-        return inputAlignTo.get<Buffer>();
+        return inputAlignTo.tryGet<Buffer>();
     };
 
     while(mainLoop()) {
@@ -1332,7 +1328,9 @@ void ImageAlign::genericAlignRun(std::shared_ptr<Buffer> firstInput, std::shared
 
         if(inConfig) latestConfig = inConfig;
 
-        auto newAlignToTransform = adjustAlignToTransform(extractTransformationFromBuffer(alignToMsg, alignToDatatype));
+        if(alignToMsg) {
+            newAlignToTransform = adjustAlignToTransform(extractTransformationFromBuffer(alignToMsg, alignToDatatype));
+        }
         auto newInputTransform = extractTransformationFromBuffer(inputMsg, inputDatatype);
         DatatypeEnum inputType = inputMsg->getDatatype();
 
