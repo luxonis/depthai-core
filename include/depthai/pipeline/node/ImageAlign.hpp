@@ -1,13 +1,12 @@
 #pragma once
 
+#include <array>
+#include <cstdint>
+
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
 #include <depthai/properties/ImageAlignProperties.hpp>
-
-#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-    #include <opencv2/core/types.hpp>
-#endif
 
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
@@ -114,7 +113,8 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     void genericAlignRun(std::shared_ptr<Buffer> firstInput,
                          std::shared_ptr<Buffer> inputAlignToMsg);  // if one of the inputs is transformable buffer
 
-    std::shared_ptr<ImgFrame> alignImgFrame(ImgFrame inputImg, const ImgFrameRunState& state, cv::Scalar bgColor = cv::Scalar(0, 0, 0));
+    std::shared_ptr<ImgFrame> alignImgFrame(
+        ImgFrame inputImg, const ImgFrameRunState& state, std::array<uint8_t, 3> bgColor = {0, 0, 0});
 
     std::shared_ptr<Buffer> buildAlignedOutputMessage(const std::shared_ptr<Buffer>& inputMsg,
                                                       DatatypeEnum inputType,

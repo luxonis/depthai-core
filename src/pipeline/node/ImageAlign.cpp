@@ -800,9 +800,12 @@ struct ImageAlign::ImgFrameRunState {
     cv::Mat map_y_2;
 };
 
-std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg, const ImageAlign::ImgFrameRunState& state, cv::Scalar bgColor) {
+std::shared_ptr<ImgFrame> ImageAlign::alignImgFrame(ImgFrame inputImg,
+                                                    const ImageAlign::ImgFrameRunState& state,
+                                                    std::array<uint8_t, 3> bgColorRgb) {
     using namespace std::chrono;
     auto& logger = pimpl->logger;
+    const cv::Scalar bgColor(bgColorRgb[0], bgColorRgb[1], bgColorRgb[2]);
 
     ImgFrame::Type inputFrameType = inputImg.getType();
 
@@ -1201,7 +1204,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
 
         warnAboutDistortion();
 
-        auto alignedImg = alignImgFrame(*imgFrameInput, runState, cv::Scalar(0, 0, 0));
+        auto alignedImg = alignImgFrame(*imgFrameInput, runState, {0, 0, 0});
         alignedImg->setTransformation(targetTransform);
         return alignedImg;
     }
@@ -1215,7 +1218,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
         if(segMask) {
             warnAboutDistortion();
 
-            auto alignedSegMask = alignImgFrame(*segMask, runState, cv::Scalar(255, 255, 255));
+            auto alignedSegMask = alignImgFrame(*segMask, runState, {255, 255, 255});
             alignedImg->setSegmentationMask(*alignedSegMask);
         }
 
@@ -1230,7 +1233,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
 
         if(segMask) {
             warnAboutDistortion();
-            auto alignedSegMask = alignImgFrame(*segMask, runState, cv::Scalar(255, 255, 255));
+            auto alignedSegMask = alignImgFrame(*segMask, runState, {255, 255, 255});
             alignedSpatialImgDetections->setSegmentationMask(*alignedSegMask);
         }
 
@@ -1243,7 +1246,7 @@ std::shared_ptr<Buffer> ImageAlign::buildAlignedOutputMessage(const std::shared_
 
         warnAboutDistortion();
 
-        auto alignedSegMaskFrame = alignImgFrame(segMaskFrame, runState, cv::Scalar(255, 255, 255));
+        auto alignedSegMaskFrame = alignImgFrame(segMaskFrame, runState, {255, 255, 255});
 
         std::shared_ptr<SegmentationMask> alignedSegMask = std::make_shared<SegmentationMask>();
         alignedSegMask->setMask(*alignedSegMaskFrame);
