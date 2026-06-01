@@ -5,6 +5,10 @@
 // shared
 #include <depthai/properties/ImageAlignProperties.hpp>
 
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    #include <opencv2/core/types.hpp>
+#endif
+
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
 
@@ -35,7 +39,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     Input inputConfig{*this, {"inputConfig", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImageAlignConfig, false}}}};
 
     /**
-     * Input message.
+     * Input message to be aligned. Can be either ImgFrame or any message that implements Transformable interface.
      * Default queue is non-blocking with size 4.
      */
     Input input{*this, {"input", DEFAULT_GROUP, false, 4, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
@@ -47,7 +51,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     Input inputAlignTo{*this, {"inputAlignTo", DEFAULT_GROUP, false, 1, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}, true}};
 
     /**
-     * Outputs ImgFrame message that is aligned to inputAlignTo.
+     * Outputs the input message aligned to the inputAlignTo message. Output message will be of the same type as input message.
      */
     Output outputAligned{*this, {"outputAligned", DEFAULT_GROUP, {{DatatypeEnum::ImgFrame, false}, {DatatypeEnum::Transformable, true}}}};
 
@@ -96,12 +100,13 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
     void run() override;
 
    private:
-    struct ImgFrameRunState;
     bool runOnHostVar = false;
+
+#if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    struct ImgFrameRunState;
 
     ImgFrameRunState prepareRectificationMatrices(const ImgTransformation& inputTransform, const ImgTransformation& alignToTransform);
     static void updateShiftFactor(ImgFrameRunState& state, uint16_t staticDepthPlane);
-    std::shared_ptr<ImgFrame> alignImgFrameInput(const ImageAlign::ImgFrameRunState state, std::shared_ptr<ImgFrame> inputImg);
     ImgTransformation extractTransformationFromBuffer(const std::shared_ptr<Buffer>& buffer, DatatypeEnum datatype);
 
     void legacyRun(std::shared_ptr<ImgFrame> firstInputImg,
@@ -116,6 +121,7 @@ class ImageAlign : public DeviceNodeCRTP<DeviceNode, ImageAlign, ImageAlignPrope
                                                       const ImgTransformation& targetTransform,
                                                       const ImgFrameRunState& runState,
                                                       bool& warnedAboutDistortion);
+#endif
 };
 
 }  // namespace node
