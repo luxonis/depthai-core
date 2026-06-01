@@ -428,11 +428,6 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     const std::size_t segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
 
     span<const std::uint8_t> maskSpan = imgDetections.getData();
-    if(config.segmentationPassthrough && !maskSpan.empty()) {
-        spatialDetections.data = imgDetections.data;
-        spatialDetections.segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
-        spatialDetections.segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
-    }
 
     if(imgDetectionsVector.size() == 0) {
         return;
