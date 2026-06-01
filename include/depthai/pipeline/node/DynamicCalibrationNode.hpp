@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
@@ -171,7 +173,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     ErrorCode runQualityCheck(const bool force = false);
 
-    ErrorCode runCalibration(const dai::CalibrationHandler& calibHandler, const bool force = false);
+    ErrorCode runCalibration(const dai::CalibrationHandler& calibHandler, const bool force = false, const bool keepCameraCenters = true);
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     ErrorCode runLoadImage(const bool blocking = false);
@@ -213,16 +215,9 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     // std::chrono::milliseconds sleepingTime = 250ms;
     // static constexpr std::chrono::milliseconds kSleepingTime{250};
     std::chrono::milliseconds sleepingTime{250};
-    // Time between loading consecutive images, in seconds.
-    // Controls how frequently the system fetches a new frame.
-    float loadImagePeriod = 0.5f;
-
-    // Time between calibration runs, in seconds.
-    // Determines how often the calibration procedure is executed.
-    float calibrationPeriod = 5.0f;
     DynamicCalibrationControl::PerformanceMode performanceMode = DynamicCalibrationControl::PerformanceMode::DEFAULT;
-    bool calibrationShouldRun = false;
     bool slept = false;
+    std::optional<DynamicCalibrationControl::Commands::StartCalibration> startCalibrationCommand;
 
     /**
      * Calibration state machine, which holds the state of Node and provides a stable environment;

@@ -390,7 +390,9 @@ void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
     metricsOutput.send(metrics);
 }
 
-DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler, const bool force) {
+DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler,
+                                                                 const bool force,
+                                                                 const bool keepCameraCenters) {
     dcl::PerformanceMode pm = force ? dcl::PerformanceMode::SKIP_CHECKS : DclUtils::daiPerformanceModeToDclPerformanceMode(performanceMode);
     logger->trace("Running calibration (force={} mode={})", force, static_cast<int>(pm));
 
@@ -400,26 +402,30 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         syncedSensors.push_back(sensor.sensorDcl);
     }
 
-    dcl::CameraSensorHandlePairList keptBaselineEdges;
-    if(connectedSensors.size() > 2) {
-        keptBaselineEdges.reserve(socketsInHandler.size() > 0 ? socketsInHandler.size() - 1 : 0);
-        for(size_t idx = 0; idx + 1 < socketsInHandler.size(); ++idx) {
-            const auto* sensorAInChain = findConnectedSensor(socketsInHandler[idx]);
-            const auto* sensorBInChain = findConnectedSensor(socketsInHandler[idx + 1]);
-            if(sensorAInChain == nullptr || sensorBInChain == nullptr) {
-                continue;
+    std::optional<dcl::CameraSensorHandlePairList> keptBaselineEdges = std::nullopt;
+    if(!keepCameraCenters) {
+        dcl::CameraSensorHandlePairList keptBaselineEdgesValue;
+        if(connectedSensors.size() > 2) {
+            keptBaselineEdgesValue.reserve(socketsInHandler.size() > 0 ? socketsInHandler.size() - 1 : 0);
+            for(size_t idx = 0; idx + 1 < socketsInHandler.size(); ++idx) {
+                const auto* sensorAInChain = findConnectedSensor(socketsInHandler[idx]);
+                const auto* sensorBInChain = findConnectedSensor(socketsInHandler[idx + 1]);
+                if(sensorAInChain == nullptr || sensorBInChain == nullptr) {
+                    continue;
+                }
+                if(!sensorAInChain->sensorDcl || !sensorBInChain->sensorDcl) {
+                    auto result = std::make_shared<DynamicCalibrationResult>("DynamicCalibration sensors were not initialized.");
+                    calibrationOutput.send(result);
+                    return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
+                }
+                keptBaselineEdgesValue.emplace_back(sensorAInChain->sensorDcl, sensorBInChain->sensorDcl);
             }
-            if(!sensorAInChain->sensorDcl || !sensorBInChain->sensorDcl) {
-                auto result = std::make_shared<DynamicCalibrationResult>("DynamicCalibration sensors were not initialized.");
-                calibrationOutput.send(result);
-                return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
-            }
-            keptBaselineEdges.emplace_back(sensorAInChain->sensorDcl, sensorBInChain->sensorDcl);
+        }
+        if(!keptBaselineEdgesValue.empty()) {
+            keptBaselineEdges = std::move(keptBaselineEdgesValue);
         }
     }
-
-    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(
-        syncedSensors, pm, keptBaselineEdges.empty() ? std::nullopt : std::optional<dcl::CameraSensorHandlePairList>(keptBaselineEdges));
+    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keptBaselineEdges);
     if(!dclResult.passed()) {
         auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
         logger->warn("Calibration failed: {}", dclResult.errorMessage());
@@ -690,8 +696,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     if(std::holds_alternative<DC::Commands::Calibrate>(cmd)) {
         const auto& c = std::get<DC::Commands::Calibrate>(cmd);
         logger->trace("Received Calibrate Command: force={}", c.force);
-        calibrationShouldRun = false;  // stop the calibration if it is running
-        return runCalibration(calibrationHandler, c.force);
+        startCalibrationCommand.reset();  // stop the calibration if it is running
+        return runCalibration(calibrationHandler, c.force, c.keepCameraCenters);
     }
     // Quality check
     else if(std::holds_alternative<DC::Commands::CalibrationQuality>(cmd)) {
@@ -703,9 +709,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     else if(std::holds_alternative<DC::Commands::StartCalibration>(cmd)) {
         const auto& c = std::get<DC::Commands::StartCalibration>(cmd);
         logger->trace("Received StartCalibration Command");
-        calibrationShouldRun = true;
-        loadImagePeriod = c.loadImagePeriod;
-        calibrationPeriod = c.calibrationPeriod;
+        startCalibrationCommand = c;
         return ErrorCode::OK;
     }
     // Load a single image
@@ -730,7 +734,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     // Stop calibration loop
     else if(std::holds_alternative<DC::Commands::StopCalibration>(cmd)) {
         logger->trace("Received StopCalibrationCommand: stopping calibration");
-        calibrationShouldRun = false;
+        startCalibrationCommand.reset();
         return ErrorCode::OK;
     }
     // Reset/remove accumulated data
@@ -774,15 +778,16 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     if(error != ErrorCode::OK) {  // test progress so far
         return error;
     }
-    if(!calibrationShouldRun) {
+    if(!startCalibrationCommand) {
         return error;
     }
     // Rate limit of the image loading
     auto now = std::chrono::steady_clock::now();
+
     std::chrono::duration<float> elapsed = now - previousLoadingAndCalibrationTime;
-    bool loadingAndCalibrationRequired = elapsed.count() > loadImagePeriod;
+    bool loadingAndCalibrationRequired = elapsed.count() > startCalibrationCommand->loadImagePeriod;
     if(loadingAndCalibrationRequired) {
-        logger->trace("doWork() called. CalibrationRunning={}, elapsed={}s", calibrationShouldRun, elapsed.count());
+        logger->trace("doWork() called. CalibrationRunning={}, elapsed={}s", true, elapsed.count());
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         error = runLoadImage(true);
 #else
@@ -796,9 +801,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::doWork(std::chrono::steady_clo
     if(loadingAndCalibrationRequired) {
         computeCoverage();
         previousLoadingAndCalibrationTime = std::chrono::steady_clock::now();
-        error = runCalibration(calibrationHandler);
+        error = runCalibration(calibrationHandler, false, startCalibrationCommand->keepCameraCenters);
         if(error == DynamicCalibration::ErrorCode::OK) {
-            calibrationShouldRun = false;
+            startCalibrationCommand.reset();
         }
     }
 
@@ -813,7 +818,8 @@ void DynamicCalibration::run() {
 
     logger->trace("DynamicCalibration node started ");
 
-    auto previousLoadingTimeFloat = std::chrono::steady_clock::now() + std::chrono::duration<float>(calibrationPeriod);
+    auto previousLoadingTimeFloat =
+        std::chrono::steady_clock::now() + std::chrono::duration<float>(DynamicCalibrationControl::Commands::StartCalibration{}.calibrationPeriod);
     auto previousLoadingTime = std::chrono::time_point_cast<std::chrono::steady_clock::duration>(previousLoadingTimeFloat);
     auto initResult = initializePipeline(device);
     if(initResult != DynamicCalibration::ErrorCode::OK) {

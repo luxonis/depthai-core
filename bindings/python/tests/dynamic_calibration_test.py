@@ -42,11 +42,17 @@ def test_performance_mode_enum_all_values():
 
 def test_command_calibrate_rw_and_owner_init():
     """Verify read/write access to Calibrate command attributes and owner init."""
-    cmd = Cmds.Calibrate(force=True)
+    default_cmd = Cmds.Calibrate()
+    assert default_cmd.keepCameraCenters is True
+
+    cmd = Cmds.Calibrate(force=True, keepCameraCenters=False)
     assert cmd.force is True
+    assert cmd.keepCameraCenters is False
 
     cmd.force = False
+    cmd.keepCameraCenters = True
     assert cmd.force is False
+    assert cmd.keepCameraCenters is True
 
     ctrl = DCC(cmd)
     assert isinstance(ctrl, DCC)
@@ -66,14 +72,20 @@ def test_command_calibration_quality_rw_and_owner_init():
 
 def test_command_start_calibration_rw_and_owner_init():
     """Check read/write for StartCalibration fields and DCC construction."""
-    cmd = Cmds.StartCalibration(loadImagePeriod=0.25, calibrationPeriod=3.0)
+    default_cmd = Cmds.StartCalibration()
+    assert default_cmd.keepCameraCenters is True
+
+    cmd = Cmds.StartCalibration(loadImagePeriod=0.25, calibrationPeriod=3.0, keepCameraCenters=False)
     assert cmd.loadImagePeriod == 0.25
     assert cmd.calibrationPeriod == 3.0
+    assert cmd.keepCameraCenters is False
 
     cmd.loadImagePeriod = 0.5
     cmd.calibrationPeriod = 5.0
+    cmd.keepCameraCenters = True
     assert cmd.loadImagePeriod == 0.5
     assert cmd.calibrationPeriod == 5.0
+    assert cmd.keepCameraCenters is True
 
     ctrl = DCC(cmd)
     assert isinstance(ctrl, DCC)
@@ -131,7 +143,7 @@ def test_command_set_performance_mode_rw_and_owner_init():
 def test_static_factory_calibrate_all_args():
     """Check static factory for calibrate() with default and explicit args."""
     c1 = DCC.calibrate()
-    c2 = DCC.calibrate(force=True)
+    c2 = DCC.calibrate(force=True, keepCameraCenters=False)
     assert isinstance(c1, DCC)
     assert isinstance(c2, DCC)
 
@@ -147,7 +159,7 @@ def test_static_factory_calibration_quality_all_args():
 def test_static_factory_start_calibration_all_args():
     """Ensure startCalibration() factory supports default and custom arguments."""
     c1 = DCC.startCalibration()
-    c2 = DCC.startCalibration(loadImagePeriod=0.1, calibrationPeriod=1.5)
+    c2 = DCC.startCalibration(loadImagePeriod=0.1, calibrationPeriod=1.5, keepCameraCenters=False)
     assert isinstance(c1, DCC)
     assert isinstance(c2, DCC)
 
