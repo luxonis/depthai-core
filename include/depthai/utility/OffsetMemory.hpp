@@ -67,7 +67,9 @@ class ConvertedOffsetMemory : public OffsetMemory {
      *
      * @param memory Underlying memory object to expose through this adapter.
      */
-    explicit ConvertedOffsetMemory(std::shared_ptr<Memory> memory) : memory(std::move(memory)) {}
+    explicit ConvertedOffsetMemory(std::shared_ptr<Memory> memory) : memory(std::move(memory)) {
+        if(this->memory == nullptr) throw std::invalid_argument("ConvertedOffsetMemory requires non-null memory");
+    }
 
     span<std::uint8_t> getData() override {
         return memory->getData();

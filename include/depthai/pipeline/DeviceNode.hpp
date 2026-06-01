@@ -56,7 +56,7 @@ class DeviceNode : public ThreadedNode {
 };
 
 // Node CRTP class
-template <typename Base, typename Derived, typename Props>
+template <typename Base, typename Derived, typename Props, bool BuiltInNode = true>
 class DeviceNodeCRTP : public Base {
    public:
     using Properties = Props;
@@ -66,6 +66,11 @@ class DeviceNodeCRTP : public Base {
     const char* getName() const override {
         return Derived::NAME;
     };
+
+    bool isBuiltInNode() const override {
+        return BuiltInNode;
+    }
+
     // std::unique_ptr<Node> clone() const override {
     //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
     // };
