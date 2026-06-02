@@ -604,6 +604,49 @@ TEST_CASE("Segmentation passthrough can be toggled") {
     }
 }
 
+TEST_CASE("Segmentation passthrough preserves mask when detections are empty") {
+    constexpr unsigned width = 320;
+    constexpr unsigned height = 240;
+    const std::array<std::array<float, 3>, 3> intrinsics = {{
+        {{5.0F, 0.0F, 1.0F}},
+        {{0.0F, 5.0F, 1.0F}},
+        {{0.0F, 0.0F, 1.0F}},
+    }};
+
+    cv::Mat depthMat(height, width, CV_16UC1, cv::Scalar(2000));
+    auto depthFrame = createDepthFrame(depthMat, intrinsics);
+
+    std::vector<std::uint8_t> mask(width * height, 255);
+    for(int y = 20; y < 60; ++y) {
+        for(int x = 30; x < 90; ++x) {
+            mask.at(y * static_cast<int>(width) + x) = 0;
+        }
+    }
+
+    dai::SpatialLocationCalculatorConfig initialConfig;
+    initialConfig.setCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm::AVERAGE);
+    initialConfig.setDepthThresholds(0, 10000);
+    initialConfig.setUseSegmentation(true);
+    initialConfig.setSegmentationPassthrough(true);
+    initialConfig.setCalculateSpatialKeypoints(false);
+
+    auto detectionMsg = std::make_shared<dai::ImgDetections>();
+    detectionMsg->setSegmentationMask(mask, width, height);
+    detectionMsg->transformation = depthFrame->transformation;
+    detectionMsg->setTimestamp(depthFrame->getTimestamp());
+    detectionMsg->setSequenceNum(depthFrame->getSequenceNum());
+    auto [unusedLegacy, unusedPassthrough, spatialDetections] = processDepthFrame(initialConfig, depthFrame, std::nullopt, detectionMsg);
+    static_cast<void>(unusedLegacy);
+    static_cast<void>(unusedPassthrough);
+
+    CHECK(spatialDetections.detections.empty());
+    const auto outMask = spatialDetections.getMaskData();
+    REQUIRE(outMask.has_value());
+    CHECK(*outMask == mask);
+    CHECK(spatialDetections.getSegmentationMaskWidth() == width);
+    CHECK(spatialDetections.getSegmentationMaskHeight() == height);
+}
+
 TEST_CASE("Spatial detections remap depth to detection transformations") {
     using std::chrono::steady_clock;
     const auto RESET_REMOTE_TIMEOUT_MS = std::chrono::milliseconds(2000);
