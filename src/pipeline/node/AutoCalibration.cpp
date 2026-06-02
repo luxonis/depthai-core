@@ -39,56 +39,51 @@ bool areLensesWide(std::shared_ptr<Device> device) {
 }
 
 void AutoCalibration::logReport(const Report& report, unsigned int iteration) const {
-    // Define a lambda or a small helper to route to the correct spdlog method
-    auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
-
-    log("====== AutoCalibration iteration {} / {} ========", iteration, initialConfig->maxIterations);
-    log("Iteration time:         {:.2f}s", report.elapsedSeconds);
-    log("dataConfidence          {:.4f}     {:.2f}", report.dataConfidence, initialConfig->dataConfidenceThreshold);
-    log("calibrationConfidence   {:.4f}     {:.2f}", report.calibrationConfidence, initialConfig->calibrationConfidenceThreshold);
+    logger->info("====== AutoCalibration iteration {} / {} ========", iteration, initialConfig->maxIterations);
+    logger->info("Iteration time:         {:.2f}s", report.elapsedSeconds);
+    logger->info("dataConfidence          {:.4f}     {:.2f}", report.dataConfidence, initialConfig->dataConfidenceThreshold);
+    logger->info("calibrationConfidence   {:.4f}     {:.2f}", report.calibrationConfidence, initialConfig->calibrationConfidenceThreshold);
 
     if(report.calibrationUpdated) {
-        log("Calibration successfully updated");
-        log("=================================================");
+        logger->info("Calibration successfully updated");
+        logger->info("=================================================");
         return;
     }
 
     if(report.recalibrating) {
-        log("recalibration  {}", report.recalibrationPassed ? "Passed" : "Failed");
+        logger->info("recalibration  {}", report.recalibrationPassed ? "Passed" : "Failed");
         if(report.recalibrationPassed) {
-            log("    Recalibration time:   {:.2f}s", report.elapsedRecalibrationSeconds);
-            log("    number of iterations  {}", report.numIterationPerRecalibration);
-            log("    rotation difference   {:.4f}  {:.4f}  {:.4f}",
-                report.rotationDifference.at(0),
-                report.rotationDifference.at(1),
-                report.rotationDifference.at(2));
-            log("    dataQuality           {:.4f}", report.dataQualityAfterRecalibration);
+            logger->info("    Recalibration time:   {:.2f}s", report.elapsedRecalibrationSeconds);
+            logger->info("    number of iterations  {}", report.numIterationPerRecalibration);
+            logger->info("    rotation difference   {:.4f}  {:.4f}  {:.4f}",
+                         report.rotationDifference.at(0),
+                         report.rotationDifference.at(1),
+                         report.rotationDifference.at(2));
+            logger->info("    dataQuality           {:.4f}", report.dataQualityAfterRecalibration);
         }
         unsigned i = 0;
         for(const auto& coverageData : report.coveragesAcquired) {
-            log("    recalibration iteration:");
-            log("        {}    coverageAcquired    {:.1f}    dataAcquired    {:.1f}", i + 1, coverageData.first, coverageData.second);
+            logger->info("    recalibration iteration:");
+            logger->info("        {}    coverageAcquired    {:.1f}    dataAcquired    {:.1f}", i + 1, coverageData.first, coverageData.second);
             i += 1;
         }
     } else {
-        log("Recalibration  not triggered");
+        logger->info("Recalibration  not triggered");
     }
-    log("=================================================");
+    logger->info("=================================================");
 }
 
 void AutoCalibration::logConfig() const {
-    auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
-
-    log("====== AutoCalibration Configuration ======");
-    log("Mode:                   {}", initialConfig->mode == AutoCalibrationConfig::CONTINUOUS ? "CONTINUOUS" : "ON_START");
-    log("Sleeping Time:          {}s", initialConfig->sleepingTime);
-    log("Calib. Confidence Thr:  {:.2f}", initialConfig->calibrationConfidenceThreshold);
-    log("Data Confidence Thr:    {:.2f}", initialConfig->dataConfidenceThreshold);
-    log("Max Iterations:         {}", initialConfig->maxIterations);
-    log("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
-    log("Validation Set Size:    {}", initialConfig->validationSetSize);
-    log("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
-    log("===========================================");
+    logger->info("====== AutoCalibration Configuration ======");
+    logger->info("Mode:                   {}", initialConfig->mode == AutoCalibrationConfig::CONTINUOUS ? "CONTINUOUS" : "ON_START");
+    logger->info("Sleeping Time:          {}s", initialConfig->sleepingTime);
+    logger->info("Calib. Confidence Thr:  {:.2f}", initialConfig->calibrationConfidenceThreshold);
+    logger->info("Data Confidence Thr:    {:.2f}", initialConfig->dataConfidenceThreshold);
+    logger->info("Max Iterations:         {}", initialConfig->maxIterations);
+    logger->info("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
+    logger->info("Validation Set Size:    {}", initialConfig->validationSetSize);
+    logger->info("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
+    logger->info("===========================================");
 }
 
 AutoCalibration::~AutoCalibration() = default;

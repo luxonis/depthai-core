@@ -18,15 +18,15 @@ camera_sockets = [
 
 for cam in camera_sockets:
     print(f'\n========== {cam.name} ==========')
-    hasEeprom = device.isEepromAvailable(cam)
+    hasEeprom = device.isCBAEepromAvailable(cam)
     print(f'[{cam.name}] Is EEPROM available: {hasEeprom}')
     if hasEeprom:
         try:
-            print(f'[{cam.name}] User calibration: {json.dumps(device.readCalibration2(cam).eepromToJson(), indent=2)}')
-        except Exception as ex:
+            print(f'[{cam.name}] User calibration: {json.dumps(device.readCBACalibration2(cam).eepromToJson(), indent=2)}')
+        except dai.EepromError as ex:
             print(f'[{cam.name}] No user calibration: {ex}')
 
         try:
-            print(f'[{cam.name}] Factory calibration: {json.dumps(device.readFactoryCalibration(cam).eepromToJson(), indent=2)}')
-        except Exception as ex:
+            print(f'[{cam.name}] Factory calibration: {json.dumps(device.readFactoryCBACalibration(cam).eepromToJson(), indent=2)}')
+        except dai.EepromError as ex:
             print(f'[{cam.name}] No factory calibration: {ex}')

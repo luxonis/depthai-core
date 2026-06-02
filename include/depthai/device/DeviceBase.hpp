@@ -714,7 +714,7 @@ class DeviceBase {
      *
      * @returns True if EEPROM is present on board, false otherwise
      */
-    bool isEepromAvailable(CameraBoardSocket camSocket);
+    bool isCBAEepromAvailable(CameraBoardSocket camSocket);
 
     /**
      * Check if Calibration is available on the device
@@ -735,12 +735,12 @@ class DeviceBase {
     /**
      * Stores the Calibration and Device information to the CBA EEPROM
      *
-     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     * @param calibrationObj CBACalibrationHandler object which is loaded with calibration information.
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @return true on successful flash, false on failure
      */
-    bool tryFlashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket);
+    bool tryFlashCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket);
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM
@@ -754,10 +754,10 @@ class DeviceBase {
      * Stores the Calibration and Device information to the CBA EEPROM
      *
      * @throws std::runtime_error if failed to flash the calibration
-     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     * @param calibrationObj CBACalibrationHandler object which is loaded with calibration information.
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      */
-    void flashCalibration(CalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket);
+    void flashCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket);
 
     /**
      * Sets the Calibration at runtime. This is not persistent and will be lost after device reset.
@@ -806,9 +806,9 @@ class DeviceBase {
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM
      */
-    CalibrationHandler readCalibration(CameraBoardSocket camSocket);
+    CBACalibrationHandler readCBACalibration(CameraBoardSocket camSocket);
 
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
@@ -824,9 +824,9 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if no calibration is flashed
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM
      */
-    CalibrationHandler readCalibration2(CameraBoardSocket camSocket);
+    CBACalibrationHandler readCBACalibration2(CameraBoardSocket camSocket);
 
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
@@ -842,9 +842,9 @@ class DeviceBase {
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM
      */
-    CalibrationHandler readCalibrationOrDefault(CameraBoardSocket camSocket);
+    CBACalibrationHandler readCBACalibrationOrDefault(CameraBoardSocket camSocket);
 
     /**
      * Factory reset EEPROM data if factory backup is available.
@@ -860,7 +860,7 @@ class DeviceBase {
      *
      * @throws std::runtime_error If factory reset was unsuccessful
      */
-    void factoryResetCalibration(CameraBoardSocket camSocket);
+    void factoryResetCBACalibration(CameraBoardSocket camSocket);
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM in Factory area
@@ -875,13 +875,13 @@ class DeviceBase {
      * Stores the Calibration and Device information to the CBA EEPROM in Factory area
      * To perform this action, correct env variable must be set
      *
-     * @param calibrationHandler CalibrationHandler
+     * @param calibrationHandler CBACalibrationHandler
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if failed to flash the calibration
      * @return True on successful flash, false on failure
      */
-    void flashFactoryCalibration(CalibrationHandler calibrationHandler, CameraBoardSocket camSocket);
+    void flashFactoryCBACalibration(CBACalibrationHandler calibrationHandler, CameraBoardSocket camSocket);
 
     /**
      * Destructive action, deletes User area EEPROM contents
@@ -901,7 +901,7 @@ class DeviceBase {
      * @throws std::runtime_error if failed to flash the calibration
      * @return True on successful flash, false on failure
      */
-    void flashEepromClear(CameraBoardSocket camSocket);
+    void flashCBAEepromClear(CameraBoardSocket camSocket);
 
     /**
      * Destructive action, deletes Factory area EEPROM contents
@@ -921,7 +921,7 @@ class DeviceBase {
      * @throws std::runtime_error if failed to flash the calibration
      * @return True on successful flash, false on failure
      */
-    void flashFactoryEepromClear(CameraBoardSocket camSocket);
+    void flashFactoryCBAEepromClear(CameraBoardSocket camSocket);
 
     /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
@@ -937,9 +937,9 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if no calibration is flashed
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM in Factory Area
      */
-    CalibrationHandler readFactoryCalibration(CameraBoardSocket camSocket);
+    CBACalibrationHandler readFactoryCBACalibration(CameraBoardSocket camSocket);
 
     /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
@@ -955,9 +955,9 @@ class DeviceBase {
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM in Factory Area
      */
-    CalibrationHandler readFactoryCalibrationOrDefault(CameraBoardSocket camSocket);
+    CBACalibrationHandler readFactoryCBACalibrationOrDefault(CameraBoardSocket camSocket);
 
     /**
      * Fetches the raw EEPROM data from User area

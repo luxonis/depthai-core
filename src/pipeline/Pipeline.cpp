@@ -66,6 +66,15 @@ namespace dai {
 
 namespace {
 
+std::string pathToUtf8String(const fs::path& path) {
+#ifdef _WIN32
+    const auto utf8 = path.u8string();
+    return {reinterpret_cast<const char*>(utf8.data()), utf8.size()};
+#else
+    return path.string();
+#endif
+}
+
 #ifdef DEPTHAI_HAVE_DYNAMIC_CALIBRATION_SUPPORT
 const char* autoCalibrationModeToString(PipelineAutoCalibrationMode mode) {
     switch(mode) {
@@ -1344,13 +1353,15 @@ std::vector<uint8_t> PipelineImpl::loadResource(fs::path uri) {
 }
 
 static fs::path getAbsUri(fs::path& uri, fs::path& cwd) {
-    int colonLocation = uri.string().find(":");
-    std::string resourceType = uri.string().substr(0, colonLocation + 1);
+    const auto uriString = pathToUtf8String(uri);
+    const auto cwdString = pathToUtf8String(cwd);
+    int colonLocation = uriString.find(":");
+    std::string resourceType = uriString.substr(0, colonLocation + 1);
     fs::path absAssetUri;
-    if(uri.string()[colonLocation + 1] == '/') {  // Absolute path
+    if(uriString[colonLocation + 1] == '/') {  // Absolute path
         absAssetUri = uri;
     } else {  // Relative path
-        absAssetUri = fs::path{resourceType + cwd.string() + uri.string().substr(colonLocation + 1)};
+        absAssetUri = fs::path{resourceType + cwdString + uriString.substr(colonLocation + 1)};
     }
     return absAssetUri;
 }
@@ -1365,20 +1376,21 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
         {"asset",
          [moveAsset](PipelineImpl& p, const fs::path& uri) -> std::vector<uint8_t> {
              // First check the pipeline asset manager
-             auto asset = p.assetManager.get(uri.u8string());
+             const auto uriString = pathToUtf8String(uri);
+             auto asset = p.assetManager.get(uriString);
              if(asset != nullptr) {
                  if(moveAsset) {
-                     p.assetManager.remove(uri.u8string());
+                     p.assetManager.remove(uriString);
                      return std::move(asset->data);
                  }
                  return asset->data;
              }
              for(auto& node : p.nodes) {
                  auto& assetManager = node->getAssetManager();
-                 auto asset = assetManager.get(uri.u8string());
+                 auto asset = assetManager.get(uriString);
                  if(asset != nullptr) {
                      if(moveAsset) {
-                         assetManager.remove(uri.u8string());
+                         assetManager.remove(uriString);
                          return std::move(asset->data);
                      }
                      return asset->data;
@@ -1392,7 +1404,8 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
     for(const auto& handler : protocolHandlers) {
         std::string protocolPrefix = std::string(handler.protocol) + ":";
 
-        if(uri.u8string().find(protocolPrefix) == 0) {
+        const auto uriString = pathToUtf8String(uri);
+        if(uriString.find(protocolPrefix) == 0) {
             // // protocol matches, resolve URI and call handler
             // std::filesystem::path path(uri.substr(protocolPrefix.size()));
             // // Create full path, and normalize
@@ -1405,9 +1418,9 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(fs::path uri, fs::path cwd, b
             fs::path path;
             if(protocolPrefix == "asset:") {
                 auto absUri = getAbsUri(uri, cwd);
-                path = static_cast<fs::path>(absUri.u8string().substr(protocolPrefix.size()));
+                path = fs::path(pathToUtf8String(absUri).substr(protocolPrefix.size()));
             } else {
-                path = static_cast<fs::path>(uri.u8string().substr(protocolPrefix.size()));
+                path = fs::path(uriString.substr(protocolPrefix.size()));
             }
             return handler.handle(*this, path);
         }

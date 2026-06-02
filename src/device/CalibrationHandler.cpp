@@ -55,6 +55,16 @@ void validateImuCalibrationMatrix(const std::vector<std::vector<float>>& calibra
     }
 }
 
+EepromData validateCBAEepromData(EepromData eepromData) {
+    if(eepromData.cameraData.empty()) {
+        return eepromData;
+    }
+    if(eepromData.cameraData.size() != 1 || eepromData.cameraData.find(CameraBoardSocket::CBA) == eepromData.cameraData.end()) {
+        throw std::runtime_error("CBA calibration data must contain only a CameraBoardSocket::CBA cameraData entry.");
+    }
+    return eepromData;
+}
+
 }  // namespace
 
 LengthUnit CalibrationHandler::getEepromTranslationUnits() const {
@@ -1239,6 +1249,95 @@ bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) const {
         logger::debug("Extrinsics between all the cameras is not found with single head and a tail");
     }
     return isConnectionValidated;
+}
+
+CBACalibrationHandler::CBACalibrationHandler() = default;
+
+CBACalibrationHandler::CBACalibrationHandler(EepromData newEepromData, std::optional<bool> validateCalibration)
+    : CalibrationHandler(validateCBAEepromData(newEepromData), validateCalibration) {}
+
+CBACalibrationHandler CBACalibrationHandler::fromJson(nlohmann::json eepromDataJson, std::optional<bool> validateCalibration) {
+    EepromData eepromData = eepromDataJson;
+    return CBACalibrationHandler(eepromData, validateCalibration);
+}
+
+bool CBACalibrationHandler::hasCameraCalibration() const {
+    return CalibrationHandler::hasCameraCalibration(cameraDataSocket);
+}
+
+std::vector<std::vector<float>> CBACalibrationHandler::getCameraIntrinsics(
+    int resizeWidth, int resizeHeight, Point2f topLeftPixelId, Point2f bottomRightPixelId, bool keepAspectRatio) const {
+    return CalibrationHandler::getCameraIntrinsics(cameraDataSocket, resizeWidth, resizeHeight, topLeftPixelId, bottomRightPixelId, keepAspectRatio);
+}
+
+std::vector<std::vector<float>> CBACalibrationHandler::getCameraIntrinsics(Size2f destShape,
+                                                                           Point2f topLeftPixelId,
+                                                                           Point2f bottomRightPixelId,
+                                                                           bool keepAspectRatio) const {
+    return CalibrationHandler::getCameraIntrinsics(cameraDataSocket, destShape, topLeftPixelId, bottomRightPixelId, keepAspectRatio);
+}
+
+std::vector<std::vector<float>> CBACalibrationHandler::getCameraIntrinsics(std::tuple<int, int> destShape,
+                                                                           Point2f topLeftPixelId,
+                                                                           Point2f bottomRightPixelId,
+                                                                           bool keepAspectRatio) const {
+    return CalibrationHandler::getCameraIntrinsics(cameraDataSocket, destShape, topLeftPixelId, bottomRightPixelId, keepAspectRatio);
+}
+
+std::tuple<std::vector<std::vector<float>>, int, int> CBACalibrationHandler::getDefaultIntrinsics() const {
+    return CalibrationHandler::getDefaultIntrinsics(cameraDataSocket);
+}
+
+uint32_t CBACalibrationHandler::getSourceHeight() const {
+    return CalibrationHandler::getSourceHeight(cameraDataSocket);
+}
+
+uint32_t CBACalibrationHandler::getSourceWidth() const {
+    return CalibrationHandler::getSourceWidth(cameraDataSocket);
+}
+
+std::vector<float> CBACalibrationHandler::getDistortionCoefficients() const {
+    return CalibrationHandler::getDistortionCoefficients(cameraDataSocket);
+}
+
+float CBACalibrationHandler::getFov(bool useSpec) const {
+    return CalibrationHandler::getFov(cameraDataSocket, useSpec);
+}
+
+uint8_t CBACalibrationHandler::getLensPosition() const {
+    return CalibrationHandler::getLensPosition(cameraDataSocket);
+}
+
+CameraModel CBACalibrationHandler::getDistortionModel() const {
+    return CalibrationHandler::getDistortionModel(cameraDataSocket);
+}
+
+void CBACalibrationHandler::setCameraIntrinsics(std::vector<std::vector<float>> intrinsics, Size2f frameSize) {
+    CalibrationHandler::setCameraIntrinsics(cameraDataSocket, intrinsics, frameSize);
+}
+
+void CBACalibrationHandler::setCameraIntrinsics(std::vector<std::vector<float>> intrinsics, int width, int height) {
+    CalibrationHandler::setCameraIntrinsics(cameraDataSocket, intrinsics, width, height);
+}
+
+void CBACalibrationHandler::setCameraIntrinsics(std::vector<std::vector<float>> intrinsics, std::tuple<int, int> frameSize) {
+    CalibrationHandler::setCameraIntrinsics(cameraDataSocket, intrinsics, frameSize);
+}
+
+void CBACalibrationHandler::setDistortionCoefficients(std::vector<float> distortionCoefficients) {
+    CalibrationHandler::setDistortionCoefficients(cameraDataSocket, distortionCoefficients);
+}
+
+void CBACalibrationHandler::setFov(float hfov) {
+    CalibrationHandler::setFov(cameraDataSocket, hfov);
+}
+
+void CBACalibrationHandler::setLensPosition(uint8_t lensPosition) {
+    CalibrationHandler::setLensPosition(cameraDataSocket, lensPosition);
+}
+
+void CBACalibrationHandler::setCameraType(CameraModel cameraModel) {
+    CalibrationHandler::setCameraType(cameraDataSocket, cameraModel);
 }
 
 }  // namespace dai

@@ -370,6 +370,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("CAM_F", CameraBoardSocket::CAM_F)
         .value("CAM_G", CameraBoardSocket::CAM_G)
         .value("CAM_H", CameraBoardSocket::CAM_H)
+        .value("CBA", CameraBoardSocket::CBA)
 
         .value("RGB", CameraBoardSocket::RGB, "**Deprecated:** Use CAM_A or address camera by name instead")
         .value("LEFT", CameraBoardSocket::LEFT, "**Deprecated:** Use CAM_B or address camera by name instead")

@@ -252,6 +252,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("getFsync", &ImgFrame::getFsync, DOC(dai, ImgFrame, getFsync))
         .def("getSensorMode", &ImgFrame::getSensorMode, DOC(dai, ImgFrame, getSensorMode))
         .def("getFps", &ImgFrame::getFps, DOC(dai, ImgFrame, getFps))
+        .def("getSensorTemperature", &ImgFrame::getSensorTemperature, DOC(dai, ImgFrame, getSensorTemperature))
         .def("getSourceHFov", &ImgFrame::getSourceHFov, DOC(dai, ImgFrame, getSourceHFov))
         .def("getSourceVFov", &ImgFrame::getSourceVFov, DOC(dai, ImgFrame, getSourceVFov))
         .def("getSourceDFov", &ImgFrame::getSourceDFov, DOC(dai, ImgFrame, getSourceDFov))
