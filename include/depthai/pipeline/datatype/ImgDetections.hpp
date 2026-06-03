@@ -12,6 +12,7 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
+#include "depthai/pipeline/datatype/Iterable.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
@@ -167,7 +168,7 @@ struct ImgDetection {
  * The segmentation mask is stored as a single-channel INT8 2-d array, where the value represents the instance index in the list of detections.
  * The value 255 is treated as a background pixel (no instance).
  */
-class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable, public TransformableCRTP<ImgDetections> {
+class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializable, public TransformableCRTP<ImgDetections>, public Iterable {
    protected:
     /**
      * Internal transform hook used by transformTo() to apply ImgDetections-specific transformation logic.
@@ -189,6 +190,9 @@ class ImgDetections : public ImgDetectionsT<ImgDetection>, public ProtoSerializa
     using Transformable::transformation;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
+
+    std::size_t getSize() const override;
+
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::ImgDetections;
     }

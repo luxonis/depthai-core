@@ -125,6 +125,13 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          DatatypeEnum::Tracklets,
          DatatypeEnum::PointCloudData,
      }},
+    {DatatypeEnum::Iterable,
+     {
+         DatatypeEnum::ImgDetections,
+         //  DatatypeEnum::SpatialImgDetections,
+         //  DatatypeEnum::AprilTags,
+         //  DatatypeEnum::Tracklets,
+     }},
     {DatatypeEnum::ImgFrame, {}},
     {DatatypeEnum::EncodedFrame, {}},
     {DatatypeEnum::SegmentationMask, {}},
