@@ -222,6 +222,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     spatialKeypointsList.def(py::init<>())
         .def(py::init<std::vector<SpatialKeypoint>, std::vector<Edge>>(), py::arg("keypoints"), py::arg("edges"), DOC(dai, KeypointsListT, KeypointsListT))
         .def(py::init<std::vector<SpatialKeypoint>>(), py::arg("keypoints"), DOC(dai, KeypointsListT, KeypointsListT))
+        .def_readwrite("unit", &SpatialKeypointsList::unit, DOC(dai, SpatialKeypointsList, unit))
         .def(
             "setKeypoints",
             [](SpatialKeypointsList& self, const std::vector<SpatialKeypoint>& kps) { self.Base::setKeypoints(kps); },
@@ -248,6 +249,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("setSpatialCoordinates",
              &SpatialKeypointsList::setSpatialCoordinates,
              py::arg("spatialCoordinates"),
+             py::arg("spatialUnit") = LengthUnit::MILLIMETER,
              DOC(dai, SpatialKeypointsList, setSpatialCoordinates))
         .def("getSpatialCoordinates", &SpatialKeypointsList::getSpatialCoordinates, DOC(dai, SpatialKeypointsList, getSpatialCoordinates));
 
@@ -368,6 +370,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("CAM_F", CameraBoardSocket::CAM_F)
         .value("CAM_G", CameraBoardSocket::CAM_G)
         .value("CAM_H", CameraBoardSocket::CAM_H)
+        .value("CBA", CameraBoardSocket::CBA)
 
         .value("RGB", CameraBoardSocket::RGB, "**Deprecated:** Use CAM_A or address camera by name instead")
         .value("LEFT", CameraBoardSocket::LEFT, "**Deprecated:** Use CAM_B or address camera by name instead")

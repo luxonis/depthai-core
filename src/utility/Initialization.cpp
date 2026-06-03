@@ -11,6 +11,7 @@
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
 #include "utility/Resources.hpp"
+#include "utility/Telemetry.hpp"
 #include "utility/XLinkGlobalProfilingLogger.hpp"
 
 // libraries
@@ -155,6 +156,8 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         }
 
         logger::debug("Initialize - finished");
+
+        utility::Telemetry::emitDepthaiTelemetryLoadEvent();
 
         return true;
     }();

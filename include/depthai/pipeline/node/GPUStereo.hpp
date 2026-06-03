@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/datatype/GPUStereoConfig.hpp>
@@ -9,6 +7,7 @@
 #include <depthai/pipeline/node/Rectification.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/GPUStereoProperties.hpp>
+#include <memory>
 
 namespace dai {
 namespace node {

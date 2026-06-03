@@ -1,8 +1,11 @@
 #pragma once
 
 // pybind
+#include <type_traits>
+
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "pybind11_common.hpp"
 
 struct DatatypeBindings {
@@ -13,7 +16,7 @@ struct DatatypeBindings {
 };
 
 namespace dai {
-template <typename T>
+template <typename T, typename Enable = void>
 // This is used so pybind detects the classes as overridable in python,
 // which trigers the holders to keep the python part of the object alive
 class Py : public T {
@@ -24,6 +27,16 @@ class Py : public T {
                           T,                       /* Parent class */
                           getVisualizationMessage, /* Name of function in C++ (must match Python name) */
         );
+    }
+};
+
+template <typename T>
+class Py<T, std::enable_if_t<std::is_base_of_v<dai::TransformableBuffer, T>>> : public T {
+   public:
+    using T::T;
+
+    std::shared_ptr<dai::TransformableBuffer> transformTo(const dai::ImgTransformation& target) const override {
+        PYBIND11_OVERLOAD(std::shared_ptr<dai::TransformableBuffer>, T, transformTo, target);
     }
 };
 }  // namespace dai

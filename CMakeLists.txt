@@ -75,7 +75,7 @@ else()
 endif()
 
 # Create depthai project
-project(depthai VERSION "3.6.1" LANGUAGES CXX C)
+project(depthai VERSION "3.7.0" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
 set(DEPTHAI_PRE_RELEASE_VERSION "0") # Valid options are "0", "1", "2", ...
 
@@ -344,6 +344,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp
     src/pipeline/datatype/Buffer.cpp
+    src/pipeline/datatype/Transformable.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/Extrinsics.cpp
@@ -408,6 +409,8 @@ set(TARGET_CORE_SOURCES
     src/utility/McapImpl.cpp
     src/utility/Environment.cpp
     src/utility/Compression.cpp
+    src/utility/Telemetry.cpp
+    src/utility/Uuid.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
     src/utility/Checksum.cpp
