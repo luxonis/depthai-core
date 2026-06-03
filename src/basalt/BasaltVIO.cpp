@@ -198,7 +198,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
     pimpl->calib = std::make_shared<basalt::Calibration<Scalar>>();
     pimpl->calib->imu_update_rate = imuUpdateRate;
 
-    auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
+    auto calibHandler = pipeline.getDefaultDevice()->getCalibration();
 
     for(const auto& frame : frames) {
         Eigen::Vector2i resolution;
