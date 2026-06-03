@@ -11,7 +11,8 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
 
     // Node and Properties declare upfront
     py::class_<SyncProperties> syncProperties(m, "SyncProperties", DOC(dai, SyncProperties));
-    auto sync = ADD_NODE(Sync);
+    auto sync = addNode<Sync>("Sync", DOC(dai, node, SyncBase));
+    auto syncDevice= addNode<SyncDevice>("SyncDevice", DOC(dai, node, SyncBase));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -32,15 +33,27 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
         .def_readwrite("processor", &SyncProperties::processor, DOC(dai, SyncProperties, processor));
 
     // Node
-    sync.def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
-        .def_readonly("inputs", &Sync::inputs, DOC(dai, node, Sync, inputs))
-        .def("setSyncThreshold", &Sync::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, Sync, setSyncThreshold))
-        .def("setSyncAttempts", &Sync::setSyncAttempts, py::arg("maxDataSize"), DOC(dai, node, Sync, setSyncAttempts))
-        .def("getSyncThreshold", &Sync::getSyncThreshold, DOC(dai, node, Sync, getSyncThreshold))
-        .def("getSyncAttempts", &Sync::getSyncAttempts, DOC(dai, node, Sync, getSyncAttempts))
-        .def("setProcessor", &Sync::setProcessor, DOC(dai, node, Sync, setProcessor))
-        .def("getProcessor", &Sync::getProcessor, DOC(dai, node, Sync, getProcessor))
-        .def("setRunOnHost", &Sync::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Sync, setRunOnHost))
-        .def("runOnHost", &Sync::runOnHost, DOC(dai, node, Sync, runOnHost));
+    sync.def_readonly("out", &Sync::out, DOC(dai, node, SyncBase, out))
+        .def_readonly("inputs", &Sync::inputs, DOC(dai, node, SyncBase, inputs))
+        .def("setSyncThreshold", &Sync::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, SyncBase, setSyncThreshold))
+        .def("setSyncAttempts", &Sync::setSyncAttempts, py::arg("maxDataSize"), DOC(dai, node, SyncBase, setSyncAttempts))
+        .def("getSyncThreshold", &Sync::getSyncThreshold, DOC(dai, node, SyncBase, getSyncThreshold))
+        .def("getSyncAttempts", &Sync::getSyncAttempts, DOC(dai, node, SyncBase, getSyncAttempts))
+        .def("setProcessor", &Sync::setProcessor, DOC(dai, node, SyncBase, setProcessor))
+        .def("getProcessor", &Sync::getProcessor, DOC(dai, node, SyncBase, getProcessor))
+        .def("setRunOnHost", &Sync::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, SyncBase, setRunOnHost))
+        .def("runOnHost", &Sync::runOnHost, DOC(dai, node, SyncBase, runOnHost));
     daiNodeModule.attr("Sync").attr("Properties") = syncProperties;
+
+    syncDevice.def_readonly("out", &SyncDevice::out, DOC(dai, node, SyncBase, out))
+        .def_readonly("inputs", &SyncDevice::inputs, DOC(dai, node, SyncBase, inputs))
+        .def("setSyncThreshold", &SyncDevice::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, SyncBase, setSyncThreshold))
+        .def("setSyncAttempts", &SyncDevice::setSyncAttempts, py::arg("maxDataSize"), DOC(dai, node, SyncBase, setSyncAttempts))
+        .def("getSyncThreshold", &SyncDevice::getSyncThreshold, DOC(dai, node, SyncBase, getSyncThreshold))
+        .def("getSyncAttempts", &SyncDevice::getSyncAttempts, DOC(dai, node, SyncBase, getSyncAttempts))
+        .def("setProcessor", &SyncDevice::setProcessor, DOC(dai, node, SyncBase, setProcessor))
+        .def("getProcessor", &SyncDevice::getProcessor, DOC(dai, node, SyncBase, getProcessor))
+        .def("setRunOnHost", &SyncDevice::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, SyncBase, setRunOnHost))
+        .def("runOnHost", &SyncDevice::runOnHost, DOC(dai, node, SyncBase, runOnHost));
+    daiNodeModule.attr("SyncDevice").attr("Properties") = syncProperties;
 }
