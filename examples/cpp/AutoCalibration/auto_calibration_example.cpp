@@ -63,7 +63,7 @@ cv::Matx33d eulerAnglesToRotationMatrix(double phi, double theta, double psi) {
 }
 
 void botchCalibration(std::shared_ptr<dai::Device> device) {
-    auto calibHandler = device->readCalibration();
+    auto calibHandler = device->getCalibration();
     const auto extrinsics = calibHandler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C);
 
     if(extrinsics.size() < 3 || extrinsics[0].size() < 4 || extrinsics[1].size() < 4 || extrinsics[2].size() < 4) {
