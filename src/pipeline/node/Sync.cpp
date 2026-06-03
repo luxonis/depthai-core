@@ -1,7 +1,6 @@
 #include "depthai/pipeline/node/Sync.hpp"
 
 #include <chrono>
-#include <stdexcept>
 
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -9,77 +8,44 @@
 namespace dai {
 namespace node {
 
-namespace {
-template <SyncTimestamp TS>
-inline auto getTs(const std::shared_ptr<dai::Buffer>& b) {
-    if constexpr(TS == SyncTimestamp::Steady) {
-        return b->getTimestamp();  // steady_clock::time_point
-    } else if constexpr(TS == SyncTimestamp::Device) {
-        return b->getTimestampDevice();  // steady_clock::time_point
-    } else {
-        throw std::runtime_error("Unknown SyncTimestamp");
-    }
+void Sync::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
+    properties.syncThresholdNs = syncThreshold.count();
 }
 
-template <SyncTimestamp TS>
-inline auto getTs(dai::Buffer* b) {
-    if constexpr(TS == SyncTimestamp::Steady) {
-        return b->getTimestamp();  // steady_clock::time_point
-    } else if constexpr(TS == SyncTimestamp::Device) {
-        return b->getTimestampDevice();  // steady_clock::time_point
-    } else {
-        throw std::runtime_error("Unknown SyncTimestamp");
-    }
-}
-}  // namespace
-
-template <SyncTimestamp TS>
-void SyncBase<TS>::setProcessor(ProcessorType proc) {
-    this->properties.processor = proc;
+void Sync::setSyncAttempts(int syncAttempts) {
+    properties.syncAttempts = syncAttempts;
 }
 
-template <SyncTimestamp TS>
-ProcessorType SyncBase<TS>::getProcessor() const {
-    return this->properties.processor;
+void Sync::setProcessor(ProcessorType proc) {
+    properties.processor = proc;
 }
 
-template <SyncTimestamp TS>
-void SyncBase<TS>::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
-    this->properties.syncThresholdNs = syncThreshold.count();
+ProcessorType Sync::getProcessor() const {
+    return properties.processor;
 }
 
-template <SyncTimestamp TS>
-void SyncBase<TS>::setSyncAttempts(int syncAttempts) {
-    this->properties.syncAttempts = syncAttempts;
+std::chrono::nanoseconds Sync::getSyncThreshold() const {
+    return std::chrono::nanoseconds(properties.syncThresholdNs);
 }
 
-template <SyncTimestamp TS>
-std::chrono::nanoseconds SyncBase<TS>::getSyncThreshold() const {
-    return std::chrono::nanoseconds(this->properties.syncThresholdNs);
+int Sync::getSyncAttempts() const {
+    return properties.syncAttempts;
 }
 
-template <SyncTimestamp TS>
-int SyncBase<TS>::getSyncAttempts() const {
-    return this->properties.syncAttempts;
-}
-
-template <SyncTimestamp TS>
-void SyncBase<TS>::setRunOnHost(bool runOnHost) {
+void Sync::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
 /**
  * Check if the node is set to run on host
  */
-template <SyncTimestamp TS>
-bool SyncBase<TS>::runOnHost() const {
+bool Sync::runOnHost() const {
     return runOnHostVar;
 }
 
-template <SyncTimestamp TS>
-void SyncBase<TS>::run() {
+void Sync::run() {
     using namespace std::chrono;
-    auto& logger = this->pimpl->logger;
+    auto& logger = pimpl->logger;
     const auto inputsName = inputs.name;
 
     if(inputs.empty()) {
@@ -91,12 +57,12 @@ void SyncBase<TS>::run() {
         inputNames.push_back(inputName);
     }
 
-    auto syncThresholdNs = this->properties.syncThresholdNs;
+    auto syncThresholdNs = properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
     time_point<steady_clock> tAfterMessageBeginning;
 
-    while(this->mainLoop()) {
+    while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::unordered_map<std::string, std::shared_ptr<dai::Buffer>> inputFrames;
         {
@@ -112,8 +78,9 @@ void SyncBase<TS>::run() {
             }
             // Print out the timestamps
             for(const auto& frame : inputFrames) {
-                logger->debug(
-                    "Starting input {} timestamp is {} ms", frame.first, static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
+                logger->debug("Starting input {} timestamp is {} ms",
+                              frame.first,
+                              static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
             }
             tAfterMessageBeginning = steady_clock::now();
             int attempts = 0;
@@ -122,12 +89,13 @@ void SyncBase<TS>::run() {
                 if(attempts > 50) {
                     logger->warn("Sync node has been trying to sync for {} messages, but the messages are still not in sync.", attempts);
                     for(const auto& frame : inputFrames) {
-                        logger->warn(
-                            "Output {} timestamp is {} ms", frame.first, static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
+                        logger->warn("Output {} timestamp is {} ms",
+                                     frame.first,
+                                     static_cast<float>(frame.second->getTimestamp().time_since_epoch().count()) / 1000000.f);
                     }
                 }
-                if(attempts > this->properties.syncAttempts && this->properties.syncAttempts != -1) {
-                    if(this->properties.syncAttempts != 0)
+                if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {
+                    if(properties.syncAttempts != 0)
                         logger->warn(
                             "Sync node has been trying to sync for {} messages, but the messages are still not in sync. "
                             "The node will send the messages anyway.",
@@ -135,18 +103,18 @@ void SyncBase<TS>::run() {
                     break;
                 }
                 // Find a minimum timestamp
-                auto minTs = getTs<TS>(inputFrames.begin()->second);
+                auto minTs = inputFrames.begin()->second->getTimestamp();
                 for(const auto& frame : inputFrames) {
-                    if(getTs<TS>(frame.second) < minTs) {
-                        minTs = getTs<TS>(frame.second);
+                    if(frame.second->getTimestamp() < minTs) {
+                        minTs = frame.second->getTimestamp();
                     }
                 }
 
                 // Find a max timestamp
-                auto maxTs = getTs<TS>(inputFrames.begin()->second);
+                auto maxTs = inputFrames.begin()->second->getTimestamp();
                 for(const auto& frame : inputFrames) {
-                    if(getTs<TS>(frame.second) > maxTs) {
-                        maxTs = getTs<TS>(frame.second);
+                    if(frame.second->getTimestamp() > maxTs) {
+                        maxTs = frame.second->getTimestamp();
                     }
                 }
                 logger->debug("Diff: {} ms", duration_cast<milliseconds>(maxTs - minTs).count());
@@ -158,7 +126,7 @@ void SyncBase<TS>::run() {
                 // Get the message with the minimum timestamp (oldest message)
                 std::string minTsName;
                 for(const auto& frame : inputFrames) {
-                    if(getTs<TS>(frame.second) == minTs) {
+                    if(frame.second->getTimestamp() == minTs) {
                         minTsName = frame.first;
                         break;
                     }
@@ -174,9 +142,9 @@ void SyncBase<TS>::run() {
         for(const auto& name : inputNames) {
             logger->trace("Sending output: {}", name);
             logger->trace("Timestamp: {} ms",
-                          static_cast<float>(duration_cast<microseconds>(getTs<TS>(inputFrames[name]).time_since_epoch()).count()) / 1000.f);
+                          static_cast<float>(duration_cast<microseconds>(inputFrames[name]->getTimestamp().time_since_epoch()).count()) / 1000.f);
             outputGroup->add(name, inputFrames[name]);
-            if(getTs<TS>(inputFrames[name]) > getTs<TS>(newestFrame)) {
+            if(inputFrames[name]->getTimestamp() > newestFrame->getTimestamp()) {
                 newestFrame = inputFrames[name].get();
             }
         }

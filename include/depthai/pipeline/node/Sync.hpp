@@ -11,41 +11,27 @@
 namespace dai {
 namespace node {
 
-enum class SyncTimestamp { Steady, Device };
-
-template <SyncTimestamp TS>
-struct SyncName {
-    static constexpr const char* value = "Sync";
-};
-
-template <>
-struct SyncName<SyncTimestamp::Device> {
-    static constexpr const char* value = "SyncDevice";
-};
-
 /**
  * @brief Sync node. Performs syncing between image frames
  */
-template <SyncTimestamp TS>
-class SyncBase : public DeviceNodeCRTP<DeviceNode, SyncBase<TS>, SyncProperties>, public HostRunnable {
+class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public HostRunnable {
    private:
     bool runOnHostVar = false;
 
    public:
-    constexpr static const char* NAME = SyncName<TS>::value;
-    using DeviceNodeCRTP<DeviceNode, SyncBase<TS>, SyncProperties>::DeviceNodeCRTP;
+    constexpr static const char* NAME = "Sync";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * A map of inputs
      */
-    DeviceNode::InputMap inputs{
-        *this, "inputs", {"", DeviceNode::DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DeviceNode::DEFAULT_WAIT_FOR_MESSAGE}};
+    InputMap inputs{*this, "inputs", {"", DEFAULT_GROUP, false, 10, {{{DatatypeEnum::Buffer, true}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     /**
      * Output message of type MessageGroup
      */
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
-    DeviceNode::Output out{*this, {"out", DeviceNode::DEFAULT_GROUP, {{{DatatypeEnum::MessageGroup, false}}}}};
+    Output out{*this, {"out", DEFAULT_GROUP, {{{DatatypeEnum::MessageGroup, false}}}}};
 
     /**
      * Set the maximal interval between messages in the group
@@ -97,12 +83,6 @@ class SyncBase : public DeviceNodeCRTP<DeviceNode, SyncBase<TS>, SyncProperties>
 
     void run() override;
 };
-
-template class SyncBase<SyncTimestamp::Steady>;
-template class SyncBase<SyncTimestamp::Device>;
-
-typedef SyncBase<SyncTimestamp::Steady> Sync;
-typedef SyncBase<SyncTimestamp::Device> SyncDevice;
 
 }  // namespace node
 }  // namespace dai
