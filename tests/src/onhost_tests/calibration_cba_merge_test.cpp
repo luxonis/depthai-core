@@ -1,22 +1,28 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <iostream>
+#include <optional>
 #include <unordered_map>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/device/EepromError.hpp"
 
 class CalibrationData {
    public:
     explicit CalibrationData(std::shared_ptr<dai::Device> device) : device(std::move(device)) {}
 
     void capture(dai::CameraBoardSocket cameraSocket = dai::CameraBoardSocket::AUTO) {
-        calibrationData[cameraSocket] = device->readCalibration2(cameraSocket);
+        try {
+            calibrationData[cameraSocket] = device->readCalibration2(cameraSocket);
+        } catch(const dai::EepromError&) {
+            calibrationData[cameraSocket] = std::nullopt;
+        }
     }
 
     void restore() {
         for(const auto& [cameraSocket, data] : calibrationData) {
-            device->flashCalibration(data, cameraSocket);
+            restoreSocket(cameraSocket, data);
         }
         restored = true;
     }
@@ -26,7 +32,7 @@ class CalibrationData {
 
         for(const auto& [cameraSocket, data] : calibrationData) {
             try {
-                device->flashCalibration(data, cameraSocket);
+                restoreSocket(cameraSocket, data);
             } catch(const std::exception& e) {
                 std::cerr << "[EEPROM RESTORE FAILED] socket " << static_cast<int>(cameraSocket) << ": " << e.what() << std::endl;
             }
@@ -34,8 +40,16 @@ class CalibrationData {
     }
 
    private:
+    void restoreSocket(dai::CameraBoardSocket cameraSocket, const std::optional<dai::CalibrationHandler>& data) {
+        if(data.has_value()) {
+            device->flashCalibration(data.value(), cameraSocket);
+        } else {
+            device->flashEepromClear(cameraSocket);
+        }
+    }
+
     std::shared_ptr<dai::Device> device;
-    std::unordered_map<dai::CameraBoardSocket, dai::CalibrationHandler> calibrationData;
+    std::unordered_map<dai::CameraBoardSocket, std::optional<dai::CalibrationHandler>> calibrationData;
     bool restored = false;
 };
 

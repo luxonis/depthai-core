@@ -1208,7 +1208,6 @@ class DeviceBase {
    private:
     // private functions
     void init2(Config cfg, const std::filesystem::path& pathToMvcmd, bool hasPipeline, bool reconnect = false);
-    void tryPremergeCalibration();
     void tryGetDevice();
     struct PrevInfo {
         DeviceInfo deviceInfo;
@@ -1266,10 +1265,6 @@ class DeviceBase {
     // closed
     mutable std::mutex closedMtx;
     bool closed{false};
-
-    // Runtime calibration merge state
-    std::mutex calibrationMergeMtx;
-    bool runtimeCalibrationMerged{false};
 
     // pimpl
     class Impl;
