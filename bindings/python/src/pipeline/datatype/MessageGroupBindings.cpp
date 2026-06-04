@@ -43,7 +43,9 @@ void bind_message_group(pybind11::module& m, void* pCallstack) {
     messageGroup.def(py::init<>())
         .def("__repr__", &MessageGroup::str)
         .def("__getitem__", [](MessageGroup& msg, const std::string& name) { return msg[name]; })
+        .def("__getitem__", [](MessageGroup& msg, uint32_t index) { return msg[index]; })
         .def("__setitem__", [](MessageGroup& msg, const std::string& name, std::shared_ptr<ADatatype> data) { return msg.add(name, data); })
+        .def("__setitem__", [](MessageGroup& msg, uint32_t index, std::shared_ptr<ADatatype> data) { return msg.add(index, data); })
         .def(
             "__iter__",
             [](MessageGroup& msg) { return py::make_iterator(msg.begin(), msg.end()); },
@@ -51,7 +53,8 @@ void bind_message_group(pybind11::module& m, void* pCallstack) {
         .def("isSynced", &MessageGroup::isSynced, py::arg("thresholdNs"), DOC(dai, MessageGroup, isSynced))
         .def("getIntervalNs", &MessageGroup::getIntervalNs, DOC(dai, MessageGroup, getIntervalNs))
         .def("getNumMessages", &MessageGroup::getNumMessages, DOC(dai, MessageGroup, getNumMessages))
-        .def("getMessageNames", &MessageGroup::getMessageNames, DOC(dai, MessageGroup, getMessageNames))
+        .def("getMessageNames", &MessageGroup::getMessageNames)
+        .def("getMessageIndices", &MessageGroup::getMessageIndices)
         .def("getTimestamp", &MessageGroup::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &MessageGroup::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &MessageGroup::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
