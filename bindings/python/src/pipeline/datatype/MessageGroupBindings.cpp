@@ -44,8 +44,8 @@ void bind_message_group(pybind11::module& m, void* pCallstack) {
         .def("__repr__", &MessageGroup::str)
         .def("__getitem__", [](MessageGroup& msg, const std::string& name) { return msg[name]; })
         .def("__getitem__", [](MessageGroup& msg, uint32_t index) { return msg[index]; })
-        .def("__setitem__", [](MessageGroup& msg, const std::string& name, std::shared_ptr<ADatatype> data) { return msg.add(name, data); })
-        .def("__setitem__", [](MessageGroup& msg, uint32_t index, std::shared_ptr<ADatatype> data) { return msg.add(index, data); })
+        .def("__setitem__", [](MessageGroup& msg, const std::string& name, std::shared_ptr<ADatatype> data) { return msg.addMessage(name, data); })
+        .def("__setitem__", [](MessageGroup& msg, uint32_t index, std::shared_ptr<ADatatype> data) { return msg.addMessage(index, data); })
         .def(
             "__iter__",
             [](MessageGroup& msg) { return py::make_iterator(msg.begin(), msg.end()); },

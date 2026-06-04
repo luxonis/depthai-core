@@ -133,8 +133,8 @@ TEST_CASE("XLinkInHost - readData") {
         frame2->setCvFrame(mat2, dai::ImgFrame::Type::GRAY8);
 
         auto messageGroup = std::make_shared<dai::MessageGroup>();
-        messageGroup->add("frame1", frame1);
-        messageGroup->add("frame2", frame2);
+        messageGroup->addMessage("frame1", frame1);
+        messageGroup->addMessage("frame2", frame2);
 
         std::vector<std::uint8_t> serialized = dai::StreamMessageParser::serializeMetadata(messageGroup);
 

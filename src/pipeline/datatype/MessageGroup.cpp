@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_set>
 
@@ -13,17 +15,10 @@
 namespace dai {
 
 namespace {
+constexpr uint32_t INVALID_LINK_INDEX = std::numeric_limits<uint32_t>::max();
 
-bool tryConvertIndex(int index, uint32_t& convertedIndex) {
-    if(index < 0) {
-        return false;
-    }
-    convertedIndex = static_cast<uint32_t>(index);
-    return true;
-}
-
-void appendUniqueIndex(std::vector<int>& indices, int index) {
-    for(int existingIndex : indices) {
+void appendUniqueIndex(std::vector<uint32_t>& indices, uint32_t index) {
+    for(uint32_t existingIndex : indices) {
         if(existingIndex == index) {
             return;
         }
@@ -95,29 +90,33 @@ std::shared_ptr<ADatatype> MessageGroup::operator[](const std::string& index) {
     return (*this)[resolvedIndex];
 }
 
-void MessageGroup::add(uint32_t index, const std::shared_ptr<ADatatype>& value) {
+uint32_t MessageGroup::getLastMessageIndex() const {
+    if(group.empty()) {
+        throw std::runtime_error("MessageGroup is empty");
+    }
+
+    return group.rbegin()->first;
+}
+
+void MessageGroup::addMessage(uint32_t index, const std::shared_ptr<ADatatype>& value) {
+    // possible  issue of overriding. Need to tighten this
     group[index] = value;
 }
 
-void MessageGroup::add(const std::string& index, const std::shared_ptr<ADatatype>& value) {
+void MessageGroup::addMessage(const std::string& index, const std::shared_ptr<ADatatype>& value) {
     auto keyIterator = keyToIndex.find(index);
     if(keyIterator != keyToIndex.end()) {
-        add(keyIterator->second, value);
+        addMessage(keyIterator->second, value);
         return;
     }
 
-    auto nextIndex = nextAvailableIndex();
+    const auto nextIndex = nextAvailableIndex();
     keyToIndex[index] = nextIndex;
-    add(nextIndex, value);
+    addMessage(nextIndex, value);
 }
 
-bool MessageGroup::setNode(int nodeIndex, std::shared_ptr<ADatatype> node) {
-    uint32_t convertedNodeIndex = 0;
-    if(!tryConvertIndex(nodeIndex, convertedNodeIndex)) {
-        return false;
-    }
-
-    auto iterator = group.find(convertedNodeIndex);
+bool MessageGroup::setNode(uint32_t nodeIndex, std::shared_ptr<ADatatype> node) {
+    auto iterator = group.find(nodeIndex);
     if(iterator == group.end()) {
         return false;
     }
@@ -126,13 +125,8 @@ bool MessageGroup::setNode(int nodeIndex, std::shared_ptr<ADatatype> node) {
     return true;
 }
 
-std::shared_ptr<ADatatype> MessageGroup::getNode(int nodeIndex) const {
-    uint32_t convertedNodeIndex = 0;
-    if(!tryConvertIndex(nodeIndex, convertedNodeIndex)) {
-        return nullptr;
-    }
-
-    auto iterator = group.find(convertedNodeIndex);
+std::shared_ptr<ADatatype> MessageGroup::getNode(uint32_t nodeIndex) const {
+    auto iterator = group.find(nodeIndex);
     if(iterator == group.end()) {
         return nullptr;
     }
@@ -140,44 +134,27 @@ std::shared_ptr<ADatatype> MessageGroup::getNode(int nodeIndex) const {
     return iterator->second;
 }
 
-int MessageGroup::addLink(int parentNodeIndex, int childNodeIndex, int parentItemIndex) {
-    uint32_t convertedParentNodeIndex = 0;
-    uint32_t convertedChildNodeIndex = 0;
-    uint32_t convertedParentItemIndex = 0;
-    if(!tryConvertIndex(parentNodeIndex, convertedParentNodeIndex) || !tryConvertIndex(childNodeIndex, convertedChildNodeIndex)
-       || !tryConvertIndex(parentItemIndex, convertedParentItemIndex)) {
-        return -1;
+uint32_t MessageGroup::addLink(uint32_t parentNodeIndex, uint32_t childNodeIndex, uint32_t parentItemIndex) {
+    if(group.find(parentNodeIndex) == group.end() || group.find(childNodeIndex) == group.end()) {
+        return INVALID_LINK_INDEX;
     }
 
-    if(group.find(convertedParentNodeIndex) == group.end() || group.find(convertedChildNodeIndex) == group.end()) {
-        return -1;
-    }
-
-    links.push_back(Link{convertedParentNodeIndex, convertedParentItemIndex, convertedChildNodeIndex});
-    return static_cast<int>(links.size() - 1);
+    links.push_back(Link{parentNodeIndex, parentItemIndex, childNodeIndex});
+    return static_cast<uint32_t>(links.size() - 1);
 }
 
-int MessageGroup::addLink(const dai::Link& link) {
+uint32_t MessageGroup::addLink(const dai::Link& link) {
     if(group.find(link.parentMessageIndex) == group.end() || group.find(link.childNodeIndex) == group.end()) {
-        return -1;
+        return INVALID_LINK_INDEX;
     }
 
     links.push_back(link);
-    return static_cast<int>(links.size() - 1);
+    return static_cast<uint32_t>(links.size() - 1);
 }
 
-bool MessageGroup::hasLink(int parentNodeIndex, int parentItemIndex, int childNodeIndex) const {
-    uint32_t convertedParentNodeIndex = 0;
-    uint32_t convertedParentItemIndex = 0;
-    uint32_t convertedChildNodeIndex = 0;
-    if(!tryConvertIndex(parentNodeIndex, convertedParentNodeIndex) || !tryConvertIndex(parentItemIndex, convertedParentItemIndex)
-       || !tryConvertIndex(childNodeIndex, convertedChildNodeIndex)) {
-        return false;
-    }
-
+bool MessageGroup::hasLink(uint32_t parentNodeIndex, uint32_t parentItemIndex, uint32_t childNodeIndex) const {
     for(const auto& link : links) {
-        if(link.parentMessageIndex == convertedParentNodeIndex && link.itemIndex == convertedParentItemIndex
-           && link.childNodeIndex == convertedChildNodeIndex) {
+        if(link.parentMessageIndex == parentNodeIndex && link.itemIndex == parentItemIndex && link.childNodeIndex == childNodeIndex) {
             return true;
         }
     }
@@ -185,8 +162,8 @@ bool MessageGroup::hasLink(int parentNodeIndex, int parentItemIndex, int childNo
     return false;
 }
 
-bool MessageGroup::removeLink(int linkIndex) {
-    if(linkIndex < 0 || static_cast<std::size_t>(linkIndex) >= links.size()) {
+bool MessageGroup::removeLink(uint32_t linkIndex) {
+    if(linkIndex >= links.size()) {
         return false;
     }
 
@@ -194,24 +171,19 @@ bool MessageGroup::removeLink(int linkIndex) {
     return true;
 }
 
-bool MessageGroup::removeMessageNode(int nodeIndex) {
-    uint32_t convertedNodeIndex = 0;
-    if(!tryConvertIndex(nodeIndex, convertedNodeIndex)) {
-        return false;
-    }
-
-    if(group.find(convertedNodeIndex) == group.end()) {
+bool MessageGroup::removeMessageNode(uint32_t nodeIndex) {
+    if(group.find(nodeIndex) == group.end()) {
         return false;
     }
 
     std::map<uint32_t, std::shared_ptr<ADatatype>> reindexedGroup;
     for(auto& entry : group) {
-        if(entry.first == convertedNodeIndex) {
+        if(entry.first == nodeIndex) {
             continue;
         }
 
         uint32_t reindexedNodeIndex = entry.first;
-        if(entry.first > convertedNodeIndex) {
+        if(entry.first > nodeIndex) {
             reindexedNodeIndex--;
         }
         reindexedGroup[reindexedNodeIndex] = entry.second;
@@ -219,11 +191,11 @@ bool MessageGroup::removeMessageNode(int nodeIndex) {
     group = std::move(reindexedGroup);
 
     for(auto iterator = keyToIndex.begin(); iterator != keyToIndex.end();) {
-        if(iterator->second == convertedNodeIndex) {
+        if(iterator->second == nodeIndex) {
             iterator = keyToIndex.erase(iterator);
             continue;
         }
-        if(iterator->second > convertedNodeIndex) {
+        if(iterator->second > nodeIndex) {
             iterator->second--;
         }
         ++iterator;
@@ -232,14 +204,14 @@ bool MessageGroup::removeMessageNode(int nodeIndex) {
     std::vector<Link> reindexedLinks;
     reindexedLinks.reserve(links.size());
     for(auto link : links) {
-        if(linkReferencesNode(link, convertedNodeIndex)) {
+        if(linkReferencesNode(link, nodeIndex)) {
             continue;
         }
 
-        if(link.parentMessageIndex > convertedNodeIndex) {
+        if(link.parentMessageIndex > nodeIndex) {
             link.parentMessageIndex--;
         }
-        if(link.childNodeIndex > convertedNodeIndex) {
+        if(link.childNodeIndex > nodeIndex) {
             link.childNodeIndex--;
         }
         reindexedLinks.push_back(link);
@@ -249,15 +221,10 @@ bool MessageGroup::removeMessageNode(int nodeIndex) {
     return true;
 }
 
-std::vector<Link> MessageGroup::getLinksFromParent(int parentNodeIndex) const {
-    uint32_t convertedParentNodeIndex = 0;
-    if(!tryConvertIndex(parentNodeIndex, convertedParentNodeIndex)) {
-        return {};
-    }
-
+std::vector<Link> MessageGroup::getLinksFromParent(uint32_t parentNodeIndex) const {
     std::vector<Link> matchingLinks;
     for(const auto& link : links) {
-        if(link.parentMessageIndex == convertedParentNodeIndex) {
+        if(link.parentMessageIndex == parentNodeIndex) {
             matchingLinks.push_back(link);
         }
     }
@@ -265,16 +232,10 @@ std::vector<Link> MessageGroup::getLinksFromParent(int parentNodeIndex) const {
     return matchingLinks;
 }
 
-std::vector<Link> MessageGroup::getLinksFromParent(int parentNodeIndex, int parentItemIndex) const {
-    uint32_t convertedParentNodeIndex = 0;
-    uint32_t convertedParentItemIndex = 0;
-    if(!tryConvertIndex(parentNodeIndex, convertedParentNodeIndex) || !tryConvertIndex(parentItemIndex, convertedParentItemIndex)) {
-        return {};
-    }
-
+std::vector<Link> MessageGroup::getLinksFromParent(uint32_t parentNodeIndex, uint32_t parentItemIndex) const {
     std::vector<Link> matchingLinks;
     for(const auto& link : links) {
-        if(link.parentMessageIndex == convertedParentNodeIndex && link.itemIndex == convertedParentItemIndex) {
+        if(link.parentMessageIndex == parentNodeIndex && link.itemIndex == parentItemIndex) {
             matchingLinks.push_back(link);
         }
     }
@@ -282,15 +243,10 @@ std::vector<Link> MessageGroup::getLinksFromParent(int parentNodeIndex, int pare
     return matchingLinks;
 }
 
-std::vector<Link> MessageGroup::getLinksToChild(int childNodeIndex) const {
-    uint32_t convertedChildNodeIndex = 0;
-    if(!tryConvertIndex(childNodeIndex, convertedChildNodeIndex)) {
-        return {};
-    }
-
+std::vector<Link> MessageGroup::getLinksToChild(uint32_t childNodeIndex) const {
     std::vector<Link> matchingLinks;
     for(const auto& link : links) {
-        if(link.childNodeIndex == convertedChildNodeIndex) {
+        if(link.childNodeIndex == childNodeIndex) {
             matchingLinks.push_back(link);
         }
     }
@@ -298,31 +254,31 @@ std::vector<Link> MessageGroup::getLinksToChild(int childNodeIndex) const {
     return matchingLinks;
 }
 
-std::vector<int> MessageGroup::getChildren(int parentNodeIndex) const {
-    std::vector<int> children;
+std::vector<uint32_t> MessageGroup::getChildren(uint32_t parentNodeIndex) const {
+    std::vector<uint32_t> children;
     for(const auto& link : getLinksFromParent(parentNodeIndex)) {
-        appendUniqueIndex(children, static_cast<int>(link.childNodeIndex));
+        appendUniqueIndex(children, link.childNodeIndex);
     }
     return children;
 }
 
-std::vector<int> MessageGroup::getChildren(int parentNodeIndex, int parentItemIndex) const {
-    std::vector<int> children;
+std::vector<uint32_t> MessageGroup::getChildren(uint32_t parentNodeIndex, uint32_t parentItemIndex) const {
+    std::vector<uint32_t> children;
     for(const auto& link : getLinksFromParent(parentNodeIndex, parentItemIndex)) {
-        appendUniqueIndex(children, static_cast<int>(link.childNodeIndex));
+        appendUniqueIndex(children, link.childNodeIndex);
     }
     return children;
 }
 
-std::vector<int> MessageGroup::getParents(int childNodeIndex) const {
-    std::vector<int> parents;
+std::vector<uint32_t> MessageGroup::getParents(uint32_t childNodeIndex) const {
+    std::vector<uint32_t> parents;
     for(const auto& link : getLinksToChild(childNodeIndex)) {
-        appendUniqueIndex(parents, static_cast<int>(link.parentMessageIndex));
+        appendUniqueIndex(parents, link.parentMessageIndex);
     }
     return parents;
 }
 
-bool MessageGroup::isLeaf(int nodeIndex) const {
+bool MessageGroup::isLeaf(uint32_t nodeIndex) const {
     if(getNode(nodeIndex) == nullptr) {
         return false;
     }
@@ -330,7 +286,7 @@ bool MessageGroup::isLeaf(int nodeIndex) const {
     return getChildren(nodeIndex).empty();
 }
 
-bool MessageGroup::isRoot(int nodeIndex) const {
+bool MessageGroup::isRoot(uint32_t nodeIndex) const {
     if(getNode(nodeIndex) == nullptr) {
         return false;
     }
@@ -338,28 +294,52 @@ bool MessageGroup::isRoot(int nodeIndex) const {
     return getParents(nodeIndex).empty();
 }
 
-std::vector<int> MessageGroup::getRootMessageNodes() const {
-    std::vector<int> rootNodes;
+std::vector<uint32_t> MessageGroup::getRootMessageNodes() const {
+    std::vector<uint32_t> rootNodes;
     rootNodes.reserve(group.size());
     for(const auto& entry : group) {
-        if(getLinksToChild(static_cast<int>(entry.first)).empty()) {
-            rootNodes.push_back(static_cast<int>(entry.first));
+        if(getLinksToChild(entry.first).empty()) {
+            rootNodes.push_back(entry.first);
         }
     }
     return rootNodes;
 }
 
-std::vector<int> MessageGroup::depthFirstOrder(int rootNodeIndex) const {
+std::vector<uint32_t> MessageGroup::getMessageSiblings(uint32_t nodeIndex) const {
+    if(getNode(nodeIndex) == nullptr) {
+        return {};
+    }
+
+    const auto parentLinks = getLinksToChild(nodeIndex);
+    if(parentLinks.empty()) {
+        return {};
+    }
+
+    std::vector<uint32_t> siblingIndices;
+    siblingIndices.reserve(links.size());
+
+    for(const auto& parentLink : parentLinks) {
+        for(const auto& link : links) {
+            if(link.parentMessageIndex == parentLink.parentMessageIndex && link.itemIndex == parentLink.itemIndex) {
+                appendUniqueIndex(siblingIndices, link.childNodeIndex);
+            }
+        }
+    }
+
+    return siblingIndices;
+}
+
+std::vector<uint32_t> MessageGroup::depthFirstOrder(uint32_t rootNodeIndex) const {
     if(getNode(rootNodeIndex) == nullptr) {
         return {};
     }
 
-    std::vector<int> orderedNodes;
-    std::vector<int> stack{rootNodeIndex};
-    std::unordered_set<int> visitedNodes;
+    std::vector<uint32_t> orderedNodes;
+    std::vector<uint32_t> stack{rootNodeIndex};
+    std::unordered_set<uint32_t> visitedNodes;
 
     while(!stack.empty()) {
-        int nodeIndex = stack.back();
+        uint32_t nodeIndex = stack.back();
         stack.pop_back();
 
         if(!visitedNodes.insert(nodeIndex).second) {
@@ -378,21 +358,21 @@ std::vector<int> MessageGroup::depthFirstOrder(int rootNodeIndex) const {
     return orderedNodes;
 }
 
-std::vector<int> MessageGroup::breadthFirstOrder(int rootNodeIndex) const {
+std::vector<uint32_t> MessageGroup::breadthFirstOrder(uint32_t rootNodeIndex) const {
     if(getNode(rootNodeIndex) == nullptr) {
         return {};
     }
 
-    std::vector<int> orderedNodes;
-    std::vector<int> queue{rootNodeIndex};
-    std::unordered_set<int> visitedNodes;
+    std::vector<uint32_t> orderedNodes;
+    std::vector<uint32_t> queue{rootNodeIndex};
+    std::unordered_set<uint32_t> visitedNodes;
     visitedNodes.insert(rootNodeIndex);
 
     for(std::size_t queueIndex = 0; queueIndex < queue.size(); ++queueIndex) {
-        int nodeIndex = queue[queueIndex];
+        uint32_t nodeIndex = queue[queueIndex];
         orderedNodes.push_back(nodeIndex);
 
-        for(int childIndex : getChildren(nodeIndex)) {
+        for(uint32_t childIndex : getChildren(nodeIndex)) {
             if(visitedNodes.insert(childIndex).second) {
                 queue.push_back(childIndex);
             }

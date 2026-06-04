@@ -152,8 +152,8 @@ std::shared_ptr<dai::MessageGroup> stereoImageToMessageGroup(const std::string& 
     setFrameTransformation(right, handler, dai::CameraBoardSocket::CAM_C);
 
     auto group = std::make_shared<dai::MessageGroup>();
-    group->add("right", right);
-    group->add("left", left);
+    group->addMessage("right", right);
+    group->addMessage("left", left);
     return group;
 }
 

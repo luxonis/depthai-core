@@ -80,10 +80,10 @@ TEST_CASE("DepthAI VPP RAW8") {
     pipeline.start();
     // Send message group
     auto messageGroup = std::make_shared<MessageGroup>();
-    messageGroup->add("left", leftFrame);
-    messageGroup->add("right", rightFrame);
-    messageGroup->add("disparity", disparityFrame);
-    messageGroup->add("confidence", confidenceFrame);
+    messageGroup->addMessage("left", leftFrame);
+    messageGroup->addMessage("right", rightFrame);
+    messageGroup->addMessage("disparity", disparityFrame);
+    messageGroup->addMessage("confidence", confidenceFrame);
     syncQueue->send(messageGroup);
 
     // Try to read outputs
@@ -145,10 +145,10 @@ TEST_CASE("DepthAI VPP gray8") {
     pipeline.start();
     // Send message group
     auto messageGroup = std::make_shared<MessageGroup>();
-    messageGroup->add("left", leftFrame);
-    messageGroup->add("right", rightFrame);
-    messageGroup->add("disparity", disparityFrame);
-    messageGroup->add("confidence", confidenceFrame);
+    messageGroup->addMessage("left", leftFrame);
+    messageGroup->addMessage("right", rightFrame);
+    messageGroup->addMessage("disparity", disparityFrame);
+    messageGroup->addMessage("confidence", confidenceFrame);
     syncQueue->send(messageGroup);
 
     // Try to read outputs
@@ -217,10 +217,10 @@ TEST_CASE("DepthAI VPP multiple configs without recreating pipeline") {
         auto confidenceFrame = openCvToFrame(confidence, ImgFrame::Type::RAW16);
 
         auto messageGroup = std::make_shared<MessageGroup>();
-        messageGroup->add("left", leftFrame);
-        messageGroup->add("right", rightFrame);
-        messageGroup->add("disparity", disparityFrame);
-        messageGroup->add("confidence", confidenceFrame);
+        messageGroup->addMessage("left", leftFrame);
+        messageGroup->addMessage("right", rightFrame);
+        messageGroup->addMessage("disparity", disparityFrame);
+        messageGroup->addMessage("confidence", confidenceFrame);
 
         syncQueue->send(messageGroup);
 

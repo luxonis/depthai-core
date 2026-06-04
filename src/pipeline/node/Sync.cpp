@@ -143,7 +143,7 @@ void Sync::run() {
             logger->trace("Sending output: {}", name);
             logger->trace("Timestamp: {} ms",
                           static_cast<float>(duration_cast<microseconds>(inputFrames[name]->getTimestamp().time_since_epoch()).count()) / 1000.f);
-            outputGroup->add(name, inputFrames[name]);
+            outputGroup->addMessage(name, inputFrames[name]);
             if(inputFrames[name]->getTimestamp() > newestFrame->getTimestamp()) {
                 newestFrame = inputFrames[name].get();
             }

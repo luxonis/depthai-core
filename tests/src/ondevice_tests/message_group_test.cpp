@@ -26,7 +26,7 @@ std::shared_ptr<dai::Buffer> makeBuffer(uint8_t value) {
 std::shared_ptr<dai::MessageGroup> makeTreeMessageGroup() {
     auto group = std::make_shared<dai::MessageGroup>();
     for(uint32_t nodeIndex = 0; nodeIndex <= 14; ++nodeIndex) {
-        group->add(nodeIndex, makeBuffer(static_cast<uint8_t>(10 + nodeIndex)));
+        group->addMessage(nodeIndex, makeBuffer(static_cast<uint8_t>(10 + nodeIndex)));
     }
 
     REQUIRE(group->addLink(0, 1, 0) == 0);
@@ -58,13 +58,13 @@ TEST_CASE("Set and get messages") {
     auto buf = std::make_shared<dai::Buffer>();
     buf->setTimestamp(buf1Ts);
     buf->setData(buf1Data);
-    msgGrp->add("buf1", buf);
+    msgGrp->addMessage("buf1", buf);
 
     auto img = std::make_shared<dai::ImgFrame>();
     img->setTimestamp(buf2Ts);
     img->setData(buf2Data);
     img->setSize({5, 6});
-    msgGrp->add("img1", img);
+    msgGrp->addMessage("img1", img);
 
     REQUIRE(msgGrp->get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
     REQUIRE(msgGrp->get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
@@ -120,19 +120,19 @@ TEST_CASE("MessageGroup tree structure helpers") {
         REQUIRE(linksToNode14[0].parentMessageIndex == 9);
         REQUIRE(linksToNode14[0].itemIndex == 0);
 
-        REQUIRE(msgGrp->getChildren(0) == std::vector<int>{1, 2, 3});
-        REQUIRE(msgGrp->getChildren(1) == std::vector<int>{4, 5});
-        REQUIRE(msgGrp->getChildren(2) == std::vector<int>{6, 7});
-        REQUIRE(msgGrp->getChildren(3) == std::vector<int>{8, 9});
-        REQUIRE(msgGrp->getChildren(4) == std::vector<int>{10, 11});
-        REQUIRE(msgGrp->getChildren(5) == std::vector<int>{12});
-        REQUIRE(msgGrp->getChildren(7) == std::vector<int>{13});
-        REQUIRE(msgGrp->getChildren(9) == std::vector<int>{14});
-        REQUIRE(msgGrp->getChildren(0, 0) == std::vector<int>{1});
-        REQUIRE(msgGrp->getChildren(0, 1) == std::vector<int>{2});
-        REQUIRE(msgGrp->getChildren(0, 2) == std::vector<int>{3});
-        REQUIRE(msgGrp->getParents(1) == std::vector<int>{0});
-        REQUIRE(msgGrp->getParents(14) == std::vector<int>{9});
+        REQUIRE(msgGrp->getChildren(0) == std::vector<uint32_t>{1, 2, 3});
+        REQUIRE(msgGrp->getChildren(1) == std::vector<uint32_t>{4, 5});
+        REQUIRE(msgGrp->getChildren(2) == std::vector<uint32_t>{6, 7});
+        REQUIRE(msgGrp->getChildren(3) == std::vector<uint32_t>{8, 9});
+        REQUIRE(msgGrp->getChildren(4) == std::vector<uint32_t>{10, 11});
+        REQUIRE(msgGrp->getChildren(5) == std::vector<uint32_t>{12});
+        REQUIRE(msgGrp->getChildren(7) == std::vector<uint32_t>{13});
+        REQUIRE(msgGrp->getChildren(9) == std::vector<uint32_t>{14});
+        REQUIRE(msgGrp->getChildren(0, 0) == std::vector<uint32_t>{1});
+        REQUIRE(msgGrp->getChildren(0, 1) == std::vector<uint32_t>{2});
+        REQUIRE(msgGrp->getChildren(0, 2) == std::vector<uint32_t>{3});
+        REQUIRE(msgGrp->getParents(1) == std::vector<uint32_t>{0});
+        REQUIRE(msgGrp->getParents(14) == std::vector<uint32_t>{9});
 
         REQUIRE(msgGrp->isRoot(0));
         REQUIRE_FALSE(msgGrp->isRoot(14));
@@ -155,9 +155,9 @@ TEST_CASE("MessageGroup tree structure helpers") {
         REQUIRE_FALSE(msgGrp->isLeaf(7));
         REQUIRE_FALSE(msgGrp->isLeaf(9));
 
-        REQUIRE(msgGrp->getRootMessageNodes() == std::vector<int>{0});
-        REQUIRE(msgGrp->depthFirstOrder(0) == std::vector<int>{0, 1, 4, 10, 11, 5, 12, 2, 6, 7, 13, 3, 8, 9, 14});
-        REQUIRE(msgGrp->breadthFirstOrder(0) == std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14});
+        REQUIRE(msgGrp->getRootMessageNodes() == std::vector<uint32_t>{0});
+        REQUIRE(msgGrp->depthFirstOrder(0) == std::vector<uint32_t>{0, 1, 4, 10, 11, 5, 12, 2, 6, 7, 13, 3, 8, 9, 14});
+        REQUIRE(msgGrp->breadthFirstOrder(0) == std::vector<uint32_t>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14});
     }
 
     SECTION("Mutate tree structure") {
@@ -166,7 +166,7 @@ TEST_CASE("MessageGroup tree structure helpers") {
         REQUIRE(msgGrp->removeLink(4));
         REQUIRE_FALSE(msgGrp->removeLink(99));
         REQUIRE_FALSE(msgGrp->hasLink(1, 1, 5));
-        REQUIRE(msgGrp->getChildren(1) == std::vector<int>{4});
+        REQUIRE(msgGrp->getChildren(1) == std::vector<uint32_t>{4});
 
         REQUIRE(msgGrp->removeMessageNode(7));
         REQUIRE_FALSE(msgGrp->removeMessageNode(99));
@@ -180,11 +180,11 @@ TEST_CASE("MessageGroup tree structure helpers") {
         REQUIRE(msgGrp->hasLink(4, 1, 10));
         REQUIRE(msgGrp->hasLink(5, 0, 11));
         REQUIRE(msgGrp->hasLink(8, 0, 13));
-        REQUIRE(msgGrp->getChildren(3) == std::vector<int>{7, 8});
-        REQUIRE(msgGrp->getChildren(8) == std::vector<int>{13});
-        REQUIRE(msgGrp->getRootMessageNodes() == std::vector<int>{0, 5, 12});
-        REQUIRE(msgGrp->depthFirstOrder(0) == std::vector<int>{0, 1, 4, 9, 10, 2, 6, 3, 7, 8, 13});
-        REQUIRE(msgGrp->breadthFirstOrder(0) == std::vector<int>{0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 13});
+        REQUIRE(msgGrp->getChildren(3) == std::vector<uint32_t>{7, 8});
+        REQUIRE(msgGrp->getChildren(8) == std::vector<uint32_t>{13});
+        REQUIRE(msgGrp->getRootMessageNodes() == std::vector<uint32_t>{0, 5, 12});
+        REQUIRE(msgGrp->depthFirstOrder(0) == std::vector<uint32_t>{0, 1, 4, 9, 10, 2, 6, 3, 7, 8, 13});
+        REQUIRE(msgGrp->breadthFirstOrder(0) == std::vector<uint32_t>{0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 13});
     }
 }
 
