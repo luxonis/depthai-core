@@ -70,6 +70,7 @@ int main() {
 
     auto* fullResOutput = cam->requestOutput({1280, 800});
 
+    // Create crops
     auto cropConfigsCreator = pipeline.create<CropConfigsCreator>();
     detNN->out.link(cropConfigsCreator->detectionsInput);
 
@@ -79,6 +80,7 @@ int main() {
     imageManip->setMaxOutputFrameSize(300 * 480 * 3);
     cropConfigsCreator->configOutput.link(imageManip->inputConfig);
     fullResOutput->link(imageManip->inputImage);
+    // end Create crops
 
     auto gatherData = pipeline.create<dai::node::GatherData>();
     gatherData->setRunOnHost(true);
@@ -118,6 +120,9 @@ int main() {
 
         for(size_t i = 0; i < detections->detections.size(); ++i) {
             const auto& detection = detections->detections[i];
+            // if you are looking for a specific detection, you can filter out here and only then look at the crop message via getChildren(0,
+            // static_cast<uint32_t>(i));
+
             const auto cropNodeIndices = collected->getChildren(0, static_cast<uint32_t>(i));
             if(cropNodeIndices.empty()) {
                 continue;
