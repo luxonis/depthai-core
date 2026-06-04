@@ -1,11 +1,10 @@
 #pragma once
 
-#include <optional>
-
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/Subnode.hpp>
 #include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/properties/DynamicCalibrationProperties.hpp>
+#include <optional>
 
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/utility/spimpl.h"
@@ -103,6 +102,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     InputMap& inputs = sync->inputs;
     std::string leftInputName = "left";
     std::string rightInputName = "right";
+    std::string rgbInputName = "rgb";
     std::vector<std::string> names;
     /**
      * Input left image
@@ -113,6 +113,11 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * Input right image
      */
     Input& right = inputs[rightInputName];
+
+    /**
+     * Input rgb image
+     */
+    Input& rgb = inputs[rgbInputName];
 
     /**
      * Specify whether to run on host or device

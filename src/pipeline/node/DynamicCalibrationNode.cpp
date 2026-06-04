@@ -199,6 +199,7 @@ void DynamicCalibration::postBuildStage() {
 
     eraseIfUnused(leftInputName);
     eraseIfUnused(rightInputName);
+    eraseIfUnused(rgbInputName);
 }
 
 std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::convertDaiCalibrationToDcl(const CalibrationHandler& currentCalibration,
