@@ -138,58 +138,6 @@ bool sendLogsToServer(const std::optional<FileWithSHA1>&, const std::optional<Fi
 }
 #endif
 
-void logPipeline(const PipelineSchema& pipelineSchema, const dai::DeviceInfo& deviceInfo) {
-    // Check if compiled without CURL support and exit early if so
-#ifndef DEPTHAI_ENABLE_CURL
-    (void)pipelineSchema;
-    (void)deviceInfo;
-    logger::info("Compiled without CURL support, not logging pipeline.");
-#else
-    namespace fs = std::filesystem;
-    // Check if logging is explicistdy disabled
-    auto loggingEnabled = utility::getEnvAs<std::string>("DEPTHAI_ENABLE_ANALYTICS_COLLECTION", "");
-    if(loggingEnabled.empty()) {
-        logger::info("Logging disabled");
-        return;
-    }
-
-    auto pipelineJson = nlohmann::json(pipelineSchema);
-    std::string pipelineJsonStr = pipelineJson.dump();
-    std::string pipelineSHA1 = calculateSHA1(pipelineJsonStr);
-
-    fs::path pipelineDir = fs::current_path() / ".cache" / "depthai" / "pipelines";
-    fs::path pipelinePath = pipelineDir / pipelineSHA1 / "pipeline.json";
-
-    if(fs::exists(pipelinePath)) {
-        logger::info("Pipeline already logged");
-        return;
-    }
-
-    logger::info("Pipeline not logged yet, logging...");
-    std::error_code ec;
-    fs::create_directories(pipelinePath.parent_path(), ec);
-    if(ec) {
-        logger::error("Failed to create log directory: {}", ec.message());
-        return;
-    }
-
-    std::ofstream pipelineFile(pipelinePath);
-    pipelineFile << pipelineJsonStr;
-    pipelineFile.close();
-
-    FileWithSHA1 pipelineData;
-    pipelineData.content = std::move(pipelineJsonStr);
-    pipelineData.sha1Hash = std::move(pipelineSHA1);
-    pipelineData.name = "pipeline.json";
-    if(!sendLogsToServer(pipelineData, std::nullopt, deviceInfo)) {
-        // Keep at info level to not spam in case of no internet connection
-        logger::info("Failed to send pipeline logs to server");
-    } else {
-        logger::info("Pipeline logs sent to server");
-    }
-#endif
-}
-
 void logCrashDump(const std::optional<PipelineSchema>& pipelineSchema, const CrashDump& crashDump, const dai::DeviceInfo& deviceInfo) {
     auto crashDumpEnvVar = utility::getEnvAs<std::string>("DEPTHAI_CRASHDUMP", "", false);
     if(crashDumpEnvVar == "0") {

@@ -88,6 +88,7 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .def("getFsync", &EncodedFrame::getFsync, DOC(dai, EncodedFrame, getFsync))
         .def("getSensorMode", &EncodedFrame::getSensorMode, DOC(dai, EncodedFrame, getSensorMode))
         .def("getFps", &EncodedFrame::getFps, DOC(dai, EncodedFrame, getFps))
+        .def("getSensorTemperature", &EncodedFrame::getSensorTemperature, DOC(dai, EncodedFrame, getSensorTemperature))
         .def("getQuality", &EncodedFrame::getQuality, DOC(dai, EncodedFrame, getQuality))
         .def("getBitrate", &EncodedFrame::getBitrate, DOC(dai, EncodedFrame, getBitrate))
         .def("getFrameType", &EncodedFrame::getFrameType, DOC(dai, EncodedFrame, getFrameType))

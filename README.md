@@ -225,7 +225,6 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_TELEMETRY | Telemetry is enabled by default. Set to `0` or `false` to disable event capture. |
 | DEPTHAI_TELEMETRY_URL | Overrides the telemetry capture URL. |
 | DEPTHAI_TELEMETRY_API_KEY | Overrides the telemetry API key. |
-| DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
 | DEPTHAI_HUB_EVENTS_BASE_URL | URL for events of the Luxonis Hub |
 | DEPTHAI_HUB_API_KEY | API key for the Luxonis Hub |

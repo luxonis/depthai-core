@@ -54,7 +54,7 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
     /**
      * Construct PointCloudData message.
      */
-    PointCloudData() = default;
+    PointCloudData();
     virtual ~PointCloudData();
 
     std::vector<Point3f> getPoints() const;

@@ -649,6 +649,9 @@ static void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* enco
     cam->set_fsync(static_cast<proto::common::CameraFsync>(message->cam.fsync));
     cam->set_sensormode(message->cam.sensorMode);
     cam->set_fps(message->cam.fps);
+    if(message->cam.sensorTemperatureC.has_value()) {
+        cam->set_sensortemperaturec(*message->cam.sensorTemperatureC);
+    }
 
     if(!metadataOnly) {
         // Set the encoded message data
@@ -709,6 +712,9 @@ static void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const 
     cam->set_fsync(static_cast<proto::common::CameraFsync>(message->cam.fsync));
     cam->set_sensormode(message->cam.sensorMode);
     cam->set_fps(message->cam.fps);
+    if(message->cam.sensorTemperatureC.has_value()) {
+        cam->set_sensortemperaturec(*message->cam.sensorTemperatureC);
+    }
 
     // instance number and category
     imgFrame->set_instancenum(message->instanceNum);
@@ -972,6 +978,7 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
     obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame->cam().fsync());
     obj.cam.sensorMode = imgFrame->cam().sensormode();
     obj.cam.fps = imgFrame->cam().fps();
+    obj.cam.sensorTemperatureC = imgFrame->cam().has_sensortemperaturec() ? std::make_optional(imgFrame->cam().sensortemperaturec()) : std::nullopt;
 
     obj.instanceNum = imgFrame->instancenum();
 
@@ -1020,6 +1027,7 @@ static void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encode
     obj.cam.fsync = static_cast<ImgFrame::Fsync>(encFrame.cam().fsync());
     obj.cam.sensorMode = encFrame.cam().sensormode();
     obj.cam.fps = encFrame.cam().fps();
+    obj.cam.sensorTemperatureC = encFrame.cam().has_sensortemperaturec() ? std::make_optional(encFrame.cam().sensortemperaturec()) : std::nullopt;
 
     obj.transformation = deserializeImgTransformation(encFrame.transformation());
 
@@ -1108,6 +1116,7 @@ static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::Img
     obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame.cam().fsync());
     obj.cam.sensorMode = imgFrame.cam().sensormode();
     obj.cam.fps = imgFrame.cam().fps();
+    obj.cam.sensorTemperatureC = imgFrame.cam().has_sensortemperaturec() ? std::make_optional(imgFrame.cam().sensortemperaturec()) : std::nullopt;
 
     // instance number and category
     obj.instanceNum = imgFrame.instancenum();
