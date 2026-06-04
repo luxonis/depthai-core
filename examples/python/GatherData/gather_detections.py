@@ -19,21 +19,22 @@ class CropConfigsCreator(dai.node.ThreadedHostNode):
             
             detections = detections_input.detections
             
-            cfg = dai.ImageManipConfig()
-            cfg.setReusePreviousImage(False)
+            clear_cfg = dai.ImageManipConfig()
+            clear_cfg.setSkipCurrentImage(True)
+            send_status = self.config_output.trySend(clear_cfg)
+            
             for i in range(len(detections)):
+                cfg = dai.ImageManipConfig()
                 detection: dai.ImgDetection = detections[i]
                 
                 # print corners of the bounding box
                 bbox = detection.getBoundingBox()
                 outer_bbox = bbox.getOuterRect()
-                x1 = max(0.0, min(outer_bbox[0], 0.9999))
-                y1 = max(0.0, min(outer_bbox[1], 0.9999))
-                x2 = max(0.0, min(outer_bbox[2], 0.9999))
-                y2 = max(0.0, min(outer_bbox[3], 0.9999))
+                x1 = max(0.001, min(outer_bbox[0], 0.999))
+                y1 = max(0.001, min(outer_bbox[1], 0.999))
+                x2 = max(0.001, min(outer_bbox[2], 0.999))
+                y2 = max(0.001, min(outer_bbox[3], 0.999))
                 bbox = dai.RotatedRect(dai.Rect(x1, y1, x2 - x1, y2 - y1, True))
-                
-                # print(f"Detection {i}: bbox corners:")
                 # corners = bbox.getPoints()
                 # for j in range(4):
                 #     corner = corners[j]
@@ -41,10 +42,7 @@ class CropConfigsCreator(dai.node.ThreadedHostNode):
 
                 cfg.addCropRotatedRect(bbox, normalizedCoords=True)
                 cfg.setOutputSize(200, 200, mode=dai.ImageManipConfig.ResizeMode.STRETCH)
-                if(i == 0):
-                    cfg.setReusePreviousImage(False)
-                else:
-                    cfg.setReusePreviousImage(True)
+                cfg.setReusePreviousImage(True)
 
                 send_status = False
                 attempts = 0
@@ -87,10 +85,8 @@ if __name__ == "__main__":
     
     color = (255, 0, 0)
     while(pipeline.isRunning()):
-        crops = cropQ.get()
         detections = detQ.get()
         passthrough = passthroughQ.get()
-        assert isinstance(crops, dai.ImgFrame)
         assert isinstance(detections, dai.ImgDetections)
         assert isinstance(passthrough, dai.ImgFrame)
         
@@ -98,7 +94,10 @@ if __name__ == "__main__":
         
         frame = passthrough.getCvFrame()
         height, width = frame.shape[:2]
-        for detection in detections.detections:
+        for i, detection in enumerate(detections.detections):
+            crops = cropQ.get()
+            assert isinstance(crops, dai.ImgFrame)
+            cv2.imshow(f"crop_{i}", crops.getCvFrame())
             x1 = int(detection.xmin * width)
             y1 = int(detection.ymin * height)
             x2 = int(detection.xmax * width)

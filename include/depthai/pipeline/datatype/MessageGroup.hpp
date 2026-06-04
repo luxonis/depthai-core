@@ -35,28 +35,20 @@ class MessageGroup : public Buffer {
     std::shared_ptr<ADatatype> operator[](uint32_t index);
     std::shared_ptr<ADatatype> operator[](const std::string& index);
     template <typename T>
-    std::shared_ptr<T> get(uint32_t index) {
-        return std::dynamic_pointer_cast<T>(get(index));
+    std::shared_ptr<T> getNode(uint32_t index) {
+        return std::dynamic_pointer_cast<T>(getNode(index));
     }
     template <typename T>
-    std::shared_ptr<T> get(const std::string& index) {
-        return std::dynamic_pointer_cast<T>(get(index));
+    std::shared_ptr<T> getNode(const std::string& index) {
+        return std::dynamic_pointer_cast<T>(getNode(index));
     }
 
-    std::shared_ptr<ADatatype> get(uint32_t index) {
-        auto iterator = group.find(index);
-        if(iterator == group.end()) {
-            return nullptr;
-        }
-        return iterator->second;
-    }
-
-    std::shared_ptr<ADatatype> get(const std::string& index) {
+    std::shared_ptr<ADatatype> getNode(const std::string& index) {
         uint32_t resolvedIndex = 0;
         if(!findIndex(index, resolvedIndex)) {
             return nullptr;
         }
-        return get(resolvedIndex);
+        return getNode(resolvedIndex);
     }
 
     // TODO(Morato) - this API is dangerous, when T is a base reference to a derived class

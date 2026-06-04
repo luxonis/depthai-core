@@ -7,6 +7,7 @@
 #include "pipeline/MessageQueue.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "pipeline/datatype/ADatatype.hpp"
+#include "pipeline/datatype/Buffer.hpp"
 #include "pipeline/datatype/DatatypeEnum.hpp"
 #include "pipeline/datatype/ImgDetections.hpp"
 #include "pipeline/datatype/MessageGroup.hpp"
@@ -51,7 +52,7 @@ uint32_t getIterableSize(std::shared_ptr<ADatatype>& adtatatypeMsg) {
     }
     auto datatype = buffer->getDatatype();
 
-    if(isDatatypeSubclassOf(datatype, DatatypeEnum::Iterable)) {
+    if(isDatatypeSubclassOf(DatatypeEnum::Iterable, datatype)) {
         if(datatype == DatatypeEnum::ImgDetections) {
             return std::dynamic_pointer_cast<ImgDetections>(buffer)->getSize();
             // } else if(datatype == DatatypeEnum::SpatialImgDetections) {
@@ -79,8 +80,6 @@ std::vector<uint32_t> GatherData::getMessageSizes(std::vector<uint32_t>& message
 }
 
 std::vector<uint32_t> GatherData::getMessageIndicesToCollect(std::shared_ptr<MessageGroup>& referenceGroup) {
-    std::vector<uint32_t> indicesToCollect;
-
     // options:
     // 1) only one node: return its iterable size or 1 if not iterable
     // 2) multiple nodes:
@@ -88,9 +87,8 @@ std::vector<uint32_t> GatherData::getMessageIndicesToCollect(std::shared_ptr<Mes
     //    2.2) getSiblings()
     //    2.3) vector of iterable sizes of the children (if not iterable, size is 1)
 
-    if(referenceGroup->getChildren(0).empty()) {
-        indicesToCollect.push_back(0);
-        return indicesToCollect;
+    if(referenceGroup->getChildren(referenceGroup->getRootMessageNodes()[0]).empty()) {
+        return {0};
     }
 
     auto depthFirstOrder = referenceGroup->depthFirstOrder(0);
@@ -178,8 +176,19 @@ void GatherData::run() {
     4) Messages are "collected" by the assumption that they arrive in order. No checking is made
     */
 
+    auto& logger = ThreadedNode::pimpl->logger;
     while(mainLoop()) {
-        auto referenceInputBuffer = referenceInput.get<Buffer>();
+        std::shared_ptr<Buffer> referenceInputBuffer;
+
+        {
+            auto inputBlockEvent = this->inputBlockEvent();
+            referenceInputBuffer = referenceInput.get<Buffer>();
+        }
+
+        auto detMsg = std::dynamic_pointer_cast<ImgDetections>(referenceInputBuffer);
+        // logger->warn("GatherData received reference message with {} detections. Its getSize() iterable function specifies: {}",
+        //              detMsg->detections.size(),
+        //              detMsg->getSize());
 
         std::shared_ptr<MessageGroup> outputMessageGroup = createCollectionMessageGroup(referenceInputBuffer);
 
@@ -192,9 +201,11 @@ void GatherData::run() {
             }
 
             auto numIterations = getIterableSize(collectingMsg);
+            // logger->warn("getIterableSize returned {}", numIterations);
             uint32_t currentNewNodeIndex = outputMessageGroup->getLastMessageIndex() + 1;
 
             for(uint32_t parentItemIndex = 0; parentItemIndex < numIterations; parentItemIndex++) {
+                // logger->warn("Colecting on item {} of message index {}", parentItemIndex, collectingParentIndex);
                 auto collectingInputMsg = collectingInput.get<Buffer>();
                 passthroughCollectingInput.send(collectingMsg);
 
@@ -207,7 +218,11 @@ void GatherData::run() {
             }
         }
 
-        output.send(outputMessageGroup);
+        {
+            auto blockEvent = this->outputBlockEvent();
+
+            output.send(outputMessageGroup);
+        }
     }
     // DatatypeEnum inputDatatype = classifyInputDatatype(firstInput);
     // DatatypeEnum alignToDatatype = classifyInputDatatype(firstAlignTo);

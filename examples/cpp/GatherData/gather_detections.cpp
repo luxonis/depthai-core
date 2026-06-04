@@ -22,10 +22,13 @@ class CropConfigsCreator : public dai::node::CustomThreadedNode<CropConfigsCreat
 
             const auto& detections = detectionsInputMessage->detections;
 
-            dai::ImageManipConfig cfg;
-            cfg.setReusePreviousImage(false);
+            dai::ImageManipConfig clear_cfg;
+            clear_cfg.setSkipCurrentImage(true);
+            bool send_status = configOutput.trySend(std::make_shared<dai::ImageManipConfig>(clear_cfg));
 
             for(size_t i = 0; i < detections.size(); ++i) {
+                dai::ImageManipConfig cfg;
+
                 const auto& detection = detections[i];
 
                 auto bbox = detection.getBoundingBox();
@@ -37,7 +40,7 @@ class CropConfigsCreator : public dai::node::CustomThreadedNode<CropConfigsCreat
                 bbox = dai::RotatedRect(dai::Rect(x1, y1, x2 - x1, y2 - y1, true));
 
                 cfg.addCropRotatedRect(bbox, true);
-                cfg.setOutputSize(200, 200, dai::ImageManipConfig::ResizeMode::STRETCH);
+                cfg.setOutputSize(300, 400, dai::ImageManipConfig::ResizeMode::CROP);
                 if(i == 0) {
                     cfg.setReusePreviousImage(false);
                 } else {
@@ -77,23 +80,28 @@ int main() {
     cropConfigsCreator->configOutput.link(imageManip->inputConfig);
     fullResOutput->link(imageManip->inputImage);
 
-    auto cropQ = imageManip->out.createOutputQueue();
-    auto detQ = detNN->out.createOutputQueue();
+    auto gatherData = pipeline.create<dai::node::GatherData>();
+    gatherData->setRunOnHost(true);
+    detNN->out.link(gatherData->referenceInput);
+    imageManip->out.link(gatherData->collectingInput);
+
+    auto collectedQ = gatherData->output.createOutputQueue();
     auto passthroughQ = detNN->passthrough.createOutputQueue();
 
     pipeline.start();
 
     const cv::Scalar color(255, 0, 0);
     while(pipeline.isRunning()) {
-        auto crops = cropQ->get<dai::ImgFrame>();
-        auto detections = detQ->get<dai::ImgDetections>();
+        auto collected = collectedQ->get<dai::MessageGroup>();
         auto passthrough = passthroughQ->get<dai::ImgFrame>();
+        auto detections = collected != nullptr ? collected->get<dai::ImgDetections>(0) : nullptr;
 
-        if(crops == nullptr || detections == nullptr || passthrough == nullptr) {
+        if(collected == nullptr || detections == nullptr || passthrough == nullptr) {
             continue;
         }
 
-        std::cout << "Got " << detections->detections.size() << " detections)" << std::endl;
+        // std::cout << "Got " << detections->detections.size() << " detections)" << std::endl;
+        // std::cout << "Message group has " << collected->getNumMessages() << " messages." << std::endl;
 
         auto frame = passthrough->getCvFrame();
         const int height = frame.rows;
@@ -107,6 +115,36 @@ int main() {
         }
 
         cv::imshow("passthrough", frame);
+
+        for(size_t i = 0; i < detections->detections.size(); ++i) {
+            const auto& detection = detections->detections[i];
+            const auto cropNodeIndices = collected->getChildren(0, static_cast<uint32_t>(i));
+            if(cropNodeIndices.empty()) {
+                continue;
+            }
+
+            if(cropNodeIndices.size() > 1) {
+                std::cerr << "Expected only one crop message per detection, but found " << cropNodeIndices.size() << " for detection " << i << ". Skipping."
+                          << std::endl;
+                continue;
+            }
+
+            auto crop = collected->get<dai::ImgFrame>(cropNodeIndices.front());
+            if(crop == nullptr) {
+                continue;
+            }
+
+            auto cropFrame = crop->getCvFrame();
+            const auto className = detection.labelName.empty() ? std::to_string(detection.label) : detection.labelName;
+            const auto detWidth = static_cast<int>(detection.getWidth() * width);
+            const auto detHeight = static_cast<int>(detection.getHeight() * height);
+
+            cv::putText(cropFrame, "class: " + className, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2);
+            cv::putText(
+                cropFrame, "size: " + std::to_string(detWidth) + "x" + std::to_string(detHeight), cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2);
+            cv::imshow("crop_" + std::to_string(i), cropFrame);
+        }
+
         if(cv::waitKey(1) == 'q') {
             pipeline.stop();
             break;
