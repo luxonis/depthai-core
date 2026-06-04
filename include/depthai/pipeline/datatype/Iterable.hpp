@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
 
 namespace dai {
@@ -38,6 +39,10 @@ class IterableBuffer : public Buffer, public Iterable {
 
     IterableBuffer() = default;
     ~IterableBuffer() override = default;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::Iterable;
+    }
 };
 
 /**
@@ -54,6 +59,10 @@ class IterableTransformableBuffer : public TransformableBuffer, public Iterable 
     using Transformable::getTransformation;
     using Transformable::setTransformation;
     using Transformable::transformation;
+
+    DatatypeEnum getDatatype() const override {
+        return DatatypeEnum::IterableTransformableBuffer;
+    }
 
     // DATATYPE here is Transformable (from buffer) but not iterable... might need to change to IterableTransformableBuffer
 

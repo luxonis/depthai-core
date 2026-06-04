@@ -230,6 +230,8 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
+        case DatatypeEnum::Iterable:
+        case DatatypeEnum::IterableTransformableBuffer:
         case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:

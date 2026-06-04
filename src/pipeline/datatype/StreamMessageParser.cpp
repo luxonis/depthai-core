@@ -173,7 +173,14 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             throw std::runtime_error(
                 "Cannot parse custom Transformable on device; use a supported type such as ImgDetections, AprilTags, or Tracklets or run as host form custom "
                 "Transformable messages");
+        case dai::DatatypeEnum::Iterable:
+            throw std::runtime_error(
+                "Cannot parse custom Transformable on device; use a supported type such as ImgDetections, AprilTags, or Tracklets or run as host form custom "
+                "Transformable messages");
 
+        case dai::DatatypeEnum::IterableTransformableBuffer:
+            return parseDatatype<Buffer>(metadataStart, serializedObjectSize, data, fd);
+            break;
         case DatatypeEnum::ImgFrame:
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data, fd);
             break;
