@@ -54,8 +54,7 @@ class CropConfigsCreator(dai.node.ThreadedHostNode):
                     if not send_status:
                         attempts += 1
                         time.sleep(0.001)
-    
-    
+
 if __name__ == "__main__":
     # Create pipeline
     pipeline = dai.Pipeline()
