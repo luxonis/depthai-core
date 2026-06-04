@@ -680,6 +680,30 @@ void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
         }
     }
 
+    // Warn about intrinsics mismatches (non-fatal)
+    {
+        auto depthIntrinsics = depthFrame->transformation.getIntrinsicMatrix();
+        auto colorIntrinsics = colorFrame->transformation.getIntrinsicMatrix();
+        if(depthIntrinsics != colorIntrinsics) {
+            pimpl->logger->warn("PointCloud: color intrinsics do not match depth intrinsics -- colorization may be misaligned");
+        }
+    }
+
+    // Warn about distortion mismatches (non-fatal)
+    {
+        auto depthDistModel = depthFrame->transformation.getDistortionModel();
+        auto colorDistModel = colorFrame->transformation.getDistortionModel();
+        auto depthDistCoeffs = depthFrame->transformation.getDistortionCoefficients();
+        auto colorDistCoeffs = colorFrame->transformation.getDistortionCoefficients();
+        if(depthDistModel != colorDistModel) {
+            pimpl->logger->warn("PointCloud: color distortion model ({}) does not match depth ({}) -- colorization may be misaligned",
+                                static_cast<int>(colorDistModel),
+                                static_cast<int>(depthDistModel));
+        } else if(depthDistCoeffs != colorDistCoeffs) {
+            pimpl->logger->warn("PointCloud: depth and color distortion coefficients differ -- colorization may be misaligned");
+        }
+    }
+
     const auto* depthData = depthFrame->getData().data();
     const auto* colorData = colorFrame->getData().data();
     std::vector<Point3fRGBA> coloredPoints;
