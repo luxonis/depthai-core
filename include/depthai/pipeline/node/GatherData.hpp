@@ -7,7 +7,7 @@
 #include <optional>
 #include <string>
 
-#include "pipeline/datatype/MessageGroup.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 
 namespace dai {
 namespace node {
