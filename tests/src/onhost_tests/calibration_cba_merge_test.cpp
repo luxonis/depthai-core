@@ -12,17 +12,34 @@ class CalibrationData {
    public:
     explicit CalibrationData(std::shared_ptr<dai::Device> device) : device(std::move(device)) {}
 
-    void capture(dai::CameraBoardSocket cameraSocket = dai::CameraBoardSocket::AUTO) {
+    void capture() {
         try {
-            calibrationData[cameraSocket] = device->readCalibration2(cameraSocket);
+            mainBoardCalibrationData = device->readCalibration2();
         } catch(const dai::EepromError&) {
-            calibrationData[cameraSocket] = std::nullopt;
+            mainBoardCalibrationData = std::nullopt;
+        }
+        mainBoardCalibrationDataCaptured = true;
+    }
+
+    void captureCBA(dai::CameraBoardSocket cameraSocket) {
+        try {
+            cbaCalibrationData[cameraSocket] = device->readCBACalibration2(cameraSocket);
+        } catch(const dai::EepromError&) {
+            cbaCalibrationData[cameraSocket] = std::nullopt;
         }
     }
 
     void restore() {
-        for(const auto& [cameraSocket, data] : calibrationData) {
-            restoreSocket(cameraSocket, data);
+        if(mainBoardCalibrationDataCaptured) {
+            if(mainBoardCalibrationData.has_value()) {
+                device->flashCalibration(mainBoardCalibrationData.value());
+            } else {
+                device->flashEepromClear();
+            }
+        }
+
+        for(const auto& [cameraSocket, data] : cbaCalibrationData) {
+            restoreCBASocket(cameraSocket, data);
         }
         restored = true;
     }
@@ -30,9 +47,21 @@ class CalibrationData {
     ~CalibrationData() {
         if(restored) return;
 
-        for(const auto& [cameraSocket, data] : calibrationData) {
+        if(mainBoardCalibrationDataCaptured) {
             try {
-                restoreSocket(cameraSocket, data);
+                if(mainBoardCalibrationData.has_value()) {
+                    device->flashCalibration(mainBoardCalibrationData.value());
+                } else {
+                    device->flashEepromClear();
+                }
+            } catch(const std::exception& e) {
+                std::cerr << "[EEPROM RESTORE FAILED] socket " << static_cast<int>(dai::CameraBoardSocket::AUTO) << ": " << e.what() << std::endl;
+            }
+        }
+
+        for(const auto& [cameraSocket, data] : cbaCalibrationData) {
+            try {
+                restoreCBASocket(cameraSocket, data);
             } catch(const std::exception& e) {
                 std::cerr << "[EEPROM RESTORE FAILED] socket " << static_cast<int>(cameraSocket) << ": " << e.what() << std::endl;
             }
@@ -40,16 +69,18 @@ class CalibrationData {
     }
 
    private:
-    void restoreSocket(dai::CameraBoardSocket cameraSocket, const std::optional<dai::CalibrationHandler>& data) {
+    void restoreCBASocket(dai::CameraBoardSocket cameraSocket, const std::optional<dai::CBACalibrationHandler>& data) {
         if(data.has_value()) {
-            device->flashCalibration(data.value(), cameraSocket);
+            device->flashCBACalibration(data.value(), cameraSocket);
         } else {
-            device->flashEepromClear(cameraSocket);
+            device->flashCBAEepromClear(cameraSocket);
         }
     }
 
     std::shared_ptr<dai::Device> device;
-    std::unordered_map<dai::CameraBoardSocket, std::optional<dai::CalibrationHandler>> calibrationData;
+    std::optional<dai::CalibrationHandler> mainBoardCalibrationData;
+    bool mainBoardCalibrationDataCaptured = false;
+    std::unordered_map<dai::CameraBoardSocket, std::optional<dai::CBACalibrationHandler>> cbaCalibrationData;
     bool restored = false;
 };
 
@@ -81,7 +112,7 @@ static dai::CalibrationHandler loadGeneralCalibrationDefaultCameraData() {
     return dai::CalibrationHandler(eepromData);
 }
 
-static nlohmann::json loadCamDataCalibrationJson(dai::CameraBoardSocket cameraSocket) {
+static nlohmann::json loadCamDataCalibrationJson() {
     nlohmann::json cameraData = {{"cameraType", 0},
                                  {"distortionCoeff", nlohmann::json::array()},
                                  {"extrinsics",
@@ -98,7 +129,7 @@ static nlohmann::json loadCamDataCalibrationJson(dai::CameraBoardSocket cameraSo
                                  {"specHfovDeg", 0.0},
                                  {"width", 1920}};
 
-    return {{"cameraData", {{static_cast<int>(cameraSocket), cameraData}}}};
+    return {{"cameraData", {{static_cast<int>(dai::CameraBoardSocket::CBA), cameraData}}}};
 }
 
 static bool compareCameraData(const dai::CameraInfo& first, const dai::CameraInfo& second) {
@@ -118,7 +149,7 @@ TEST_CASE("CBA calibrations are merged with the main board's calibration") {
     // Look for connected CBAs
     std::vector<dai::CameraBoardSocket> cbaSockets;
     for(const auto& cameraSocket : device->getConnectedCameras()) {
-        if(device->isEepromAvailable(cameraSocket)) {
+        if(device->isCBAEepromAvailable(cameraSocket)) {
             cbaSockets.emplace_back(cameraSocket);
         }
     }
@@ -129,10 +160,10 @@ TEST_CASE("CBA calibrations are merged with the main board's calibration") {
     // Go over the compatible CBAs, store current flashed calibrations, followed by flashing with dummy data
     CalibrationData currentEepromData(device);
     for(const auto& cbaSocket : cbaSockets) {
-        currentEepromData.capture(cbaSocket);
+        currentEepromData.captureCBA(cbaSocket);
 
-        device->flashEepromClear(cbaSocket);
-        device->flashCalibration(dai::CalibrationHandler::fromJson(loadCamDataCalibrationJson(cbaSocket)), cbaSocket);
+        device->flashCBAEepromClear(cbaSocket);
+        device->flashCBACalibration(dai::CBACalibrationHandler::fromJson(loadCamDataCalibrationJson()), cbaSocket);
     }
 
     // Apply the same for the main board
@@ -148,7 +179,7 @@ TEST_CASE("CBA calibrations are merged with the main board's calibration") {
         REQUIRE(mergedCalibrationBeforeStart.hasCameraCalibration(cbaSocket));
 
         const auto mainCameraData = mergedCalibrationBeforeStart.getEepromData().cameraData.at(cbaSocket);
-        const auto cbaCameraData = device->readCalibration2(cbaSocket).getEepromData().cameraData.at(cbaSocket);
+        const auto cbaCameraData = device->readCBACalibration2(cbaSocket).getEepromData().cameraData.at(dai::CameraBoardSocket::CBA);
         REQUIRE(compareCameraData(mainCameraData, cbaCameraData));
     }
 
@@ -162,7 +193,7 @@ TEST_CASE("CBA calibrations are merged with the main board's calibration") {
         REQUIRE(mergedCalibration.hasCameraCalibration(cbaSocket));
 
         const auto mainCameraData = mergedCalibration.getEepromData().cameraData.at(cbaSocket);
-        const auto cbaCameraData = device->readCalibration2(cbaSocket).getEepromData().cameraData.at(cbaSocket);
+        const auto cbaCameraData = device->readCBACalibration2(cbaSocket).getEepromData().cameraData.at(dai::CameraBoardSocket::CBA);
         REQUIRE(compareCameraData(mainCameraData, cbaCameraData));
     }
 
@@ -180,7 +211,7 @@ TEST_CASE("Calibration's cameraData present on the main board has priority and i
     // Look for connected CBAs
     std::vector<dai::CameraBoardSocket> cbaSockets;
     for(const auto& cameraSocket : device->getConnectedCameras()) {
-        if(device->isEepromAvailable(cameraSocket)) {
+        if(device->isCBAEepromAvailable(cameraSocket)) {
             cbaSockets.emplace_back(cameraSocket);
         }
     }
@@ -191,10 +222,10 @@ TEST_CASE("Calibration's cameraData present on the main board has priority and i
     // Go over the compatible CBAs, store current flashed calibrations, followed by flashing with dummy data
     CalibrationData currentEepromData(device);
     for(const auto& cbaSocket : cbaSockets) {
-        currentEepromData.capture(cbaSocket);
+        currentEepromData.captureCBA(cbaSocket);
 
-        device->flashEepromClear(cbaSocket);
-        device->flashCalibration(dai::CalibrationHandler::fromJson(loadCamDataCalibrationJson(cbaSocket)), cbaSocket);
+        device->flashCBAEepromClear(cbaSocket);
+        device->flashCBACalibration(dai::CBACalibrationHandler::fromJson(loadCamDataCalibrationJson()), cbaSocket);
     }
 
     // Apply the same for the main board
@@ -211,7 +242,7 @@ TEST_CASE("Calibration's cameraData present on the main board has priority and i
         REQUIRE(mergedCalibrationBeforeStart.hasCameraCalibration(cbaSocket));
 
         const auto mainCameraData = mergedCalibrationBeforeStart.getEepromData().cameraData.at(cbaSocket);
-        const auto cbaCameraData = device->readCalibration2(cbaSocket).getEepromData().cameraData.at(cbaSocket);
+        const auto cbaCameraData = device->readCBACalibration2(cbaSocket).getEepromData().cameraData.at(dai::CameraBoardSocket::CBA);
         REQUIRE(!compareCameraData(mainCameraData, cbaCameraData));
     }
 
@@ -225,7 +256,7 @@ TEST_CASE("Calibration's cameraData present on the main board has priority and i
         REQUIRE(mergedCalibration.hasCameraCalibration(cbaSocket));
 
         const auto mainCameraData = mergedCalibration.getEepromData().cameraData.at(cbaSocket);
-        const auto cbaCameraData = device->readCalibration2(cbaSocket).getEepromData().cameraData.at(cbaSocket);
+        const auto cbaCameraData = device->readCBACalibration2(cbaSocket).getEepromData().cameraData.at(dai::CameraBoardSocket::CBA);
         REQUIRE(!compareCameraData(mainCameraData, cbaCameraData));
     }
 
