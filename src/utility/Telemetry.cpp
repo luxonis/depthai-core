@@ -386,7 +386,8 @@ struct TelemetrySharedState {
     std::chrono::seconds flushInterval{DEFAULT_FLUSH_INTERVAL};
 
     std::deque<std::string> queuedFiles;
-    std::vector<std::shared_ptr<Telemetry::AggregateMetricsCallback>> aggregateMetricsCallbacks;
+    std::vector<std::pair<Telemetry::AggregateMetricsHandle, std::shared_ptr<Telemetry::AggregateMetricsCallback>>> aggregateMetricsCallbacks;
+    Telemetry::AggregateMetricsHandle nextAggregateMetricsHandle{1};
 
     std::mutex mutex;
     std::mutex aggregateMetricsMtx;
@@ -401,7 +402,8 @@ struct TelemetrySharedState {
     ~TelemetrySharedState();
 
     void event(std::string eventName, nlohmann::json properties);
-    void addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb);
+    Telemetry::AggregateMetricsHandle addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb);
+    void removeAggregateMetrics(Telemetry::AggregateMetricsHandle handle);
     void loadQueueFromDisk();
     void workerLoop();
     void flushOneBatch();
@@ -423,8 +425,12 @@ class Telemetry::Impl {
         telemetrySharedState().event(std::move(eventName), std::move(properties));
     }
 
-    void addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb) {
-        telemetrySharedState().addAggregateMetrics(std::move(functionLikeCb));
+    Telemetry::AggregateMetricsHandle addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb) {
+        return telemetrySharedState().addAggregateMetrics(std::move(functionLikeCb));
+    }
+
+    void removeAggregateMetrics(Telemetry::AggregateMetricsHandle handle) {
+        telemetrySharedState().removeAggregateMetrics(handle);
     }
 };
 
@@ -492,6 +498,7 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
         logger::warn("Telemetry properties for '{}' must be a JSON object. Dropping invalid properties.", eventName);
         properties = nlohmann::json::object();
     }
+
     if(eventName == "depthai_ping") {
         applyAggregateMetrics(properties);
         if(!properties.is_object()) {
@@ -562,20 +569,37 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
     condition.notify_one();
 }
 
-void TelemetrySharedState::addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb) {
+Telemetry::AggregateMetricsHandle TelemetrySharedState::addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb) {
     if(!functionLikeCb) {
+        return 0;
+    }
+
+    std::lock_guard<std::mutex> lock(aggregateMetricsMtx);
+    const auto handle = nextAggregateMetricsHandle++;
+    aggregateMetricsCallbacks.push_back({handle, std::make_shared<Telemetry::AggregateMetricsCallback>(std::move(functionLikeCb))});
+    return handle;
+}
+
+void TelemetrySharedState::removeAggregateMetrics(Telemetry::AggregateMetricsHandle handle) {
+    if(handle == 0) {
         return;
     }
 
     std::lock_guard<std::mutex> lock(aggregateMetricsMtx);
-    aggregateMetricsCallbacks.push_back(std::make_shared<Telemetry::AggregateMetricsCallback>(std::move(functionLikeCb)));
+    aggregateMetricsCallbacks.erase(
+        std::remove_if(
+            aggregateMetricsCallbacks.begin(), aggregateMetricsCallbacks.end(), [handle](const auto& callbackEntry) { return callbackEntry.first == handle; }),
+        aggregateMetricsCallbacks.end());
 }
 
 void TelemetrySharedState::applyAggregateMetrics(nlohmann::json& properties) {
     std::vector<std::shared_ptr<Telemetry::AggregateMetricsCallback>> callbacks;
     {
         std::lock_guard<std::mutex> lock(aggregateMetricsMtx);
-        callbacks = aggregateMetricsCallbacks;
+        callbacks.reserve(aggregateMetricsCallbacks.size());
+        for(const auto& callbackEntry : aggregateMetricsCallbacks) {
+            callbacks.push_back(callbackEntry.second);
+        }
     }
 
     for(const auto& callback : callbacks) {
@@ -911,9 +935,16 @@ void Telemetry::event(const Pipeline& pipeline, std::string eventName, nlohmann:
     }
 }
 
-void Telemetry::addAggregateMetrics(AggregateMetricsCallback functionLikeCb) {
+Telemetry::AggregateMetricsHandle Telemetry::addAggregateMetrics(AggregateMetricsCallback functionLikeCb) {
     if(impl) {
-        impl->addAggregateMetrics(std::move(functionLikeCb));
+        return impl->addAggregateMetrics(std::move(functionLikeCb));
+    }
+    return 0;
+}
+
+void Telemetry::removeAggregateMetrics(AggregateMetricsHandle handle) {
+    if(impl) {
+        impl->removeAggregateMetrics(handle);
     }
 }
 
