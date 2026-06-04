@@ -49,7 +49,8 @@ void Sync::run() {
     const auto inputsName = inputs.name;
 
     if(inputs.empty()) {
-        throw std::runtime_error("Sync node must have at least 1 input!");
+        logger->debug("Sync node has no input. Exiting the node!");
+        return;
     }
     std::vector<std::string> inputNames;
     for(auto& in : inputs) {
