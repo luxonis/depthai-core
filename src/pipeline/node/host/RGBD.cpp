@@ -323,7 +323,7 @@ std::shared_ptr<RGBD> RGBD::build(const std::shared_ptr<Camera>& camera,
 void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
     // Initialize the camera intrinsics
     // Check if width, width and cameraID match
-    auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inColor.getName()));
+    auto colorFrame = frames->get<ImgFrame>(inColor.getName());
     if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
         try {
@@ -336,7 +336,7 @@ void RGBD::initialize(std::shared_ptr<MessageGroup> frames) {
         throw std::runtime_error("RGBD node only supports RGB888i frames");
 #endif
     }
-    auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(frames->group.at(inDepth.getName()));
+    auto depthFrame = frames->get<ImgFrame>(inDepth.getName());
     if(colorFrame->getWidth() != depthFrame->getWidth() || colorFrame->getHeight() != depthFrame->getHeight()) {
         throw std::runtime_error("Color and depth frame sizes do not match");
     }
@@ -367,7 +367,7 @@ void RGBD::run() {
             if(!initialized) {
                 initialize(group);
             }
-            auto colorFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inColor.getName()));
+            auto colorFrame = group->get<ImgFrame>(inColor.getName());
             if(colorFrame->getType() != ImgFrame::Type::RGB888i) {
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
                 try {
@@ -380,7 +380,7 @@ void RGBD::run() {
                 throw std::runtime_error("RGBD node only supports RGB888i frames");
 #endif
             }
-            auto depthFrame = std::dynamic_pointer_cast<ImgFrame>(group->group.at(inDepth.getName()));
+            auto depthFrame = group->get<ImgFrame>(inDepth.getName());
 
             // Create the point cloud
             auto pc = std::make_shared<PointCloudData>();

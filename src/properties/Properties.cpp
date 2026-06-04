@@ -6,6 +6,7 @@
 #include "depthai/properties/CameraProperties.hpp"
 #include "depthai/properties/CastProperties.hpp"
 #include "depthai/properties/ColorCameraProperties.hpp"
+#include "depthai/properties/GatherDataProperties.hpp"
 #include "depthai/properties/DetectionParserProperties.hpp"
 #include "depthai/properties/DeviceNodeGroupProperties.hpp"
 #include "depthai/properties/EdgeDetectorProperties.hpp"
@@ -66,6 +67,7 @@ BenchmarkInProperties::~BenchmarkInProperties() = default;
 BenchmarkOutProperties::~BenchmarkOutProperties() = default;
 CameraProperties::~CameraProperties() = default;
 ColorCameraProperties::~ColorCameraProperties() = default;
+GatherDataProperties::~GatherDataProperties() = default;
 DetectionParserProperties::~DetectionParserProperties() = default;
 EdgeDetectorProperties::~EdgeDetectorProperties() = default;
 GateProperties::~GateProperties() = default;
