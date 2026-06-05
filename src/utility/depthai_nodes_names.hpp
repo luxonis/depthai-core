@@ -22,6 +22,7 @@ inline const std::vector<std::string> depthaiNodesNames = {
     "FastSAMParser",
     "FrameCropper",
     "GatherData",
+    "SplitterNode",
     "HRNetParser",
     "HostParsingNeuralNetwork",
     "ImageOutputParser",
