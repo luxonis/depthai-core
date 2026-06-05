@@ -40,7 +40,7 @@ class CropConfigsCreator : public dai::node::CustomThreadedNode<CropConfigsCreat
                 bbox = dai::RotatedRect(dai::Rect(x1, y1, x2 - x1, y2 - y1, true));
 
                 cfg.addCropRotatedRect(bbox, true);
-                cfg.setOutputSize(300, 400, dai::ImageManipConfig::ResizeMode::CROP);
+                cfg.setOutputSize(300, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
                 if(i == 0) {
                     cfg.setReusePreviousImage(false);
                 } else {

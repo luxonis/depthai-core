@@ -302,6 +302,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/node/MessageDemux.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
+    src/pipeline/node/SplitterNode.cpp
     src/pipeline/node/Sync.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/ImageManip.cpp

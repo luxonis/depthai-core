@@ -28,6 +28,7 @@
 #include "depthai/properties/SPIOutProperties.hpp"
 #include "depthai/properties/ScriptProperties.hpp"
 #include "depthai/properties/SegmentationParserProperties.hpp"
+#include "depthai/properties/SplitterNodeProperties.hpp"
 #include "depthai/properties/SpatialDetectionNetworkProperties.hpp"
 #include "depthai/properties/SpatialLocationCalculatorProperties.hpp"
 #include "depthai/properties/StereoDepthProperties.hpp"
@@ -91,6 +92,7 @@ ScriptProperties::~ScriptProperties() = default;
 SpatialDetectionNetworkProperties::~SpatialDetectionNetworkProperties() = default;
 SpatialLocationCalculatorProperties::~SpatialLocationCalculatorProperties() = default;
 SegmentationParserProperties::~SegmentationParserProperties() = default;
+SplitterNodeProperties::~SplitterNodeProperties() = default;
 StereoDepthProperties::~StereoDepthProperties() = default;
 SyncProperties::~SyncProperties() = default;
 SystemLoggerProperties::~SystemLoggerProperties() = default;
