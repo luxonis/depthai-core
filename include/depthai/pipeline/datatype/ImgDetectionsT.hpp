@@ -7,6 +7,7 @@
 #include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/Iterable.hpp"
 #include "depthai/pipeline/datatype/Transformable.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -19,7 +20,7 @@
 namespace dai {
 
 template <class DetectionT>
-class ImgDetectionsT : public Buffer {
+class ImgDetectionsT : public Buffer, public Iterable {
    protected:
     size_t segmentationMaskWidth = 0;
     size_t segmentationMaskHeight = 0;
@@ -33,6 +34,8 @@ class ImgDetectionsT : public Buffer {
     /*
      * Common API
      */
+
+    std::size_t getSize() const override;
 
     /**
      * Returns the width of the segmentation mask.

@@ -129,7 +129,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
      {
          DatatypeEnum::ImgDetections,
          DatatypeEnum::IterableTransformableBuffer,
-         //  DatatypeEnum::SpatialImgDetections,
+         DatatypeEnum::SpatialImgDetections,
          //  DatatypeEnum::AprilTags,
          //  DatatypeEnum::Tracklets,
      }},

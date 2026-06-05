@@ -190,10 +190,6 @@ void ImgDetections::transformToInternal(const ImgTransformation& target) {
     this->setTransformation(target);
 }
 
-std::size_t ImgDetections::getSize() const {
-    return detections.size();
-}
-
 ImgDetections ImgDetections::transformTo(const ImgTransformation& target) const {
     return TransformableCRTP<ImgDetections>::transformTo(target);
 }

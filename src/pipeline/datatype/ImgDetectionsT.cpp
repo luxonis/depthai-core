@@ -74,6 +74,11 @@ std::optional<dai::ImgFrame> ImgDetectionsT<DetectionT>::getSegmentationMask() c
     return img;
 }
 
+template <class DetectionT>
+std::size_t ImgDetectionsT<DetectionT>::getSize() const {
+    return detections.size();
+}
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 
 template <class DetectionT>
