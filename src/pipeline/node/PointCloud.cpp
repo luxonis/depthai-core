@@ -3,6 +3,7 @@
 #include <spdlog/logger.h>
 
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <future>
 #include <thread>
@@ -663,44 +664,54 @@ void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
         return;
     }
 
-    // Warn about extrinsics mismatches (non-fatal)
+    // Check extrinsics mismatches (non-fatal)
     {
         auto depthExtrinsics = depthFrame->transformation.getExtrinsics();
         auto colorExtrinsics = colorFrame->transformation.getExtrinsics();
         if(depthExtrinsics.toCameraSocket != colorExtrinsics.toCameraSocket) {
-            pimpl->logger->warn("PointCloud: color extrinsics toCameraSocket ({}) does not match depth ({}) -- colorization may be misaligned",
+            pimpl->logger->error("PointCloud: color extrinsics toCameraSocket ({}) does not match depth ({}) -- colorization may be misaligned",
                                 toString(colorExtrinsics.toCameraSocket),
                                 toString(depthExtrinsics.toCameraSocket));
         } else if(depthExtrinsics.rotationMatrix != colorExtrinsics.rotationMatrix || depthExtrinsics.translation.x != colorExtrinsics.translation.x
                   || depthExtrinsics.translation.y != colorExtrinsics.translation.y || depthExtrinsics.translation.z != colorExtrinsics.translation.z) {
-            pimpl->logger->warn(
+            pimpl->logger->error(
                 "PointCloud: depth and color extrinsics differ (same toCameraSocket={} but different rotation/translation) "
                 "-- colorization may be misaligned",
                 toString(depthExtrinsics.toCameraSocket));
         }
     }
 
-    // Warn about intrinsics mismatches (non-fatal)
+    // Epsilon-based float comparison helper (reused for intrinsics and distortion coefficients)
+    constexpr float kEpsilon = 1e-6f;
+    auto approxEqualFloatVectors = [kEpsilon](const float* a, const float* b, size_t n) {
+        for(size_t i = 0; i < n; ++i) {
+            if(std::abs(a[i] - b[i]) > kEpsilon) return false;
+        }
+        return true;
+    };
+
+    // Check intrinsics mismatches (non-fatal)
     {
         auto depthIntrinsics = depthFrame->transformation.getIntrinsicMatrix();
         auto colorIntrinsics = colorFrame->transformation.getIntrinsicMatrix();
-        if(depthIntrinsics != colorIntrinsics) {
-            pimpl->logger->warn("PointCloud: color intrinsics do not match depth intrinsics -- colorization may be misaligned");
+        if(!approxEqualFloatVectors(&depthIntrinsics[0][0], &colorIntrinsics[0][0], 9)) {
+            pimpl->logger->error("PointCloud: color intrinsics do not match depth intrinsics -- colorization may be misaligned");
         }
     }
 
-    // Warn about distortion mismatches (non-fatal)
+    // Check distortion mismatches (non-fatal)
     {
         auto depthDistModel = depthFrame->transformation.getDistortionModel();
         auto colorDistModel = colorFrame->transformation.getDistortionModel();
         auto depthDistCoeffs = depthFrame->transformation.getDistortionCoefficients();
         auto colorDistCoeffs = colorFrame->transformation.getDistortionCoefficients();
         if(depthDistModel != colorDistModel) {
-            pimpl->logger->warn("PointCloud: color distortion model ({}) does not match depth ({}) -- colorization may be misaligned",
+            pimpl->logger->error("PointCloud: color distortion model ({}) does not match depth ({}) -- colorization may be misaligned",
                                 static_cast<int>(colorDistModel),
                                 static_cast<int>(depthDistModel));
-        } else if(depthDistCoeffs != colorDistCoeffs) {
-            pimpl->logger->warn("PointCloud: depth and color distortion coefficients differ -- colorization may be misaligned");
+        } else if(depthDistCoeffs.size() != colorDistCoeffs.size()
+                  || !approxEqualFloatVectors(depthDistCoeffs.data(), colorDistCoeffs.data(), depthDistCoeffs.size())) {
+            pimpl->logger->error("PointCloud: depth and color distortion coefficients differ -- colorization may be misaligned");
         }
     }
 
