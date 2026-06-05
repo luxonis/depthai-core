@@ -4,6 +4,9 @@
     #include <opencv2/opencv.hpp>
 #endif
 #include <algorithm>
+#include <optional>
+#include <vector>
+
 #include <pipeline/ThreadedNodeImpl.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -403,9 +406,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         syncedSensors.push_back(sensor.sensorDcl);
     }
 
-    std::optional<dcl::CameraSensorHandlePairList> keptBaselineEdges = std::nullopt;
+    std::optional<std::vector<dcl::EdgeBaseline>> keptBaselineEdges = std::nullopt;
     if(!keepCameraCenters) {
-        dcl::CameraSensorHandlePairList keptBaselineEdgesValue;
+        std::vector<dcl::EdgeBaseline> keptBaselineEdgesValue;
         if(connectedSensors.size() > 2) {
             keptBaselineEdgesValue.reserve(socketsInHandler.size() > 0 ? socketsInHandler.size() - 1 : 0);
             for(size_t idx = 0; idx + 1 < socketsInHandler.size(); ++idx) {
@@ -419,7 +422,13 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                     calibrationOutput.send(result);
                     return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
                 }
-                keptBaselineEdgesValue.emplace_back(sensorAInChain->sensorDcl, sensorBInChain->sensorDcl);
+
+                const auto* connectedSensorsBegin = connectedSensors.data();
+                const auto sensorIndexA = static_cast<std::size_t>(sensorAInChain - connectedSensorsBegin);
+                const auto sensorIndexB = static_cast<std::size_t>(sensorBInChain - connectedSensorsBegin);
+                const auto baselineLength =
+                    static_cast<double>(currentHandler.getBaselineDistance(sensorAInChain->socket, sensorBInChain->socket, true, LengthUnit::METER));
+                keptBaselineEdgesValue.push_back({sensorIndexA, sensorIndexB, baselineLength});
             }
         }
         if(!keptBaselineEdgesValue.empty()) {
