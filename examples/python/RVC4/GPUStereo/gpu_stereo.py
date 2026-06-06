@@ -20,13 +20,16 @@ pipeline = dai.Pipeline(device)
 cam_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
 cam_right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
+benchmarkIn = pipeline.create(dai.node.BenchmarkIn)
+
 gpu = pipeline.create(dai.node.GPUStereo)
-cam_left.requestOutput((1280, 800), type=dai.ImgFrame.Type.GRAY8, fps=30).link(gpu.left)
-cam_right.requestOutput((1280, 800), type=dai.ImgFrame.Type.GRAY8, fps=30).link(gpu.right)
+cam_left.requestFullResolutionOutput().link(gpu.left)
+cam_right.requestFullResolutionOutput().link(gpu.right)
 gpu.setRectification(True)
 gpu.initialConfig.setConfidenceThreshold(25)
 
 disp_q = gpu.disparity.createOutputQueue()
+gpu.disparity.link(benchmarkIn.input)
 
 with pipeline:
     pipeline.start()

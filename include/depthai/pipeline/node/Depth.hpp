@@ -41,7 +41,7 @@ namespace node {
  *
  * Algorithm availability: ``TOF`` requires a connected ToF sensor (see ``Device::getConnectedCameraFeatures()``).
  * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a stereo pair and is gated by
- * ``Device::isGpuStereoSupported()``; it is listed in ``getSupportedAlgorithms()`` only when those requirements are met.
+ * ``Device::isGpuStereoSupported()``.
  *
  * See \ref depth_node for a dedicated overview of purpose, behavior, features, and constraints.
  */
@@ -63,12 +63,6 @@ class Depth : public DeviceNodeGroup {
      * no selectable profile (``NEURAL_ASSISTED_STEREO``, ``GPU_STEREO``, ``TOF``).
      */
     using Config = std::variant<std::monostate, DeviceModelZoo, StereoDepth::PresetMode>;
-
-    /** Pair returned by the auto picker: the wired algorithm and its profile. */
-    struct Selection {
-        Algorithm algorithm;
-        Config config;
-    };
 
     // Non-copyable / non-movable: owns pipeline subnodes and output pointers tied to this instance.
     Depth(const Depth&) = delete;
@@ -103,9 +97,25 @@ class Depth : public DeviceNodeGroup {
         return ptr;
     }
 
+    /**
+     * Create Depth with an explicit ``algorithm`` and its ``config`` (e.g. values read back from a
+     * previously resolved node via ``getResolvedAlgorithm()`` / ``getResolvedPreset()``).
+     * Both must be supplied together; the pair is used as-is and AUTO selection is skipped.
+     */
+    [[nodiscard]] static std::shared_ptr<Depth> create(const std::shared_ptr<Device>& device, Algorithm algorithm, Config config) {
+        auto ptr = create(device, algorithm);
+        ptr->build(algorithm, std::move(config));
+        return ptr;
+    }
+
     /** Equivalent to ``create(nullptr, algorithm)``. */
     [[nodiscard]] static std::shared_ptr<Depth> create(Algorithm algorithm) {
         return create(nullptr, algorithm);
+    }
+
+    /** Equivalent to ``create(nullptr, algorithm, config)``. */
+    [[nodiscard]] static std::shared_ptr<Depth> create(Algorithm algorithm, Config config) {
+        return create(nullptr, algorithm, std::move(config));
     }
 
     /**
@@ -128,6 +138,17 @@ class Depth : public DeviceNodeGroup {
                                   std::optional<float> fps,
                                   std::optional<std::pair<uint32_t, uint32_t>> stereoSize);
 
+    /**
+     * Set an explicit ``algorithm`` together with its ``config`` before first wiring.
+     * Both must be supplied; the pair is used exactly as given (no auto algorithm/profile picking).
+     * ``algorithm`` must not be ``AUTO``, ``config`` must match the algorithm's ``Config`` type, and
+     * the algorithm must be available on the device or wiring throws with a descriptive message.
+     */
+    std::shared_ptr<Depth> build(Algorithm algorithm,
+                                  Config config,
+                                  std::optional<float> fps = std::nullopt,
+                                  std::optional<std::pair<uint32_t, uint32_t>> stereoSize = std::nullopt);
+
     /** Pin the NeuralDepth zoo model (skips RVC4 auto model picker). */
     std::shared_ptr<Depth> build(DeviceModelZoo neuralModel);
 
@@ -135,6 +156,24 @@ class Depth : public DeviceNodeGroup {
     [[nodiscard]] Algorithm getAlgorithm() const {
         return algorithmOverride_;
     }
+
+    /** Set the requested algorithm before wiring (``AUTO`` re-enables auto-selection). */
+    std::shared_ptr<Depth> setAlgorithm(Algorithm algorithm);
+
+    /**
+     * Requested config override, if one was supplied via ``setConfig()`` / ``build(algorithm, config)``.
+     * ``std::nullopt`` means the config is auto-picked for the algorithm.
+     */
+    [[nodiscard]] const std::optional<Config>& getConfig() const {
+        return configOverride_;
+    }
+
+    /**
+     * Pin the algorithm-specific config (``DeviceModelZoo`` for ``NEURAL``, ``StereoDepth::PresetMode``
+     * for ``STEREO``, ``std::monostate`` for ``NEURAL_ASSISTED_STEREO`` / ``GPU_STEREO`` / ``TOF``).
+     * Only takes effect together with a concrete (non-``AUTO``) algorithm.
+     */
+    std::shared_ptr<Depth> setConfig(Config config);
 
     /** Algorithm actually wired (``AUTO`` resolved). Valid after first ``depth()`` access. */
     [[nodiscard]] Algorithm getResolvedAlgorithm() const {
@@ -145,21 +184,6 @@ class Depth : public DeviceNodeGroup {
     [[nodiscard]] const Config& getResolvedPreset() const {
         return resolved_.config;
     }
-
-    /** Returns algorithms supported by the supplied device. */
-    std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device) const;
-
-    /** True when @p width or @p height exceeds the StereoDepth/NAS RVC4 maximum (1280x1280). */
-    static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
-
-    /**
-     * RVC4 auto-selection: keep @p targetFps, try NeuralDepth (best model meeting FPS and optional
-     * @p resolution), then NeuralAssistedStereo, StereoDepth, GPUStereo — first match wins.
-     */
-    static Selection selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
-                                    float targetFps,
-                                    const std::vector<Algorithm>& supportedAlgorithms,
-                                    const std::vector<DeviceModelZoo>& supportedModels = {});
 
     /** Lazily wires the selected backend subgraph when the node is attached to a pipeline. */
     void buildInternal() override;
@@ -173,6 +197,32 @@ class Depth : public DeviceNodeGroup {
     Node::Output& confidence();
 
    private:
+    friend struct DepthTestAccess;
+
+    /** Pair returned by the auto picker: the wired algorithm and its profile. */
+    struct Selection {
+        Algorithm algorithm;
+        Config config;
+    };
+
+    /** Common pre-wiring guard for build/setter APIs. */
+    void requireNotBuilt(const char* method) const;
+
+    /** Returns algorithms supported by the supplied device. */
+    std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device) const;
+
+    /** True when @p width or @p height exceeds the StereoDepth maximum. */
+    static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
+
+    /**
+     * RVC4 auto-selection: keep @p targetFps, try NeuralDepth (best model meeting FPS and optional
+     * @p resolution), then NeuralAssistedStereo, StereoDepth, GPUStereo — first match wins.
+     */
+    static Selection selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
+                                    float targetFps,
+                                    const std::vector<Algorithm>& supportedAlgorithms,
+                                    const std::vector<DeviceModelZoo>& supportedModels = {});
+
     /** Resolve algorithm + config, then wire stereo inputs from pipeline cameras / build() overrides. */
     void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
 
@@ -189,11 +239,6 @@ class Depth : public DeviceNodeGroup {
                                                                 std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                                                 const std::optional<float>& fps);
 
-    /** Stereo outputs for the device's first ``StereoPair`` (convenience over ``ensureStereoOutputs``). */
-    std::pair<Node::Output*, Node::Output*> stereoCameraOutputs(Pipeline& pipeline,
-                                                                const std::shared_ptr<Device>& device,
-                                                                std::optional<std::pair<uint32_t, uint32_t>> frameSize);
-
     /** Map active backend depth/confidence outputs after backend nodes are created. */
     void bindBackendOutputs(Algorithm active);
 
@@ -207,6 +252,8 @@ class Depth : public DeviceNodeGroup {
     std::optional<float> stereoOutputFps_{};
     /** Optional user resolution (e.g. when no upstream ``Camera`` exists). */
     std::optional<std::pair<uint32_t, uint32_t>> stereoSizeOverride_{};
+    /** Optional exact config supplied with a concrete algorithm; skips auto profile picking. */
+    std::optional<Config> configOverride_{};
     /** Optional pinned NeuralDepth model (skips the auto picker for ``NEURAL``). */
     std::optional<DeviceModelZoo> neuralModelOverride_{};
 

@@ -13,6 +13,28 @@ using dai::DeviceModelZoo;
 using dai::node::Depth;
 using dai::node::StereoDepth;
 
+namespace dai::node {
+
+struct DepthTestAccess {
+    static std::pair<Depth::Algorithm, Depth::Config> selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
+                                                                    float targetFps,
+                                                                    const std::vector<Depth::Algorithm>& supportedAlgorithms,
+                                                                    const std::vector<DeviceModelZoo>& supportedModels = {}) {
+        const auto selection = Depth::selectBackend(resolution, targetFps, supportedAlgorithms, supportedModels);
+        return {selection.algorithm, selection.config};
+    }
+
+    static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height) {
+        return Depth::exceedsStereoDepthMaxResolution(width, height);
+    }
+
+    static std::vector<Depth::Algorithm> getSupportedAlgorithms(const Depth& depth, const std::shared_ptr<Device>& device) {
+        return depth.getSupportedAlgorithms(device);
+    }
+};
+
+}  // namespace dai::node
+
 namespace {
 
 const std::vector<Depth::Algorithm> kAllRvc4Backends = {
@@ -24,10 +46,17 @@ const std::vector<Depth::Algorithm> kAllRvc4Backends = {
 
 const std::vector<Depth::Algorithm> kStereoOnly = {Depth::Algorithm::STEREO};
 
-Depth::Selection select(std::optional<std::pair<uint32_t, uint32_t>> res,
-                        float fps,
-                        const std::vector<Depth::Algorithm>& supported = kAllRvc4Backends) {
-    return Depth::selectBackend(res, fps, supported);
+struct Selection {
+    Depth::Algorithm algorithm;
+    Depth::Config config;
+};
+
+Selection select(std::optional<std::pair<uint32_t, uint32_t>> res,
+                 float fps,
+                 const std::vector<Depth::Algorithm>& supported = kAllRvc4Backends,
+                 const std::vector<DeviceModelZoo>& supportedModels = {}) {
+    const auto selected = dai::node::DepthTestAccess::selectBackend(res, fps, supported, supportedModels);
+    return {selected.first, selected.second};
 }
 
 }  // namespace
@@ -120,13 +149,32 @@ TEST_CASE("Depth::selectBackend without NeuralDepth falls through to StereoDepth
 
 TEST_CASE("Depth::selectBackend honors supportedModels filter for NEURAL rows", "[Depth]") {
     const std::vector<DeviceModelZoo> only = {DeviceModelZoo::NEURAL_DEPTH_480X300, DeviceModelZoo::NEURAL_DEPTH_192X120};
-    const auto sel = Depth::selectBackend(std::make_pair(640u, 400u), 30.f, kAllRvc4Backends, only);
+    const auto sel = select(std::make_pair(640u, 400u), 30.f, kAllRvc4Backends, only);
     REQUIRE(sel.algorithm == Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(sel.config) == DeviceModelZoo::NEURAL_DEPTH_480X300);
 }
 
 TEST_CASE("Depth::exceedsStereoDepthMaxResolution", "[Depth]") {
-    REQUIRE_FALSE(Depth::exceedsStereoDepthMaxResolution(1280, 1280));
-    REQUIRE(Depth::exceedsStereoDepthMaxResolution(1281, 800));
-    REQUIRE(Depth::exceedsStereoDepthMaxResolution(800, 1281));
+    REQUIRE_FALSE(dai::node::DepthTestAccess::exceedsStereoDepthMaxResolution(1280, 1280));
+    REQUIRE(dai::node::DepthTestAccess::exceedsStereoDepthMaxResolution(1281, 800));
+    REQUIRE(dai::node::DepthTestAccess::exceedsStereoDepthMaxResolution(800, 1281));
+}
+
+TEST_CASE("Depth::build accepts an explicit algorithm + config pair before wiring", "[Depth]") {
+    auto depth = Depth::create(Depth::Algorithm::STEREO, Depth::Config{StereoDepth::PresetMode::FAST_DENSITY});
+
+    REQUIRE(depth->getAlgorithm() == Depth::Algorithm::STEREO);
+    REQUIRE(depth->getConfig().has_value());
+    REQUIRE(std::get<StereoDepth::PresetMode>(*depth->getConfig()) == StereoDepth::PresetMode::FAST_DENSITY);
+}
+
+TEST_CASE("Depth setters expose algorithm and config", "[Depth]") {
+    auto depth = Depth::create();
+    REQUIRE(depth->getAlgorithm() == Depth::Algorithm::AUTO);
+    REQUIRE_FALSE(depth->getConfig().has_value());
+
+    depth->setAlgorithm(Depth::Algorithm::NEURAL);
+    depth->setConfig(Depth::Config{DeviceModelZoo::NEURAL_DEPTH_480X300});
+    REQUIRE(depth->getAlgorithm() == Depth::Algorithm::NEURAL);
+    REQUIRE(std::get<DeviceModelZoo>(*depth->getConfig()) == DeviceModelZoo::NEURAL_DEPTH_480X300);
 }
