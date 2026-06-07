@@ -90,12 +90,14 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("TOF", Depth::Algorithm::TOF)
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
-    node.def("getAlgorithm", &Depth::getAlgorithm)
+    node.def("getRequestedAlgorithm", &Depth::getRequestedAlgorithm)
         .def("setAlgorithm", &Depth::setAlgorithm, py::arg("algorithm"))
-        .def("getConfig", [configToPy](const Depth& d) -> py::object { return d.getConfig().has_value() ? configToPy(*d.getConfig()) : py::none(); })
+        .def("getRequestedConfig", [configToPy](const Depth& d) -> py::object {
+            return d.getRequestedConfig().has_value() ? configToPy(*d.getRequestedConfig()) : py::none();
+        })
         .def("setConfig", [configFromPy](Depth& self, py::object config) { return self.setConfig(configFromPy(config)); }, py::arg("config"))
         .def("getResolvedAlgorithm", &Depth::getResolvedAlgorithm)
-        .def("getResolvedPreset", [configToPy](const Depth& d) { return configToPy(d.getResolvedPreset()); })
+        .def("getResolvedConfig", [configToPy](const Depth& d) { return configToPy(d.getResolvedConfig()); })
         .def(
             "build",
             [](Depth& self, py::object value) {

@@ -163,18 +163,18 @@ TEST_CASE("Depth::exceedsStereoDepthMaxResolution", "[Depth]") {
 TEST_CASE("Depth::build accepts an explicit algorithm + config pair before wiring", "[Depth]") {
     auto depth = Depth::create(Depth::Algorithm::STEREO, Depth::Config{StereoDepth::PresetMode::FAST_DENSITY});
 
-    REQUIRE(depth->getAlgorithm() == Depth::Algorithm::STEREO);
-    REQUIRE(depth->getConfig().has_value());
-    REQUIRE(std::get<StereoDepth::PresetMode>(*depth->getConfig()) == StereoDepth::PresetMode::FAST_DENSITY);
+    REQUIRE(depth->getRequestedAlgorithm() == Depth::Algorithm::STEREO);
+    REQUIRE(depth->getRequestedConfig().has_value());
+    REQUIRE(std::get<StereoDepth::PresetMode>(*depth->getRequestedConfig()) == StereoDepth::PresetMode::FAST_DENSITY);
 }
 
 TEST_CASE("Depth setters expose algorithm and config", "[Depth]") {
     auto depth = Depth::create();
-    REQUIRE(depth->getAlgorithm() == Depth::Algorithm::AUTO);
-    REQUIRE_FALSE(depth->getConfig().has_value());
+    REQUIRE(depth->getRequestedAlgorithm() == Depth::Algorithm::AUTO);
+    REQUIRE_FALSE(depth->getRequestedConfig().has_value());
 
     depth->setAlgorithm(Depth::Algorithm::NEURAL);
     depth->setConfig(Depth::Config{DeviceModelZoo::NEURAL_DEPTH_480X300});
-    REQUIRE(depth->getAlgorithm() == Depth::Algorithm::NEURAL);
-    REQUIRE(std::get<DeviceModelZoo>(*depth->getConfig()) == DeviceModelZoo::NEURAL_DEPTH_480X300);
+    REQUIRE(depth->getRequestedAlgorithm() == Depth::Algorithm::NEURAL);
+    REQUIRE(std::get<DeviceModelZoo>(*depth->getRequestedConfig()) == DeviceModelZoo::NEURAL_DEPTH_480X300);
 }

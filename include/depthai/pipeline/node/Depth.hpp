@@ -99,7 +99,7 @@ class Depth : public DeviceNodeGroup {
 
     /**
      * Create Depth with an explicit ``algorithm`` and its ``config`` (e.g. values read back from a
-     * previously resolved node via ``getResolvedAlgorithm()`` / ``getResolvedPreset()``).
+     * previously resolved node via ``getResolvedAlgorithm()`` / ``getResolvedConfig()``).
      * Both must be supplied together; the pair is used as-is and AUTO selection is skipped.
      */
     [[nodiscard]] static std::shared_ptr<Depth> create(const std::shared_ptr<Device>& device, Algorithm algorithm, Config config) {
@@ -152,8 +152,8 @@ class Depth : public DeviceNodeGroup {
     /** Pin the NeuralDepth zoo model (skips RVC4 auto model picker). */
     std::shared_ptr<Depth> build(DeviceModelZoo neuralModel);
 
-    /** Current requested algorithm selection (including ``AUTO``). */
-    [[nodiscard]] Algorithm getAlgorithm() const {
+    /** Requested algorithm selection (including ``AUTO``). */
+    [[nodiscard]] Algorithm getRequestedAlgorithm() const {
         return algorithmOverride_;
     }
 
@@ -164,7 +164,7 @@ class Depth : public DeviceNodeGroup {
      * Requested config override, if one was supplied via ``setConfig()`` / ``build(algorithm, config)``.
      * ``std::nullopt`` means the config is auto-picked for the algorithm.
      */
-    [[nodiscard]] const std::optional<Config>& getConfig() const {
+    [[nodiscard]] const std::optional<Config>& getRequestedConfig() const {
         return configOverride_;
     }
 
@@ -180,8 +180,8 @@ class Depth : public DeviceNodeGroup {
         return resolved_.algorithm;
     }
 
-    /** Resolved algorithm-specific preset/profile: see ``Config``. */
-    [[nodiscard]] const Config& getResolvedPreset() const {
+    /** Resolved algorithm-specific config (model, preset, or ``std::monostate``): see ``Config``. */
+    [[nodiscard]] const Config& getResolvedConfig() const {
         return resolved_.config;
     }
 

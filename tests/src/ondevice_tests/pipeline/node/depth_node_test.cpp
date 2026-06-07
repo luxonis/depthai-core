@@ -355,7 +355,7 @@ void requireUserAndDepthFrameSizes(const std::shared_ptr<Device>& device,
     if(device->getPlatform() == Platform::RVC4) {
         const auto resolved = depth->getResolvedAlgorithm();
         if(resolved == node::Depth::Algorithm::NEURAL) {
-            const auto [expectedW, expectedH] = node::NeuralDepth::getInputSize(std::get<DeviceModelZoo>(depth->getResolvedPreset()));
+            const auto [expectedW, expectedH] = node::NeuralDepth::getInputSize(std::get<DeviceModelZoo>(depth->getResolvedConfig()));
             requireDepthSingleBackendChild(*depth, "NeuralDepth");
             REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
                      || depthFrame->getHeight() != static_cast<int>(kUserStereoSensorResolution.second)));
@@ -431,11 +431,11 @@ TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     REQUIRE_NOTHROW((void)&depth->confidence());
 }
 
-TEST_CASE("Depth: create(device, algorithm) exposes algorithm via getAlgorithm") {
+TEST_CASE("Depth: create(device, algorithm) exposes algorithm via getRequestedAlgorithm") {
     Pipeline pipeline;
     (void)requireDefaultDevice(pipeline);
     auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::TOF);
-    REQUIRE(depth->getAlgorithm() == node::Depth::Algorithm::TOF);
+    REQUIRE(depth->getRequestedAlgorithm() == node::Depth::Algorithm::TOF);
 }
 
 TEST_CASE("Depth: AUTO selects backend by platform and sensors") {
@@ -498,14 +498,14 @@ TEST_CASE("Depth: resolved algorithm + config can rebuild the same backend expli
     auto depth = pipeline.create<node::Depth>();
     REQUIRE_NOTHROW((void)&depth->depth());
     const auto resolvedAlgorithm = depth->getResolvedAlgorithm();
-    const auto resolvedConfig = depth->getResolvedPreset();
+    const auto resolvedConfig = depth->getResolvedConfig();
 
     auto explicitDepth = pipeline.create<node::Depth>();
     explicitDepth->build(resolvedAlgorithm, resolvedConfig);
     REQUIRE_NOTHROW((void)&explicitDepth->depth());
-    REQUIRE(explicitDepth->getAlgorithm() == resolvedAlgorithm);
+    REQUIRE(explicitDepth->getRequestedAlgorithm() == resolvedAlgorithm);
     REQUIRE(explicitDepth->getResolvedAlgorithm() == resolvedAlgorithm);
-    REQUIRE(explicitDepth->getResolvedPreset() == resolvedConfig);
+    REQUIRE(explicitDepth->getResolvedConfig() == resolvedConfig);
 }
 
 TEST_CASE("Depth: explicit algorithm + config rejects algorithms unsupported by the device") {
@@ -693,7 +693,7 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from stereo_size and fps") {
     depth->build(node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32_t>{640, 400});
     REQUIRE_NOTHROW((void)&depth->depth());
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
-    REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedPreset()) == std::get<DeviceModelZoo>(expected.second));
+    REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedConfig()) == std::get<DeviceModelZoo>(expected.second));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
 }
 
@@ -728,6 +728,6 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
 
     REQUIRE_NOTHROW((void)&depth->depth());
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
-    REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedPreset()) == std::get<DeviceModelZoo>(expected.second));
+    REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedConfig()) == std::get<DeviceModelZoo>(expected.second));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
 }

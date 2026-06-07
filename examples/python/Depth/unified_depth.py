@@ -89,7 +89,7 @@ pipeline.build()
 with pipeline:
     pipeline.start()
     print("Algorithm:", depthNode.getResolvedAlgorithm())
-    print("Preset:", depthNode.getResolvedPreset())
+    print("Config:", depthNode.getResolvedConfig())
     while pipeline.isRunning():
         depthFrame = depthQueue.get()
         assert isinstance(depthFrame, dai.ImgFrame)

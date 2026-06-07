@@ -500,7 +500,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
 
     if(device->getPlatform() != Platform::RVC4) {
         // Non-RVC4 has no catalog scan; pick the algorithm and populate the preset that
-        // actually goes into the backend's build() (so getResolvedPreset() matches reality).
+        // actually goes into the backend's build() (so getResolvedConfig() matches reality).
         const Algorithm chosen = (algorithmOverride_ == Algorithm::AUTO)
                                      ? (supportsAlgorithm(supported, Algorithm::TOF) ? Algorithm::TOF : Algorithm::STEREO)
                                      : algorithmOverride_;

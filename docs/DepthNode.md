@@ -35,7 +35,7 @@ depth->build(dai::node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32
 (void)depth->depth();  // triggers wiring
 
 depth->getResolvedAlgorithm();
-depth->getResolvedPreset();           // variant: model, preset, or std::monostate
+depth->getResolvedConfig();           // variant: model, preset, or std::monostate
 ```
 
 Python: `pipeline.create(dai.node.Depth, ...)` accepts the same selection hints as keyword arguments and forwards them to `Depth::build(...)` before lazy wiring runs (so AUTO sees them on the first scan):
@@ -48,4 +48,4 @@ Python: `pipeline.create(dai.node.Depth, ...)` accepts the same selection hints 
 depth = pipeline.create(dai.node.Depth, FPS=10.0, resolution=(640, 400))  # AUTO → NeuralDepth on RVC4
 ```
 
-The backend-selection helpers are internal implementation details; public callers should configure `Depth` through `build(...)`, `setAlgorithm(...)`, and `setConfig(...)`, then inspect the wired result through `getResolvedAlgorithm()` / `getResolvedPreset()`.
+The backend-selection helpers are internal implementation details; public callers should configure `Depth` through `build(...)`, `setAlgorithm(...)`, and `setConfig(...)`, then inspect the wired result through `getResolvedAlgorithm()` / `getResolvedConfig()`. Requested values (before wiring) are available via `getRequestedAlgorithm()` / `getRequestedConfig()`.
