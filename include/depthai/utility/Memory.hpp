@@ -1,9 +1,11 @@
 #pragma once
 
 // std
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <functional>
+#include <memory>
+#include <utility>
 
 // project
 #include "depthai/utility/span.hpp"

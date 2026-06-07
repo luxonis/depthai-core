@@ -137,6 +137,10 @@ For VCPKG integration, check out the example [here](https://github.com/luxonis/d
 Note that the VCPKG integration is using a custom branch of DepthAI and we plan to integrate the support for it into the main branch in the future and add it to the official VCPKG repository.
 
 
+### Telemetry
+We collect some anonymized telemetry to understand how users use the library so we can improve it. This mainly includes which nodes are used most often, how long sessions last, and similar usage information. If you prefer, you can disable telemetry by setting the environment variable `DEPTHAI_TELEMETRY=0`.
+
+
 ### Android
 Android is not yet supported on the v3.x.y version of DepthAI. You can still use the v2.x.y version of DepthAI for RVC2 devices or open an issue on this repository to request Android support for v3.x.y.
 
@@ -218,7 +222,9 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. Automatic crash dump collection is disabled if set to 0. |
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in milliseconds to wait for device reboot when obtaining a crash dump. Automatic crash dump collection is disabled if set to 0. |
-| DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
+| DEPTHAI_TELEMETRY | Telemetry is enabled by default. Set to `0` or `false` to disable event capture. |
+| DEPTHAI_TELEMETRY_URL | Overrides the telemetry capture URL. |
+| DEPTHAI_TELEMETRY_API_KEY | Overrides the telemetry API key. |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
 | DEPTHAI_HUB_EVENTS_BASE_URL | URL for events of the Luxonis Hub |
 | DEPTHAI_HUB_API_KEY | API key for the Luxonis Hub |

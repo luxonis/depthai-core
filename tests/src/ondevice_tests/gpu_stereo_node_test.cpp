@@ -7,11 +7,13 @@ TEST_CASE("GPUStereo produces disparity on supported devices", "[GPUStereo][onde
     try {
         device = std::make_shared<dai::Device>();
     } catch(const std::exception& e) {
-        SKIP(std::string("No device available: ") + e.what());
+        WARN(std::string("Skipping GPUStereo test: no device available: ") + e.what());
+        return;
     }
 
     if(!device->hasGPU()) {
-        SKIP("GPU not available on this device");
+        WARN("Skipping GPUStereo test: GPU not available on this device");
+        return;
     }
 
     dai::Pipeline pipeline(device);

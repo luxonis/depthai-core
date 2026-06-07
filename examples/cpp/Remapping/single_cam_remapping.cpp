@@ -45,14 +45,7 @@ cv::Mat toColorFrame(const cv::Mat& frame) {
 
 void addStatusLines(cv::Mat& frame, const std::vector<std::string>& lines, const cv::Scalar& color = cv::Scalar(255, 0, 255)) {
     for(size_t index = 0; index < lines.size(); ++index) {
-        cv::putText(frame,
-                    lines[index],
-                    cv::Point(10, 28 + static_cast<int>(index) * 24),
-                    cv::FONT_HERSHEY_SIMPLEX,
-                    0.65,
-                    color,
-                    2,
-                    cv::LINE_AA);
+        cv::putText(frame, lines[index], cv::Point(10, 28 + static_cast<int>(index) * 24), cv::FONT_HERSHEY_SIMPLEX, 0.65, color, 2, cv::LINE_AA);
     }
 }
 

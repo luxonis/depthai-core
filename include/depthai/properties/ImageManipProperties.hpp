@@ -15,7 +15,7 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
      * This can cause some unexpected behavior when using multiple ImageManip nodes in series.
      * Currently, the only operation affected is downscaling.
      */
-    enum class Backend : uint8_t { CPU, HW };
+    enum class Backend : uint8_t { CPU, HW, GPU };
     /**
      * Set performance mode for ImageManip with a tradeoff between performance and power consumption. Only applied on RVC4.
      * This only affects scaling NV12 and GRAY images.

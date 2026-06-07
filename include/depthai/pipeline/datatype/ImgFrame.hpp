@@ -6,6 +6,7 @@
 
 // project
 #include "depthai/common/CameraExposureOffset.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/config/config.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
@@ -208,6 +209,11 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * Retrieves sensor FPS for this frame.
      */
     float getFps() const;
+
+    /**
+     * Retrieves sensor temperature in degrees Celsius. Returns an empty optional if not available.
+     */
+    std::optional<float> getSensorTemperature() const;
 
     /**
      * Retrieves image transformation data
@@ -739,8 +745,10 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         Fsync fsync = Fsync::NONE;
         int32_t sensorMode = -1;
         float fps = -1.0f;
+        std::optional<float> sensorTemperatureC = std::nullopt;
 
-        DEPTHAI_SERIALIZE(CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw, fsync, sensorMode, fps);
+        DEPTHAI_SERIALIZE(
+            CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw, fsync, sensorMode, fps, sensorTemperatureC);
     };
 
     Specs fb = {};

@@ -39,6 +39,7 @@
 #include "pipeline/node/NodeBindings.hpp"
 #include "remote_connection/RemoteConnectionBindings.hpp"
 #include "utility/EventsManagerBindings.hpp"
+#include "utility/Telemetry.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <ndarray_converter.h>
 #endif
@@ -55,6 +56,8 @@ PYBIND11_EMBEDDED_MODULE(depthai, m)
 PYBIND11_MODULE(depthai, m)
 #endif
 {
+    dai::utility::Telemetry::setTelemetryUsesPython(true);
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     NDArrayConverter::init_numpy();
 #endif

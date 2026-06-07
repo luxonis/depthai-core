@@ -16,6 +16,9 @@ class DeviceNodeGroup : public DeviceNode {
     const char* getName() const final {
         return "DeviceNodeGroup";
     }
+    bool isBuiltInNode() const final {
+        return true;
+    }
 
     virtual ~DeviceNodeGroup();
 

@@ -1,9 +1,20 @@
+#include <atomic>
+#include <csignal>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
 #include "depthai/depthai.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -29,10 +40,14 @@ int main() {
     pipeline.start();
 
     // Main loop
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto inNNData = qNNData->get<dai::NNData>();
         auto tensor = inNNData->getFirstTensor<float>();
         std::cout << "Received NN data: " << tensor.shape()[0] << "x" << tensor.shape()[1] << std::endl;
     }
+
+    pipeline.stop();
+    pipeline.wait();
+
     return 0;
 }

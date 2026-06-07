@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/DepthUnit.hpp"
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
@@ -12,6 +13,7 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgDetectionsT.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 #include "depthai/utility/Serialization.hpp"
 
@@ -23,6 +25,10 @@ namespace dai {
  * Contains image detection results together with spatial location data.
  */
 struct SpatialImgDetection {
+   private:
+    void transformKeypointsFallback(const ImgTransformation& source, const ImgTransformation& target, const Point3f& spatialCoordinates);
+
+   public:
     uint32_t label = 0;
     std::string labelName;
     float confidence = 0.f;
@@ -147,6 +153,15 @@ struct SpatialImgDetection {
      * Returns the angle of the bounding box.
      */
     float getAngle() const;
+
+    /**
+     * Transforms the spatial detection to the target image transformation.
+     * @param source Source image transformation.
+     * @param target Target image transformation.
+     * @param lengthUnit Length unit to use for the transformation. By default, millimeters are assumed.
+     */
+    void transform(const ImgTransformation& source, const ImgTransformation& target, LengthUnit lengthUnit = LengthUnit::MILLIMETER);
+
     DEPTHAI_SERIALIZE(
         SpatialImgDetection, label, labelName, confidence, xmin, ymin, xmax, ymax, boundingBox, keypoints, spatialCoordinates, boundingBoxMapping);
 };
@@ -154,21 +169,48 @@ struct SpatialImgDetection {
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */
-class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable {
+class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public ProtoSerializable, public TransformableCRTP<SpatialImgDetections> {
+   protected:
+    /**
+     * Internal transform hook used by transformTo() to apply SpatialImgDetections-specific transformation logic.
+     */
+    void transformToInternal(const ImgTransformation& target) override;
+
    public:
+    friend class TransformableCRTP<SpatialImgDetections>;
     ~SpatialImgDetections() override;
     using Base = ImgDetectionsT<SpatialImgDetection>;
     using Base::Base;
     using Base::detections;
     using Base::segmentationMaskHeight;
     using Base::segmentationMaskWidth;
-    using Base::transformation;
+    using Base::sequenceNum;
+    using Base::ts;
+    using Base::tsDevice;
+    using Transformable::transformation;
+
+    /**
+     * Length unit used by all imgDetections' `spatialCoordinates` in this list.
+     */
+    LengthUnit unit = LengthUnit::MILLIMETER;
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::SpatialImgDetections;
     }
+
+    /**
+     * Returns a new SpatialImgDetections message with the spatial detections transformed into the target image transformation.
+     *
+     * For each detection, the bounding box is assumed to lie on a plane parallel to the image plane at depth `detection.spatialCoordinates.z` (that is, all
+     * four bounding-box corners are projected using the same depth value). The transformed corners are then fit with the smallest enclosing rotated rectangle
+     * to preserve rectangularity.
+     *
+     * @param target Target image transformation.
+     * @return SpatialImgDetections with transformed detections.
+     */
+    SpatialImgDetections transformTo(const ImgTransformation& target) const;
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
@@ -186,14 +228,7 @@ class SpatialImgDetections : public ImgDetectionsT<SpatialImgDetection>, public 
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
-    DEPTHAI_SERIALIZE(SpatialImgDetections,
-                      Base::Buffer::sequenceNum,
-                      Base::Buffer::ts,
-                      Base::Buffer::tsDevice,
-                      detections,
-                      transformation,
-                      segmentationMaskWidth,
-                      segmentationMaskHeight);
+    DEPTHAI_SERIALIZE(SpatialImgDetections, sequenceNum, ts, tsDevice, detections, transformation, segmentationMaskWidth, segmentationMaskHeight, unit);
 };
 
 }  // namespace dai

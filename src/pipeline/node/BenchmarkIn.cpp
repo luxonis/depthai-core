@@ -112,19 +112,15 @@ void BenchmarkIn::run() {
                 reportMessage->latencies = latencies;
             }
 
-            // Decide how to log (warn or info) once, then do all the logs
-            auto logFunc = [&](auto fmt, auto... args) {
-                if(properties.logReportsAsWarnings) {
-                    logger->warn(fmt, std::forward<decltype(args)>(args)...);
-                } else {
-                    logger->trace(fmt, std::forward<decltype(args)>(args)...);
-                }
-            };
-
-            // Unconditional logs, using chosen severity
-            logFunc("FPS: {}", reportMessage->fps);
-            logFunc("Messages took {} s", reportMessage->timeTotal);
-            logFunc("Average latency: {} s", reportMessage->averageLatency);
+            if(properties.logReportsAsWarnings) {
+                logger->warn("FPS: {}", reportMessage->fps);
+                logger->warn("Messages took {} s", reportMessage->timeTotal);
+                logger->warn("Average latency: {} s", reportMessage->averageLatency);
+            } else {
+                logger->trace("FPS: {}", reportMessage->fps);
+                logger->trace("Messages took {} s", reportMessage->timeTotal);
+                logger->trace("Average latency: {} s", reportMessage->averageLatency);
+            }
 
             // Reset for next batch
             messageCount = 0;

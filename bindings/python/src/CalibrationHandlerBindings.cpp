@@ -1,5 +1,6 @@
 #include "CalibrationHandlerBindings.hpp"
 
+#include <optional>
 #include <vector>
 
 #include "depthai/common/Point2f.hpp"
@@ -10,6 +11,7 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Type definitions
     py::class_<CalibrationHandler> calibrationHandler(m, "CalibrationHandler", DOC(dai, CalibrationHandler));
+    py::class_<CBACalibrationHandler> cbaCalibrationHandler(m, "CBACalibrationHandler", DOC(dai, CBACalibrationHandler));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -258,4 +260,100 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              &CalibrationHandler::validateCalibrationHandler,
              py::arg("throwOnError") = true,
              DOC(dai, CalibrationHandler, validateCalibrationHandler));
+
+    cbaCalibrationHandler.def(py::init<>(), DOC(dai, CBACalibrationHandler, CBACalibrationHandler))
+        .def(py::init<EepromData, std::optional<bool>>(),
+             py::arg("eepromData"),
+             py::arg("validateExtrinsics") = std::nullopt,
+             DOC(dai, CBACalibrationHandler, CBACalibrationHandler, 2))
+        .def_static("fromJson",
+                    &CBACalibrationHandler::fromJson,
+                    py::arg("eepromDataJson"),
+                    py::arg("validateExtrinsics") = std::nullopt,
+                    DOC(dai, CBACalibrationHandler, fromJson))
+        .def(
+            "getEepromData", [](const CBACalibrationHandler& self) { return self.getEepromData(); }, DOC(dai, CalibrationHandler, getEepromData))
+        .def(
+            "hasCalibrationData", [](const CBACalibrationHandler& self) { return self.hasCalibrationData(); }, DOC(dai, CalibrationHandler, hasCalibrationData))
+        .def(
+            "eepromToJsonFile",
+            [](const CBACalibrationHandler& self, std::filesystem::path destPath) { return self.eepromToJsonFile(destPath); },
+            py::arg("destPath"),
+            DOC(dai, CalibrationHandler, eepromToJsonFile))
+        .def(
+            "eepromToJson", [](const CBACalibrationHandler& self) { return self.eepromToJson(); }, DOC(dai, CalibrationHandler, eepromToJson))
+        .def(
+            "validateCalibrationHandler",
+            [](const CBACalibrationHandler& self, bool throwOnError) { self.validateCalibrationHandler(throwOnError); },
+            py::arg("throwOnError") = true,
+            DOC(dai, CalibrationHandler, validateCalibrationHandler))
+        .def("hasCameraCalibration",
+             py::overload_cast<>(&CBACalibrationHandler::hasCameraCalibration, py::const_),
+             DOC(dai, CBACalibrationHandler, hasCameraCalibration))
+
+        .def("getCameraIntrinsics",
+             py::overload_cast<int, int, Point2f, Point2f, bool>(&CBACalibrationHandler::getCameraIntrinsics, py::const_),
+             py::arg("resizeWidth") = -1,
+             py::arg("resizeHeight") = -1,
+             py::arg("topLeftPixelId") = Point2f(),
+             py::arg("bottomRightPixelId") = Point2f(),
+             py::arg("keepAspectRatio") = true,
+             DOC(dai, CBACalibrationHandler, getCameraIntrinsics))
+        .def("getCameraIntrinsics",
+             py::overload_cast<Size2f, Point2f, Point2f, bool>(&CBACalibrationHandler::getCameraIntrinsics, py::const_),
+             py::arg("destShape"),
+             py::arg("topLeftPixelId") = Point2f(),
+             py::arg("bottomRightPixelId") = Point2f(),
+             py::arg("keepAspectRatio") = true,
+             DOC(dai, CBACalibrationHandler, getCameraIntrinsics, 2))
+        .def("getCameraIntrinsics",
+             py::overload_cast<std::tuple<int, int>, Point2f, Point2f, bool>(&CBACalibrationHandler::getCameraIntrinsics, py::const_),
+             py::arg("destShape"),
+             py::arg("topLeftPixelId") = Point2f(),
+             py::arg("bottomRightPixelId") = Point2f(),
+             py::arg("keepAspectRatio") = true,
+             DOC(dai, CBACalibrationHandler, getCameraIntrinsics, 3))
+        .def("getDefaultIntrinsics",
+             py::overload_cast<>(&CBACalibrationHandler::getDefaultIntrinsics, py::const_),
+             DOC(dai, CBACalibrationHandler, getDefaultIntrinsics))
+        .def("getSourceHeight", py::overload_cast<>(&CBACalibrationHandler::getSourceHeight, py::const_), DOC(dai, CBACalibrationHandler, getSourceHeight))
+        .def("getSourceWidth", py::overload_cast<>(&CBACalibrationHandler::getSourceWidth, py::const_), DOC(dai, CBACalibrationHandler, getSourceWidth))
+        .def("getDistortionCoefficients",
+             py::overload_cast<>(&CBACalibrationHandler::getDistortionCoefficients, py::const_),
+             DOC(dai, CBACalibrationHandler, getDistortionCoefficients))
+        .def("getFov", py::overload_cast<bool>(&CBACalibrationHandler::getFov, py::const_), py::arg("useSpec") = true, DOC(dai, CBACalibrationHandler, getFov))
+        .def("getLensPosition", py::overload_cast<>(&CBACalibrationHandler::getLensPosition, py::const_), DOC(dai, CBACalibrationHandler, getLensPosition))
+        .def("getDistortionModel",
+             py::overload_cast<>(&CBACalibrationHandler::getDistortionModel, py::const_),
+             DOC(dai, CBACalibrationHandler, getDistortionModel))
+
+        .def("setCameraIntrinsics",
+             py::overload_cast<std::vector<std::vector<float>>, Size2f>(&CBACalibrationHandler::setCameraIntrinsics),
+             py::arg("intrinsics"),
+             py::arg("frameSize"),
+             DOC(dai, CBACalibrationHandler, setCameraIntrinsics))
+        .def("setCameraIntrinsics",
+             py::overload_cast<std::vector<std::vector<float>>, int, int>(&CBACalibrationHandler::setCameraIntrinsics),
+             py::arg("intrinsics"),
+             py::arg("width"),
+             py::arg("height"),
+             DOC(dai, CBACalibrationHandler, setCameraIntrinsics, 2))
+        .def("setCameraIntrinsics",
+             py::overload_cast<std::vector<std::vector<float>>, std::tuple<int, int>>(&CBACalibrationHandler::setCameraIntrinsics),
+             py::arg("intrinsics"),
+             py::arg("frameSize"),
+             DOC(dai, CBACalibrationHandler, setCameraIntrinsics, 3))
+        .def("setDistortionCoefficients",
+             py::overload_cast<std::vector<float>>(&CBACalibrationHandler::setDistortionCoefficients),
+             py::arg("distortionCoefficients"),
+             DOC(dai, CBACalibrationHandler, setDistortionCoefficients))
+        .def("setFov", py::overload_cast<float>(&CBACalibrationHandler::setFov), py::arg("hfov"), DOC(dai, CBACalibrationHandler, setFov))
+        .def("setLensPosition",
+             py::overload_cast<uint8_t>(&CBACalibrationHandler::setLensPosition),
+             py::arg("lensPosition"),
+             DOC(dai, CBACalibrationHandler, setLensPosition))
+        .def("setCameraType",
+             py::overload_cast<CameraModel>(&CBACalibrationHandler::setCameraType),
+             py::arg("cameraModel"),
+             DOC(dai, CBACalibrationHandler, setCameraType));
 }
