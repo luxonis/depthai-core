@@ -56,11 +56,15 @@ void validateImuCalibrationMatrix(const std::vector<std::vector<float>>& calibra
 }
 
 EepromData validateCBAEepromData(EepromData eepromData) {
-    if(eepromData.cameraData.empty()) {
-        return eepromData;
+    if(eepromData.cameraData.size() != 1) {
+        throw std::runtime_error("CBA calibration data must contain exactly one cameraData entry.");
     }
-    if(eepromData.cameraData.size() != 1 || eepromData.cameraData.find(CameraBoardSocket::CBA) == eepromData.cameraData.end()) {
-        throw std::runtime_error("CBA calibration data must contain only a CameraBoardSocket::CBA cameraData entry.");
+
+    auto it = eepromData.cameraData.begin();
+    if(it->first != CameraBoardSocket::CBA) {
+        CameraInfo cameraInfo = it->second;
+        eepromData.cameraData.erase(it);
+        eepromData.cameraData.emplace(CameraBoardSocket::CBA, cameraInfo);
     }
     return eepromData;
 }

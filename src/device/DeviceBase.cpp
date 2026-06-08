@@ -98,6 +98,12 @@ dai::CameraBoardSocket validatePhysicalCBASocket(dai::CameraBoardSocket cbaSocke
     return cbaSocket;
 }
 
+bool validateCBACalibrationData(const dai::CBACalibrationHandler& calibrationDataHandler) {
+    const auto eepromData = calibrationDataHandler.getEepromData();
+    const auto& cameraData = eepromData.cameraData;
+    return cameraData.size() == 1 && cameraData.find(dai::CameraBoardSocket::CBA) != cameraData.end();
+}
+
 std::string lowercase(std::string value) {
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     return value;
@@ -2001,6 +2007,10 @@ bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) 
 }
 
 bool DeviceBase::tryFlashCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
+    if(!validateCBACalibrationData(calibrationDataHandler)) {
+        return false;
+    }
+
     try {
         flashCBACalibration(calibrationDataHandler, camSocket);
     } catch(const EepromError& e) {
@@ -2028,6 +2038,9 @@ void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
 
 void DeviceBase::flashCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
     camSocket = validatePhysicalCBASocket(camSocket);
+    if(!validateCBACalibrationData(calibrationDataHandler)) {
+        throw std::runtime_error("CBA calibration data must contain exactly one CameraBoardSocket::CBA cameraData entry.");
+    }
 
     bool factoryPermissions = false;
     bool protectedPermissions = false;
@@ -2097,13 +2110,12 @@ CalibrationHandler DeviceBase::readCalibration() {
 }
 
 CBACalibrationHandler DeviceBase::readCBACalibration(CameraBoardSocket camSocket) {
-    dai::EepromData eepromData{};
     try {
         return readCBACalibration2(camSocket);
     } catch(const EepromError&) {
         // ignore - use default
     }
-    return CBACalibrationHandler(eepromData);
+    return CBACalibrationHandler();
 }
 
 CalibrationHandler DeviceBase::readCalibration2() {
@@ -2159,6 +2171,9 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
 
 void DeviceBase::flashFactoryCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
     camSocket = validatePhysicalCBASocket(camSocket);
+    if(!validateCBACalibrationData(calibrationDataHandler)) {
+        throw std::runtime_error("CBA calibration data must contain exactly one CameraBoardSocket::CBA cameraData entry.");
+    }
 
     bool factoryPermissions = false;
     bool protectedPermissions = false;
@@ -2217,13 +2232,12 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
 }
 
 CBACalibrationHandler DeviceBase::readFactoryCBACalibrationOrDefault(CameraBoardSocket camSocket) {
-    dai::EepromData eepromData{};
     try {
         return readFactoryCBACalibration(camSocket);
     } catch(const EepromError&) {
         // ignore - use default
     }
-    return CBACalibrationHandler(eepromData);
+    return CBACalibrationHandler();
 }
 
 void DeviceBase::factoryResetCalibration() {

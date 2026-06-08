@@ -1375,3 +1375,39 @@ TEST_CASE("getCameraToImuExtrinsics scales translation for all units", "[getCame
         requireMatrixApproxEqual(result, expected);
     }
 }
+
+TEST_CASE("CBA calibration handler updates a legacy single camera socket to a CBA socket", "[CBACalibrationHandler]") {
+    dai::EepromData data;
+
+    dai::CameraInfo cam;
+    cam.width = 640;
+    cam.height = 480;
+    cam.lensPosition = 42;
+    cam.specHfovDeg = 72.0f;
+
+    data.cameraData[CameraBoardSocket::CAM_B] = cam;
+
+    CBACalibrationHandler handler(data);
+    const auto loaded = handler.getEepromData();
+
+    REQUIRE(loaded.cameraData.size() == 1);
+    auto cbaCameraData = loaded.cameraData.find(CameraBoardSocket::CBA);
+    REQUIRE(cbaCameraData != loaded.cameraData.end());
+
+    const auto& loadedCam = cbaCameraData->second;
+    REQUIRE(loadedCam.width == cam.width);
+    REQUIRE(loadedCam.height == cam.height);
+    REQUIRE(loadedCam.lensPosition == cam.lensPosition);
+    REQUIRE(loadedCam.specHfovDeg == cam.specHfovDeg);
+}
+
+TEST_CASE("CBA calibration handler requires exactly one cameraData entry", "[CBACalibrationHandler]") {
+    dai::EepromData empty;
+    REQUIRE_THROWS_WITH(CBACalibrationHandler(empty), Catch::Matchers::ContainsSubstring("exactly one cameraData entry"));
+
+    dai::EepromData data;
+    data.cameraData[CameraBoardSocket::CAM_B] = dai::CameraInfo{};
+    data.cameraData[CameraBoardSocket::CAM_C] = dai::CameraInfo{};
+
+    REQUIRE_THROWS_WITH(CBACalibrationHandler(data), Catch::Matchers::ContainsSubstring("exactly one cameraData entry"));
+}
