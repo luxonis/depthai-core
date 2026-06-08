@@ -2,8 +2,8 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.7.1 (2026-06-08)
+------------------
 ## Features
 * [_RVC4_] New GPUStereo node
     * C++ example [here](https://github.com/luxonis/depthai-core/blob/v3.7.1/examples/cpp/GPUStereo/gpu_stereo.cpp) and Python example [here](https://github.com/luxonis/depthai-core/blob/v3.7.1/examples/python/RVC4/GPUStereo/gpu_stereo.py)
