@@ -229,6 +229,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
             return true;
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
+        case DatatypeEnum::MissingDataMessage:
         case DatatypeEnum::Transformable:
         case DatatypeEnum::Iterable:
         case DatatypeEnum::IterableTransformableBuffer:

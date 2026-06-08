@@ -40,6 +40,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MapData.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "depthai/pipeline/datatype/MissingDataMessage.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/NeuralDepthConfig.hpp"
 #include "depthai/pipeline/datatype/ObjectTrackerConfig.hpp"
@@ -167,6 +168,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         }
         case DatatypeEnum::Buffer:
             return parseDatatype<Buffer>(metadataStart, serializedObjectSize, data, fd);
+            break;
+
+        case DatatypeEnum::MissingDataMessage:
+            return parseDatatype<MissingDataMessage>(metadataStart, serializedObjectSize, data, fd);
             break;
 
         case DatatypeEnum::Transformable:

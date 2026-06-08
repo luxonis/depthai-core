@@ -283,7 +283,7 @@ bool MessageGroup::isLeaf(uint32_t nodeIndex) const {
         return false;
     }
 
-    return getChildren(nodeIndex).empty();
+    return getChildren(nodeIndex).size() == 0;
 }
 
 bool MessageGroup::isRoot(uint32_t nodeIndex) const {
@@ -291,14 +291,14 @@ bool MessageGroup::isRoot(uint32_t nodeIndex) const {
         return false;
     }
 
-    return getParents(nodeIndex).empty();
+    return getParents(nodeIndex).size() == 0;
 }
 
 std::vector<uint32_t> MessageGroup::getRootMessageNodes() const {
     std::vector<uint32_t> rootNodes;
     rootNodes.reserve(group.size());
     for(const auto& entry : group) {
-        if(getLinksToChild(entry.first).empty()) {
+        if(getLinksToChild(entry.first).size() == 0) {
             rootNodes.push_back(entry.first);
         }
     }
@@ -306,7 +306,12 @@ std::vector<uint32_t> MessageGroup::getRootMessageNodes() const {
 }
 
 std::vector<uint32_t> MessageGroup::getMessageSiblings(uint32_t nodeIndex) const {
-    if(getNode(nodeIndex) == nullptr) {
+
+    if(isRoot(nodeIndex)) {
+        return {nodeIndex};
+    }
+
+    if(getNode(nodeIndex) == nullptr) { // might be wrong
         return {};
     }
 

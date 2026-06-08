@@ -11,6 +11,7 @@
 #include "pipeline/datatype/DatatypeEnum.hpp"
 #include "pipeline/datatype/ImgDetections.hpp"
 #include "pipeline/datatype/MessageGroup.hpp"
+#include "pipeline/datatype/MissingDataMessage.hpp"
 #include "pipeline/datatype/SpatialImgDetections.hpp"
 #include "utility/ErrorMacros.hpp"
 
@@ -87,6 +88,8 @@ std::vector<uint32_t> GatherData::getMessageIndicesToCollect(std::shared_ptr<Mes
     //    2.2) getSiblings()
     //    2.3) vector of iterable sizes of the children (if not iterable, size is 1)
 
+    // auto& logger = ThreadedNode::pimpl->logger;
+
     if(referenceGroup->getChildren(referenceGroup->getRootMessageNodes()[0]).empty()) {
         return {0};
     }
@@ -103,13 +106,28 @@ std::vector<uint32_t> GatherData::getMessageIndicesToCollect(std::shared_ptr<Mes
         }
 
         auto currentLayerDatatype = referenceGroup->getNode(nodeIndex)->getDatatype();
-        if(isDatatypeSubclassOf(currentLayerDatatype, DatatypeEnum::Iterable)) {
+        // logger->warn("Checking node index {} with datatype {} for iterability", nodeIndex, currentLayerDatatype);
+        if(isDatatypeSubclassOf(DatatypeEnum::Iterable, currentLayerDatatype)) {
+            // logger->warn("is ITERABLE");
             // Found a potential candidate layer, but there might be another one deeper in the tree
             currentCandidateToIterableLayer = nodeIndex;
             foundIterableLayer = true;
-            continue;
         }
     }
+    // for(const auto& [nodeIndex, node] : referenceGroup->group) {
+    //     if(node == nullptr) {
+    //         logger->warn("MessageGroup node {} has null data", nodeIndex);
+    //         continue;
+    //     }
+    //     logger->warn("MessageGroup node {} has datatype {}", nodeIndex, node->getDatatype());
+    // }
+
+    // const auto candidateNode = referenceGroup->getNode(currentCandidateToIterableLayer);
+    // if(candidateNode == nullptr) {
+    //     logger->warn("currentCandidateToIterableLayer {} has null data", currentCandidateToIterableLayer);
+    // } else {
+    //     logger->warn("currentCandidateToIterableLayer {} has datatype {}", currentCandidateToIterableLayer, candidateNode->getDatatype());
+    // }
 
     auto messageIndicesToCollect = referenceGroup->getMessageSiblings(currentCandidateToIterableLayer);
     if(messageIndicesToCollect.empty()) {
@@ -120,6 +138,17 @@ std::vector<uint32_t> GatherData::getMessageIndicesToCollect(std::shared_ptr<Mes
     // indicesToCollect = getMessageSizes(messageIndicesToCollect, referenceGroup);
 
     return messageIndicesToCollect;
+}
+
+std::shared_ptr<Buffer> GatherData::createMissingDataMessage(const std::shared_ptr<ADatatype>& sourceMessage) {
+    auto missingDataMessage = std::make_shared<MissingDataMessage>();
+    auto sourceBuffer = std::dynamic_pointer_cast<Buffer>(sourceMessage);
+    if(sourceBuffer != nullptr) {
+        missingDataMessage->setTimestamp(sourceBuffer->getTimestamp());
+        missingDataMessage->setTimestampDevice(sourceBuffer->getTimestampDevice());
+        missingDataMessage->setSequenceNum(sourceBuffer->getSequenceNum());
+    }
+    return missingDataMessage;
 }
 
 bool GatherData::attachLinkToBranchAsLeaf(std::shared_ptr<MessageGroup>& msgGroup, uint32_t parentIndex, uint32_t childIndex, uint32_t parentItemIndex) {
@@ -176,7 +205,6 @@ void GatherData::run() {
     4) Messages are "collected" by the assumption that they arrive in order. No checking is made
     */
 
-    auto& logger = ThreadedNode::pimpl->logger;
     while(mainLoop()) {
         std::shared_ptr<Buffer> referenceInputBuffer;
 
@@ -184,25 +212,46 @@ void GatherData::run() {
             auto inputBlockEvent = this->inputBlockEvent();
             referenceInputBuffer = referenceInput.get<Buffer>();
         }
-
-        auto detMsg = std::dynamic_pointer_cast<ImgDetections>(referenceInputBuffer);
+        // auto detMsg = std::dynamic_pointer_cast<ImgDetections>(referenceInputBuffer);
         // logger->warn("GatherData received reference message with {} detections. Its getSize() iterable function specifies: {}",
         //              detMsg->detections.size(),
         //              detMsg->getSize());
 
+        // logger->warn("GatherData creating collectionMessageGroup");
+        // if(referenceInputBuffer->getDatatype() == DatatypeEnum::MessageGroup) {
+        //     logger->warn("Reference buffer is already a MessageGroup");
+        // }
+
         std::shared_ptr<MessageGroup> outputMessageGroup = createCollectionMessageGroup(referenceInputBuffer);
 
+        // logger->warn("Getting message indices to collect on");
         std::vector<uint32_t> messageIndicesToCollectOn = getMessageIndicesToCollect(outputMessageGroup);
 
+        // logger->warn("got {} message indices to collect on", messageIndicesToCollectOn.size());
         for(uint32_t collectingParentIndex : messageIndicesToCollectOn) {
             auto collectingMsg = outputMessageGroup->getNode(collectingParentIndex);
             if(!collectingMsg) {
                 throw std::runtime_error("Message index " + std::to_string(collectingParentIndex) + " does not exist in the message group.");
             }
 
+            // auto buffer_msg = std::dynamic_pointer_cast<Buffer>(collectingMsg);
+            // if(!buffer_msg) {
+            //     throw std::runtime_error("Message index " + std::to_string(collectingParentIndex) + " is not a Buffer, cannot collect on non-Buffer messages.");
+            // }
+            // logger->warn("on datatype {} of message index {}", buffer_msg->getDatatype(), collectingParentIndex);
+
             auto numIterations = getIterableSize(collectingMsg);
             // logger->warn("getIterableSize returned {}", numIterations);
             uint32_t currentNewNodeIndex = outputMessageGroup->getLastMessageIndex() + 1;
+
+            if(numIterations == 0) {
+                outputMessageGroup->addMessage(currentNewNodeIndex, createMissingDataMessage(collectingMsg));
+                if(!attachLinkToBranchAsLeaf(outputMessageGroup, collectingParentIndex, currentNewNodeIndex, 0)) {
+                    throw std::runtime_error("Failed to attach missing child node " + std::to_string(currentNewNodeIndex) + " under parent node "
+                                             + std::to_string(collectingParentIndex) + " on branch 0.");
+                }
+                continue;
+            }
 
             for(uint32_t parentItemIndex = 0; parentItemIndex < numIterations; parentItemIndex++) {
                 // logger->warn("Colecting on item {} of message index {}", parentItemIndex, collectingParentIndex);

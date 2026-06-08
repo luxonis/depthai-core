@@ -20,6 +20,7 @@
 #include "datatype/Iterable.hpp"
 #include "datatype/MapData.hpp"
 #include "datatype/MessageGroup.hpp"
+#include "datatype/MissingDataMessage.hpp"
 #include "datatype/NNData.hpp"
 #include "datatype/NeuralDepthConfig.hpp"
 #include "datatype/ObjectTrackerConfig.hpp"

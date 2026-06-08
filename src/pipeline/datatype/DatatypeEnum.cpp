@@ -12,6 +12,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::ADatatype,
      {
          DatatypeEnum::Buffer,
+         DatatypeEnum::MissingDataMessage,
          DatatypeEnum::ImgFrame,
          DatatypeEnum::EncodedFrame,
          DatatypeEnum::SegmentationMask,
@@ -65,6 +66,7 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
     {DatatypeEnum::Buffer,
      {
          DatatypeEnum::Transformable,
+         DatatypeEnum::MissingDataMessage,
          DatatypeEnum::ImgFrame,
          DatatypeEnum::EncodedFrame,
          DatatypeEnum::SegmentationMask,
@@ -133,7 +135,9 @@ const std::unordered_map<DatatypeEnum, std::vector<DatatypeEnum>> hierarchy = {
          //  DatatypeEnum::AprilTags,
          //  DatatypeEnum::Tracklets,
      }},
+    {DatatypeEnum::MissingDataMessage, {}},
     {DatatypeEnum::ImgFrame, {}},
+    {DatatypeEnum::IterableTransformableBuffer, {}},
     {DatatypeEnum::EncodedFrame, {}},
     {DatatypeEnum::SegmentationMask, {}},
     {DatatypeEnum::NNData, {}},

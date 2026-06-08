@@ -54,6 +54,7 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
     enum_<dai::DatatypeEnum>("DatatypeEnum")
         .value("ADatatype", dai::DatatypeEnum::ADatatype)
         .value("Buffer", dai::DatatypeEnum::Buffer)
+        .value("MissingDataMessage", dai::DatatypeEnum::MissingDataMessage)
         .value("ImgFrame", dai::DatatypeEnum::ImgFrame)
         .value("EncodedFrame", dai::DatatypeEnum::EncodedFrame)
         .value("NNData", dai::DatatypeEnum::NNData)

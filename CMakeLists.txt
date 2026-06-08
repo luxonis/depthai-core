@@ -388,6 +388,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/RGBDData.cpp
     src/pipeline/datatype/MapData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/MissingDataMessage.cpp
     src/pipeline/datatype/ThermalConfig.cpp
     src/pipeline/datatype/TransformData.cpp
     src/pipeline/datatype/PacketizedData.cpp

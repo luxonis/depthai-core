@@ -114,7 +114,7 @@ int main() {
         auto passthrough = passthroughQ->get<dai::ImgFrame>();
 
         if(collected != nullptr) {
-            gather_data_examples::printMessageGroupTreeIfChanged(*collected, lastMessageGroupTree, std::cout, "GatherData tree");
+            gather_data_examples::showMessageGroupTreeIfChanged(*collected, lastMessageGroupTree, "GatherData tree");
         }
 
         auto detections = collected != nullptr ? collected->get<dai::ImgDetections>(0) : nullptr;
@@ -174,10 +174,10 @@ int main() {
             // cv::imshow("crop_" + std::to_string(i), cropFrame);
         }
 
-        // if(cv::waitKey(1) == 'q') {
-        //     pipeline.stop();
-        //     break;
-        // }
+        if(cv::waitKey(1) == 'q') {
+            pipeline.stop();
+            break;
+        }
     }
 
     cv::destroyAllWindows();

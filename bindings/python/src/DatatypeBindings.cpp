@@ -129,6 +129,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
 
     datatypeEnum.value("ADatatype", DatatypeEnum::ADatatype)
         .value("Buffer", DatatypeEnum::Buffer)
+        .value("MissingDataMessage", DatatypeEnum::MissingDataMessage)
         .value("Transformable", DatatypeEnum::Transformable)
         .value("ImgFrame", DatatypeEnum::ImgFrame)
         .value("EncodedFrame", DatatypeEnum::EncodedFrame)

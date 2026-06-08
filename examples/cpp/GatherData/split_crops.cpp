@@ -43,6 +43,7 @@ class CropConfigsCreator : public dai::node::CustomThreadedNode<CropConfigsCreat
 
                 cfg.addCropRotatedRect(bbox, true);
                 cfg.setOutputSize(512, 384, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
+                cfg.outputFrameType = dai::ImgFrame::Type::BGR888i;
                 if(i == 0) {
                     cfg.setReusePreviousImage(false);
                 } else {
@@ -73,7 +74,7 @@ int main() {
     firstStageModelDescription.platform = pipeline.getDefaultDevice()->getPlatformAsString();
     auto detNN = pipeline.create<dai::node::DetectionNetwork>()->build(cam, firstStageModelDescription);
 
-    auto* fullResOutput = cam->requestOutput({1920, 1440 });
+    auto* fullResOutput = cam->requestOutput({1920, 1440}, dai::ImgFrame::Type::BGR888i);
 
     // Create crops
     auto cropConfigsCreator = pipeline.create<CropConfigsCreator>();
@@ -89,13 +90,13 @@ int main() {
     // // need to split out the leaves of the message group. Those leaves at this stage are cropConfigs
     // auto splitCropConfigs = pipeline.create<dai::node::SplitterNode>();
     // gatherCropConfigs->output.link(splitCropConfigs->input);
-        // //
+    // //
 
     // imageManip
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     imageManip->inputConfig.setReusePreviousMessage(false);
     imageManip->setMaxOutputFrameSize(384 * 512 * 3);
-    
+
     // splitCropConfigs->output.link(imageManip->inputConfig);  // splitCropConfigs is the node !!
     cropConfigsCreator->configOutput.link(imageManip->inputConfig);
     fullResOutput->link(imageManip->inputImage);
@@ -105,18 +106,25 @@ int main() {
     auto gatherData = pipeline.create<dai::node::GatherData>();
     // gatherData->setRunOnHost(true);
     // gatherCropConfigs->output.link(gatherData->referenceInput);  // LINK the previous gather into it here, will append msgs to the end
-    detNN->out.link(gatherData->referenceInput);
     imageManip->out.link(gatherData->collectingInput);
+    detNN->out.link(gatherData->referenceInput);
 
+    auto splitCrops = pipeline.create<dai::node::SplitterNode>();
+    gatherData->output.link(splitCrops->input);
+
+    // detNN->out.link(gatherData->referenceInput);
+    // imageManip->out.link(gatherData->collectingInput);
 
     dai::NNModelDescription poseModelDescription;
     poseModelDescription.model = "luxonis/yolov8-nano-pose-estimation:coco-512x384";
     poseModelDescription.platform = pipeline.getDefaultDevice()->getPlatformAsString();
-    auto detNN_2 = pipeline.create<dai::node::DetectionNetwork>()->build(imageManip->out, dai::NNArchive(dai::getModelFromZoo(poseModelDescription)));
+    auto detNN_2 = pipeline.create<dai::node::DetectionNetwork>()->build(splitCrops->output, dai::NNArchive(dai::getModelFromZoo(poseModelDescription)));
+    // auto detNN_2 = pipeline.create<dai::node::DetectionNetwork>()->build(imageManip->out, dai::NNArchive(dai::getModelFromZoo(poseModelDescription)));
 
     auto gatherData_2 = pipeline.create<dai::node::GatherData>();
     gatherData->output.link(gatherData_2->referenceInput);
     detNN_2->out.link(gatherData_2->collectingInput);
+    gatherData_2->setRunOnHost(true);
 
     auto collectedQ = gatherData_2->output.createOutputQueue();
     auto passthroughQ = detNN->passthrough.createOutputQueue();
@@ -131,9 +139,9 @@ int main() {
         auto collected = collectedQ->get<dai::MessageGroup>();
         auto passthrough = passthroughQ->get<dai::ImgFrame>();
 
-        if(collected != nullptr) {
-            gather_data_examples::printMessageGroupTreeIfChanged(*collected, lastMessageGroupTree, std::cout, "GatherData tree");
-        }
+        // if(collected != nullptr) {
+        //     gather_data_examples::printMessageGroupTreeIfChanged(*collected, lastMessageGroupTree, std::cout, "GatherData tree");
+        // }
 
         auto detections = collected != nullptr ? collected->get<dai::ImgDetections>(0) : nullptr;
 

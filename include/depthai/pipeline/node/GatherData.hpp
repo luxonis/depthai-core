@@ -76,6 +76,8 @@ class GatherData : public DeviceNodeCRTP<DeviceNode, GatherData, GatherDataPrope
 
     std::vector<uint32_t> getMessageSizes(std::vector<uint32_t>& messagesInLayer, std::shared_ptr<MessageGroup>& referenceGroup);
 
+    std::shared_ptr<Buffer> createMissingDataMessage(const std::shared_ptr<ADatatype>& sourceMessage);
+
     // this should create a link that from the leaf of the subtree of root parentIndex to the childIndex.
     // this will look like:
     //                  parentNode

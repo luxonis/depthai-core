@@ -100,7 +100,7 @@ int main() {
         auto passthrough = passthroughQ->get<dai::ImgFrame>();
 
         if(collected != nullptr) {
-            gather_data_examples::printMessageGroupTreeIfChanged(*collected, lastMessageGroupTree, std::cout, "GatherData tree");
+            gather_data_examples::showMessageGroupTreeIfChanged(*collected, lastMessageGroupTree, "GatherData tree");
         }
 
         auto detections = collected != nullptr ? collected->get<dai::ImgDetections>(0) : nullptr;
@@ -123,7 +123,7 @@ int main() {
             cv::rectangle(frame, cv::Point(x1, y1), cv::Point(x2, y2), color, 2);
         }
 
-        // cv::imshow("passthrough", frame);
+        cv::imshow("passthrough", frame);
 
         for(size_t i = 0; i < detections->detections.size(); ++i) {
             const auto& detection = detections->detections[i];
@@ -153,17 +153,17 @@ int main() {
 
             std::cout << "Detection " << i << ": class: " << className << ", size: " << detWidth << "x" << detHeight << std::endl;
 
-            // cv::putText(cropFrame, "class: " + className, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2);
-            // cv::putText(
-            //     cropFrame, "size: " + std::to_string(detWidth) + "x" + std::to_string(detHeight), cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, color,
-            //     2);
-            // cv::imshow("crop_" + std::to_string(i), cropFrame);
+            cv::putText(cropFrame, "class: " + className, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2);
+            cv::putText(
+                cropFrame, "size: " + std::to_string(detWidth) + "x" + std::to_string(detHeight), cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, color,
+                2);
+            cv::imshow("crop_" + std::to_string(i), cropFrame);
         }
 
-        // if(cv::waitKey(1) == 'q') {
-        //     pipeline.stop();
-        //     break;
-        // }
+        if(cv::waitKey(1) == 'q') {
+            pipeline.stop();
+            break;
+        }
     }
 
     cv::destroyAllWindows();
