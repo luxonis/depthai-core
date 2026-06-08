@@ -2,7 +2,6 @@
 """Print basic device GPU availability info."""
 
 import argparse
-
 import depthai as dai
 
 
