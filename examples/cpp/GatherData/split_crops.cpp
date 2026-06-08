@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/node/SplitterNode.hpp"
 #include "message_group_visualizer.hpp"
 
 class CropConfigsCreator : public dai::node::CustomThreadedNode<CropConfigsCreator> {
@@ -25,7 +26,7 @@ class CropConfigsCreator : public dai::node::CustomThreadedNode<CropConfigsCreat
 
             dai::ImageManipConfig clear_cfg;
             clear_cfg.setSkipCurrentImage(true);
-            bool send_status = configOutput.trySend(std::make_shared<dai::ImageManipConfig>(clear_cfg));
+            configOutput.trySend(std::make_shared<dai::ImageManipConfig>(clear_cfg));
 
             for(size_t i = 0; i < detections.size(); ++i) {
                 dai::ImageManipConfig cfg;
@@ -41,7 +42,7 @@ class CropConfigsCreator : public dai::node::CustomThreadedNode<CropConfigsCreat
                 bbox = dai::RotatedRect(dai::Rect(x1, y1, x2 - x1, y2 - y1, true));
 
                 cfg.addCropRotatedRect(bbox, true);
-                cfg.setOutputSize(300, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
+                cfg.setOutputSize(512, 384, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
                 if(i == 0) {
                     cfg.setReusePreviousImage(false);
                 } else {
@@ -67,33 +68,64 @@ int main() {
     dai::Pipeline pipeline;
 
     auto cam = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
-    auto detNN = pipeline.create<dai::node::DetectionNetwork>()->build(cam, dai::NNModelDescription{"luxonis/yolov8-instance-segmentation-large:coco-640x480"});
+    dai::NNModelDescription firstStageModelDescription;
+    firstStageModelDescription.model = "luxonis/yolov8-instance-segmentation-large:coco-640x480";
+    firstStageModelDescription.platform = pipeline.getDefaultDevice()->getPlatformAsString();
+    auto detNN = pipeline.create<dai::node::DetectionNetwork>()->build(cam, firstStageModelDescription);
 
-    auto* fullResOutput = cam->requestOutput({1280, 800});
+    auto* fullResOutput = cam->requestOutput({1920, 1440 });
 
     // Create crops
     auto cropConfigsCreator = pipeline.create<CropConfigsCreator>();
     detNN->out.link(cropConfigsCreator->detectionsInput);
+    //
 
+    // // add crop configs to message group
+    // auto gatherCropConfigs = pipeline.create<dai::node::GatherData>();
+    // detNN->out.link(gatherCropConfigs->referenceInput);
+    // cropConfigsCreator->configOutput.link(gatherCropConfigs->collectingInput);
+    // //
+
+    // // need to split out the leaves of the message group. Those leaves at this stage are cropConfigs
+    // auto splitCropConfigs = pipeline.create<dai::node::SplitterNode>();
+    // gatherCropConfigs->output.link(splitCropConfigs->input);
+        // //
+
+    // imageManip
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     imageManip->inputConfig.setReusePreviousMessage(false);
-
-    imageManip->setMaxOutputFrameSize(300 * 480 * 3);
+    imageManip->setMaxOutputFrameSize(384 * 512 * 3);
+    
+    // splitCropConfigs->output.link(imageManip->inputConfig);  // splitCropConfigs is the node !!
     cropConfigsCreator->configOutput.link(imageManip->inputConfig);
     fullResOutput->link(imageManip->inputImage);
-    // end Create crops
+    //
 
+    //  append
     auto gatherData = pipeline.create<dai::node::GatherData>();
     // gatherData->setRunOnHost(true);
+    // gatherCropConfigs->output.link(gatherData->referenceInput);  // LINK the previous gather into it here, will append msgs to the end
     detNN->out.link(gatherData->referenceInput);
     imageManip->out.link(gatherData->collectingInput);
 
-    auto collectedQ = gatherData->output.createOutputQueue();
+
+    dai::NNModelDescription poseModelDescription;
+    poseModelDescription.model = "luxonis/yolov8-nano-pose-estimation:coco-512x384";
+    poseModelDescription.platform = pipeline.getDefaultDevice()->getPlatformAsString();
+    auto detNN_2 = pipeline.create<dai::node::DetectionNetwork>()->build(imageManip->out, dai::NNArchive(dai::getModelFromZoo(poseModelDescription)));
+
+    auto gatherData_2 = pipeline.create<dai::node::GatherData>();
+    gatherData->output.link(gatherData_2->referenceInput);
+    detNN_2->out.link(gatherData_2->collectingInput);
+
+    auto collectedQ = gatherData_2->output.createOutputQueue();
     auto passthroughQ = detNN->passthrough.createOutputQueue();
 
     pipeline.start();
 
     const cv::Scalar color(255, 0, 0);
+    const cv::Scalar keypointColor(0, 255, 0);
+    size_t previousCropWindowCount = 0;
     std::string lastMessageGroupTree;
     while(pipeline.isRunning()) {
         auto collected = collectedQ->get<dai::MessageGroup>();
@@ -123,47 +155,64 @@ int main() {
             cv::rectangle(frame, cv::Point(x1, y1), cv::Point(x2, y2), color, 2);
         }
 
-        // cv::imshow("passthrough", frame);
+        cv::imshow("passthrough", frame);
 
+        size_t shownCropWindowCount = 0;
         for(size_t i = 0; i < detections->detections.size(); ++i) {
-            const auto& detection = detections->detections[i];
             // if you are looking for a specific detection, you can filter out here and only then look at the crop message via getChildren(0,
             // static_cast<uint32_t>(i));
 
             const auto cropNodeIndices = collected->getChildren(0, static_cast<uint32_t>(i));
             if(cropNodeIndices.empty()) {
+                cv::destroyWindow("crop_" + std::to_string(i));
                 continue;
             }
 
             if(cropNodeIndices.size() > 1) {
                 std::cerr << "Expected only one crop message per detection, but found " << cropNodeIndices.size() << " for detection " << i << ". Skipping."
                           << std::endl;
+                cv::destroyWindow("crop_" + std::to_string(i));
                 continue;
             }
 
             auto crop = collected->get<dai::ImgFrame>(cropNodeIndices.front());
             if(crop == nullptr) {
+                cv::destroyWindow("crop_" + std::to_string(i));
                 continue;
             }
 
             auto cropFrame = crop->getCvFrame();
-            const auto className = detection.labelName.empty() ? std::to_string(detection.label) : detection.labelName;
-            const auto detWidth = static_cast<int>(detection.getWidth() * width);
-            const auto detHeight = static_cast<int>(detection.getHeight() * height);
+            const auto poseNodeIndices = collected->getChildren(cropNodeIndices.front());
+            for(const auto poseNodeIndex : poseNodeIndices) {
+                auto poseDetections = collected->get<dai::ImgDetections>(poseNodeIndex);
+                if(poseDetections == nullptr) {
+                    continue;
+                }
 
-            std::cout << "Detection " << i << ": class: " << className << ", size: " << detWidth << "x" << detHeight << std::endl;
+                const auto poseDetectionsInCrop =
+                    poseDetections->getTransformation().has_value() ? poseDetections->transformTo(crop->transformation) : *poseDetections;
+                for(const auto& poseDetection : poseDetectionsInCrop.detections) {
+                    for(const auto& keypoint : poseDetection.getKeypoints()) {
+                        const auto keypointPos = cv::Point(static_cast<int>(keypoint.imageCoordinates.x * cropFrame.cols),
+                                                           static_cast<int>(keypoint.imageCoordinates.y * cropFrame.rows));
+                        cv::circle(cropFrame, keypointPos, 3, keypointColor, -1);
+                    }
+                }
+            }
 
-            // cv::putText(cropFrame, "class: " + className, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2);
-            // cv::putText(
-            //     cropFrame, "size: " + std::to_string(detWidth) + "x" + std::to_string(detHeight), cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, color,
-            //     2);
-            // cv::imshow("crop_" + std::to_string(i), cropFrame);
+            cv::imshow("crop_" + std::to_string(i), cropFrame);
+            shownCropWindowCount = i + 1;
         }
 
-        // if(cv::waitKey(1) == 'q') {
-        //     pipeline.stop();
-        //     break;
-        // }
+        for(size_t i = shownCropWindowCount; i < previousCropWindowCount; ++i) {
+            cv::destroyWindow("crop_" + std::to_string(i));
+        }
+        previousCropWindowCount = shownCropWindowCount;
+
+        if(cv::waitKey(1) == 'q') {
+            pipeline.stop();
+            break;
+        }
     }
 
     cv::destroyAllWindows();

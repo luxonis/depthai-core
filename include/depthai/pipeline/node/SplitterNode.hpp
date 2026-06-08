@@ -9,7 +9,6 @@ namespace node {
 /**
  * @brief SplitterNode skeleton.
  *
- * The splitting logic is intentionally left unimplemented.
  */
 class SplitterNode : public DeviceNodeCRTP<DeviceNode, SplitterNode, SplitterNodeProperties>, public HostRunnable {
    public:

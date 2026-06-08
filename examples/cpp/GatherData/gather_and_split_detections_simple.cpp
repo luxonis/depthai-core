@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/node/SplitterNode.hpp"
 #include "message_group_visualizer.hpp"
 
 class CropConfigsCreator : public dai::node::CustomThreadedNode<CropConfigsCreator> {
@@ -74,18 +75,31 @@ int main() {
     // Create crops
     auto cropConfigsCreator = pipeline.create<CropConfigsCreator>();
     detNN->out.link(cropConfigsCreator->detectionsInput);
+    //
 
+    // add crop configs to message group
+    auto gatherCropConfigs = pipeline.create<dai::node::GatherData>();
+    detNN->out.link(gatherCropConfigs->referenceInput);
+    cropConfigsCreator->configOutput.link(gatherCropConfigs->collectingInput);
+    //
+
+    // need to split out the leaves of the message group. Those leaves at this stage are cropConfigs
+    auto splitCropConfigs = pipeline.create<dai::node::SplitterNode>();
+    gatherCropConfigs->output.link(splitCropConfigs->input);
+    //
+
+    // imageManip
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     imageManip->inputConfig.setReusePreviousMessage(false);
-
     imageManip->setMaxOutputFrameSize(300 * 480 * 3);
-    cropConfigsCreator->configOutput.link(imageManip->inputConfig);
+    splitCropConfigs->output.link(imageManip->inputConfig);  // splitCropConfigs is the node !!
     fullResOutput->link(imageManip->inputImage);
-    // end Create crops
+    //
 
+    //  append
     auto gatherData = pipeline.create<dai::node::GatherData>();
     // gatherData->setRunOnHost(true);
-    detNN->out.link(gatherData->referenceInput);
+    gatherCropConfigs->output.link(gatherData->referenceInput);  // LINK the previous gather into it here, will append msgs to the end
     imageManip->out.link(gatherData->collectingInput);
 
     auto collectedQ = gatherData->output.createOutputQueue();

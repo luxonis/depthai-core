@@ -14,7 +14,7 @@ namespace dai {
 // template <class Item>
 class Iterable {
    public:
-    // if we wanted to even iterate over items without issues:
+    // Possibility to iterate over items without issues:
     //    std::vector<Item>& items;
 
     virtual ~Iterable() = default;
@@ -63,8 +63,6 @@ class IterableTransformableBuffer : public TransformableBuffer, public Iterable 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::IterableTransformableBuffer;
     }
-
-    // DATATYPE here is Transformable (from buffer) but not iterable... might need to change to IterableTransformableBuffer
 
     IterableTransformableBuffer() = default;
     ~IterableTransformableBuffer() override = default;
