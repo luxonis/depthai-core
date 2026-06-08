@@ -2,6 +2,41 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+3.7.1 (2026-06-08)
+------------------
+## Features
+* [_RVC4_] New GPUStereo node
+    * C++ example [here](https://github.com/luxonis/depthai-core/blob/v3.7.1/examples/cpp/GPUStereo/gpu_stereo.cpp) and Python example [here](https://github.com/luxonis/depthai-core/blob/v3.7.1/examples/python/RVC4/GPUStereo/gpu_stereo.py)
+* [_RVC4_] Add the GPU backend to `ImageManip`
+    * Improves performance and lowers power usage compared to the CPU backend
+    * This will be the default backend on RVC4 starting with `v3.8.0`
+* Embedded *Visualizer* updated to 2.5.3:
+    * Improved pipeline debugging pane
+* Add a `Transformable` interface to messages to allow easy remapping from one coordinate system to another
+    * Exposed as a `transformedMessage = message.transformTo(dai.ImgTransformations)`
+    * Supported messages: `dai.ImgDetections`, `dai.SpatialImgDetections`, `dai.AprilTags`, `dai.Tracklets`, `dai.SegmentationMask`
+* Add telemetry to help us understand how the library is used so we can improve it
+    * To opt out set `DEPTHAI_TELEMETRY=0` in the environment
+* Add support for 640x400 inputs to AutoCalibration, enabling more devices to be calibrated out of the box
+* [_RVC4_] Add support for INT16 inputs in `NeuralNetwork` node
+* [_RVC4_] Add sensor temperature metadata to `ImgFrame` when available
+* [_RVC2_] Add support for a new Samsung 63D ToF sensor
+
+## Misc
+* [_RVC2_] Add support for CBA calibration reading and flashing
+* [_RVC4_] Unify color temperature behavior between RVC2 and RVC4
+* [_RVC4_] VPP and Neural assisted stereo can now run at 50 FPS @ 1280x800 improved from 27 FPS from before
+* [_RVC4_] Unify RVC4 IMU output to match RVC2 to never duplicate packets
+
+## Bug fixes
+* Fix a rare issue on Windows where USB devices could fail to boot if discovery was running in another thread
+* Improve stability of the `.getAny` API on the `MessageQueue`
+* [_RVC2_] Fix a regression with magnetometer and rotation vector orientation on BNO086
+* [_RVC4_] Fix IMU timestamp drifting over time
+
+## [_RVC4_] Luxonis OS compatibility
+Integration tested on Luxonis OS 1.20.5, 1.27.1 and 1.30.1
+
 3.6.1 (2026-05-04)
 ------------------
 ## Features
