@@ -15,7 +15,8 @@ import threading
 from typing import Optional, Dict
 from enum import Enum
 
-SET_MANUAL_EXPOSURE = False  # Set to True to use manual exposure settings
+manualExposureUs = None
+manualIso = None
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -42,7 +43,7 @@ class SyncType(Enum):
 # Create camera outputs
 # ---------------------------------------------------------------------------
 def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensorFps: float, role: dai.ExternalFrameSyncRole):
-    global syncType
+    global syncType, manualExposureUs, manualIso
     cam = None
 
     # Only specify FPS if camera is master
@@ -67,6 +68,9 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
     if syncType == SyncType.PTP:
         cam.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.TIME_PTP)
         print(f"Setting PTP for {socket.name}")
+
+    if manualExposureUs is not None and manualIso is not None:
+        cam.initialControl.setManualExposure(manualExposureUs, manualIso)
 
     return pipeline, output
 
@@ -220,10 +224,15 @@ parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs o
 parser.add_argument("-t1", "--recv-all-timeout-sec", type=float, default=10, help="Timeout for receiving the first frame from all devices", required=False)
 parser.add_argument("-t2", "--sync-threshold-sec", type=float, default=1e-3, help="Sync threshold in seconds", required=False)
 parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, help="Timeout for synchronization to complete", required=False)
+parser.add_argument("--exposure-us", type=int, default=None, help="Optional manual exposure in microseconds", required=False)
+parser.add_argument("--iso", type=int, default=None, help="Optional manual ISO value", required=False)
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument("--external-sync", action="store_true", help="Use external sync")
 group.add_argument("--ptp-sync", action="store_true", help="Use PTP sync")
 args = parser.parse_args()
+
+if (args.exposure_us is None) != (args.iso is None):
+    raise RuntimeError("Both --exposure-us and --iso must be provided together")
 
 # if user did not specify device IPs, use all available devices
 if len(args.devices) == 0:
@@ -238,6 +247,8 @@ recvAllTimeoutSec = args.recv_all_timeout_sec
 
 syncThresholdSec = args.sync_threshold_sec
 initialSyncTimeoutSec = args.initial_sync_timeout_sec
+manualExposureUs = args.exposure_us
+manualIso = args.iso
 if args.external_sync:
     syncType = SyncType.EXTERNAL
 elif args.ptp_sync:
@@ -336,7 +347,7 @@ with contextlib.ExitStack() as stack:
         if latestFrameGroup is not None and latestFrameGroup.getNumMessages() == len(outputNames):
             tsValues = {}
             for name in outputNames:
-                tsValues[name] = latestFrameGroup[name].getTimestamp(dai.CameraExposureOffset.END).total_seconds()
+                tsValues[name] = latestFrameGroup[name].getTimestampDevice(dai.CameraExposureOffset.END).total_seconds()
             
             # Build individual image arrays for each camera socket, displayed side-by-side
             imgs = []
