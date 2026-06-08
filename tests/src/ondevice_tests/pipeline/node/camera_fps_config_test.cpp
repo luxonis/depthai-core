@@ -175,11 +175,18 @@ TEST_CASE("Camera pool sizes") {
         }
         // Check stream still works after script node unblocks the Camera node
         while(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() < timeToBlock + 30) {
+            bool gotEnoughFrames = true;
             for(int idx = 0; idx < outQueues.size(); ++idx) {
                 auto frame = outQueues[idx]->tryGet();
                 if(frame) {
                     ++outQueuesCounter[idx];
                 }
+                if(outQueuesCounter[idx] <= queueSize + 200) {
+                    gotEnoughFrames = false;
+                }
+            }
+            if(gotEnoughFrames) {
+                break;
             }
         }
         for(const auto& count : outQueuesCounter) {
