@@ -75,27 +75,19 @@ bool deviceSupportsGpuStereo(const std::shared_ptr<Device>& device) {
     if(device == nullptr) {
         return false;
     }
-    try {
-        return device->isGpuStereoSupported() && !device->getStereoPairs().empty();
-    } catch(...) {
-        return false;
-    }
+    return device->isGpuStereoSupported() && !device->getStereoPairs().empty();
 }
 
 bool deviceReportsTofSensor(const std::shared_ptr<Device>& device) {
     if(device == nullptr) {
         return false;
     }
-    try {
-        for(const auto& cf : device->getConnectedCameraFeatures()) {
-            for(const auto t : cf.supportedTypes) {
-                if(t == CameraSensorType::TOF) {
-                    return true;
-                }
+    for(const auto& cf : device->getConnectedCameraFeatures()) {
+        for(const auto t : cf.supportedTypes) {
+            if(t == CameraSensorType::TOF) {
+                return true;
             }
         }
-    } catch(...) {
-        return false;
     }
     return false;
 }
@@ -105,17 +97,13 @@ std::optional<CameraBoardSocket> socketOutsideStereoPair(const std::shared_ptr<D
     if(device == nullptr) {
         return std::nullopt;
     }
-    try {
-        for(const auto& cf : device->getConnectedCameraFeatures()) {
-            if(cf.socket == CameraBoardSocket::AUTO) {
-                continue;
-            }
-            if(cf.socket != pair.left && cf.socket != pair.right) {
-                return cf.socket;
-            }
+    for(const auto& cf : device->getConnectedCameraFeatures()) {
+        if(cf.socket == CameraBoardSocket::AUTO) {
+            continue;
         }
-    } catch(...) {
-        return std::nullopt;
+        if(cf.socket != pair.left && cf.socket != pair.right) {
+            return cf.socket;
+        }
     }
     return std::nullopt;
 }
