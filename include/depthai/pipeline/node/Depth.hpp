@@ -236,9 +236,6 @@ class Depth : public DeviceNodeGroup {
                                                                 std::optional<std::pair<uint32_t, uint32_t>> frameSize,
                                                                 const std::optional<float>& fps);
 
-    /** Map active backend depth/confidence outputs after backend nodes are created. */
-    void bindBackendOutputs(Algorithm active);
-
     /**
      * Wire the optional ``alignTo`` source to the active backend (no-op when ``alignTo`` is unset).
      * RVC4 always inserts an on-device ``ImageAlign`` node; RVC2 uses ``StereoDepth::inputAlignTo``
@@ -262,9 +259,9 @@ class Depth : public DeviceNodeGroup {
     /** Optional source output the depth is aligned to; set via ``setAlignTo()`` before wiring. */
     Node::Output* alignToOutput_{nullptr};
 
-    /** Resolved backend depth output (set in ``bindBackendOutputs``). */
+    /** Resolved backend depth output (set while wiring the active backend). */
     Node::Output* depthOut_{nullptr};
-    /** Resolved backend confidence output (set in ``bindBackendOutputs``). */
+    /** Resolved backend confidence output (set while wiring the active backend). */
     Node::Output* confidenceOut_{nullptr};
 
     /** Populated when ``Algorithm::STEREO`` is active. */

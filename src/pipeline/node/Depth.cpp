@@ -632,18 +632,24 @@ void Depth::buildInternal() {
             tofBackend_ = ToF::create(device);
             add(tofBackend_);
             tofBackend_->build(CameraBoardSocket::AUTO, ImageFiltersPresetMode::TOF_MID_RANGE, stereoOutputFps_);
+            depthOut_ = &tofBackend_->depth;
+            confidenceOut_ = &tofBackend_->amplitude;  // ToF "confidence" is amplitude.
             break;
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
             auto [leftOut, rightOut] = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
             nasBackend_->build(*leftOut, *rightOut, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
+            depthOut_ = &nasBackend_->depth;
+            confidenceOut_ = &(*nasBackend_->stereoDepth).confidenceMap;
             break;
         }
         case Algorithm::GPU_STEREO: {
             gpuStereoBackend_ = std::make_unique<Subnode<GPUStereo>>(*this, "gpuStereo");
             auto [leftOut, rightOut] = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
             (*gpuStereoBackend_)->setRectification(true).build(*leftOut, *rightOut);
+            depthOut_ = &(**gpuStereoBackend_).depth;
+            confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
             break;
         }
         case Algorithm::NEURAL: {
@@ -653,17 +659,20 @@ void Depth::buildInternal() {
             neuralBackend_ = std::make_unique<Subnode<NeuralDepth>>(*this, "neuralDepth");
             auto [leftOut, rightOut] = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), monoSize, stereoOutputFps_);
             (*neuralBackend_)->build(*leftOut, *rightOut, model);
+            depthOut_ = &(**neuralBackend_).depth;
+            confidenceOut_ = &(**neuralBackend_).confidence;
             break;
         }
         case Algorithm::STEREO: {
             stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
             auto [leftOut, rightOut] = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
             (*stereoBackend_)->build(*leftOut, *rightOut, stereoPresetFromConfig(resolved_.config));
+            depthOut_ = &(**stereoBackend_).depth;
+            confidenceOut_ = &(**stereoBackend_).confidenceMap;
             break;
         }
     }
 
-    bindBackendOutputs(active);
     wireAlignment(active, device);
     graphBuilt_ = true;
 }
@@ -696,34 +705,6 @@ void Depth::wireAlignment(Algorithm active, const std::shared_ptr<Device>& devic
 }
 
 // --- Stereo camera wiring ---
-
-/** Wire composite outputs to the active backend. Every backend provides a confidence-like stream. */
-void Depth::bindBackendOutputs(Algorithm active) {
-    switch(active) {
-        case Algorithm::TOF:
-            depthOut_ = &tofBackend_->depth;
-            confidenceOut_ = &tofBackend_->amplitude;  // ToF "confidence" is amplitude.
-            break;
-        case Algorithm::NEURAL_ASSISTED_STEREO:
-            depthOut_ = &nasBackend_->depth;
-            confidenceOut_ = &(*nasBackend_->stereoDepth).confidenceMap;
-            break;
-        case Algorithm::GPU_STEREO:
-            depthOut_ = &(**gpuStereoBackend_).depth;
-            confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
-            break;
-        case Algorithm::NEURAL:
-            depthOut_ = &(**neuralBackend_).depth;
-            confidenceOut_ = &(**neuralBackend_).confidence;
-            break;
-        case Algorithm::STEREO:
-            depthOut_ = &(**stereoBackend_).depth;
-            confidenceOut_ = &(**stereoBackend_).confidenceMap;
-            break;
-        case Algorithm::AUTO:
-            DAI_CHECK_V(false, "Depth: no backend outputs to bind.");
-    }
-}
 
 std::pair<Node::Output*, Node::Output*> Depth::ensureStereoOutputs(Pipeline& pipeline,
                                                                    const StereoPair& pair,
