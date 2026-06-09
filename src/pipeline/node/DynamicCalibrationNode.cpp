@@ -229,10 +229,8 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::convertDaiCalibrationToD
 
 void DclUtils::setHousingToDai(CalibrationHandler& calibHandler, const std::vector<std::vector<float>>& transformHousingToHousingOrigin) {
     auto translationHousingToHousingOrigin = extractTranslationVector(transformHousingToHousingOrigin);
-    for(auto& val : translationHousingToHousingOrigin) {
-        val *= 100.0f;
-    }
-    calibHandler.setHousingToHousingOriginExtrinsics(extractRotationMatrix(transformHousingToHousingOrigin), translationHousingToHousingOrigin);
+    calibHandler.setHousingToHousingOriginExtrinsics(
+        extractRotationMatrix(transformHousingToHousingOrigin), translationHousingToHousingOrigin, LengthUnit::METER);
 }
 
 dcl::PerformanceMode DclUtils::daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode) {
