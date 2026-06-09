@@ -40,10 +40,10 @@ struct CoverageData : public Buffer {
     /** @name Spatial coverage matrices */
     ///@{
 
-    // @deprecated Use coveragePerCell keyed by CameraBoardSocket instead.
+    /** @deprecated Use coveragePerCell keyed by CameraBoardSocket instead. */
     std::vector<std::vector<float>> coveragePerCellA;
 
-    // @deprecated Use coveragePerCell keyed by CameraBoardSocket instead.
+    /** @deprecated Use coveragePerCell keyed by CameraBoardSocket instead. */
     std::vector<std::vector<float>> coveragePerCellB;
 
     /** 2D coverage matrix for each connected input, keyed by camera socket. Values are ∈ [0, 1]. */
