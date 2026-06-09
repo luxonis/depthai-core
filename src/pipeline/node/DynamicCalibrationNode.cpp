@@ -601,13 +601,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
                                     resolution,
                                     nullptr});
 
-        if(name == leftInputName) {
-            daiSocketLeft = socket;
-            resolutionLeft = resolution;
-        } else if(name == rightInputName) {
-            daiSocketRight = socket;
-            resolutionRight = resolution;
-        }
     }
 
     logger->trace("Converting dai calibration to dcl");

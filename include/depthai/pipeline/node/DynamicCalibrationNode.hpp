@@ -168,14 +168,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     void run() override;
 
-    CameraBoardSocket getBorderSockerLeft() {
-        return daiSocketLeft;
-    }
-
-    CameraBoardSocket getBorderSockerRight() {
-        return daiSocketRight;
-    }
-
     ErrorCode runQualityCheck(const bool force = false);
 
     ErrorCode runCalibration(const dai::CalibrationHandler& calibHandler, const bool force = false, const bool keepCameraCenters = true);
@@ -211,10 +203,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     ImgTransformation imgTransformationB;
 
     std::variant<CameraBoardSocket, HousingCoordinateSystem> daiSocketBase = CameraBoardSocket::CAM_A;
-    CameraBoardSocket daiSocketLeft = CameraBoardSocket::CAM_B;
-    CameraBoardSocket daiSocketRight = CameraBoardSocket::CAM_C;
-    std::pair<int, int> resolutionLeft;
-    std::pair<int, int> resolutionRight;
     std::shared_ptr<::spdlog::async_logger> logger;
 
     // std::chrono::milliseconds sleepingTime = 250ms;
