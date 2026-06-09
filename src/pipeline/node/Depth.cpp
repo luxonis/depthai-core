@@ -445,7 +445,8 @@ bool Depth::exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height) {
 Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                        float targetFps,
                                        const std::vector<Algorithm>& supportedAlgorithms,
-                                       const std::vector<DeviceModelZoo>& supportedModels) {
+                                       const std::vector<DeviceModelZoo>& supportedModels,
+                                       bool requireFpsAndResolutionMatch) {
     targetFps = targetFpsWithDefault(targetFps);
     const float requiredFps = targetFps * SELECTION_FPS_SAFETY_MARGIN;
 
@@ -455,6 +456,14 @@ Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t
        })) {
         return {picked->algorithm, picked->config};
     }
+
+    // When the user explicitly pinned both FPS and resolution, do not silently fall back to a
+    // backend that cannot serve them; surface a clear error instead.
+    DAI_CHECK_V(!requireFpsAndResolutionMatch,
+                "Depth: no available algorithm can serve the requested resolution {}x{} at {} FPS.",
+                resolution.has_value() ? resolution->first : 0,
+                resolution.has_value() ? resolution->second : 0,
+                targetFps);
 
     // 2. No backend can serve the resolution at the requested FPS: pick the algorithm whose
     //    catalog row covers the resolution with the highest available maxFps.
@@ -529,7 +538,9 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     const auto supportedModels = device->getSupportedDeviceModels();
 
     if(algorithmOverride_ == Algorithm::AUTO) {
-        resolved_ = selectBackend(resolution, targetFps, supported, supportedModels);
+        // Only enforce an exact FPS+resolution match when the user pinned both via build().
+        const bool userPinnedFpsAndResolution = stereoOutputFps_.has_value() && stereoSizeOverride_.has_value();
+        resolved_ = selectBackend(resolution, targetFps, supported, supportedModels, userPinnedFpsAndResolution);
         return;
     }
 

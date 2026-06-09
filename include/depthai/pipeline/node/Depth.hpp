@@ -214,11 +214,15 @@ class Depth : public DeviceNodeGroup {
     /**
      * RVC4 auto-selection: keep @p targetFps, try NeuralDepth (best model meeting FPS and optional
      * @p resolution), then NeuralAssistedStereo, StereoDepth, GPUStereo — first match wins.
+     *
+     * When @p requireFpsAndResolutionMatch is set (the user explicitly pinned both FPS and
+     * resolution), the function throws instead of falling back if no backend can serve both.
      */
     static Selection selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                     float targetFps,
                                     const std::vector<Algorithm>& supportedAlgorithms,
-                                    const std::vector<DeviceModelZoo>& supportedModels = {});
+                                    const std::vector<DeviceModelZoo>& supportedModels = {},
+                                    bool requireFpsAndResolutionMatch = false);
 
     /** Resolve algorithm + config, then wire stereo inputs from pipeline cameras / build() overrides. */
     void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
