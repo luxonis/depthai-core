@@ -764,7 +764,9 @@ class CalibrationHandler {
                                                               CameraBoardSocket& originSocket,
                                                               LengthUnit unit = LengthUnit::CENTIMETER) const;
 
-    void setHousingToHousingOriginExtrinsics(std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
+    void setHousingToHousingOriginExtrinsics(std::vector<std::vector<float>> rotationMatrix,
+                                             std::vector<float> translation,
+                                             LengthUnit unit = LengthUnit::CENTIMETER);
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
     void scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const;
