@@ -161,7 +161,7 @@ TEST_CASE("Depth::exceedsStereoDepthMaxResolution", "[Depth]") {
 }
 
 TEST_CASE("Depth::build accepts an explicit algorithm + config pair before wiring", "[Depth]") {
-    auto depth = Depth::create(Depth::Algorithm::STEREO, Depth::Config{StereoDepth::PresetMode::FAST_DENSITY});
+    auto depth = Depth::create()->build(Depth::Algorithm::STEREO, Depth::Config{StereoDepth::PresetMode::FAST_DENSITY});
 
     REQUIRE(depth->getRequestedAlgorithm() == Depth::Algorithm::STEREO);
     REQUIRE(depth->getRequestedConfig().has_value());

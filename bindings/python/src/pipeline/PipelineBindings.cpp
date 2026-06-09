@@ -47,14 +47,13 @@
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 
-// Dispatches to the registered PyNodeCreateFunc for the given class (passes args/kwargs through).
-std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_, const py::args& args, const py::kwargs& kwargs) {
+std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_) {
     auto nodeCreateMap = NodeBindings::getNodeCreateMap();
     for(auto& kv : nodeCreateMap) {
         auto& node = kv.first;
         auto& create = kv.second;
         if(node.is(class_)) {
-            return create(p, class_, args, kwargs);
+            return create(p, class_);
         }
     }
     return nullptr;
@@ -318,7 +317,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                     return hostNode;
                 }
                 // Otherwise create the node with `pipeline.create()` method
-                auto node = createNode(p, class_, args, kwargs);
+                auto node = createNode(p, class_);
                 if(node == nullptr) {
                     throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
                 }

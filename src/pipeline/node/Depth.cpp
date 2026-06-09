@@ -359,9 +359,7 @@ bool cameraFeaturesIncludeTof(const std::vector<dai::CameraFeatures>& features) 
 
 // --- Construction ---
 
-Depth::Depth(Algorithm algorithm) : DeviceNodeGroup(nullptr), algorithmOverride_(algorithm) {}
-
-Depth::Depth() : Depth(Algorithm::AUTO) {}
+Depth::Depth() : DeviceNodeGroup(nullptr) {}
 
 // --- Pre-wiring configuration ---
 

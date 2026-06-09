@@ -419,10 +419,10 @@ TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     REQUIRE_NOTHROW((void)&depth->confidence());
 }
 
-TEST_CASE("Depth: create(device, algorithm) exposes algorithm via getRequestedAlgorithm") {
+TEST_CASE("Depth: build(algorithm) exposes algorithm via getRequestedAlgorithm") {
     Pipeline pipeline;
     (void)requireDefaultDevice(pipeline);
-    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::TOF);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF);
     REQUIRE(depth->getRequestedAlgorithm() == node::Depth::Algorithm::TOF);
 }
 
@@ -449,7 +449,7 @@ TEST_CASE("Depth: explicit STEREO on RVC4 uses StereoDepth") {
     }
     (void)requireFirstStereoPairForTest(device);
 
-    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::STEREO);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::STEREO);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "StereoDepth");
 }
@@ -460,7 +460,7 @@ TEST_CASE("Depth: GPU_STEREO requires RVC4") {
     if(device->getPlatform() == Platform::RVC4) {
         SKIP("Skipping negative GPU_STEREO test on RVC4.");
     }
-    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::GPU_STEREO);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::GPU_STEREO);
     REQUIRE_THROWS((void)&depth->depth());
 }
 
@@ -470,7 +470,7 @@ TEST_CASE("Depth: TOF requires connected ToF camera") {
     if(deviceReportsTofSensor(device)) {
         SKIP("Skipping negative TOF test: device reports a ToF sensor.");
     }
-    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::TOF);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF);
     REQUIRE_THROWS((void)&depth->depth());
 }
 
@@ -534,7 +534,7 @@ TEST_CASE("Depth: explicit NEURAL wires NeuralDepth when device supports it") {
     }
     (void)requireFirstStereoPairForTest(device);
 
-    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::NEURAL);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
 }
@@ -545,7 +545,7 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO rejected off RVC4") {
     if(device->getPlatform() == Platform::RVC4) {
         SKIP("Skipping Depth test: RVC4 device (negative NAS test not applicable).");
     }
-    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
     REQUIRE_THROWS((void)&depth->depth());
 }
 
@@ -560,7 +560,7 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO wires NeuralAssistedStereo on RVC4") {
     }
     (void)requireFirstStereoPairForTest(device);
 
-    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "NeuralAssistedStereo");
 }
@@ -572,7 +572,7 @@ TEST_CASE("Depth: TOF algorithm wires ToF backend when ToF sensor present") {
         SKIP("Skipping Depth test: no ToF sensor reported.");
     }
 
-    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::TOF);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF);
     REQUIRE_NOTHROW(startPipelineAndRequireFirstFrames(pipeline, depth));
     requireDepthSingleBackendChild(*depth, "ToF");
 }
@@ -588,7 +588,7 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
         SKIP("Skipping GPU_STEREO positive test: device->isGpuStereoSupported() returned false.");
     }
 
-    auto depth = pipeline.create<node::Depth>(node::Depth::Algorithm::GPU_STEREO);
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::GPU_STEREO);
     try {
         (void)&depth->depth();
         (void)&depth->confidence();

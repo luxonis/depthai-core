@@ -80,8 +80,6 @@ class Depth : public DeviceNodeGroup {
     /** Default ``Algorithm::AUTO`` (resolved when the graph is wired). */
     Depth();
 
-    explicit Depth(Algorithm algorithm);
-
     /**
      * Create Depth with ``Algorithm::AUTO`` and no device bound yet.
      * Pipeline default device applies when added or at first wiring.
@@ -94,33 +92,12 @@ class Depth : public DeviceNodeGroup {
      * Create Depth with an optional fixed device.
      * If \p device is null, the pipeline default device is used when the node is added.
      */
-    [[nodiscard]] static std::shared_ptr<Depth> create(const std::shared_ptr<Device>& device, Algorithm algorithm = Algorithm::AUTO) {
-        auto ptr = std::shared_ptr<Depth>(new Depth(algorithm));
+    [[nodiscard]] static std::shared_ptr<Depth> create(const std::shared_ptr<Device>& device) {
+        auto ptr = create();
         if(device != nullptr) {
             ptr->setDevice(device);
         }
         return ptr;
-    }
-
-    /**
-     * Create Depth with an explicit ``algorithm`` and its ``config`` (e.g. values read back from a
-     * previously resolved node via ``getResolvedAlgorithm()`` / ``getResolvedConfig()``).
-     * Both must be supplied together; the pair is used as-is and AUTO selection is skipped.
-     */
-    [[nodiscard]] static std::shared_ptr<Depth> create(const std::shared_ptr<Device>& device, Algorithm algorithm, Config config) {
-        auto ptr = create(device, algorithm);
-        ptr->build(algorithm, std::move(config));
-        return ptr;
-    }
-
-    /** Equivalent to ``create(nullptr, algorithm)``. */
-    [[nodiscard]] static std::shared_ptr<Depth> create(Algorithm algorithm) {
-        return create(nullptr, algorithm);
-    }
-
-    /** Equivalent to ``create(nullptr, algorithm, config)``. */
-    [[nodiscard]] static std::shared_ptr<Depth> create(Algorithm algorithm, Config config) {
-        return create(nullptr, algorithm, std::move(config));
     }
 
     /**
