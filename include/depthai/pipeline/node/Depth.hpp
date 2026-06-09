@@ -13,6 +13,7 @@
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/GPUStereo.hpp"
+#include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/NeuralAssistedStereo.hpp"
 #include "depthai/pipeline/node/NeuralDepth.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
@@ -38,6 +39,10 @@ namespace node {
  *
  * ``confidence()`` maps to backend confidence when present: StereoDepth/NAS confidence,
  * NeuralDepth confidence, GPUStereo confidence map, or ToF amplitude.
+ *
+ * ``setAlignTo()`` optionally aligns the depth output to another image source. On RVC4 an
+ * ``ImageAlign`` node is used for every backend; on RVC2 StereoDepth aligns natively via
+ * ``inputAlignTo`` while other backends (e.g. ToF) use an on-host ``ImageAlign`` node.
  *
  * Algorithm availability: ``TOF`` requires a connected ToF sensor (see ``Device::getConnectedCameraFeatures()``).
  * ``NEURAL_ASSISTED_STEREO`` is RVC4-only. ``GPU_STEREO`` is RVC4-only, requires a stereo pair and is gated by
@@ -149,6 +154,20 @@ class Depth : public DeviceNodeGroup {
                                   std::optional<float> fps = std::nullopt,
                                   std::optional<std::pair<uint32_t, uint32_t>> stereoSize = std::nullopt);
 
+    /**
+     * Optionally align the depth output to another image source (e.g. a color ``Camera`` output).
+     * Must be called before the first ``depth()`` / ``confidence()`` access (lazy wiring).
+     *
+     * The alignment is wired according to the platform and the resolved backend:
+     * - RVC4: an ``ImageAlign`` node (on-device) aligns the backend depth for every backend.
+     * - RVC2 + StereoDepth: the native ``StereoDepth::inputAlignTo`` performs the alignment on-device.
+     * - RVC2 + any other backend (e.g. ToF): an ``ImageAlign`` node running on host
+     *   (``setRunOnHost(true)``) aligns the backend depth.
+     *
+     * Only ``depth()`` is aligned; ``confidence()`` keeps the backend's native frame of reference.
+     */
+    std::shared_ptr<Depth> setAlignTo(Node::Output& alignTo);
+
     /** Requested algorithm selection (including ``AUTO``). */
     [[nodiscard]] Algorithm getRequestedAlgorithm() const {
         return algorithmOverride_;
@@ -243,6 +262,14 @@ class Depth : public DeviceNodeGroup {
     /** Map active backend depth/confidence outputs after backend nodes are created. */
     void bindBackendOutputs(Algorithm active);
 
+    /**
+     * Wire the optional ``alignTo`` source to the active backend (no-op when ``alignTo`` is unset).
+     * RVC4 always inserts an on-device ``ImageAlign`` node; RVC2 uses ``StereoDepth::inputAlignTo``
+     * for the StereoDepth backend and an on-host ``ImageAlign`` node for all other backends.
+     * Updates ``depthOut_`` to the aligned output when an ``ImageAlign`` node is used.
+     */
+    void wireAlignment(Algorithm active, const std::shared_ptr<Device>& device);
+
     /** User-selected or ``AUTO`` algorithm; frozen after ``buildInternal()`` completes. */
     Algorithm algorithmOverride_;
     /** Resolved algorithm + config; populated by ``resolveWiring()``. */
@@ -255,6 +282,8 @@ class Depth : public DeviceNodeGroup {
     std::optional<std::pair<uint32_t, uint32_t>> stereoSizeOverride_{};
     /** Optional exact config supplied with a concrete algorithm; skips auto profile picking. */
     std::optional<Config> configOverride_{};
+    /** Optional source output the depth is aligned to; set via ``setAlignTo()`` before wiring. */
+    Node::Output* alignToOutput_{nullptr};
 
     /** Resolved backend depth output (set in ``bindBackendOutputs``). */
     Node::Output* depthOut_{nullptr};
@@ -271,6 +300,8 @@ class Depth : public DeviceNodeGroup {
     std::shared_ptr<NeuralAssistedStereo> nasBackend_;
     /** Populated when ``Algorithm::TOF`` is active. */
     std::shared_ptr<ToF> tofBackend_;
+    /** Populated when ``alignTo`` is set and the alignment is performed by an ``ImageAlign`` node. */
+    std::unique_ptr<::dai::Subnode<ImageAlign>> imageAlignBackend_;
 };
 
 }  // namespace node

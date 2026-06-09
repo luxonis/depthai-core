@@ -414,6 +414,12 @@ std::shared_ptr<Depth> Depth::setConfig(Config config) {
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
+std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
+    requireNotBuilt("Depth::setAlignTo");
+    alignToOutput_ = &alignTo;
+    return std::static_pointer_cast<Depth>(shared_from_this());
+}
+
 // --- Device queries ---
 
 std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device) const {
@@ -640,7 +646,35 @@ void Depth::buildInternal() {
     }
 
     bindBackendOutputs(active);
+    wireAlignment(active, device);
     graphBuilt_ = true;
+}
+
+void Depth::wireAlignment(Algorithm active, const std::shared_ptr<Device>& device) {
+    if(alignToOutput_ == nullptr) {
+        return;
+    }
+    DAI_CHECK_V(depthOut_ != nullptr, "Depth: cannot align an unbound depth output.");
+
+    const bool isRvc4 = device->getPlatform() == Platform::RVC4;
+
+    // RVC2 + StereoDepth: alignment is handled natively on-device via StereoDepth's inputAlignTo,
+    // which aligns the depth output without an extra node.
+    if(!isRvc4 && active == Algorithm::STEREO) {
+        alignToOutput_->link((*stereoBackend_)->inputAlignTo);
+        return;
+    }
+
+    // Every other case (all RVC4 backends, and non-StereoDepth backends on RVC2 such as ToF) routes
+    // the backend depth through an ImageAlign node. On RVC2 there is no hardware ImageAlign path for
+    // these backends, so the node runs on host.
+    imageAlignBackend_ = std::make_unique<Subnode<ImageAlign>>(*this, "imageAlign");
+    if(!isRvc4) {
+        (*imageAlignBackend_)->setRunOnHost(true);
+    }
+    depthOut_->link((*imageAlignBackend_)->input);
+    alignToOutput_->link((*imageAlignBackend_)->inputAlignTo);
+    depthOut_ = &(*imageAlignBackend_)->outputAligned;
 }
 
 // --- Stereo camera wiring ---

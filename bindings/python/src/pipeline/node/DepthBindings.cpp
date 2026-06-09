@@ -98,6 +98,7 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .def("setConfig", [configFromPy](Depth& self, py::object config) { return self.setConfig(configFromPy(config)); }, py::arg("config"))
         .def("getResolvedAlgorithm", &Depth::getResolvedAlgorithm)
         .def("getResolvedConfig", [configToPy](const Depth& d) { return configToPy(d.getResolvedConfig()); })
+        .def("setAlignTo", &Depth::setAlignTo, py::arg("alignTo"))
         .def(
             "build",
             [](Depth& self, py::object value) {
