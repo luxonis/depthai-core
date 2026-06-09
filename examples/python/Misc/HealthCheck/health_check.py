@@ -21,6 +21,14 @@ def usb_generation_to_string(generation: dai.UsbGeneration) -> str:
     return "UNKNOWN"
 
 
+def health_check_result_to_string(result: dai.HealthCheckResult) -> str:
+    if result == dai.HealthCheckResult.PASS:
+        return "pass"
+    if result == dai.HealthCheckResult.FAIL:
+        return "fail"
+    return "not run"
+
+
 def print_messages(title: str, messages) -> None:
     if not messages:
         return
@@ -32,12 +40,14 @@ def print_messages(title: str, messages) -> None:
 
 def main() -> int:
     config = dai.HealthCheckConfig()
-    config.timeout = timedelta(milliseconds=10000)
     config.checkUsbSpeed = True
     config.measureBandwidth = True
-    config.verifyCameras = True
-    config.verifyIMU = True
+    config.verifyCameraFunctionality = True
+    config.verifyCameraCalibration = True
+    config.verifyImuFunctionality = True
+    config.verifyImuCalibration = True
     config.verifyPowerSupply = True
+    config.powerSupplyCheckDuration = timedelta(milliseconds=10000)
 
     found, device_info = dai.Device.getFirstAvailableDevice(False)
     if not found:
@@ -45,7 +55,7 @@ def main() -> int:
         return 1
 
     print(f"Device: {device_info}")
-    print(f"Timeout: {int(config.timeout.total_seconds() * 1000)} ms")
+    print(f"Power supply check duration: {int(config.powerSupplyCheckDuration.total_seconds() * 1000)} ms")
     print("Running health check...")
 
     start = time.monotonic()
@@ -57,27 +67,13 @@ def main() -> int:
     print(f"App running on device: {'true' if metrics.appRunningOnDevice else 'false'}")
     print(f"Device in setup mode: {'true' if metrics.inSetupMode else 'false'}")
     print(f"Udev rules set: {'true' if metrics.udevRulesSet else 'false'}")
-
-    if metrics.usbSpeed is not None:
-        print(f"USB speed: {metrics.usbSpeed}")
-    else:
-        print("USB speed: not detected")
-
-    if metrics.usbGeneration is not None:
-        print(f"USB generation: {usb_generation_to_string(metrics.usbGeneration)}")
-    else:
-        print("USB generation: not detected")
-
-    if metrics.bandwidthMbps is not None:
-        print(f"Bandwidth: {metrics.bandwidthMbps} Mbps")
-    else:
-        print("Bandwidth: not measured")
-
-    print(f"Camera calibration: {'pass' if metrics.cameraCalibration else 'fail' if metrics.cameraCalibration is not None else 'not run'}")
-    print(f"IMU calibration: {'pass' if metrics.imuCalibration else 'fail' if metrics.imuCalibration is not None else 'not run'}")
-    print(f"Camera functionality: {'pass' if metrics.cameraFunctionality else 'fail' if metrics.cameraFunctionality is not None else 'not run'}")
-    print(f"IMU functionality: {'pass' if metrics.imuFunctionality else 'fail' if metrics.imuFunctionality is not None else 'not run'}")
-    print(f"Power supply: {'pass' if metrics.powerSupplyFunctionality else 'fail' if metrics.powerSupplyFunctionality is not None else 'not run'}")
+    print(f"USB generation: {usb_generation_to_string(metrics.usbGeneration)}")
+    print(f"Bandwidth: {metrics.bandwidthMbps} Mbps")
+    print(f"Camera calibration: {health_check_result_to_string(metrics.cameraCalibration)}")
+    print(f"IMU calibration: {health_check_result_to_string(metrics.imuCalibration)}")
+    print(f"Camera functionality: {health_check_result_to_string(metrics.cameraFunctionality)}")
+    print(f"IMU functionality: {health_check_result_to_string(metrics.imuFunctionality)}")
+    print(f"Power supply: {health_check_result_to_string(metrics.powerSupplyFunctionality)}")
 
     print_messages("Warnings", metrics.warnings)
     print_messages("Errors", metrics.errors)

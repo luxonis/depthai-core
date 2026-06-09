@@ -2,11 +2,9 @@
 
 #include <chrono>
 #include <cstdint>
-#include <optional>
 #include <string>
 #include <unordered_map>
 
-#include "depthai/common/UsbSpeed.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
@@ -17,33 +15,36 @@ namespace dai {
 enum class UsbGeneration : std::uint8_t { UNKNOWN, USB_1_0, USB_1_1, USB_2_0, USB_3_0, USB_3_1 };
 
 /**
+ * Health check result reported by the device health check.
+ */
+enum class HealthCheckResult : std::uint8_t { NOT_RUN, PASS, FAIL };
+
+/**
  * Configures which device health-check steps should run.
  */
 struct HealthCheckConfig {
     bool checkUsbSpeed = true;
     bool measureBandwidth = true;
-    bool verifyCameras = true;
-    bool verifyIMU = true;
+    bool verifyCameraFunctionality = true;
+    bool verifyCameraCalibration = true;
+    bool verifyImuFunctionality = true;
+    bool verifyImuCalibration = true;
     bool verifyPowerSupply = true;
 
-    std::chrono::milliseconds timeout{std::chrono::seconds(10)};
+    std::chrono::milliseconds powerSupplyCheckDuration{std::chrono::seconds(20)};
 };
 
 /**
  * Device health-check results.
- *
- * Optional fields are empty when the corresponding check was disabled or could
- * not be run because an earlier prerequisite failed.
  */
 struct HealthCheckMetrics {
-    std::optional<UsbSpeed> usbSpeed;
-    std::optional<UsbGeneration> usbGeneration;
-    std::optional<float> bandwidthMbps;
-    std::optional<bool> cameraFunctionality;
-    std::optional<bool> cameraCalibration;
-    std::optional<bool> imuFunctionality;
-    std::optional<bool> imuCalibration;
-    std::optional<bool> powerSupplyFunctionality;
+    UsbGeneration usbGeneration = UsbGeneration::UNKNOWN;
+    float bandwidthMbps = 0.0f;
+    HealthCheckResult cameraFunctionality = HealthCheckResult::NOT_RUN;
+    HealthCheckResult cameraCalibration = HealthCheckResult::NOT_RUN;
+    HealthCheckResult imuFunctionality = HealthCheckResult::NOT_RUN;
+    HealthCheckResult imuCalibration = HealthCheckResult::NOT_RUN;
+    HealthCheckResult powerSupplyFunctionality = HealthCheckResult::NOT_RUN;
 
     bool appRunningOnDevice = false;
     bool inSetupMode = false;

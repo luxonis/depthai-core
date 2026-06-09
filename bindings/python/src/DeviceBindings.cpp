@@ -138,6 +138,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<HealthCheckConfig> healthCheckConfig(m, "HealthCheckConfig", DOC(dai, HealthCheckConfig));
     py::class_<HealthCheckMetrics> healthCheckMetrics(m, "HealthCheckMetrics", DOC(dai, HealthCheckMetrics));
     py::enum_<UsbGeneration> usbGeneration(m, "UsbGeneration", DOC(dai, UsbGeneration));
+    py::enum_<HealthCheckResult> healthCheckResult(m, "HealthCheckResult", DOC(dai, HealthCheckResult));
     py::class_<BoardConfig> boardConfig(m, "BoardConfig", DOC(dai, BoardConfig));
     py::class_<BoardConfig::USB> boardConfigUsb(boardConfig, "USB", DOC(dai, BoardConfig, USB));
     py::class_<BoardConfig::Network> boardConfigNetwork(boardConfig, "Network", DOC(dai, BoardConfig, Network));
@@ -292,18 +293,24 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("USB_3_0", UsbGeneration::USB_3_0, DOC(dai, UsbGeneration, USB_3_0))
         .value("USB_3_1", UsbGeneration::USB_3_1, DOC(dai, UsbGeneration, USB_3_1));
 
+    // Bind HealthCheckResult
+    healthCheckResult.value("NOT_RUN", HealthCheckResult::NOT_RUN, DOC(dai, HealthCheckResult, NOT_RUN))
+        .value("PASS", HealthCheckResult::PASS, DOC(dai, HealthCheckResult, PASS))
+        .value("FAIL", HealthCheckResult::FAIL, DOC(dai, HealthCheckResult, FAIL));
+
     // Bind HealthCheckConfig
     healthCheckConfig.def(py::init<>())
         .def_readwrite("checkUsbSpeed", &HealthCheckConfig::checkUsbSpeed, DOC(dai, HealthCheckConfig, checkUsbSpeed))
         .def_readwrite("measureBandwidth", &HealthCheckConfig::measureBandwidth, DOC(dai, HealthCheckConfig, measureBandwidth))
-        .def_readwrite("verifyCameras", &HealthCheckConfig::verifyCameras, DOC(dai, HealthCheckConfig, verifyCameras))
-        .def_readwrite("verifyIMU", &HealthCheckConfig::verifyIMU, DOC(dai, HealthCheckConfig, verifyIMU))
+        .def_readwrite("verifyCameraFunctionality", &HealthCheckConfig::verifyCameraFunctionality, DOC(dai, HealthCheckConfig, verifyCameraFunctionality))
+        .def_readwrite("verifyCameraCalibration", &HealthCheckConfig::verifyCameraCalibration, DOC(dai, HealthCheckConfig, verifyCameraCalibration))
+        .def_readwrite("verifyImuFunctionality", &HealthCheckConfig::verifyImuFunctionality, DOC(dai, HealthCheckConfig, verifyImuFunctionality))
+        .def_readwrite("verifyImuCalibration", &HealthCheckConfig::verifyImuCalibration, DOC(dai, HealthCheckConfig, verifyImuCalibration))
         .def_readwrite("verifyPowerSupply", &HealthCheckConfig::verifyPowerSupply, DOC(dai, HealthCheckConfig, verifyPowerSupply))
-        .def_readwrite("timeout", &HealthCheckConfig::timeout, DOC(dai, HealthCheckConfig, timeout));
+        .def_readwrite("powerSupplyCheckDuration", &HealthCheckConfig::powerSupplyCheckDuration, DOC(dai, HealthCheckConfig, powerSupplyCheckDuration));
 
     // Bind HealthCheckMetrics
     healthCheckMetrics.def(py::init<>())
-        .def_readwrite("usbSpeed", &HealthCheckMetrics::usbSpeed, DOC(dai, HealthCheckMetrics, usbSpeed))
         .def_readwrite("usbGeneration", &HealthCheckMetrics::usbGeneration, DOC(dai, HealthCheckMetrics, usbGeneration))
         .def_readwrite("bandwidthMbps", &HealthCheckMetrics::bandwidthMbps, DOC(dai, HealthCheckMetrics, bandwidthMbps))
         .def_readwrite("cameraCalibration", &HealthCheckMetrics::cameraCalibration, DOC(dai, HealthCheckMetrics, cameraCalibration))

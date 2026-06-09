@@ -17,7 +17,6 @@
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Device.hpp"
-#include "depthai/pipeline/InputQueue.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/pipeline/datatype/BenchmarkReport.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
@@ -37,6 +36,7 @@ constexpr std::uint32_t IMU_REPORT_RATE = 400;
 constexpr std::uint32_t IMU_BATCH_REPORT_THRESHOLD = 10;
 constexpr std::uint32_t IMU_MAX_BATCH_REPORTS = 10;
 constexpr float MAX_POWER_IR_INTENSITY = 1.0f;
+constexpr auto DIAGNOSTIC_OUTPUT_TIMEOUT = std::chrono::seconds(10);
 constexpr auto POWER_SUPPLY_POLL_INTERVAL = std::chrono::milliseconds(100);
 
 template <typename T>
@@ -143,13 +143,13 @@ void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMet
         guard.enabled = laserEnabled || floodEnabled;
 
         if(!guard.enabled) {
-            metrics.powerSupplyFunctionality = false;
+            metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
             setError(metrics, "powerSupply", "Failed to enable IR laser/flood drivers.");
         } else if(!laserEnabled || !floodEnabled) {
             setWarning(metrics, "powerSupply", "Only one IR driver accepted maximum intensity.");
         }
     } catch(const std::exception& ex) {
-        metrics.powerSupplyFunctionality = false;
+        metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
         setError(metrics, "powerSupply", ex.what());
     }
 }
@@ -196,22 +196,25 @@ void setRequestedChecksFailed(HealthCheckMetrics& metrics, const HealthCheckConf
     logger::warn("Requested health check diagnostics will be marked failed because a prerequisite failed.");
 
     if(config.checkUsbSpeed) {
-        metrics.usbSpeed = UsbSpeed::UNKNOWN;
         metrics.usbGeneration = UsbGeneration::UNKNOWN;
     }
     if(config.measureBandwidth) {
         metrics.bandwidthMbps = 0.0f;
     }
-    if(config.verifyCameras) {
-        metrics.cameraFunctionality = false;
-        metrics.cameraCalibration = false;
+    if(config.verifyCameraFunctionality) {
+        metrics.cameraFunctionality = HealthCheckResult::FAIL;
     }
-    if(config.verifyIMU) {
-        metrics.imuFunctionality = false;
-        metrics.imuCalibration = false;
+    if(config.verifyCameraCalibration) {
+        metrics.cameraCalibration = HealthCheckResult::FAIL;
+    }
+    if(config.verifyImuFunctionality) {
+        metrics.imuFunctionality = HealthCheckResult::FAIL;
+    }
+    if(config.verifyImuCalibration) {
+        metrics.imuCalibration = HealthCheckResult::FAIL;
     }
     if(config.verifyPowerSupply) {
-        metrics.powerSupplyFunctionality = false;
+        metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
     }
 }
 
@@ -330,8 +333,8 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     std::vector<std::pair<CameraBoardSocket, std::shared_ptr<MessageQueue>>> cameraQueues;
     std::shared_ptr<MessageQueue> imuQueue;
 
-    const bool shouldCreateCameraStreams =
-        (config.verifyCameras && !metrics.cameraFunctionality.has_value()) || (config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value());
+    const bool shouldCreateCameraStreams = (config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN)
+                                           || (config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN);
 
     // Prepare camera streams for camera verification and power-supply load
     if(shouldCreateCameraStreams) {
@@ -339,12 +342,12 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             auto camera = pipeline.create<node::Camera>()->build(socket);
             auto* output = camera->requestFullResolutionOutput();
             if(output == nullptr) {
-                if(config.verifyCameras && !metrics.cameraFunctionality.has_value()) {
-                    metrics.cameraFunctionality = false;
+                if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
+                    metrics.cameraFunctionality = HealthCheckResult::FAIL;
                     setError(metrics, "cameraFunctionality", "Failed to create diagnostic output for camera socket " + socketToString(socket) + ".");
                 }
-                if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
-                    metrics.powerSupplyFunctionality = false;
+                if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
+                    metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
                     setError(metrics, "powerSupply", "Failed to create camera load for socket " + socketToString(socket) + ".");
                 }
                 break;
@@ -354,7 +357,7 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     }
 
     // Prepare IMU verification
-    if(config.verifyIMU && !imuName.empty()) {
+    if(config.verifyImuFunctionality && !imuName.empty()) {
         auto imu = pipeline.create<node::IMU>();
         imu->enableIMUSensor(IMUSensor::ACCELEROMETER_RAW, IMU_REPORT_RATE);
         imu->enableIMUSensor(IMUSensor::GYROSCOPE_RAW, IMU_REPORT_RATE);
@@ -364,17 +367,13 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     }
 
     // Prepare power supply verification
-    if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value() && cameraQueues.empty()) {
-        metrics.powerSupplyFunctionality = false;
+    if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN && cameraQueues.empty()) {
+        metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
         setError(metrics, "powerSupply", "No camera streams were created for power supply load.");
     }
     IrPowerGuard irGuard{device, false};
 
     try {
-        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
-            enablePowerSupplyLoad(device, metrics, irGuard);
-        }
-
         pipeline.start();
 
         // Verify camera streaming and keep the same streams active for power-supply validation
@@ -382,69 +381,70 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             bool allCamerasStreaming = true;
             for(auto& socketAndQueue : cameraQueues) {
                 bool timedOut = false;
-                auto frame = getUntil<ImgFrame>(socketAndQueue.second, std::chrono::steady_clock::now() + config.timeout, timedOut);
+                auto frame = getUntil<ImgFrame>(socketAndQueue.second, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut);
                 if(timedOut || frame == nullptr || frame->getData().empty()) {
                     allCamerasStreaming = false;
-                    if(config.verifyCameras && !metrics.cameraFunctionality.has_value()) {
+                    if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
                         setError(metrics, "cameraFunctionality", "Camera socket " + socketToString(socketAndQueue.first) + " did not stream a frame.");
                     }
-                    if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
-                        metrics.powerSupplyFunctionality = false;
-                        setError(metrics, "powerSupply", "Camera socket " + socketToString(socketAndQueue.first) + " did not stream during power supply load.");
+                    if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
+                        metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
+                        setError(metrics, "powerSupply", "Camera socket " + socketToString(socketAndQueue.first) + " did not stream before power supply load.");
                     }
                     break;
                 }
             }
-            if(config.verifyCameras && !metrics.cameraFunctionality.has_value()) {
-                metrics.cameraFunctionality = allCamerasStreaming;
+            if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
+                metrics.cameraFunctionality = allCamerasStreaming ? HealthCheckResult::PASS : HealthCheckResult::FAIL;
             }
         }
 
         // Verify IMU
         if(imuQueue) {
             bool timedOut = false;
-            auto imuData = getUntil<IMUData>(imuQueue, std::chrono::steady_clock::now() + config.timeout, timedOut);
+            auto imuData = getUntil<IMUData>(imuQueue, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut);
             if(timedOut || imuData == nullptr || imuData->packets.empty()) {
-                metrics.imuFunctionality = false;
+                metrics.imuFunctionality = HealthCheckResult::FAIL;
                 setError(metrics, "imuFunctionality", "IMU did not stream packets.");
             } else {
-                metrics.imuFunctionality = true;
+                metrics.imuFunctionality = HealthCheckResult::PASS;
             }
         }
 
         // Verify power supply
         bool sufficientPower = true;
-        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
-            sufficientPower = waitForPowerSupplyLoad(device, std::chrono::steady_clock::now() + config.timeout, metrics);
+        if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
+            enablePowerSupplyLoad(device, metrics, irGuard);
+            sufficientPower = waitForPowerSupplyLoad(device, std::chrono::steady_clock::now() + config.powerSupplyCheckDuration, metrics);
             if(!sufficientPower) {
-                metrics.powerSupplyFunctionality = false;
+                metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
             }
         }
 
         const bool irDisableSucceeded = irGuard.disable();
-        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value() && !irDisableSucceeded) {
-            metrics.powerSupplyFunctionality = false;
+        if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN && !irDisableSucceeded) {
+            metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
             setError(metrics, "powerSupply", "Failed to disable IR load after validation; device disconnected during cleanup.");
         }
 
         pipeline.stop();
         pipeline.wait();
 
-        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
-            metrics.powerSupplyFunctionality = true;
+        if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
+            metrics.powerSupplyFunctionality = HealthCheckResult::PASS;
         }
 
     } catch(const std::exception& ex) {
-        if(config.verifyCameras && !metrics.cameraFunctionality.has_value()) {
-            metrics.cameraFunctionality = false;
+        if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
+            metrics.cameraFunctionality = HealthCheckResult::FAIL;
             setError(metrics, "cameraFunctionality", ex.what());
         }
-        if(config.verifyIMU && !metrics.imuFunctionality.has_value()) {
-            metrics.imuFunctionality = false;
+        if(config.verifyImuFunctionality && metrics.imuFunctionality == HealthCheckResult::NOT_RUN) {
+            metrics.imuFunctionality = HealthCheckResult::FAIL;
             setError(metrics, "imuFunctionality", ex.what());
         }
-        if(config.verifyPowerSupply && !metrics.powerSupplyFunctionality.has_value()) {
-            metrics.powerSupplyFunctionality = false;
+        if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
+            metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
             setError(metrics, "powerSupply", ex.what());
         }
 
@@ -458,7 +458,7 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     }
 }
 
-void measureBandwidth(const std::shared_ptr<Device>& device, const HealthCheckConfig& config, HealthCheckMetrics& metrics) {
+void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics& metrics) {
     Pipeline pipeline(device);
 
     auto benchmarkOut = pipeline.create<node::BenchmarkOut>();
@@ -484,7 +484,7 @@ void measureBandwidth(const std::shared_ptr<Device>& device, const HealthCheckCo
         bandwidthInputQueue->send(frame);
 
         bool timedOut = false;
-        auto report = getUntil<BenchmarkReport>(bandwidthReportQueue, std::chrono::steady_clock::now() + config.timeout, timedOut);
+        auto report = getUntil<BenchmarkReport>(bandwidthReportQueue, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut);
         if(timedOut || report == nullptr || report->fps <= 0.0f) {
             metrics.bandwidthMbps = 0.0f;
             setError(metrics, "bandwidth", "Timed out waiting for bandwidth benchmark report.");
@@ -533,11 +533,10 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     // USB speed and generation check
     if(config.checkUsbSpeed) {
         if(device->getDeviceInfo().protocol == X_LINK_TCP_IP) {
-            metrics.usbSpeed = UsbSpeed::UNKNOWN;
             metrics.usbGeneration = UsbGeneration::UNKNOWN;
         } else {
-            metrics.usbSpeed = device->getUsbSpeed();
-            metrics.usbGeneration = usbSpeedToGeneration(*metrics.usbSpeed);
+            const auto usbSpeed = device->getUsbSpeed();
+            metrics.usbGeneration = usbSpeedToGeneration(usbSpeed);
             if(metrics.usbGeneration == UsbGeneration::UNKNOWN) {
                 setWarning(metrics, "usbGeneration", "Connected USB generation is unknown.");
             }
@@ -546,7 +545,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
 
     // Measure the bandwidth
     if(config.measureBandwidth) {
-        measureBandwidth(device, config, metrics);
+        measureBandwidth(device, metrics);
         device.reset();
         try {
             device = std::make_shared<Device>(devInfo);
@@ -559,16 +558,16 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
 
     // Read the calibration
     std::optional<CalibrationHandler> calibration;
-    if(config.verifyCameras || config.verifyIMU) {
+    if(config.verifyCameraCalibration || config.verifyImuCalibration) {
         try {
             calibration = device->readCalibration2();
         } catch(const std::exception& ex) {
-            if(config.verifyCameras) {
-                metrics.cameraCalibration = false;
+            if(config.verifyCameraCalibration) {
+                metrics.cameraCalibration = HealthCheckResult::FAIL;
                 setError(metrics, "cameraCalibration", std::string("No readable user calibration. User calibration error: ") + ex.what());
             }
-            if(config.verifyIMU) {
-                metrics.imuCalibration = false;
+            if(config.verifyImuCalibration) {
+                metrics.imuCalibration = HealthCheckResult::FAIL;
                 setError(metrics, "imuCalibration", std::string("No readable user calibration. User calibration error: ") + ex.what());
             }
         }
@@ -577,65 +576,68 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     // Query cameras for camera verification and power-supply load
     std::vector<CameraBoardSocket> connectedCameras;
     std::vector<StereoPair> deviceStereoPairs;
-    if(config.verifyCameras || config.verifyPowerSupply) {
+    if(config.verifyCameraFunctionality || config.verifyCameraCalibration || config.verifyPowerSupply) {
         try {
             connectedCameras = device->getConnectedCameras();
             if(connectedCameras.empty()) {
-                if(config.verifyCameras) {
-                    metrics.cameraFunctionality = false;
+                if(config.verifyCameraFunctionality) {
+                    metrics.cameraFunctionality = HealthCheckResult::FAIL;
                     setError(metrics, "cameraFunctionality", "No connected cameras detected.");
                 }
                 if(config.verifyPowerSupply) {
-                    metrics.powerSupplyFunctionality = false;
+                    metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
                     setError(metrics, "powerSupply", "No connected cameras detected for power supply load.");
                 }
             }
         } catch(const std::exception& ex) {
-            if(config.verifyCameras) {
-                metrics.cameraFunctionality = false;
+            if(config.verifyCameraFunctionality) {
+                metrics.cameraFunctionality = HealthCheckResult::FAIL;
                 setError(metrics, "cameraFunctionality", ex.what());
             }
             if(config.verifyPowerSupply) {
-                metrics.powerSupplyFunctionality = false;
+                metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
                 setError(metrics, "powerSupply", ex.what());
             }
         }
     }
 
     // Verify camera calibration metadata
-    if(config.verifyCameras) {
+    if(config.verifyCameraCalibration) {
         try {
             deviceStereoPairs = device->getStereoPairs();
         } catch(const std::exception& ex) {
-            metrics.cameraCalibration = false;
+            metrics.cameraCalibration = HealthCheckResult::FAIL;
             setError(metrics, "cameraCalibration", ex.what());
         }
 
-        if(!metrics.cameraCalibration.has_value()) {
-            metrics.cameraCalibration = verifyCameraCalibrationMetadata(connectedCameras, deviceStereoPairs, calibration, metrics);
+        if(metrics.cameraCalibration == HealthCheckResult::NOT_RUN) {
+            metrics.cameraCalibration =
+                verifyCameraCalibrationMetadata(connectedCameras, deviceStereoPairs, calibration, metrics) ? HealthCheckResult::PASS : HealthCheckResult::FAIL;
         }
     }
 
     // Verify IMU functionality and calibration metadata
     std::string imuName;
-    if(config.verifyIMU) {
+    if(config.verifyImuFunctionality || config.verifyImuCalibration) {
         try {
             imuName = device->getConnectedIMU();
-            if(imuName.empty()) {
-                metrics.imuFunctionality = false;
+            if(config.verifyImuFunctionality && imuName.empty()) {
+                metrics.imuFunctionality = HealthCheckResult::FAIL;
                 setError(metrics, "imuFunctionality", "No connected IMU detected.");
             }
         } catch(const std::exception& ex) {
-            metrics.imuFunctionality = false;
-            setError(metrics, "imuFunctionality", ex.what());
+            if(config.verifyImuFunctionality) {
+                metrics.imuFunctionality = HealthCheckResult::FAIL;
+                setError(metrics, "imuFunctionality", ex.what());
+            }
         }
 
-        if(!metrics.imuCalibration.has_value()) {
-            metrics.imuCalibration = verifyImuCalibrationMetadata(imuName, calibration, metrics);
+        if(config.verifyImuCalibration && metrics.imuCalibration == HealthCheckResult::NOT_RUN) {
+            metrics.imuCalibration = verifyImuCalibrationMetadata(imuName, calibration, metrics) ? HealthCheckResult::PASS : HealthCheckResult::FAIL;
         }
     }
 
-    if(config.verifyCameras || config.verifyIMU || config.verifyPowerSupply) {
+    if(config.verifyCameraFunctionality || config.verifyImuFunctionality || config.verifyPowerSupply) {
         runDiagnosticPipeline(device, config, connectedCameras, imuName, metrics);
     }
 
