@@ -23,69 +23,16 @@ namespace node {
 
 namespace {
 
-std::vector<std::vector<float>> extractRotationMatrix(const std::vector<std::vector<float>>& transform) {
-    std::vector<std::vector<float>> rotation(3, std::vector<float>(3, 0.0f));
-    for(int row = 0; row < 3; ++row) {
-        for(int col = 0; col < 3; ++col) {
-            rotation[row][col] = transform[row][col];
-        }
-    }
-    return rotation;
-}
-
-std::vector<float> extractTranslationVector(const std::vector<std::vector<float>>& transform) {
-    std::vector<float> translation(3, 0.0f);
-    for(int row = 0; row < 3; ++row) {
-        translation[row] = transform[row][3];
-    }
-    return translation;
-}
-
-std::vector<std::vector<float>> intrinsicArrayToMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix) {
-    std::vector<std::vector<float>> matrix(3, std::vector<float>(3, 0.0f));
-    for(int row = 0; row < 3; ++row) {
-        for(int col = 0; col < 3; ++col) {
-            matrix[row][col] = intrinsicMatrix[row][col];
-        }
-    }
-    return matrix;
-}
-
 std::vector<std::vector<float>> calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
     dcl::scalar_t rvec[3];
     calibration->getRvec(rvec);
     const double rvecDouble[3] = {static_cast<double>(rvec[0]), static_cast<double>(rvec[1]), static_cast<double>(rvec[2])};
 
-    auto transform = matrix::rvecToRotationMatrix(rvecDouble);
-    for(auto& row : transform) {
-        row.push_back(0.0f);
-    }
-
     dcl::scalar_t tvec[3];
     calibration->getTvec(tvec);
-    for(int row = 0; row < 3; ++row) {
-        transform[row][3] = static_cast<float>(tvec[row]);
-    }
-    transform.push_back({0.0f, 0.0f, 0.0f, 1.0f});
-    return transform;
-}
-
-std::vector<std::vector<float>> invertSe3Transform(const std::vector<std::vector<float>>& transform) {
-    auto inverted = transform;
-
-    std::swap(inverted[0][1], inverted[1][0]);
-    std::swap(inverted[0][2], inverted[2][0]);
-    std::swap(inverted[1][2], inverted[2][1]);
-
-    float translated[3] = {0.0f, 0.0f, 0.0f};
-    for(int row = 0; row < 3; ++row) {
-        for(int col = 0; col < 3; ++col) {
-            translated[row] -= inverted[row][col] * transform[col][3];
-        }
-        inverted[row][3] = translated[row];
-    }
-
-    return inverted;
+    return matrix::createTransformationMatrix(
+        matrix::rvecToRotationMatrix(rvecDouble),
+        std::vector<float>{static_cast<float>(tvec[0]), static_cast<float>(tvec[1]), static_cast<float>(tvec[2])});
 }
 
 std::vector<CameraBoardSocket> buildSocketConnection(const EepromData& eepromData) {
@@ -146,8 +93,9 @@ std::vector<std::vector<float>> computeBaseToSocketTransform(const CalibrationHa
         return currentCalibration.getCameraExtrinsics(*cameraBase, boardSocket, false, LengthUnit::METER);
     }
 
-    const auto socketToHousingTransform = currentCalibration.getHousingCalibration(boardSocket, HousingCoordinateSystem::AUTO, false, LengthUnit::METER);
-    return invertSe3Transform(socketToHousingTransform);
+    auto socketToHousingTransform = currentCalibration.getHousingCalibration(boardSocket, HousingCoordinateSystem::AUTO, false, LengthUnit::METER);
+    matrix::invertSe3Matrix4x4InPlace(socketToHousingTransform);
+    return socketToHousingTransform;
 }
 }  // namespace
 
@@ -222,15 +170,15 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::convertDaiCalibrationToD
 
     return DclUtils::createDclCalibration(matrix::vectorMatrixToMatrix3x3(intrinsicsOverride),
                                           distortionOverride,
-                                          extractRotationMatrix(baseToSocketTransform),
-                                          extractTranslationVector(baseToSocketTransform),
+                                          matrix::extractRotationMatrix(baseToSocketTransform),
+                                          matrix::extractTranslationVector(baseToSocketTransform),
                                           distortionModelOverride);
 }
 
 void DclUtils::setHousingToDai(CalibrationHandler& calibHandler, const std::vector<std::vector<float>>& transformHousingToHousingOrigin) {
-    auto translationHousingToHousingOrigin = extractTranslationVector(transformHousingToHousingOrigin);
+    auto translationHousingToHousingOrigin = matrix::extractTranslationVector(transformHousingToHousingOrigin);
     calibHandler.setHousingToHousingOriginExtrinsics(
-        extractRotationMatrix(transformHousingToHousingOrigin), translationHousingToHousingOrigin, LengthUnit::METER);
+        matrix::extractRotationMatrix(transformHousingToHousingOrigin), translationHousingToHousingOrigin, LengthUnit::METER);
 }
 
 dcl::PerformanceMode DclUtils::daiPerformanceModeToDclPerformanceMode(const dai::DynamicCalibrationControl::PerformanceMode mode) {
@@ -458,14 +406,15 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     }
 
     for(size_t idx = 0; idx + 1 < socketsInHandler.size(); ++idx) {
-        auto transformCurrentToBase = invertSe3Transform(candidateSocketToSensorExtrinsics[idx]);
+        auto transformCurrentToBase = candidateSocketToSensorExtrinsics[idx];
+        matrix::invertSe3Matrix4x4InPlace(transformCurrentToBase);
         const auto transformCurrentToNext = matrix::matMul(candidateSocketToSensorExtrinsics[idx + 1], transformCurrentToBase);
-        auto translationCurrentToNext = extractTranslationVector(transformCurrentToNext);
+        auto translationCurrentToNext = matrix::extractTranslationVector(transformCurrentToNext);
         for(auto& val : translationCurrentToNext) {
             val *= 100.0f;
         }
         newCalibrationHandler.overwriteCameraExtrinsics(
-            socketsInHandler[idx], socketsInHandler[idx + 1], extractRotationMatrix(transformCurrentToNext), translationCurrentToNext);
+            socketsInHandler[idx], socketsInHandler[idx + 1], matrix::extractRotationMatrix(transformCurrentToNext), translationCurrentToNext);
     }
 
     CalibrationQuality::Data qualityData{};
@@ -627,7 +576,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
         auto resolution = std::make_pair(static_cast<int>(frame->getWidth()), static_cast<int>(frame->getHeight()));
 
-        const auto frameIntrinsics = intrinsicArrayToMatrix(frame->getTransformation().getIntrinsicMatrix());
+        const auto frameIntrinsics = matrix::matrix3x3ToVectorMatrix(frame->getTransformation().getIntrinsicMatrix());
         const auto frameDistortion = frame->getTransformation().getDistortionCoefficients();
         const auto frameDistortionModel = frame->getTransformation().getDistortionModel();
 

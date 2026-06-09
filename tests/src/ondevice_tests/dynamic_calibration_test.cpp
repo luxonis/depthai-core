@@ -162,43 +162,16 @@ static dai::CalibrationHandler getHandler(bool toHousing = false) {
     auto camRight = dai::CameraBoardSocket::CAM_B;
     auto camBase = dai::CameraBoardSocket::CAM_A;
 
-    auto multiplyMatVec = [](const std::vector<std::vector<float>>& mat, const std::vector<float>& vec) -> std::vector<float> {
-        std::vector<float> result(mat.size(), 0.0f);
-
-        for(size_t i = 0; i < mat.size(); ++i) {
-            for(size_t col = 0; col < mat[i].size(); ++col) {
-                result[i] += mat[i][col] * vec[col];
-            }
-        }
-
-        return result;
-    };
-
-    auto invertSe3 = [](const std::vector<std::vector<float>>& rotation, const std::vector<float>& translation) {
-        std::vector<std::vector<float>> invertedRotation = {
-            {rotation[0][0], rotation[1][0], rotation[2][0]},
-            {rotation[0][1], rotation[1][1], rotation[2][1]},
-            {rotation[0][2], rotation[1][2], rotation[2][2]},
-        };
-        std::vector<float> invertedTranslation(3, 0.0f);
-        for(int row = 0; row < 3; ++row) {
-            for(int col = 0; col < 3; ++col) {
-                invertedTranslation[row] -= invertedRotation[row][col] * translation[col];
-            }
-        }
-        return std::make_pair(invertedRotation, invertedTranslation);
-    };
-
     const double rvecLeftToRight[3] = {0.01, 0.01, 0.01};
     std::vector<std::vector<float>> rotationLeftToRight = dai::matrix::rvecToRotationMatrix(rvecLeftToRight);
     std::vector<float> cvecLeftToRight = {-7.5, 0.0, 0.0};
-    auto tvecLeftToRight = multiplyMatVec(rotationLeftToRight, cvecLeftToRight);
+    auto tvecLeftToRight = dai::matrix::matVecMul(rotationLeftToRight, cvecLeftToRight);
 
     const double rvecRightToBase[3] = {0.0, 0.0, 0.1};
     std::vector<std::vector<float>> rotationRightToBase = dai::matrix::rvecToRotationMatrix(rvecRightToBase);
     std::vector<float> cvecRightToBase = {4.5f, 0.0f, 0.0f};
-    auto tvecRightToBase = multiplyMatVec(rotationRightToBase, cvecRightToBase);
-    auto [rotationBaseToRight, tvecBaseToRight] = invertSe3(rotationRightToBase, tvecRightToBase);
+    auto tvecRightToBase = dai::matrix::matVecMul(rotationRightToBase, cvecRightToBase);
+    auto [rotationBaseToRight, tvecBaseToRight] = dai::matrix::invertSe3(rotationRightToBase, tvecRightToBase);
 
     std::vector<std::vector<float>> intrinsics = {{564.0, 0.0, 640.0}, {0.0, 564.0, 400.0}, {0.0, 0.0, 1.0}};
     std::vector<float> distortion = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
