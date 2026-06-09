@@ -5,9 +5,8 @@
 #endif
 #include <algorithm>
 #include <optional>
-#include <vector>
-
 #include <pipeline/ThreadedNodeImpl.hpp>
+#include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
@@ -30,9 +29,8 @@ std::vector<std::vector<float>> calibrationHandleToTransform(const std::shared_p
 
     dcl::scalar_t tvec[3];
     calibration->getTvec(tvec);
-    return matrix::createTransformationMatrix(
-        matrix::rvecToRotationMatrix(rvecDouble),
-        std::vector<float>{static_cast<float>(tvec[0]), static_cast<float>(tvec[1]), static_cast<float>(tvec[2])});
+    return matrix::createTransformationMatrix(matrix::rvecToRotationMatrix(rvecDouble),
+                                              std::vector<float>{static_cast<float>(tvec[0]), static_cast<float>(tvec[1]), static_cast<float>(tvec[2])});
 }
 
 std::vector<CameraBoardSocket> buildSocketConnection(const EepromData& eepromData) {
@@ -304,8 +302,8 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash)
     }
 
     for(const auto& sensor : connectedSensors) {
-        auto calibration = DclUtils::convertDaiCalibrationToDcl(
-            handler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel);
+        auto calibration =
+            DclUtils::convertDaiCalibrationToDcl(handler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel);
         pimplDCL->dynCalibImpl.setCalibration(sensor.sensorDcl, calibration);
     }
 }
@@ -321,8 +319,8 @@ void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
     std::vector<std::shared_ptr<const dcl::CameraCalibrationHandle>> calibrations;
     calibrations.reserve(connectedSensors.size());
     for(const auto& sensor : connectedSensors) {
-        calibrations.push_back(DclUtils::convertDaiCalibrationToDcl(
-            handler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel));
+        calibrations.push_back(
+            DclUtils::convertDaiCalibrationToDcl(handler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel));
     }
 
     auto dataConfidence = pimplDCL->dynCalibImpl.computeDataConfidence(sensors);
@@ -406,7 +404,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         for(auto& val : translationCurrentToNext) {
             val *= 100.0f;
         }
-        newCalibrationHandler.overwriteCameraExtrinsics(
+        newCalibrationHandler.updateCameraExtrinsics(
             socketsInHandler[idx], socketsInHandler[idx + 1], matrix::extractRotationMatrix(transformCurrentToNext), translationCurrentToNext);
     }
 
@@ -593,7 +591,6 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
                                     static_cast<size_t>(std::distance(socketsInHandler.begin(), socketIt)),
                                     resolution,
                                     nullptr});
-
     }
 
     logger->trace("Converting dai calibration to dcl");
