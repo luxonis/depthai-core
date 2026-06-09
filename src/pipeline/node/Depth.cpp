@@ -45,7 +45,7 @@ constexpr float NEURAL_TENSOR_COVER_SCALE = 1.4142135f;
  * for ``STEREO``, or ``std::monostate`` for backends with no selectable profile), the maximum
  * input resolution, and the maximum sustained FPS.
  *
- * For ``NEURAL`` rows ``maxWidth/maxHeight`` is the model's native tensor size: the resolution
+ * For ``NEURAL`` rows ``maxSize`` is the model's native tensor size: the resolution
  * check uses a tensor-cover band (resize without aggressive up/down-scaling) rather than a plain
  * cap. Every other algorithm uses a simple ``user <= max`` cap.
  *
@@ -55,33 +55,44 @@ constexpr float NEURAL_TENSOR_COVER_SCALE = 1.4142135f;
 struct BackendProfile {
     Depth::Algorithm algorithm;
     Depth::Config config;
-    uint32_t maxWidth;
-    uint32_t maxHeight;
+    std::pair<uint32_t, uint32_t> maxSize;
     float maxFps;
 };
 
-inline const std::array<BackendProfile, 17> BACKEND_PROFILES = {{
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780, 1.6f},
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_1056X660, 1056, 660, 3.0f},
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_960X600, 960, 600, 5.0f},
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_864X540, 864, 540, 8.0f},
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480, 10.f},
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_576X360, 576, 360, 24.f},
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300, 40.f},
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_384X240, 384, 240, 55.f},
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180, 55.f},
-    {Depth::Algorithm::NEURAL, DeviceModelZoo::NEURAL_DEPTH_192X120, 192, 120, 55.f},
+constexpr BackendProfile neural(DeviceModelZoo model, uint32_t width, uint32_t height, float maxFps) {
+    return {Depth::Algorithm::NEURAL, model, {width, height}, maxFps};
+}
 
-    {Depth::Algorithm::NEURAL_ASSISTED_STEREO, std::monostate{}, 1280, 800, 55.f},
+constexpr BackendProfile stereo(StereoDepth::PresetMode preset, float maxFps) {
+    return {Depth::Algorithm::STEREO, preset, {1280, 1280}, maxFps};
+}
 
-    {Depth::Algorithm::STEREO, StereoDepth::PresetMode::DEFAULT, 1280, 1280, 30.f},
-    {Depth::Algorithm::STEREO, StereoDepth::PresetMode::FAST_DENSITY, 1280, 1280, 60.f},
-    {Depth::Algorithm::STEREO, StereoDepth::PresetMode::FAST_ACCURACY, 1280, 1280, 60.f},
+constexpr BackendProfile noConfig(Depth::Algorithm algorithm, uint32_t width, uint32_t height, float maxFps) {
+    return {algorithm, std::monostate{}, {width, height}, maxFps};
+}
 
-    {Depth::Algorithm::GPU_STEREO, std::monostate{}, 2592, 1944, 5.f},
-    {Depth::Algorithm::GPU_STEREO, std::monostate{}, 1280, 800, 30.f},
-    {Depth::Algorithm::GPU_STEREO, std::monostate{}, 640, 400, 55.f},
-}};
+inline constexpr std::array BACKEND_PROFILES = {
+    neural(DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780, 1.6f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_1056X660, 1056, 660, 3.0f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_960X600, 960, 600, 5.0f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_864X540, 864, 540, 8.0f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480, 10.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_576X360, 576, 360, 24.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300, 40.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_384X240, 384, 240, 55.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180, 55.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_192X120, 192, 120, 55.f),
+
+    noConfig(Depth::Algorithm::NEURAL_ASSISTED_STEREO, 1280, 800, 55.f),
+
+    stereo(StereoDepth::PresetMode::DEFAULT, 30.f),
+    stereo(StereoDepth::PresetMode::FAST_DENSITY, 60.f),
+    stereo(StereoDepth::PresetMode::FAST_ACCURACY, 60.f),
+
+    noConfig(Depth::Algorithm::GPU_STEREO, 2592, 1944, 5.f),
+    noConfig(Depth::Algorithm::GPU_STEREO, 1280, 800, 30.f),
+    noConfig(Depth::Algorithm::GPU_STEREO, 640, 400, 55.f),
+};
 
 bool isModelOnDevice(DeviceModelZoo model, const std::vector<DeviceModelZoo>& supportedModels) {
     if(supportedModels.empty()) {
@@ -161,14 +172,15 @@ StereoDepth::PresetMode stereoPresetFromConfig(const Depth::Config& config) {
  * model's native size; everything else is a simple ``user <= max`` cap.
  */
 bool resolutionFits(const BackendProfile& profile, std::pair<uint32_t, uint32_t> resolution) {
+    const auto [maxWidth, maxHeight] = profile.maxSize;
     if(profile.algorithm == Depth::Algorithm::NEURAL) {
-        const uint32_t minW = static_cast<uint32_t>(static_cast<float>(profile.maxWidth) / NEURAL_TENSOR_COVER_SCALE);
-        const uint32_t maxW = static_cast<uint32_t>(static_cast<float>(profile.maxWidth) * NEURAL_TENSOR_COVER_SCALE);
-        const uint32_t minH = static_cast<uint32_t>(static_cast<float>(profile.maxHeight) / NEURAL_TENSOR_COVER_SCALE);
-        const uint32_t maxH = static_cast<uint32_t>(static_cast<float>(profile.maxHeight) * NEURAL_TENSOR_COVER_SCALE);
+        const uint32_t minW = static_cast<uint32_t>(static_cast<float>(maxWidth) / NEURAL_TENSOR_COVER_SCALE);
+        const uint32_t maxW = static_cast<uint32_t>(static_cast<float>(maxWidth) * NEURAL_TENSOR_COVER_SCALE);
+        const uint32_t minH = static_cast<uint32_t>(static_cast<float>(maxHeight) / NEURAL_TENSOR_COVER_SCALE);
+        const uint32_t maxH = static_cast<uint32_t>(static_cast<float>(maxHeight) * NEURAL_TENSOR_COVER_SCALE);
         return resolution.first >= minW && resolution.first <= maxW && resolution.second >= minH && resolution.second <= maxH;
     }
-    return resolution.first <= profile.maxWidth && resolution.second <= profile.maxHeight;
+    return resolution.first <= maxWidth && resolution.second <= maxHeight;
 }
 
 bool profileModelSupported(const BackendProfile& profile, const std::vector<DeviceModelZoo>& supportedModels) {
@@ -266,8 +278,8 @@ std::pair<uint32_t, uint32_t> maxResolutionForAlgorithm(Depth::Algorithm algorit
     std::pair<uint32_t, uint32_t> maxResolution{0, 0};
     for(const auto& profile : BACKEND_PROFILES) {
         if(profile.algorithm != algorithm) continue;
-        maxResolution.first = std::max(maxResolution.first, profile.maxWidth);
-        maxResolution.second = std::max(maxResolution.second, profile.maxHeight);
+        maxResolution.first = std::max(maxResolution.first, profile.maxSize.first);
+        maxResolution.second = std::max(maxResolution.second, profile.maxSize.second);
     }
     return maxResolution;
 }
