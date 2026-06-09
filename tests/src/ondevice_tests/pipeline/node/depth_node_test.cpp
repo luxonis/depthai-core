@@ -30,8 +30,8 @@ struct DepthTestAccess {
     static std::pair<Depth::Algorithm, Depth::Config> selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                                                     float targetFps,
                                                                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
-                                                                    const std::vector<DeviceModelZoo>& supportedModels = {}) {
-        const auto selection = Depth::selectBackend(resolution, targetFps, supportedAlgorithms, supportedModels);
+                                                                    const std::vector<DeviceModelZoo>& modelFilter = {}) {
+        const auto selection = Depth::selectBackend(resolution, targetFps, supportedAlgorithms, modelFilter);
         return {selection.algorithm, selection.config};
     }
 

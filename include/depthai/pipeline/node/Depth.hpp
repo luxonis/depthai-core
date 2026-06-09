@@ -217,7 +217,7 @@ class Depth : public DeviceNodeGroup {
     static Selection selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                     float targetFps,
                                     const std::vector<Algorithm>& supportedAlgorithms,
-                                    const std::vector<DeviceModelZoo>& supportedModels = {},
+                                    const std::vector<DeviceModelZoo>& modelFilter = {},
                                     bool requireFpsAndResolutionMatch = false);
 
     /** Resolve algorithm + config, then wire stereo inputs from pipeline cameras / build() overrides. */

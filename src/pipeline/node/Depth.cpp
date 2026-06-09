@@ -94,15 +94,21 @@ inline constexpr std::array BACKEND_PROFILES = {
     noConfig(Depth::Algorithm::GPU_STEREO, 640, 400, 55.f),
 };
 
-bool isModelOnDevice(DeviceModelZoo model, const std::vector<DeviceModelZoo>& supportedModels) {
-    if(supportedModels.empty()) {
-        return true;
-    }
+bool modelPassesOptionalFilter(DeviceModelZoo model, const std::vector<DeviceModelZoo>& modelFilter) {
+    return modelFilter.empty() || std::find(modelFilter.begin(), modelFilter.end(), model) != modelFilter.end();
+}
+
+bool isModelSupportedByDevice(DeviceModelZoo model, const std::vector<DeviceModelZoo>& supportedModels) {
     return std::find(supportedModels.begin(), supportedModels.end(), model) != supportedModels.end();
 }
 
 bool supportsAlgorithm(const std::vector<Depth::Algorithm>& supported, Depth::Algorithm algorithm) {
     return std::find(supported.begin(), supported.end(), algorithm) != supported.end();
+}
+
+std::vector<Depth::Algorithm> withoutAlgorithm(std::vector<Depth::Algorithm> algorithms, Depth::Algorithm algorithm) {
+    algorithms.erase(std::remove(algorithms.begin(), algorithms.end(), algorithm), algorithms.end());
+    return algorithms;
 }
 
 const char* algorithmName(Depth::Algorithm algorithm) {
@@ -137,7 +143,7 @@ void validateExplicitConfig(Depth::Algorithm algorithm,
         case Depth::Algorithm::NEURAL: {
             const auto* model = std::get_if<DeviceModelZoo>(&config);
             DAI_CHECK_V(model != nullptr, "Depth config for NEURAL must be a DeviceModelZoo model.");
-            DAI_CHECK_V(isModelOnDevice(*model, supportedModels), "Depth selected NeuralDepth model is not available on this device.");
+            DAI_CHECK_V(isModelSupportedByDevice(*model, supportedModels), "Depth selected NeuralDepth model is not available on this device.");
             break;
         }
         case Depth::Algorithm::STEREO:
@@ -183,9 +189,9 @@ bool resolutionFits(const BackendProfile& profile, std::pair<uint32_t, uint32_t>
     return resolution.first <= maxWidth && resolution.second <= maxHeight;
 }
 
-bool profileModelSupported(const BackendProfile& profile, const std::vector<DeviceModelZoo>& supportedModels) {
+bool profilePassesModelFilter(const BackendProfile& profile, const std::vector<DeviceModelZoo>& modelFilter) {
     if(const auto* model = std::get_if<DeviceModelZoo>(&profile.config)) {
-        return isModelOnDevice(*model, supportedModels);
+        return modelPassesOptionalFilter(*model, modelFilter);
     }
     return true;
 }
@@ -203,7 +209,7 @@ std::optional<BackendProfile> findBackendProfile(Predicate&& predicate) {
 /** True when @p profile would accept this (algorithm, model, fps, resolution) request. */
 bool profileMatches(const BackendProfile& profile,
                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
-                    const std::vector<DeviceModelZoo>& supportedModels,
+                    const std::vector<DeviceModelZoo>& modelFilter,
                     float requiredFps,
                     std::optional<std::pair<uint32_t, uint32_t>> resolution) {
     if(!supportsAlgorithm(supportedAlgorithms, profile.algorithm)) {
@@ -212,7 +218,7 @@ bool profileMatches(const BackendProfile& profile,
     if(profile.maxFps < requiredFps) {
         return false;
     }
-    if(!profileModelSupported(profile, supportedModels)) {
+    if(!profilePassesModelFilter(profile, modelFilter)) {
         return false;
     }
     if(resolution.has_value() && !resolutionFits(profile, *resolution)) {
@@ -229,11 +235,11 @@ bool profileMatches(const BackendProfile& profile,
  */
 std::optional<BackendProfile> pickHighestFpsForResolution(std::pair<uint32_t, uint32_t> resolution,
                                                           const std::vector<Depth::Algorithm>& supportedAlgorithms,
-                                                          const std::vector<DeviceModelZoo>& supportedModels) {
+                                                          const std::vector<DeviceModelZoo>& modelFilter) {
     std::optional<BackendProfile> best;
     for(const auto& profile : BACKEND_PROFILES) {
         if(!supportsAlgorithm(supportedAlgorithms, profile.algorithm)) continue;
-        if(!profileModelSupported(profile, supportedModels)) continue;
+        if(!profilePassesModelFilter(profile, modelFilter)) continue;
         if(!resolutionFits(profile, resolution)) continue;
         if(!best || profile.maxFps > best->maxFps) {
             best = profile;
@@ -245,9 +251,9 @@ std::optional<BackendProfile> pickHighestFpsForResolution(std::pair<uint32_t, ui
 /** NeuralDepth model lookup for the explicit-algorithm path (skips non-NEURAL rows). */
 std::optional<DeviceModelZoo> pickNeuralModel(float requiredFps,
                                                std::optional<std::pair<uint32_t, uint32_t>> resolution,
-                                               const std::vector<DeviceModelZoo>& supportedModels) {
+                                               const std::vector<DeviceModelZoo>& modelFilter) {
     const auto picked = findBackendProfile([&](const BackendProfile& profile) {
-        return profile.algorithm == Depth::Algorithm::NEURAL && profile.maxFps >= requiredFps && profileModelSupported(profile, supportedModels)
+        return profile.algorithm == Depth::Algorithm::NEURAL && profile.maxFps >= requiredFps && profilePassesModelFilter(profile, modelFilter)
                && (!resolution.has_value() || resolutionFits(profile, *resolution));
     });
     if(picked) {
@@ -461,14 +467,14 @@ bool Depth::exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height) {
 Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                        float targetFps,
                                        const std::vector<Algorithm>& supportedAlgorithms,
-                                       const std::vector<DeviceModelZoo>& supportedModels,
+                                       const std::vector<DeviceModelZoo>& modelFilter,
                                        bool requireFpsAndResolutionMatch) {
     targetFps = targetFpsWithDefault(targetFps);
     const float requiredFps = targetFps * SELECTION_FPS_SAFETY_MARGIN;
 
     // 1. Priority scan honoring the requested FPS and (optional) resolution.
     if(const auto picked = findBackendProfile([&](const BackendProfile& profile) {
-           return profileMatches(profile, supportedAlgorithms, supportedModels, requiredFps, resolution);
+           return profileMatches(profile, supportedAlgorithms, modelFilter, requiredFps, resolution);
        })) {
         return {picked->algorithm, picked->config};
     }
@@ -484,7 +490,7 @@ Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t
     // 2. No backend can serve the resolution at the requested FPS: pick the algorithm whose
     //    catalog row covers the resolution with the highest available maxFps.
     if(resolution.has_value()) {
-        if(const auto picked = pickHighestFpsForResolution(*resolution, supportedAlgorithms, supportedModels)) {
+        if(const auto picked = pickHighestFpsForResolution(*resolution, supportedAlgorithms, modelFilter)) {
             return {picked->algorithm, picked->config};
         }
     }
@@ -499,11 +505,15 @@ Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t
 }
 
 void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline) {
-    const auto supported = getSupportedAlgorithms(device);
+    const auto deviceSupported = getSupportedAlgorithms(device);
+    const auto supportedModels = device->getSupportedDeviceModels();
+    const auto supported = supportedModels.empty() ? withoutAlgorithm(deviceSupported, Algorithm::NEURAL) : deviceSupported;
 
     if(configOverride_) {
-        const auto supportedModels = algorithmOverride_ == Algorithm::NEURAL ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
-        validateExplicitConfig(algorithmOverride_, *configOverride_, supported, supportedModels);
+        validateExplicitConfig(algorithmOverride_,
+                               *configOverride_,
+                               deviceSupported,
+                               algorithmOverride_ == Algorithm::NEURAL ? supportedModels : std::vector<DeviceModelZoo>{});
         resolved_ = {algorithmOverride_, *configOverride_};
         return;
     }
@@ -550,8 +560,6 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     if(!resolution) {
         resolution = stereoSizeFromDeviceFeatures(device, pair);
     }
-
-    const auto supportedModels = device->getSupportedDeviceModels();
 
     if(algorithmOverride_ == Algorithm::AUTO) {
         // Only enforce an exact FPS+resolution match when the user pinned both via build().
