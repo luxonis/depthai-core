@@ -870,6 +870,7 @@ void Telemetry::emitDepthaiTelemetryLoadEvent() {
                                        {"host_os_version", getTelemetryHostOSVersion()},
                                        {"is_oak_app", !readEnv("OAKAGENT_PRIVATE_HTTP_PWD").empty()},
                                        {"uses_python", telemetryUsesPython.load()},
+                                       {"uses_ros", true},
                                    });
 }
 
