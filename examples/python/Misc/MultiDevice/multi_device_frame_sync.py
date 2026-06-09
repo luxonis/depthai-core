@@ -2,11 +2,12 @@
 
 import contextlib
 import datetime
+import json
 
 import cv2
 import depthai as dai
+import numpy as np
 import time
-import math
 
 import argparse
 import signal
@@ -17,6 +18,9 @@ from enum import Enum
 
 manualExposureUs = None
 manualIso = None
+STEADY_STATE_THRESHOLD_US = 500.0
+STEADY_STATE_HOLD_SEC = 10.0
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -38,6 +42,69 @@ class FPSCounter:
 class SyncType(Enum):
     EXTERNAL = 0
     PTP = 1
+
+def summarize_delta_statistics(delta_samples, stats_skip_sec):
+    steady_state_start_sec = None
+    steady_state_confirmed_at_sec = None
+    time_to_steady_state_sec = None
+    run_start_sec = None
+    for elapsed_sec, delta_us in delta_samples:
+        if delta_us < STEADY_STATE_THRESHOLD_US:
+            if run_start_sec is None:
+                run_start_sec = elapsed_sec
+            if elapsed_sec - run_start_sec >= STEADY_STATE_HOLD_SEC:
+                steady_state_start_sec = run_start_sec
+                steady_state_confirmed_at_sec = elapsed_sec
+                time_to_steady_state_sec = elapsed_sec
+                break
+        else:
+            run_start_sec = None
+
+    post_skip_samples = [(elapsed_sec, delta_us) for elapsed_sec, delta_us in delta_samples if elapsed_sec >= stats_skip_sec]
+    used_delta_us = [delta_us for _, delta_us in post_skip_samples if delta_us < STEADY_STATE_THRESHOLD_US]
+
+    avg_us = None
+    stddev_us = None
+    p99_us = None
+    if used_delta_us:
+        used_delta_array = np.asarray(used_delta_us, dtype=np.float64)
+        avg_us = float(np.mean(used_delta_array))
+        stddev_us = float(np.std(used_delta_array))
+        p99_us = float(np.percentile(used_delta_array, 99))
+
+    return {
+        "steady_state_threshold_us": STEADY_STATE_THRESHOLD_US,
+        "steady_state_hold_sec": STEADY_STATE_HOLD_SEC,
+        "time_to_steady_state_sec": time_to_steady_state_sec,
+        "steady_state_start_sec": steady_state_start_sec,
+        "steady_state_confirmed_at_sec": steady_state_confirmed_at_sec,
+        "stats_skip_sec": stats_skip_sec,
+        "post_skip_total_frames": len(post_skip_samples),
+        "used_frame_count": len(used_delta_us),
+        "p99_us": p99_us,
+        "avg_us": avg_us,
+        "stddev_us": stddev_us,
+    }
+
+def print_delta_statistics(summary, stats_file_path):
+    def format_sec(value):
+        return "not reached" if value is None else f"{value:.3f} s"
+
+    def format_us(value):
+        return "n/a" if value is None else f"{value:.3f} us"
+
+    print("Timestamp delta statistics")
+    print(f"  Stats file: {stats_file_path}")
+    print(f"  Selected FPS: {summary['selected_fps']:.3f}")
+    print(
+        "  Time to reach steady state: "
+        f"{format_sec(summary['time_to_steady_state_sec'])} "
+        f"(continuous {summary['steady_state_hold_sec']:.1f} s below {summary['steady_state_threshold_us']:.0f} us)"
+    )
+    print(f"  Delta p99 (< {summary['steady_state_threshold_us']:.0f} us after {summary['stats_skip_sec']:.1f} s): {format_us(summary['p99_us'])}")
+    print(f"  Avg (< {summary['steady_state_threshold_us']:.0f} us after {summary['stats_skip_sec']:.1f} s): {format_us(summary['avg_us'])}")
+    print(f"  Std dev (< {summary['steady_state_threshold_us']:.0f} us after {summary['stats_skip_sec']:.1f} s): {format_us(summary['stddev_us'])}")
+    print(f"  N frames used: {summary['used_frame_count']}")
 
 # ---------------------------------------------------------------------------
 # Create camera outputs
@@ -224,6 +291,9 @@ parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs o
 parser.add_argument("-t1", "--recv-all-timeout-sec", type=float, default=10, help="Timeout for receiving the first frame from all devices", required=False)
 parser.add_argument("-t2", "--sync-threshold-sec", type=float, default=1e-3, help="Sync threshold in seconds", required=False)
 parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, help="Timeout for synchronization to complete", required=False)
+parser.add_argument("--test-duration-sec", type=float, default=120, help="Total test duration in seconds", required=False)
+parser.add_argument("--stats-skip-sec", type=float, default=30, help="Ignore frames before this time for summary statistics", required=False)
+parser.add_argument("--stats-file", type=str, default=None, help="Optional path to save the timestamp delta statistics JSON", required=False)
 parser.add_argument("--exposure-us", type=int, default=None, help="Optional manual exposure in microseconds", required=False)
 parser.add_argument("--iso", type=int, default=None, help="Optional manual ISO value", required=False)
 group = parser.add_mutually_exclusive_group(required=True)
@@ -247,6 +317,8 @@ recvAllTimeoutSec = args.recv_all_timeout_sec
 
 syncThresholdSec = args.sync_threshold_sec
 initialSyncTimeoutSec = args.initial_sync_timeout_sec
+testDurationSec = args.test_duration_sec
+statsSkipSec = args.stats_skip_sec
 manualExposureUs = args.exposure_us
 manualIso = args.iso
 if args.external_sync:
@@ -299,12 +371,18 @@ with contextlib.ExitStack() as stack:
     fpsCounter = FPSCounter()
 
     latestFrameGroup = None
+    latestFrameMetrics = None
+    latestFrameGroupDirty = False
     firstReceived = False
-    startTime = datetime.datetime.now()
-    prevReceived = datetime.datetime.now()
+    startWallTime = datetime.datetime.now()
+    startMonotonic = time.monotonic()
+    prevReceived = startMonotonic
 
     initialSyncTime = None
     waitingForSync = True
+    deltaSamples = []
+    actualDurationSec = 0.0
+    statsFilePath = args.stats_file or f"multi_device_frame_sync_stats_{startWallTime.strftime('%Y%m%d_%H%M%S')}.json"
 
     def data_collector(deviceName, socketName):
         # Send frames from slave output queues to sync node input queues
@@ -323,19 +401,38 @@ with contextlib.ExitStack() as stack:
             threads[f"slave_{deviceName}_{socketName}"].start()
 
     while running:
+        nowMonotonic = time.monotonic()
+        actualDurationSec = nowMonotonic - startMonotonic
+
         # Get frames from sync node output queue
         while queue.has():
             latestFrameGroup = queue.get()
+            latestFrameGroupDirty = True
+            nowMonotonic = time.monotonic()
+            actualDurationSec = nowMonotonic - startMonotonic
             if not firstReceived:
                 firstReceived = True
-                initialSyncTime = datetime.datetime.now()
-            prevReceived = datetime.datetime.now()
+                initialSyncTime = nowMonotonic
+            prevReceived = nowMonotonic
             fpsCounter.tick()
+            if latestFrameGroup.getNumMessages() == len(outputNames):
+                tsValues = {}
+                for name in outputNames:
+                    tsValues[name] = latestFrameGroup[name].getTimestampDevice(dai.CameraExposureOffset.END).total_seconds()
+
+                delta = max(tsValues.values()) - min(tsValues.values())
+                syncStatus = abs(delta) < syncThresholdSec
+                deltaSamples.append((actualDurationSec, delta * 1e6))
+                latestFrameMetrics = {
+                    "tsValues": tsValues,
+                    "delta": delta,
+                    "syncStatus": syncStatus,
+                    "fps": fpsCounter.getFps(),
+                }
         
         # Timeout if we dont receive any frames at the beginning
         if not firstReceived:
-            endTime = datetime.datetime.now()
-            elapsedSec = (endTime - startTime).total_seconds()
+            elapsedSec = actualDurationSec
             if elapsedSec >= recvAllTimeoutSec:
                 print(f"Timeout: Didn't receive all frames in time: {elapsedSec:.2f} sec")
                 running = False
@@ -344,27 +441,21 @@ with contextlib.ExitStack() as stack:
         # Synchronise: we need at least one frame from every camera and their
         # timestamps must align within syncThresholdSec.
         # -------------------------------------------------------------------
-        if latestFrameGroup is not None and latestFrameGroup.getNumMessages() == len(outputNames):
-            tsValues = {}
-            for name in outputNames:
-                tsValues[name] = latestFrameGroup[name].getTimestampDevice(dai.CameraExposureOffset.END).total_seconds()
-            
+        if latestFrameGroupDirty and latestFrameGroup is not None and latestFrameGroup.getNumMessages() == len(outputNames) and latestFrameMetrics is not None:
+            tsValues = latestFrameMetrics["tsValues"]
+
             # Build individual image arrays for each camera socket, displayed side-by-side
             imgs = []
             for name in camSockets:
                 imgs.append([])
-            fps = fpsCounter.getFps()
-
-            # calculate the greatest time difference between all frames
-            delta = max(tsValues.values()) - min(tsValues.values())
-
-            syncStatus = abs(delta) < syncThresholdSec
+            fps = latestFrameMetrics["fps"]
+            delta = latestFrameMetrics["delta"]
+            syncStatus = latestFrameMetrics["syncStatus"]
             syncStatusStr = "in sync" if syncStatus else "out of sync"
 
             # Timeout if frames don't get synced in time
             if not syncStatus and waitingForSync:
-                endTime = datetime.datetime.now()
-                elapsedSec = (endTime - initialSyncTime).total_seconds()
+                elapsedSec = nowMonotonic - initialSyncTime
                 if elapsedSec >= initialSyncTimeoutSec:
                     print("Timeout: Didn't sync frames in time")
                     running = False
@@ -375,6 +466,8 @@ with contextlib.ExitStack() as stack:
 
             if not syncStatus and not waitingForSync:
                 print(f"Sync error: Sync lost, threshold exceeded {delta * 1e6} us")
+                latestFrameGroupDirty = False
+                latestFrameGroup = None
                 continue
 
             color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
@@ -436,9 +529,15 @@ with contextlib.ExitStack() as stack:
             for i, img in enumerate(imgs):
                 cv2.imshow(f"synced_view_{camSockets[i]}", cv2.hconcat(imgs[i]))
 
+            latestFrameGroupDirty = False
             latestFrameGroup = None  # Wait for next batch
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
+            running = False
+            break
+
+        if actualDurationSec >= testDurationSec:
+            print(f"Test duration reached: {actualDurationSec:.2f} sec")
             running = False
             break
 
@@ -446,3 +545,22 @@ with contextlib.ExitStack() as stack:
         threads[t].join()
 
 cv2.destroyAllWindows()
+
+summary = summarize_delta_statistics(deltaSamples, statsSkipSec)
+summary.update(
+    {
+        "run_started_at": startWallTime.isoformat(),
+        "sync_type": syncType.name,
+        "selected_fps": targetFps,
+        "target_fps": targetFps,
+        "sync_threshold_us": syncThresholdSec * 1e6,
+        "test_duration_sec": testDurationSec,
+        "actual_duration_sec": actualDurationSec,
+        "device_ids_or_ips": args.devices,
+    }
+)
+
+with open(statsFilePath, "w", encoding="utf-8") as statsFile:
+    json.dump(summary, statsFile, indent=2, sort_keys=True)
+
+print_delta_statistics(summary, statsFilePath)
