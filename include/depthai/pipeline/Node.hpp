@@ -479,6 +479,14 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         bool isConnected() const;
 
+        /**
+         * Get currently connected outputs.
+         * Returned by value so callers can safely relink while iterating.
+         */
+        std::vector<Output*> getConnectedOutputs() const {
+            return connectedOutputs;
+        }
+
         /** Default value for the blocking argument in the createInputQueue method */
         static constexpr bool INPUT_QUEUE_DEFAULT_BLOCKING = false;
 

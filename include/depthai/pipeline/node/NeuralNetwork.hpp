@@ -6,7 +6,9 @@
 #include "depthai/nn_archive/NNArchiveVersionedConfig.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
+#include "depthai/pipeline/node/SplitterNode.hpp"
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include "depthai/pipeline/node/host/Replay.hpp"
 #endif
@@ -23,6 +25,12 @@ namespace node {
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
 class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
+   private:
+    void buildStage1() override;
+
+   protected:
+    Subnode<SplitterNode> splitterNode{*this, "splitterNode"};
+
    public:
     constexpr static const char* NAME = "NeuralNetwork";
     using DeviceNodeCRTP::DeviceNodeCRTP;
