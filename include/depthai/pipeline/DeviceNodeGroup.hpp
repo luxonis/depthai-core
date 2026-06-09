@@ -8,10 +8,6 @@
 namespace dai {
 
 class DeviceNodeGroup : public DeviceNode {
-   protected:
-    /** No device yet; for subclasses that receive ``defaultDevice`` when added to a pipeline (see ``PipelineImpl::adoptSubtree``). */
-    DeviceNodeGroup() : DeviceNode(std::make_unique<DeviceNodeGroupProperties>(), false) {}
-
    public:
     const char* getName() const final {
         return "DeviceNodeGroup";

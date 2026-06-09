@@ -149,9 +149,6 @@ class Depth : public DeviceNodeGroup {
                                   std::optional<float> fps = std::nullopt,
                                   std::optional<std::pair<uint32_t, uint32_t>> stereoSize = std::nullopt);
 
-    /** Pin the NeuralDepth zoo model (skips RVC4 auto model picker). */
-    std::shared_ptr<Depth> build(DeviceModelZoo neuralModel);
-
     /** Requested algorithm selection (including ``AUTO``). */
     [[nodiscard]] Algorithm getRequestedAlgorithm() const {
         return algorithmOverride_;
@@ -254,8 +251,6 @@ class Depth : public DeviceNodeGroup {
     std::optional<std::pair<uint32_t, uint32_t>> stereoSizeOverride_{};
     /** Optional exact config supplied with a concrete algorithm; skips auto profile picking. */
     std::optional<Config> configOverride_{};
-    /** Optional pinned NeuralDepth model (skips the auto picker for ``NEURAL``). */
-    std::optional<DeviceModelZoo> neuralModelOverride_{};
 
     /** Resolved backend depth output (set in ``bindBackendOutputs``). */
     Node::Output* depthOut_{nullptr};

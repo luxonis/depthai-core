@@ -359,7 +359,7 @@ bool cameraFeaturesIncludeTof(const std::vector<dai::CameraFeatures>& features) 
 
 // --- Construction ---
 
-Depth::Depth(Algorithm algorithm) : DeviceNodeGroup(), algorithmOverride_(algorithm) {}
+Depth::Depth(Algorithm algorithm) : DeviceNodeGroup(nullptr), algorithmOverride_(algorithm) {}
 
 Depth::Depth() : Depth(Algorithm::AUTO) {}
 
@@ -399,7 +399,6 @@ std::shared_ptr<Depth> Depth::build(Algorithm algorithm,
     configOverride_ = std::move(config);
     stereoOutputFps_ = fps;
     stereoSizeOverride_ = stereoSize;
-    neuralModelOverride_.reset();
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
@@ -412,14 +411,6 @@ std::shared_ptr<Depth> Depth::setAlgorithm(Algorithm algorithm) {
 std::shared_ptr<Depth> Depth::setConfig(Config config) {
     requireNotBuilt("Depth::setConfig");
     configOverride_ = std::move(config);
-    neuralModelOverride_.reset();
-    return std::static_pointer_cast<Depth>(shared_from_this());
-}
-
-std::shared_ptr<Depth> Depth::build(DeviceModelZoo neuralModel) {
-    requireNotBuilt("Depth::build(neuralModel)");
-    neuralModelOverride_ = neuralModel;
-    configOverride_.reset();
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
@@ -539,9 +530,6 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
 
     if(algorithmOverride_ == Algorithm::AUTO) {
         resolved_ = selectBackend(resolution, targetFps, supported, supportedModels);
-        if(neuralModelOverride_ && resolved_.algorithm == Algorithm::NEURAL) {
-            resolved_.config = *neuralModelOverride_;
-        }
         return;
     }
 
@@ -562,9 +550,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
 
     switch(resolved_.algorithm) {
         case Algorithm::NEURAL:
-            if(neuralModelOverride_) {
-                resolved_.config = *neuralModelOverride_;
-            } else if(const auto model = pickNeuralModel(targetFps * SELECTION_FPS_SAFETY_MARGIN, resolution, supportedModels)) {
+            if(const auto model = pickNeuralModel(targetFps * SELECTION_FPS_SAFETY_MARGIN, resolution, supportedModels)) {
                 resolved_.config = *model;
             } else {
                 resolved_.config = DEFAULT_NEURAL_DEPTH_MODEL;

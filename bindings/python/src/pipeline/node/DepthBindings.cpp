@@ -108,10 +108,6 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
                     return self.build(value.cast<Depth::Algorithm>());
                 } catch(const py::cast_error&) {
                 }
-                try {
-                    return self.build(value.cast<DeviceModelZoo>());
-                } catch(const py::cast_error&) {
-                }
                 return self.build(value.cast<float>());
             },
             py::arg("fps") = py::none())
@@ -138,7 +134,6 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             py::arg("config") = py::none(),
             py::arg("fps") = py::none(),
             py::arg("stereo_size") = py::none())
-        .def("build", py::overload_cast<DeviceModelZoo>(&Depth::build), py::arg("neural_model"))
         .def_property_readonly("depth", [](Depth& d) -> Node::Output& { return d.depth(); }, py::return_value_policy::reference_internal)
         .def_property_readonly("confidence", [](Depth& d) -> Node::Output& { return d.confidence(); }, py::return_value_policy::reference_internal);
 }

@@ -454,10 +454,6 @@ dai_set_test_labels(normalization_test onhost ci)
 dai_add_test(depth_unit_test src/onhost_tests/depth_unit_test.cpp)
 dai_set_test_labels(depth_unit_test onhost ci)
 
-# Depth algorithm selection (on-host)
-dai_add_test(depth_algorithm_selection_test src/onhost_tests/pipeline/node/depth_algorithm_selection_test.cpp)
-dai_set_test_labels(depth_algorithm_selection_test onhost ci)
-
 # MessageQueue tests
 dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 dai_set_test_labels(message_queue_test onhost ci)
@@ -692,6 +688,10 @@ dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 dai_add_test(depth_node_test src/ondevice_tests/pipeline/node/depth_node_test.cpp)
 dai_set_test_labels(depth_node_test ondevice rvc2_all rvc4 ci)
+
+# Depth algorithm selection (on-device)
+dai_add_test(depth_algorithm_selection_test src/ondevice_tests/pipeline/node/depth_algorithm_selection_test.cpp)
+dai_set_test_labels(depth_algorithm_selection_test ondevice rvc2_all rvc4 ci)
 
 # Detection network test
 if(DEPTHAI_FETCH_ARTIFACTS)

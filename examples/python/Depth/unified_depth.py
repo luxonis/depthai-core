@@ -86,10 +86,11 @@ depthNode.depth.link(benchmarkIn.input)
 
 pipeline.build()
 
+print("Resolved algorithm:", depthNode.getResolvedAlgorithm())
+print("Resolved config:", depthNode.getResolvedConfig())
+
 with pipeline:
     pipeline.start()
-    print("Algorithm:", depthNode.getResolvedAlgorithm())
-    print("Config:", depthNode.getResolvedConfig())
     while pipeline.isRunning():
         depthFrame = depthQueue.get()
         assert isinstance(depthFrame, dai.ImgFrame)

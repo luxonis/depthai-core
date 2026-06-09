@@ -2,7 +2,7 @@ import numpy as np
 import cv2 as cv
 import depthai as dai
 
-FPS = 60
+FPS = 20
 
 def showDepth(depthFrame, windowName="Depth", minDistance=500, maxDistance=5000,
                colormap=cv.COLORMAP_TURBO, useLog=False):
@@ -47,16 +47,12 @@ if __name__ == "__main__":
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=FPS)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=FPS)
 
-    benchmarkIn = pipeline.create(dai.node.BenchmarkIn)
-
     monoLeftOut = monoLeft.requestFullResolutionOutput()
     monoRightOut = monoRight.requestFullResolutionOutput()
 
     neuralAssistedStereo = pipeline.create(dai.node.NeuralAssistedStereo).build(monoLeftOut, monoRightOut, neuralModel=dai.DeviceModelZoo.NEURAL_DEPTH_NANO)
 
     disparityQueue = neuralAssistedStereo.disparity.createOutputQueue()
-
-    neuralAssistedStereo.disparity.link(benchmarkIn.input)
 
     with pipeline:
         pipeline.start()
