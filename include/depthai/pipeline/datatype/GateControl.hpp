@@ -26,7 +26,7 @@ class GateControl : public Buffer {
 
     GateControl() = default;
 
-    GateControl(bool open, int numMessages, int fps) : open(open), numMessages(numMessages), fps(fps) {};
+    GateControl(bool open, int numMessages, int fps) : open(open), numMessages(numMessages), fps(fps){};
 
     ~GateControl() override;
 

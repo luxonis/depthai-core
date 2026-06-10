@@ -22,7 +22,7 @@ class AutoCalibrationResult : public Buffer {
      * @param calibration The actual calibration handler containing the new parameters.
      */
     AutoCalibrationResult(double dataConfidence, double calibrationConfidence, bool passed, CalibrationHandler calibration)
-        : dataConfidence(dataConfidence), calibrationConfidence(calibrationConfidence), passed(passed), calibration(calibration) {};
+        : dataConfidence(dataConfidence), calibrationConfidence(calibrationConfidence), passed(passed), calibration(calibration){};
 
     virtual ~AutoCalibrationResult();
 

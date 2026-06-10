@@ -1,6 +1,6 @@
 #pragma once
 
-#if (_MSC_VER >= 1910) || !defined(_MSC_VER)
+#if(_MSC_VER >= 1910) || !defined(_MSC_VER)
     #ifndef HAVE_SNPRINTF
         #define HAVE_SNPRINTF
     #endif
