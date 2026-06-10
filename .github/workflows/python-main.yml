@@ -239,6 +239,10 @@ jobs:
         with:
           path: C:/.vcpkg
           key: vcpkg-windows-2025-vs2026
+      - name: Configure MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -257,7 +261,7 @@ jobs:
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Select Windows SDK
-        run: echo "CMAKE_ARGS=-DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        run: echo "CMAKE_ARGS=-G Ninja -DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
