@@ -106,7 +106,7 @@ struct RotatedRect {
             float y = corner.y;
             corner.x = x * cosAngle - y * sinAngle + center.x;
             corner.y = x * sinAngle + y * cosAngle + center.y;
-            corner.normalized = isNormalized();
+            corner.normalized = true;
             corner.hasNormalized = true;
         }
 

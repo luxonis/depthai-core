@@ -81,10 +81,31 @@ while True:
 
 }  // namespace
 
+/**
+ * This Example showcases how to link the following nodes together:
+ * - An ImageFrame (in this case the passthrough)
+ * - ImgDetections (the output of the first detection network)
+ * - Crops from all imgDetections
+ * - second stage detections on top of those crops
+ *
+ *  The final Tree Message should look like this:
+ *
+ *      ImgFrame (passthrough)
+ *         |
+ *         \/
+ *     ImgDetections (from first stage detection network)
+ *     /       |           |             |          \
+ *    \/       \/          \/            \/           \/
+ *    Crop 0   Crop 1      Crop 2        Crop 3       Crop 4
+ *    |         |            |             |             |
+ *    \/        \/           \/            \/            \/
+ * Pose Dets  Pose Dets     Pose Dets     Pose Dets      Pose Dets (from second stage detection network running on the crops)
+ */
+
 int main() {
-    int webSocketPort = 8765;
-    int httpPort = 8082;
-    dai::RemoteConnection remoteConnector(dai::RemoteConnection::DEFAULT_ADDRESS, webSocketPort, true, httpPort);
+    // int webSocketPort = 8765;
+    // int httpPort = 8082;
+    // dai::RemoteConnection remoteConnector(dai::RemoteConnection::DEFAULT_ADDRESS, webSocketPort, true, httpPort);
 
     dai::Pipeline pipeline;
 
@@ -95,69 +116,57 @@ int main() {
     auto detNN = pipeline.create<dai::node::DetectionNetwork>()->build(cam, firstStageModelDescription);
 
     auto* fullResOutput = cam->requestOutput({1920, 1080}, dai::ImgFrame::Type::BGR888i);
-    // auto fullResOutput = detNN->passthrough;
 
     auto filterDetectionsScript = pipeline.create<dai::node::Script>();
-    // filterDetectionsScript->inputs["detections"].setMaxSize(20);
     filterDetectionsScript->setScript(kFilterDetectionsScript);
     detNN->out.link(filterDetectionsScript->inputs["detections"]);
 
-    auto gatherData0 = pipeline.create<dai::node::GatherData>();
-    detNN->passthrough.link(gatherData0->referenceInput);
-    filterDetectionsScript->outputs["filtered"].link(gatherData0->collectingInput);
+    // creates link from ImgFrame --> ImgDetections
+    auto gatherImgFrameImgDetection = pipeline.create<dai::node::GatherData>();
+    detNN->passthrough.link(gatherImgFrameImgDetection->referenceInput);
+    filterDetectionsScript->outputs["filtered"].link(gatherImgFrameImgDetection->collectingInput);
 
-    // Generate crop configs on-device to avoid a host round-trip.
+    // Generate crop configs
     auto cropConfigScript = pipeline.create<dai::node::Script>();
     cropConfigScript->inputs["detections"].setMaxSize(20);
     cropConfigScript->setScript(kCropConfigScript);
-    gatherData0->passthroughCollectingInput.link(cropConfigScript->inputs["detections"]);
-    // filterDetectionsScript->outputs["filtered"].link(cropConfigScript->inputs["detections"]);
-    // detNN->out.link(cropConfigScript->inputs["detections"]);
+    gatherImgFrameImgDetection->passthroughCollectingInput.link(cropConfigScript->inputs["detections"]);
 
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     imageManip->inputConfig.setMaxSize(50);
     imageManip->inputImage.setMaxSize(20);
     imageManip->inputConfig.setReusePreviousMessage(false);
-    // imageManip->setBackend(dai::ImageManipProperties::Backend::GPU);
     imageManip->setMaxOutputFrameSize(288 * 512 * 3);
     cropConfigScript->outputs["config"].link(imageManip->inputConfig);
-    // detNN->passthrough.link(imageManip->inputImage);
     fullResOutput->link(imageManip->inputImage);
 
-    auto gatherData = pipeline.create<dai::node::GatherData>();
-    imageManip->out.link(gatherData->collectingInput);
-    // detNN->out.link(gatherData->referenceInput);
-    // filterDetectionsScript->outputs["filtered"].link(gatherData->referenceInput);
-    gatherData0->output.link(gatherData->referenceInput);
-    gatherData->setRunOnHost(false);
+    auto gatherCrops = pipeline.create<dai::node::GatherData>();
+    imageManip->out.link(gatherCrops->collectingInput);
+    gatherImgFrameImgDetection->output.link(gatherCrops->referenceInput);
+    gatherCrops->setRunOnHost(false);
 
+    // This node will be implicitly created inside each node as a subnode. For demosntration purposes its explicitly created here
     auto splitCrops = pipeline.create<dai::node::SplitterNode>();
-    gatherData->output.link(splitCrops->input);
+    gatherCrops->output.link(splitCrops->input);
     splitCrops->setRunOnHost(false);
 
     dai::NNModelDescription poseModelDescription;
     poseModelDescription.model = "luxonis/yolov8-nano-pose-estimation:coco-512x288";
     poseModelDescription.platform = pipeline.getDefaultDevice()->getPlatformAsString();
-    // auto detNN_2 = pipeline.create<dai::node::DetectionNetwork>()->build(imageManip->out, dai::NNArchive(dai::getModelFromZoo(poseModelDescription)));
-    auto detNN_2 = pipeline.create<dai::node::DetectionNetwork>()->build(splitCrops->output, dai::NNArchive(dai::getModelFromZoo(poseModelDescription)));
-    // detNN_2->detectionParser->input.setMaxSize(20);
+    auto poseDetNN = pipeline.create<dai::node::DetectionNetwork>()->build(splitCrops->output, dai::NNArchive(dai::getModelFromZoo(poseModelDescription)));
 
-    auto gatherData_2 = pipeline.create<dai::node::GatherData>();
-    gatherData->output.link(gatherData_2->referenceInput);
-    detNN_2->out.link(gatherData_2->collectingInput);
-    gatherData_2->setRunOnHost(false);
+    auto gatherPoseDets = pipeline.create<dai::node::GatherData>();
+    gatherCrops->output.link(gatherPoseDets->referenceInput);
+    poseDetNN->out.link(gatherPoseDets->collectingInput);
+    gatherPoseDets->setRunOnHost(false);
 
-    auto collectedQ = gatherData_2->output.createOutputQueue();
-    // auto passthroughQ = detNN->passthrough.createOutputQueue();
-
-    // remoteConnector.addTopic("images", detNN->passthrough);
+    auto collectedQ = gatherPoseDets->output.createOutputQueue();
 
     pipeline.start();
-    remoteConnector.registerPipeline(pipeline);
+    // remoteConnector.registerPipeline(pipeline);
 
     const cv::Scalar color(255, 0, 0);
     const cv::Scalar keypointColor(0, 255, 0);
-    size_t previousCropWindowCount = 0;
     std::string lastMessageGroupTree;
     while(pipeline.isRunning()) {
         auto collected = collectedQ->get<dai::MessageGroup>();
@@ -189,6 +198,7 @@ int main() {
         // auto detections = collected != nullptr ? collected->get<dai::ImgDetections>(0) : nullptr;
         size_t shownCropWindowCount = 0;
         for(size_t i = 0; i < detections->detections.size(); ++i) {
+            const auto& detection = detections->detections[i];
             // if you are looking for a specific detection, you can filter out here and only then look at the crop message via getChildren(0,
             // static_cast<uint32_t>(i));
 
@@ -230,14 +240,16 @@ int main() {
                 }
             }
 
-            cv::imshow("crop_" + std::to_string(i), cropFrame);
-            shownCropWindowCount = i + 1;
-        }
+            const auto className = detection.labelName.empty() ? std::to_string(detection.label) : detection.labelName;
+            constexpr int labelPadding = 8;
+            int baseline = 0;
+            const auto labelSize = cv::getTextSize(className, cv::FONT_HERSHEY_SIMPLEX, 0.7, 2, &baseline);
+            const int labelBannerHeight = labelSize.height + (2 * labelPadding);
+            cv::rectangle(cropFrame, cv::Point(0, 0), cv::Point(cropFrame.cols, labelBannerHeight), cv::Scalar(0, 0, 0), cv::FILLED);
+            cv::putText(cropFrame, className, cv::Point(labelPadding, labelBannerHeight - labelPadding), cv::FONT_HERSHEY_SIMPLEX, 0.7, color, 2);
 
-        // for(size_t i = shownCropWindowCount; i < previousCropWindowCount; ++i) {
-        //     cv::destroyWindow("crop_" + std::to_string(i));
-        // }
-        previousCropWindowCount = shownCropWindowCount;
+            cv::imshow("crop_" + std::to_string(i), cropFrame);
+        }
 
         if(cv::waitKey(1) == 'q') {
             pipeline.stop();

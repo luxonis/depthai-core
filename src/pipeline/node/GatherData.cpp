@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/GatherData.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -18,6 +19,25 @@
 namespace dai {
 namespace node {
 
+namespace {
+
+std::shared_ptr<MessageGroup> cloneMessageGroupShallow(const std::shared_ptr<MessageGroup>& sourceMessageGroup) {
+    if(sourceMessageGroup == nullptr) {
+        throw std::runtime_error("Source MessageGroup is null, cannot clone.");
+    }
+
+    auto clonedMessageGroup = std::make_shared<MessageGroup>();
+    clonedMessageGroup->group = sourceMessageGroup->group;
+    clonedMessageGroup->links = sourceMessageGroup->links;
+    clonedMessageGroup->keyToIndex = sourceMessageGroup->keyToIndex;
+    clonedMessageGroup->setTimestamp(sourceMessageGroup->getTimestamp());
+    clonedMessageGroup->setSequenceNum(sourceMessageGroup->getSequenceNum());
+    clonedMessageGroup->setTimestampDevice(sourceMessageGroup->getTimestampDevice());
+    return clonedMessageGroup;
+}
+
+}  // namespace
+
 bool GatherData::runOnHost() const {
     return runOnHostVar;
 }
@@ -30,7 +50,11 @@ GatherData::~GatherData() = default;
 
 std::shared_ptr<MessageGroup> GatherData::createCollectionMessageGroup(const std::shared_ptr<Buffer>& referenceBuffer) {
     if(referenceBuffer->getDatatype() == DatatypeEnum::MessageGroup) {
-        return std::dynamic_pointer_cast<MessageGroup>(referenceBuffer);
+        auto referenceMessageGroup = std::dynamic_pointer_cast<MessageGroup>(referenceBuffer);
+        if(referenceMessageGroup == nullptr) {
+            throw std::runtime_error("Reference buffer reports MessageGroup datatype but cannot be cast to MessageGroup.");
+        }
+        return cloneMessageGroupShallow(referenceMessageGroup);
     }
 
     // This is means its the first GatherData node so need to create the MessageGroup
@@ -207,11 +231,22 @@ void GatherData::run() {
 
     while(mainLoop()) {
         std::shared_ptr<Buffer> referenceInputBuffer;
+        auto& logger = ThreadedNode::pimpl->logger;
 
         {
             auto inputBlockEvent = this->inputBlockEvent();
-            referenceInputBuffer = referenceInput.get<Buffer>();
+            bool timedOut = false;
+            // auto rStart = std::chrono::steady_clock::now();
+            // logger->warn("referenceInput fullness: {} / {}", referenceInput.getSize(), referenceInput.getMaxSize());
+            referenceInputBuffer = referenceInput.get<Buffer>(std::chrono::seconds(10), timedOut);
+            if(timedOut) {
+                logger->error("Timed out waiting for reference input buffer. No data received on reference input for 10 seconds. Restarting wait.");
+                continue;
+            }
+            // logger->warn("Received reference input buffer after {} ms",
+            //              std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - rStart).count());
         }
+
         // auto detMsg = std::dynamic_pointer_cast<ImgDetections>(referenceInputBuffer);
         // logger->warn("GatherData received reference message with {} detections. Its getSize() iterable function specifies: {}",
         //              detMsg->detections.size(),
@@ -228,16 +263,28 @@ void GatherData::run() {
         std::vector<uint32_t> messageIndicesToCollectOn = getMessageIndicesToCollect(outputMessageGroup);
 
         // logger->warn("got {} message indices to collect on", messageIndicesToCollectOn.size());
+
         for(uint32_t collectingParentIndex : messageIndicesToCollectOn) {
             auto collectingMsg = outputMessageGroup->getNode(collectingParentIndex);
             if(!collectingMsg) {
                 throw std::runtime_error("Message index " + std::to_string(collectingParentIndex) + " does not exist in the message group.");
             }
+            // logger->warn("Collecting on message index {} with datatype {} and iterable size {}",
+            //              collectingParentIndex,
+            //              collectingMsg->getDatatype(),
+            //              getIterableSize(collectingMsg));
 
             // auto buffer_msg = std::dynamic_pointer_cast<Buffer>(collectingMsg);
-            // if(!buffer_msg) {
-            //     throw std::runtime_error("Message index " + std::to_string(collectingParentIndex) + " is not a Buffer, cannot collect on non-Buffer messages.");
+            // if(buffer_msg) {
+            //     const auto timestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(buffer_msg->getTimestamp().time_since_epoch()).count();
+            //     const auto timestampDeviceNs =
+            //         std::chrono::duration_cast<std::chrono::nanoseconds>(buffer_msg->getTimestampDevice().time_since_epoch()).count();
+            //     logger->warn("Message has seqNum {}, timestamp {} ns, and timestampDevice {} ns", buffer_msg->getSequenceNum(), timestampNs,
+            //     timestampDeviceNs);
+            // } else {
+            //     logger->warn("Message index {} is not a Buffer, skipping sequence/timestamp debug logging.", collectingParentIndex);
             // }
+            // std::chrono::steady_clock::time_point previousCollectMessageTime = buffer_msg->getTimestamp();
             // logger->warn("on datatype {} of message index {}", buffer_msg->getDatatype(), collectingParentIndex);
 
             auto numIterations = getIterableSize(collectingMsg);
@@ -252,11 +299,21 @@ void GatherData::run() {
                 }
                 continue;
             }
-
+            auto tStart = std::chrono::steady_clock::now();
             for(uint32_t parentItemIndex = 0; parentItemIndex < numIterations; parentItemIndex++) {
                 // logger->warn("Colecting on item {} of message index {}", parentItemIndex, collectingParentIndex);
-                auto collectingInputMsg = collectingInput.get<Buffer>();
-                passthroughCollectingInput.send(collectingMsg);
+                // logger->warn("collectingInput fullness: {} / {}", collectingInput.getSize(), collectingInput.getMaxSize());
+                bool timedOutInput = false;
+                auto collectingInputMsg = collectingInput.get<Buffer>(std::chrono::seconds(10), timedOutInput);
+                if(timedOutInput) {
+                    logger->error(
+                        "Timed out waiting for collecting input buffer. No data received on collecting input for 10 seconds while collecting item {} of "
+                        "message index {}. Restarting wait.",
+                        parentItemIndex,
+                        collectingParentIndex);
+                    break;
+                }
+                passthroughCollectingInput.send(collectingInputMsg);
 
                 outputMessageGroup->addMessage(currentNewNodeIndex, collectingInputMsg);
                 if(!attachLinkToBranchAsLeaf(outputMessageGroup, collectingParentIndex, currentNewNodeIndex, parentItemIndex)) {
@@ -265,12 +322,19 @@ void GatherData::run() {
                 }
                 currentNewNodeIndex += 1;
             }
+            // auto tEnd = std::chrono::steady_clock::now();
+            // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count();
+            // logger->warn("Finished collecting {} messages in {} ms", numIterations, duration);
         }
 
         {
+            // auto oStart = std::chrono::steady_clock::now();
             auto blockEvent = this->outputBlockEvent();
 
             output.send(outputMessageGroup);
+            // logger->warn("Sending output message with seqNum {} took {} ms",
+            //              outputMessageGroup->getSequenceNum(),
+            //              std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - oStart).count());
         }
     }
     // DatatypeEnum inputDatatype = classifyInputDatatype(firstInput);
