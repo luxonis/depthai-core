@@ -1121,6 +1121,33 @@ void CalibrationHandler::setCameraType(CameraBoardSocket cameraId, CameraModel c
     return;
 }
 
+void CalibrationHandler::updateCameraExtrinsics(CameraBoardSocket srcCameraId,
+                                                CameraBoardSocket destCameraId,
+                                                std::vector<std::vector<float>> rotationMatrix,
+                                                std::vector<float> translation) {
+    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
+        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
+    }
+    if(translation.size() != 3) {
+        throw std::runtime_error("Translation vector size should always be 3x1");
+    }
+
+    auto cameraData = eepromData.cameraData.find(srcCameraId);
+    if(cameraData == eepromData.cameraData.end()) {
+        throw std::runtime_error("No existing extrinsics found for the source camera socket");
+    }
+
+    if(cameraData->second.extrinsics.toCameraSocket != destCameraId) {
+        throw std::runtime_error("overwriteExtrinsics crash: source camera socket " + toString(srcCameraId) + " has different toCameraSocket "
+                                 + toString(cameraData->second.extrinsics.toCameraSocket) + ". Correct link should be set with "
+                                 + "setCameraExtrinsics(sourceCameraSocket, destinationCameraSocket, rotationMatrix, translation, specTranslation).");
+    }
+
+    cameraData->second.extrinsics.rotationMatrix = rotationMatrix;
+    cameraData->second.extrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
+    return;
+}
+
 void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
                                              CameraBoardSocket destCameraId,
                                              const std::vector<std::vector<float>>& rotationMatrix,

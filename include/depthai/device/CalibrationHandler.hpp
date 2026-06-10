@@ -651,6 +651,18 @@ class CalibrationHandler {
                              const std::vector<float>& specTranslation = {0, 0, 0});
 
     /**
+     * Overwrite the Camera Extrinsics object where the link already exists
+     *
+     * @param srcCameraId Camera Id of the camera which will be considered as relative origin.
+     * @param destCameraId Camera Id of the camera which will be considered as destination from srcCameraId.
+     * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
+     * @param translation Translation between srcCameraId and destCameraId origins.
+     */
+    void updateCameraExtrinsics(CameraBoardSocket srcCameraId,
+                                CameraBoardSocket destCameraId,
+                                std::vector<std::vector<float>> rotationMatrix,
+                                std::vector<float> translation);
+    /**
      * Set the Imu to Camera Extrinsics object
      *
      * @param destCameraId Camera Id of the camera which will be considered as destination from IMU.
