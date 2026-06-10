@@ -404,6 +404,15 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
             socketsInHandler[idx], socketsInHandler[idx + 1], matrix::extractRotationMatrix(transformCurrentToNext), translationCurrentToNext);
     }
 
+    if(std::holds_alternative<HousingCoordinateSystem>(daiSocketBase)) {
+        const auto housingOriginSocket = currentHandler.getEepromData().housingExtrinsics.toCameraSocket;
+        const auto housingOriginIt = std::find(socketsInHandler.begin(), socketsInHandler.end(), housingOriginSocket);
+        if(housingOriginIt != socketsInHandler.end()) {
+            const auto housingOriginIndex = static_cast<size_t>(std::distance(socketsInHandler.begin(), housingOriginIt));
+            DclUtils::setHousingToDai(newCalibrationHandler, candidateSocketToSensorExtrinsics[housingOriginIndex]);
+        }
+    }
+
     CalibrationQuality::Data qualityData{};
     if(!connectedSensors.empty()) {
         const auto& referenceSensor = connectedSensors.front();
