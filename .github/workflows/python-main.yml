@@ -24,7 +24,7 @@ on:
 ###################################
 
 env:
-  CMAKE_WINDOWS_SDK_VERSION: '10.0.18362.0'
+  CMAKE_WINDOWS_SDK_VERSION: '10.0.26100.0'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -127,7 +127,7 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     strategy:
       matrix:
-        # os: [ubuntu-latest, windows-2022, macos-latest]
+        # os: [ubuntu-latest, windows-2025-vs2026, macos-latest]
         os: [ubuntu-latest] # TODO(Morato) - re-enable windows & macos
     runs-on: ${{ matrix.os }}
     steps:
@@ -139,13 +139,13 @@ jobs:
         run: echo Home directory inside container $HOME
 
       - name: Cache vcpkg folder
-        if: matrix.os != 'windows-2022'
+        if: runner.os != 'Windows'
         uses: actions/cache@v3
         with:
           path: /home/runner/.vcpkg/
           key: vcpkg-${{ matrix.os }}
       - name: Cache vcpkg folder
-        if: matrix.os == 'windows-2022'
+        if: runner.os == 'Windows'
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg/
@@ -217,7 +217,7 @@ jobs:
   # This job builds wheels for Windows x86_64 arch
   build-windows-x86_64:
     needs: build-docstrings
-    runs-on: windows-2022
+    runs-on: windows-2025-vs2026
     strategy:
       matrix:
         python-version: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
@@ -238,7 +238,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg
-          key: vcpkg-windows-2022
+          key: vcpkg-windows-2025-vs2026
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -665,7 +665,7 @@ jobs:
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
-    runs-on: windows-2022
+    runs-on: windows-2025-vs2026
     steps:
       - uses: actions/checkout@v3
       - name: Download audited wheels
