@@ -30,11 +30,11 @@ namespace node {
 // Anonymous helpers: device capability probes and stereo camera discovery.
 namespace {
 
-constexpr DeviceModelZoo DEFAULT_NEURAL_DEPTH_MODEL = DeviceModelZoo::NEURAL_DEPTH_SMALL;
+constexpr DeviceModelZoo DEFAULT_NEURAL_DEPTH_MODEL = DeviceModelZoo::NEURAL_DEPTH_MEDIUM;
 constexpr DeviceModelZoo DEFAULT_NAS_NEURAL_MODEL = DeviceModelZoo::NEURAL_DEPTH_NANO;
 constexpr bool DEFAULT_NAS_RECTIFY = true;
 constexpr float DEFAULT_TARGET_FPS = 30.f;
-constexpr float SELECTION_FPS_SAFETY_MARGIN = 0.85f;
+constexpr float SELECTION_FPS_SAFETY_MARGIN = 0.9f;
 constexpr float NEURAL_TENSOR_COVER_SCALE = 1.4142135f;
 
 /**
@@ -106,11 +106,6 @@ bool supportsAlgorithm(const std::vector<Depth::Algorithm>& supported, Depth::Al
     return std::find(supported.begin(), supported.end(), algorithm) != supported.end();
 }
 
-std::vector<Depth::Algorithm> withoutAlgorithm(std::vector<Depth::Algorithm> algorithms, Depth::Algorithm algorithm) {
-    algorithms.erase(std::remove(algorithms.begin(), algorithms.end(), algorithm), algorithms.end());
-    return algorithms;
-}
-
 const char* algorithmName(Depth::Algorithm algorithm) {
     switch(algorithm) {
         case Depth::Algorithm::AUTO:
@@ -135,9 +130,7 @@ void validateExplicitConfig(Depth::Algorithm algorithm,
                             const std::vector<Depth::Algorithm>& supportedAlgorithms,
                             const std::vector<DeviceModelZoo>& supportedModels) {
     DAI_CHECK_V(algorithm != Depth::Algorithm::AUTO, "Depth: a config can only be pinned together with a concrete algorithm (not AUTO).");
-    DAI_CHECK_V(supportsAlgorithm(supportedAlgorithms, algorithm),
-                "Depth selected algorithm {} is not supported on this device.",
-                algorithmName(algorithm));
+    DAI_CHECK_V(supportsAlgorithm(supportedAlgorithms, algorithm), "Depth selected algorithm {} is not supported on this device.", algorithmName(algorithm));
 
     switch(algorithm) {
         case Depth::Algorithm::NEURAL: {
@@ -250,8 +243,8 @@ std::optional<BackendProfile> pickHighestFpsForResolution(std::pair<uint32_t, ui
 
 /** NeuralDepth model lookup for the explicit-algorithm path (skips non-NEURAL rows). */
 std::optional<DeviceModelZoo> pickNeuralModel(float requiredFps,
-                                               std::optional<std::pair<uint32_t, uint32_t>> resolution,
-                                               const std::vector<DeviceModelZoo>& modelFilter) {
+                                              std::optional<std::pair<uint32_t, uint32_t>> resolution,
+                                              const std::vector<DeviceModelZoo>& modelFilter) {
     const auto picked = findBackendProfile([&](const BackendProfile& profile) {
         return profile.algorithm == Depth::Algorithm::NEURAL && profile.maxFps >= requiredFps && profilePassesModelFilter(profile, modelFilter)
                && (!resolution.has_value() || resolutionFits(profile, *resolution));
@@ -263,8 +256,7 @@ std::optional<DeviceModelZoo> pickNeuralModel(float requiredFps,
 }
 
 /** StereoDepth preset lookup for the explicit-algorithm path (skips non-STEREO rows). */
-std::optional<StereoDepth::PresetMode> pickStereoPreset(float requiredFps,
-                                                         std::optional<std::pair<uint32_t, uint32_t>> resolution) {
+std::optional<StereoDepth::PresetMode> pickStereoPreset(float requiredFps, std::optional<std::pair<uint32_t, uint32_t>> resolution) {
     const auto picked = findBackendProfile([&](const BackendProfile& profile) {
         return profile.algorithm == Depth::Algorithm::STEREO && profile.maxFps >= requiredFps
                && (!resolution.has_value() || resolutionFits(profile, *resolution));
@@ -276,8 +268,7 @@ std::optional<StereoDepth::PresetMode> pickStereoPreset(float requiredFps,
 }
 
 bool anyProfileFits(Depth::Algorithm algorithm, std::pair<uint32_t, uint32_t> resolution) {
-    return findBackendProfile([&](const BackendProfile& profile) { return profile.algorithm == algorithm && resolutionFits(profile, resolution); })
-        .has_value();
+    return findBackendProfile([&](const BackendProfile& profile) { return profile.algorithm == algorithm && resolutionFits(profile, resolution); }).has_value();
 }
 
 std::pair<uint32_t, uint32_t> maxResolutionForAlgorithm(Depth::Algorithm algorithm) {
@@ -317,8 +308,7 @@ std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(c
  * When both stereo cameras exist before Depth wiring, use their requested output size if the user
  * already requested camera outputs. Otherwise fall back to the cameras' configured sensor size.
  */
-std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromExistingCameras(const std::shared_ptr<Camera>& left,
-                                                                           const std::shared_ptr<Camera>& right) {
+std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromExistingCameras(const std::shared_ptr<Camera>& left, const std::shared_ptr<Camera>& right) {
     if(!left || !right) {
         return std::nullopt;
     }
@@ -395,9 +385,7 @@ std::shared_ptr<Depth> Depth::build(Algorithm algorithm, std::optional<float> fp
     return build(algorithm, fps, std::nullopt);
 }
 
-std::shared_ptr<Depth> Depth::build(Algorithm algorithm,
-                                      std::optional<float> fps,
-                                      std::optional<std::pair<uint32_t, uint32_t>> stereoSize) {
+std::shared_ptr<Depth> Depth::build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize) {
     requireNotBuilt("Depth::build(algorithm, fps, stereoSize)");
     algorithmOverride_ = algorithm;
     stereoOutputFps_ = fps;
@@ -406,10 +394,7 @@ std::shared_ptr<Depth> Depth::build(Algorithm algorithm,
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
-std::shared_ptr<Depth> Depth::build(Algorithm algorithm,
-                                      Config config,
-                                      std::optional<float> fps,
-                                      std::optional<std::pair<uint32_t, uint32_t>> stereoSize) {
+std::shared_ptr<Depth> Depth::build(Algorithm algorithm, Config config, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize) {
     requireNotBuilt("Depth::build(algorithm, config, fps, stereoSize)");
     algorithmOverride_ = algorithm;
     configOverride_ = std::move(config);
@@ -438,16 +423,18 @@ std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
 
 // --- Device queries ---
 
-std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device) const {
+std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device, const std::vector<DeviceModelZoo>& supportedModels) const {
     std::vector<Algorithm> supported = {Algorithm::STEREO};
 
-    if(device->isNeuralDepthSupported()) {
-        supported.push_back(Algorithm::NEURAL);
-        if(device->getPlatform() == Platform::RVC4) {
-            supported.push_back(Algorithm::NEURAL_ASSISTED_STEREO);
+    const bool isRvc4 = device->getPlatform() == Platform::RVC4;
+    if(isRvc4 && device->isNeuralDepthSupported()) {
+        // NEURAL is only usable when the device actually has a model-zoo depth model available.
+        if(!supportedModels.empty()) {
+            supported.push_back(Algorithm::NEURAL);
         }
+        supported.push_back(Algorithm::NEURAL_ASSISTED_STEREO);
     }
-    if(device->isGpuStereoSupported() && !device->getStereoPairs().empty()) {
+    if(isRvc4 && device->isGpuStereoSupported() && !device->getStereoPairs().empty()) {
         supported.push_back(Algorithm::GPU_STEREO);
     }
     if(cameraFeaturesIncludeTof(device->getConnectedCameraFeatures())) {
@@ -465,17 +452,16 @@ bool Depth::exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height) {
 }
 
 Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
-                                       float targetFps,
-                                       const std::vector<Algorithm>& supportedAlgorithms,
-                                       const std::vector<DeviceModelZoo>& modelFilter,
-                                       bool requireFpsAndResolutionMatch) {
+                                      float targetFps,
+                                      const std::vector<Algorithm>& supportedAlgorithms,
+                                      const std::vector<DeviceModelZoo>& modelFilter,
+                                      bool requireFpsAndResolutionMatch) {
     targetFps = targetFpsWithDefault(targetFps);
     const float requiredFps = targetFps * SELECTION_FPS_SAFETY_MARGIN;
 
     // 1. Priority scan honoring the requested FPS and (optional) resolution.
-    if(const auto picked = findBackendProfile([&](const BackendProfile& profile) {
-           return profileMatches(profile, supportedAlgorithms, modelFilter, requiredFps, resolution);
-       })) {
+    if(const auto picked = findBackendProfile(
+           [&](const BackendProfile& profile) { return profileMatches(profile, supportedAlgorithms, modelFilter, requiredFps, resolution); })) {
         return {picked->algorithm, picked->config};
     }
 
@@ -505,31 +491,28 @@ Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t
 }
 
 void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline) {
-    const auto deviceSupported = getSupportedAlgorithms(device);
-    const auto supportedModels = device->getSupportedDeviceModels();
-    const auto supported = supportedModels.empty() ? withoutAlgorithm(deviceSupported, Algorithm::NEURAL) : deviceSupported;
+    const bool isRvc4 = device->getPlatform() == Platform::RVC4;
+
+    // getSupportedDeviceModels() is an RVC4-only RPC; on other platforms there is no model catalog.
+    const auto supportedModels = isRvc4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
+    const auto supported = getSupportedAlgorithms(device, supportedModels);
 
     if(configOverride_) {
-        validateExplicitConfig(algorithmOverride_,
-                               *configOverride_,
-                               deviceSupported,
-                               algorithmOverride_ == Algorithm::NEURAL ? supportedModels : std::vector<DeviceModelZoo>{});
+        validateExplicitConfig(
+            algorithmOverride_, *configOverride_, supported, algorithmOverride_ == Algorithm::NEURAL ? supportedModels : std::vector<DeviceModelZoo>{});
         resolved_ = {algorithmOverride_, *configOverride_};
         return;
     }
 
     if(algorithmOverride_ != Algorithm::AUTO) {
-        DAI_CHECK_V(supportsAlgorithm(supported, algorithmOverride_),
-                    "Depth algorithm {} is not supported on this device.",
-                    algorithmName(algorithmOverride_));
+        DAI_CHECK_V(supportsAlgorithm(supported, algorithmOverride_), "Depth algorithm {} is not supported on this device.", algorithmName(algorithmOverride_));
     }
 
-    if(device->getPlatform() != Platform::RVC4) {
+    if(!isRvc4) {
         // Non-RVC4 has no catalog scan; pick the algorithm and populate the preset that
         // actually goes into the backend's build() (so getResolvedConfig() matches reality).
-        const Algorithm chosen = (algorithmOverride_ == Algorithm::AUTO)
-                                     ? (supportsAlgorithm(supported, Algorithm::TOF) ? Algorithm::TOF : Algorithm::STEREO)
-                                     : algorithmOverride_;
+        const Algorithm chosen =
+            (algorithmOverride_ == Algorithm::AUTO) ? (supportsAlgorithm(supported, Algorithm::TOF) ? Algorithm::TOF : Algorithm::STEREO) : algorithmOverride_;
         Config config = std::monostate{};
         if(chosen == Algorithm::STEREO) {
             config = StereoDepth::PresetMode::DEFAULT;
@@ -619,7 +602,8 @@ void Depth::buildInternal() {
 
     Pipeline pipeline = getParentPipeline();
     const auto device = getDevice();
-    DAI_CHECK_V(device != nullptr, "Depth node requires a device (set on create, when added to a pipeline with a default device, or from pipeline at first wiring).");
+    DAI_CHECK_V(device != nullptr,
+                "Depth node requires a device (set on create, when added to a pipeline with a default device, or from pipeline at first wiring).");
 
     resolveWiring(device, pipeline);
     const Algorithm active = resolved_.algorithm;

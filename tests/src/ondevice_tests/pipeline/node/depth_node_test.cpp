@@ -3,9 +3,8 @@
  * @brief On-device tests for `dai::node::Depth` (algorithms, lazy wiring, user camera coexistence).
  */
 #include <catch2/catch_all.hpp>
-
-#include <cmath>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <optional>
 #include <utility>
@@ -40,7 +39,8 @@ struct DepthTestAccess {
     }
 
     static std::vector<Depth::Algorithm> getSupportedAlgorithms(const Depth& depth, const std::shared_ptr<Device>& device) {
-        return depth.getSupportedAlgorithms(device);
+        const auto models = device->getPlatform() == Platform::RVC4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
+        return depth.getSupportedAlgorithms(device, models);
     }
 };
 
@@ -229,8 +229,7 @@ void skipUnlessUserStereoDepthScenario(const std::shared_ptr<Device>& device) {
     }
 }
 
-std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline,
-                                                                                                    const StereoPair& pair) {
+std::pair<std::shared_ptr<node::Camera>, std::shared_ptr<node::Camera>> buildUserStereoCamerasOrSkip(Pipeline& pipeline, const StereoPair& pair) {
     try {
         auto leftCam = pipeline.create<node::Camera>()->build(pair.left, kUserStereoSensorResolution, kUserStereoFps);
         auto rightCam = pipeline.create<node::Camera>()->build(pair.right, kUserStereoSensorResolution, kUserStereoFps);
@@ -295,10 +294,7 @@ float measureReceiveFps(const std::shared_ptr<MessageQueue>& queue, std::chrono:
     return static_cast<float>(frameCount - 1) / seconds;
 }
 
-void requireReceiveFpsInRange(const std::shared_ptr<MessageQueue>& queue,
-                              float minFps,
-                              float maxFps,
-                              std::chrono::milliseconds window = kFpsMeasureWindow) {
+void requireReceiveFpsInRange(const std::shared_ptr<MessageQueue>& queue, float minFps, float maxFps, std::chrono::milliseconds window = kFpsMeasureWindow) {
     const float fps = measureReceiveFps(queue, window);
     REQUIRE(fps >= minFps);
     REQUIRE(fps <= maxFps);
@@ -312,14 +308,11 @@ struct UserDepthCameraSetup {
     std::shared_ptr<node::Depth> depth;
 };
 
-UserDepthCameraSetup wireUserStereoCamerasAndDepth(Pipeline& pipeline,
-                                                   const StereoPair& pair,
-                                                   std::optional<float> depthRequestedFps) {
+UserDepthCameraSetup wireUserStereoCamerasAndDepth(Pipeline& pipeline, const StereoPair& pair, std::optional<float> depthRequestedFps) {
     UserDepthCameraSetup setup;
     std::tie(setup.leftCam, setup.rightCam) = buildUserStereoCamerasOrSkip(pipeline, pair);
 
-    auto* userLeftOut =
-        setup.leftCam->requestOutput(kUserStereoSensorResolution, std::nullopt, ImgResizeMode::CROP, kUserStereoFps);
+    auto* userLeftOut = setup.leftCam->requestOutput(kUserStereoSensorResolution, std::nullopt, ImgResizeMode::CROP, kUserStereoFps);
     REQUIRE(userLeftOut != nullptr);
     setup.userFrameQueue = userLeftOut->createOutputQueue();
 
@@ -364,19 +357,14 @@ void requireUserAndDepthFrameSizes(const std::shared_ptr<Device>& device,
         REQUIRE((depthFrame->getWidth() != static_cast<int>(kUserStereoSensorResolution.first)
                  || depthFrame->getHeight() != static_cast<int>(kUserStereoSensorResolution.second)));
         REQUIRE(depthFrame->getWidth() == static_cast<int>(kRvc2UserCameraDepthOutputSize.first));
-        const bool depthHeightMatchesBackend =
-            depthFrame->getHeight() == static_cast<int>(kRvc2UserCameraDepthOutputSize.second);
-        const bool depthHeightMatchesUser =
-            depthFrame->getHeight() == static_cast<int>(kUserStereoSensorResolution.second);
+        const bool depthHeightMatchesBackend = depthFrame->getHeight() == static_cast<int>(kRvc2UserCameraDepthOutputSize.second);
+        const bool depthHeightMatchesUser = depthFrame->getHeight() == static_cast<int>(kUserStereoSensorResolution.second);
         REQUIRE((depthHeightMatchesBackend || depthHeightMatchesUser));
     }
 }
 
-void runUserCameraDepthTest(Pipeline& pipeline,
-                            const std::shared_ptr<Device>& device,
-                            const StereoPair& pair,
-                            std::optional<float> depthRequestedFps,
-                            bool checkFrameSizes) {
+void runUserCameraDepthTest(
+    Pipeline& pipeline, const std::shared_ptr<Device>& device, const StereoPair& pair, std::optional<float> depthRequestedFps, bool checkFrameSizes) {
     PipelineStopGuard guard(pipeline);
     auto setup = wireUserStereoCamerasAndDepth(pipeline, pair, depthRequestedFps);
 
@@ -671,10 +659,7 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from stereo_size and fps") {
 
     auto depth = pipeline.create<node::Depth>();
     const auto supported = node::DepthTestAccess::getSupportedAlgorithms(*depth, device);
-    const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u),
-                                                               30.f,
-                                                               supported,
-                                                               device->getSupportedDeviceModels());
+    const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u), 30.f, supported, device->getSupportedDeviceModels());
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(expected.second) == DeviceModelZoo::NEURAL_DEPTH_480X300);
 
@@ -708,10 +693,8 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
     (void)rightQueue;
 
     auto depth = pipeline.create<node::Depth>();
-    const auto expected = node::DepthTestAccess::selectBackend(std::make_pair(640u, 400u),
-                                                               20.f,
-                                                               node::DepthTestAccess::getSupportedAlgorithms(*depth, device),
-                                                               device->getSupportedDeviceModels());
+    const auto expected = node::DepthTestAccess::selectBackend(
+        std::make_pair(640u, 400u), 20.f, node::DepthTestAccess::getSupportedAlgorithms(*depth, device), device->getSupportedDeviceModels());
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
 
     REQUIRE_NOTHROW((void)&depth->depth());

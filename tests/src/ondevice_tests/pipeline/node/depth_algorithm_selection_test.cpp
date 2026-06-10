@@ -1,6 +1,5 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch_all.hpp>
-
 #include <optional>
 #include <utility>
 #include <vector>
@@ -29,7 +28,8 @@ struct DepthTestAccess {
     }
 
     static std::vector<Depth::Algorithm> getSupportedAlgorithms(const Depth& depth, const std::shared_ptr<Device>& device) {
-        return depth.getSupportedAlgorithms(device);
+        const auto models = device->getPlatform() == Platform::RVC4 ? device->getSupportedDeviceModels() : std::vector<DeviceModelZoo>{};
+        return depth.getSupportedAlgorithms(device, models);
     }
 };
 

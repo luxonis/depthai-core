@@ -54,12 +54,12 @@ class Depth : public DeviceNodeGroup {
    public:
     /** Backend selection for the composite Depth node. */
     enum class Algorithm : std::uint32_t {
-        AUTO = 0,  ///< Resolved at wiring via device capabilities and stereo size / FPS (RVC4).
-        STEREO,    ///< Classic StereoDepth disparity/depth pipeline.
-        NEURAL,    ///< RVC4 NeuralDepth; model auto-selected on RVC4 unless overridden.
+        AUTO = 0,                ///< Resolved at wiring via device capabilities and stereo size / FPS (RVC4).
+        STEREO,                  ///< Classic StereoDepth disparity/depth pipeline.
+        NEURAL,                  ///< RVC4 NeuralDepth; model auto-selected on RVC4 unless overridden.
         NEURAL_ASSISTED_STEREO,  ///< RVC4 NeuralAssistedStereo (stereo + neural assist).
-        TOF,       ///< Time-of-flight depth when a ToF sensor is connected.
-        GPU_STEREO,  ///< RVC4 GPUStereo (GPU-accelerated disparity/depth with confidence map).
+        TOF,                     ///< Time-of-flight depth when a ToF sensor is connected.
+        GPU_STEREO,              ///< RVC4 GPUStereo (GPU-accelerated disparity/depth with confidence map).
     };
 
     /**
@@ -116,9 +116,7 @@ class Depth : public DeviceNodeGroup {
      * Set algorithm, optional FPS, and stereo frame size used by RVC4 auto-selection
      * when no upstream ``Camera`` is present.
      */
-    std::shared_ptr<Depth> build(Algorithm algorithm,
-                                  std::optional<float> fps,
-                                  std::optional<std::pair<uint32_t, uint32_t>> stereoSize);
+    std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize);
 
     /**
      * Set an explicit ``algorithm`` together with its ``config`` before first wiring.
@@ -127,9 +125,9 @@ class Depth : public DeviceNodeGroup {
      * the algorithm must be available on the device or wiring throws with a descriptive message.
      */
     std::shared_ptr<Depth> build(Algorithm algorithm,
-                                  Config config,
-                                  std::optional<float> fps = std::nullopt,
-                                  std::optional<std::pair<uint32_t, uint32_t>> stereoSize = std::nullopt);
+                                 Config config,
+                                 std::optional<float> fps = std::nullopt,
+                                 std::optional<std::pair<uint32_t, uint32_t>> stereoSize = std::nullopt);
 
     /**
      * Optionally align the depth output to another image source (e.g. a color ``Camera`` output).
@@ -201,8 +199,12 @@ class Depth : public DeviceNodeGroup {
     /** Common pre-wiring guard for build/setter APIs. */
     void requireNotBuilt(const char* method) const;
 
-    /** Returns algorithms supported by the supplied device. */
-    std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device) const;
+    /**
+     * Returns the algorithms usable on @p device. ``NEURAL`` is included only when the device
+     * reports NeuralDepth support *and* @p supportedModels contains at least one model-zoo depth
+     * model (so AUTO never selects NeuralDepth when no model is actually available).
+     */
+    std::vector<Algorithm> getSupportedAlgorithms(const std::shared_ptr<Device>& device, const std::vector<DeviceModelZoo>& supportedModels) const;
 
     /** True when @p width or @p height exceeds the StereoDepth maximum. */
     static bool exceedsStereoDepthMaxResolution(uint32_t width, uint32_t height);
@@ -215,10 +217,10 @@ class Depth : public DeviceNodeGroup {
      * resolution), the function throws instead of falling back if no backend can serve both.
      */
     static Selection selectBackend(std::optional<std::pair<uint32_t, uint32_t>> resolution,
-                                    float targetFps,
-                                    const std::vector<Algorithm>& supportedAlgorithms,
-                                    const std::vector<DeviceModelZoo>& modelFilter = {},
-                                    bool requireFpsAndResolutionMatch = false);
+                                   float targetFps,
+                                   const std::vector<Algorithm>& supportedAlgorithms,
+                                   const std::vector<DeviceModelZoo>& modelFilter = {},
+                                   bool requireFpsAndResolutionMatch = false);
 
     /** Resolve algorithm + config, then wire stereo inputs from pipeline cameras / build() overrides. */
     void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
@@ -245,7 +247,7 @@ class Depth : public DeviceNodeGroup {
     void wireAlignment(Algorithm active, const std::shared_ptr<Device>& device);
 
     /** User-selected or ``AUTO`` algorithm; frozen after ``buildInternal()`` completes. */
-    Algorithm algorithmOverride_;
+    Algorithm algorithmOverride_{Algorithm::AUTO};
     /** Resolved algorithm + config; populated by ``resolveWiring()``. */
     Selection resolved_{Algorithm::AUTO, std::monostate{}};
     /** True after lazy wiring in ``buildInternal()``; blocks further ``build()`` calls. */
