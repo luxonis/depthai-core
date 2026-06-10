@@ -771,10 +771,10 @@ class CalibrationHandler {
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
     std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
-    std::vector<std::vector<float>> getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
-                                                              bool useSpecTranslation,
-                                                              CameraBoardSocket& originSocket,
-                                                              LengthUnit unit = LengthUnit::CENTIMETER) const;
+    std::vector<std::vector<float>> getHousingToHousingOriginExtrinsics(const HousingCoordinateSystem housingCS,
+                                                                        bool useSpecTranslation,
+                                                                        CameraBoardSocket& originSocket,
+                                                                        LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     void setHousingToHousingOriginExtrinsics(std::vector<std::vector<float>> rotationMatrix,
                                              std::vector<float> translation,

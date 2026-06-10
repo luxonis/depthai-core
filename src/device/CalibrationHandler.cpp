@@ -609,10 +609,10 @@ CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
     return currentCameraId;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
-                                                                              bool useSpecTranslation,
-                                                                              CameraBoardSocket& originSocket,
-                                                                              LengthUnit unit) const {
+std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExtrinsics(const HousingCoordinateSystem housingCS,
+                                                                                        bool useSpecTranslation,
+                                                                                        CameraBoardSocket& originSocket,
+                                                                                        LengthUnit unit) const {
     const float mmToUnitScale = getLengthUnitMultiplier(unit) / getLengthUnitMultiplier(LengthUnit::MILLIMETER);
     const float cmToUnitScale = getLengthUnitMultiplier(unit) / getLengthUnitMultiplier(LengthUnit::CENTIMETER);
 
@@ -708,7 +708,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
     // These are provided by the calibration data.
     // ------------------------------------------------------------
 
-    std::vector<std::vector<float>> housingToHousingOrigin = getHousingToHousingOrigin(housingCS, useSpecTranslation, housingOriginCamera);
+    std::vector<std::vector<float>> housingToHousingOrigin = getHousingToHousingOriginExtrinsics(housingCS, useSpecTranslation, housingOriginCamera);
 
     std::vector<std::vector<float>> housingOriginToOrigin = getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
 
