@@ -141,10 +141,6 @@ static bool compareCameraData(const dai::CameraInfo& first, const dai::CameraInf
 TEST_CASE("CBA calibrations are merged with the main board's calibration") {
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
     dai::Platform platform = device->getPlatform();
-    // Currently available only on RVC2
-    if(platform != dai::Platform::RVC2) {
-        return;
-    }
 
     // Look for connected CBAs
     std::vector<dai::CameraBoardSocket> cbaSockets;
@@ -203,10 +199,6 @@ TEST_CASE("CBA calibrations are merged with the main board's calibration") {
 TEST_CASE("Calibration's cameraData present on the main board has priority and is not replaced with camera socket data present on the CBAs") {
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
     dai::Platform platform = device->getPlatform();
-    // Currently available only on RVC2
-    if(platform != dai::Platform::RVC2) {
-        return;
-    }
 
     // Look for connected CBAs
     std::vector<dai::CameraBoardSocket> cbaSockets;
