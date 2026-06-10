@@ -343,11 +343,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         syncedSensors.push_back(sensor.sensorDcl);
     }
 
-    std::optional<std::vector<dcl::EdgeBaseline>> keptBaselineEdges = std::nullopt;
+    std::vector<dcl::EdgeBaseline> keptBaselineEdges;
     if(!keepCameraCenters) {
-        std::vector<dcl::EdgeBaseline> keptBaselineEdgesValue;
         if(connectedSensors.size() > 2) {
-            keptBaselineEdgesValue.reserve(socketsInHandler.size() > 0 ? socketsInHandler.size() - 1 : 0);
+            keptBaselineEdges.reserve(socketsInHandler.size() > 0 ? socketsInHandler.size() - 1 : 0);
             for(size_t idx = 0; idx + 1 < socketsInHandler.size(); ++idx) {
                 const auto* sensorAInChain = findConnectedSensor(socketsInHandler[idx]);
                 const auto* sensorBInChain = findConnectedSensor(socketsInHandler[idx + 1]);
@@ -365,14 +364,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                 const auto sensorIndexB = static_cast<std::size_t>(sensorBInChain - connectedSensorsBegin);
                 const auto baselineLength =
                     static_cast<double>(currentHandler.getBaselineDistance(sensorAInChain->socket, sensorBInChain->socket, true, LengthUnit::METER));
-                keptBaselineEdgesValue.push_back({sensorIndexA, sensorIndexB, baselineLength});
+                keptBaselineEdges.push_back({sensorIndexA, sensorIndexB, baselineLength});
             }
         }
-        if(!keptBaselineEdgesValue.empty()) {
-            keptBaselineEdges = std::move(keptBaselineEdgesValue);
-        }
     }
-    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keptBaselineEdges);
+    auto dclResult = pimplDCL->dynCalibImpl.findNewCalibration(syncedSensors, pm, keepCameraCenters, keptBaselineEdges);
     if(!dclResult.passed()) {
         auto result = std::make_shared<DynamicCalibrationResult>(dclResult.errorMessage());
         logger->warn("Calibration failed: {}", dclResult.errorMessage());
