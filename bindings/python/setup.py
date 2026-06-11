@@ -3,6 +3,7 @@ import re
 import sys
 import platform
 import subprocess
+import shlex
 import find_version
 
 from setuptools import setup, Extension
@@ -207,7 +208,7 @@ class CMakeBuild(build_ext):
 
         # Add additional cmake build args from environment
         if 'CMAKE_BUILD_ARGS' in os.environ:
-            build_args += [os.environ['CMAKE_BUILD_ARGS']]
+            build_args += shlex.split(os.environ['CMAKE_BUILD_ARGS'])
 
         # Windows
         if platform.system() == "Windows":
@@ -255,7 +256,7 @@ class CMakeBuild(build_ext):
 
         # Add additional cmake args from environment
         if 'CMAKE_ARGS' in os.environ:
-            cmake_args += [os.environ['CMAKE_ARGS']]
+            cmake_args += shlex.split(os.environ['CMAKE_ARGS'])
 
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
