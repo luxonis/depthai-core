@@ -12,7 +12,7 @@
 
 // third party
 #include <fmt/format.h>
-#include <fmt/std.h>
+#include "utility/FmtCompatibility.hpp"
 
 #include <nlohmann/json.hpp>
 
