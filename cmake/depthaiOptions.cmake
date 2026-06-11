@@ -108,9 +108,6 @@ else()
     option(DEPTHAI_EMBED_FRONTEND "Embed frontend resources into library" OFF)
 endif()
 
-# ---------- ROS  ---------------------------
-option(DEPTHAI_ROS_VERSION "ROS version to target for ROS support" 0)
-
 # ---------- Embedded firmware  ---------------------------
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW" ON)
