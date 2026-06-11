@@ -18,8 +18,16 @@ from enum import Enum
 
 manualExposureUs = None
 manualIso = None
+selectedCameraSocketOrder = None
+selectedCameraSocketsByDevice = None
+streamSensorResolutions = None
+streamOutputSizes = None
+DEFAULT_OUTPUT_SIZE = (640, 480)
 STEADY_STATE_THRESHOLD_US = 500.0
 STEADY_STATE_HOLD_SEC = 10.0
+SETTLING_FINAL_WINDOW_SEC = 10.0
+SETTLING_BAND_FRACTION = 0.02
+SETTLING_BAND_REFERENCE = "peak_deviation_from_final_value"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -44,24 +52,34 @@ class SyncType(Enum):
     PTP = 1
 
 def summarize_delta_statistics(delta_samples, stats_skip_sec):
-    steady_state_start_sec = None
-    steady_state_confirmed_at_sec = None
-    time_to_steady_state_sec = None
+    legacy_steady_state_start_sec = None
+    legacy_steady_state_confirmed_at_sec = None
+    legacy_time_to_steady_state_sec = None
     run_start_sec = None
     for elapsed_sec, delta_us in delta_samples:
         if delta_us < STEADY_STATE_THRESHOLD_US:
             if run_start_sec is None:
                 run_start_sec = elapsed_sec
             if elapsed_sec - run_start_sec >= STEADY_STATE_HOLD_SEC:
-                steady_state_start_sec = run_start_sec
-                steady_state_confirmed_at_sec = elapsed_sec
-                time_to_steady_state_sec = elapsed_sec
+                legacy_steady_state_start_sec = run_start_sec
+                legacy_steady_state_confirmed_at_sec = elapsed_sec
+                legacy_time_to_steady_state_sec = elapsed_sec
                 break
         else:
             run_start_sec = None
 
     post_skip_samples = [(elapsed_sec, delta_us) for elapsed_sec, delta_us in delta_samples if elapsed_sec >= stats_skip_sec]
+    post_skip_all_delta_us = [delta_us for _, delta_us in post_skip_samples]
     used_delta_us = [delta_us for _, delta_us in post_skip_samples if delta_us < STEADY_STATE_THRESHOLD_US]
+
+    post_skip_all_avg_us = None
+    post_skip_all_stddev_us = None
+    post_skip_all_p99_us = None
+    if post_skip_all_delta_us:
+        post_skip_all_delta_array = np.asarray(post_skip_all_delta_us, dtype=np.float64)
+        post_skip_all_avg_us = float(np.mean(post_skip_all_delta_array))
+        post_skip_all_stddev_us = float(np.std(post_skip_all_delta_array))
+        post_skip_all_p99_us = float(np.percentile(post_skip_all_delta_array, 99))
 
     avg_us = None
     stddev_us = None
@@ -72,14 +90,65 @@ def summarize_delta_statistics(delta_samples, stats_skip_sec):
         stddev_us = float(np.std(used_delta_array))
         p99_us = float(np.percentile(used_delta_array, 99))
 
+    settling_final_value_us = None
+    settling_band_us = None
+    steady_state_start_sec = None
+    steady_state_confirmed_at_sec = None
+    time_to_steady_state_sec = None
+    steady_state_avg_us = None
+    steady_state_stddev_us = None
+    steady_state_p99_us = None
+    steady_state_frame_count = 0
+    settling_peak_deviation_us = None
+    if delta_samples:
+        run_end_sec = delta_samples[-1][0]
+        final_window_start_sec = max(0.0, run_end_sec - SETTLING_FINAL_WINDOW_SEC)
+        final_window_delta_us = [delta_us for elapsed_sec, delta_us in delta_samples if elapsed_sec >= final_window_start_sec]
+        if final_window_delta_us:
+            settling_final_value_us = float(np.mean(np.asarray(final_window_delta_us, dtype=np.float64)))
+            settling_peak_deviation_us = max(abs(delta_us - settling_final_value_us) for _, delta_us in delta_samples)
+            settling_band_us = settling_peak_deviation_us * SETTLING_BAND_FRACTION
+
+            for idx, (elapsed_sec, _) in enumerate(delta_samples):
+                if all(abs(sample_delta_us - settling_final_value_us) <= settling_band_us for _, sample_delta_us in delta_samples[idx:]):
+                    time_to_steady_state_sec = elapsed_sec
+                    steady_state_start_sec = elapsed_sec
+                    steady_state_confirmed_at_sec = elapsed_sec
+                    break
+
+            if time_to_steady_state_sec is not None:
+                steady_state_delta_us = [delta_us for elapsed_sec, delta_us in delta_samples if elapsed_sec >= time_to_steady_state_sec]
+                if steady_state_delta_us:
+                    steady_state_array = np.asarray(steady_state_delta_us, dtype=np.float64)
+                    steady_state_avg_us = float(np.mean(steady_state_array))
+                    steady_state_stddev_us = float(np.std(steady_state_array))
+                    steady_state_p99_us = float(np.percentile(steady_state_array, 99))
+                    steady_state_frame_count = len(steady_state_delta_us)
+
     return {
         "steady_state_threshold_us": STEADY_STATE_THRESHOLD_US,
         "steady_state_hold_sec": STEADY_STATE_HOLD_SEC,
         "time_to_steady_state_sec": time_to_steady_state_sec,
         "steady_state_start_sec": steady_state_start_sec,
         "steady_state_confirmed_at_sec": steady_state_confirmed_at_sec,
+        "legacy_time_to_steady_state_sec": legacy_time_to_steady_state_sec,
+        "legacy_steady_state_start_sec": legacy_steady_state_start_sec,
+        "legacy_steady_state_confirmed_at_sec": legacy_steady_state_confirmed_at_sec,
+        "settling_final_window_sec": SETTLING_FINAL_WINDOW_SEC,
+        "settling_band_fraction": SETTLING_BAND_FRACTION,
+        "settling_band_reference": SETTLING_BAND_REFERENCE,
+        "settling_final_value_us": settling_final_value_us,
+        "settling_peak_deviation_us": settling_peak_deviation_us,
+        "settling_band_us": settling_band_us,
+        "steady_state_avg_us": steady_state_avg_us,
+        "steady_state_stddev_us": steady_state_stddev_us,
+        "steady_state_p99_us": steady_state_p99_us,
+        "steady_state_frame_count": steady_state_frame_count,
         "stats_skip_sec": stats_skip_sec,
         "post_skip_total_frames": len(post_skip_samples),
+        "post_skip_all_avg_us": post_skip_all_avg_us,
+        "post_skip_all_stddev_us": post_skip_all_stddev_us,
+        "post_skip_all_p99_us": post_skip_all_p99_us,
         "used_frame_count": len(used_delta_us),
         "p99_us": p99_us,
         "avg_us": avg_us,
@@ -96,20 +165,50 @@ def print_delta_statistics(summary, stats_file_path):
     print("Timestamp delta statistics")
     print(f"  Stats file: {stats_file_path}")
     print(f"  Selected FPS: {summary['selected_fps']:.3f}")
+    print(f"  Sensor FPS: {summary['sensor_fps']:.3f}")
     print(
         "  Time to reach steady state: "
         f"{format_sec(summary['time_to_steady_state_sec'])} "
-        f"(continuous {summary['steady_state_hold_sec']:.1f} s below {summary['steady_state_threshold_us']:.0f} us)"
+        f"(within {summary['settling_band_fraction'] * 100:.1f}% settling band around the final value estimate)"
     )
-    print(f"  Delta p99 (< {summary['steady_state_threshold_us']:.0f} us after {summary['stats_skip_sec']:.1f} s): {format_us(summary['p99_us'])}")
-    print(f"  Avg (< {summary['steady_state_threshold_us']:.0f} us after {summary['stats_skip_sec']:.1f} s): {format_us(summary['avg_us'])}")
-    print(f"  Std dev (< {summary['steady_state_threshold_us']:.0f} us after {summary['stats_skip_sec']:.1f} s): {format_us(summary['stddev_us'])}")
-    print(f"  N frames used: {summary['used_frame_count']}")
+    print(f"  Final value estimate (last {summary['settling_final_window_sec']:.1f} s mean): {format_us(summary['settling_final_value_us'])}")
+    print(f"  Settling band ({summary['settling_band_reference']}): {format_us(summary['settling_band_us'])}")
+    print(f"  Avg after steady state: {format_us(summary['steady_state_avg_us'])}")
+    print(f"  Std dev after steady state: {format_us(summary['steady_state_stddev_us'])}")
+    print(f"  P99 after steady state: {format_us(summary['steady_state_p99_us'])}")
+    print(f"  N steady-state frames: {summary['steady_state_frame_count']}")
 
 # ---------------------------------------------------------------------------
 # Create camera outputs
 # ---------------------------------------------------------------------------
-def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, sensorFps: float, role: dai.ExternalFrameSyncRole):
+def buildCandidateDeviceKeys(device: dai.Device):
+    deviceInfo = device.getDeviceInfo()
+    candidateDeviceKeys = [device.getDeviceId()]
+    if deviceInfo.deviceId:
+        candidateDeviceKeys.append(deviceInfo.deviceId)
+    if deviceInfo.name:
+        candidateDeviceKeys.append(deviceInfo.name)
+    return candidateDeviceKeys
+
+def lookupPerStreamSize(device: dai.Device, socketName: str, mapping):
+    if mapping is None:
+        return None
+
+    for deviceKey in buildCandidateDeviceKeys(device):
+        value = mapping.get((deviceKey, socketName))
+        if value is not None:
+            return value
+
+    return None
+
+def createCameraOutputs(
+        pipeline: dai.Pipeline,
+        device: dai.Device,
+        socket: dai.CameraBoardSocket,
+        sensorResolution,
+        outputSize,
+        sensorFps: float,
+        role: dai.ExternalFrameSyncRole):
     global syncType, manualExposureUs, manualIso
     cam = None
 
@@ -117,18 +216,18 @@ def createCameraOutputs(pipeline: dai.Pipeline, socket: dai.CameraBoardSocket, s
     if role == dai.ExternalFrameSyncRole.MASTER or syncType == SyncType.PTP:
         cam = (
             pipeline.create(dai.node.Camera)
-            .build(socket, sensorFps=sensorFps)
+            .build(socket, sensorResolution=sensorResolution, sensorFps=sensorFps)
         )
     # Slave cameras will lock to the master's FPS
     else:
         cam = (
             pipeline.create(dai.node.Camera)
-            .build(socket)
+            .build(socket, sensorResolution=sensorResolution)
         )
 
     output = (
         cam.requestOutput(
-            (640, 480), dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
+            outputSize, dai.ImgFrame.Type.NV12, dai.ImgResizeMode.STRETCH
         )
     )
 
@@ -175,12 +274,16 @@ def createSyncNode(syncThreshold: datetime.timedelta):
 # ---------------------------------------------------------------------------
 def setUpCameraSocket(
         pipeline: dai.Pipeline,
+        device: dai.Device,
         socket: dai.CameraBoardSocket,
         deviceName: str,
         targetFps: float,
         role: dai.ExternalFrameSyncRole):
-    global masterNode, slaveQueues, camSockets, syncType
-    pipeline, outNode = createCameraOutputs(pipeline, socket, targetFps, role)
+    global masterNode, slaveQueues, camSockets, syncType, streamSensorResolutions, streamOutputSizes
+
+    sensorResolution = lookupPerStreamSize(device, socket.name, streamSensorResolutions)
+    outputSize = lookupPerStreamSize(device, socket.name, streamOutputSizes) or DEFAULT_OUTPUT_SIZE
+    pipeline, outNode = createCameraOutputs(pipeline, device, socket, sensorResolution, outputSize, targetFps, role)
 
     if syncType == SyncType.EXTERNAL:
         # Master cameras will be linked to the sync node directly
@@ -222,6 +325,78 @@ def getDeviceName(device : dai.Device) -> str:
         name += "[" + info.name + "]"
     return name
 
+def getSelectedSockets(device: dai.Device):
+    global selectedCameraSocketOrder, selectedCameraSocketsByDevice
+
+    availableSockets = list(device.getConnectedCameras())
+    if not availableSockets:
+        raise RuntimeError("No connected cameras found on device")
+
+    candidateDeviceKeys = buildCandidateDeviceKeys(device)
+
+    requestedSocketOrder = None
+    if selectedCameraSocketsByDevice is not None:
+        for deviceKey in candidateDeviceKeys:
+            if deviceKey in selectedCameraSocketsByDevice:
+                requestedSocketOrder = selectedCameraSocketsByDevice[deviceKey]
+                break
+    elif not selectedCameraSocketOrder:
+        # Preserve the current local behavior unless a socket filter is explicitly requested.
+        return [availableSockets[0]]
+    else:
+        requestedSocketOrder = selectedCameraSocketOrder
+
+    availableByName = {socket.name: socket for socket in availableSockets}
+    missingSockets = [name for name in requestedSocketOrder if name not in availableByName]
+    if missingSockets:
+        availableNames = ", ".join(sorted(availableByName))
+        missingNames = ", ".join(missingSockets)
+        raise RuntimeError(
+            f"Requested camera sockets not present on device {device.getDeviceId()}: {missingNames}. "
+            f"Available sockets: {availableNames}"
+        )
+
+    return [availableByName[name] for name in requestedSocketOrder]
+
+def parseDeviceCameraSockets(device_camera_socket_args):
+    if not device_camera_socket_args:
+        return None
+
+    parsed = {}
+    for item in device_camera_socket_args:
+        if "=" not in item:
+            raise RuntimeError(
+                "Each --device-camera-sockets entry must look like DEVICE_ID_OR_IP=CAM_A,CAM_B"
+            )
+        deviceIdOrIp, socketList = item.split("=", 1)
+        sockets = [socket.strip() for socket in socketList.split(",") if socket.strip()]
+        if not deviceIdOrIp or not sockets:
+            raise RuntimeError(
+                "Each --device-camera-sockets entry must include a device identifier and at least one socket"
+            )
+        parsed[deviceIdOrIp] = sockets
+
+    return parsed
+
+def parsePerStreamSizeMap(arg_values, argument_name):
+    if not arg_values:
+        return None
+
+    parsed = {}
+    for item in arg_values:
+        if "=" not in item or "/" not in item:
+            raise RuntimeError(
+                f"Each {argument_name} entry must look like DEVICE_ID_OR_IP/CAM_A=WIDTHxHEIGHT"
+            )
+        streamKey, sizeString = item.split("=", 1)
+        deviceKey, socketName = streamKey.rsplit("/", 1)
+        if "x" not in sizeString:
+            raise RuntimeError(f"Each {argument_name} entry must use WIDTHxHEIGHT format")
+        widthString, heightString = sizeString.split("x", 1)
+        parsed[(deviceKey, socketName)] = (int(widthString), int(heightString))
+
+    return parsed
+
 def setupDevice(
         stack: contextlib.ExitStack,
         deviceInfo: dai.DeviceInfo,
@@ -243,9 +418,11 @@ def setupDevice(
     print("=== Connected to", deviceInfo.getDeviceId())
     print("    Device ID:", device.getDeviceId())
     print("    Num of cameras:", len(device.getConnectedCameras()))
+    deviceSockets = getSelectedSockets(device)
+    print("    Using cameras:", ", ".join(socket.name for socket in deviceSockets))
 
-    for socket in device.getConnectedCameras():
-        pipeline = setUpCameraSocket(pipeline, socket, name, targetFps, role)
+    for socket in deviceSockets:
+        pipeline = setUpCameraSocket(pipeline, device, socket, name, targetFps, role)
 
     if syncType == SyncType.EXTERNAL:
         if role == dai.ExternalFrameSyncRole.MASTER:
@@ -287,7 +464,12 @@ signal.signal(signal.SIGINT, interruptHandler)
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("-f", "--fps", type=float, default=30.0, help="Target FPS", required=False)
+parser.add_argument("--sensor-fps", type=float, default=None, help="Optional sensor FPS override", required=False)
 parser.add_argument("-d", "--devices", default=[], nargs="+", help="Device IPs or IDs", required=False)
+parser.add_argument("--camera-sockets", default=None, nargs="+", help="Optional camera sockets to compare, for example CAM_A CAM_B", required=False)
+parser.add_argument("--device-camera-sockets", default=None, nargs="+", help="Optional per-device sockets, for example 192.168.10.80=CAM_A 192.168.10.76=CAM_B", required=False)
+parser.add_argument("--stream-sensor-resolutions", default=None, nargs="+", help="Per-stream sensor resolutions, for example 192.168.10.80/CAM_A=8000x6000", required=False)
+parser.add_argument("--stream-output-sizes", default=None, nargs="+", help="Per-stream output sizes, for example 192.168.10.80/CAM_A=8000x6000", required=False)
 parser.add_argument("-t1", "--recv-all-timeout-sec", type=float, default=10, help="Timeout for receiving the first frame from all devices", required=False)
 parser.add_argument("-t2", "--sync-threshold-sec", type=float, default=1e-3, help="Sync threshold in seconds", required=False)
 parser.add_argument("-t3", "--initial-sync-timeout-sec", type=float, default=4, help="Timeout for synchronization to complete", required=False)
@@ -296,6 +478,7 @@ parser.add_argument("--stats-skip-sec", type=float, default=30, help="Ignore fra
 parser.add_argument("--stats-file", type=str, default=None, help="Optional path to save the timestamp delta statistics JSON", required=False)
 parser.add_argument("--exposure-us", type=int, default=None, help="Optional manual exposure in microseconds", required=False)
 parser.add_argument("--iso", type=int, default=None, help="Optional manual ISO value", required=False)
+parser.add_argument("--headless", action="store_true", help="Disable OpenCV display windows", required=False)
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument("--external-sync", action="store_true", help="Use external sync")
 group.add_argument("--ptp-sync", action="store_true", help="Use PTP sync")
@@ -310,9 +493,18 @@ if len(args.devices) == 0:
 else:
     deviceInfos = [dai.DeviceInfo(ip) for ip in args.devices]
 
-assert len(deviceInfos) > 1, "At least two devices are required for this example."
+if len(deviceInfos) == 0:
+    raise RuntimeError("No devices found")
+selectedCameraSocketsByDevice = parseDeviceCameraSockets(args.device_camera_sockets)
+if args.camera_sockets is not None and selectedCameraSocketsByDevice is not None:
+    raise RuntimeError("Use either --camera-sockets or --device-camera-sockets, not both")
+if len(deviceInfos) == 1 and selectedCameraSocketsByDevice is None and (args.camera_sockets is None or len(args.camera_sockets) < 2):
+    raise RuntimeError("Single-device runs require --camera-sockets with at least two sockets")
+streamSensorResolutions = parsePerStreamSizeMap(args.stream_sensor_resolutions, "--stream-sensor-resolutions")
+streamOutputSizes = parsePerStreamSizeMap(args.stream_output_sizes, "--stream-output-sizes")
 
 targetFps = args.fps  # Must match sensorFps in createPipeline()
+sensorFps = args.sensor_fps or args.fps
 recvAllTimeoutSec = args.recv_all_timeout_sec
 
 syncThresholdSec = args.sync_threshold_sec
@@ -321,6 +513,8 @@ testDurationSec = args.test_duration_sec
 statsSkipSec = args.stats_skip_sec
 manualExposureUs = args.exposure_us
 manualIso = args.iso
+headless = args.headless
+selectedCameraSocketOrder = args.camera_sockets
 if args.external_sync:
     syncType = SyncType.EXTERNAL
 elif args.ptp_sync:
@@ -351,13 +545,14 @@ with contextlib.ExitStack() as stack:
     camSockets = []
 
     for idx, deviceInfo in enumerate(deviceInfos):
-        setupDevice(stack, deviceInfo, targetFps)
+        setupDevice(stack, deviceInfo, sensorFps)
 
     if masterPipeline is None or masterNode is None:
         raise RuntimeError("No master detected!")
 
-    if len(slavePipelines) < 1:
-        raise RuntimeError("No slaves detected!")
+    configuredStreamCount = len(masterNode) + sum(len(sockets) for sockets in slaveQueues.values())
+    if configuredStreamCount < 2:
+        raise RuntimeError("Need at least two camera streams to compare")
 
     # Create sync node
     # Sync node groups the frames so that all synced frames are timestamped to within one frame time
@@ -443,11 +638,6 @@ with contextlib.ExitStack() as stack:
         # -------------------------------------------------------------------
         if latestFrameGroupDirty and latestFrameGroup is not None and latestFrameGroup.getNumMessages() == len(outputNames) and latestFrameMetrics is not None:
             tsValues = latestFrameMetrics["tsValues"]
-
-            # Build individual image arrays for each camera socket, displayed side-by-side
-            imgs = []
-            for name in camSockets:
-                imgs.append([])
             fps = latestFrameMetrics["fps"]
             delta = latestFrameMetrics["delta"]
             syncStatus = latestFrameMetrics["syncStatus"]
@@ -471,68 +661,65 @@ with contextlib.ExitStack() as stack:
                 continue
 
             color = (0, 255, 0) if syncStatusStr == "in sync" else (0, 0, 255)
+            if not headless:
+                # Build individual image arrays for each camera socket, displayed side-by-side.
+                imgs = [[] for _ in camSockets]
 
-            # Create a image frame with sync info for each output
-            for outputName in outputNames:
-                # Find out which camera socket this output belongs to
-                idx = -1
-                for i, name in enumerate(camSockets):
-                    if name in outputName:
-                        idx = i
-                        break
-                if idx == -1:
-                    raise RuntimeError(f"Could not find camera socket for {outputName}")
-                
-                # Get frame for this output
-                msg = latestFrameGroup[outputName]
-                frame = msg.getCvFrame()
+                # Create an image frame with sync info for each output.
+                for outputName in outputNames:
+                    # Find out which camera socket this output belongs to.
+                    idx = -1
+                    for i, name in enumerate(camSockets):
+                        if name in outputName:
+                            idx = i
+                            break
+                    if idx == -1:
+                        raise RuntimeError(f"Could not find camera socket for {outputName}")
 
-                # Add output name to frame
-                cv2.putText(
-                    frame,
-                    f"{outputName}",
-                    (20, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (0, 127, 255),
-                    2,
-                    cv2.LINE_AA,
-                )
+                    frame = latestFrameGroup[outputName].getCvFrame()
 
-                # Add timestamp and FPS to frame
-                cv2.putText(
-                    frame,
-                    f"Timestamp: {tsValues[outputName]} | FPS:{fps:.2f}",
-                    (20, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (255, 0, 50),
-                    2,
-                    cv2.LINE_AA,
-                )
-                imgs[idx].append(frame)
+                    cv2.putText(
+                        frame,
+                        f"{outputName}",
+                        (20, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,
+                        (0, 127, 255),
+                        2,
+                        cv2.LINE_AA,
+                    )
 
-            # Add absolute maximum time difference between all frames
-            for i, img in enumerate(imgs):
-                cv2.putText(
-                    imgs[i][0],
-                    f"{syncStatusStr} | delta = {delta*1e3:.3f} ms",
-                    (20, 120),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    color,
-                    2,
-                    cv2.LINE_AA,
-                )
+                    cv2.putText(
+                        frame,
+                        f"Timestamp: {tsValues[outputName]} | FPS:{fps:.2f}",
+                        (20, 80),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,
+                        (255, 0, 50),
+                        2,
+                        cv2.LINE_AA,
+                    )
+                    imgs[idx].append(frame)
 
-            # Show the frame
-            for i, img in enumerate(imgs):
-                cv2.imshow(f"synced_view_{camSockets[i]}", cv2.hconcat(imgs[i]))
+                for i, img in enumerate(imgs):
+                    cv2.putText(
+                        imgs[i][0],
+                        f"{syncStatusStr} | delta = {delta*1e3:.3f} ms",
+                        (20, 120),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        color,
+                        2,
+                        cv2.LINE_AA,
+                    )
+
+                for i, img in enumerate(imgs):
+                    cv2.imshow(f"synced_view_{camSockets[i]}", cv2.hconcat(imgs[i]))
 
             latestFrameGroupDirty = False
             latestFrameGroup = None  # Wait for next batch
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
+        if not headless and cv2.waitKey(1) & 0xFF == ord("q"):
             running = False
             break
 
@@ -544,7 +731,8 @@ with contextlib.ExitStack() as stack:
     for t in threads.keys():
         threads[t].join()
 
-cv2.destroyAllWindows()
+if not headless:
+    cv2.destroyAllWindows()
 
 summary = summarize_delta_statistics(deltaSamples, statsSkipSec)
 summary.update(
@@ -553,10 +741,16 @@ summary.update(
         "sync_type": syncType.name,
         "selected_fps": targetFps,
         "target_fps": targetFps,
+        "sensor_fps": sensorFps,
         "sync_threshold_us": syncThresholdSec * 1e6,
         "test_duration_sec": testDurationSec,
         "actual_duration_sec": actualDurationSec,
         "device_ids_or_ips": args.devices,
+        "camera_sockets_requested": args.camera_sockets,
+        "device_camera_sockets_requested": args.device_camera_sockets,
+        "stream_sensor_resolutions_requested": args.stream_sensor_resolutions,
+        "stream_output_sizes_requested": args.stream_output_sizes,
+        "camera_sockets_used": camSockets,
     }
 )
 
