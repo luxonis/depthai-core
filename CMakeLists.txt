@@ -79,7 +79,7 @@ else()
 endif()
 
 # Create depthai project
-set(DEPTHAI_PROJECT_NAME "depthai") # Should be depthai_v3 for ROS jazzy or older
+set(DEPTHAI_PROJECT_NAME "depthai_v3") # Should be depthai for ROS kilted or newer
 
 project(${DEPTHAI_PROJECT_NAME} VERSION "3.7.1" LANGUAGES CXX C)
 set(DEPTHAI_PRE_RELEASE_TYPE "") # Valid options are "alpha", "beta", "rc", ""
