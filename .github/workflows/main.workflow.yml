@@ -10,6 +10,7 @@ on:
     branches:
       - main
       - develop
+      - 'release*'
     tags:
       - 'v*'
   pull_request:
@@ -138,7 +139,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-latest, windows-2022, ubuntu-latest]
         cmake: ['3.22.x', '4.0.x']
 
     steps:
@@ -163,7 +164,7 @@ jobs:
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
-      if: matrix.os == 'windows-latest'
+      if: matrix.os == 'windows-2022'
       run: |
         choco install opencv
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -179,7 +180,7 @@ jobs:
     if: needs.precheck.outputs.should_run == 'true'
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-latest, windows-2022, ubuntu-latest]
         build-type: [Debug, Release]
         # shared: [true, false]
         shared: [true]
@@ -211,7 +212,7 @@ jobs:
         sudo apt-get install libopencv-dev libudev-dev libusb-1.0-0-dev
 
     - name: Install dependencies
-      if: matrix.os == 'windows-latest'
+      if: matrix.os == 'windows-2022'
       run: |
         choco install opencv
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -227,14 +228,14 @@ jobs:
       run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
 
     - name: Set path to shared library dll (Windows)
-      if: matrix.os == 'windows-latest'
+      if: matrix.os == 'windows-2022'
       run: echo "$GITHUB_WORKSPACE/depthai_install/bin/" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Build and install
       run: cmake --build build --config ${{ matrix.build-type }} --target install --parallel 4
 
     - name: Upload Win64 shared library
-      if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'x64'
+      if: matrix.os == 'windows-2022' && matrix.shared && matrix.platform == 'x64'
       uses: actions/upload-artifact@v4
       with:
         name: windows-prebuilt-win64-${{ matrix.build-type }}
