@@ -32,12 +32,12 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
     std::vector<int> warpHwIds;
 
     /**
-     * Which socket will color camera use
+     * Which board socket the ToF sensor uses
      */
     CameraBoardSocket boardSocket = CameraBoardSocket::AUTO;
 
     /**
-     * Which camera name will color camera use
+     * Optional camera name override
      */
     std::string cameraName = "";
 

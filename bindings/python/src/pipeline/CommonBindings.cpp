@@ -42,6 +42,8 @@
 #include "depthai/common/Size2f.hpp"
 #include "depthai/common/SpatialKeypoint.hpp"
 #include "depthai/common/StereoPair.hpp"
+#include "depthai/common/ToFPreset.hpp"
+#include "depthai/common/ToFSensorMode.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/common/YoloDecodingFamily.hpp"
@@ -67,6 +69,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     py::enum_<ExternalFrameSyncRole> externalFrameSyncRole(m, "ExternalFrameSyncRole", DOC(dai, ExternalFrameSyncRole));
     py::enum_<ConnectionInterface> connectionInterface(m, "connectionInterface", DOC(dai, ConnectionInterface));
     py::enum_<CameraSensorType> cameraSensorType(m, "CameraSensorType", DOC(dai, CameraSensorType));
+    py::enum_<ToFSensorMode> tofSensorMode(m, "ToFSensorMode");
+    py::enum_<ToFPreset> tofPreset(m, "ToFPreset");
     py::enum_<CameraImageOrientation> cameraImageOrientation(m, "CameraImageOrientation", DOC(dai, CameraImageOrientation));
     py::class_<CameraSensorConfig> cameraSensorConfig(m, "CameraSensorConfig", DOC(dai, CameraSensorConfig));
     py::class_<CameraFeatures> cameraFeatures(m, "CameraFeatures", DOC(dai, CameraFeatures));
@@ -439,6 +443,17 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("MONO", CameraSensorType::MONO)
         .value("TOF", CameraSensorType::TOF)
         .value("THERMAL", CameraSensorType::THERMAL);
+
+    tofSensorMode.value("F1_FULL", ToFSensorMode::F1_FULL)
+        .value("F2_FULL", ToFSensorMode::F2_FULL)
+        .value("F3_FULL", ToFSensorMode::F3_FULL)
+        .value("F2_BINNING_2X2", ToFSensorMode::F2_BINNING_2X2)
+        .value("F3_BINNING_2X2", ToFSensorMode::F3_BINNING_2X2);
+
+    tofPreset.value("OFF", ToFPreset::OFF)
+        .value("LOW_RANGE", ToFPreset::LOW_RANGE)
+        .value("MID_RANGE", ToFPreset::MID_RANGE)
+        .value("HIGH_RANGE", ToFPreset::HIGH_RANGE);
     // ConnectionInterface enum bindings
     connectionInterface.value("USB", ConnectionInterface::USB).value("ETHERNET", ConnectionInterface::ETHERNET).value("WIFI", ConnectionInterface::WIFI);
     // CameraImageOrientation enum bindings

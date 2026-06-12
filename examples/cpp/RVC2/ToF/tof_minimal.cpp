@@ -1,7 +1,13 @@
+/**
+ * Minimal RVC2 ToF example.
+ *
+ * - tof->rawDepth  : unfiltered depth from ToFBase
+ * - tof->depth     : host ImageFilters output
+ * - tof->confidence: aliases tof->amplitude on RVC2
+ */
+
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <xtensor/containers/xadapt.hpp>
-#include <xtensor/containers/xarray.hpp>
 
 #include "depthai/depthai.hpp"
 

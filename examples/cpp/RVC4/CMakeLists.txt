@@ -2,4 +2,5 @@ project(rvc4_examples)
 cmake_minimum_required(VERSION 3.10)
 
 add_subdirectory(GPUStereo)
+add_subdirectory(ToF)
 

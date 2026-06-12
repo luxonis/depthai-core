@@ -17,6 +17,8 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<ToFConfig, Py<ToFConfig>, Buffer, std::shared_ptr<ToFConfig>> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
+    py::class_<ToFIppConfig> tofIppConfig(m, "ToFIppConfig");
+    py::class_<ToFDecoderConfig> tofDecoderConfig(m, "ToFDecoderConfig");
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -60,10 +62,39 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
 
         .def("setMedianFilter", &ToFConfig::setMedianFilter, DOC(dai, ToFConfig, setMedianFilter))
         .def("setProfilePreset", &ToFConfig::setProfilePreset, DOC(dai, ToFConfig, setProfilePreset))
+        .def("setToFPreset", &ToFConfig::setToFPreset, "Set RVC4 IPP preset");
 
-        // .def("set", &ToFConfig::set, py::arg("config"), DOC(dai, ToFConfig, set))
-        // .def("get", &ToFConfig::get, DOC(dai, ToFConfig, get))
-        ;
+    tofIppConfig.def(py::init<>())
+        .def_readwrite("phaseUnwrapErrorThreshold", &ToFIppConfig::phaseUnwrapErrorThreshold)
+        .def_readwrite("enableBilateralFilter", &ToFIppConfig::enableBilateralFilter)
+        .def_readwrite("bilateralStdFactor", &ToFIppConfig::bilateralStdFactor)
+        .def_readwrite("bilateralFilterKernelSize", &ToFIppConfig::bilateralFilterKernelSize)
+        .def_readwrite("enableTemporalNoiseReduction", &ToFIppConfig::enableTemporalNoiseReduction)
+        .def_readwrite("tnrMaxGain", &ToFIppConfig::tnrMaxGain)
+        .def_readwrite("tnrStdFactor", &ToFIppConfig::tnrStdFactor)
+        .def_readwrite("enableFlyingPixelCorrection", &ToFIppConfig::enableFlyingPixelCorrection)
+        .def_readwrite("fpDepthThreshold", &ToFIppConfig::fpDepthThreshold)
+        .def_readwrite("fpMinDepthOccurrence", &ToFIppConfig::fpMinDepthOccurrence)
+        .def_readwrite("enableRadialToPerp", &ToFIppConfig::enableRadialToPerp)
+        .def_static("fromToFConfig", &ToFIppConfig::fromToFConfig)
+        .def("applyTo", &ToFIppConfig::applyTo)
+        .def("applyPreset", &ToFIppConfig::applyPreset);
+
+    tofDecoderConfig.def(py::init<>())
+        .def_readwrite("median", &ToFDecoderConfig::median)
+        .def_readwrite("phaseUnwrappingLevel", &ToFDecoderConfig::phaseUnwrappingLevel)
+        .def_readwrite("phaseUnwrapErrorThreshold", &ToFDecoderConfig::phaseUnwrapErrorThreshold)
+        .def_readwrite("enablePhaseShuffleTemporalFilter", &ToFDecoderConfig::enablePhaseShuffleTemporalFilter)
+        .def_readwrite("enableBurstMode", &ToFDecoderConfig::enableBurstMode)
+        .def_readwrite("enableDistortionCorrection", &ToFDecoderConfig::enableDistortionCorrection)
+        .def_readwrite("enableFPPNCorrection", &ToFDecoderConfig::enableFPPNCorrection)
+        .def_readwrite("enableOpticalCorrection", &ToFDecoderConfig::enableOpticalCorrection)
+        .def_readwrite("enableTemperatureCorrection", &ToFDecoderConfig::enableTemperatureCorrection)
+        .def_readwrite("enableWiggleCorrection", &ToFDecoderConfig::enableWiggleCorrection)
+        .def_readwrite("enablePhaseUnwrapping", &ToFDecoderConfig::enablePhaseUnwrapping)
+        .def_static("fromToFConfig", &ToFDecoderConfig::fromToFConfig)
+        .def("applyTo", &ToFDecoderConfig::applyTo)
+        .def("applyPreset", &ToFDecoderConfig::applyPreset);
 
     // add aliases
     // m.attr("ToFConfig").attr("DepthParams") = m.attr("ToFConfig").attr("DepthParams");

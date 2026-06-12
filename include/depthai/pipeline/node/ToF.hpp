@@ -6,19 +6,37 @@
 #include <depthai/pipeline/node/ImageFilters.hpp>
 
 // standard
-#include <fstream>
+#include <memory>
+#include <optional>
+#include <utility>
 
 // shared
 #include <depthai/properties/ToFProperties.hpp>
 
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/ToFPreset.hpp"
+#include "depthai/common/ToFSensorMode.hpp"
+#include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 
 namespace dai {
+
+struct ToFBuildOptions {
+    CameraBoardSocket boardSocket = CameraBoardSocket::AUTO;
+    std::optional<ToFSensorMode> sensorMode;
+    /// Integer FPS stored as float (matches ToFProperties/CameraProperties wire format).
+    std::optional<float> fps;
+    /// RVC4 IPP preset. Applied only when set; tune initialConfig after build() for further overrides.
+    std::optional<ToFPreset> preset;
+};
+
 namespace node {
+
+class Camera;
 
 /**
  * @brief ToFBase node.
- * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
+ * Device-side ToF depth processing (decoder on RVC2, IPP on RVC4).
  */
 class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
    public:
@@ -33,7 +51,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     ToFBase(std::unique_ptr<Properties> props);
 
     /**
-     * Initial config to use for feature tracking.
+     * Initial ToF config (IPP on RVC4, decoder on RVC2).
      */
     std::shared_ptr<ToFConfig> initialConfig = std::make_shared<ToFConfig>();
 
@@ -60,11 +78,16 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
-     * Build with a specific board socket
+     * Build with a specific board socket (RVC2 path with host ImageFilters preset).
      */
     std::shared_ptr<ToFBase> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                    dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::TOF_MID_RANGE,
                                    std::optional<float> fps = std::nullopt);
+
+    /**
+     * Build with board socket only (RVC4 path; IPP preset applied separately).
+     */
+    std::shared_ptr<ToFBase> build(dai::CameraBoardSocket boardSocket, std::optional<float> fps);
 
     /**
      * Set profile preset for ToFConfig
@@ -81,6 +104,8 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     CameraBoardSocket getBoardSocket() const;
 
    private:
+    std::shared_ptr<ToFBase> finalizeBuild(dai::CameraBoardSocket boardSocket, std::optional<float> fps);
+
     bool isBuilt = false;
     uint32_t maxWidth = 0;
     uint32_t maxHeight = 0;
@@ -88,20 +113,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
 class ToF : public DeviceNodeGroup {
    public:
-    ToF(const std::shared_ptr<Device>& device)
-        : DeviceNodeGroup(device),
-          rawDepth{tofBase->depth},
-          depth{imageFilters->output},
-          amplitude{tofBase->amplitude},
-          intensity{tofBase->intensity},
-          confidence{tofBase->confidence},
-          phase{tofBase->phase},
-          rawInput{tofBase->rawInput},
-          raw{tofBase->raw},
-          tofBaseInputConfig{tofBase->inputConfig},
-          imageFiltersInputConfig{imageFilters->inputConfig},
-          tofBaseNode{*tofBase},
-          imageFiltersNode{*imageFilters} {}
+    ToF(const std::shared_ptr<Device>& device);
 
     ~ToF() override;
 
@@ -111,22 +123,38 @@ class ToF : public DeviceNodeGroup {
         return tofPtr;
     }
 
-    void buildInternal() override {
-        // Build all subnodes, call their internal build functions
-        tofBase->buildInternal();
-        imageFilters->buildInternal();
+    void buildInternal() override;
+    void buildStage1() override;
+    void buildStage2() override;
 
-        // Link subnodes together
-        tofBase->depth.link(imageFilters->input);
-    }
-
+    std::shared_ptr<ToF> build(const ToFBuildOptions& options);
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::TOF_MID_RANGE,
-                               std::optional<float> fps = std::nullopt) {
-        tofBase->build(boardSocket, presetMode, fps);
-        imageFilters->build(presetMode);
-        return std::static_pointer_cast<ToF>(shared_from_this());
-    }
+                               std::optional<float> fps = std::nullopt);
+
+    /**
+     * Returns auto-created Camera on RVC4, or nullptr when rawInput was user-connected.
+     */
+    std::shared_ptr<Camera> getCamera() const;
+
+    CameraBoardSocket getBoardSocket() const;
+
+    /**
+     * Depth / amplitude / confidence output size (width, height) after IPP and landscape transpose.
+     * RVC4 only — derived from the selected ToFSensorMode. On RVC2, read dimensions from depth frames.
+     */
+    std::pair<uint32_t, uint32_t> getOutputResolution() const;
+
+    /**
+     * Raw VD55H1 superframe size (width, height) for Camera.build(sensorResolution=...).
+     * RVC4 only — matches the ToFSensorMode passed to build().
+     */
+    std::pair<uint32_t, uint32_t> getRawResolution() const;
+
+    /**
+     * @deprecated Use getOutputResolution() — this name referred to sensor size but returns IPP output size.
+     */
+    std::pair<uint32_t, uint32_t> getSensorResolution() const;
 
     Subnode<ToFBase> tofBase{*this, "tofBase"};
     Subnode<ImageFilters> imageFilters{*this, "imageFilters"};
@@ -137,7 +165,7 @@ class ToF : public DeviceNodeGroup {
     Output& rawDepth;
 
     /**
-     * Filtered depth output
+     * Filtered depth output (RVC2) or IPP depth output (RVC4)
      */
     Output& depth;
 
@@ -152,7 +180,7 @@ class ToF : public DeviceNodeGroup {
     Output& intensity;
 
     /**
-     * Confidence output
+     * Confidence output (RVC4). On RVC2, aliases amplitude as a per-pixel quality map.
      */
     Output& confidence;
 
@@ -174,6 +202,11 @@ class ToF : public DeviceNodeGroup {
     /**
      * Input config for ToF base node
      */
+    Input& inputConfig;
+
+    /**
+     * Input config for image filters (RVC2 only)
+     */
     Input& tofBaseInputConfig;
 
     /**
@@ -190,6 +223,24 @@ class ToF : public DeviceNodeGroup {
      * Image filters node
      */
     ImageFilters& imageFiltersNode;
+
+   private:
+    void logWarnOnce(bool& warned, const char* message) const;
+    void validateBuildFps(const std::optional<float>& fps);
+    void warnIfMisconfiguredInitialConfig() const;
+    void warnIfPhaseOrRawConnected() const;
+
+    bool isRvc4Platform;
+    bool isGroupBuilt = false;
+    ToFBuildOptions buildOptions;
+    std::shared_ptr<Camera> autoCamera;
+
+    mutable bool warnedDecoderFieldsRvc4 = false;
+    mutable bool warnedIppFieldsRvc2 = false;
+    mutable bool warnedPhaseRawRvc4 = false;
+    mutable bool warnedPresetRvc2 = false;
+    mutable bool warnedFpsRangeRvc4 = false;
+    mutable bool warnedSensorResolutionDeprecated = false;
 };
 
 }  // namespace node

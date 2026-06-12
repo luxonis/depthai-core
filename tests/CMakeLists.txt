@@ -446,6 +446,14 @@ dai_set_test_labels(normalization_test onhost ci)
 dai_add_test(depth_unit_test src/onhost_tests/depth_unit_test.cpp)
 dai_set_test_labels(depth_unit_test onhost ci)
 
+# ToF sensor mode / IPP config helpers
+dai_add_test(tof_sensor_mode_test src/onhost_tests/pipeline/datatype/tof_sensor_mode_test.cpp)
+dai_set_test_labels(tof_sensor_mode_test onhost ci)
+
+# ToF config / IPP / decoder view helpers (no device)
+dai_add_test(tof_config_test src/onhost_tests/pipeline/datatype/tof_config_test.cpp)
+dai_set_test_labels(tof_config_test onhost ci)
+
 # MessageQueue tests
 dai_add_test(message_queue_test src/onhost_tests/message_queue_test.cpp)
 dai_set_test_labels(message_queue_test onhost ci)
@@ -808,6 +816,10 @@ endif()
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
 dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
+
+# ToF node API + streaming (RVC4 auto-camera; RVC2 confidence alias)
+dai_add_test(tof_node_test src/ondevice_tests/tof_node_test.cpp)
+dai_set_test_labels(tof_node_test ondevice rvc2_all rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
 dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci noreplayci)

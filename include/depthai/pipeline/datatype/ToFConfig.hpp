@@ -1,5 +1,6 @@
 #pragma once
 #include "depthai/common/optional.hpp"
+#include "depthai/common/ToFPreset.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
 #include "depthai/utility/Serialization.hpp"
@@ -7,7 +8,7 @@
 namespace dai {
 
 /**
- * ToFConfig message. Carries config for feature tracking algorithm
+ * ToFConfig message. Shared wire format for RVC2 decoder and RVC4 IPP settings.
  */
 class ToFConfig : public Buffer {
    public:
@@ -142,6 +143,12 @@ class ToFConfig : public Buffer {
      */
     void setProfilePreset(ImageFiltersPresetMode presetMode);
 
+    /**
+     * Set RVC4 IPP preset for ToFConfig.
+     * @param preset ToF IPP preset mode.
+     */
+    void setToFPreset(ToFPreset preset);
+
     DEPTHAI_SERIALIZE(ToFConfig,
                       median,
                       enablePhaseShuffleTemporalFilter,
@@ -164,6 +171,49 @@ class ToFConfig : public Buffer {
                       fpDepthThreshold,
                       fpMinDepthOccurrence,
                       enableRadialToPerp);
+};
+
+/// RVC2 Myriad decoder fields view over the shared ToFConfig wire blob.
+struct ToFDecoderConfig {
+    filters::params::MedianFilter median = filters::params::MedianFilter::MEDIAN_OFF;
+    int phaseUnwrappingLevel = 4;
+    uint16_t phaseUnwrapErrorThreshold = 100;
+    bool enablePhaseShuffleTemporalFilter = true;
+    bool enableBurstMode = false;
+    bool enableDistortionCorrection = true;
+
+    std::optional<bool> enableFPPNCorrection;
+    std::optional<bool> enableOpticalCorrection;
+    std::optional<bool> enableTemperatureCorrection;
+    std::optional<bool> enableWiggleCorrection;
+    std::optional<bool> enablePhaseUnwrapping;
+
+    static ToFDecoderConfig fromToFConfig(const ToFConfig& config);
+    void applyTo(ToFConfig& config) const;
+    void applyPreset(ImageFiltersPresetMode presetMode);
+};
+
+/// RVC4 IPP fields view over the shared ToFConfig wire blob.
+struct ToFIppConfig {
+    uint16_t phaseUnwrapErrorThreshold = 100;
+
+    std::optional<bool> enableBilateralFilter;
+    std::optional<float> bilateralStdFactor;
+    std::optional<uint32_t> bilateralFilterKernelSize;
+
+    std::optional<bool> enableTemporalNoiseReduction;
+    std::optional<float> tnrMaxGain;
+    std::optional<float> tnrStdFactor;
+
+    std::optional<bool> enableFlyingPixelCorrection;
+    std::optional<float> fpDepthThreshold;
+    std::optional<float> fpMinDepthOccurrence;
+
+    std::optional<bool> enableRadialToPerp;
+
+    static ToFIppConfig fromToFConfig(const ToFConfig& config);
+    void applyTo(ToFConfig& config) const;
+    void applyPreset(ToFPreset preset);
 };
 
 }  // namespace dai

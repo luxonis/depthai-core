@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Minimal RVC2 ToF example — host ImageFilters depth + raw depth from ToFBase."""
+"""Minimal RVC4 ToF example with auto-created Camera (no manual rawInput wiring)."""
 
 import cv2
 import depthai as dai
@@ -28,25 +28,26 @@ def colorize_depth(frame_depth: np.ndarray) -> np.ndarray:
 def main() -> None:
     pipeline = dai.Pipeline()
 
-    tof = pipeline.create(dai.node.ToF).build(
+    tof = pipeline.create(dai.node.ToF)
+    tof.build(
         dai.CameraBoardSocket.AUTO,
-        dai.ImageFiltersPresetMode.TOF_MID_RANGE,
+        sensorMode=dai.ToFSensorMode.F3_FULL,
+        fps=10,
+        preset=dai.ToFPreset.MID_RANGE,
     )
 
-    depth_q = tof.depth.createOutputQueue()
-    raw_depth_q = tof.rawDepth.createOutputQueue()
+    depth_queue = tof.depth.createOutputQueue()
 
     with pipeline as p:
         p.start()
+        if tof.getCamera() is not None:
+            print(f"Auto-created Camera on socket {tof.getBoardSocket()}")
         while p.isRunning():
-            raw = raw_depth_q.tryGet()
-            if raw is not None:
-                cv2.imshow("rawDepth (ToFBase)", colorize_depth(raw.getFrame()))
-
-            depth = depth_q.tryGet()
-            if depth is not None:
-                cv2.imshow("depth (ImageFilters)", colorize_depth(depth.getFrame()))
-
+            depth_frame = depth_queue.tryGet()
+            if depth_frame is None:
+                continue
+            depth_image = colorize_depth(depth_frame.getFrame())
+            cv2.imshow("depth", depth_image)
             if cv2.waitKey(1) == ord("q"):
                 break
 

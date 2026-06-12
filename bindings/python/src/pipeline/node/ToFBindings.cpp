@@ -1,6 +1,38 @@
 #include "Common.hpp"
+#include "depthai/common/ToFPreset.hpp"
+#include "depthai/common/ToFSensorMode.hpp"
+#include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
+
+#include <unordered_set>
+#include <cstdint>
+
+namespace {
+
+dai::ToFPreset imageFiltersPresetToToFPreset(dai::ImageFiltersPresetMode presetMode) {
+    switch(presetMode) {
+        case dai::ImageFiltersPresetMode::TOF_LOW_RANGE:
+            return dai::ToFPreset::LOW_RANGE;
+        case dai::ImageFiltersPresetMode::TOF_MID_RANGE:
+            return dai::ToFPreset::MID_RANGE;
+        case dai::ImageFiltersPresetMode::TOF_HIGH_RANGE:
+            return dai::ToFPreset::HIGH_RANGE;
+        case dai::ImageFiltersPresetMode::TOF_OFF:
+            return dai::ToFPreset::OFF;
+    }
+    return dai::ToFPreset::MID_RANGE;
+}
+
+void warnOncePerToF(const dai::node::ToF& self, const char* key, const char* message) {
+    static std::unordered_set<std::string> warned;
+    const std::string id = std::string(key) + "@" + std::to_string(reinterpret_cast<std::uintptr_t>(&self));
+    if(warned.insert(id).second) {
+        pybind11::module_::import("warnings").attr("warn")(message);
+    }
+}
+
+}  // namespace
 
 void bind_tof(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -42,7 +74,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readonly("raw", &ToFBase::raw, DOC(dai, node, ToFBase, raw), DOC(dai, node, ToFBase, raw))
         .def_readonly("initialConfig", &ToFBase::initialConfig, DOC(dai, node, ToFBase, initialConfig), DOC(dai, node, ToFBase, initialConfig))
         .def("build",
-             &ToFBase::build,
+             py::overload_cast<CameraBoardSocket, ImageFiltersPresetMode, std::optional<float>>(&ToFBase::build),
              "boardSocket"_a = CameraBoardSocket::AUTO,
              "presetMode"_a = ImageFiltersPresetMode::TOF_MID_RANGE,
              "fps"_a = std::nullopt,
@@ -67,6 +99,13 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "raw", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.raw; }, DOC(dai, node, ToF, raw))
         .def_property_readonly(
+            "inputConfig", [](const ToF& self) -> const dai::DeviceNode::Input& { return self.inputConfig; }, "Runtime ToF config input")
+        .def_property_readonly(
+            "initialConfig",
+            [](ToF& self) -> std::shared_ptr<ToFConfig>& { return self.tofBaseNode.initialConfig; },
+            py::return_value_policy::reference_internal,
+            "Initial ToF config (IPP fields on RVC4, decoder fields on RVC2)")
+        .def_property_readonly(
             "tofBaseInputConfig",
             [](const ToF& self) -> const dai::DeviceNode::Input& { return self.tofBaseInputConfig; },
             DOC(dai, node, ToF, tofBaseInputConfig))
@@ -75,16 +114,102 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
             [](const ToF& self) -> const dai::DeviceNode::Input& { return self.imageFiltersInputConfig; },
             DOC(dai, node, ToF, imageFiltersInputConfig))
         .def_property_readonly(
-            "tofBaseNode", [](const ToF& self) -> const dai::node::ToFBase& { return self.tofBaseNode; }, DOC(dai, node, ToF, tofBaseNode))
+            "tofBaseNode",
+            [](const ToF& self) -> const dai::node::ToFBase& {
+                const auto device = self.getDevice();
+                if(device && device->getPlatform() == Platform::RVC4) {
+                    warnOncePerToF(self, "tofBaseNode", "tofBaseNode is internal on RVC4; use tof.initialConfig, tof.inputConfig, and tof.rawInput directly");
+                }
+                return self.tofBaseNode;
+            },
+            "Internal ToF base node (RVC2 only; deprecated on RVC4)")
         .def_property_readonly(
-            "imageFiltersNode", [](const ToF& self) -> const dai::node::ImageFilters& { return self.imageFiltersNode; }, DOC(dai, node, ToF, imageFiltersNode))
+            "imageFiltersNode",
+            [](const ToF& self) -> const dai::node::ImageFilters& {
+                const auto device = self.getDevice();
+                if(device && device->getPlatform() == Platform::RVC4) {
+                    warnOncePerToF(self, "imageFiltersNode", "ImageFilters is not used on RVC4 ToF");
+                }
+                return self.imageFiltersNode;
+            },
+            DOC(dai, node, ToF, imageFiltersNode))
         .def_static("create", &ToF::create, "device"_a, DOC(dai, node, ToF, create))
         .def("build",
-             &ToF::build,
-             "boardSocket"_a = CameraBoardSocket::AUTO,
-             "presetMode"_a = ImageFiltersPresetMode::TOF_MID_RANGE,
-             "fps"_a = std::nullopt,
-             DOC(dai, node, ToF, build))
+             [](ToF& self,
+                CameraBoardSocket boardSocket,
+                py::object presetMode,
+                py::object fps,
+                py::object sensorMode,
+                py::object preset) -> std::shared_ptr<ToF> {
+                 ToFBuildOptions options;
+                 options.boardSocket = boardSocket;
+
+                 if(!fps.is_none()) {
+                     options.fps = fps.cast<float>();
+                 }
+                 if(!sensorMode.is_none()) {
+                     options.sensorMode = sensorMode.cast<ToFSensorMode>();
+                 }
+                 if(!preset.is_none()) {
+                     options.preset = preset.cast<ToFPreset>();
+                 }
+
+                 const bool hasPresetMode = !presetMode.is_none();
+                 const bool hasPreset = !preset.is_none();
+                 const bool hasSensorMode = !sensorMode.is_none();
+
+                 if(hasPresetMode && py::isinstance<ToFPreset>(presetMode)) {
+                     throw std::runtime_error("Pass ToFPreset via preset= keyword, not as the second positional argument");
+                 }
+
+                 const auto device = self.getDevice();
+                 const bool isRvc4 = device && device->getPlatform() == Platform::RVC4;
+
+                 if(isRvc4) {
+                     if(hasPresetMode && hasPreset) {
+                         throw std::runtime_error("Specify either presetMode or preset on RVC4, not both");
+                     }
+                     if(hasPresetMode) {
+                         options.preset = imageFiltersPresetToToFPreset(presetMode.cast<ImageFiltersPresetMode>());
+                     }
+                     return self.build(options);
+                 }
+
+                 if(hasSensorMode) {
+                     throw std::runtime_error("sensorMode is RVC4-only (VD55H1)");
+                 }
+                 if(hasPreset) {
+                     py::module_::import("warnings").attr("warn")("ToFPreset is ignored on RVC2; use presetMode=ImageFiltersPresetMode");
+                 }
+
+                 ImageFiltersPresetMode mode = ImageFiltersPresetMode::TOF_MID_RANGE;
+                 if(hasPresetMode) {
+                     mode = presetMode.cast<ImageFiltersPresetMode>();
+                 }
+
+                 return self.build(options.boardSocket, mode, options.fps);
+             },
+             py::arg("boardSocket") = CameraBoardSocket::AUTO,
+             py::arg("presetMode") = py::none(),
+             py::arg("fps") = py::none(),
+             py::arg("sensorMode") = py::none(),
+             py::arg("preset") = py::none(),
+             "Build ToF node for the connected device platform")
+        .def("build",
+             py::overload_cast<const ToFBuildOptions&>(&ToF::build),
+             "options"_a,
+             "Build ToF node using ToFBuildOptions")
+        .def("getCamera", &ToF::getCamera, "Returns auto-created Camera on RVC4 after pipeline.start(), or None when rawInput was user-connected")
+        .def("getBoardSocket", &ToF::getBoardSocket, "Board socket selected at build time")
+        .def("getOutputResolution",
+             &ToF::getOutputResolution,
+             "RVC4: depth/amplitude/confidence output size (width, height) for the selected ToFSensorMode")
+        .def("getRawResolution",
+             &ToF::getRawResolution,
+             "RVC4: raw VD55H1 superframe size (width, height) for manual Camera.build(sensorResolution=...)")
+        .def("getSensorResolution",
+             &ToF::getSensorResolution,
+             "Deprecated alias for getOutputResolution(); use getOutputResolution() or getRawResolution()")
         .def("getInitialConfig", [&](const ToF& self) { return *self.tofBaseNode.initialConfig; })
         .def("setInitialConfig", [&](ToF& self, ToFConfig& config) { self.tofBaseNode.initialConfig = std::make_shared<ToFConfig>(config); });
 
