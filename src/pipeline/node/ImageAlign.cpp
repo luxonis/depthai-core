@@ -593,10 +593,7 @@ void ImageAlign::run() {
 
         alignedImg->setInstanceNum((uint32_t)alignTo);
 
-        alignedImg->setTimestamp(inputImg->getTimestamp());
-        alignedImg->setTimestampDevice(inputImg->getTimestampDevice());
-        alignedImg->setTimestampSystem(inputImg->getTimestampSystem());
-        alignedImg->setSequenceNum(inputImg->getSequenceNum());
+        alignedImg->copyBufferMetadataFrom(inputImg);
 
         alignedImg->transformation = inputAlignToTransform;
         const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();

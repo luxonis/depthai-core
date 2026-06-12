@@ -384,10 +384,7 @@ void RGBD::run() {
 
             // Create the point cloud
             auto pc = std::make_shared<PointCloudData>();
-            pc->setTimestamp(colorFrame->getTimestamp());
-            pc->setTimestampDevice(colorFrame->getTimestampDevice());
-            pc->setTimestampSystem(colorFrame->getTimestampSystem());
-            pc->setSequenceNum(colorFrame->getSequenceNum());
+            pc->copyBufferMetadataFrom(colorFrame);
             pc->setInstanceNum(colorFrame->getInstanceNum());
             auto width = colorFrame->getWidth();
             auto height = colorFrame->getHeight();
@@ -422,10 +419,7 @@ void RGBD::run() {
             pc->setMaxZ(maxZ);
 
             pc->setPointsRGB(points);
-            pc->setTimestamp(colorFrame->getTimestamp());
-            pc->setTimestampDevice(colorFrame->getTimestampDevice());
-            pc->setTimestampSystem(colorFrame->getTimestampSystem());
-            pc->setSequenceNum(colorFrame->getSequenceNum());
+            pc->copyBufferMetadataFrom(colorFrame);
             pc->setInstanceNum(colorFrame->getInstanceNum());
             {
                 auto blockEvent = this->outputBlockEvent();
@@ -436,10 +430,7 @@ void RGBD::run() {
                 }
                 if(!rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
                     auto rgbdData = std::make_shared<RGBDData>();
-                    rgbdData->setTimestamp(colorFrame->getTimestamp());
-                    rgbdData->setTimestampDevice(colorFrame->getTimestampDevice());
-                    rgbdData->setTimestampSystem(colorFrame->getTimestampSystem());
-                    rgbdData->setSequenceNum(colorFrame->getSequenceNum());
+                    rgbdData->copyBufferMetadataFrom(colorFrame);
                     rgbdData->setDepthFrame(depthFrame);
                     rgbdData->setRGBFrame(colorFrame);
                     rgbd.send(rgbdData);

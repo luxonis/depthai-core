@@ -156,10 +156,7 @@ ImgFrame EncodedFrame::getImgFrameMeta() const {
     frame.setSourceSize(transformation.getSourceSize());
     // Important to set the transformation last as setting the source size resets it
     frame.transformation = transformation;
-    frame.setSequenceNum(getSequenceNum());
-    frame.setTimestamp(getTimestamp());
-    frame.setTimestampDevice(getTimestampDevice());
-    frame.setTimestampSystem(getTimestampSystem());
+    frame.copyBufferMetadataFrom(this);
     return frame;
 }
 

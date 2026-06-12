@@ -320,10 +320,7 @@ void AprilTag::run() {
         }
 
         // Inherit sequence number and timestamp from input image
-        aprilTags->setSequenceNum(inFrame->getSequenceNum());
-        aprilTags->setTimestamp(inFrame->getTimestamp());
-        aprilTags->setTimestampDevice(inFrame->getTimestampDevice());
-        aprilTags->setTimestampSystem(inFrame->getTimestampSystem());
+        aprilTags->copyBufferMetadataFrom(inFrame);
         aprilTags->setTransformation(inFrame->transformation);
 
         {

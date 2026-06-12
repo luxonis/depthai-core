@@ -81,10 +81,7 @@ void SpatialLocationCalculator::run() {
 
         auto start = high_resolution_clock::now();
         auto outputSpatial = std::make_shared<SpatialLocationCalculatorData>();
-        outputSpatial->setSequenceNum(imgFrame->getSequenceNum());
-        outputSpatial->setTimestampDevice(imgFrame->getTimestampDevice());
-        outputSpatial->setTimestampSystem(imgFrame->getTimestampSystem());
-        outputSpatial->setTimestamp(imgFrame->getTimestamp());
+        outputSpatial->copyBufferMetadataFrom(imgFrame);
         if(calculationConfig->getConfigData().size() > 0) {
             utilities::SpatialUtils::computeSpatialData(imgFrame, calculationConfig->getConfigData(), spatialLocations, logger);
             auto stop = high_resolution_clock::now();
@@ -108,10 +105,7 @@ void SpatialLocationCalculator::run() {
                 outputSpatialImgDetections->segmentationMaskHeight = imgDetections->getSegmentationMaskHeight();
             }
 
-            outputSpatialImgDetections->setSequenceNum(imgDetections->getSequenceNum());
-            outputSpatialImgDetections->setTimestampDevice(imgDetections->getTimestampDevice());
-            outputSpatialImgDetections->setTimestampSystem(imgDetections->getTimestampSystem());
-            outputSpatialImgDetections->setTimestamp(imgDetections->getTimestamp());
+            outputSpatialImgDetections->copyBufferMetadataFrom(imgDetections);
             outputSpatialImgDetections->transformation = imgDetections->transformation;
         }
 

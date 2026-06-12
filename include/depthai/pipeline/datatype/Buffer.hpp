@@ -93,6 +93,12 @@ class Buffer : public ADatatype {
      */
     void setSequenceNum(int64_t sequenceNum);
 
+    /**
+     * Copies metadata from another buffer
+     */
+    void copyBufferMetadataFrom(const Buffer* other);
+    void copyBufferMetadataFrom(const std::shared_ptr<Buffer>& other);
+
     virtual span<const uint8_t> getRecordData() const;
 
     /**
@@ -105,8 +111,8 @@ class Buffer : public ADatatype {
     int64_t sequenceNum = 0;  // increments for each message
     Timestamp ts = {};        // generation timestamp, synced to host time
     Timestamp tsDevice = {};  // generation timestamp, direct device monotonic clock
-
     std::optional<Timestamp> tsSystem;  // generation timestamp, direct device system clock
+
     DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem);
 };
 

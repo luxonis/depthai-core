@@ -186,10 +186,7 @@ void SyncBase<TS>::run() {
                 newestFrame = inputFrames[name].get();
             }
         }
-        outputGroup->setTimestamp(newestFrame->getTimestamp());
-        outputGroup->setTimestampDevice(newestFrame->getTimestampDevice());
-        outputGroup->setTimestampSystem(newestFrame->getTimestampSystem());
-        outputGroup->setSequenceNum(newestFrame->getSequenceNum());
+        outputGroup->copyBufferMetadataFrom(newestFrame);
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(outputGroup);
