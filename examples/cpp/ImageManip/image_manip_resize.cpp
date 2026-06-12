@@ -1,9 +1,21 @@
+#include <atomic>
+#include <csignal>
+
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main(int argc, char** argv) {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     std::shared_ptr<dai::Device> device = nullptr;
     if(argc <= 1) {
         device = std::make_shared<dai::Device>();
@@ -15,6 +27,9 @@ int main(int argc, char** argv) {
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto manip = pipeline.create<dai::node::ImageManip>();
 
+    // GPU is not available on RVC2 and some RVC4 devices
+    manip->setBackend(device->hasGPU() ? dai::node::ImageManip::Backend::GPU : dai::node::ImageManip::Backend::CPU);
+
     // Resize to 400x400 and avoid stretching by cropping from the center
     manip->initialConfig->setOutputSize(400, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
     // Set output frame type
@@ -24,7 +39,7 @@ int main(int argc, char** argv) {
     auto outputQueue = manip->out.createOutputQueue();
 
     pipeline.start();
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto imgFrame = outputQueue->get<dai::ImgFrame>();
         cv::imshow("Resized Frame", imgFrame->getCvFrame());
         int key = cv::waitKey(1);
@@ -32,4 +47,9 @@ int main(int argc, char** argv) {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
+
+    return 0;
 }

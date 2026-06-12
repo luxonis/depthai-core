@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
@@ -10,6 +12,12 @@
 #include <vector>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 namespace {
 cv::Mat showColoredSegmentationFrame(dai::SegmentationMask& segMask, float colorScalingFactor) {
@@ -62,6 +70,9 @@ cv::Mat showColoredSegmentationFrame(dai::SegmentationMask& segMask, float color
 }  // namespace
 
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     auto device = std::make_shared<dai::Device>();
     dai::Pipeline pipeline{device};
     std::string modelName = "luxonis/deeplab-v3-plus:512x512";
@@ -94,7 +105,7 @@ int main() {
     auto startTime = std::chrono::steady_clock::now();
     int frames = 0;
 
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto outSegMask = maskQueue->get<dai::SegmentationMask>();
         auto frameMsg = frameQueue->get<dai::ImgFrame>();
 
@@ -147,6 +158,9 @@ int main() {
             std::cout << "Decreased confidence threshold to " << std::fixed << std::setprecision(2) << config->getConfidenceThreshold() << std::endl;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

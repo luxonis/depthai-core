@@ -1,7 +1,9 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 
+#include <memory>
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Rect.hpp"
@@ -9,6 +11,7 @@
 #include "depthai/common/Size2f.hpp"
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/ImgDetections.pb.h"
@@ -161,12 +164,34 @@ float ImgDetection::getAngle() const {
     return getBoundingBox().angle;
 }
 
+void ImgDetection::transform(const ImgTransformation& source, const ImgTransformation& target) {
+    setBoundingBox(source.remapRectTo(target, getBoundingBox()));
+    if(keypoints.has_value()) {
+        keypoints = keypoints->transformTo(source, target);
+    }
+}
+
 // ImgDetections functions
 ImgDetections::~ImgDetections() = default;
 
 void ImgDetections::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
     metadata = utility::serialize(*this);
     datatype = this->getDatatype();
+}
+
+void ImgDetections::transformToInternal(const ImgTransformation& target) {
+    if(!this->getTransformation().has_value()) {
+        throw std::runtime_error("Source transformation is not set, cannot transform detections.");
+    }
+    ImgTransformation source = *this->getTransformation();
+    for(auto& detection : detections) {
+        detection.transform(source, target);
+    }
+    this->setTransformation(target);
+}
+
+ImgDetections ImgDetections::transformTo(const ImgTransformation& target) const {
+    return TransformableCRTP<ImgDetections>::transformTo(target);
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF

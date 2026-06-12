@@ -10,6 +10,7 @@
 #include "depthai/properties/DeviceNodeGroupProperties.hpp"
 #include "depthai/properties/EdgeDetectorProperties.hpp"
 #include "depthai/properties/FeatureTrackerProperties.hpp"
+#include "depthai/properties/GPUStereoProperties.hpp"
 #include "depthai/properties/GateProperties.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
 #include "depthai/properties/IMUProperties.hpp"
@@ -70,6 +71,7 @@ EdgeDetectorProperties::~EdgeDetectorProperties() = default;
 GateProperties::~GateProperties() = default;
 RectificationProperties::~RectificationProperties() = default;
 NeuralDepthProperties::~NeuralDepthProperties() = default;
+GPUStereoProperties::~GPUStereoProperties() = default;
 FeatureTrackerProperties::~FeatureTrackerProperties() = default;
 IMUProperties::~IMUProperties() = default;
 ImageAlignProperties::~ImageAlignProperties() = default;
@@ -96,6 +98,7 @@ UVCProperties::~UVCProperties() = default;
 VideoEncoderProperties::~VideoEncoderProperties() = default;
 WarpProperties::~WarpProperties() = default;
 GlobalProperties::~GlobalProperties() = default;
+DeviceProperties::~DeviceProperties() = default;
 CastProperties::~CastProperties() = default;
 VppProperties::~VppProperties() = default;
 

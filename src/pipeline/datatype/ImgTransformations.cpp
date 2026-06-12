@@ -9,6 +9,7 @@
 #include <depthai/utility/matrixOps.hpp>
 #include <vector>
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
@@ -55,12 +56,13 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
 
     std::array<float, 3> normalizedUndistortedRay = pixelToRay(sourcePt, from);
 
-    const std::array<std::array<float, 4>, 4> extriniscTransformation = from.getExtrinsicsTransformationMatrixTo(to);
+    std::array<std::array<float, 3>, 3> rotationMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    if(from.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO && to.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO) {
+        const std::array<std::array<float, 4>, 4> extriniscTransformation = from.getExtrinsicsTransformationMatrixTo(to);
+        rotationMatrix = matrix::getRotationMatrixFromProjection4x4(extriniscTransformation);
+    }
 
-    std::array<std::array<float, 3>, 3> rotationMatrix = matrix::getRotationMatrixFromProjection4x4(extriniscTransformation);
-
-    const std::array<float, 3> rectifiedRay = matrix::matVecMul(rotationMatrix, normalizedUndistortedRay);
-
+    std::array<float, 3> rectifiedRay = matrix::matVecMul(rotationMatrix, normalizedUndistortedRay);
     return rayToPixel(rectifiedRay, to);
 }
 
@@ -376,6 +378,7 @@ dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::P
         transformed.x /= to.width;
         transformed.y /= to.height;
         transformed.normalized = true;
+        transformed.hasNormalized = true;
     }
     return transformed;
 }
@@ -425,12 +428,11 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
 
     // extrinsics transform
     // center subtraction (-cx, -cy) and normalization by focal length (fx, fy) is already done in pixelToRay
-    auto z_cm = depth / 10.0f;
-    auto x_cm = thisRay[0] * z_cm;
-    auto y_cm = thisRay[1] * z_cm;
-    dai::Point3f source3dPoint = {x_cm, y_cm, z_cm};
+    auto xMm = thisRay[0] * depth;
+    auto yMm = thisRay[1] * depth;
+    dai::Point3f source3dPoint = {xMm, yMm, depth};
 
-    const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to);
+    const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to, false, LengthUnit::MILLIMETER);
     dai::Point3f target3dPoint = matrix::transformPoint3f(extriniscTransformation, source3dPoint);
     if(target3dPoint.z <= 0) {
         throw std::runtime_error(fmt::format("Projected point is behind the target camera socket. Cannot project to 2D. Target spatial point: ({}, {}, {})",
@@ -450,8 +452,31 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
         targetPoint.x /= to.width;
         targetPoint.y /= to.height;
         targetPoint.normalized = true;
+        targetPoint.hasNormalized = true;
     }
     return targetPoint;
+}
+
+dai::RotatedRect ImgTransformation::projectRectTo(const ImgTransformation& to, RotatedRect& rect, float depth) const {
+    bool normalized = rect.isNormalized();
+    if(normalized) {
+        rect = rect.denormalize(width, height);
+    }
+
+    auto points = rect.getPoints();
+
+    std::vector<std::array<float, 2>> projectedPoints(points.size());
+    for(size_t i = 0; i < points.size(); ++i) {
+        auto projectedPoint = projectPointTo(to, points[i], depth);
+        projectedPoints[i] = {projectedPoint.x, projectedPoint.y};
+    }
+    dai::RotatedRect transformed = impl::getOuterRotatedRect(projectedPoints);
+    if(normalized) {
+        auto targetSize = to.getSize();
+        transformed = transformed.normalize(targetSize.first, targetSize.second);
+    }
+
+    return transformed;
 }
 
 dai::Point2f ImgTransformation::project3DPoint(const dai::Point3f& point3f) const {

@@ -46,7 +46,10 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(std::weak_ptr<PipelineImpl
                         }
                     }
 
-                    pipeline->defaultDeviceId = pipeline->defaultDevice->getDeviceId();
+                    // The pipeline only needs the stable host-side device identifier here.
+                    // Avoid a live RPC call during build(), which can fail if the device RPC
+                    // client is not available for a reused/external Device instance.
+                    pipeline->defaultDeviceId = pipeline->defaultDevice->getDeviceInfo().getDeviceId();
 
                     if(!recordPath.empty() && !replayPath.empty()) {
                         Logging::getInstance().logger.warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
@@ -96,7 +99,7 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(std::weak_ptr<PipelineImpl
                         }
                     }
 #else
-                    recordConfig.state = RecordConfig::RecordReplayState::NONE;
+                    pipeline->recordConfig.state = RecordConfig::RecordReplayState::NONE;
                     if(!recordPath.empty() || !replayPath.empty()) {
                         Logging::getInstance().logger.warn("Merged target is required to use holistic record/replay.");
                     }
@@ -113,12 +116,12 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(std::weak_ptr<PipelineImpl
 void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
     if(pipeline->buildingOnHost) {
         if(pipeline->recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
-            std::vector<std::filesystem::path> filenames = {pipeline->recordReplayFilenames["record_config"], pipeline->recordReplayFilenames["calibration"]};
-            std::vector<std::string> outFiles = {"record_config.json", "calibration.json"};
+            std::vector<std::filesystem::path> filenames = {pipeline->recordReplayFilenames["record_config"], pipeline->recordReplayFilenames["camera_info"]};
+            std::vector<std::string> outFiles = {"record_config.json", "camera_info.json"};
             filenames.reserve(pipeline->recordReplayFilenames.size() * 2 + 1);
             outFiles.reserve(pipeline->recordReplayFilenames.size() * 2 + 1);
             for(auto& rstr : pipeline->recordReplayFilenames) {
-                if(rstr.first != "record_config" && rstr.first != "calibration") {
+                if(rstr.first != "record_config" && rstr.first != "camera_info") {
                     std::string nodeName = rstr.first.substr(2);
                     std::filesystem::path filePath = rstr.second;
                     filenames.push_back(std::filesystem::path(filePath).concat(".mcap"));
@@ -142,7 +145,7 @@ void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
                 std::ostringstream oss;
                 oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
 
-                utility::tarFiles(platform::joinPaths(pipeline->recordConfig.outputDir, "recording_" + oss.str() + ".tar"), filenames, outFiles);
+                utility::archiveFiles(platform::joinPaths(pipeline->recordConfig.outputDir, "recording_" + oss.str() + ".tar"), filenames, outFiles);
             } catch(const std::exception& e) {
                 Logging::getInstance().logger.error("Record: Failed to create tar file: {}", e.what());
             }
@@ -151,7 +154,7 @@ void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
         if(pipeline->removeRecordReplayFiles && pipeline->recordConfig.state != RecordConfig::RecordReplayState::NONE) {
             Logging::getInstance().logger.info("Record and Replay: Removing temporary files");
             for(auto& kv : pipeline->recordReplayFilenames) {
-                if(kv.first != "record_config" && kv.first != "calibration") {
+                if(kv.first != "record_config" && kv.first != "camera_info") {
                     std::filesystem::remove(std::filesystem::path(kv.second).concat(".mcap"));
                     std::filesystem::remove(std::filesystem::path(kv.second).concat(pipeline->recordConfig.videoEncoding.enabled ? ".mp4" : ".avi"));
                 } else {
@@ -159,6 +162,8 @@ void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
                 }
             }
         }
+
+        pipeline->recordConfig.state = RecordConfig::RecordReplayState::NONE;
     }
 }
 void PipelineImplHelper::setupPipelineDebuggingPre(std::weak_ptr<PipelineImpl> pipelineWeak) {

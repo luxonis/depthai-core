@@ -3,9 +3,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Point3fRGBA.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 #include "depthai/utility/ProtoSerializable.hpp"
 
 // optional
@@ -19,29 +21,46 @@ namespace dai {
 /**
  * PointCloudData message. Carries point cloud data.
  */
-class PointCloudData : public Buffer, public ProtoSerializable {
-    unsigned int width;        // width in pixels
-    unsigned int height;       // height in pixels
-    uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
-    float minx, miny, minz;
-    float maxx, maxy, maxz;
-    bool sparse = false;
+class PointCloudData : public Buffer, public ProtoSerializable, public TransformableCRTP<PointCloudData> {
+   protected:
+    /**
+     * Internal transform hook used by transformTo() to apply PointCloudData-specific transformation logic.
+     *
+     * Point cloud remapping is currently not implemented here. Use ImageAlign on the source
+     * images before generating the point cloud instead.
+     */
+    void transformToInternal(const ImgTransformation& target) override;
+
+    unsigned int width = 0;    // width in pixels (for organized) or number of points (for unorganized)
+    unsigned int height = 0;   // height in pixels (for organized) or 1 (for unorganized)
+    uint32_t instanceNum = 0;  // Which source created this frame
+    float minx = 0, miny = 0, minz = 0;
+    float maxx = 0, maxy = 0, maxz = 0;
+
     bool color = false;
 
    public:
+    friend class TransformableCRTP<PointCloudData>;
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
     using Buffer::getTimestampSystem;
+    using Buffer::sequenceNum;
+    using Buffer::ts;
+    using Buffer::tsDevice;
+    using Buffer::tsSystem;
+    using Transformable::getTransformation;
+    using Transformable::setTransformation;
+    using Transformable::transformation;
 
     /**
      * Construct PointCloudData message.
      */
-    PointCloudData() = default;
+    PointCloudData();
     virtual ~PointCloudData();
 
-    std::vector<Point3f> getPoints();
-    std::vector<Point3fRGBA> getPointsRGB();
+    std::vector<Point3f> getPoints() const;
+    std::vector<Point3fRGBA> getPointsRGB() const;
     void setPoints(const std::vector<Point3f>& points);
     void setPointsRGB(const std::vector<Point3fRGBA>& points);
 
@@ -92,8 +111,17 @@ class PointCloudData : public Buffer, public ProtoSerializable {
 
     /**
      * Retrieves whether point cloud is sparse
+     * @deprecated Use isOrganized() instead. Sparse means height == 1
      */
+    [[deprecated("isSparse is deprecated, use isOrganized() instead (isSparse == !isOrganized())")]]
     bool isSparse() const;
+
+    /**
+     * Retrieves whether point cloud is organized (height > 1)
+     * Organized point clouds have width x height structure from the original image
+     * Sparse point clouds have height == 1 and only contain valid points
+     */
+    bool isOrganized() const;
 
     /**
      * Retrieves whether point cloud is color
@@ -175,7 +203,9 @@ class PointCloudData : public Buffer, public ProtoSerializable {
      * Specifies whether point cloud is sparse
      *
      * @param val whether point cloud is sparse
+     * @deprecated This setter is deprecated and will be removed in a future release
      */
+    [[deprecated("setSparse is deprecated, width and height are set automatically based on organization")]]
     PointCloudData& setSparse(bool val);
 
     /**
@@ -191,6 +221,36 @@ class PointCloudData : public Buffer, public ProtoSerializable {
      * @param instanceNum instance number
      */
     PointCloudData& setInstanceNum(unsigned int instanceNum);
+
+    /**
+     * Retrieves image transformation data
+     */
+    const ImgTransformation& getTransformation() const;
+
+    /**
+     * Returns a copy of this point cloud.
+     *
+     * Due to efficiency reasons, point cloud remapping is currently not implemented. Point clouds
+     * should be generated from already aligned source messages instead of being transformed after
+     * the fact. Use ImageAlign on the source inputs before creating the point cloud.
+     *
+     * @param target Target image transformation.
+     */
+    PointCloudData transformTo(const ImgTransformation& target) const;
+
+    /**
+     * Specifies image transformation data
+     *
+     * @param transformation transformation data
+     */
+    PointCloudData& setTransformation(const ImgTransformation& transformation);
+
+    /**
+     * Recomputes the bounding box (min/max X, Y, Z) from the current point data.
+     * All stored points are included regardless of their z value.
+     * If the cloud is empty, all bounds are set to 0.
+     */
+    PointCloudData& updateBoundingBox();
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     /**
@@ -237,21 +297,7 @@ class PointCloudData : public Buffer, public ProtoSerializable {
         return DatatypeEnum::PointCloudData;
     }
 
-    DEPTHAI_SERIALIZE(PointCloudData,
-                      width,
-                      height,
-                      minx,
-                      miny,
-                      minz,
-                      maxx,
-                      maxy,
-                      maxz,
-                      sparse,
-                      instanceNum,
-                      Buffer::ts,
-                      Buffer::tsDevice,
-                      Buffer::tsSystem,
-                      Buffer::sequenceNum);
+    DEPTHAI_SERIALIZE(PointCloudData, width, height, minx, miny, minz, maxx, maxy, maxz, instanceNum, color, transformation, ts, tsDevice, tsSystem, sequenceNum);
 };
 
 }  // namespace dai

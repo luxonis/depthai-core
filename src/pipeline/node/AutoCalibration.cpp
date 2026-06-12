@@ -15,57 +15,75 @@ constexpr int GATE_FPS_DEFAULT = 5;
 constexpr int BYTES_PER_SECOND_LIMIT_DEFAULT = GATE_FPS_DEFAULT * 1280 * 800 * 2;
 constexpr int PACKET_SIZE_DEFAULT = 100000;
 
-void AutoCalibration::logReport(const Report& report, unsigned int iteration) const {
-    // Define a lambda or a small helper to route to the correct spdlog method
-    auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
+bool areLensesWide(std::shared_ptr<Device> device) {
+    auto handler = device->getCalibration();
+    auto eepromData = handler.getEepromData();
+    const auto& hardwareConf = eepromData.hardwareConf;
+    size_t start = 0;
 
-    log("====== AutoCalibration iteration {} / {} ========", iteration, initialConfig->maxIterations);
-    log("Iteration time:         {:.2f}s", report.elapsedSeconds);
-    log("dataConfidence          {:.4f}     {:.2f}", report.dataConfidence, initialConfig->dataConfidenceThreshold);
-    log("calibrationConfidence   {:.4f}     {:.2f}", report.calibrationConfidence, initialConfig->calibrationConfidenceThreshold);
+    while(start < hardwareConf.size()) {
+        const size_t end = hardwareConf.find('-', start);
+        const std::string token = hardwareConf.substr(start, end == std::string::npos ? std::string::npos : end - start);
+
+        if(token == "FV01" || token == "FV05") {
+            return true;
+        }
+        if(token.rfind("FV", 0) == 0) {
+            return false;
+        }
+
+        if(end == std::string::npos) break;
+        start = end + 1;
+    }
+    return false;
+}
+
+void AutoCalibration::logReport(const Report& report, unsigned int iteration) const {
+    logger->info("====== AutoCalibration iteration {} / {} ========", iteration, initialConfig->maxIterations);
+    logger->info("Iteration time:         {:.2f}s", report.elapsedSeconds);
+    logger->info("dataConfidence          {:.4f}     {:.2f}", report.dataConfidence, initialConfig->dataConfidenceThreshold);
+    logger->info("calibrationConfidence   {:.4f}     {:.2f}", report.calibrationConfidence, initialConfig->calibrationConfidenceThreshold);
 
     if(report.calibrationUpdated) {
-        log("Calibration successfully updated");
-        log("=================================================");
+        logger->info("Calibration successfully updated");
+        logger->info("=================================================");
         return;
     }
 
     if(report.recalibrating) {
-        log("recalibration  {}", report.recalibrationPassed ? "Passed" : "Failed");
+        logger->info("recalibration  {}", report.recalibrationPassed ? "Passed" : "Failed");
         if(report.recalibrationPassed) {
-            log("    Recalibration time:   {:.2f}s", report.elapsedRecalibrationSeconds);
-            log("    number of iterations  {}", report.numIterationPerRecalibration);
-            log("    rotation difference   {:.4f}  {:.4f}  {:.4f}",
-                report.rotationDifference.at(0),
-                report.rotationDifference.at(1),
-                report.rotationDifference.at(2));
-            log("    dataQuality           {:.4f}", report.dataQualityAfterRecalibration);
+            logger->info("    Recalibration time:   {:.2f}s", report.elapsedRecalibrationSeconds);
+            logger->info("    number of iterations  {}", report.numIterationPerRecalibration);
+            logger->info("    rotation difference   {:.4f}  {:.4f}  {:.4f}",
+                         report.rotationDifference.at(0),
+                         report.rotationDifference.at(1),
+                         report.rotationDifference.at(2));
+            logger->info("    dataQuality           {:.4f}", report.dataQualityAfterRecalibration);
         }
         unsigned i = 0;
         for(const auto& coverageData : report.coveragesAcquired) {
-            log("    recalibration iteration:");
-            log("        {}    coverageAcquired    {:.1f}    dataAcquired    {:.1f}", i + 1, coverageData.first, coverageData.second);
+            logger->info("    recalibration iteration:");
+            logger->info("        {}    coverageAcquired    {:.1f}    dataAcquired    {:.1f}", i + 1, coverageData.first, coverageData.second);
             i += 1;
         }
     } else {
-        log("Recalibration  not triggered");
+        logger->info("Recalibration  not triggered");
     }
-    log("=================================================");
+    logger->info("=================================================");
 }
 
 void AutoCalibration::logConfig() const {
-    auto log = [&](const std::string& fmt, auto&&... args) { logger->info(fmt, args...); };
-
-    log("====== AutoCalibration Configuration ======");
-    log("Mode:                   {}", initialConfig->mode == AutoCalibrationConfig::CONTINUOUS ? "CONTINUOUS" : "ON_START");
-    log("Sleeping Time:          {}s", initialConfig->sleepingTime);
-    log("Calib. Confidence Thr:  {:.2f}", initialConfig->calibrationConfidenceThreshold);
-    log("Data Confidence Thr:    {:.2f}", initialConfig->dataConfidenceThreshold);
-    log("Max Iterations:         {}", initialConfig->maxIterations);
-    log("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
-    log("Validation Set Size:    {}", initialConfig->validationSetSize);
-    log("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
-    log("===========================================");
+    logger->info("====== AutoCalibration Configuration ======");
+    logger->info("Mode:                   {}", initialConfig->mode == AutoCalibrationConfig::CONTINUOUS ? "CONTINUOUS" : "ON_START");
+    logger->info("Sleeping Time:          {}s", initialConfig->sleepingTime);
+    logger->info("Calib. Confidence Thr:  {:.2f}", initialConfig->calibrationConfidenceThreshold);
+    logger->info("Data Confidence Thr:    {:.2f}", initialConfig->dataConfidenceThreshold);
+    logger->info("Max Iterations:         {}", initialConfig->maxIterations);
+    logger->info("Max Images/Recalib:     {}", initialConfig->maxImagesPerRecalibration);
+    logger->info("Validation Set Size:    {}", initialConfig->validationSetSize);
+    logger->info("Flash Calibration:      {}", initialConfig->flashCalibration ? "Yes" : "No");
+    logger->info("===========================================");
 }
 
 AutoCalibration::~AutoCalibration() = default;
@@ -157,6 +175,9 @@ std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared
 
 void AutoCalibration::buildInternal() {
     logger = pimpl->logger;
+    if(initialConfig->dataConfidenceThreshold < 0.0) {
+        initialConfig->dataConfidenceThreshold = areLensesWide(device) ? 0.65 : 0.85;
+    }
 }
 
 /**
@@ -335,11 +356,20 @@ bool AutoCalibration::validateIncomingData() {
             }
 
             if(leftImgFrame->getWidth() != rightImgFrame->getWidth() || leftImgFrame->getHeight() != rightImgFrame->getHeight()) {
-                logger->warn("AutoCalibration: Not initialized - currently supports only sensors with same resolutions.");
+                logger->info("AutoCalibration: Not initialized - currently supports only sensors with same resolutions.");
                 return false;
             }
-            if(leftImgFrame->getHeight() != 800 || leftImgFrame->getWidth() != 1280) {
-                logger->info("AutoCalibration: Not initialized - currently supports only sensors with 1280x800 resolution.");
+            const auto h = leftImgFrame->getHeight();
+            const auto w = leftImgFrame->getWidth();
+
+            const bool supportedResolution = (h == 800 && w == 1280) || (h == 400 && w == 640);
+
+            if(!supportedResolution) {
+                logger->info(
+                    "AutoCalibration: Not initialized - currently supports only "
+                    "1280x800 or 640x400 resolution not {}x{}.",
+                    w,
+                    h);
                 return false;
             }
             return true;

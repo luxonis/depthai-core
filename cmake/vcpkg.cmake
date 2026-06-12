@@ -328,13 +328,30 @@ function(vcpkg_set_version_checkout)
     execute_process(COMMAND git for-each-ref refs/tags/ --count=1 --sort=-creatordate --format=%\(refname:short\) WORKING_DIRECTORY "${VCPKG_DIRECTORY_EXPLICIT}" OUTPUT_VARIABLE VCPKG_GIT_TAG_LATEST)
     string(REGEX REPLACE "\n$" "" VCPKG_GIT_TAG_LATEST "${VCPKG_GIT_TAG_LATEST}")
 
-    # resolve versions
-    if(EXISTS "./vcpkg.json")
+    # Resolve versions. Use absolute manifest paths because relative paths here
+    # depend on the current CMake working directory, which may be a build dir.
+    set(VCPKG_MANIFEST_PATH "")
+    foreach(VCPKG_MANIFEST_CANDIDATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg.json"
+        "${CMAKE_SOURCE_DIR}/vcpkg.json"
+        "${CMAKE_CURRENT_BINARY_DIR}/vcpkg.json"
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../vcpkg.json"
+    )
+        if(EXISTS "${VCPKG_MANIFEST_CANDIDATE}")
+            get_filename_component(VCPKG_MANIFEST_PATH "${VCPKG_MANIFEST_CANDIDATE}" ABSOLUTE)
+            break()
+        endif()
+    endforeach()
+
+    if(VCPKG_MANIFEST_PATH)
         # set hash from vcpkg.json manifest
-        file(READ "./vcpkg.json" VCPKG_MANIFEST_CONTENTS)
+        file(READ "${VCPKG_MANIFEST_PATH}" VCPKG_MANIFEST_CONTENTS)
 
         if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)
-            string(JSON VCPKG_BASELINE GET "${VCPKG_MANIFEST_CONTENTS}" "builtin-baseline")
+            string(JSON VCPKG_BASELINE ERROR_VARIABLE VCPKG_BASELINE_ERROR GET "${VCPKG_MANIFEST_CONTENTS}" "builtin-baseline")
+            if(VCPKG_BASELINE_ERROR)
+                set(VCPKG_BASELINE "")
+            endif()
         else()
             string(REGEX REPLACE "[\n ]" "" VCPKG_MANIFEST_CONTENTS "${VCPKG_MANIFEST_CONTENTS}")
             string(REGEX MATCH "\"builtin-baseline\":\"[0-9a-f]+\"" VCPKG_BASELINE "${VCPKG_MANIFEST_CONTENTS}")
@@ -347,7 +364,7 @@ function(vcpkg_set_version_checkout)
                 message(WARNING "VCPKG_VERSION was specified, but vcpkg.json manifest is used and specifies a builtin-baseline; using builtin-baseline: ${VCPKG_BASELINE}")
             endif()
             set(VCPKG_VERSION_EXPLICIT "${VCPKG_BASELINE}")
-            message(STATUS "Using VCPKG Version: <manifest builtin-baseline>")
+            message(STATUS "Using VCPKG Version: <manifest builtin-baseline> (${VCPKG_MANIFEST_PATH})")
         endif()
     endif()
 

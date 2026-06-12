@@ -1,7 +1,10 @@
 #include "Platform.hpp"
 
 #include <filesystem>
+#include <fstream>
 #include <memory>
+#include <sstream>
+#include <stdexcept>
 
 // Platform specific
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
@@ -27,11 +30,16 @@
 
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
     #include <windows.h>
+    #include <winreg.h>
 #endif
 
 #ifndef _WIN32
     #include <sys/stat.h>
     #include <unistd.h>
+#endif
+
+#ifdef __APPLE__
+    #include <sys/sysctl.h>
 #endif
 
 namespace dai {
@@ -143,6 +151,78 @@ std::string getLocalIpAddress() {
 #endif
 }
 
+std::string getOSPlatform() {
+#ifdef _WIN32
+    return "Windows";
+#elif __APPLE__
+    return "MacOS";
+#elif __linux__
+    return "Linux";
+#else
+    return "Other";
+#endif
+}
+
+std::string getOSVersion() {
+#ifdef _WIN32
+    HKEY key;
+    if(RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_READ, &key) == ERROR_SUCCESS) {
+        wchar_t buffer[256] = {};
+        DWORD bufferSize = sizeof(buffer);
+        if(RegQueryValueExW(key, L"ProductName", nullptr, nullptr, reinterpret_cast<LPBYTE>(buffer), &bufferSize) == ERROR_SUCCESS) {
+            RegCloseKey(key);
+            std::wstring value(buffer);
+            return std::string(value.begin(), value.end());
+        }
+        RegCloseKey(key);
+    }
+    return "Windows";
+#elif __APPLE__
+    char buffer[256] = {};
+    std::size_t size = sizeof(buffer);
+    if(sysctlbyname("kern.osproductversion", buffer, &size, nullptr, 0) == 0 && size > 1) {
+        return std::string("macOS ") + buffer;
+    }
+    size = sizeof(buffer);
+    if(sysctlbyname("kern.osrelease", buffer, &size, nullptr, 0) == 0 && size > 1) {
+        return std::string("macOS ") + buffer;
+    }
+    return "macOS";
+#elif __linux__
+    std::ifstream osRelease("/etc/os-release");
+    std::string line;
+    std::string version;
+    std::string versionCodename;
+    std::string prettyName;
+    std::string versionId;
+    while(std::getline(osRelease, line)) {
+        auto separator = line.find('=');
+        if(separator == std::string::npos) continue;
+        auto key = line.substr(0, separator);
+        auto value = line.substr(separator + 1);
+        if(!value.empty() && value.front() == '"' && value.back() == '"' && value.size() >= 2) {
+            value = value.substr(1, value.size() - 2);
+        }
+        if(key == "VERSION") {
+            version = value;
+        } else if(key == "VERSION_CODENAME") {
+            versionCodename = value;
+        } else if(key == "PRETTY_NAME") {
+            prettyName = value;
+        } else if(key == "VERSION_ID") {
+            versionId = value;
+        }
+    }
+    if(!version.empty()) return version;
+    if(!prettyName.empty()) return prettyName;
+    if(!versionId.empty()) return versionId;
+    if(!versionCodename.empty()) return versionCodename;
+    return "Linux";
+#else
+    return "Other";
+#endif
+}
+
 void setThreadName(JoiningThread& thread, const std::string& name) {
 #ifdef __linux__
     auto handle = thread.native_handle();
@@ -155,22 +235,21 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
 }
 
 std::filesystem::path getTempPath() {
-    std::string tmpPath;
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    char tmpPathBuffer[MAX_PATH];
-    GetTempPathA(MAX_PATH, tmpPathBuffer);
-    tmpPath = tmpPathBuffer;
+    auto basePath = std::filesystem::temp_directory_path() / L"depthai_XXXXXX";
+    auto baseStr = basePath.wstring();
+    if(_wmktemp_s(baseStr.data(), baseStr.size() + 1) != 0 || !std::filesystem::create_directories(baseStr)) {
+        throw std::runtime_error("Failed to create a unique temporary directory");
+    }
+    return std::filesystem::path(baseStr);
 #else
     char tmpTemplate[] = "/tmp/depthai_XXXXXX";
-    char* tmpName = mkdtemp(tmpTemplate);
+    char* tmpName = mkdtemp(tmpTemplate);  // mkdtemp creates the directory automatically
     if(tmpName == nullptr) {
-        tmpPath = "/tmp";
-    } else {
-        tmpPath = tmpName;
-        tmpPath += '/';
+        throw std::runtime_error("Failed to create a unique temporary directory");
     }
+    return std::filesystem::path(std::string(tmpName) + '/');
 #endif
-    return std::filesystem::path(tmpPath);
 }
 
 bool checkPathExists(const std::filesystem::path& path, bool directory) {

@@ -53,13 +53,12 @@ jobs:
       - name: Strip zoo_helper
         run: strip ./build/zoo_helper # Shrinks the size of the binary a little bit by removing symbols: https://www.man7.org/linux/man-pages/man1/strip.1.html
 
-      - name: Upload zoo_helper to artifactory
+      - name: Upload zoo_helper to Artifact Keeper
         run: |
-          bash ./ci/upload-artifactory-zoo-helper.sh
+          bash ./ci/upload-ak-zoo-helper.sh
         env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+          AK_URL: ${{ secrets.AK_URL }}
+          AK_TOKEN: ${{ secrets.AK_TOKEN }}
           ZOO_HELPER_PLATFORM: linux-x86_64
 
   build-zoo-helper-linux-arm64:
@@ -109,11 +108,10 @@ jobs:
       - name: Strip zoo_helper
         run: strip ./build/zoo_helper # Shrinks the size of the binary a little bit by removing symbols: https://www.man7.org/linux/man-pages/man1/strip.1.html
 
-      - name: Upload zoo_helper to artifactory
+      - name: Upload zoo_helper to Artifact Keeper
         run: |
-          bash ./ci/upload-artifactory-zoo-helper.sh
+          bash ./ci/upload-ak-zoo-helper.sh
         env:
-          ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_PASS: ${{ secrets.ARTIFACTORY_PASS }}
+          AK_URL: ${{ secrets.AK_URL }}
+          AK_TOKEN: ${{ secrets.AK_TOKEN }}
           ZOO_HELPER_PLATFORM: linux-arm64

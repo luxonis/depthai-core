@@ -40,6 +40,18 @@ int EncodedFrame::getLensPosition() const {
 float EncodedFrame::getLensPositionRaw() const {
     return cam.lensPositionRaw;
 }
+EncodedFrame::Fsync EncodedFrame::getFsync() const {
+    return cam.fsync;
+}
+int EncodedFrame::getSensorMode() const {
+    return cam.sensorMode;
+}
+float EncodedFrame::getFps() const {
+    return cam.fps;
+}
+std::optional<float> EncodedFrame::getSensorTemperature() const {
+    return cam.sensorTemperatureC;
+}
 unsigned int EncodedFrame::getQuality() const {
     return quality;
 }

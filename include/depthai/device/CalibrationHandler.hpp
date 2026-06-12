@@ -1,5 +1,6 @@
 // IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
+#include <array>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -190,6 +191,20 @@ class CalibrationHandler {
      *
      */
     std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId) const;
+
+    /**
+     * Get the source height of the camera from the calibration data.
+     * @param cameraId Uses the cameraId to identify which camera source height to return
+     * @return the source height of the camera from the calibration data.
+     */
+    uint32_t getSourceHeight(CameraBoardSocket cameraId) const;
+
+    /**
+     * Get the source width of the camera from the calibration data.
+     * @param cameraId Uses the cameraId to identify which camera source width to return
+     * @return the source width of the camera from the calibration data.
+     */
+    uint32_t getSourceWidth(CameraBoardSocket cameraId) const;
 
     /**
      * Get the Distortion Coefficients object
@@ -408,25 +423,44 @@ class CalibrationHandler {
     dai::CameraBoardSocket getStereoRightCameraId() const;
 
     /**
-     * Get the accelerometer calibration parameters.
+     * Get canonical accelerometer calibration matrix [Q|b].
      *
-     * @return returns a flat vector of up to 12 floats
+     * The linear transform Q is dimensionless. The bias column b is stored in SI
+     * units of [m/s^2].
+     *
+     * @return returns 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
      */
-    std::vector<float> getAccelerometerCalibParams() const;
+    std::vector<std::vector<float>> getAccelerometerCalibration() const;
 
     /**
-     * Get the gyroscope calibration parameters.
+     * Get canonical gyroscope calibration matrix [Q|b].
      *
-     * @return returns a flat vector of up to 12 floats
+     * The linear transform Q is dimensionless. The bias column b is stored in SI
+     * units of [rad/s].
+     *
+     * @return returns 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
      */
-    std::vector<float> getGyroscopeCalibParams() const;
+    std::vector<std::vector<float>> getGyroscopeCalibration() const;
 
     /**
-     * Get the IMU model-specific parameters.
+     * Get complete IMU noise parameters.
      *
-     * @return returns IMU model parameters as ImuModelParams struct
+     * Accelerometer noise terms are stored in [m/s^2]-based units. Gyroscope
+     * noise terms are stored in [rad/s]-based units.
+     *
+     * @return returns IMU noise parameters
      */
-    dai::ImuModelParams getImuModelParams() const;
+    dai::ImuNoiseParameters getImuNoiseParameters() const;
+
+    /**
+     * Get full IMU parameter payload.
+     *
+     * Accelerometer calibration bias terms are stored in [m/s^2]. Gyroscope
+     * calibration bias terms are stored in [rad/s].
+     *
+     * @return returns IMU parameters containing noise + calibration matrices
+     */
+    dai::ImuCalibrationParams getImuParameters() const;
 
     /**
      * Write raw calibration/board data to json file.
@@ -654,18 +688,25 @@ class CalibrationHandler {
     bool validateCameraArray() const;
 
     /**
-     * Set the accelerometer calibration parameters.
+     * Set canonical accelerometer calibration [Q|b].
      *
-     * @param calibParams Up to 12 float array containing accelerometer calibration parameters
+     * @param calibration 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
      */
-    void setAccelerometerCalibParams(const std::vector<float>& calibParams);
+    void setAccelerometerCalibration(const std::vector<std::vector<float>>& calibration);
 
     /**
-     * Set the gyroscope calibration parameters.
+     * Set canonical gyroscope calibration [Q|b].
      *
-     * @param calibParams Up to 12 float array containing gyroscope calibration parameters
+     * @param calibration 3x4 matrix in the form [[q00, q01, q02, b0], [q10, q11, q12, b1], [q20, q21, q22, b2]]
      */
-    void setGyroscopeCalibParams(const std::vector<float>& calibParams);
+    void setGyroscopeCalibration(const std::vector<std::vector<float>>& calibration);
+
+    /**
+     * Set full IMU parameter payload.
+     *
+     * @param params noise + accelerometer + gyroscope calibration parameters
+     */
+    void setImuParameters(const ImuCalibrationParams& params);
 
     /**
      * Validate Calibration handler properties and how they are set, so there is no:
@@ -724,6 +765,62 @@ class CalibrationHandler {
    protected:
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;
     LengthUnit getEepromTranslationUnits() const;
+};
+
+/**
+ * CBACalibrationHandler is a single-camera calibration interface for
+ * calibration data read from a CBA EEPROM.
+ *
+ * It preserves the underlying EepromData layout, including the cameraData map,
+ * but camera-specific APIs use CameraBoardSocket::CBA as the logical
+ * single-camera data key without requiring the caller to pass it again.
+ */
+class CBACalibrationHandler : private CalibrationHandler {
+   public:
+    CBACalibrationHandler();
+    explicit CBACalibrationHandler(EepromData eepromData, std::optional<bool> validateCalibration = std::nullopt);
+
+    static CBACalibrationHandler fromJson(nlohmann::json eepromDataJson, std::optional<bool> validateCalibration = std::nullopt);
+
+    using CalibrationHandler::eepromToJson;
+    using CalibrationHandler::eepromToJsonFile;
+    using CalibrationHandler::getEepromData;
+    using CalibrationHandler::hasCalibrationData;
+    using CalibrationHandler::validateCalibrationHandler;
+
+    bool hasCameraCalibration() const;
+
+    std::vector<std::vector<float>> getCameraIntrinsics(int resizeWidth = -1,
+                                                        int resizeHeight = -1,
+                                                        Point2f topLeftPixelId = Point2f(),
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true) const;
+    std::vector<std::vector<float>> getCameraIntrinsics(Size2f destShape,
+                                                        Point2f topLeftPixelId = Point2f(),
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true) const;
+    std::vector<std::vector<float>> getCameraIntrinsics(std::tuple<int, int> destShape,
+                                                        Point2f topLeftPixelId = Point2f(),
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true) const;
+    std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics() const;
+    uint32_t getSourceHeight() const;
+    uint32_t getSourceWidth() const;
+    std::vector<float> getDistortionCoefficients() const;
+    float getFov(bool useSpec = true) const;
+    uint8_t getLensPosition() const;
+    CameraModel getDistortionModel() const;
+
+    void setCameraIntrinsics(std::vector<std::vector<float>> intrinsics, Size2f frameSize);
+    void setCameraIntrinsics(std::vector<std::vector<float>> intrinsics, int width, int height);
+    void setCameraIntrinsics(std::vector<std::vector<float>> intrinsics, std::tuple<int, int> frameSize);
+    void setDistortionCoefficients(std::vector<float> distortionCoefficients);
+    void setFov(float hfov);
+    void setLensPosition(uint8_t lensPosition);
+    void setCameraType(CameraModel cameraModel);
+
+   private:
+    static constexpr CameraBoardSocket cameraDataSocket = CameraBoardSocket::CBA;
 };
 
 }  // namespace dai

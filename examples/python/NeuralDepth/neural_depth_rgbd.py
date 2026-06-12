@@ -8,7 +8,7 @@ parser.add_argument("--webSocketPort", type=int, default=8765)
 parser.add_argument("--httpPort", type=int, default=8082)
 args = parser.parse_args()
 
-FPS = 10
+FPS = 25
 with dai.Pipeline() as p:
     remoteConnector = dai.RemoteConnection(
         webSocketPort=args.webSocketPort, httpPort=args.httpPort

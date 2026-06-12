@@ -15,70 +15,101 @@ enum class IMUSensor : std::int32_t {
     /**
      * Section 2.1.1
      *
-     * Acceleration of the device without any postprocessing, straight from the sensor.
+     * Raw accelerometer measurement in the sensor-native frame.
+     * No IMU extrinsics or affine calibration are applied.
      * Units are [m/s^2]
+     *
+     * @note Prior firmware versions incorrectly delivered frame-aligned data on this stream
+     * (equivalent to what is now ACCELEROMETER_UNCALIBRATED). This stream now correctly
+     * provides the unprocessed sensor output.
      */
     ACCELEROMETER_RAW = 0x14,
     /**
-     * Section 2.1.1
+     * DepthAI synthetic accelerometer stream.
      *
-     * Acceleration of the device including gravity.
+     * Acceleration of the device including gravity, aligned to the DepthAI IMU frame
+     * without the stored affine calibration applied.
      * Units are [m/s^2]
      */
-    ACCELEROMETER = 0x01,
+    ACCELEROMETER_UNCALIBRATED = 0x100,
+    /**
+     * Section 2.1.1
+     *
+     * Acceleration of the device including gravity, aligned to the DepthAI IMU frame
+     * and corrected with the stored affine calibration.
+     * Units are [m/s^2]
+     */
+    ACCELEROMETER_CALIBRATED = 0x01,
+    /** @deprecated Use ACCELEROMETER_CALIBRATED */
+    ACCELEROMETER [[deprecated("Use ACCELEROMETER_CALIBRATED")]] = ACCELEROMETER_CALIBRATED,
     /**
      * Section 2.1.1
      *
      * Acceleration of the device with gravity removed.
      * Units are [m/s^2]
+     *
+     * @deprecated The affine calibration (bias) stored for the accelerometer is calibrated
+     * against the full gravity-included signal and is therefore incorrect when applied to
+     * this gravity-stripped output. This sensor is not correctly calibrated and may be removed
+     * in a future release.
      */
-    LINEAR_ACCELERATION = 0x04,
+    LINEAR_ACCELERATION [[deprecated("LINEAR_ACCELERATION calibration is incorrect; use ACCELEROMETER_CALIBRATED and subtract gravity on the host")]] = 0x04,
     /**
      * Section 2.1.1
      *
      * Gravity.
      * Units are [m/s^2]
+     *
+     * @deprecated The affine calibration (bias) stored for the accelerometer is calibrated
+     * against the full gravity-included signal and is therefore incorrect when applied to
+     * this gravity-only output. This sensor is not correctly calibrated and may be removed
+     * in a future release.
      */
-    GRAVITY = 0x06,
+    GRAVITY [[deprecated("GRAVITY calibration is incorrect; use ACCELEROMETER_CALIBRATED and estimate gravity on the host")]] = 0x06,
     /**
      * Section 2.1.2
      *
-     * The angular velocity of the device without any postprocessing, straight from the sensor.
+     * Raw gyroscope measurement in the sensor-native frame.
+     * DepthAI does not apply IMU extrinsics or affine calibration on this stream.
      * Units are [rad/s]
      */
     GYROSCOPE_RAW = 0x15,
     /**
      * Section 2.1.2
      *
-     * The angular velocity of the device.
+     * Angular velocity aligned to the DepthAI IMU frame and corrected with the stored
+     * affine calibration.
      * Units are [rad/s]
      */
     GYROSCOPE_CALIBRATED = 0x02,
     /**
      * Section 2.1.2
      *
-     * Angular velocity without bias compensation.
+     * Angular velocity aligned to the DepthAI IMU frame without the stored affine
+     * calibration applied.
      * Units are [rad/s]
      */
     GYROSCOPE_UNCALIBRATED = 0x07,
     /**
      * Section 2.1.3
      *
-     * Magnetic field measurement without any postprocessing, straight from the sensor.
+     * Raw magnetometer measurement in the sensor-native frame.
+     * DepthAI does not apply IMU extrinsics on this stream.
      * Units are [uTesla]
      */
     MAGNETOMETER_RAW = 0x16,
     /**
      * Section 2.1.3
      *
-     * The fully calibrated magnetic field measurement.
+     * Magnetic field measurement aligned to the DepthAI IMU frame.
      * Units are [uTesla]
      */
     MAGNETOMETER_CALIBRATED = 0x03,
     /**
      * Section 2.1.3
      *
-     * The magnetic field measurement without hard-iron offset applied.
+     * Magnetic field measurement aligned to the DepthAI IMU frame without hard-iron
+     * offset applied.
      * Units are [uTesla]
      */
     MAGNETOMETER_UNCALIBRATED = 0x0f,
@@ -160,7 +191,7 @@ struct IMUSensorConfig {
      */
     uint32_t reportRate = 100;
 
-    IMUSensor sensorId = IMUSensor::ACCELEROMETER;
+    IMUSensor sensorId = IMUSensor::ACCELEROMETER_CALIBRATED;
 };
 DEPTHAI_SERIALIZE_EXT(IMUSensorConfig, sensitivityEnabled, sensitivityRelative, changeSensitivity, reportRate, sensorId);
 

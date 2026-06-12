@@ -20,106 +20,6 @@ message(STATUS "Catch2_VERSION: ${Catch2_VERSION}")
 message(STATUS "Catch2_INCLUDE_DIRS: ${Catch2_INCLUDE_DIRS}")
 message(STATUS "Catch2_LIBRARIES: ${Catch2_LIBRARIES}")
 
-set(test_env
-    # Misc
-    "UBSAN_OPTIONS=halt_on_error=1"
-    # DepthAI
-    "DEPTHAI_SEARCH_TIMEOUT=15000"
-    "DEPTHAI_RECONNECT_TIMEOUT=0"
-    )
-
-include(CMakeParseArguments)
-
-include_directories(${CMAKE_SOURCE_DIR}/src)
-
-# Function for adding new tests
-function(dai_add_test test_name test_src)
-    # Parse arguments
-    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
-
-    # Create test executable
-    add_executable(${test_name} ${test_src})
-    add_default_flags(${test_name} LEAN)
-
-    # Set compiler C++ standard if specified
-    if(DAT_CXX_STANDARD)
-        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
-    endif()
-
-    # Add conforming preprocessor flags for MSVC if requested
-    if(MSVC AND DAT_CONFORMING)
-        if(MSVC_VERSION LESS 1925)
-            target_compile_options(${test_name} PRIVATE "/experimental:preprocessor")
-        else()
-            target_compile_options(${test_name} PRIVATE "/Zc:preprocessor")
-        endif()
-    endif()
-
-    # Add to clang-format target
-    if(COMMAND target_clangformat_setup)
-        target_clangformat_setup(${test_name} "")
-    endif()
-
-    # Link to core and Catch2 testing framework
-    set(DEPTHAI_TARGET depthai::core)
-    if(NOT DEPTHAI_MERGED_TARGET)
-        set(DEPTHAI_TARGET depthai::opencv)
-    endif()
-    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
-
-    # Add sanitizers for tests as well
-    if(COMMAND add_sanitizers)
-        add_sanitizers(${test_name})
-    endif()
-
-    # Add test
-    add_test(NAME ${test_name} COMMAND ${test_name})
-    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
-
-
-    # Copy over required DLLs (Windows)
-    if(WIN32)
-        # Copy DLLs to target directory - Windows only
-        # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
-        if(CMAKE_VERSION VERSION_LESS "3.21")
-            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
-        else()
-            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${test_name}>")
-        endif()
-        add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
-            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${test_name}>>"
-            COMMAND_EXPAND_LISTS
-            VERBATIM
-        )
-    endif()
-endfunction()
-
-# Function for setting test labels, including label shortcuts
-function(dai_set_test_labels test_name)
-    set(expanded_labels "")
-    foreach(label IN LISTS ARGN)
-        if(label STREQUAL "rvc2_all")
-            list(APPEND expanded_labels "rvc2" "poe" "usb")
-        else()
-            list(APPEND expanded_labels ${label})
-        endif()
-    endforeach()
-    set_tests_properties(${test_name} PROPERTIES LABELS "${expanded_labels}")
-endfunction()
-
-# Function for adding compile definitions to tests
-function(dai_test_compile_definitions)
-    if(TARGET ${ARGV0})
-        target_compile_definitions(${ARGV})
-        if(TARGET ${ARGV0}_conforming)
-            set(ARGV0 ${ARGV0}_conforming)
-            list(REMOVE_AT ARGV 0)
-            list(INSERT ARGV 0 ${ARGV0})
-            target_compile_definitions(${ARGV})
-        endif()
-    endif()
-endfunction()
-
 if(DEPTHAI_FETCH_ARTIFACTS)
     # Mobilenet network
     private_data(
@@ -348,6 +248,13 @@ if(DEPTHAI_FETCH_ARTIFACTS)
     )
 
     private_data(
+        URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/holistic_recording_transformations.tar"
+        SHA1 "be6ef1f24a26d8e604283a6dac59ede035425feb"
+        FILE "holistic_recording_transformations.tar"
+        LOCATION holistic_recording
+    )
+
+    private_data(
         URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/test_calib.json"
         SHA1 "d745e1cdf18dda1ef00311250676407df207df4c"
         FILE "test_calib.json"
@@ -360,11 +267,144 @@ if(DEPTHAI_FETCH_ARTIFACTS)
         LOCATION img_transformations_test_data
     )
 endif()
+
+set(test_env
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_SEARCH_TIMEOUT=30000"
+    "DEPTHAI_RECONNECT_TIMEOUT=0"
+)
+
+if(DEPTHAI_TESTS_ENABLE_REPLAY)
+    if(DEPTHAI_FETCH_ARTIFACTS)
+        list(APPEND test_env "DEPTHAI_REPLAY=${holistic_recording}")
+    else()
+        message(WARNING "DEPTHAI_TESTS_ENABLE_REPLAY is enabled, but DEPTHAI_FETCH_ARTIFACTS is OFF. DEPTHAI_REPLAY will not be set.")
+    endif()
+endif()
+
+include(CMakeParseArguments)
+
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
+# Function for adding new tests
+function(dai_add_test test_name test_src)
+    # Parse arguments
+    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
+
+    # Create test executable
+    add_executable(${test_name} ${test_src})
+    add_default_flags(${test_name} LEAN)
+
+    # Set compiler C++ standard if specified
+    if(DAT_CXX_STANDARD)
+        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
+    endif()
+
+    # Add conforming preprocessor flags for MSVC if requested
+    if(MSVC AND DAT_CONFORMING)
+        if(MSVC_VERSION LESS 1925)
+            target_compile_options(${test_name} PRIVATE "/experimental:preprocessor")
+        else()
+            target_compile_options(${test_name} PRIVATE "/Zc:preprocessor")
+        endif()
+    endif()
+
+    # Add to clang-format target
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${test_name} "")
+    endif()
+
+    # Link to core and Catch2 testing framework
+    set(DEPTHAI_TARGET depthai::core)
+    if(NOT DEPTHAI_MERGED_TARGET)
+        set(DEPTHAI_TARGET depthai::opencv)
+    endif()
+    target_link_libraries(${test_name} PRIVATE ${DEPTHAI_TARGET} ${OpenCV_LIBS} Catch2::Catch2WithMain Threads::Threads spdlog::spdlog trompeloeil)
+
+    # Add sanitizers for tests as well
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${test_name})
+    endif()
+
+    # Add test
+    add_test(NAME ${test_name} COMMAND ${test_name})
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_env}")
+
+
+    # Copy over required DLLs (Windows)
+    if(WIN32)
+        # Copy DLLs to target directory - Windows only
+        # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
+        if(CMAKE_VERSION VERSION_LESS "3.21")
+            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        else()
+            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${test_name}>")
+        endif()
+        add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
+            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${test_name}>>"
+            COMMAND_EXPAND_LISTS
+            VERBATIM
+        )
+    endif()
+endfunction()
+
+# Function for setting test labels, including label shortcuts
+function(dai_set_test_labels test_name)
+    set(expanded_labels "")
+    set(test_env_overrides "")
+    foreach(label IN LISTS ARGN)
+        if(label STREQUAL "rvc2_all")
+            list(APPEND expanded_labels "rvc2" "poe" "usb")
+        elseif(label STREQUAL "replay")
+            list(APPEND expanded_labels ${label})
+            if(NOT DEPTHAI_TESTS_ENABLE_REPLAY)
+                if(DEPTHAI_FETCH_ARTIFACTS)
+                    list(APPEND test_env_overrides "DEPTHAI_REPLAY=${holistic_recording}")
+                else()
+                    message(WARNING "Test '${test_name}' requires replay, but DEPTHAI_FETCH_ARTIFACTS is OFF. DEPTHAI_REPLAY will not be set.")
+                endif()
+            endif()
+        elseif(label STREQUAL "noreplayci")
+            # Exclude these tests from the replay-enabled CI job.
+            list(APPEND expanded_labels ${label})
+        else()
+            list(APPEND expanded_labels ${label})
+        endif()
+    endforeach()
+    set_tests_properties(${test_name} PROPERTIES LABELS "${expanded_labels}")
+    if(test_env_overrides)
+        set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "${test_env_overrides}")
+    endif()
+endfunction()
+
+# Function for adding compile definitions to tests
+function(dai_test_compile_definitions)
+    if(TARGET ${ARGV0})
+        target_compile_definitions(${ARGV})
+        if(TARGET ${ARGV0}_conforming)
+            set(ARGV0 ${ARGV0}_conforming)
+            list(REMOVE_AT ARGV 0)
+            list(INSERT ARGV 0 ${ARGV0})
+            target_compile_definitions(${ARGV})
+        endif()
+    endif()
+endfunction()
+
 ### Helper script to wrap the tests with a timeout ############################
 
 add_executable(test_wrapper src/helpers/test_wrapper.cpp)
 target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
 target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+
+add_executable(telemetry_test_child src/ondevice_tests/telemetry_test_child.cpp)
+add_default_flags(telemetry_test_child LEAN)
+target_link_libraries(telemetry_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+
+add_executable(telemetry_multi_device_test_child src/ondevice_tests/telemetry_multi_device_test_child.cpp)
+add_default_flags(telemetry_multi_device_test_child LEAN)
+target_link_libraries(telemetry_multi_device_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
 
 ### On-host tests #############################################################
 
@@ -401,6 +441,10 @@ dai_set_test_labels(naming_test onhost ci)
 # Image transformations test
 dai_add_test(image_transformations_test src/onhost_tests/image_transformations_test.cpp)
 dai_set_test_labels(image_transformations_test onhost ci)
+
+# Matrix operations tests
+dai_add_test(matrix_ops_tests src/onhost_tests/matrix_ops_tests.cpp)
+dai_set_test_labels(matrix_ops_tests onhost ci)
 
 # Normalization tests
 dai_add_test(normalization_test src/onhost_tests/normalization_test.cpp)
@@ -467,9 +511,21 @@ dai_set_test_labels(imgdetections_test onhost ci)
 dai_add_test(imgframe_test src/onhost_tests/pipeline/datatype/imgframe_test.cpp)
 dai_set_test_labels(imgframe_test onhost ci)
 
+# PointCloudData / PointCloudConfig / PointCloudProperties datatype tests
+dai_add_test(pointclouddata_test src/onhost_tests/pipeline/datatype/pointclouddata_test.cpp)
+dai_set_test_labels(pointclouddata_test onhost ci)
+
+# PointCloud node tests
+dai_add_test(point_cloud_test src/onhost_tests/point_cloud_test.cpp)
+dai_set_test_labels(point_cloud_test onhost ci)
+
 # Model description tests
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
+
+# GPUStereo node tests
+dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
+dai_set_test_labels(gpu_stereo_node_test onhost ci)
 
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
@@ -485,6 +541,23 @@ dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
 dai_set_test_labels(logging_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+# Telemetry redirect test
+dai_add_test(telemetry_test src/ondevice_tests/telemetry_test.cpp)
+target_include_directories(telemetry_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_link_libraries(telemetry_test PRIVATE httplib::httplib)
+target_compile_definitions(telemetry_test PRIVATE DEPTHAI_TELEMETRY_TEST_CHILD_PATH="$<TARGET_FILE:telemetry_test_child>")
+add_dependencies(telemetry_test telemetry_test_child)
+dai_set_test_labels(telemetry_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+# Telemetry redirect test across multiple devices
+dai_add_test(telemetry_multi_device_test src/ondevice_tests/telemetry_multi_device_test.cpp)
+target_include_directories(telemetry_multi_device_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_link_libraries(telemetry_multi_device_test PRIVATE httplib::httplib)
+target_compile_definitions(telemetry_multi_device_test PRIVATE
+    DEPTHAI_TELEMETRY_MULTI_DEVICE_TEST_CHILD_PATH="$<TARGET_FILE:telemetry_multi_device_test_child>")
+add_dependencies(telemetry_multi_device_test telemetry_multi_device_test_child)
+dai_set_test_labels(telemetry_multi_device_test ondevice rvc2_all rvc4 rvc4rgb)
 
 # OpenVINO blob test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -504,6 +577,10 @@ endif()
 # Vpp node tests
 dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
 dai_set_test_labels(vpp_test ondevice rvc4 ci)
+
+# GPUStereo node (device execution) test
+dai_add_test(gpu_stereo_device_test src/ondevice_tests/gpu_stereo_node_test.cpp)
+dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
 
 # Dynamic calibration tests
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -530,7 +607,7 @@ dai_set_test_labels(spatial_location_calculator_test ondevice rvc2_all rvc4 ci)
 
 # Color camera test
 dai_add_test(color_camera_node_test src/ondevice_tests/color_camera_node_test.cpp)
-dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci)
+dai_set_test_labels(color_camera_node_test ondevice rvc2_all ci noreplayci)
 
 # Pipeline test
 dai_add_test(pipeline_test src/ondevice_tests/pipeline_test.cpp)
@@ -554,6 +631,10 @@ dai_set_test_labels(device_usbspeed_test_17 ondevice rvc2 usb ci)
 dai_add_test(device_usbspeed_test_20 src/ondevice_tests/device_usbspeed_test.cpp CXX_STANDARD 20)
 dai_set_test_labels(device_usbspeed_test_20 ondevice rvc2 usb ci)
 
+# Device Properties test
+dai_add_test(device_properties_test src/ondevice_tests/device_properties_test.cpp)
+dai_set_test_labels(device_properties_test ondevice rvc2_all rvc4 ci)
+
 # Filesystem test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(filesystem_test src/ondevice_tests/filesystem_test.cpp)
@@ -574,8 +655,8 @@ dai_add_test(encoded_frame_test src/ondevice_tests/encoded_frame_test.cpp CXX_ST
 dai_set_test_labels(encoded_frame_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # MessageGroup tests
-dai_add_test(message_group_frame_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
-dai_set_test_labels(message_group_frame_test ondevice rvc2_all rvc4 ci)
+dai_add_test(message_group_test src/ondevice_tests/message_group_test.cpp CXX_STANDARD 17)
+dai_set_test_labels(message_group_test ondevice rvc2_all rvc4 ci)
 
 # Pointcloud test
 dai_add_test(pointcloud_test src/ondevice_tests/pointcloud_test.cpp)
@@ -596,6 +677,10 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 # Serialization test
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
+
+# GPU availability test
+dai_add_test(gpu_availability_test src/ondevice_tests/gpu_availability_test.cpp)
+dai_set_test_labels(gpu_availability_test ondevice rvc4)
 
 # Subnode test
 dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
@@ -645,7 +730,7 @@ dai_set_test_labels(spatial_detection_network_test ondevice rvc2_all rvc4 ci)
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_network_node_test src/ondevice_tests/pipeline/node/neural_network_node_test.cpp)
     target_compile_definitions(neural_network_node_test PRIVATE LENNA_PATH="${lenna_png}")
-    dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci)
+    dai_set_test_labels(neural_network_node_test ondevice rvc2_all rvc4 ci noreplayci)
 endif()
 
 # ImgTransformations tests
@@ -662,10 +747,13 @@ dai_set_test_labels(eeprom_undistortion_test ondevice rvc2_all ci)
 
 # Regression tests for encountered bugs
 dai_add_test(regression_camera_concurrency_test src/ondevice_tests/regression/camera_concurrency.cpp)
-dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci)
+dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci noreplayci)
 
 dai_add_test(regression_message_group_test src/ondevice_tests/regression/message_group.cpp)
 dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+dai_add_test(regression_boot_test src/ondevice_tests/regression/boot.cpp)
+dai_set_test_labels(regression_boot_test ondevice rvc2 rvc4 usb ci noreplayci)
 
 # Sync test
 dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
@@ -673,11 +761,18 @@ dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
 
 # Fsync test
 dai_add_test(fsync_test src/ondevice_tests/pipeline/node/fsync_test.cpp)
-dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci)
+dai_set_test_labels(fsync_test ondevice rvc2 usb rvc4 ci noreplayci)
 
-# Fsync Multi-device test
-dai_add_test(fsync_multi_device_test src/onhost_tests/pipeline/fsync_multi_device.cpp)
-dai_set_test_labels(fsync_multi_device_test ondevice rvc4fsync ci)
+# Multi-device frame sync test (External and PTP)
+dai_add_test(multi_device_fsync_test src/onhost_tests/multi_device_fsync_test.cpp)
+target_include_directories(multi_device_fsync_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+target_sources(multi_device_fsync_test PRIVATE src/onhost_tests/utility/fsync_ptp_test_utils.cpp)
+dai_set_test_labels(multi_device_fsync_test ondevice rvc4fsync ci noreplayci)
+
+dai_add_test(multi_device_ptp_test src/onhost_tests/multi_device_ptp_test.cpp)
+target_include_directories(multi_device_ptp_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
+target_sources(multi_device_ptp_test PRIVATE src/onhost_tests/utility/fsync_ptp_test_utils.cpp)
+dai_set_test_labels(multi_device_ptp_test ondevice rvc4ptp ci noreplayci)
 
 ## Large messages tests
 dai_add_test(bridge_large_messages src/ondevice_tests/bridge_large_messages.cpp)
@@ -687,9 +782,13 @@ dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4rgb ci)
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 
-# Script node test
+# Common Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
 dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+# RVC4 specific Script node test
+dai_add_test(script_node_rvc4_test src/ondevice_tests/script_node_rvc4_test.cpp)
+dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4rgb ci)
 
 # StereoDepth test
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)
@@ -708,7 +807,7 @@ endif()
 
 # Benchmark tests
 dai_add_test(benchmark_test src/ondevice_tests/pipeline/node/benchmark_test.cpp)
-dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(benchmark_test ondevice rvc2_all rvc4 rvc4rgb ci noreplayci)
 
 # SystemLogger test
 dai_add_test(system_logger_test src/ondevice_tests/pipeline/node/system_logger_test.cpp)
@@ -716,7 +815,7 @@ dai_set_test_labels(system_logger_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
 # Manual focus test
 dai_add_test(manual_focus_test src/ondevice_tests/manual_focus_test.cpp)
-dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci)
+dai_set_test_labels(manual_focus_test rvc2_all rvc4 rvc4rgb ci noreplayci)
 
 # IMU tests
 dai_add_test(imu_test src/ondevice_tests/pipeline/node/imu_test.cpp)
@@ -741,10 +840,11 @@ endif()
 
 # Camera tests
 dai_add_test(camera_test src/ondevice_tests/pipeline/node/camera_test.cpp)
-dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(camera_test ondevice rvc2_all rvc4 ci noreplayci)
 
 dai_add_test(camera_fps_config_test src/ondevice_tests/pipeline/node/camera_fps_config_test.cpp)
-dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci)
+dai_set_test_labels(camera_fps_config_test ondevice rvc2_all rvc4 ci noreplayci)
+set_property(TEST camera_fps_config_test APPEND PROPERTY ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 
 # VideoEncoder test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -764,11 +864,13 @@ dai_set_test_labels(runtime_calibration_test ondevice rvc2_all rvc4 rvc4rgb ci)
 # NeuralDepth test
 if(DEPTHAI_FETCH_ARTIFACTS)
     dai_add_test(neural_depth_node_test src/ondevice_tests/neural_depth_node_test.cpp)
-    dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci)
+    dai_set_test_labels(neural_depth_node_test ondevice rvc4 ci noreplayci)
     target_compile_definitions(neural_depth_node_test PRIVATE
         NEURAL_REPLAY_PATH="${test_recording}"
         NEURAL_CALIBRATION_PATH="${test_calib}"
     )
+    # TODO(Morato) - shouldn't be needed, but AUTOCALIBRATION seems to impact the FPS a bit at the beginning
+    set_tests_properties(neural_depth_node_test PROPERTIES ENVIRONMENT "DEPTHAI_AUTOCALIBRATION=OFF")
 endif()
 
 # NeuralAssistedStereo test
@@ -777,8 +879,12 @@ dai_set_test_labels(neural_assisted_stereo_node_test ondevice rvc4 ci)
 
 # Gate tests
 dai_add_test(gate_node_test src/ondevice_tests/pipeline/node/gate_node_tests.cpp)
-dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci)
+dai_set_test_labels(gate_node_test ondevice rvc4 rvc2_all ci noreplayci)
 
 # AutoCalibration test
 dai_add_test(auto_calibration_test src/ondevice_tests/pipeline/node/auto_calibration_test.cpp)
 dai_set_test_labels(auto_calibration_test ondevice rvc4 rvc2_all ci)
+
+# Crashdump test
+dai_add_test(crashdump_test src/ondevice_tests/crashdump_test.cpp)
+dai_set_test_labels(crashdump_test ondevice rvc2_all rvc4 ci noreplayci)

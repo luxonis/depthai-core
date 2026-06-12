@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <queue>
+#include <utility>
 #include <variant>
 
 #include "depthai/schemas/PointCloudData.pb.h"
@@ -228,6 +229,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
             return true;
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
+        case DatatypeEnum::Transformable:
         case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
@@ -246,6 +248,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::GPUStereoConfig:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
         case DatatypeEnum::ToFConfig:
@@ -446,6 +449,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
 
             // Spatial keypoints with spatial coordinates.
             auto* protoSpatialKeypoints = spatialImgDetection->mutable_keypoints();
+            protoSpatialKeypoints->set_unit(static_cast<proto::common::LengthUnit>(keypointsList.unit));
             for(const auto& keypoint : keypointsVec) {
                 auto* protoKeypoint = protoSpatialKeypoints->add_keypoints();
                 auto* coords = protoKeypoint->mutable_imagecoordinates();
@@ -476,6 +480,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
 
     spatialImgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
     spatialImgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
+    spatialImgDetections->set_unit(static_cast<proto::common::LengthUnit>(message->unit));
 
     if(!metadataOnly) {
         std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
@@ -708,6 +713,12 @@ static void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* enco
     cam->set_lensposition(message->cam.lensPosition);        // lensPosition -> lensposition
     cam->set_wbcolortemp(message->cam.wbColorTemp);          // wbColorTemp -> wbcolortemp
     cam->set_lenspositionraw(message->cam.lensPositionRaw);  // lensPositionRaw -> lenspositionraw
+    cam->set_fsync(static_cast<proto::common::CameraFsync>(message->cam.fsync));
+    cam->set_sensormode(message->cam.sensorMode);
+    cam->set_fps(message->cam.fps);
+    if(message->cam.sensorTemperatureC.has_value()) {
+        cam->set_sensortemperaturec(*message->cam.sensorTemperatureC);
+    }
 
     if(!metadataOnly) {
         // Set the encoded message data
@@ -773,6 +784,12 @@ static void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const 
     cam->set_lensposition(message->cam.lensPosition);
     cam->set_wbcolortemp(message->cam.wbColorTemp);
     cam->set_lenspositionraw(message->cam.lensPositionRaw);
+    cam->set_fsync(static_cast<proto::common::CameraFsync>(message->cam.fsync));
+    cam->set_sensormode(message->cam.sensorMode);
+    cam->set_fps(message->cam.fps);
+    if(message->cam.sensorTemperatureC.has_value()) {
+        cam->set_sensortemperaturec(*message->cam.sensorTemperatureC);
+    }
 
     // instance number and category
     imgFrame->set_instancenum(message->instanceNum);
@@ -862,7 +879,9 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const PointCloudData*
     pointCloudData->set_maxx(message->getMaxX());
     pointCloudData->set_maxy(message->getMaxY());
     pointCloudData->set_maxz(message->getMaxZ());
-    pointCloudData->set_sparse(message->isSparse());
+
+    // Set sparse flag based on height for backward compatibility with protobuf
+    pointCloudData->set_sparse(message->getHeight() == 1);
     pointCloudData->set_color(message->isColor());
 
     if(!metadataOnly) {
@@ -1096,6 +1115,10 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
     obj.cam.lensPosition = imgFrame->cam().lensposition();
     obj.cam.wbColorTemp = imgFrame->cam().wbcolortemp();
     obj.cam.lensPositionRaw = imgFrame->cam().lenspositionraw();
+    obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame->cam().fsync());
+    obj.cam.sensorMode = imgFrame->cam().sensormode();
+    obj.cam.fps = imgFrame->cam().fps();
+    obj.cam.sensorTemperatureC = imgFrame->cam().has_sensortemperaturec() ? std::make_optional(imgFrame->cam().sensortemperaturec()) : std::nullopt;
 
     obj.instanceNum = imgFrame->instancenum();
 
@@ -1103,7 +1126,7 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
 
     obj.transformation = deserializeImgTransformation(imgFrame->transformation());
 
-    if(!metadataOnly) {
+    if(!metadataOnly && !imgFrame->data().empty() && imgFrame->data().data() != nullptr) {
         std::vector<uint8_t> data(imgFrame->data().begin(), imgFrame->data().end());
         obj.setData(data);
     }
@@ -1148,10 +1171,14 @@ static void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encode
     obj.cam.lensPosition = encFrame.cam().lensposition();
     obj.cam.wbColorTemp = encFrame.cam().wbcolortemp();
     obj.cam.lensPositionRaw = encFrame.cam().lenspositionraw();
+    obj.cam.fsync = static_cast<ImgFrame::Fsync>(encFrame.cam().fsync());
+    obj.cam.sensorMode = encFrame.cam().sensormode();
+    obj.cam.fps = encFrame.cam().fps();
+    obj.cam.sensorTemperatureC = encFrame.cam().has_sensortemperaturec() ? std::make_optional(encFrame.cam().sensortemperaturec()) : std::nullopt;
 
     obj.transformation = deserializeImgTransformation(encFrame.transformation());
 
-    if(!metadataOnly) {
+    if(!metadataOnly && !encFrame.data().empty() && encFrame.data().data() != nullptr) {
         std::vector<uint8_t> data(encFrame.data().begin(), encFrame.data().end());
         obj.setData(data);
     }
@@ -1198,10 +1225,9 @@ void setProtoMessage(PointCloudData& obj, const google::protobuf::Message* msg, 
     obj.setMaxX(pcl->maxx());
     obj.setMaxY(pcl->maxy());
     obj.setMaxZ(pcl->maxz());
-    obj.setSparse(pcl->sparse());
     obj.setColor(pcl->color());
 
-    if(!metadataOnly) {
+    if(!metadataOnly && !pcl->data().empty() && pcl->data().data() != nullptr) {
         std::vector<uint8_t> data(pcl->data().begin(), pcl->data().end());
         obj.setData(data);
     }
@@ -1246,6 +1272,10 @@ static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::Img
     obj.cam.lensPosition = imgFrame.cam().lensposition();
     obj.cam.wbColorTemp = imgFrame.cam().wbcolortemp();
     obj.cam.lensPositionRaw = imgFrame.cam().lenspositionraw();
+    obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame.cam().fsync());
+    obj.cam.sensorMode = imgFrame.cam().sensormode();
+    obj.cam.fps = imgFrame.cam().fps();
+    obj.cam.sensorTemperatureC = imgFrame.cam().has_sensortemperaturec() ? std::make_optional(imgFrame.cam().sensortemperaturec()) : std::nullopt;
 
     // instance number and category
     obj.instanceNum = imgFrame.instancenum();

@@ -302,8 +302,7 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
                                                  const int instanceIndex,
                                                  const dai::ImgTransformation& detectionsTransformation,
                                                  const int segMaskWidth,
-                                                 const int segMaskHeight,
-                                                 const std::shared_ptr<spdlog::async_logger>& logger) {
+                                                 const int segMaskHeight) {
     const uint32_t lowerThreshold = config.globalLowerThreshold;
     const uint32_t upperThreshold = config.globalUpperThreshold;
     const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config.globalCalculationAlgorithm;
@@ -350,7 +349,6 @@ dai::SpatialImgDetection computeSpatialDetection(const dai::ImgFrame& depthFrame
     if(!areAligned) centerPoint = depthTransformation->remapPointTo(detectionsTransformation, centerPoint);
     dai::Point3f spatialCoordinates =
         calculateSpatialCoordinates(depthStats.calculateDepth(calculationAlgorithm), detectionsTransformation.getIntrinsicMatrix(), centerPoint);
-    logger->trace("Calculated spatial coordinates: {} {} {}", spatialCoordinates.x, spatialCoordinates.y, spatialCoordinates.z);
 
     dai::SpatialImgDetection spatialDetection = createSpatialDetection(detection, spatialCoordinates);
 
@@ -418,9 +416,6 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     }
 
     std::vector<dai::ImgDetection> imgDetectionsVector = imgDetections.detections;
-    if(imgDetectionsVector.size() == 0) {
-        return;
-    }
     spatialDetections.detections.resize(imgDetectionsVector.size());
 
     const SpatialLocationCalculatorAlgorithm calculationAlgorithm = config.globalCalculationAlgorithm;
@@ -432,7 +427,11 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
     const std::size_t segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
 
     span<const std::uint8_t> maskSpan = imgDetections.getData();
-    const bool passthroughSegmentation = config.segmentationPassthrough && !maskSpan.empty();
+
+    if(imgDetectionsVector.size() == 0) {
+        return;
+    }
+
     if(!config.useSegmentation) {  // ignore segmentation mask even if provided
         maskSpan = span<const std::uint8_t>{};
     }
@@ -454,15 +453,8 @@ void computeSpatialDetections(const dai::ImgFrame& depthFrame,
                                                                                i,
                                                                                *detectionsTransformation,
                                                                                static_cast<int>(segmentationMaskWidth),
-                                                                               static_cast<int>(segmentationMaskHeight),
-                                                                               logger);
+                                                                               static_cast<int>(segmentationMaskHeight));
         spatialDetections.detections[i] = spatialImgDetection;
-    }
-
-    if(passthroughSegmentation) {
-        spatialDetections.data = imgDetections.data;
-        spatialDetections.segmentationMaskWidth = imgDetections.getSegmentationMaskWidth();
-        spatialDetections.segmentationMaskHeight = imgDetections.getSegmentationMaskHeight();
     }
 }
 

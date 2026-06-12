@@ -6,8 +6,8 @@
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Rect.hpp"
 #include "depthai/common/optional.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/Transformable.hpp"
 
 namespace dai {
 
@@ -53,14 +53,53 @@ struct Tracklet {
      * Spatial coordinates of tracklet.
      */
     Point3f spatialCoordinates;
-    DEPTHAI_SERIALIZE(Tracklet, roi, id, label, age, status, srcImgDetection, spatialCoordinates);
+    /**
+     * Estimated 3D velocity of the tracklet in m/s.
+     * nullopt when spatial data is unavailable.
+     */
+    std::optional<Point3f> velocity;
+    /**
+     * Magnitude of the estimated 3D velocity in m/s.
+     * nullopt when spatial data is unavailable.
+     */
+    std::optional<float> speed;
+
+    /**
+     * Transforms the tracklet to the target image transformation.
+     * @param source Source image transformation.
+     * @param target Target image transformation.
+     * @param lengthUnit Length unit used by this tracklet's spatial coordinates.
+     */
+    void transform(const ImgTransformation& source, const ImgTransformation& target, LengthUnit lengthUnit = LengthUnit::MILLIMETER);
+
+    DEPTHAI_SERIALIZE(Tracklet, roi, id, label, age, status, srcImgDetection, spatialCoordinates, velocity, speed);
 };
 
 /**
  * Tracklets message. Carries object tracking information.
  */
-class Tracklets : public Buffer {
+class Tracklets : public Buffer, public TransformableCRTP<Tracklets> {
+   protected:
+    /**
+     * Internal transform hook used by transformTo() to apply Tracklets-specific transformation logic.
+     */
+    void transformToInternal(const ImgTransformation& target) override;
+
    public:
+    friend class TransformableCRTP<Tracklets>;
+    using Buffer::sequenceNum;
+    using Buffer::ts;
+    using Buffer::tsDevice;
+    using Buffer::tsSystem;
+    using Transformable::getTransformation;
+    using Transformable::setTransformation;
+    using Transformable::transformation;
+
+    /**
+     * Measurement unit used by all tracklets' `spatialCoordinates` in this list.
+     */
+    LengthUnit unit = LengthUnit::MILLIMETER;
+
     /**
      * Construct Tracklets message.
      */
@@ -72,11 +111,21 @@ class Tracklets : public Buffer {
      * @returns Vector of object tracker data, carrying tracking information.
      */
     std::vector<Tracklet> tracklets;
-    ImgTransformation transformation;
+
+    /**
+     * Returns a new Tracklets message with the tracklets transformed into the target image transformation.
+     *
+     * For each tracklet, the bounding box is assumed to lie on a plane parallel to the image plane at depth `tracklet.spatialCoordinates.z` (that is, all
+     * four bounding-box corners are projected using the same depth value). The transformed corners are then fit with the smallest enclosing rotated rectangle
+     * to preserve rectangularity.
+     *
+     * @param target Target image transformation.
+     */
+    Tracklets transformTo(const ImgTransformation& target);
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, Buffer::tsSystem);
+    DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, ts, tsDevice, tsSystem, sequenceNum, unit);
 };
 
 }  // namespace dai

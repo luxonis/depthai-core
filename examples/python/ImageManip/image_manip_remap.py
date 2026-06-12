@@ -30,6 +30,11 @@ with dai.Pipeline() as pipeline:
     manip1 = pipeline.create(dai.node.ImageManip)
     manip2 = pipeline.create(dai.node.ImageManip)
 
+    # GPU is not available on RVC2 and some RVC4 devices
+    backend = dai.node.ImageManip.Backend.GPU if pipeline.getDefaultDevice().hasGPU() else dai.node.ImageManip.Backend.CPU
+    manip1.setBackend(backend)
+    manip2.setBackend(backend)
+
     camOut.link(manip1.inputImage)
     manip1.out.link(manip2.inputImage)
 
@@ -38,7 +43,6 @@ with dai.Pipeline() as pipeline:
 
     manip2.initialConfig.addRotateDeg(90)
     manip2.initialConfig.setOutputSize(320, 200)
-    manip2.setRunOnHost(True)
 
     outQcam = camOut.createOutputQueue()
     outQ1 = manip1.out.createOutputQueue()

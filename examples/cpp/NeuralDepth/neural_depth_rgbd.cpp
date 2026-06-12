@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     // Register a signal handler for Ctrl+C
     std::signal(SIGINT, signalHandler);
 
-    constexpr float FPS = 10.0f;
+    constexpr float FPS = 25.0f;
 
     try {
         // Create a remote connection for visualization

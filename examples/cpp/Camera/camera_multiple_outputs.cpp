@@ -1,4 +1,6 @@
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -6,6 +8,12 @@
 #include <vector>
 
 #include "depthai/depthai.hpp"
+
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
 
 class FPSCounter {
    public:
@@ -36,6 +44,9 @@ void exitUsage() {
 }
 
 int main(int argc, char* argv[]) {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     if(argc < 6 || (argc - 1) % 5 != 0) {
         exitUsage();
     }
@@ -105,7 +116,7 @@ int main(int argc, char* argv[]) {
     // Start pipeline
     pipeline.start();
 
-    while(true) {
+    while(pipeline.isRunning() && !quitEvent) {
         for(size_t i = 0; i < queues.size(); i++) {
             auto videoIn = queues[i]->tryGet<dai::ImgFrame>();
             if(videoIn != nullptr) {
@@ -132,6 +143,9 @@ int main(int argc, char* argv[]) {
             break;
         }
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

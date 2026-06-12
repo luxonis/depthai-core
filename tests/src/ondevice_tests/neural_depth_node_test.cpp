@@ -1,7 +1,9 @@
 #include <algorithm>
+#include <array>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <catch2/generators/catch_generators_range.hpp>
 #include <magic_enum/magic_enum.hpp>
 
 #include "depthai/depthai.hpp"
@@ -12,6 +14,37 @@ extern "C" const char* __asan_default_options() {
 }
 
 namespace {
+constexpr std::array<dai::DeviceModelZoo, 10> kNeuralDepthModels = {
+    dai::DeviceModelZoo::NEURAL_DEPTH_1248X780,
+    dai::DeviceModelZoo::NEURAL_DEPTH_1056X660,
+    dai::DeviceModelZoo::NEURAL_DEPTH_960X600,
+    dai::DeviceModelZoo::NEURAL_DEPTH_864X540,
+    dai::DeviceModelZoo::NEURAL_DEPTH_768X480,
+    dai::DeviceModelZoo::NEURAL_DEPTH_576X360,
+    dai::DeviceModelZoo::NEURAL_DEPTH_480X300,
+    dai::DeviceModelZoo::NEURAL_DEPTH_384X240,
+    dai::DeviceModelZoo::NEURAL_DEPTH_288X180,
+    dai::DeviceModelZoo::NEURAL_DEPTH_192X120,
+};
+
+struct LiveCameraTestCase {
+    dai::DeviceModelZoo model;
+    float minFps;
+};
+
+constexpr std::array<LiveCameraTestCase, kNeuralDepthModels.size()> kLiveCameraTestCases = {{
+    {dai::DeviceModelZoo::NEURAL_DEPTH_1248X780, 1.6f},
+    {dai::DeviceModelZoo::NEURAL_DEPTH_1056X660, 3.0f},
+    {dai::DeviceModelZoo::NEURAL_DEPTH_960X600, 5.0f},
+    {dai::DeviceModelZoo::NEURAL_DEPTH_864X540, 8.0f},
+    {dai::DeviceModelZoo::NEURAL_DEPTH_768X480, 10.0f},
+    {dai::DeviceModelZoo::NEURAL_DEPTH_576X360, 24.0f},
+    {dai::DeviceModelZoo::NEURAL_DEPTH_480X300, 40.0f},
+    {dai::DeviceModelZoo::NEURAL_DEPTH_384X240, 55.0f},
+    {dai::DeviceModelZoo::NEURAL_DEPTH_288X180, 55.0f},
+    {dai::DeviceModelZoo::NEURAL_DEPTH_192X120, 55.0f},
+}};
+
 bool isModelSupported(const std::shared_ptr<dai::DeviceBase>& device, dai::DeviceModelZoo model) {
     const auto supportedModels = device->getSupportedDeviceModels();
     return std::find(supportedModels.begin(), supportedModels.end(), model) != supportedModels.end();
@@ -82,7 +115,6 @@ DepthStats computeDepthStats(const std::shared_ptr<dai::ImgFrame>& depthFrame) {
         return stats;
     }
 
-    const int matType = depthMat.type();
     const size_t totalPixels = depthMat.total();
     std::vector<double> samples;
     samples.reserve(totalPixels);
@@ -119,11 +151,8 @@ TEST_CASE("NeuralDepth replay produces expected results") {
     auto rightOutput = cameraRight->requestFullResolutionOutput();
 
     auto neuralDepth = pipeline.create<dai::node::NeuralDepth>();
-    auto modelToRun = GENERATE(dai::DeviceModelZoo::NEURAL_DEPTH_EXTRA_LARGE,
-                               dai::DeviceModelZoo::NEURAL_DEPTH_LARGE,
-                               dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM,
-                               dai::DeviceModelZoo::NEURAL_DEPTH_SMALL,
-                               dai::DeviceModelZoo::NEURAL_DEPTH_NANO);
+    const auto& modelToRun = GENERATE_REF(from_range(kNeuralDepthModels));
+    INFO("Model: " << magic_enum::enum_name(modelToRun));
     if(!isModelSupported(device, modelToRun)) {
         WARN("Skipping NeuralDepth replay test: model " << magic_enum::enum_name(modelToRun) << " is not supported on this device.");
         return;
@@ -179,41 +208,13 @@ TEST_CASE("NeuralDepth replay aligns with StereoDepth medians") {
     auto rightOutput = cameraRight->requestFullResolutionOutput();
 
     auto neuralDepth = pipeline.create<dai::node::NeuralDepth>();
-    SECTION("Test EXTRA_LARGE model") {
-        if(!isModelSupported(device, dai::DeviceModelZoo::NEURAL_DEPTH_EXTRA_LARGE)) {
-            WARN("Skipping NeuralDepth replay comparison test: model NEURAL_DEPTH_EXTRA_LARGE is not supported on this device.");
-            return;
-        }
-        neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_EXTRA_LARGE);
+    const auto& modelToRun = GENERATE_REF(from_range(kNeuralDepthModels));
+    INFO("Model: " << magic_enum::enum_name(modelToRun));
+    if(!isModelSupported(device, modelToRun)) {
+        WARN("Skipping NeuralDepth replay comparison test: model " << magic_enum::enum_name(modelToRun) << " is not supported on this device.");
+        return;
     }
-    SECTION("Test NANO model") {
-        if(!isModelSupported(device, dai::DeviceModelZoo::NEURAL_DEPTH_NANO)) {
-            WARN("Skipping NeuralDepth replay comparison test: model NEURAL_DEPTH_NANO is not supported on this device.");
-            return;
-        }
-        neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_NANO);
-    }
-    SECTION("Test SMALL model") {
-        if(!isModelSupported(device, dai::DeviceModelZoo::NEURAL_DEPTH_SMALL)) {
-            WARN("Skipping NeuralDepth replay comparison test: model NEURAL_DEPTH_SMALL is not supported on this device.");
-            return;
-        }
-        neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_SMALL);
-    }
-    SECTION("Test MEDIUM model") {
-        if(!isModelSupported(device, dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM)) {
-            WARN("Skipping NeuralDepth replay comparison test: model NEURAL_DEPTH_MEDIUM is not supported on this device.");
-            return;
-        }
-        neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM);
-    }
-    SECTION("Test LARGE model") {
-        if(!isModelSupported(device, dai::DeviceModelZoo::NEURAL_DEPTH_LARGE)) {
-            WARN("Skipping NeuralDepth replay comparison test: model NEURAL_DEPTH_LARGE is not supported on this device.");
-            return;
-        }
-        neuralDepth->build(*leftOutput, *rightOutput, dai::DeviceModelZoo::NEURAL_DEPTH_LARGE);
-    }
+    neuralDepth->build(*leftOutput, *rightOutput, modelToRun);
 
     auto stereoDepth = pipeline.create<dai::node::StereoDepth>();
     stereoDepth->build(*leftOutput, *rightOutput);
@@ -237,22 +238,8 @@ TEST_CASE("NeuralDepth replay aligns with StereoDepth medians") {
     }
 }
 
-TEST_CASE("Test NeuralDepth node EXTRA_LARGE model") {
-    testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_EXTRA_LARGE, 1.6f);
-}
-
-TEST_CASE("Test NeuralDepth node NANO model") {
-    testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_NANO, 55.0f);
-}
-
-TEST_CASE("Test NeuralDepth node SMALL model") {
-    testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_SMALL, 40.0f);
-}
-
-TEST_CASE("Test NeuralDepth node MEDIUM model") {
-    testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_MEDIUM, 24.0f);
-}
-
-TEST_CASE("Test NeuralDepth node LARGE model") {
-    testNeuralDepthModelBasic(dai::DeviceModelZoo::NEURAL_DEPTH_LARGE, 10.0f);
+TEST_CASE("Test NeuralDepth node live-camera models") {
+    const auto& testCase = GENERATE_REF(from_range(kLiveCameraTestCases));
+    INFO("Model: " << magic_enum::enum_name(testCase.model));
+    testNeuralDepthModelBasic(testCase.model, testCase.minFps);
 }
