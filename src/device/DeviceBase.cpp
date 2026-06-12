@@ -1701,6 +1701,8 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
         pimpl->logger.warn("No stereo pairs found: check calibration.");
     }
 
+    std::sort(stereoPairs.begin(), stereoPairs.end(), [](const StereoPair& a, const StereoPair& b) { return a.baseline > b.baseline; });
+
     return stereoPairs;
 }
 
