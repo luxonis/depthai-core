@@ -15,6 +15,7 @@
     #include <opencv2/imgproc.hpp>
 #endif
 
+#include "depthai/common/Extrinsics.hpp"
 #include "depthai/common/Keypoint.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -221,6 +222,64 @@ TEST_CASE("Keypoint validation", "[ImgDetections][Keypoint]") {
     using namespace dai;
 
     REQUIRE_NOTHROW(Keypoint(Point3f{0.0F, 0.0F, 0.0F}, 0.1F));
+}
+
+TEST_CASE("ImgDetections transformTo remaps detections and keypoints", "[ImgDetections][Transformations]") {
+    using namespace dai;
+
+    SECTION("transformTo throws when source transformation is missing") {
+        ImgDetections detections;
+        ImgTransformation target(100, 50);
+        target.addScale(2.0F, 2.0F);
+
+        REQUIRE_THROWS_AS(detections.transformTo(target), std::runtime_error);
+    }
+
+    SECTION("transformTo remaps bounding boxes and keypoints to resized target") {
+        ImgDetections detections;
+        ImgTransformation source(100, 50);
+        ImgTransformation target(100, 50);
+        Extrinsics extrinsics{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, {0, 0, 0}, CameraBoardSocket::CAM_A};
+        source.setExtrinsics(extrinsics);
+        target.setExtrinsics(extrinsics);
+        target.addScale(2.0F, 2.0F);
+
+        detections.setTransformation(source);
+
+        ImgDetection detection;
+        detection.setBoundingBox(RotatedRect{Point2f{20.0F, 10.0F}, Size2f{30.0F, 20.0F}, 0.0F});
+        detection.setKeypoints(std::vector<Keypoint>{Keypoint(Point3f{10.0F, 15.0F, 7.0F}, 0.9F, 1), Keypoint(Point3f{40.0F, 5.0F, 9.0F}, 0.8F, 2)},
+                               {Edge{0, 1}});
+        detections.detections.push_back(detection);
+
+        ImgDetections transformed = detections.transformTo(target);
+
+        REQUIRE(transformed.getTransformation().has_value());
+        REQUIRE(transformed.getTransformation()->getSize() == std::pair<size_t, size_t>{200, 100});
+        REQUIRE(detections.getTransformation().has_value());
+        REQUIRE(detections.getTransformation()->getSize() == std::pair<size_t, size_t>{100, 50});
+
+        REQUIRE(transformed.detections.size() == 1);
+        const auto& transformedDetection = transformed.detections.front();
+        const auto transformedBox = transformedDetection.getBoundingBox();
+        REQUIRE(transformedBox.center.x == Catch::Approx(40.0F));
+        REQUIRE(transformedBox.center.y == Catch::Approx(20.0F));
+        REQUIRE(transformedBox.size.width == Catch::Approx(60.0F));
+        REQUIRE(transformedBox.size.height == Catch::Approx(40.0F));
+        REQUIRE(transformedBox.angle == Catch::Approx(0.0F));
+
+        const auto transformedKeypoints = transformedDetection.getKeypoints();
+        REQUIRE(transformedKeypoints.size() == 2);
+        REQUIRE(transformedKeypoints[0].imageCoordinates.x == Catch::Approx(20.0F));
+        REQUIRE(transformedKeypoints[0].imageCoordinates.y == Catch::Approx(30.0F));
+        REQUIRE(transformedKeypoints[0].imageCoordinates.z == Catch::Approx(7.0F));
+        REQUIRE(transformedKeypoints[0].confidence == Catch::Approx(0.9F));
+        REQUIRE(transformedKeypoints[1].imageCoordinates.x == Catch::Approx(80.0F));
+        REQUIRE(transformedKeypoints[1].imageCoordinates.y == Catch::Approx(10.0F));
+        REQUIRE(transformedKeypoints[1].imageCoordinates.z == Catch::Approx(9.0F));
+        REQUIRE(transformedKeypoints[1].confidence == Catch::Approx(0.8F));
+        REQUIRE(transformedDetection.getEdges() == std::vector<Edge>{Edge{0, 1}});
+    }
 }
 
 TEST_CASE("ImgDetections segmentation mask operations", "[ImgDetections][Segmentation]") {

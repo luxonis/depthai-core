@@ -11,6 +11,7 @@ on:
     branches:
       - main
       - develop
+      - 'release*'
     tags:
       - 'v*'
   pull_request:
@@ -126,7 +127,7 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;files,/home/runner/.vcpkg,readwrite"
     strategy:
       matrix:
-        # os: [ubuntu-latest, windows-latest, macos-latest]
+        # os: [ubuntu-latest, windows-2022, macos-latest]
         os: [ubuntu-latest] # TODO(Morato) - re-enable windows & macos
     runs-on: ${{ matrix.os }}
     steps:
@@ -138,13 +139,13 @@ jobs:
         run: echo Home directory inside container $HOME
 
       - name: Cache vcpkg folder
-        if: matrix.os != 'windows-latest'
+        if: matrix.os != 'windows-2022'
         uses: actions/cache@v3
         with:
           path: /home/runner/.vcpkg/
           key: vcpkg-${{ matrix.os }}
       - name: Cache vcpkg folder
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-2022'
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg/
@@ -216,7 +217,7 @@ jobs:
   # This job builds wheels for Windows x86_64 arch
   build-windows-x86_64:
     needs: build-docstrings
-    runs-on: windows-latest
+    runs-on: windows-2022
     strategy:
       matrix:
         python-version: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
@@ -237,7 +238,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: C:/.vcpkg
-          key: vcpkg-windows-latest
+          key: vcpkg-windows-2022
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -279,7 +280,7 @@ jobs:
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Install delvewheel
-        run: python -m pip install delvewheel
+        run: python -m pip install "delvewheel==1.12.1"
       - name: List wheelhouse
         run: cd bindings/python && ls ./wheelhouse
       - name: Auditing wheels
@@ -664,7 +665,7 @@ jobs:
 
   combine-windows-x86_64-wheels:
     needs: build-windows-x86_64
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v3
       - name: Download audited wheels
@@ -679,7 +680,7 @@ jobs:
           python-version: "3.12"
       - name: Combine wheels
         run: |
-          python -m pip install delvewheel # Install delvewheel for patching wheels
+          python -m pip install "delvewheel==1.12.1" # Install delvewheel for patching wheels
           cd bindings/python
           mv wheelhouse/audited wheelhouse/audited_pre
           mkdir -p wheelhouse/audited

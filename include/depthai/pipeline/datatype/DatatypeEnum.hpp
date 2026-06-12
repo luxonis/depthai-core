@@ -27,6 +27,7 @@ enum class DatatypeEnum : std::int32_t {
     IMUData,
     StereoDepthConfig,
     NeuralDepthConfig,
+    GPUStereoConfig,
     FeatureTrackerConfig,
     ThermalConfig,
     ToFConfig,
@@ -56,6 +57,7 @@ enum class DatatypeEnum : std::int32_t {
     PipelineEventAggregationConfig,
     VppConfig,
     PacketizedData,
+    Transformable,
     COUNT  // Sentinel used by consistency checks; must remain the last enum entry.
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);

@@ -27,6 +27,9 @@ int main(int argc, char** argv) {
     auto camRgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto manip = pipeline.create<dai::node::ImageManip>();
 
+    // GPU is not available on RVC2 and some RVC4 devices
+    manip->setBackend(device->hasGPU() ? dai::node::ImageManip::Backend::GPU : dai::node::ImageManip::Backend::CPU);
+
     // Resize to 400x400 and avoid stretching by cropping from the center
     manip->initialConfig->setOutputSize(400, 400, dai::ImageManipConfig::ResizeMode::CENTER_CROP);
     // Set output frame type

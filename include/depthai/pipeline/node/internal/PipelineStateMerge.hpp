@@ -8,7 +8,7 @@ namespace node {
 /**
  * @brief PipelineStateMerge node. Merges PipelineState messages from device and host into a single output.
  */
-class PipelineStateMerge : public CustomThreadedNode<PipelineStateMerge> {
+class PipelineStateMerge : public NodeCRTP<ThreadedHostNode, PipelineStateMerge> {
     bool hasDeviceNodes = false;
     bool hasHostNodes = false;
 

@@ -138,9 +138,7 @@ void decodeR1AF(const dai::NNData& nnData,
     }
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
-    if(keepCandidates.size() == 0) {
-        return;
-    }
+
     if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
             candidate.labelName = (*properties.parser.classNames)[candidate.label];
@@ -286,9 +284,6 @@ void decodeV3AB(const dai::NNData& nnData,
     }
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
-    if(keepCandidates.size() == 0) {
-        return;
-    }
 
     if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
@@ -435,9 +430,6 @@ void decodeV5AB(const dai::NNData& nnData,
     }
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
-    if(keepCandidates.size() == 0) {
-        return;
-    }
 
     if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
@@ -551,9 +543,6 @@ void decodeTLBR(const dai::NNData& nnData,
     }
 
     std::vector<DetectionCandidate> keepCandidates = nonMaximumSuppression(detectionCandidates, iouThr);
-    if(keepCandidates.size() == 0) {
-        return;
-    }
 
     if(properties.parser.classNames && !properties.parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
@@ -663,9 +652,6 @@ void decodeEndToEnd(const dai::NNData& nnData,
 
     topKFilter(detectionCandidates, 300);
     std::vector<DetectionCandidate> keepCandidates = detectionCandidates;
-    if(keepCandidates.size() == 0) {
-        return;
-    }
 
     if(parser.classNames && !parser.classNames->empty()) {
         for(auto& candidate : keepCandidates) {
@@ -867,6 +853,11 @@ void segmentationDecode(const dai::NNData& nnData,
     int inputHeight = inputSize.second;
 
     cv::Mat indexMask(inputHeight, inputWidth, CV_8U, cv::Scalar(255));
+
+    if(detectionCandidates.size() == 0) {
+        outDetections.setCvSegmentationMask(indexMask);
+        return;
+    }
 
     std::vector<std::string> maskLayerNames = resolveLayerNames(nnData, std::vector<std::string>{}, "mask");
 

@@ -1,5 +1,8 @@
 #include <pybind11/eval.h>
 
+#include <string>
+#include <utility>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
@@ -12,8 +15,18 @@ extern py::object messageQueueException;  // Needed to be able to catch in C++ a
 using namespace dai;
 using namespace dai::node;
 
-class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode> {
+class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode, false> {
+    std::string nodeName = ThreadedHostNode::NAME;
+
    public:
+    const char* getName() const override {
+        return nodeName.c_str();
+    }
+
+    void setPythonNodeName(std::string name) {
+        nodeName = std::move(name);
+    }
+
     void run() override {
         try {
             PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
@@ -33,8 +46,18 @@ class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode>
     }
 };
 
-class PyHostNode : public NodeCRTP<HostNode, PyHostNode> {
+class PyHostNode : public NodeCRTP<HostNode, PyHostNode, false> {
+    std::string nodeName = ThreadedHostNode::NAME;
+
    public:
+    const char* getName() const override {
+        return nodeName.c_str();
+    }
+
+    void setPythonNodeName(std::string name) {
+        nodeName = std::move(name);
+    }
+
     std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
         PYBIND11_OVERRIDE_PURE(std::shared_ptr<Buffer>, HostNode, processGroup, in);
     }
@@ -45,6 +68,14 @@ class PyHostNode : public NodeCRTP<HostNode, PyHostNode> {
         PYBIND11_OVERRIDE(void, HostNode, onStop);
     }
 };
+
+void setPythonNodeName(ThreadedHostNode& node, std::string name) {
+    if(auto pyNode = dynamic_cast<PyThreadedHostNode*>(&node)) {
+        pyNode->setPythonNodeName(std::move(name));
+    } else if(auto pyHostNode = dynamic_cast<PyHostNode*>(&node)) {
+        pyHostNode->setPythonNodeName(std::move(name));
+    }
+}
 
 void bind_hostnode(pybind11::module& m, void* pCallstack) {
     // declare upfront
@@ -77,6 +108,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack) {
         .def("run", &ThreadedHostNode::run)
         .def("onStart", &ThreadedHostNode::onStart)
         .def("onStop", &ThreadedHostNode::onStop)
+        .def("_setPythonNodeName", [](ThreadedHostNode& node, std::string name) { setPythonNodeName(node, std::move(name)); })
         .def(
             "createInput",
             [](ThreadedHostNode& node,

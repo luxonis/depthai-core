@@ -13,7 +13,7 @@ with dai.Pipeline() as pipeline:
     leftOutput = cameraLeft.requestFullResolutionOutput()
     rightOutput = cameraRight.requestFullResolutionOutput()
 
-    neuralDepth = pipeline.create(dai.node.NeuralDepth).build(leftOutput, rightOutput, dai.DeviceModelZoo.NEURAL_DEPTH_192X120)
+    neuralDepth = pipeline.create(dai.node.NeuralDepth).build(leftOutput, rightOutput, dai.DeviceModelZoo.NEURAL_DEPTH_LARGE)
 
     disparityQueue = neuralDepth.disparity.createOutputQueue()
 
