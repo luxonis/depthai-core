@@ -489,6 +489,16 @@ float CalibrationHandler::getFov(CameraBoardSocket cameraId, bool useSpec) const
     return 2 * 180 / ((float)M_PI) * std::atan(width * 0.5f / focalLength);
 }
 
+float CalibrationHandler::getCameraZAxisAngle(CameraBoardSocket cameraId1, CameraBoardSocket cameraId2) const {
+    const auto rotationMatrix = getCameraRotationMatrix(cameraId1, cameraId2);
+    if(rotationMatrix.size() != 3 || rotationMatrix[2].size() != 3) {
+        throw std::runtime_error("Invalid 3x3 camera rotation matrix");
+    }
+
+    const float cosAngle = std::clamp(rotationMatrix[2][2], -1.0f, 1.0f);
+    return std::acos(cosAngle);
+}
+
 uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) const {
     if(!hasCameraCalibration(cameraId)) throw std::runtime_error("There is no Camera data available corresponding to the requested cameraID");
 

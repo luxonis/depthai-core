@@ -1376,6 +1376,15 @@ TEST_CASE("getCameraToImuExtrinsics scales translation for all units", "[getCame
     }
 }
 
+TEST_CASE("getCameraZAxisAngle returns angle between camera optical axes", "[getCameraZAxisAngle]") {
+    auto identityHandler = loadHandlerWithHousing();
+    REQUIRE(identityHandler.getCameraZAxisAngle(CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C) == Catch::Approx(0.0f).margin(1e-6));
+
+    auto rotatedHandler = CalibrationHandler::fromJson(loadValidCalibJson());
+    const auto angle = rotatedHandler.getCameraZAxisAngle(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D);
+    REQUIRE(angle == Catch::Approx(std::acos(0.9999464154243469f)).margin(1e-6));
+}
+
 TEST_CASE("CBA calibration handler updates a legacy single camera socket to a CBA socket", "[CBACalibrationHandler]") {
     dai::EepromData data;
 
