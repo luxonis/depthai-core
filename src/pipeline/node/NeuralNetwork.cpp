@@ -81,7 +81,7 @@ void NeuralNetwork::decodeModel(const Model& model) {
     setNNArchive(*nnArchive);
 }
 
-ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, std::optional<ImgFrameCapability> expectedCapability) {
+ImgFrameCapability NeuralNetwork::getFrameCapability(const NNArchive& nnArchive, const std::optional<ImgFrameCapability>& expectedCapability) {
     const auto& nnArchiveCfg = nnArchive.getVersionedConfig();
 
     DAI_CHECK_V(nnArchiveCfg.getVersion() == NNArchiveConfigVersion::V1, "Only V1 configs are supported for NeuralNetwork.build method");
@@ -279,15 +279,15 @@ void NeuralNetwork::setNumShavesPerInferenceThread(int numShavesPerThread) {
     properties.numShavesPerThread = numShavesPerThread;
 }
 
-void NeuralNetwork::setBackend(std::string backend) {
+void NeuralNetwork::setBackend(const std::string& backend) {
     properties.backend = backend;
 }
 
-void NeuralNetwork::setBackendProperties(std::map<std::string, std::string> props) {
+void NeuralNetwork::setBackendProperties(const std::map<std::string, std::string>& props) {
     properties.backendProperties = props;
 }
 
-int NeuralNetwork::getNumInferenceThreads() {
+int NeuralNetwork::getNumInferenceThreads() const {
     return properties.numThreads;
 }
 

@@ -32,11 +32,11 @@ ImageManipConfig& ImageManipConfig::addCrop(uint32_t x, uint32_t y, uint32_t w, 
     base.crop(x, y, w, h);
     return *this;
 }
-ImageManipConfig& ImageManipConfig::addCrop(dai::Rect rect, bool normalizedCoords) {
+ImageManipConfig& ImageManipConfig::addCrop(const dai::Rect& rect, bool normalizedCoords) {
     base.crop(rect.x, rect.y, rect.width, rect.height, normalizedCoords);
     return *this;
 }
-ImageManipConfig& ImageManipConfig::addCropRotatedRect(dai::RotatedRect rotatedRect, bool normalizedCoords) {
+ImageManipConfig& ImageManipConfig::addCropRotatedRect(const dai::RotatedRect& rotatedRect, bool normalizedCoords) {
     base.rotateDegrees(-rotatedRect.angle);
     base.crop(rotatedRect.center.x - rotatedRect.size.width / 2,
               rotatedRect.center.y - rotatedRect.size.height / 2,
@@ -69,11 +69,12 @@ ImageManipConfig& ImageManipConfig::addTransformAffine(std::array<float, 4> matr
     base.transformAffine(matrix);
     return *this;
 }
-ImageManipConfig& ImageManipConfig::addTransformPerspective(std::array<float, 9> matrix) {
+ImageManipConfig& ImageManipConfig::addTransformPerspective(const std::array<float, 9>& matrix) {
     base.transformPerspective(matrix);
     return *this;
 }
-ImageManipConfig& ImageManipConfig::addTransformFourPoints(std::array<dai::Point2f, 4> src, std::array<dai::Point2f, 4> dst, bool normalizedCoords) {
+ImageManipConfig& ImageManipConfig::addTransformFourPoints(const std::array<dai::Point2f, 4>& src,
+                                                           const std::array<dai::Point2f, 4>& dst, bool normalizedCoords) {
     base.transformFourPoints(src, dst, normalizedCoords);
     return *this;
 }

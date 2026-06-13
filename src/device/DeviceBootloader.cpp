@@ -226,20 +226,20 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
 
 std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline,
                                                                        bool compress,
-                                                                       std::string applicationName,
+                                                                       const std::string& applicationName,
                                                                        bool checkChecksum) {
     return createDepthaiApplicationPackage(pipeline, "", compress, applicationName, checkChecksum);
 }
 
 void DeviceBootloader::saveDepthaiApplicationPackage(
-    const fs::path& path, const Pipeline& pipeline, const fs::path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
+    const fs::path& path, const Pipeline& pipeline, const fs::path& pathToCmd, bool compress, const std::string& applicationName, bool checkChecksum) {
     auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress, applicationName, checkChecksum);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
 void DeviceBootloader::saveDepthaiApplicationPackage(
-    const fs::path& path, const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
+    const fs::path& path, const Pipeline& pipeline, bool compress, const std::string& applicationName, bool checkChecksum) {
     auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName, checkChecksum);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
@@ -618,12 +618,12 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
     return allowFlashingBootloader;
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(
-    std::function<void(float)> progressCb, const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory, bool checkCheksum) {
+std::tuple<bool, std::string> DeviceBootloader::flash(const std::function<void(float)>& progressCb, const Pipeline& pipeline, bool compress,
+                                                      const std::string& applicationName, Memory memory, bool checkCheksum) {
     return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory, bool checkCheksum) {
+std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, const std::string& applicationName, Memory memory, bool checkCheksum) {
     return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
 }
 
@@ -714,8 +714,8 @@ bool DeviceBootloader::isUserBootloader() {
     return user.isUserBootloader;
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb,
-                                                                               std::vector<uint8_t> package,
+std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(const std::function<void(float)>& progressCb,
+                                                                               const std::vector<uint8_t>& package,
                                                                                Memory memory) {
     // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
     auto bootloaderVersion = getVersion();
@@ -807,7 +807,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
     return ret;
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::vector<uint8_t> package, Memory memory) {
+std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(const std::vector<uint8_t>& package, Memory memory) {
     return flashDepthaiApplicationPackage(nullptr, package, memory);
 }
 
@@ -819,7 +819,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashClear(Memory memory) {
     return flashCustom(memory, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), clear);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, const fs::path& path) {
+std::tuple<bool, std::string> DeviceBootloader::flashBootloader(const std::function<void(float)>& progressCb, const fs::path& path) {
     return flashBootloader(Memory::FLASH, bootloaderType, progressCb, path);
 }
 
@@ -1074,20 +1074,22 @@ std::tuple<bool, std::string> DeviceBootloader::flashFastBootHeader(Memory memor
 std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory,
                                                             size_t offset,
                                                             const std::vector<uint8_t>& data,
-                                                            std::function<void(float)> progressCb) {
+                                                            const std::function<void(float)>& progressCb) {
     if(data.size() == 0) {
         throw std::invalid_argument("Size to flash is zero");
     }
     return flashCustom(memory, offset, data.data(), data.size(), "", progressCb);
 }
 std::tuple<bool, std::string> DeviceBootloader::flashCustom(
-    Memory memory, size_t offset, const uint8_t* data, size_t size, std::function<void(float)> progressCb) {
+    Memory memory, size_t offset, const uint8_t* data, size_t size, const std::function<void(float)>& progressCb) {
     if(data == nullptr || size == 0) {
         throw std::invalid_argument("Data is nullptr or size is zero");
     }
     return flashCustom(memory, offset, data, size, "", progressCb);
 }
-std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, size_t offset, std::string filename, std::function<void(float)> progressCb) {
+std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, size_t offset,
+                                                            const std::string& filename,
+                                                            const std::function<void(float)>& progressCb) {
     return flashCustom(memory, offset, nullptr, 0, filename, progressCb);
 }
 std::tuple<bool, std::string> DeviceBootloader::flashCustom(
@@ -1150,24 +1152,24 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(
 }
 
 std::tuple<bool, std::string> DeviceBootloader::readCustom(
-    Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, std::function<void(float)> progressCb) {
+    Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, const std::function<void(float)>& progressCb) {
     // Resize container if not too small
     if(data.size() < size) {
         data.resize(size);
     }
     return readCustom(memory, offset, size, data.data(), "", progressCb);
 }
-std::tuple<bool, std::string> DeviceBootloader::readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, std::function<void(float)> progressCb) {
+std::tuple<bool, std::string> DeviceBootloader::readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, const std::function<void(float)>& progressCb) {
     return readCustom(memory, offset, size, data, "", progressCb);
 }
 std::tuple<bool, std::string> DeviceBootloader::readCustom(
-    Memory memory, size_t offset, size_t size, std::string filename, std::function<void(float)> progressCb) {
+    Memory memory, size_t offset, size_t size, const std::string& filename, const std::function<void(float)>& progressCb) {
     return readCustom(memory, offset, size, nullptr, filename, progressCb);
 }
 std::tuple<bool, std::string, std::vector<uint8_t>> DeviceBootloader::readCustom(Memory memory,
                                                                                  size_t offset,
                                                                                  size_t size,
-                                                                                 std::function<void(float)> progressCb) {
+                                                                                 const std::function<void(float)>& progressCb) {
     std::vector<uint8_t> data;
     auto ret = readCustom(memory, offset, size, data, progressCb);
     return {std::get<0>(ret), std::get<1>(ret), data};
@@ -1274,7 +1276,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigClear(Memory memory, 
     return {result.success, result.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashConfigData(nlohmann::json configData, Memory memory, Type type) {
+std::tuple<bool, std::string> DeviceBootloader::flashConfigData(const nlohmann::json& configData, Memory memory, Type type) {
     // Parse to BSON
     auto bson = nlohmann::json::to_bson(configData);
 
@@ -1452,13 +1454,13 @@ void DeviceBootloader::receiveResponseThrow(T& response) {
 }
 
 // Config functions
-void DeviceBootloader::Config::setStaticIPv4(std::string ip, std::string mask, std::string gateway) {
+void DeviceBootloader::Config::setStaticIPv4(const std::string& ip, const std::string& mask, const std::string& gateway) {
     network.ipv4 = platform::getIPv4AddressAsBinary(ip);
     network.ipv4Mask = platform::getIPv4AddressAsBinary(mask);
     network.ipv4Gateway = platform::getIPv4AddressAsBinary(gateway);
     network.staticIpv4 = true;
 }
-void DeviceBootloader::Config::setDynamicIPv4(std::string ip, std::string mask, std::string gateway) {
+void DeviceBootloader::Config::setDynamicIPv4(const std::string& ip, const std::string& mask, const std::string& gateway) {
     network.ipv4 = platform::getIPv4AddressAsBinary(ip);
     network.ipv4Mask = platform::getIPv4AddressAsBinary(mask);
     network.ipv4Gateway = platform::getIPv4AddressAsBinary(gateway);
@@ -1479,7 +1481,7 @@ std::string DeviceBootloader::Config::getIPv4Gateway() {
     return platform::getIPv4AddressAsString(network.ipv4Gateway);
 }
 
-void DeviceBootloader::Config::setDnsIPv4(std::string dns, std::string dnsAlt) {
+void DeviceBootloader::Config::setDnsIPv4(const std::string& dns, const std::string& dnsAlt) {
     network.ipv4Dns = platform::getIPv4AddressAsBinary(dns);
     network.ipv4DnsAlt = platform::getIPv4AddressAsBinary(dnsAlt);
 }
@@ -1516,7 +1518,7 @@ UsbSpeed DeviceBootloader::Config::getUsbMaxSpeed() {
     return static_cast<UsbSpeed>(usb.maxUsbSpeed);
 }
 
-void DeviceBootloader::Config::setMacAddress(std::string mac) {
+void DeviceBootloader::Config::setMacAddress(const std::string& mac) {
     std::array<uint8_t, 6> a = {0, 0, 0, 0, 0, 0};
     if(mac != "") {
         int last = -1;
@@ -1553,7 +1555,7 @@ nlohmann::json DeviceBootloader::Config::toJson() const {
     return dataCopy;
 }
 
-DeviceBootloader::Config DeviceBootloader::Config::fromJson(nlohmann::json json) {
+DeviceBootloader::Config DeviceBootloader::Config::fromJson(const nlohmann::json& json) {
     // Parse out json (implicitly) and
     Config cfg = json;
     // save json data as is (to retain unknown values)

@@ -158,7 +158,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 #endif
     ErrorCode computeCoverage();
 
-    ErrorCode initializePipeline(const std::shared_ptr<dai::Device> daiDevice);
+    ErrorCode initializePipeline(const std::shared_ptr<dai::Device>& daiDevice);
 
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 

@@ -126,7 +126,7 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
              py::arg("cornerDetector"),
              DOC(dai, FeatureTrackerConfig, setCornerDetector))
         .def("setCornerDetector",
-             static_cast<FeatureTrackerConfig& (FeatureTrackerConfig::*)(dai::FeatureTrackerConfig::CornerDetector)>(&FeatureTrackerConfig::setCornerDetector),
+             static_cast<FeatureTrackerConfig& (FeatureTrackerConfig::*)(const dai::FeatureTrackerConfig::CornerDetector&)>(&FeatureTrackerConfig::setCornerDetector),
              py::arg("config"),
              DOC(dai, FeatureTrackerConfig, setCornerDetector, 2))
         .def("setMotionEstimator",
@@ -135,14 +135,14 @@ void bind_featuretrackerconfig(pybind11::module& m, void* pCallstack) {
              DOC(dai, FeatureTrackerConfig, setMotionEstimator))
         .def(
             "setMotionEstimator",
-            static_cast<FeatureTrackerConfig& (FeatureTrackerConfig::*)(dai::FeatureTrackerConfig::MotionEstimator)>(&FeatureTrackerConfig::setMotionEstimator),
+            static_cast<FeatureTrackerConfig& (FeatureTrackerConfig::*)(const dai::FeatureTrackerConfig::MotionEstimator&)>(&FeatureTrackerConfig::setMotionEstimator),
             py::arg("config"),
             DOC(dai, FeatureTrackerConfig, setMotionEstimator, 2))
         .def("setOpticalFlow",
              static_cast<FeatureTrackerConfig& (FeatureTrackerConfig::*)()>(&FeatureTrackerConfig::setOpticalFlow),
              DOC(dai, FeatureTrackerConfig, setOpticalFlow))
         .def("setOpticalFlow",
-             static_cast<FeatureTrackerConfig& (FeatureTrackerConfig::*)(dai::FeatureTrackerConfig::MotionEstimator::OpticalFlow)>(
+             static_cast<FeatureTrackerConfig& (FeatureTrackerConfig::*)(const dai::FeatureTrackerConfig::MotionEstimator::OpticalFlow&)>(
                  &FeatureTrackerConfig::setOpticalFlow),
              py::arg("config"),
              DOC(dai, FeatureTrackerConfig, setOpticalFlow, 2))

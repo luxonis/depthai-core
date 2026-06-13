@@ -33,7 +33,7 @@ namespace node {
 
 // ── Impl: apply / get methods ──
 
-void PointCloud::Impl::setLogger(std::shared_ptr<::spdlog::logger> log) {
+void PointCloud::Impl::setLogger(const std::shared_ptr<::spdlog::logger>& log) {
     logger = log;
 }
 
@@ -616,7 +616,7 @@ void PointCloud::initialize(const ImgFrame& depthFrame, const PointCloudConfig& 
 // Processing helpers (depth-only and colorized paths)
 //------------------------------------------------------------------
 
-void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudData> pc, bool organized) {
+void PointCloud::processDepthOnly(const std::shared_ptr<ImgFrame>& depthFrame, const std::shared_ptr<PointCloudData>& pc, bool organized) {
     const auto width = depthFrame->getWidth();
     const auto height = depthFrame->getHeight();
     const auto* depthData = depthFrame->getData().data();
@@ -640,9 +640,9 @@ void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::sha
     pc->setPoints(std::move(points));
 }
 
-void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
-                                  std::shared_ptr<ImgFrame> colorFrame,
-                                  std::shared_ptr<PointCloudData> pc,
+void PointCloud::processColorized(const std::shared_ptr<ImgFrame>& depthFrame,
+                                  const std::shared_ptr<ImgFrame>& colorFrame,
+                                  const std::shared_ptr<PointCloudData>& pc,
                                   bool organized) {
     const auto width = depthFrame->getWidth();
     const auto height = depthFrame->getHeight();

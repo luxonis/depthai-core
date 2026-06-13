@@ -23,7 +23,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
     /**
      * Get video output with specified size.
      */
-    Node::Output* requestOutput(std::pair<uint32_t, uint32_t> size,
+    Node::Output* requestOutput(const std::pair<uint32_t, uint32_t>& size,
                                 std::optional<ImgFrame::Type> type = std::nullopt,
                                 ImgResizeMode resizeMode = ImgResizeMode::CROP,
                                 std::optional<float> fps = std::nullopt,
@@ -56,7 +56,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>, publ
      * @param sensorFps Sensor FPS to use - by default it's auto-detected from the requested outputs (maximum is used)
      */
     std::shared_ptr<Camera> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
-                                  std::optional<std::pair<uint32_t, uint32_t>> sensorResolution = std::nullopt,
+                                  const std::optional<std::pair<uint32_t, uint32_t>>& sensorResolution = std::nullopt,
                                   std::optional<float> sensorFps = std::nullopt);
 
     /**

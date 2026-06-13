@@ -264,9 +264,9 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
              py::arg("control"),
              py::arg("value"),
              DOC(dai, CameraControl, setMisc))
-        .def("setMisc", py::overload_cast<std::string, int>(&CameraControl::setMisc), py::arg("control"), py::arg("value"), DOC(dai, CameraControl, setMisc, 2))
+        .def("setMisc", py::overload_cast<const std::string&, int>(&CameraControl::setMisc), py::arg("control"), py::arg("value"), DOC(dai, CameraControl, setMisc, 2))
         .def("setMisc",
-             py::overload_cast<std::string, float>(&CameraControl::setMisc),
+             py::overload_cast<const std::string&, float>(&CameraControl::setMisc),
              py::arg("control"),
              py::arg("value"),
              DOC(dai, CameraControl, setMisc, 3))

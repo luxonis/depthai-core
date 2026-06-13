@@ -21,7 +21,7 @@
 namespace dai {
 namespace platform {
 
-uint32_t getIPv4AddressAsBinary(std::string address);
+uint32_t getIPv4AddressAsBinary(const std::string& address);
 std::string getIPv4AddressAsString(std::uint32_t binary);
 std::string getLocalIpAddress();
 
