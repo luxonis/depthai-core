@@ -31,6 +31,7 @@ std::string getLocalIpAddress();
  */
 std::string getOSPlatform();
 std::string getOSVersion();
+std::filesystem::path getDaiCacheDir();
 
 /**
  * @brief Get the temporary path
