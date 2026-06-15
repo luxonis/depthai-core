@@ -1,7 +1,7 @@
 /**
  * Minimal RVC4 ToF example — auto-created Camera, IPP depth via unified ToF node.
  *
- * Requires OpenCV. Build with the depthai C++ examples target tof_minimal (RVC4/ToF).
+ * Requires OpenCV. Build with the depthai C++ examples target tof_minimal_rvc4.
  */
 
 #include <iostream>

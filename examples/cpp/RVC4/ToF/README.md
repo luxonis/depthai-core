@@ -4,20 +4,20 @@ C++ counterparts to the Python examples in [`examples/python/RVC4/ToF/`](../../p
 
 | Target | Source | Description |
 |--------|--------|-------------|
-| `tof_minimal` | `tof_minimal.cpp` | Auto-camera + IPP depth preview (OpenCV) |
-| `tof_params_minimal` | `tof_params_minimal.cpp` | Build, `initialConfig`, runtime `inputConfig` |
+| `tof_minimal_rvc4` | `tof_minimal.cpp` | Auto-camera + IPP depth preview (OpenCV) |
+| `tof_params_minimal_rvc4` | `tof_params_minimal.cpp` | Build, `initialConfig`, runtime `inputConfig` |
 
 Build with the depthai C++ examples (inside dev container):
 
 ```bash
-cmake --build build --target tof_minimal tof_params_minimal
+cmake --build build --target tof_minimal_rvc4 tof_params_minimal_rvc4
 ```
 
 Run (device must be RVC4 with ToF):
 
 ```bash
-./examples/cpp/RVC4/ToF/tof_minimal
-./examples/cpp/RVC4/ToF/tof_params_minimal
+./examples/cpp/RVC4/ToF/tof_minimal_rvc4
+./examples/cpp/RVC4/ToF/tof_params_minimal_rvc4
 ```
 
 API notes:
