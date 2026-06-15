@@ -78,6 +78,7 @@ set(SOURCE_LIST
     src/pipeline/node/StereoDepthBindings.cpp
     src/pipeline/node/NeuralNetworkBindings.cpp
     src/pipeline/node/GateBindings.cpp
+    src/pipeline/node/GatherDataBindings.cpp
     src/pipeline/node/VideoEncoderBindings.cpp
     src/pipeline/node/ImageManipBindings.cpp
     src/pipeline/node/SPIOutBindings.cpp
@@ -103,6 +104,7 @@ set(SOURCE_LIST
     src/pipeline/node/ToFBindings.cpp
     src/pipeline/node/PointCloudBindings.cpp
     src/pipeline/node/MessageDemuxBindings.cpp
+    src/pipeline/node/SplitterNodeBindings.cpp
     src/pipeline/node/HostNodeBindings.cpp
     src/pipeline/node/RecordBindings.cpp
     src/pipeline/node/ReplayBindings.cpp
@@ -119,6 +121,7 @@ set(SOURCE_LIST
     src/pipeline/datatype/AprilTagConfigBindings.cpp
     src/pipeline/datatype/AprilTagsBindings.cpp
     src/pipeline/datatype/BufferBindings.cpp
+    src/pipeline/datatype/EmptyMessageBindings.cpp
     src/pipeline/datatype/TransformableBindings.cpp
     src/pipeline/datatype/IterableBindings.cpp
     src/pipeline/datatype/CameraControlBindings.cpp

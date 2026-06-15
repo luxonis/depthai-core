@@ -207,6 +207,9 @@ dai_set_example_test_labels(detection_network_replay_rvc4 ondevice rvc4 rvc4rgb 
 add_python_example(detection_network_replay_rvc2 DetectionNetwork/detection_network_replay.py --webSocketPort 8762 --httpPort 8072)
 dai_set_example_test_labels(detection_network_replay_rvc2 ondevice rvc2 usb rvc4rgb ci)
 
+## GatherData
+add_python_example(multi_stage_detections GatherData/multi_stage_detections.py)
+
 ## Host nodes
 add_python_example(display HostNodes/display.py)
 dai_set_example_test_labels(display ondevice rvc2_all rvc4 rvc4rgb ci)

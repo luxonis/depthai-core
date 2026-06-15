@@ -155,8 +155,7 @@ int main() {
 
             cv::putText(cropFrame, "class: " + className, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2);
             cv::putText(
-                cropFrame, "size: " + std::to_string(detWidth) + "x" + std::to_string(detHeight), cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, color,
-                2);
+                cropFrame, "size: " + std::to_string(detWidth) + "x" + std::to_string(detHeight), cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2);
             cv::imshow("crop_" + std::to_string(i), cropFrame);
         }
 

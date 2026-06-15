@@ -218,25 +218,25 @@ void NeuralNetwork::setBlob(const std::filesystem::path& path) {
     setBlobPath(path);
 }
 
-void NeuralNetwork::buildStage1() {
-    if(!input.isConnected()) return;
+// void NeuralNetwork::buildStage1() {
+//     if(!input.isConnected()) return;
 
-    // Preserve any user-configured queue semantics after rerouting the public
-    // NeuralNetwork input through the internal Splitter subnode.
-    splitterNode->input.setBlocking(input.getBlocking());
-    splitterNode->input.setMaxSize(input.getMaxSize());
-    splitterNode->input.setWaitForMessage(input.getWaitForMessage());
-    splitterNode->input.setPossibleDatatypes(input.getPossibleDatatypes());
-    splitterNode->output.setPossibleDatatypes(input.getPossibleDatatypes());
+//     // Preserve any user-configured queue semantics after rerouting the public
+//     // NeuralNetwork input through the internal Splitter subnode.
+//     splitterNode->input.setBlocking(input.getBlocking());
+//     splitterNode->input.setMaxSize(input.getMaxSize());
+//     splitterNode->input.setWaitForMessage(input.getWaitForMessage());
+//     splitterNode->input.setPossibleDatatypes(input.getPossibleDatatypes());
+//     splitterNode->output.setPossibleDatatypes(input.getPossibleDatatypes());
 
-    auto connectedOutputs = input.getConnectedOutputs();
-    for(auto* output : connectedOutputs) {
-        output->unlink(input);
-        output->link(splitterNode->input);
-    }
+//     auto connectedOutputs = input.getConnectedOutputs();
+//     for(auto* output : connectedOutputs) {
+//         output->unlink(input);
+//         output->link(splitterNode->input);
+//     }
 
-    splitterNode->output.link(input);
-}
+//     splitterNode->output.link(input);
+// }
 
 void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     if(device) {

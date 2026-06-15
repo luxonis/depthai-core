@@ -7,6 +7,7 @@ void bind_adatatype(pybind11::module& m, void* pCallstack);
 void bind_apriltagconfig(pybind11::module& m, void* pCallstack);
 void bind_apriltags(pybind11::module& m, void* pCallstack);
 void bind_buffer(pybind11::module& m, void* pCallstack);
+void bind_empty_message(pybind11::module& m, void* pCallstack);
 void bind_transformable(pybind11::module& m, void* pCallstack);
 void bind_iterable(pybind11::module& m, void* pCallstack);
 void bind_cameracontrol(pybind11::module& m, void* pCallstack);
@@ -59,6 +60,7 @@ void DatatypeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind all datatypes (order matters)
     callstack.push_front(bind_adatatype);
     callstack.push_front(bind_buffer);
+    callstack.push_front(bind_empty_message);
     callstack.push_front(bind_transformable);
     callstack.push_front(bind_iterable);
     callstack.push_front(bind_apriltagconfig);
@@ -130,6 +132,7 @@ void DatatypeBindings::bind(pybind11::module& m, void* pCallstack) {
     datatypeEnum.value("ADatatype", DatatypeEnum::ADatatype)
         .value("Buffer", DatatypeEnum::Buffer)
         .value("MissingDataMessage", DatatypeEnum::MissingDataMessage)
+        .value("EmptyMessage", DatatypeEnum::MissingDataMessage)
         .value("Transformable", DatatypeEnum::Transformable)
         .value("ImgFrame", DatatypeEnum::ImgFrame)
         .value("EncodedFrame", DatatypeEnum::EncodedFrame)

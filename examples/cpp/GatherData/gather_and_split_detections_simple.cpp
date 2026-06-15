@@ -99,7 +99,7 @@ int main() {
     //  append
     auto gatherData = pipeline.create<dai::node::GatherData>();
     // gatherData->setRunOnHost(true);
-    gatherCropConfigs->output.link(gatherData->referenceInput);  // LINK the previous gather into it here, will append msgs to the end
+    gatherCropConfigs->output.link(gatherData->referenceInput);  // LINK the previous gather into it here, it will append msgs to the end
     imageManip->out.link(gatherData->collectingInput);
 
     auto collectedQ = gatherData->output.createOutputQueue();

@@ -25,11 +25,11 @@ namespace node {
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
 class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
-   private:
-    void buildStage1() override;
+    //    private:
+    //     void buildStage1() override;
 
-   protected:
-    Subnode<SplitterNode> splitterNode{*this, "splitterNode"};
+    //    protected:
+    //     Subnode<SplitterNode> splitterNode{*this, "splitterNode"};
 
    public:
     constexpr static const char* NAME = "NeuralNetwork";

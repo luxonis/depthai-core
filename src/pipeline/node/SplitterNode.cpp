@@ -45,10 +45,10 @@ void SplitterNode::run() {
                     if(messageGroup->isLeaf(nodeIdx)) {
                         auto buffer_msg = std::dynamic_pointer_cast<Buffer>(messageGroup->getNode(nodeIdx));
                         if(buffer_msg != nullptr && buffer_msg->getDatatype() != DatatypeEnum::MissingDataMessage) {
-                            logger->warn("Sending buffer with node index {} and datatype {} with size: {}",
-                                         nodeIdx,
-                                         (int)buffer_msg->getDatatype(),
-                                         buffer_msg->getData().size());
+                            // logger->warn("Sending buffer with node index {} and datatype {} with size: {}",
+                            //              nodeIdx,
+                            //              (int)buffer_msg->getDatatype(),
+                            //              buffer_msg->getData().size());
                             output.send(buffer_msg);
                         }
                     }
