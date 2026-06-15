@@ -287,6 +287,28 @@ void Sync::run() {
                         logger->warn("Output {} timestamp is {} ms", frame.first, getTimestampMs(timestampSource, *frame.second));
                     }
                 }
+
+                if(timestampSource == TimestampSource::SYSTEM) {
+                    bool replacedMissingTimestamp = false;
+                    for(const auto& frame : inputFrames) {
+                        if(frame.second->getTimestampSystem().has_value()) continue;
+
+                        logger->warn("Dropping frame from sync on input {}: missing system timestamp while SYSTEM sync mode is enabled", frame.first);
+                        logger->trace("Receiving replacement input: {}", frame.first);
+                        inputFrames[frame.first] = inputs[frame.first].get<dai::Buffer>();
+                        if(inputFrames[frame.first] == nullptr) {
+                            logger->error("Received nullptr from input {}, sync node only accepts messages inherited from Buffer on the inputs", frame.first);
+                            throw std::runtime_error("Received nullptr from input " + frame.first);
+                        }
+                        replacedMissingTimestamp = true;
+                    }
+
+                    if(replacedMissingTimestamp) {
+                        attempts++;
+                        continue;
+                    }
+                }
+
                 if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {
                     if(properties.syncAttempts != 0)
                         logger->warn(
@@ -299,11 +321,7 @@ void Sync::run() {
                 TimestampCompare tsCompare(timestampSource);
 
                 for(const auto& frame : inputFrames) {
-                    try {
-                        tsCompare(frame.first, *frame.second);
-                    } catch(const InvalidTimestampException& e) {
-                        logger->warn("Dropping frame from sync: {}", e.what());
-                    }
+                    tsCompare(frame.first, *frame.second);
                 }
 
                 logger->debug("Diff: {} ms", tsCompare.getDifference<milliseconds>().count());

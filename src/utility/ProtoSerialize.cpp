@@ -992,6 +992,7 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiAccelerometer.tsDevice.nsec = protoAccelerometer.report().tsdevice().nsec();
 
         if(protoAccelerometer.report().has_tssystem()) {
+            daiAccelerometer.tsSystem.emplace();
             daiAccelerometer.tsSystem->sec = protoAccelerometer.report().tssystem().sec();
             daiAccelerometer.tsSystem->nsec = protoAccelerometer.report().tssystem().nsec();
         } else {
@@ -1011,6 +1012,7 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiGyroscope.tsDevice.nsec = protoGyroscope.report().tsdevice().nsec();
 
         if(protoGyroscope.report().has_tssystem()) {
+            daiGyroscope.tsSystem.emplace();
             daiGyroscope.tsSystem->sec = protoGyroscope.report().tssystem().sec();
             daiGyroscope.tsSystem->nsec = protoGyroscope.report().tssystem().nsec();
         } else {
@@ -1030,6 +1032,7 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiMagnetometer.tsDevice.nsec = protoMagnetometer.report().tsdevice().nsec();
 
         if(protoMagnetometer.report().has_tssystem()) {
+            daiMagnetometer.tsSystem.emplace();
             daiMagnetometer.tsSystem->sec = protoMagnetometer.report().tssystem().sec();
             daiMagnetometer.tsSystem->nsec = protoMagnetometer.report().tssystem().nsec();
         } else {
@@ -1050,6 +1053,7 @@ void setProtoMessage(IMUData& obj, const google::protobuf::Message* msg, bool) {
         daiRotationVector.tsDevice.nsec = protoRotationVector.report().tsdevice().nsec();
 
         if(protoRotationVector.report().has_tssystem()) {
+            daiRotationVector.tsSystem.emplace();
             daiRotationVector.tsSystem->sec = protoRotationVector.report().tssystem().sec();
             daiRotationVector.tsSystem->nsec = protoRotationVector.report().tssystem().nsec();
         } else {
