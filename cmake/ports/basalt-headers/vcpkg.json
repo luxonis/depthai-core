@@ -12,6 +12,8 @@
       "name": "vcpkg-cmake-config",
       "host": true
     },
+		"eigen3",
+		"sophus",
 		"cereal"
 ]
 }

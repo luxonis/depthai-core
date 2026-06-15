@@ -13,6 +13,8 @@
       "host": true
     },
 	"basalt-headers",
-    "sophus"
+	"magic-enum",
+	"tbb",
+	"sophus"
 ]
 }
