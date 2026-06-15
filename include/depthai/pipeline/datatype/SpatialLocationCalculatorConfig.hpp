@@ -236,6 +236,10 @@ class SpatialLocationCalculatorConfig : public Buffer {
     }
 
     DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig,
+                      Buffer::sequenceNum,
+                      Buffer::ts,
+                      Buffer::tsDevice,
+                      Buffer::tsSystem,
                       globalStepSize,
                       globalLowerThreshold,
                       globalUpperThreshold,
@@ -245,8 +249,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
                       useSegmentation,
                       segmentationPassthrough,
                       bBoxScaleFactor,
-                      config,
-                      Buffer::tsSystem);
+                      config);
 };
 
 }  // namespace dai

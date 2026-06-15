@@ -309,11 +309,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     timestamp.def(py::init<>())
         .def_readwrite("sec", &Timestamp::sec)
         .def_readwrite("nsec", &Timestamp::nsec)
-        .def("get", &Timestamp::get<std::chrono::steady_clock>);
-    timestamp.def(py::init<>())
-        .def_readwrite("sec", &Timestamp::sec)
-        .def_readwrite("nsec", &Timestamp::nsec)
-        .def("get", &Timestamp::get<std::chrono::system_clock>);
+        .def("get", &Timestamp::get<std::chrono::steady_clock>)
+        .def("getSystem", &Timestamp::get<std::chrono::system_clock>);
 
     point2f.def(py::init<>(), DOC(dai, Point2f, Point2f))
         .def(py::init<float, float>(), py::arg("x"), py::arg("y"), DOC(dai, Point2f, Point2f, 2))

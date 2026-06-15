@@ -12,7 +12,7 @@ namespace dai {
 struct Timestamp {
     int64_t sec = 0, nsec = 0;
 
-    template <typename Clock>
+    template <typename Clock = std::chrono::steady_clock>
     std::chrono::time_point<Clock, typename Clock::duration> get() const {
         using namespace std::chrono;
         using Duration = typename Clock::duration;

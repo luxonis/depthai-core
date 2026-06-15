@@ -142,7 +142,6 @@ DEPTHAI_SERIALIZE_EXT(IMUReportGyroscopeUncalibrated, x, y, z, biasX, biasY, bia
 
 
 
-
 /**
  * @brief Uncalibrated magnetic field
  *
@@ -161,7 +160,6 @@ DEPTHAI_SERIALIZE_EXT(IMUReportMagneticFieldUncalibrated, x, y, z, biasX, biasY,
 
 
 
-
 /**
  * @brief Rotation Vector
  *
@@ -174,7 +172,6 @@ struct IMUReportRotationVector : public IMUReport {
     float real = 0; /**< @brief Quaternion component real */
 };
 DEPTHAI_SERIALIZE_EXT(IMUReportRotationVector, i, j, k, real, sequence, accuracy, timestamp, tsDevice, tsSystem);
-
 
 
 /**
