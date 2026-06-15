@@ -7,6 +7,38 @@
 
 namespace dai {
 
+/// Map an RVC2 host ImageFilters preset to the equivalent RVC4 IPP ToFPreset.
+/// Single source of truth shared by the ToF node and its Python bindings.
+inline ToFPreset imageFiltersPresetToToFPreset(ImageFiltersPresetMode presetMode) {
+    switch(presetMode) {
+        case ImageFiltersPresetMode::TOF_LOW_RANGE:
+            return ToFPreset::LOW_RANGE;
+        case ImageFiltersPresetMode::TOF_MID_RANGE:
+            return ToFPreset::MID_RANGE;
+        case ImageFiltersPresetMode::TOF_HIGH_RANGE:
+            return ToFPreset::HIGH_RANGE;
+        case ImageFiltersPresetMode::TOF_OFF:
+            return ToFPreset::OFF;
+    }
+    return ToFPreset::MID_RANGE;
+}
+
+/// Map an RVC4 IPP ToFPreset to the equivalent RVC2 host ImageFilters preset.
+/// Single source of truth shared by the ToF node and its Python bindings.
+inline ImageFiltersPresetMode toFPresetToImageFiltersPreset(ToFPreset preset) {
+    switch(preset) {
+        case ToFPreset::LOW_RANGE:
+            return ImageFiltersPresetMode::TOF_LOW_RANGE;
+        case ToFPreset::MID_RANGE:
+            return ImageFiltersPresetMode::TOF_MID_RANGE;
+        case ToFPreset::HIGH_RANGE:
+            return ImageFiltersPresetMode::TOF_HIGH_RANGE;
+        case ToFPreset::OFF:
+            return ImageFiltersPresetMode::TOF_OFF;
+    }
+    return ImageFiltersPresetMode::TOF_MID_RANGE;
+}
+
 /**
  * ToFConfig message. Shared wire format for RVC2 decoder and RVC4 IPP settings.
  */

@@ -17,7 +17,7 @@ On RVC2:
 
 ## C++ counterparts
 
-See [`examples/cpp/RVC2/ToF/`](../../cpp/RVC2/ToF/).
+See [`examples/cpp/RVC2/ToF/`](../../../cpp/RVC2/ToF/).
 
 ```bash
 cd external/depthai-core

@@ -18,7 +18,7 @@ On RVC4:
 
 ## C++ counterparts
 
-See [`examples/cpp/RVC4/ToF/`](../../cpp/RVC4/ToF/) (`tof_minimal`, `tof_params_minimal`).
+See [`examples/cpp/RVC4/ToF/`](../../../cpp/RVC4/ToF/) (`tof_minimal`, `tof_params_minimal`).
 
 ## Prerequisites
 

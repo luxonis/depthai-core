@@ -107,6 +107,16 @@ void ToFIppConfig::applyTo(ToFConfig& config) const {
 }
 
 void ToFIppConfig::applyPreset(ToFPreset preset) {
+    // Reset every tuning field so applyPreset() is deterministic regardless of the
+    // object's prior state (e.g. when called on a ToFIppConfig::fromToFConfig(...) result).
+    // Without this, stale bilateral/TNR/flying-pixel tuning values would leak back into ToFConfig.
+    bilateralStdFactor = std::nullopt;
+    bilateralFilterKernelSize = std::nullopt;
+    tnrMaxGain = std::nullopt;
+    tnrStdFactor = std::nullopt;
+    fpDepthThreshold = std::nullopt;
+    fpMinDepthOccurrence = std::nullopt;
+
     switch(preset) {
         case ToFPreset::LOW_RANGE:
             phaseUnwrapErrorThreshold = 50;

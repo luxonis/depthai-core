@@ -10,19 +10,8 @@
 
 namespace {
 
-dai::ToFPreset imageFiltersPresetToToFPreset(dai::ImageFiltersPresetMode presetMode) {
-    switch(presetMode) {
-        case dai::ImageFiltersPresetMode::TOF_LOW_RANGE:
-            return dai::ToFPreset::LOW_RANGE;
-        case dai::ImageFiltersPresetMode::TOF_MID_RANGE:
-            return dai::ToFPreset::MID_RANGE;
-        case dai::ImageFiltersPresetMode::TOF_HIGH_RANGE:
-            return dai::ToFPreset::HIGH_RANGE;
-        case dai::ImageFiltersPresetMode::TOF_OFF:
-            return dai::ToFPreset::OFF;
-    }
-    return dai::ToFPreset::MID_RANGE;
-}
+// imageFiltersPresetToToFPreset / toFPresetToImageFiltersPreset are shared from
+// depthai/pipeline/datatype/ToFConfig.hpp (single source of truth for the mapping).
 
 void warnOncePerToF(const dai::node::ToF& self, const char* key, const char* message) {
     static std::unordered_set<std::string> warned;
@@ -99,7 +88,10 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "raw", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.raw; }, DOC(dai, node, ToF, raw))
         .def_property_readonly(
-            "inputConfig", [](const ToF& self) -> const dai::DeviceNode::Input& { return self.inputConfig; }, "Runtime ToF config input")
+            "inputConfig",
+            [](const ToF& self) -> const dai::DeviceNode::Input& { return self.inputConfig; },
+            "Runtime ToFConfig input (decoder on RVC2, IPP on RVC4). On RVC2 this retunes the decoder, not the "
+            "host ImageFilters that produce `depth` \xe2\x80\x94 use imageFiltersInputConfig (ImageFiltersConfig) for that.")
         .def_property_readonly(
             "initialConfig",
             [](ToF& self) -> std::shared_ptr<ToFConfig>& { return self.tofBaseNode.initialConfig; },
@@ -178,13 +170,17 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
                  if(hasSensorMode) {
                      throw std::runtime_error("sensorMode is RVC4-only (VD55H1)");
                  }
-                 if(hasPreset) {
-                     py::module_::import("warnings").attr("warn")("ToFPreset is ignored on RVC2; use presetMode=ImageFiltersPresetMode");
+                 if(hasPresetMode && hasPreset) {
+                     throw std::runtime_error("Specify either presetMode or preset on RVC2, not both");
                  }
 
+                 // Keep the unified build surface consistent across platforms: map ToFPreset to the
+                 // equivalent ImageFiltersPresetMode on RVC2 instead of silently dropping it to MID_RANGE.
                  ImageFiltersPresetMode mode = ImageFiltersPresetMode::TOF_MID_RANGE;
                  if(hasPresetMode) {
                      mode = presetMode.cast<ImageFiltersPresetMode>();
+                 } else if(hasPreset) {
+                     mode = toFPresetToImageFiltersPreset(preset.cast<ToFPreset>());
                  }
 
                  return self.build(options.boardSocket, mode, options.fps);

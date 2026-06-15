@@ -1,6 +1,6 @@
 # RVC4 ToF Examples (C++)
 
-C++ counterparts to the Python examples in [`examples/python/RVC4/ToF/`](../../python/RVC4/ToF/).
+C++ counterparts to the Python examples in [`examples/python/RVC4/ToF/`](../../../python/RVC4/ToF/).
 
 | Target | Source | Description |
 |--------|--------|-------------|

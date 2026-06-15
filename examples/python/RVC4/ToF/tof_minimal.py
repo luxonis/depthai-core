@@ -14,6 +14,9 @@ def colorize_depth(frame_depth: np.ndarray) -> np.ndarray:
         log_depth = np.log(frame_depth, where=frame_depth != 0)
         log_min_depth = np.log(min_depth)
         log_max_depth = np.log(max_depth)
+        if log_max_depth <= log_min_depth:
+            # Valid depths collapsed to a single value; avoid divide-by-zero normalization.
+            log_max_depth = log_min_depth + 1.0
         np.nan_to_num(log_depth, copy=False, nan=log_min_depth)
         log_depth = np.clip(log_depth, log_min_depth, log_max_depth)
         depth_color = np.interp(log_depth, (log_min_depth, log_max_depth), (0, 255))

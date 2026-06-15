@@ -160,6 +160,12 @@ class ToF : public DeviceNodeGroup {
     Subnode<ImageFilters> imageFilters{*this, "imageFilters"};
 
     /**
+     * Initial ToF config (IPP on RVC4, decoder on RVC2). Unified accessor over the base node;
+     * prefer this over tofBaseNode.initialConfig in application code.
+     */
+    std::shared_ptr<ToFConfig>& initialConfig;
+
+    /**
      * Raw depth output from ToF sensor
      */
     Output& rawDepth;
@@ -200,17 +206,26 @@ class ToF : public DeviceNodeGroup {
     Output& raw;
 
     /**
-     * Input config for ToF base node
+     * Runtime ToFConfig input for the ToF base node (decoder on RVC2, IPP on RVC4).
+     *
+     * RVC4: directly reconfigures the IPP that produces `depth`.
+     * RVC2: reconfigures the decoder that feeds the host ImageFilters. The host-filter
+     *       stage that actually produces `depth` is NOT controlled here — to retune the
+     *       host filters at runtime send an ImageFiltersConfig to `imageFiltersInputConfig`.
      */
     Input& inputConfig;
 
     /**
-     * Input config for image filters (RVC2 only)
+     * Alias of `inputConfig` (the ToF base / decoder config input), kept for naming
+     * symmetry with `imageFiltersInputConfig`.
      */
     Input& tofBaseInputConfig;
 
     /**
-     * Input config for image filters
+     * Runtime ImageFiltersConfig input for the host ImageFilters node (RVC2 only).
+     *
+     * On RVC2 this is the stage that produces `depth`; use it (not `inputConfig`) to
+     * change host-side filtering at runtime. Unused on RVC4 (no host ImageFilters).
      */
     Input& imageFiltersInputConfig;
 
@@ -238,7 +253,6 @@ class ToF : public DeviceNodeGroup {
     mutable bool warnedDecoderFieldsRvc4 = false;
     mutable bool warnedIppFieldsRvc2 = false;
     mutable bool warnedPhaseRawRvc4 = false;
-    mutable bool warnedPresetRvc2 = false;
     mutable bool warnedFpsRangeRvc4 = false;
     mutable bool warnedSensorResolutionDeprecated = false;
 };

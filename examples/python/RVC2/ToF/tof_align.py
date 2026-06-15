@@ -59,6 +59,9 @@ def colorizeDepth(frameDepth):
         logDepth = np.log(frameDepth, where=frameDepth != 0)
         logMinDepth = np.log(minDepth)
         logMaxDepth = np.log(maxDepth)
+        if logMaxDepth <= logMinDepth:
+            # Valid depths collapsed to a single value; avoid divide-by-zero normalization.
+            logMaxDepth = logMinDepth + 1.0
         np.nan_to_num(logDepth, copy=False, nan=logMinDepth)
         # Clip the values to be in the 0-255 range
         logDepth = np.clip(logDepth, logMinDepth, logMaxDepth)

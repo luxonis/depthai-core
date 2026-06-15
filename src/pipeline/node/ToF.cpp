@@ -39,20 +39,33 @@ CameraBoardSocket resolveToFBoardSocket(Device& device, CameraBoardSocket boardS
     bool found = false;
 
     if(boardSocket == CameraBoardSocket::AUTO) {
-        auto defaultSockets = {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D};
-        for(auto socket : defaultSockets) {
+        auto socketHasToF = [&](CameraBoardSocket socket) {
             for(const auto& cf : cameraFeatures) {
                 if(cf.socket != socket) {
                     continue;
                 }
+                return std::find(cf.supportedTypes.begin(), cf.supportedTypes.end(), CameraSensorType::TOF) != cf.supportedTypes.end();
+            }
+            return false;
+        };
+
+        // Prefer the conventional sockets in order, then fall back to the first ToF-capable
+        // socket on any other wiring (contract: AUTO picks the first socket with CameraSensorType::TOF).
+        auto preferredSockets = {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D};
+        for(auto socket : preferredSockets) {
+            if(socketHasToF(socket)) {
+                boardSocket = socket;
+                found = true;
+                break;
+            }
+        }
+        if(!found) {
+            for(const auto& cf : cameraFeatures) {
                 if(std::find(cf.supportedTypes.begin(), cf.supportedTypes.end(), CameraSensorType::TOF) != cf.supportedTypes.end()) {
-                    boardSocket = socket;
+                    boardSocket = cf.socket;
                     found = true;
                     break;
                 }
-            }
-            if(found) {
-                break;
             }
         }
     } else {
@@ -72,20 +85,6 @@ CameraBoardSocket resolveToFBoardSocket(Device& device, CameraBoardSocket boardS
     }
 
     return boardSocket;
-}
-
-ToFPreset imageFiltersPresetToToFPreset(ImageFiltersPresetMode presetMode) {
-    switch(presetMode) {
-        case ImageFiltersPresetMode::TOF_LOW_RANGE:
-            return ToFPreset::LOW_RANGE;
-        case ImageFiltersPresetMode::TOF_MID_RANGE:
-            return ToFPreset::MID_RANGE;
-        case ImageFiltersPresetMode::TOF_HIGH_RANGE:
-            return ToFPreset::HIGH_RANGE;
-        case ImageFiltersPresetMode::TOF_OFF:
-            return ToFPreset::OFF;
-    }
-    return ToFPreset::MID_RANGE;
 }
 
 }  // namespace
@@ -135,6 +134,7 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, std::opti
 
 ToF::ToF(const std::shared_ptr<Device>& device)
     : DeviceNodeGroup(device),
+      initialConfig{tofBase->initialConfig},
       rawDepth{tofBase->depth},
       depth((device && device->getPlatform() == Platform::RVC4) ? static_cast<Output&>(tofBase->depth)
                                                                 : static_cast<Output&>(imageFilters->output)),
@@ -210,12 +210,11 @@ std::shared_ptr<ToF> ToF::build(const ToFBuildOptions& options) {
         if(options.sensorMode.has_value()) {
             throw std::runtime_error("sensorMode is RVC4-only (VD55H1)");
         }
-        if(options.preset.has_value()) {
-            logWarnOnce(warnedPresetRvc2, "ToFPreset is ignored on RVC2; use ImageFiltersPresetMode for host filters");
-        }
 
         buildOptions = options;
-        auto presetMode = ImageFiltersPresetMode::TOF_MID_RANGE;
+        // Keep the build surface unified across platforms: map ToFPreset to the equivalent
+        // host ImageFiltersPresetMode on RVC2 instead of silently dropping it to MID_RANGE.
+        auto presetMode = options.preset.has_value() ? toFPresetToImageFiltersPreset(*options.preset) : ImageFiltersPresetMode::TOF_MID_RANGE;
         tofBase->build(options.boardSocket, presetMode, options.fps);
         imageFilters->build(presetMode);
         buildOptions.boardSocket = tofBase->getBoardSocket();

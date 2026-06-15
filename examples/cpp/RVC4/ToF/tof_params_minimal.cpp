@@ -24,7 +24,7 @@ int main() {
     tof->build(options);
 
     // Tune IPP fields after build() so build(preset=...) does not overwrite them.
-    auto& cfg = *tof->tofBaseNode.initialConfig;
+    auto& cfg = *tof->initialConfig;
     cfg.enableBilateralFilter = true;
     cfg.enableTemporalNoiseReduction = true;
     cfg.enableFlyingPixelCorrection = true;

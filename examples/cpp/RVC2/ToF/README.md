@@ -15,4 +15,4 @@ cmake --build build --target tof_minimal tof_align
 
 On RVC2, `tof->confidence` references the same output as `tof->amplitude`.
 
-Python versions: [`examples/python/RVC2/ToF/`](../../python/RVC2/ToF/).
+Python versions: [`examples/python/RVC2/ToF/`](../../../python/RVC2/ToF/).
