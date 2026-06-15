@@ -80,7 +80,8 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
         .value("AF_REGION", CameraControl::Command::AF_REGION)
         .value("LUMA_DENOISE", CameraControl::Command::LUMA_DENOISE)
         .value("CHROMA_DENOISE", CameraControl::Command::CHROMA_DENOISE)
-        .value("WB_COLOR_TEMP", CameraControl::Command::WB_COLOR_TEMP);
+        .value("WB_COLOR_TEMP", CameraControl::Command::WB_COLOR_TEMP)
+        .value("AE_MAX_ISO", CameraControl::Command::AE_MAX_ISO);
 
     camCtrlAttr.push_back("AutoFocusMode");
     cameraControlAutoFocusMode.value("OFF", CameraControl::AutoFocusMode::OFF)
@@ -237,6 +238,10 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
              py::overload_cast<std::chrono::microseconds>(&CameraControl::setAutoExposureLimit),
              py::arg("maxExposureTime"),
              DOC(dai, CameraControl, setAutoExposureLimit, 2))
+        .def("setAutoExposureMaxISO",
+             &CameraControl::setAutoExposureMaxISO,
+             py::arg("aeMaxISO"),
+             DOC(dai, CameraControl, setAutoExposureMaxISO))
         .def("setAntiBandingMode", &CameraControl::setAntiBandingMode, py::arg("mode"), DOC(dai, CameraControl, setAntiBandingMode))
         .def("setManualExposure",
              py::overload_cast<uint32_t, uint32_t>(&CameraControl::setManualExposure),
