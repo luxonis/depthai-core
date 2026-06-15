@@ -122,6 +122,7 @@ class CameraControl : public Buffer {
         STROBE_TIMINGS = 54,
         MOVE_LENS_RAW = 55, /* lens position: 0.0 - 1.0 */
         HDR = 56,
+        AE_MAX_ISO = 57,
     };
 
     enum class AutoFocusMode : uint8_t {
@@ -562,6 +563,14 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureLimit(std::chrono::microseconds maxExposureTime);
 
     /**
+     * Set a command to specify the maximum ISO sensitivity limit for auto-exposure. 
+     * This limits the AE algorithm from increasing sensitivity beyond a certain point
+     * and can help to reduce noise in low-light conditions.
+     * @param aeMaxISO Maximum ISO
+     */
+    CameraControl& setAutoExposureMaxISO(uint32_t aeMaxISO);
+
+    /**
      * Set a command to specify anti-banding mode. Anti-banding / anti-flicker
      * works in auto-exposure mode, by controlling the exposure time to be applied
      * in multiples of half the mains period, for example in multiple of 10ms
@@ -765,6 +774,7 @@ class CameraControl : public Buffer {
     StrobeConfig strobeConfig;
     StrobeTimings strobeTimings;
     uint32_t aeMaxExposureTimeUs;
+    uint32_t aeMaxISO;
     bool aeLockMode{false};
     bool awbLockMode{false};
     int8_t expCompensation;     //  -9 ..  9
@@ -824,6 +834,7 @@ class CameraControl : public Buffer {
                       strobeConfig,
                       strobeTimings,
                       aeMaxExposureTimeUs,
+                      aeMaxISO,
                       expCompensation,
                       brightness,
                       contrast,

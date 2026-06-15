@@ -122,6 +122,11 @@ CameraControl& CameraControl::setAutoExposureLimit(uint32_t maxExposureTimeUs) {
 CameraControl& CameraControl::setAutoExposureLimit(std::chrono::microseconds maxExposureTime) {
     return setAutoExposureLimit(maxExposureTime.count());
 }
+CameraControl& CameraControl::setAutoExposureMaxISO(uint32_t aeMaxISO) {
+    setCommand(CameraControl::Command::AE_MAX_ISO);
+    this->aeMaxISO = aeMaxISO;
+    return *this;
+}
 CameraControl& CameraControl::setAntiBandingMode(AntiBandingMode mode) {
     setCommand(Command::ANTIBANDING_MODE);
     antiBandingMode = mode;
