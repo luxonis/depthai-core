@@ -11,8 +11,7 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
 
     // Node and Properties declare upfront
     py::class_<SyncProperties> syncProperties(m, "SyncProperties", DOC(dai, SyncProperties));
-    auto sync = addNode<Sync>("Sync", DOC(dai, node, SyncBase));
-    auto syncSystem = addNode<SyncSystem>("SyncSystem", DOC(dai, node, SyncBase));
+    auto sync = ADD_NODE(Sync);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -30,7 +29,8 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
     // Properties
     syncProperties.def_readwrite("syncThresholdNs", &SyncProperties::syncThresholdNs, DOC(dai, SyncProperties, syncThresholdNs))
         .def_readwrite("syncAttempts", &SyncProperties::syncAttempts, DOC(dai, SyncProperties, syncAttempts))
-        .def_readwrite("processor", &SyncProperties::processor, DOC(dai, SyncProperties, processor));
+        .def_readwrite("processor", &SyncProperties::processor, DOC(dai, SyncProperties, processor))
+        .def_readwrite("timestampSource", &SyncProperties::timestampSource, DOC(dai, SyncProperties, timestampSource));
 
     // Node
     sync.def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
@@ -41,17 +41,9 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
         .def("getSyncAttempts", &Sync::getSyncAttempts, DOC(dai, node, Sync, getSyncAttempts))
         .def("setProcessor", &Sync::setProcessor, DOC(dai, node, Sync, setProcessor))
         .def("getProcessor", &Sync::getProcessor, DOC(dai, node, Sync, getProcessor))
+        .def("setTimestampSource", &Sync::setTimestampSource, DOC(dai, node, Sync, setTimestampSource))
+        .def("getTimestampSource", &Sync::getTimestampSource, DOC(dai, node, Sync, getTimestampSource))
         .def("setRunOnHost", &Sync::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Sync, setRunOnHost))
         .def("runOnHost", &Sync::runOnHost, DOC(dai, node, Sync, runOnHost));
     daiNodeModule.attr("Sync").attr("Properties") = syncProperties;
-
-    syncSystem.def_readonly("out", &SyncSystem::out, DOC(dai, node, SyncBase, out))
-        .def_readonly("inputs", &SyncSystem::inputs, DOC(dai, node, SyncBase, inputs))
-        .def("setSyncThreshold", &SyncSystem::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, SyncBase, setSyncThreshold))
-        .def("setSyncAttempts", &SyncSystem::setSyncAttempts, py::arg("maxDataSize"), DOC(dai, node, SyncBase, setSyncAttempts))
-        .def("getSyncThreshold", &SyncSystem::getSyncThreshold, DOC(dai, node, SyncBase, getSyncThreshold))
-        .def("getSyncAttempts", &SyncSystem::getSyncAttempts, DOC(dai, node, SyncBase, getSyncAttempts))
-        .def("setRunOnHost", &SyncSystem::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, SyncBase, setRunOnHost))
-        .def("runOnHost", &SyncSystem::runOnHost, DOC(dai, node, SyncBase, runOnHost));
-    daiNodeModule.attr("SyncSystem").attr("Properties") = syncProperties;
 }

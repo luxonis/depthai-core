@@ -1,7 +1,6 @@
 #include "depthai/pipeline/node/Sync.hpp"
 
 #include <chrono>
-#include <stdexcept>
 
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
@@ -9,84 +8,240 @@
 namespace dai {
 namespace node {
 
-namespace {
-template <SyncTimestamp TS>
-inline auto getTs(const std::shared_ptr<dai::Buffer>& b) {
-    if constexpr(TS == SyncTimestamp::Steady) {
-        return b->getTimestamp();  // steady_clock::time_point
-    } else if constexpr(TS == SyncTimestamp::System) {
-        if(!b->getTimestampSystem().has_value()) {
-            throw std::runtime_error("System timestamp missing, might not be supported by the device");
-        }
-        return b->getTimestampSystem().value();  // system_clock::time_point
-    } else {
-        throw std::runtime_error("Unknown SyncTimestamp");
-    }
+void Sync::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
+    properties.syncThresholdNs = syncThreshold.count();
 }
 
-template <SyncTimestamp TS>
-inline auto getTs(dai::Buffer* b) {
-    if constexpr(TS == SyncTimestamp::Steady) {
-        return b->getTimestamp();  // steady_clock::time_point
-    } else if constexpr(TS == SyncTimestamp::System) {
-        if(!b->getTimestampSystem().has_value()) {
-            throw std::runtime_error("System timestamp missing, might not be supported by the device");
-        }
-        return b->getTimestampSystem().value();  // system_clock::time_point
-    } else {
-        throw std::runtime_error("Unknown SyncTimestamp");
-    }
-}
-}  // namespace
-
-template <SyncTimestamp TS>
-void SyncBase<TS>::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
-    this->properties.syncThresholdNs = syncThreshold.count();
+void Sync::setSyncAttempts(int syncAttempts) {
+    properties.syncAttempts = syncAttempts;
 }
 
-template <SyncTimestamp TS>
-void SyncBase<TS>::setSyncAttempts(int syncAttempts) {
-    this->properties.syncAttempts = syncAttempts;
+void Sync::setProcessor(ProcessorType proc) {
+    properties.processor = proc;
 }
 
-template <SyncTimestamp TS>
-void SyncBase<TS>::setProcessor(ProcessorType proc) {
-    this->properties.processor = proc;
+ProcessorType Sync::getProcessor() const {
+    return properties.processor;
 }
 
-template <SyncTimestamp TS>
-ProcessorType SyncBase<TS>::getProcessor() const {
-    return this->properties.processor;
+void Sync::setTimestampSource(TimestampSource type) {
+    properties.timestampSource = type;
 }
 
-template <SyncTimestamp TS>
-std::chrono::nanoseconds SyncBase<TS>::getSyncThreshold() const {
-    return std::chrono::nanoseconds(this->properties.syncThresholdNs);
+Sync::TimestampSource Sync::getTimestampSource() const {
+    return properties.timestampSource;
 }
 
-template <SyncTimestamp TS>
-int SyncBase<TS>::getSyncAttempts() const {
-    return this->properties.syncAttempts;
+std::chrono::nanoseconds Sync::getSyncThreshold() const {
+    return std::chrono::nanoseconds(properties.syncThresholdNs);
 }
 
-template <SyncTimestamp TS>
-void SyncBase<TS>::setRunOnHost(bool runOnHost) {
+int Sync::getSyncAttempts() const {
+    return properties.syncAttempts;
+}
+
+void Sync::setRunOnHost(bool runOnHost) {
     runOnHostVar = runOnHost;
 }
 
 /**
  * Check if the node is set to run on host
  */
-template <SyncTimestamp TS>
-bool SyncBase<TS>::runOnHost() const {
+bool Sync::runOnHost() const {
     return runOnHostVar;
 }
 
-template <SyncTimestamp TS>
-void SyncBase<TS>::run() {
+Sync::TimestampSource Sync::getDefaultTimestampSource() const {
+    return TimestampSource::HOST;
+}
+
+//////////////////////////////////////////////////////////////
+//---------------------- HELPERS ---------------------------//
+//////////////////////////////////////////////////////////////
+
+class InvalidTimestampException : public std::runtime_error {
+   public:
+    explicit InvalidTimestampException(const std::string& message) : std::runtime_error(message) {}
+};
+
+double getTimestampMs(Sync::TimestampSource source, const dai::Buffer& buffer) {
     using namespace std::chrono;
-    auto& logger = this->pimpl->logger;
+    switch(source) {
+        case Sync::TimestampSource::DEFAULT:
+            throw std::runtime_error("Invalid timestamp source: DEFAULT. This should not happen.");
+        case Sync::TimestampSource::DEVICE:
+        case Sync::TimestampSource::HOST: {
+            auto ts = source == Sync::TimestampSource::DEVICE ? buffer.getTimestampDevice() : buffer.getTimestamp();
+            return static_cast<double>(duration_cast<nanoseconds>(ts.time_since_epoch()).count()) / 1e6;
+        }
+        case Sync::TimestampSource::SYSTEM: {
+            auto tsOpt = buffer.getTimestampSystem();
+            if(!tsOpt.has_value()) {
+                return 0;
+            }
+            return static_cast<double>(duration_cast<nanoseconds>(tsOpt.value().time_since_epoch()).count()) / 1e6;
+        }
+    }
+    return 0;
+}
+
+Buffer* getNewerBuffer(Sync::TimestampSource source, Buffer* a, Buffer* b) {
+    if(a == nullptr) return b;
+    if(b == nullptr) return a;
+
+    switch(source) {
+        case Sync::TimestampSource::DEFAULT:
+            throw std::runtime_error("Invalid timestamp source: DEFAULT. This should not happen.");
+        case Sync::TimestampSource::DEVICE:
+        case Sync::TimestampSource::HOST: {
+            auto tsA = source == Sync::TimestampSource::DEVICE ? a->getTimestampDevice() : a->getTimestamp();
+            auto tsB = source == Sync::TimestampSource::DEVICE ? b->getTimestampDevice() : b->getTimestamp();
+            return tsA > tsB ? a : b;
+        }
+        case Sync::TimestampSource::SYSTEM: {
+            auto tsAOpt = a->getTimestampSystem();
+            auto tsBOpt = b->getTimestampSystem();
+            if(!tsAOpt.has_value() && !tsBOpt.has_value()) {
+                return a;  // arbitrary
+            }
+            if(!tsAOpt.has_value()) return b;
+            if(!tsBOpt.has_value()) return a;
+            return tsAOpt.value() > tsBOpt.value() ? a : b;
+        }
+    }
+    return a;
+}
+
+template <typename Clock>
+class TimestampCompareGeneric {
+   private:
+    struct Pair {
+        std::string name;
+        std::chrono::time_point<Clock> timestamp;
+    };
+    Pair min = {"", std::chrono::time_point<Clock>::max()};
+    Pair max = {"", std::chrono::time_point<Clock>::min()};
+
+   public:
+    void operator()(const std::string& name, const std::chrono::time_point<Clock>& timestamp) {
+        if(timestamp < min.timestamp) {
+            min = {name, timestamp};
+        }
+        if(timestamp > max.timestamp) {
+            max = {name, timestamp};
+        }
+    }
+    std::string getMinName() const {
+        return min.name;
+    }
+    std::string getMaxName() const {
+        return max.name;
+    }
+    std::chrono::time_point<Clock> getMinTimestamp() const {
+        return min.timestamp;
+    }
+    std::chrono::time_point<Clock> getMaxTimestamp() const {
+        return max.timestamp;
+    }
+    template <typename Duration>
+    Duration getDifference() const {
+        return std::chrono::duration_cast<Duration>(max.timestamp - min.timestamp);
+    }
+};
+
+class TimestampCompare {
+    Sync::TimestampSource source;
+
+   public:
+    std::variant<TimestampCompareGeneric<std::chrono::steady_clock>, TimestampCompareGeneric<std::chrono::system_clock>> impl;
+
+    explicit TimestampCompare(Sync::TimestampSource source) : source(source) {
+        switch(source) {
+            case Sync::TimestampSource::DEFAULT:
+                throw std::runtime_error("Invalid timestamp source: DEFAULT. This should not happen.");
+            case Sync::TimestampSource::DEVICE:
+            case Sync::TimestampSource::HOST:
+                impl.emplace<TimestampCompareGeneric<std::chrono::steady_clock>>();
+                break;
+            case Sync::TimestampSource::SYSTEM:
+                impl.emplace<TimestampCompareGeneric<std::chrono::system_clock>>();
+                break;
+        }
+    }
+
+    void operator()(const std::string& name, const dai::Buffer& buffer) {
+        switch(source) {
+            case Sync::TimestampSource::DEFAULT:
+                throw std::runtime_error("Invalid timestamp source: DEFAULT. This should not happen.");
+            case Sync::TimestampSource::DEVICE:
+            case Sync::TimestampSource::HOST: {
+                auto ts = source == Sync::TimestampSource::DEVICE ? buffer.getTimestampDevice() : buffer.getTimestamp();
+                std::get<TimestampCompareGeneric<std::chrono::steady_clock>>(impl)(name, ts);
+                break;
+            }
+            case Sync::TimestampSource::SYSTEM: {
+                auto tsOpt = buffer.getTimestampSystem();
+                if(!tsOpt.has_value()) {
+                    throw InvalidTimestampException("Buffer does not have system timestamp, but Sync node is set to use system timestamps for synchronization.");
+                }
+                std::get<TimestampCompareGeneric<std::chrono::system_clock>>(impl)(name, tsOpt.value());
+                break;
+            }
+        }
+    }
+    std::string getMinName() const {
+        switch(source) {
+            case Sync::TimestampSource::DEFAULT:
+                throw std::runtime_error("Invalid timestamp source: DEFAULT. This should not happen.");
+            case Sync::TimestampSource::DEVICE:
+            case Sync::TimestampSource::HOST:
+                return std::get<TimestampCompareGeneric<std::chrono::steady_clock>>(impl).getMinName();
+            case Sync::TimestampSource::SYSTEM:
+                return std::get<TimestampCompareGeneric<std::chrono::system_clock>>(impl).getMinName();
+        }
+        return "";
+    }
+    std::string getMaxName() const {
+        switch(source) {
+            case Sync::TimestampSource::DEFAULT:
+                throw std::runtime_error("Invalid timestamp source: DEFAULT. This should not happen.");
+            case Sync::TimestampSource::DEVICE:
+            case Sync::TimestampSource::HOST:
+                return std::get<TimestampCompareGeneric<std::chrono::steady_clock>>(impl).getMaxName();
+            case Sync::TimestampSource::SYSTEM:
+                return std::get<TimestampCompareGeneric<std::chrono::system_clock>>(impl).getMaxName();
+        }
+        return "";
+    }
+    template <typename Duration>
+    Duration getDifference() const {
+        switch(source) {
+            case Sync::TimestampSource::DEFAULT:
+                throw std::runtime_error("Invalid timestamp source: DEFAULT. This should not happen.");
+            case Sync::TimestampSource::DEVICE:
+            case Sync::TimestampSource::HOST:
+                return std::get<TimestampCompareGeneric<std::chrono::steady_clock>>(impl).getDifference<Duration>();
+            case Sync::TimestampSource::SYSTEM:
+                return std::get<TimestampCompareGeneric<std::chrono::system_clock>>(impl).getDifference<Duration>();
+        }
+        return {};
+    }
+};
+
+//////////////////////////////////////////////////////////////
+//-------------------- HELPERS END -------------------------//
+//////////////////////////////////////////////////////////////
+
+void Sync::run() {
+    using namespace std::chrono;
+    auto& logger = pimpl->logger;
     const auto inputsName = inputs.name;
+
+    auto timestampSource = properties.timestampSource;
+    if(timestampSource == TimestampSource::DEFAULT) {
+        timestampSource = getDefaultTimestampSource();
+        logger->debug("Timestamp source set to DEFAULT, using {}", timestampSource == TimestampSource::DEVICE ? "DEVICE" : "HOST");
+    }
 
     if(inputs.empty()) {
         throw std::runtime_error("Sync node must have at least 1 input!");
@@ -97,12 +252,12 @@ void SyncBase<TS>::run() {
         inputNames.push_back(inputName);
     }
 
-    auto syncThresholdNs = this->properties.syncThresholdNs;
+    auto syncThresholdNs = properties.syncThresholdNs;
     logger->trace("Sync threshold: {}", syncThresholdNs);
 
     time_point<steady_clock> tAfterMessageBeginning;
 
-    while(this->mainLoop()) {
+    while(mainLoop()) {
         auto tAbsoluteBeginning = steady_clock::now();
         std::unordered_map<std::string, std::shared_ptr<dai::Buffer>> inputFrames;
         {
@@ -118,8 +273,9 @@ void SyncBase<TS>::run() {
             }
             // Print out the timestamps
             for(const auto& frame : inputFrames) {
-                logger->debug(
-                    "Starting input {} timestamp is {} ms", frame.first, static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
+                logger->debug("Starting input {} timestamp is {} ms",
+                              frame.first,
+                              getTimestampMs(timestampSource, *frame.second));
             }
             tAfterMessageBeginning = steady_clock::now();
             int attempts = 0;
@@ -128,47 +284,36 @@ void SyncBase<TS>::run() {
                 if(attempts > 50) {
                     logger->warn("Sync node has been trying to sync for {} messages, but the messages are still not in sync.", attempts);
                     for(const auto& frame : inputFrames) {
-                        logger->warn(
-                            "Output {} timestamp is {} ms", frame.first, static_cast<float>(getTs<TS>(frame.second).time_since_epoch().count()) / 1000000.f);
+                        logger->warn("Output {} timestamp is {} ms", frame.first, getTimestampMs(timestampSource, *frame.second));
                     }
                 }
-                if(attempts > this->properties.syncAttempts && this->properties.syncAttempts != -1) {
-                    if(this->properties.syncAttempts != 0)
+                if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {
+                    if(properties.syncAttempts != 0)
                         logger->warn(
                             "Sync node has been trying to sync for {} messages, but the messages are still not in sync. "
                             "The node will send the messages anyway.",
                             attempts);
                     break;
                 }
-                // Find a minimum timestamp
-                auto minTs = getTs<TS>(inputFrames.begin()->second);
+
+                TimestampCompare tsCompare(timestampSource);
+
                 for(const auto& frame : inputFrames) {
-                    if(getTs<TS>(frame.second) < minTs) {
-                        minTs = getTs<TS>(frame.second);
+                    try {
+                        tsCompare(frame.first, *frame.second);
+                    } catch(const InvalidTimestampException& e) {
+                        logger->warn("Dropping frame from sync: {}", e.what());
                     }
                 }
 
-                // Find a max timestamp
-                auto maxTs = getTs<TS>(inputFrames.begin()->second);
-                for(const auto& frame : inputFrames) {
-                    if(getTs<TS>(frame.second) > maxTs) {
-                        maxTs = getTs<TS>(frame.second);
-                    }
-                }
-                logger->debug("Diff: {} ms", duration_cast<milliseconds>(maxTs - minTs).count());
+                logger->debug("Diff: {} ms", tsCompare.getDifference<milliseconds>().count());
 
-                if(duration_cast<nanoseconds>(maxTs - minTs).count() < syncThresholdNs) {
+                if(tsCompare.getDifference<nanoseconds>().count() < syncThresholdNs) {
                     break;
                 }
 
                 // Get the message with the minimum timestamp (oldest message)
-                std::string minTsName;
-                for(const auto& frame : inputFrames) {
-                    if(getTs<TS>(frame.second) == minTs) {
-                        minTsName = frame.first;
-                        break;
-                    }
-                }
+                std::string minTsName = tsCompare.getMinName();
                 logger->trace("Receiving input: {}", minTsName);
                 inputFrames[minTsName] = inputs[minTsName].get<dai::Buffer>();
                 attempts++;
@@ -180,13 +325,13 @@ void SyncBase<TS>::run() {
         for(const auto& name : inputNames) {
             logger->trace("Sending output: {}", name);
             logger->trace("Timestamp: {} ms",
-                          static_cast<float>(duration_cast<microseconds>(getTs<TS>(inputFrames[name]).time_since_epoch()).count()) / 1000.f);
+                          getTimestampMs(timestampSource, *inputFrames[name]));
             outputGroup->add(name, inputFrames[name]);
-            if(getTs<TS>(inputFrames[name]) > getTs<TS>(newestFrame)) {
-                newestFrame = inputFrames[name].get();
-            }
+            newestFrame = getNewerBuffer(timestampSource, newestFrame, inputFrames[name].get());
         }
+
         outputGroup->copyBufferMetadataFrom(newestFrame);
+
         {
             auto blockEvent = this->outputBlockEvent();
             out.send(outputGroup);
