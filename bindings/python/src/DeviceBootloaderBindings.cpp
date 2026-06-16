@@ -117,14 +117,15 @@ void DeviceBootloaderBindings::bind(pybind11::module& m, void* pCallstack) {
                     py::arg("applicationName") = "",
                     py::arg("checkChecksum") = false,
                     DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage))
-        .def_static("saveDepthaiApplicationPackage",
-                    py::overload_cast<const std::filesystem::path&, const Pipeline&, bool, const std::string&, bool>(&DeviceBootloader::saveDepthaiApplicationPackage),
-                    py::arg("path"),
-                    py::arg("pipeline"),
-                    py::arg("compress"),
-                    py::arg("applicationName") = "",
-                    py::arg("checkChecksum") = false,
-                    DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage, 2))
+        .def_static(
+            "saveDepthaiApplicationPackage",
+            py::overload_cast<const std::filesystem::path&, const Pipeline&, bool, const std::string&, bool>(&DeviceBootloader::saveDepthaiApplicationPackage),
+            py::arg("path"),
+            py::arg("pipeline"),
+            py::arg("compress"),
+            py::arg("applicationName") = "",
+            py::arg("checkChecksum") = false,
+            DOC(dai, DeviceBootloader, saveDepthaiApplicationPackage, 2))
         .def_static(
             "createDepthaiApplicationPackage",
             py::overload_cast<const Pipeline&, const std::filesystem::path&, bool, std::string, bool>(&DeviceBootloader::createDepthaiApplicationPackage),

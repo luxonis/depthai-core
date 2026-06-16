@@ -342,10 +342,14 @@ class DeviceBootloader {
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param data Data to flash
      */
-    std::tuple<bool, std::string> flashCustom(Memory memory, size_t offset, const std::vector<uint8_t>& data,
+    std::tuple<bool, std::string> flashCustom(Memory memory,
+                                              size_t offset,
+                                              const std::vector<uint8_t>& data,
                                               const std::function<void(float)>& progressCb = nullptr);
-    std::tuple<bool, std::string> flashCustom(Memory memory, size_t offset, const uint8_t* data, size_t size, const std::function<void(float)>& progressCb = nullptr);
-    std::tuple<bool, std::string> flashCustom(Memory memory, size_t offset,
+    std::tuple<bool, std::string> flashCustom(
+        Memory memory, size_t offset, const uint8_t* data, size_t size, const std::function<void(float)>& progressCb = nullptr);
+    std::tuple<bool, std::string> flashCustom(Memory memory,
+                                              size_t offset,
                                               const std::string& filename,
                                               const std::function<void(float)>& progressCb = nullptr);
 
@@ -360,8 +364,11 @@ class DeviceBootloader {
     std::tuple<bool, std::string> readCustom(
         Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, const std::function<void(float)>& progressCb = nullptr);
     std::tuple<bool, std::string> readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, const std::function<void(float)>& progressCb = nullptr);
-    std::tuple<bool, std::string> readCustom(Memory memory, size_t offset, size_t size, const std::string& filename, const std::function<void(float)>& progressCb = nullptr);
-    std::tuple<bool, std::string, std::vector<uint8_t>> readCustom(Memory memory, size_t offset, size_t size,
+    std::tuple<bool, std::string> readCustom(
+        Memory memory, size_t offset, size_t size, const std::string& filename, const std::function<void(float)>& progressCb = nullptr);
+    std::tuple<bool, std::string, std::vector<uint8_t>> readCustom(Memory memory,
+                                                                   size_t offset,
+                                                                   size_t size,
                                                                    const std::function<void(float)>& progressCb = nullptr);
 
     /**

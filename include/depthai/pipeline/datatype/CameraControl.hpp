@@ -563,7 +563,7 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureLimit(std::chrono::microseconds maxExposureTime);
 
     /**
-     * Set a command to specify the maximum ISO sensitivity limit for auto-exposure. 
+     * Set a command to specify the maximum ISO sensitivity limit for auto-exposure.
      * This limits the AE algorithm from increasing sensitivity beyond a certain point
      * and can help to reduce noise in low-light conditions.
      * @param aeMaxISO Maximum ISO

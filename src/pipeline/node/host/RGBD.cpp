@@ -528,8 +528,10 @@ void RGBD::alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth,
     align->outputAligned.link(inDepth);
 }
 
-void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera,
-                          const std::pair<int, int>& frameSize, std::optional<float> fps) {
+void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof,
+                          const std::shared_ptr<Camera>& camera,
+                          const std::pair<int, int>& frameSize,
+                          std::optional<float> fps) {
     auto pipeline = getParentPipeline();
     auto device = pipeline.getDefaultDevice();
 

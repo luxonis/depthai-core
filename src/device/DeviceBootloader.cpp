@@ -618,12 +618,17 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
     return allowFlashingBootloader;
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(const std::function<void(float)>& progressCb, const Pipeline& pipeline, bool compress,
-                                                      const std::string& applicationName, Memory memory, bool checkCheksum) {
+std::tuple<bool, std::string> DeviceBootloader::flash(const std::function<void(float)>& progressCb,
+                                                      const Pipeline& pipeline,
+                                                      bool compress,
+                                                      const std::string& applicationName,
+                                                      Memory memory,
+                                                      bool checkCheksum) {
     return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, const std::string& applicationName, Memory memory, bool checkCheksum) {
+std::tuple<bool, std::string> DeviceBootloader::flash(
+    const Pipeline& pipeline, bool compress, const std::string& applicationName, Memory memory, bool checkCheksum) {
     return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
 }
 
@@ -1087,7 +1092,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(
     }
     return flashCustom(memory, offset, data, size, "", progressCb);
 }
-std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, size_t offset,
+std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory,
+                                                            size_t offset,
                                                             const std::string& filename,
                                                             const std::function<void(float)>& progressCb) {
     return flashCustom(memory, offset, nullptr, 0, filename, progressCb);
@@ -1159,7 +1165,8 @@ std::tuple<bool, std::string> DeviceBootloader::readCustom(
     }
     return readCustom(memory, offset, size, data.data(), "", progressCb);
 }
-std::tuple<bool, std::string> DeviceBootloader::readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, const std::function<void(float)>& progressCb) {
+std::tuple<bool, std::string> DeviceBootloader::readCustom(
+    Memory memory, size_t offset, size_t size, uint8_t* data, const std::function<void(float)>& progressCb) {
     return readCustom(memory, offset, size, data, "", progressCb);
 }
 std::tuple<bool, std::string> DeviceBootloader::readCustom(

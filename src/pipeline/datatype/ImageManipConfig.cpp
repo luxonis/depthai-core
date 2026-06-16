@@ -74,7 +74,8 @@ ImageManipConfig& ImageManipConfig::addTransformPerspective(const std::array<flo
     return *this;
 }
 ImageManipConfig& ImageManipConfig::addTransformFourPoints(const std::array<dai::Point2f, 4>& src,
-                                                           const std::array<dai::Point2f, 4>& dst, bool normalizedCoords) {
+                                                           const std::array<dai::Point2f, 4>& dst,
+                                                           bool normalizedCoords) {
     base.transformFourPoints(src, dst, normalizedCoords);
     return *this;
 }

@@ -239,7 +239,8 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     void processDepthOnly(const std::shared_ptr<ImgFrame>& depthFrame, const std::shared_ptr<PointCloudData>& pc, bool organized);
     void processColorized(const std::shared_ptr<ImgFrame>& depthFrame,
                           const std::shared_ptr<ImgFrame>& colorFrame,
-                          const std::shared_ptr<PointCloudData>& pc, bool organized);
+                          const std::shared_ptr<PointCloudData>& pc,
+                          bool organized);
 
     bool runOnHostVar = true;
     bool initialized = false;

@@ -160,8 +160,15 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("boardRev"),
              DOC(dai, CalibrationHandler, setBoardInfo))
         .def("setBoardInfo",
-             py::overload_cast<const std::string&, const std::string&, const std::string&, const std::string&, const std::string&, const std::string&, uint64_t, uint32_t, const std::string&>(
-                 &CalibrationHandler::setBoardInfo),
+             py::overload_cast<const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               uint64_t,
+                               uint32_t,
+                               const std::string&>(&CalibrationHandler::setBoardInfo),
              py::arg("productName"),
              py::arg("boardName"),
              py::arg("boardRev"),
@@ -173,8 +180,16 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("boardCustom") = "",
              DOC(dai, CalibrationHandler, setBoardInfo, 2))
         .def("setBoardInfo",
-             py::overload_cast<const std::string&, const std::string&, const std::string&, const std::string&, const std::string&, const std::string&, const std::string&, uint64_t, uint32_t, const std::string&>(
-                 &CalibrationHandler::setBoardInfo),
+             py::overload_cast<const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               const std::string&,
+                               uint64_t,
+                               uint32_t,
+                               const std::string&>(&CalibrationHandler::setBoardInfo),
              py::arg("deviceName"),
              py::arg("productName"),
              py::arg("boardName"),
@@ -203,12 +218,13 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("width"),
              py::arg("height"),
              DOC(dai, CalibrationHandler, setCameraIntrinsics, 2))
-        .def("setCameraIntrinsics",
-             py::overload_cast<CameraBoardSocket, const std::vector<std::vector<float>>&, const std::tuple<int, int>&>(&CalibrationHandler::setCameraIntrinsics),
-             py::arg("cameraId"),
-             py::arg("intrinsics"),
-             py::arg("frameSize"),
-             DOC(dai, CalibrationHandler, setCameraIntrinsics, 3))
+        .def(
+            "setCameraIntrinsics",
+            py::overload_cast<CameraBoardSocket, const std::vector<std::vector<float>>&, const std::tuple<int, int>&>(&CalibrationHandler::setCameraIntrinsics),
+            py::arg("cameraId"),
+            py::arg("intrinsics"),
+            py::arg("frameSize"),
+            DOC(dai, CalibrationHandler, setCameraIntrinsics, 3))
 
         .def("setDistortionCoefficients",
              &CalibrationHandler::setDistortionCoefficients,
