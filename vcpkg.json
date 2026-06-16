@@ -36,52 +36,6 @@
     }
     ],
     "features": {
-        "opencv-support": {
-            "description": "Enable OpenCV support",
-            "dependencies": [
-                {
-                    "name": "opencv4",
-                    "default-features": false,
-                    "features": [
-                        "calib3d",
-                        "highgui",
-                        "jpeg",
-                        "png",
-                        "quirc",
-                        "tiff",
-                        "webp",
-                        "ffmpeg"
-                    ]
-                },
-                {
-                    "name": "ffmpeg",
-                    "features": [
-                        "openh264"
-                    ]
-                }
-            ]
-        },
-        "opencv-gui": {
-            "description": "Enable OpenCV GUI support",
-            "dependencies": [
-                {
-                    "name": "opencv4",
-                    "default-features": false,
-                    "features": [
-                        "gtk"
-                    ],
-                    "platform": "linux & !arm"
-                },
-                                {
-                    "name": "opencv4",
-                    "default-features": false,
-                    "features": [
-                        "win32ui"
-                    ],
-                    "platform": "windows"
-                }
-            ]
-        },
         "pcl-support": {
             "description": "Enable PCL support",
             "dependencies": [
@@ -196,18 +150,7 @@
             "description": "Enable public dependencies",
             "dependencies": [
                 {
-                    "name": "nlohmann-json"
-                },
-                {
                     "name": "libnop"
-                }
-            ]
-        },
-        "usb": {
-            "description": "Enable USB support",
-            "dependencies": [
-                {
-                    "name": "libusb"
                 }
             ]
         },
