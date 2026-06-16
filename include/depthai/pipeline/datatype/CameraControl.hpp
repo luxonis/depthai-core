@@ -679,7 +679,7 @@ class CameraControl : public Buffer {
      * @param control Control name
      * @param value Value as an integer number
      */
-    CameraControl& setMisc(std::string control, int value);
+    CameraControl& setMisc(const std::string& control, int value);
 
     /**
      * Set a miscellaneous control. The controls set by this function get appended
@@ -687,7 +687,7 @@ class CameraControl : public Buffer {
      * @param control Control name
      * @param value Value as a floating point number
      */
-    CameraControl& setMisc(std::string control, float value);
+    CameraControl& setMisc(const std::string& control, float value);
 
     /**
      * Clear the list of miscellaneous controls set by `setControl`
@@ -698,7 +698,7 @@ class CameraControl : public Buffer {
      * Get the list of miscellaneous controls set by `setControl`
      * @returns A list of <key, value> pairs as strings
      */
-    std::vector<std::pair<std::string, std::string>> getMiscControls();
+    std::vector<std::pair<std::string, std::string>> getMiscControls() const;
 
     /**
      * Set a command to specify control mode

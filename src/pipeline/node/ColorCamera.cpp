@@ -26,7 +26,7 @@ CameraBoardSocket ColorCamera::getBoardSocket() const {
     return properties.boardSocket;
 }
 
-void ColorCamera::setCamera(std::string name) {
+void ColorCamera::setCamera(const std::string& name) {
     properties.cameraName = name;
 }
 
@@ -208,7 +208,7 @@ void ColorCamera::setPreviewSize(int width, int height) {
     properties.previewHeight = height;
 }
 
-void ColorCamera::setPreviewSize(std::tuple<int, int> size) {
+void ColorCamera::setPreviewSize(const std::tuple<int, int>& size) {
     setPreviewSize(std::get<0>(size), std::get<1>(size));
 }
 
@@ -218,7 +218,7 @@ void ColorCamera::setVideoSize(int width, int height) {
     properties.videoHeight = height;
 }
 
-void ColorCamera::setVideoSize(std::tuple<int, int> size) {
+void ColorCamera::setVideoSize(const std::tuple<int, int>& size) {
     setVideoSize(std::get<0>(size), std::get<1>(size));
 }
 
@@ -228,7 +228,7 @@ void ColorCamera::setStillSize(int width, int height) {
     properties.stillHeight = height;
 }
 
-void ColorCamera::setStillSize(std::tuple<int, int> size) {
+void ColorCamera::setStillSize(const std::tuple<int, int>& size) {
     setStillSize(std::get<0>(size), std::get<1>(size));
 }
 
@@ -248,11 +248,11 @@ void ColorCamera::setIspScale(int numerator, int denominator) {
     setIspScale(numerator, denominator, numerator, denominator);
 }
 
-void ColorCamera::setIspScale(std::tuple<int, int> scale) {
+void ColorCamera::setIspScale(const std::tuple<int, int>& scale) {
     setIspScale(std::get<0>(scale), std::get<1>(scale));
 }
 
-void ColorCamera::setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale) {
+void ColorCamera::setIspScale(const std::tuple<int, int>& horizScale, const std::tuple<int, int>& vertScale) {
     setIspScale(std::get<0>(horizScale), std::get<1>(horizScale), std::get<0>(vertScale), std::get<1>(vertScale));
 }
 

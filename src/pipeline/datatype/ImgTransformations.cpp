@@ -66,7 +66,7 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
     return rayToPixel(rectifiedRay, to);
 }
 
-dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const ImgTransformation& from, const ImgTransformation& to) {
+dai::RotatedRect interSourceFrameTransform(const dai::RotatedRect& sourceRect, const ImgTransformation& from, const ImgTransformation& to) {
     if(from.isEqualTransformation(to)) {
         return sourceRect;
     }
@@ -129,7 +129,7 @@ dai::Point2f ImgTransformation::transformPoint(dai::Point2f point) const {
     auto transformed = matrix::dehomogenizePoint3(matrix::matVecMul(transformationMatrix, {point.x, point.y, 1}));
     return {transformed[0], transformed[1]};
 }
-dai::RotatedRect ImgTransformation::transformRect(dai::RotatedRect rect) const {
+dai::RotatedRect ImgTransformation::transformRect(const dai::RotatedRect& rect) const {
     const auto points = rect.getPoints();
     std::vector<std::array<float, 2>> vPoints(points.size());
     for(auto i = 0U; i < points.size(); ++i) {
@@ -142,7 +142,7 @@ dai::Point2f ImgTransformation::invTransformPoint(dai::Point2f point) const {
     auto transformed = matrix::dehomogenizePoint3(matrix::matVecMul(transformationMatrixInv, {point.x, point.y, 1}));
     return {transformed[0], transformed[1]};
 }
-dai::RotatedRect ImgTransformation::invTransformRect(dai::RotatedRect rect) const {
+dai::RotatedRect ImgTransformation::invTransformRect(const dai::RotatedRect& rect) const {
     const auto points = rect.getPoints();
     std::vector<std::array<float, 2>> vPoints(points.size());
     for(auto i = 0U; i < points.size(); ++i) {
@@ -251,7 +251,7 @@ bool ImgTransformation::getDstMaskPt(size_t x, size_t y) {
     return isPointInRotatedRectangle({(float)x, (float)y}, dstCrop);
 };
 
-ImgTransformation& ImgTransformation::addTransformation(std::array<std::array<float, 3>, 3> matrix) {
+ImgTransformation& ImgTransformation::addTransformation(const std::array<std::array<float, 3>, 3>& matrix) {
     transformationMatrix = matrix::matMul(matrix, transformationMatrix);
     transformationMatrixInv = matrix::getMatrixInverse(transformationMatrix);
     cropsValid = false;
@@ -342,7 +342,7 @@ ImgTransformation& ImgTransformation::setSourceSize(size_t width, size_t height)
     this->srcHeight = height;
     return *this;
 }
-ImgTransformation& ImgTransformation::setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix) {
+ImgTransformation& ImgTransformation::setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix) {
     sourceIntrinsicMatrix = intrinsicMatrix;
     sourceIntrinsicMatrixInv = matrix::getMatrixInverse(intrinsicMatrix);
     return *this;
@@ -355,7 +355,7 @@ ImgTransformation& ImgTransformation::setDistortionModel(CameraModel model) {
     distortionModel = model;
     return *this;
 }
-ImgTransformation& ImgTransformation::setDistortionCoefficients(std::vector<float> coefficients) {
+ImgTransformation& ImgTransformation::setDistortionCoefficients(const std::vector<float>& coefficients) {
     distortionCoefficients = coefficients;
     return *this;
 }
@@ -403,7 +403,7 @@ dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai
     }
     return transformed;
 }
-dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const {
+dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, const dai::RotatedRect& rect) const {
     return from.remapRectTo(*this, rect);
 }
 

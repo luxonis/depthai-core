@@ -146,16 +146,16 @@ bool RemoteConnectionImpl::initWebsocketServer(const std::string& address, uint1
         return false;
     }
     foxglove::ServerHandlers<websocketpp::connection_hdl> hdlrs;
-    hdlrs.subscribeHandler = [&](foxglove::ChannelId chanId, foxglove::ConnHandle clientHandle) {
+    hdlrs.subscribeHandler = [&](foxglove::ChannelId chanId, const foxglove::ConnHandle& clientHandle) {
         const auto clientStr = server->remoteEndpointString(clientHandle);
         logger::info("Client {} subscribed to {}", clientStr, chanId);
     };
-    hdlrs.unsubscribeHandler = [&](foxglove::ChannelId chanId, foxglove::ConnHandle clientHandle) {
+    hdlrs.unsubscribeHandler = [&](foxglove::ChannelId chanId, const foxglove::ConnHandle& clientHandle) {
         const auto clientStr = server->remoteEndpointString(clientHandle);
         logger::info("Client {} unsubscribed from {}", clientStr, chanId);
     };
 
-    hdlrs.serviceRequestHandler = [&](const foxglove::ServiceRequest& request, foxglove::ConnHandle clientHandle) {
+    hdlrs.serviceRequestHandler = [&](const foxglove::ServiceRequest& request, const foxglove::ConnHandle& clientHandle) {
         logger::info("Received service request from client {}", server->remoteEndpointString(clientHandle));
         auto it = serviceMap.find(request.serviceId);
         if(it == serviceMap.end()) {
@@ -369,7 +369,7 @@ void RemoteConnectionImpl::exposeTopicGroupsService() {
     assert(ids.size() == 1);
     auto id = ids[0];
 
-    serviceMap[id] = [this](foxglove::ServiceResponse request) {
+    serviceMap[id] = [this](const foxglove::ServiceResponse& request) {
         (void)request;
         auto response = foxglove::ServiceResponse();
         auto topicGroups = std::unordered_map<std::string, std::string>();
@@ -476,7 +476,7 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
             node[1]["properties"] = nlohmann::json::parse(node[1]["properties"].get<std::vector<uint8_t>>());
         }
         auto serializedPipelineStr = serializedPipeline.dump();
-        serviceMap[id] = [serializedPipelineStr](foxglove::ServiceResponse request) {
+        serviceMap[id] = [serializedPipelineStr](const foxglove::ServiceResponse& request) {
             (void)request;
             auto response = foxglove::ServiceResponse();
             response.data = std::vector<uint8_t>(serializedPipelineStr.begin(), serializedPipelineStr.end());
@@ -491,7 +491,7 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
         nlohmann::json j;
         j["pipeline"] = pipeline.getPipelineSchema(SerializationType::JSON, false);
         auto serializedPipelineStr = j.dump();
-        serviceMap[id] = [serializedPipelineStr](foxglove::ServiceResponse request) {
+        serviceMap[id] = [serializedPipelineStr](const foxglove::ServiceResponse& request) {
             (void)request;
             auto response = foxglove::ServiceResponse();
             response.data = std::vector<uint8_t>(serializedPipelineStr.begin(), serializedPipelineStr.end());
@@ -506,7 +506,7 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
         if(pipeline.isPipelineDebuggingEnabled()) {
             PipelineStateApi pipelineStateApi(pipeline.getPipelineStateOut(), pipeline.getPipelineStateRequest(), pipeline.getAllNodes());
 
-            serviceMap[id] = [pipelineStateApi](foxglove::ServiceResponse request) mutable {
+            serviceMap[id] = [pipelineStateApi](const foxglove::ServiceResponse& request) mutable {
                 (void)request;
                 std::string stateStr;
                 try {
@@ -520,7 +520,7 @@ void RemoteConnectionImpl::exposePipelineService(const Pipeline& pipeline) {
                 return response;
             };
         } else {
-            serviceMap[id] = [](foxglove::ServiceResponse request) {
+            serviceMap[id] = [](const foxglove::ServiceResponse& request) {
                 (void)request;
                 std::string stateStr = R"({"error": "Pipeline debugging disabled. Cannot get pipeline state."})";
                 auto response = foxglove::ServiceResponse();
@@ -608,7 +608,7 @@ void RemoteConnectionImpl::registerBinaryService(const std::string& serviceName,
     auto ids = server->addServices({service});
     assert(ids.size() == 1);
     auto id = ids[0];
-    serviceMap[id] = [callback](foxglove::ServiceResponse request) {
+    serviceMap[id] = [callback](const foxglove::ServiceResponse& request) {
         auto response = callback(request.data);
         foxglove::ServiceResponse ret;
         ret.data = std::vector<uint8_t>(response.begin(), response.end());

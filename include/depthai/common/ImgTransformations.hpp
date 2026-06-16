@@ -90,7 +90,7 @@ struct ImgTransformation {
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
-    dai::RotatedRect transformRect(dai::RotatedRect rect) const;
+    dai::RotatedRect transformRect(const dai::RotatedRect& rect) const;
     /**
      * Transform a point from the current frame to the source frame.
      * @param point Point to transform
@@ -102,7 +102,7 @@ struct ImgTransformation {
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
-    dai::RotatedRect invTransformRect(dai::RotatedRect rect) const;
+    dai::RotatedRect invTransformRect(const dai::RotatedRect& rect) const;
 
     /**
      * Retrieve the size of the frame. Should be equal to the size of the corresponding ImgFrame message.
@@ -210,7 +210,7 @@ struct ImgTransformation {
      * Add a new transformation.
      * @param matrix Transformation matrix
      */
-    ImgTransformation& addTransformation(std::array<std::array<float, 3>, 3> matrix);
+    ImgTransformation& addTransformation(const std::array<std::array<float, 3>, 3>& matrix);
     /**
      * Add a crop transformation.
      * @param x X coordinate of the top-left corner of the crop
@@ -251,9 +251,9 @@ struct ImgTransformation {
     ImgTransformation& setSize(size_t width, size_t height);
     ImgTransformation& setSourceSize(size_t width, size_t height);
     ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
-    ImgTransformation& setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix);
+    ImgTransformation& setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix);
     ImgTransformation& setDistortionModel(CameraModel model);
-    ImgTransformation& setDistortionCoefficients(std::vector<float> coefficients);
+    ImgTransformation& setDistortionCoefficients(const std::vector<float>& coefficients);
 
     /**
      * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the
@@ -283,7 +283,7 @@ struct ImgTransformation {
      * @param from Transformation to remap from
      * @param rect RotatedRect to remap
      */
-    dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
+    dai::RotatedRect remapRectFrom(const ImgTransformation& from, const dai::RotatedRect& rect) const;
 
     /**
      * Project a 3D spatial point into 2D point in the current frame defined by this transformation.
