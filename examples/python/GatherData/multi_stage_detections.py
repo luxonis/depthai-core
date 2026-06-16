@@ -5,10 +5,12 @@ import sys
 import cv2
 import depthai as dai
 
+from message_group_visualizer import showMessageGroupTreeIfChanged
+
 FILTER_DETECTIONS_SCRIPT = r"""
 from depthai import ImgDetection, ImgDetections
 
-kMaxDetections = 5
+kMaxDetections = 7
 
 while True:
     src = node.inputs["detections"].get()
@@ -96,10 +98,6 @@ while True:
 
 
 def main() -> None:
-    # int webSocketPort = 8765;
-    # int httpPort = 8082;
-    # dai::RemoteConnection remoteConnector(dai::RemoteConnection::DEFAULT_ADDRESS, webSocketPort, true, httpPort);
-
     pipeline = dai.Pipeline()
     defaultDevice = pipeline.getDefaultDevice()
 
@@ -162,24 +160,20 @@ def main() -> None:
     collectedQ = gatherPoseDets.output.createOutputQueue()
 
     pipeline.start()
-    # remoteConnector.registerPipeline(pipeline)
 
     color = (255, 0, 0)
     keypointColor = (0, 255, 0)
-    previousCropWindowCount = 0
     lastMessageGroupTree = ""
     while pipeline.isRunning():
         collected = collectedQ.get()
-        # auto passthrough = passthroughQ->get<dai::ImgFrame>();
 
-        # if(collected == nullptr || detections == nullptr /* || passthrough == nullptr */) {
-        #     continue;
-        # }
+        if collected is not None:
+            _, lastMessageGroupTree = showMessageGroupTreeIfChanged(
+                collected,
+                lastMessageGroupTree,
+                "Multi-stage Message tree",
+            )
 
-        # std::cout << "Got " << detections->detections.size() << " detections)" << std::endl;
-        # std::cout << "Message group has " << collected->getNumMessages() << " messages." << std::endl;
-
-        # auto frame = passthrough->getCvFrame();
         frame = collected.get(0).getCvFrame()  # get the original full frame from the message group
 
         detections = collected.get(1) if collected is not None else None
@@ -193,8 +187,6 @@ def main() -> None:
 
         cv2.imshow("passthrough", frame)
 
-        # auto detections = collected != nullptr ? collected->get<dai::ImgDetections>(0) : nullptr;
-        shownCropWindowCount = 0
         for i, detection in enumerate(detections.detections):
             # if you are looking for a specific detection, you can filter out here and only then look at the crop message via getChildren(0,
             # static_cast<uint32_t>(i));
@@ -255,10 +247,6 @@ def main() -> None:
             cv2.imshow(f"crop_{i}", cropFrame)
             shownCropWindowCount = i + 1
 
-        # for(size_t i = shownCropWindowCount; i < previousCropWindowCount; ++i) {
-        #     cv::destroyWindow("crop_" + std::to_string(i));
-        # }
-        previousCropWindowCount = shownCropWindowCount
 
         if cv2.waitKey(1) == ord("q"):
             pipeline.stop()

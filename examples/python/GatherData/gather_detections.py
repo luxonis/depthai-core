@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-import time
 
 import cv2
 import depthai as dai
@@ -9,54 +8,76 @@ import depthai as dai
 from message_group_visualizer import showMessageGroupTreeIfChanged
 
 
-class CropConfigsCreator(dai.node.ThreadedHostNode):
-    def __init__(self) -> None:
-        super().__init__()
-        self.configOutput = self.createOutput("config_output")
-        self.configOutput.setPossibleDatatypes([(dai.DatatypeEnum.ImageManipConfig, True)])
-        self.detectionsInput = self.createInput("detections_input", waitForMessage=False)
-        self.detectionsInput.setPossibleDatatypes([(dai.DatatypeEnum.ImgDetections, True)])
+FILTER_DETECTIONS_SCRIPT = r"""
+from depthai import ImgDetection, ImgDetections
 
-    def run(self) -> None:
-        while self.mainLoop():
-            detectionsInputMessage = self.detectionsInput.get()
-            if detectionsInputMessage is None:
-                continue
+kMaxDetections = 7
 
-            detections = detectionsInputMessage.detections
+while True:
+    src = node.inputs["detections"].get()
+    if src is None:
+        break
 
-            clear_cfg = dai.ImageManipConfig()
-            clear_cfg.setSkipCurrentImage(True)
-            send_status = self.configOutput.trySend(clear_cfg)
+    # Build a fresh message so truncating detections does not leave a stale
+    # instance-segmentation payload attached to the output message.
+    dst = ImgDetections()
+    dst.setSequenceNum(src.getSequenceNum())
+    dst.setTimestamp(src.getTimestamp())
+    dst.setTimestampDevice(src.getTimestampDevice())
+    dst.setTransformation(src.getTransformation())
 
-            for i in range(len(detections)):
-                cfg = dai.ImageManipConfig()
+    filtered_detections = []
+    for det in src.detections[:kMaxDetections]:
+        copied = ImgDetection()
+        copied.label = det.label
+        copied.labelName = det.labelName
+        copied.confidence = det.confidence
 
-                detection = detections[i]
+        try:
+            copied.setBoundingBox(det.getBoundingBox())
+        except Exception:
+            pass
 
-                bbox = detection.getBoundingBox()
-                outerBbox = bbox.getOuterRect()
-                x1 = max(0.0, min(outerBbox[0], 0.9999))
-                y1 = max(0.0, min(outerBbox[1], 0.9999))
-                x2 = max(0.0, min(outerBbox[2], 0.9999))
-                y2 = max(0.0, min(outerBbox[3], 0.9999))
-                bbox = dai.RotatedRect(dai.Rect(x1, y1, x2 - x1, y2 - y1, True))
+        keypoints = det.getKeypoints()
+        if len(keypoints) > 0:
+            copied.setKeypoints(keypoints)
+            edges = det.getEdges()
+            if len(edges) > 0:
+                copied.setEdges(edges)
 
-                cfg.addCropRotatedRect(bbox, True)
-                cfg.setOutputSize(300, 400, dai.ImageManipConfig.ResizeMode.CENTER_CROP)
-                if i == 0:
-                    cfg.setReusePreviousImage(False)
-                else:
-                    cfg.setReusePreviousImage(True)
+        filtered_detections.append(copied)
 
-                cfgMessage = cfg
-                sendStatus = False
-                attempts = 0
-                while not sendStatus and attempts < 100 and self.mainLoop():
-                    sendStatus = self.configOutput.trySend(cfgMessage)
-                    if not sendStatus:
-                        attempts += 1
-                        time.sleep(0.001)
+    dst.detections = filtered_detections
+    node.outputs["filtered"].send(dst)
+"""
+
+
+CROP_CONFIG_SCRIPT = r"""
+from depthai import ImageManipConfig, ImgFrame, Rect, RotatedRect
+
+while True:
+    detections_msg = node.inputs["detections"].get()
+    if detections_msg is None:
+        break
+
+    clear_cfg = ImageManipConfig()
+    clear_cfg.setSkipCurrentImage(True)
+    node.outputs["config"].send(clear_cfg)
+
+    for index, detection in enumerate(detections_msg.detections):
+        outer_bbox = detection.getBoundingBox().getOuterRect()
+        x1 = max(0.0, min(outer_bbox[0], 0.9999))
+        y1 = max(0.0, min(outer_bbox[1], 0.9999))
+        x2 = max(0.0, min(outer_bbox[2], 0.9999))
+        y2 = max(0.0, min(outer_bbox[3], 0.9999))
+
+        cfg = ImageManipConfig()
+        cfg.addCropRotatedRect(RotatedRect(Rect(x1, y1, x2 - x1, y2 - y1, True)), True)
+        cfg.setOutputSize(320, 240, ImageManipConfig.ResizeMode.LETTERBOX)
+        cfg.setFrameType(ImgFrame.Type.BGR888i)
+        cfg.setReusePreviousImage(True)
+        node.outputs["config"].send(cfg)
+"""
 
 
 def main() -> None:
@@ -70,21 +91,29 @@ def main() -> None:
 
     fullResOutput = cam.requestOutput((1280, 800))
 
-    # Create crops
-    cropConfigsCreator = pipeline.create(CropConfigsCreator)
-    detNN.out.link(cropConfigsCreator.detectionsInput)
+    filterDetectionsScript = pipeline.create(dai.node.Script)
+    filterDetectionsScript.setScript(FILTER_DETECTIONS_SCRIPT)
+    detNN.out.link(filterDetectionsScript.inputs["detections"])
+
+    # Generate crop configs
+    cropConfigScript = pipeline.create(dai.node.Script)
+    cropConfigScript.inputs["detections"].setMaxSize(10)
+    cropConfigScript.setScript(CROP_CONFIG_SCRIPT)
+    filterDetectionsScript.outputs["filtered"].link(cropConfigScript.inputs["detections"])
 
     imageManip = pipeline.create(dai.node.ImageManip)
+    imageManip.inputConfig.setMaxSize(50)
+    imageManip.inputImage.setMaxSize(10)
     imageManip.inputConfig.setReusePreviousMessage(False)
 
-    imageManip.setMaxOutputFrameSize(300 * 480 * 3)
-    cropConfigsCreator.configOutput.link(imageManip.inputConfig)
+    imageManip.setMaxOutputFrameSize(320 * 240 * 3)
+    cropConfigScript.outputs["config"].link(imageManip.inputConfig)
     fullResOutput.link(imageManip.inputImage)
     # end Create crops
 
     gatherData = pipeline.create(dai.node.GatherData)
     # gatherData->setRunOnHost(true);
-    detNN.out.link(gatherData.referenceInput)
+    filterDetectionsScript.outputs["filtered"].link(gatherData.referenceInput)
     imageManip.out.link(gatherData.collectingInput)
 
     collectedQ = gatherData.output.createOutputQueue()
@@ -96,7 +125,9 @@ def main() -> None:
     lastMessageGroupTree = ""
     while pipeline.isRunning():
         collected = collectedQ.get()
+        print("Got a new collected message group")
         passthrough = passthroughQ.get()
+        print("Got a new passthrough message")
 
         if collected is not None:
             _, lastMessageGroupTree = showMessageGroupTreeIfChanged(collected, lastMessageGroupTree, "GatherData tree")

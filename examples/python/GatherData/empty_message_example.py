@@ -6,6 +6,8 @@ import cv2
 import depthai as dai
 import numpy as np
 
+from examples.python.GatherData.message_group_visualizer import showMessageGroupTreeIfChanged
+
 FILTER_DETECTIONS_SCRIPT = r"""
 from depthai import ImgDetection, ImgDetections
 
@@ -133,6 +135,15 @@ def main() -> None:
 
     while pipeline.isRunning():
         collected = collectedQ.get()
+        lastMessageGroupTree = ""
+
+        if collected is not None:
+            _, lastMessageGroupTree = showMessageGroupTreeIfChanged(
+                collected,
+                lastMessageGroupTree,
+                "Multi-stage Message tree",
+            )
+
 
         frame = collected.get(0).getCvFrame()  # get the original full frame from the message group
         assert isinstance(frame, np.ndarray)
