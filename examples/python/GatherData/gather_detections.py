@@ -125,9 +125,7 @@ def main() -> None:
     lastMessageGroupTree = ""
     while pipeline.isRunning():
         collected = collectedQ.get()
-        print("Got a new collected message group")
         passthrough = passthroughQ.get()
-        print("Got a new passthrough message")
 
         if collected is not None:
             _, lastMessageGroupTree = showMessageGroupTreeIfChanged(collected, lastMessageGroupTree, "GatherData tree")
@@ -177,7 +175,7 @@ def main() -> None:
             detWidth = int(detection.getWidth() * width)
             detHeight = int(detection.getHeight() * height)
 
-            print(f"Detection {i}: class: {className}, size: {detWidth}x{detHeight}")
+            # print(f"Detection {i}: class: {className}, size: {detWidth}x{detHeight}")
 
             cv2.putText(cropFrame, "class: " + className, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             cv2.putText(
