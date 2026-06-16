@@ -2,6 +2,183 @@ import depthai as dai
 import pytest
 
 
+class UnsupportedNormalizationError(TypeError):
+    pass
+
+
+def normalize_point2f(value):
+    return {"x": value.x, "y": value.y}
+
+
+def normalize_point3f(value):
+    return {"x": value.x, "y": value.y, "z": value.z}
+
+
+def normalize_rect(value):
+    return {"x": value.x, "y": value.y, "width": value.width, "height": value.height}
+
+
+def normalize_memory_info(value):
+    return {"remaining": value.remaining, "used": value.used, "total": value.total}
+
+
+def normalize_cpu_usage(value):
+    return {"average": value.average, "msTime": value.msTime}
+
+
+def normalize_chip_temperature_rvc4(value):
+    return {
+        "cpuss": value.cpuss,
+        "gpuss": value.gpuss,
+        "mdmss": value.mdmss,
+        "video": value.video,
+        "ddr": value.ddr,
+        "camera": value.camera,
+        "average": value.average,
+    }
+
+
+def normalize_spatial_location_calculator_config_thresholds(value):
+    return {"lowerThreshold": value.lowerThreshold, "upperThreshold": value.upperThreshold}
+
+
+def normalize_spatial_location_calculator_config_data(value):
+    return {
+        "roi": normalize(value.roi),
+        "depthThresholds": normalize(value.depthThresholds),
+        "calculationAlgorithm": str(value.calculationAlgorithm),
+    }
+
+
+def normalize_april_tag(value):
+    return {
+        "id": value.id,
+        "hamming": value.hamming,
+        "decisionMargin": value.decisionMargin,
+        "topLeft": normalize(value.topLeft),
+        "topRight": normalize(value.topRight),
+        "bottomRight": normalize(value.bottomRight),
+        "bottomLeft": normalize(value.bottomLeft),
+    }
+
+
+def normalize_imu_report_accelerometer(value):
+    return {"x": value.x, "y": value.y, "z": value.z}
+
+
+def normalize_imu_report_gyroscope(value):
+    return {"x": value.x, "y": value.y, "z": value.z}
+
+
+def normalize_imu_report_magnetic_field(value):
+    return {"x": value.x, "y": value.y, "z": value.z}
+
+
+def normalize_imu_report_rotation_vector_wacc(value):
+    return {
+        "i": value.i,
+        "j": value.j,
+        "k": value.k,
+        "real": value.real,
+        "rotationVectorAccuracy": value.rotationVectorAccuracy,
+    }
+
+
+def normalize_imu_packet(value):
+    return {
+        "acceleroMeter": normalize(value.acceleroMeter),
+        "gyroscope": normalize(value.gyroscope),
+        "magneticField": normalize(value.magneticField),
+        "rotationVector": normalize(value.rotationVector),
+    }
+
+
+def normalize_img_detection(value):
+    return {
+        "label": value.label,
+        "labelName": value.labelName,
+        "confidence": value.confidence,
+        "xmin": value.xmin,
+        "ymin": value.ymin,
+        "xmax": value.xmax,
+        "ymax": value.ymax,
+    }
+
+
+def normalize_spatial_img_detection(value):
+    return {
+        "label": value.label,
+        "labelName": value.labelName,
+        "confidence": value.confidence,
+        "xmin": value.xmin,
+        "ymin": value.ymin,
+        "xmax": value.xmax,
+        "ymax": value.ymax,
+        "spatialCoordinates": normalize(value.spatialCoordinates),
+        "boundingBoxMapping": normalize(value.boundingBoxMapping),
+    }
+
+
+def normalize_spatial_locations(value):
+    return {
+        "config": normalize(value.config),
+        "depthAverage": value.depthAverage,
+        "depthMode": value.depthMode,
+        "depthMedian": value.depthMedian,
+        "depthMin": value.depthMin,
+        "depthMax": value.depthMax,
+        "depthAveragePixelCount": value.depthAveragePixelCount,
+        "spatialCoordinates": normalize(value.spatialCoordinates),
+    }
+
+
+def normalize_tracked_feature(value):
+    return {
+        "position": normalize(value.position),
+        "id": value.id,
+        "age": value.age,
+        "harrisScore": value.harrisScore,
+        "trackingError": value.trackingError,
+    }
+
+
+def normalize_tracklet(value):
+    return {
+        "roi": normalize(value.roi),
+        "id": value.id,
+        "label": value.label,
+        "age": value.age,
+        "status": str(value.status),
+        "srcImgDetection": normalize(value.srcImgDetection),
+        "spatialCoordinates": normalize(value.spatialCoordinates),
+        "velocity": normalize(value.velocity),
+        "speed": normalize(value.speed),
+    }
+
+
+NORMALIZERS = (
+    (dai.Point2f, normalize_point2f),
+    (dai.Point3f, normalize_point3f),
+    (dai.Rect, normalize_rect),
+    (dai.MemoryInfo, normalize_memory_info),
+    (dai.CpuUsage, normalize_cpu_usage),
+    (dai.ChipTemperatureRVC4, normalize_chip_temperature_rvc4),
+    (dai.SpatialLocationCalculatorConfigThresholds, normalize_spatial_location_calculator_config_thresholds),
+    (dai.SpatialLocationCalculatorConfigData, normalize_spatial_location_calculator_config_data),
+    (dai.AprilTag, normalize_april_tag),
+    (dai.IMUReportAccelerometer, normalize_imu_report_accelerometer),
+    (dai.IMUReportGyroscope, normalize_imu_report_gyroscope),
+    (dai.IMUReportMagneticField, normalize_imu_report_magnetic_field),
+    (dai.IMUReportRotationVectorWAcc, normalize_imu_report_rotation_vector_wacc),
+    (dai.IMUPacket, normalize_imu_packet),
+    (dai.ImgDetection, normalize_img_detection),
+    (dai.SpatialImgDetection, normalize_spatial_img_detection),
+    (dai.SpatialLocations, normalize_spatial_locations),
+    (dai.TrackedFeature, normalize_tracked_feature),
+    (dai.Tracklet, normalize_tracklet),
+)
+
+
 def normalize(value):
     if value is None or isinstance(value, (bool, int, str, float)):
         return value
@@ -12,138 +189,11 @@ def normalize(value):
     if isinstance(value, tuple):
         return tuple(normalize(item) for item in value)
 
-    if isinstance(value, dai.Point2f):
-        return {"x": value.x, "y": value.y}
+    for type_, handler in NORMALIZERS:
+        if isinstance(value, type_):
+            return handler(value)
 
-    if isinstance(value, dai.Point3f):
-        return {"x": value.x, "y": value.y, "z": value.z}
-
-    if isinstance(value, dai.Rect):
-        return {"x": value.x, "y": value.y, "width": value.width, "height": value.height}
-
-    if isinstance(value, dai.MemoryInfo):
-        return {"remaining": value.remaining, "used": value.used, "total": value.total}
-
-    if isinstance(value, dai.CpuUsage):
-        return {"average": value.average, "msTime": value.msTime}
-
-    if isinstance(value, dai.ChipTemperatureRVC4):
-        return {
-            "cpuss": value.cpuss,
-            "gpuss": value.gpuss,
-            "mdmss": value.mdmss,
-            "video": value.video,
-            "ddr": value.ddr,
-            "camera": value.camera,
-            "average": value.average,
-        }
-
-    if isinstance(value, dai.SpatialLocationCalculatorConfigThresholds):
-        return {"lowerThreshold": value.lowerThreshold, "upperThreshold": value.upperThreshold}
-
-    if isinstance(value, dai.SpatialLocationCalculatorConfigData):
-        return {
-            "roi": normalize(value.roi),
-            "depthThresholds": normalize(value.depthThresholds),
-            "calculationAlgorithm": str(value.calculationAlgorithm),
-        }
-
-    if isinstance(value, dai.AprilTag):
-        return {
-            "id": value.id,
-            "hamming": value.hamming,
-            "decisionMargin": value.decisionMargin,
-            "topLeft": normalize(value.topLeft),
-            "topRight": normalize(value.topRight),
-            "bottomRight": normalize(value.bottomRight),
-            "bottomLeft": normalize(value.bottomLeft),
-        }
-
-    if isinstance(value, dai.IMUReportAccelerometer):
-        return {"x": value.x, "y": value.y, "z": value.z}
-
-    if isinstance(value, dai.IMUReportGyroscope):
-        return {"x": value.x, "y": value.y, "z": value.z}
-
-    if isinstance(value, dai.IMUReportMagneticField):
-        return {"x": value.x, "y": value.y, "z": value.z}
-
-    if isinstance(value, dai.IMUReportRotationVectorWAcc):
-        return {
-            "i": value.i,
-            "j": value.j,
-            "k": value.k,
-            "real": value.real,
-            "rotationVectorAccuracy": value.rotationVectorAccuracy,
-        }
-
-    if isinstance(value, dai.IMUPacket):
-        return {
-            "acceleroMeter": normalize(value.acceleroMeter),
-            "gyroscope": normalize(value.gyroscope),
-            "magneticField": normalize(value.magneticField),
-            "rotationVector": normalize(value.rotationVector),
-        }
-
-    if isinstance(value, dai.ImgDetection):
-        return {
-            "label": value.label,
-            "labelName": value.labelName,
-            "confidence": value.confidence,
-            "xmin": value.xmin,
-            "ymin": value.ymin,
-            "xmax": value.xmax,
-            "ymax": value.ymax,
-        }
-
-    if isinstance(value, dai.SpatialImgDetection):
-        return {
-            "label": value.label,
-            "labelName": value.labelName,
-            "confidence": value.confidence,
-            "xmin": value.xmin,
-            "ymin": value.ymin,
-            "xmax": value.xmax,
-            "ymax": value.ymax,
-            "spatialCoordinates": normalize(value.spatialCoordinates),
-            "boundingBoxMapping": normalize(value.boundingBoxMapping),
-        }
-
-    if isinstance(value, dai.SpatialLocations):
-        return {
-            "config": normalize(value.config),
-            "depthAverage": value.depthAverage,
-            "depthMode": value.depthMode,
-            "depthMedian": value.depthMedian,
-            "depthMin": value.depthMin,
-            "depthMax": value.depthMax,
-            "depthAveragePixelCount": value.depthAveragePixelCount,
-            "spatialCoordinates": normalize(value.spatialCoordinates),
-        }
-
-    if isinstance(value, dai.TrackedFeature):
-        return {
-            "position": normalize(value.position),
-            "id": value.id,
-            "age": value.age,
-            "harrisScore": value.harrisScore,
-            "trackingError": value.trackingError,
-        }
-
-    if isinstance(value, dai.Tracklet):
-        return {
-            "roi": normalize(value.roi),
-            "id": value.id,
-            "label": value.label,
-            "age": value.age,
-            "status": str(value.status),
-            "srcImgDetection": normalize(value.srcImgDetection),
-            "spatialCoordinates": normalize(value.spatialCoordinates),
-            "velocity": normalize(value.velocity),
-            "speed": normalize(value.speed),
-        }
-
-    raise TypeError(f"Unsupported value type for normalization: {type(value)!r}")
+    raise UnsupportedNormalizationError(f"Unsupported value type for normalization: {type(value)!r}")
 
 def test_april_tags_binding_roundtrip():
     april_tags = dai.AprilTags()
@@ -193,7 +243,7 @@ def test_benchmark_report_binding_readonly():
 
     latencies_again = benchmark_report.latencies
     assert latencies_again == []
-    assert latencies_again != latencies
+    assert latencies_again is not latencies
 
 
 def test_imu_data_binding_roundtrip():

@@ -53,7 +53,7 @@ void bind_trackedfeatures(pybind11::module& m, void* pCallstack) {
         .def_property(
             "trackedFeatures",
             [](TrackedFeatures& feat) -> std::vector<TrackedFeature>& { return feat.trackedFeatures; },
-            [](TrackedFeatures& feat, std::vector<TrackedFeature>& val) { feat.trackedFeatures = std::move(val); },
+            [](TrackedFeatures& feat, std::vector<TrackedFeature> val) { feat.trackedFeatures = std::move(val); },
             DOC(dai, TrackedFeatures, trackedFeatures))
         .def("getTimestamp", &TrackedFeatures::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &TrackedFeatures::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))

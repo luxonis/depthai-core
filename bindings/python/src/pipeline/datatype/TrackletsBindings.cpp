@@ -66,7 +66,7 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
         .def_property(
             "tracklets",
             [](Tracklets& track) -> std::vector<Tracklet>& { return track.tracklets; },
-            [](Tracklets& track, std::vector<Tracklet>& val) { track.tracklets = std::move(val); },
+            [](Tracklets& track, std::vector<Tracklet> val) { track.tracklets = std::move(val); },
             DOC(dai, Tracklets, tracklets))
         .def("getTimestamp", &Tracklets::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &Tracklets::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
