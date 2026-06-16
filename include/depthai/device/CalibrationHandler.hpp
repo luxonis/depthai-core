@@ -27,6 +27,8 @@ namespace dai {
  *  - productName
  */
 
+class DeviceBase;
+
 class CalibrationHandler {
    public:
     CalibrationHandler() = default;
@@ -225,18 +227,6 @@ class CalibrationHandler {
      * @return field of view of the camera with given cameraId.
      */
     float getFov(CameraBoardSocket cameraId, bool useSpec = true) const;
-
-    /**
-     * Get the angle in radians between the optical z-axes of two cameras.
-     *
-     * The angle is computed from the relative camera rotation matrix and
-     * returned in the range [0, pi].
-     *
-     * @param cameraId1 first camera socket
-     * @param cameraId2 second camera socket
-     * @return angle in radians between the two camera z-axes
-     */
-    float getCameraZAxisAngle(CameraBoardSocket cameraId1, CameraBoardSocket cameraId2) const;
 
     /**
      *  Get the lens position of the given camera
@@ -777,6 +767,19 @@ class CalibrationHandler {
    protected:
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;
     LengthUnit getEepromTranslationUnits() const;
+    friend DeviceBase;
+
+    /**
+     * Get the angle in radians between the optical z-axes of two cameras.
+     *
+     * The angle is computed from the relative camera rotation matrix and
+     * returned in the range [0, pi].
+     *
+     * @param cameraId1 first camera socket
+     * @param cameraId2 second camera socket
+     * @return angle in radians between the two camera z-axes
+     */
+    float getCameraZAxisAngle(CameraBoardSocket cameraId1, CameraBoardSocket cameraId2) const;
 };
 
 /**
