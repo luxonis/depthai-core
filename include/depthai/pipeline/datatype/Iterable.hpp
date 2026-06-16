@@ -17,7 +17,7 @@ class Iterable {
     // Possibility to iterate over items without issues:
     //    std::vector<Item>& items;
 
-    virtual ~Iterable() = default;
+    virtual ~Iterable();
 
     /**
      * Returns the number of iterable sub-items contained in the message.
