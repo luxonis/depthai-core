@@ -2,6 +2,7 @@
 #pragma once
 
 // standard
+#include <chrono>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -85,6 +86,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::vector<std::shared_ptr<Node>> getSourceNodes();
 
    private:
+    static std::string createTelemetryPipelineId();
+
     // static functions
     static bool isSamePipeline(const Node::Output& out, const Node::Input& in);
     static bool canConnect(const Node::Output& out, const Node::Input& in);
@@ -98,13 +101,13 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setCameraTuningBlobPath(CameraBoardSocket socket, const fs::path& path);
     void setXLinkChunkSize(int sizeBytes);
     GlobalProperties getGlobalProperties() const;
-    void setGlobalProperties(GlobalProperties globalProperties);
+    void setGlobalProperties(const GlobalProperties& globalProperties);
     void setDefaultDeviceProperties(const DeviceProperties& deviceProperties);
     void setDefaultDevicePropertiesRef(DeviceProperties* deviceProperties);
     std::optional<DeviceProperties> getDefaultDeviceProperties() const;
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
-    void setBoardConfig(BoardConfig board);
+    void setBoardConfig(const BoardConfig& board);
     void setAutoCalibrationMode(PipelineAutoCalibrationMode mode);
     std::pair<std::shared_ptr<dai::node::Camera>, std::shared_ptr<dai::node::Camera>> getStereoPair() const;
     bool hasDynamicCalibration() const;
@@ -114,16 +117,16 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson(bool includeAssets) const;
-    void remove(std::shared_ptr<Node> node);
+    void remove(const std::shared_ptr<Node>& node);
 
     std::vector<Node::Connection> getConnections() const;
     std::vector<Node::ConnectionInternal> getConnectionsInternal() const;
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
-    void setCalibrationData(CalibrationHandler calibrationDataHandler);
+    void setCalibrationData(const CalibrationHandler& calibrationDataHandler);
     bool isCalibrationDataAvailable() const;
     CalibrationHandler getCalibrationData() const;
-    void setEepromData(std::optional<EepromData> eepromData);
+    void setEepromData(const std::optional<EepromData>& eepromData);
     std::optional<EepromData> getEepromData() const;
     uint32_t getEepromId() const;
     bool isHostOnly() const;
@@ -165,6 +168,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // is pipeline running
     AtomicBool running{false};
+    std::string telemetryPipelineId{createTelemetryPipelineId()};
+    std::optional<std::chrono::steady_clock::time_point> telemetryPipelineStartedAt;
 
     // was pipeline built
     AtomicBool isBuild{false};
@@ -257,7 +262,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     }
 
     // Add a node to nodeMap
-    void add(std::shared_ptr<Node> node);
+    void add(const std::shared_ptr<Node>& node);
 
     // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
@@ -274,7 +279,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
    private:
     // Resource
-    std::vector<uint8_t> loadResource(fs::path uri);
+    std::vector<uint8_t> loadResource(const fs::path& uri);
     std::vector<uint8_t> loadResourceCwd(fs::path uri, fs::path cwd, bool moveAsset = false);
 };
 
@@ -534,16 +539,6 @@ class Pipeline {
     }
 
     /// Sets implicit automatic calibration policy for this pipeline.
-    void setAutoCalibration(AutoCalibrationMode mode) {
-        impl()->setAutoCalibrationMode(mode);
-    }
-
-    /// Gets implicit automatic calibration policy for this pipeline.
-    AutoCalibrationMode getAutoCalibration() const {
-        return impl()->getAutoCalibrationMode();
-    }
-
-    /// Sets implicit automatic calibration policy for this pipeline.
     void setAutoCalibrationMode(AutoCalibrationMode mode) {
         impl()->setAutoCalibrationMode(mode);
     }
@@ -598,6 +593,13 @@ class Pipeline {
      */
     std::shared_ptr<Device> getDefaultDevice() {
         return impl()->defaultDevice;
+    }
+    std::shared_ptr<const Device> getDefaultDevice() const {
+        return impl()->defaultDevice;
+    }
+
+    std::string getTelemetryPipelineId() const {
+        return impl()->telemetryPipelineId;
     }
 
     void addTask(std::function<void()> task) {

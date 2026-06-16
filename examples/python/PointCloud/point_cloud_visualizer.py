@@ -19,7 +19,7 @@ except ImportError:
 import depthai as dai
 
 
-def colorize_depth(frame: np.ndarray) -> np.ndarray:
+def colorizeDepth(frame: np.ndarray) -> np.ndarray:
     """Normalize a uint16 depth frame and apply a colormap for display."""
     downscaled = frame[::4, ::4]
     nonZero = downscaled[downscaled != 0]
@@ -124,7 +124,7 @@ def main() -> None:
                 # Show colorized depth in an OpenCV window
                 depthMsg = qDepth.tryGet()
                 if depthMsg is not None:
-                    cv2.imshow("Depth", colorize_depth(depthMsg.getCvFrame()))
+                    cv2.imshow("Depth", colorizeDepth(depthMsg.getCvFrame()))
 
                 if cv2.waitKey(1) == ord("q"):
                     break

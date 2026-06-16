@@ -98,7 +98,7 @@ void SegmentationParser::setConfig(const dai::NNArchiveVersionedConfig& config) 
     }
 
     DAI_CHECK_V(segmentationHeads > 0, "NNArchive does not contain a segmentation head.");
-    DAI_CHECK_V(segmentationHeads == 1, "NNArchive contains " + std::to_string(segmentationHeads) + " segmentation heads. Please build with a specific head.");
+    DAI_CHECK_V(segmentationHeads == 1, "NNArchive contains {} segmentation heads. Please build with a specific head.", segmentationHeads);
 
     setConfig(segHead);
 }
@@ -167,7 +167,7 @@ std::string checkTensorName(const dai::NNData& nnData, const std::string& prefer
 
     if(preferredName != "") {
         auto it = std::find(layerNames.begin(), layerNames.end(), preferredName);
-        DAI_CHECK_V(it != layerNames.end(), "Preferred Segmentation tensor name '" + preferredName + "' not found in NNData outputs.");
+        DAI_CHECK_V(it != layerNames.end(), "Preferred Segmentation tensor name '{}' not found in NNData outputs.", preferredName);
         return preferredName;
     }
 
@@ -183,19 +183,21 @@ void SegmentationParser::validateTensor(std::optional<TensorInfo>& info) {
     int channels = info->getChannels();
 
     DAI_CHECK_V(maskWidth > 0 && maskHeight > 0 && channels > 0,
-                "Invalid tensor dimensions retrieved for segmentation. Channels: " + std::to_string(channels) + ", height: " + std::to_string(maskHeight)
-                    + ", width: " + std::to_string(maskWidth) + ".");
+                "Invalid tensor dimensions retrieved for segmentation. Channels: {}, height: {}, width: {}.",
+                channels,
+                maskHeight,
+                maskWidth);
     DAI_CHECK(channels <= 256, "SegmentationParser supports a maximum of 256 channels.");
 
     if(!properties.classesInOneLayer && properties.labels.size() > 0) {
         int expectedNumLabels = properties.labels.size();
         DAI_CHECK_V(expectedNumLabels == channels,
-                    fmt::format("Number of provided labels ({}) does not match number of channels ({}).{}",
-                                expectedNumLabels,
-                                channels,
-                                properties.backgroundClass
-                                    ? " Note: background_class is set to true, make sure to add a background label to the beginning of the labels list."
-                                    : ""));
+                    "Number of provided labels ({}) does not match number of channels ({}).{}",
+                    expectedNumLabels,
+                    channels,
+                    properties.backgroundClass
+                        ? " Note: background_class is set to true, make sure to add a background label to the beginning of the labels list."
+                        : "");
     }
 }
 

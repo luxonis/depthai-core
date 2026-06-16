@@ -56,7 +56,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * Returns number of frames in pool
      *
      */
-    int getNumFramesPool();
+    int getNumFramesPool() const;
 
     /**
      * @brief Set NNArchive for this Node. If the archive's type is SUPERBLOB, use default number of shaves.
@@ -84,7 +84,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      *
      * @param blob OpenVINO blob to retrieve the information from
      */
-    void setBlob(OpenVINO::Blob blob);
+    void setBlob(const OpenVINO::Blob& blob);
 
     /**
      * Same functionality as the setBlobPath(). Load network blob into assets and use once pipeline is started.
@@ -104,7 +104,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Set preview output size, as a tuple<width, height>
      */
-    void setInputImageSize(std::tuple<int, int> size);
+    void setInputImageSize(const std::tuple<int, int>& size);
 
     /**
      * Sets NN Family to parse. Possible values are:
@@ -119,7 +119,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /**
      * Gets NN Family to parse
      */
-    DetectionNetworkType getNNFamily();
+    DetectionNetworkType getNNFamily() const;
 
     /**
      * Specifies confidence threshold at which to filter the rest of the detections.
@@ -156,13 +156,13 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @param anchors Flattened vector of anchors
      * @warning This method is deprecated, use setAnchorsV2 instead.
      */
-    void setAnchors(std::vector<float> anchors);
+    void setAnchors(const std::vector<float>& anchors);
 
     /**
      * Set anchor masks for anchor-based yolo models
      * @param anchorMasks Map of anchor masks
      */
-    void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
+    void setAnchorMasks(const std::map<std::string, std::vector<int>>& anchorMasks);
 
     /**
      * Set anchors for anchor-based yolo models (v2)

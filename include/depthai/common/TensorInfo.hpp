@@ -36,6 +36,7 @@ struct TensorInfo {
         FP32 = 3,  // Single precision floating point
         I8 = 4,    // Signed byte
         FP64 = 5,  // Double precision floating point
+        U16F = 6,  // Unsigned short (16 bit)
     };
 
     void validateStorageOrder() const {
@@ -87,6 +88,8 @@ struct TensorInfo {
                 return sizeof(float);
             case DataType::FP64:
                 return sizeof(double);
+            case DataType::U16F:
+                return sizeof(uint16_t);
             default:
                 return 0;
                 break;
@@ -380,6 +383,9 @@ inline std::ostream& operator<<(std::ostream& os, const TensorInfo::StorageOrder
 
 inline std::ostream& operator<<(std::ostream& os, const TensorInfo::DataType& dt) {
     switch(dt) {
+        case TensorInfo::DataType::U16F:
+            os << "U16F";
+            break;
         case TensorInfo::DataType::FP16:
             os << "FP16";
             break;

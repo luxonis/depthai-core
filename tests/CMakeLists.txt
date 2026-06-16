@@ -398,6 +398,14 @@ add_executable(test_wrapper src/helpers/test_wrapper.cpp)
 target_include_directories(test_wrapper PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
 target_link_libraries(test_wrapper PRIVATE depthai::core Threads::Threads spdlog::spdlog)
 
+add_executable(telemetry_test_child src/ondevice_tests/telemetry_test_child.cpp)
+add_default_flags(telemetry_test_child LEAN)
+target_link_libraries(telemetry_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+
+add_executable(telemetry_multi_device_test_child src/ondevice_tests/telemetry_multi_device_test_child.cpp)
+add_default_flags(telemetry_multi_device_test_child LEAN)
+target_link_libraries(telemetry_multi_device_test_child PRIVATE depthai::core Threads::Threads spdlog::spdlog)
+
 ### On-host tests #############################################################
 
 # Superblob test
@@ -515,6 +523,10 @@ dai_set_test_labels(point_cloud_test onhost ci)
 dai_add_test(model_slug_test src/onhost_tests/model_slug_test.cpp)
 dai_set_test_labels(model_slug_test onhost ci)
 
+# GPUStereo node tests
+dai_add_test(gpu_stereo_node_test src/onhost_tests/pipeline/node/gpu_stereo_node_test.cpp)
+dai_set_test_labels(gpu_stereo_node_test onhost ci)
+
 # Remote connection tests
 if(DEPTHAI_ENABLE_REMOTE_CONNECTION)
     dai_add_test(remote_connection_test src/onhost_tests/remote_connection_test.cpp)
@@ -529,6 +541,23 @@ dai_set_test_labels(camera_stream_restart_test ondevice rvc2_all rvc4 rvc4rgb ci
 # DepthAI logging test
 dai_add_test(logging_test src/ondevice_tests/logging_test.cpp)
 dai_set_test_labels(logging_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+# Telemetry redirect test
+dai_add_test(telemetry_test src/ondevice_tests/telemetry_test.cpp)
+target_include_directories(telemetry_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_link_libraries(telemetry_test PRIVATE httplib::httplib)
+target_compile_definitions(telemetry_test PRIVATE DEPTHAI_TELEMETRY_TEST_CHILD_PATH="$<TARGET_FILE:telemetry_test_child>")
+add_dependencies(telemetry_test telemetry_test_child)
+dai_set_test_labels(telemetry_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+# Telemetry redirect test across multiple devices
+dai_add_test(telemetry_multi_device_test src/ondevice_tests/telemetry_multi_device_test.cpp)
+target_include_directories(telemetry_multi_device_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include/subprocess)
+target_link_libraries(telemetry_multi_device_test PRIVATE httplib::httplib)
+target_compile_definitions(telemetry_multi_device_test PRIVATE
+    DEPTHAI_TELEMETRY_MULTI_DEVICE_TEST_CHILD_PATH="$<TARGET_FILE:telemetry_multi_device_test_child>")
+add_dependencies(telemetry_multi_device_test telemetry_multi_device_test_child)
+dai_set_test_labels(telemetry_multi_device_test ondevice rvc2_all rvc4 rvc4rgb)
 
 # OpenVINO blob test
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -548,6 +577,10 @@ endif()
 # Vpp node tests
 dai_add_test(vpp_test src/ondevice_tests/vpp_test.cpp)
 dai_set_test_labels(vpp_test ondevice rvc4 ci)
+
+# GPUStereo node (device execution) test
+dai_add_test(gpu_stereo_device_test src/ondevice_tests/gpu_stereo_node_test.cpp)
+dai_set_test_labels(gpu_stereo_device_test ondevice rvc4 ci)
 
 # Dynamic calibration tests
 if(DEPTHAI_FETCH_ARTIFACTS)
@@ -645,6 +678,10 @@ dai_set_test_labels(resolutions_test ondevice) # TODO(jakob) Make the test runna
 dai_add_test(serialization_test src/onhost_tests/serialization_test.cpp)
 dai_set_test_labels(serialization_test ondevice rvc2_all ci)
 
+# GPU availability test
+dai_add_test(gpu_availability_test src/ondevice_tests/gpu_availability_test.cpp)
+dai_set_test_labels(gpu_availability_test ondevice rvc4)
+
 # Subnode test
 dai_add_test(subnode_test src/ondevice_tests/pipeline/subnode_test.cpp)
 dai_set_test_labels(subnode_test ondevice rvc2_all rvc4 rvc4rgb ci)
@@ -715,6 +752,9 @@ dai_set_test_labels(regression_camera_concurrency_test ondevice rvc4 ci noreplay
 dai_add_test(regression_message_group_test src/ondevice_tests/regression/message_group.cpp)
 dai_set_test_labels(regression_message_group_test ondevice rvc2_all rvc4 rvc4rgb ci)
 
+dai_add_test(regression_boot_test src/ondevice_tests/regression/boot.cpp)
+dai_set_test_labels(regression_boot_test ondevice rvc2 rvc4 usb ci noreplayci)
+
 # Sync test
 dai_add_test(sync_test src/ondevice_tests/pipeline/node/sync_test.cpp)
 dai_set_test_labels(sync_test ondevice rvc2_all rvc4 ci)
@@ -742,9 +782,13 @@ dai_set_test_labels(bridge_large_messages ondevice rvc4 rvc4rgb ci)
 dai_add_test(image_align_node_test src/ondevice_tests/image_align_node_test.cpp)
 dai_set_test_labels(image_align_node_test ondevice rvc2_all rvc4 ci)
 
-# Script node test
+# Common Script node test
 dai_add_test(script_node_test src/ondevice_tests/script_node_test.cpp)
 dai_set_test_labels(script_node_test ondevice rvc2_all rvc4 rvc4rgb ci)
+
+# RVC4 specific Script node test
+dai_add_test(script_node_rvc4_test src/ondevice_tests/script_node_rvc4_test.cpp)
+dai_set_test_labels(script_node_rvc4_test ondevice rvc4 rvc4rgb ci)
 
 # StereoDepth test
 dai_add_test(stereo_depth_node_test src/ondevice_tests/stereo_depth_node_test.cpp)

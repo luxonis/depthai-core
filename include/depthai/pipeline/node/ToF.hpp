@@ -49,6 +49,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output intensity{*this, {"intensity", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
     Output phase{*this, {"phase", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
+    Output raw{*this, {"raw", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
 
     /**
      * Build with a specific board socket
@@ -82,14 +83,26 @@ class ToF : public DeviceNodeGroup {
     ToF(const std::shared_ptr<Device>& device)
         : DeviceNodeGroup(device),
           rawDepth{tofBase->depth},
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
           depth{imageFilters->output},
+#else
+          depth{tofBase->depth},
+#endif
           amplitude{tofBase->amplitude},
           intensity{tofBase->intensity},
           phase{tofBase->phase},
+          raw{tofBase->raw},
           tofBaseInputConfig{tofBase->inputConfig},
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
           imageFiltersInputConfig{imageFilters->inputConfig},
-          tofBaseNode{*tofBase},
-          imageFiltersNode{*imageFilters} {}
+#endif
+          tofBaseNode{*tofBase}
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+          ,
+          imageFiltersNode{*imageFilters}
+#endif
+    {
+    }
 
     ~ToF() override;
 
@@ -102,22 +115,28 @@ class ToF : public DeviceNodeGroup {
     void buildInternal() override {
         // Build all subnodes, call their internal build functions
         tofBase->buildInternal();
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         imageFilters->buildInternal();
 
         // Link subnodes together
         tofBase->depth.link(imageFilters->input);
+#endif
     }
 
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::TOF_MID_RANGE,
                                std::optional<float> fps = std::nullopt) {
         tofBase->build(boardSocket, presetMode, fps);
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         imageFilters->build(presetMode);
+#endif
         return std::static_pointer_cast<ToF>(shared_from_this());
     }
 
     Subnode<ToFBase> tofBase{*this, "tofBase"};
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     Subnode<ImageFilters> imageFilters{*this, "imageFilters"};
+#endif
 
     /**
      * Raw depth output from ToF sensor
@@ -145,24 +164,33 @@ class ToF : public DeviceNodeGroup {
     Output& phase;
 
     /**
+     * Raw data coming from the sensor
+     */
+    Output& raw;
+
+    /**
      * Input config for ToF base node
      */
     Input& tofBaseInputConfig;
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Input config for image filters
      */
     Input& imageFiltersInputConfig;
+#endif
 
     /**
      * ToF base node
      */
     ToFBase& tofBaseNode;
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Image filters node
      */
     ImageFilters& imageFiltersNode;
+#endif
 };
 
 }  // namespace node

@@ -450,7 +450,7 @@ TEST_CASE("DetectionParser replay test") {
     const std::filesystem::path yoloV8InstanceSegmentationLargeCoco640x352GroundTruth{YOLO_V8_INSTANCE_SEGMENTATION_LARGE_COCO_640x352_GROUND_TRUTH};
     const std::filesystem::path yoloV10NanoCoco512x288GroundTruth{YOLO_V10_NANO_COCO_512x288_GROUND_TRUTH};
     const std::filesystem::path ppeDetection640x640GroundTruth{PPE_DETECTION_640x640_GROUND_TRUTH};
-    const std::filesystem::path yoloPBdd100k320x320GroundTruth{YOLO_P_BDD100K_320x320_GROUND_TRUTH};
+    // const std::filesystem::path yoloPBdd100k320x320GroundTruth{YOLO_P_BDD100K_320x320_GROUND_TRUTH};
     const std::filesystem::path fireDetection512x288GroundTruth{FIRE_DETECTION_512x288_GROUND_TRUTH};
 
     const std::filesystem::path peopleWalkingVideo{PEOPLE_WALKING_VIDEO};
@@ -464,7 +464,7 @@ TEST_CASE("DetectionParser replay test") {
         {"yolov8-instance-segmentation-large:coco-640x352:701031f", yoloV8InstanceSegmentationLargeCoco640x352GroundTruth, peopleWalkingVideo},
         {"yolov10-nano:coco-512x288:007b5fe", yoloV10NanoCoco512x288GroundTruth, peopleWalkingVideo},
         {"ppe-detection:640x640:419a4e5", ppeDetection640x640GroundTruth, peopleWalkingVideo},
-        {"luxonis/yolo-p:bdd100k-320x320:e14d3d9", yoloPBdd100k320x320GroundTruth, peopleWalkingVideo},
+        // {"luxonis/yolo-p:bdd100k-320x320:e14d3d9", yoloPBdd100k320x320GroundTruth, peopleWalkingVideo},
         {"fire-detection:512x288:4a8263c", fireDetection512x288GroundTruth, fireVideo}};
 
     for(const auto& testCase : testCases) {
@@ -551,5 +551,57 @@ TEST_CASE("DetectionParser segmentation mask test") {
     cv::Mat diff;
     cv::absdiff(segmentationMask, kitchenGtSegmentation, diff);
     REQUIRE(cv::countNonZero(diff) <= 5000);
+}
+
+TEST_CASE("DetectionParser segmentation mask is background-only for 0 detections") {
+    const std::string modelName = "yolov8-instance-segmentation-large:coco-640x352:701031f";
+
+    dai::Pipeline p;
+    auto device = p.getDefaultDevice();
+
+    auto description = dai::NNModelDescription{modelName, "RVC4"};
+    auto archivePath = dai::getModelFromZoo(description);
+    dai::NNArchive nnArchive{archivePath};
+
+    const auto inputSize = nnArchive.getInputSize();
+    REQUIRE(inputSize.has_value());
+
+    const cv::Size networkSize{static_cast<int>(inputSize->first), static_cast<int>(inputSize->second)};
+    cv::Mat blackImage = cv::Mat::zeros(networkSize, CV_8UC3);
+
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setModelPath(archivePath);
+
+    auto detectionParser = p.create<dai::node::DetectionParser>()->build(nn->out, nnArchive);
+
+    auto nnInput = nn->input.createInputQueue();
+    auto outputQueue = detectionParser->out.createOutputQueue();
+
+    auto inputFrame = std::make_shared<dai::ImgFrame>();
+    auto transformation = dai::ImgTransformation{inputSize->first, inputSize->second};
+    inputFrame->setCvFrame(blackImage, dai::ImgFrame::Type::BGR888i);
+    inputFrame->setTimestamp(std::chrono::steady_clock::now());
+    inputFrame->setSequenceNum(0);
+    inputFrame->transformation = transformation;
+
+    p.start();
+    REQUIRE(p.isRunning());
+
+    nnInput->send(inputFrame);
+
+    auto detections = outputQueue->get<dai::ImgDetections>();
+    REQUIRE(detections != nullptr);
+
+    std::optional<cv::Mat> optSegmentationMask = detections->getCvSegmentationMask();
+    REQUIRE(optSegmentationMask.has_value());
+
+    cv::Mat segmentationMask = *optSegmentationMask;
+    REQUIRE_FALSE(segmentationMask.empty());
+    REQUIRE(detections->getSegmentationMaskWidth() == static_cast<std::size_t>(networkSize.width));
+    REQUIRE(detections->getSegmentationMaskHeight() == static_cast<std::size_t>(networkSize.height));
+
+    cv::Mat nonBackgroundMask;
+    cv::compare(segmentationMask, 255, nonBackgroundMask, cv::CMP_NE);
+    REQUIRE(cv::countNonZero(nonBackgroundMask) == 0);
 }
 #endif

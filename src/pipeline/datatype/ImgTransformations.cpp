@@ -9,6 +9,7 @@
 #include <depthai/utility/matrixOps.hpp>
 #include <vector>
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraModel.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Point3f.hpp"
@@ -55,16 +56,17 @@ dai::Point2f interSourceFrameTransform(dai::Point2f sourcePt, const ImgTransform
 
     std::array<float, 3> normalizedUndistortedRay = pixelToRay(sourcePt, from);
 
-    const std::array<std::array<float, 4>, 4> extriniscTransformation = from.getExtrinsicsTransformationMatrixTo(to);
+    std::array<std::array<float, 3>, 3> rotationMatrix = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+    if(from.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO && to.getExtrinsics().toCameraSocket != dai::CameraBoardSocket::AUTO) {
+        const std::array<std::array<float, 4>, 4> extriniscTransformation = from.getExtrinsicsTransformationMatrixTo(to);
+        rotationMatrix = matrix::getRotationMatrixFromProjection4x4(extriniscTransformation);
+    }
 
-    std::array<std::array<float, 3>, 3> rotationMatrix = matrix::getRotationMatrixFromProjection4x4(extriniscTransformation);
-
-    const std::array<float, 3> rectifiedRay = matrix::matVecMul(rotationMatrix, normalizedUndistortedRay);
-
+    std::array<float, 3> rectifiedRay = matrix::matVecMul(rotationMatrix, normalizedUndistortedRay);
     return rayToPixel(rectifiedRay, to);
 }
 
-dai::RotatedRect interSourceFrameTransform(dai::RotatedRect sourceRect, const ImgTransformation& from, const ImgTransformation& to) {
+dai::RotatedRect interSourceFrameTransform(const dai::RotatedRect& sourceRect, const ImgTransformation& from, const ImgTransformation& to) {
     if(from.isEqualTransformation(to)) {
         return sourceRect;
     }
@@ -127,7 +129,7 @@ dai::Point2f ImgTransformation::transformPoint(dai::Point2f point) const {
     auto transformed = matrix::dehomogenizePoint3(matrix::matVecMul(transformationMatrix, {point.x, point.y, 1}));
     return {transformed[0], transformed[1]};
 }
-dai::RotatedRect ImgTransformation::transformRect(dai::RotatedRect rect) const {
+dai::RotatedRect ImgTransformation::transformRect(const dai::RotatedRect& rect) const {
     const auto points = rect.getPoints();
     std::vector<std::array<float, 2>> vPoints(points.size());
     for(auto i = 0U; i < points.size(); ++i) {
@@ -140,7 +142,7 @@ dai::Point2f ImgTransformation::invTransformPoint(dai::Point2f point) const {
     auto transformed = matrix::dehomogenizePoint3(matrix::matVecMul(transformationMatrixInv, {point.x, point.y, 1}));
     return {transformed[0], transformed[1]};
 }
-dai::RotatedRect ImgTransformation::invTransformRect(dai::RotatedRect rect) const {
+dai::RotatedRect ImgTransformation::invTransformRect(const dai::RotatedRect& rect) const {
     const auto points = rect.getPoints();
     std::vector<std::array<float, 2>> vPoints(points.size());
     for(auto i = 0U; i < points.size(); ++i) {
@@ -249,7 +251,7 @@ bool ImgTransformation::getDstMaskPt(size_t x, size_t y) {
     return isPointInRotatedRectangle({(float)x, (float)y}, dstCrop);
 };
 
-ImgTransformation& ImgTransformation::addTransformation(std::array<std::array<float, 3>, 3> matrix) {
+ImgTransformation& ImgTransformation::addTransformation(const std::array<std::array<float, 3>, 3>& matrix) {
     transformationMatrix = matrix::matMul(matrix, transformationMatrix);
     transformationMatrixInv = matrix::getMatrixInverse(transformationMatrix);
     cropsValid = false;
@@ -340,7 +342,7 @@ ImgTransformation& ImgTransformation::setSourceSize(size_t width, size_t height)
     this->srcHeight = height;
     return *this;
 }
-ImgTransformation& ImgTransformation::setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix) {
+ImgTransformation& ImgTransformation::setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix) {
     sourceIntrinsicMatrix = intrinsicMatrix;
     sourceIntrinsicMatrixInv = matrix::getMatrixInverse(intrinsicMatrix);
     return *this;
@@ -353,7 +355,7 @@ ImgTransformation& ImgTransformation::setDistortionModel(CameraModel model) {
     distortionModel = model;
     return *this;
 }
-ImgTransformation& ImgTransformation::setDistortionCoefficients(std::vector<float> coefficients) {
+ImgTransformation& ImgTransformation::setDistortionCoefficients(const std::vector<float>& coefficients) {
     distortionCoefficients = coefficients;
     return *this;
 }
@@ -376,6 +378,7 @@ dai::Point2f ImgTransformation::remapPointTo(const ImgTransformation& to, dai::P
         transformed.x /= to.width;
         transformed.y /= to.height;
         transformed.normalized = true;
+        transformed.hasNormalized = true;
     }
     return transformed;
 }
@@ -400,7 +403,7 @@ dai::RotatedRect ImgTransformation::remapRectTo(const ImgTransformation& to, dai
     }
     return transformed;
 }
-dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const {
+dai::RotatedRect ImgTransformation::remapRectFrom(const ImgTransformation& from, const dai::RotatedRect& rect) const {
     return from.remapRectTo(*this, rect);
 }
 
@@ -425,12 +428,11 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
 
     // extrinsics transform
     // center subtraction (-cx, -cy) and normalization by focal length (fx, fy) is already done in pixelToRay
-    auto z_cm = depth / 10.0f;
-    auto x_cm = thisRay[0] * z_cm;
-    auto y_cm = thisRay[1] * z_cm;
-    dai::Point3f source3dPoint = {x_cm, y_cm, z_cm};
+    auto xMm = thisRay[0] * depth;
+    auto yMm = thisRay[1] * depth;
+    dai::Point3f source3dPoint = {xMm, yMm, depth};
 
-    const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to);
+    const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to, false, LengthUnit::MILLIMETER);
     dai::Point3f target3dPoint = matrix::transformPoint3f(extriniscTransformation, source3dPoint);
     if(target3dPoint.z <= 0) {
         throw std::runtime_error(fmt::format("Projected point is behind the target camera socket. Cannot project to 2D. Target spatial point: ({}, {}, {})",
@@ -450,8 +452,31 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
         targetPoint.x /= to.width;
         targetPoint.y /= to.height;
         targetPoint.normalized = true;
+        targetPoint.hasNormalized = true;
     }
     return targetPoint;
+}
+
+dai::RotatedRect ImgTransformation::projectRectTo(const ImgTransformation& to, RotatedRect& rect, float depth) const {
+    bool normalized = rect.isNormalized();
+    if(normalized) {
+        rect = rect.denormalize(width, height);
+    }
+
+    auto points = rect.getPoints();
+
+    std::vector<std::array<float, 2>> projectedPoints(points.size());
+    for(size_t i = 0; i < points.size(); ++i) {
+        auto projectedPoint = projectPointTo(to, points[i], depth);
+        projectedPoints[i] = {projectedPoint.x, projectedPoint.y};
+    }
+    dai::RotatedRect transformed = impl::getOuterRotatedRect(projectedPoints);
+    if(normalized) {
+        auto targetSize = to.getSize();
+        transformed = transformed.normalize(targetSize.first, targetSize.second);
+    }
+
+    return transformed;
 }
 
 dai::Point2f ImgTransformation::project3DPoint(const dai::Point3f& point3f) const {

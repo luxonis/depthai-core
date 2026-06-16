@@ -20,7 +20,7 @@ class NNDataViewer {
 
     FactorsBefore factorsBefore;
 
-    NNDataViewer(dai::TensorInfo tensor, std::shared_ptr<dai::Memory> data, std::shared_ptr<spdlog::async_logger> logger)
+    NNDataViewer(const dai::TensorInfo& tensor, const std::shared_ptr<dai::Memory>& data, const std::shared_ptr<spdlog::async_logger>& logger)
         : data{data}, tensor{tensor}, logger{logger} {};
     bool build() {
         if(tensor.strides.size() < 2) {
@@ -141,6 +141,10 @@ class NNDataViewer {
             }
             case TensorInfo::DataType::I8: {
                 int8_t dataOut = static_cast<int8_t>(data->getData()[index]);
+                return (static_cast<float>(dataOut) - tensor.qpZp) * tensor.qpScale;
+            }
+            case TensorInfo::DataType::U16F: {
+                int32_t dataOut = reinterpret_cast<uint16_t*>(data->getData().data())[index / sizeof(uint16_t)];
                 return (static_cast<float>(dataOut) - tensor.qpZp) * tensor.qpScale;
             }
             case TensorInfo::DataType::INT: {

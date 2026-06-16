@@ -5,56 +5,44 @@ from rerun_node import RerunNode
 # Create pipeline
 
 with dai.Pipeline() as p:
-    fps = 30
+    fps = 60
     width = 640
     height = 400
     # Define sources and outputs
     left = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B, sensorFps=fps)
     right = p.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C, sensorFps=fps)
     imu = p.create(dai.node.IMU)
-    stereo = p.create(dai.node.StereoDepth)
-    featureTracker = p.create(dai.node.FeatureTracker)
-    odom = p.create(dai.node.RTABMapVIO)
+    odom = p.create(dai.node.BasaltVIO)
     slam = p.create(dai.node.RTABMapSLAM)
-
+    stereo = p.create(dai.node.StereoDepth)
     params = {"RGBD/CreateOccupancyGrid": "true",
-              "Grid/3D": "true",
-              "Rtabmap/SaveWMState": "true"}
+            "Grid/3D": "true",
+            "Rtabmap/SaveWMState": "true"}
     slam.setParams(params)
 
     rerunViewer = p.create(RerunNode)
-    imu.enableIMUSensor([dai.IMUSensor.ACCELEROMETER_UNCALIBRATED, dai.IMUSensor.GYROSCOPE_UNCALIBRATED], 200)
+    imu.enableIMUSensor([dai.IMUSensor.ACCELEROMETER_RAW, dai.IMUSensor.GYROSCOPE_RAW], 200)
     imu.setBatchReportThreshold(1)
     imu.setMaxBatchReports(10)
 
-    featureTracker.setHardwareResources(1,2)
-    featureTracker.initialConfig.setCornerDetector(dai.FeatureTrackerConfig.CornerDetector.Type.HARRIS)
-    featureTracker.initialConfig.setNumTargetFeatures(1000)
-    featureTracker.initialConfig.setMotionEstimator(False)
-    featureTracker.initialConfig.FeatureMaintainer.minimumDistanceBetweenFeatures = 49
-
     stereo.setExtendedDisparity(False)
     stereo.setLeftRightCheck(True)
+    stereo.setSubpixel(True)
     stereo.setRectifyEdgeFillColor(0)
     stereo.enableDistortionCorrection(True)
     stereo.initialConfig.setLeftRightCheckThreshold(10)
     stereo.setDepthAlign(dai.CameraBoardSocket.CAM_B)
 
 
-    # Linking
-
     left.requestOutput((width, height)).link(stereo.left)
     right.requestOutput((width, height)).link(stereo.right)
-    featureTracker.passthroughInputImage.link(odom.rect)
-    stereo.rectifiedLeft.link(featureTracker.inputImage)
-    stereo.depth.link(odom.depth)
+    stereo.syncedLeft.link(odom.left)
+    stereo.syncedRight.link(odom.right)
+    stereo.depth.link(slam.depth)
+    stereo.rectifiedLeft.link(slam.rect)
     imu.out.link(odom.imu)
-    featureTracker.outputFeatures.link(odom.features)
 
     odom.transform.link(slam.odom)
-    odom.passthroughRect.link(slam.rect)
-    odom.passthroughDepth.link(slam.depth)
-
     slam.transform.link(rerunViewer.inputTrans)
     slam.passthroughRect.link(rerunViewer.inputImg)
     slam.occupancyGridMap.link(rerunViewer.inputGrid)

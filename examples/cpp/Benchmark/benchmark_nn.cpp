@@ -1,8 +1,19 @@
+#include <atomic>
+#include <csignal>
 #include <depthai/depthai.hpp>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
+std::atomic<bool> quitEvent(false);
+
+void signalHandler(int) {
+    quitEvent = true;
+}
+
 int main() {
+    signal(SIGTERM, signalHandler);
+    signal(SIGINT, signalHandler);
+
     // First prepare the model for benchmarking
     std::shared_ptr<dai::Device> device = std::make_shared<dai::Device>();
 
@@ -50,10 +61,13 @@ int main() {
     pipeline.start();
     inputQueue->send(inputFrame);
 
-    while(pipeline.isRunning()) {
+    while(pipeline.isRunning() && !quitEvent) {
         auto benchmarkReport = outputQueue->get<dai::BenchmarkReport>();
         std::cout << "FPS is " << benchmarkReport->fps << std::endl;
     }
+
+    pipeline.stop();
+    pipeline.wait();
 
     return 0;
 }

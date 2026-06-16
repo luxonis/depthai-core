@@ -20,7 +20,8 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawImgDetections, RawBuffer, std::shared_ptr<RawImgDetections>> rawImgDetections(m, "RawImgDetections", DOC(dai, RawImgDetections));
-    py::class_<ImgDetections, Py<ImgDetections>, Buffer, std::shared_ptr<ImgDetections>> imgDetections(m, "ImgDetections", DOC(dai, ImgDetections));
+    py::class_<ImgDetections, Py<ImgDetections>, Buffer, Transformable, std::shared_ptr<ImgDetections>> imgDetections(
+        m, "ImgDetections", DOC(dai, ImgDetections));
     py::class_<ImgDetection> imgDetection(m, "ImgDetection", DOC(dai, ImgDetection));
 
     ///////////////////////////////////////////////////////////////////////
@@ -84,7 +85,8 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("getCenterY", &dai::ImgDetection::getCenterY)
         .def("getWidth", &dai::ImgDetection::getWidth)
         .def("getHeight", &dai::ImgDetection::getHeight)
-        .def("getAngle", &dai::ImgDetection::getAngle);
+        .def("getAngle", &dai::ImgDetection::getAngle)
+        .def("transform", &dai::ImgDetection::transform, py::arg("source"), py::arg("target"), DOC(dai, ImgDetection, transform));
 
     // rawImgDetections
     //     .def(py::init<>())
@@ -152,6 +154,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
              py::return_value_policy::reference_internal)
         .def("getMaskData", &ImgDetections::getMaskData, DOC(dai, ImgDetectionsT, getMaskData))
         .def("getSegmentationMask", &ImgDetections::getSegmentationMask, DOC(dai, ImgDetectionsT, getSegmentationMask))
+        .def("transformTo", &ImgDetections::transformTo, py::arg("target"), DOC(dai, ImgDetections, transformTo))
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         .def("setCvSegmentationMask", &ImgDetections::setCvSegmentationMask, py::arg("mask"), DOC(dai, ImgDetectionsT, setCvSegmentationMask))
         .def(

@@ -201,7 +201,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                  d.wait();
              })
         //.def(py::init<const Pipeline&>())
-        .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
+        .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         .def("setDefaultDeviceProperties",
              &Pipeline::setDefaultDeviceProperties,
@@ -251,11 +251,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("serializeToJson", &Pipeline::serializeToJson, DOC(dai, Pipeline, serializeToJson))
         .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))
         .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
-        .def("setAutoCalibration", &Pipeline::setAutoCalibration, py::arg("mode"))
-        .def("getAutoCalibration", &Pipeline::getAutoCalibration)
         .def("setAutoCalibrationMode", &Pipeline::setAutoCalibrationMode, py::arg("mode"))
         .def("getAutoCalibrationMode", &Pipeline::getAutoCalibrationMode)
-        .def("getDefaultDevice", &Pipeline::getDefaultDevice, DOC(dai, Pipeline, getDefaultDevice))
+        .def("getDefaultDevice", static_cast<std::shared_ptr<Device> (Pipeline::*)()>(&Pipeline::getDefaultDevice), DOC(dai, Pipeline, getDefaultDevice))
         // 'Template' create function
         .def(
             "add",
@@ -293,7 +291,9 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack) {
                     setCreatingNodeFromPipelineCreate();
                     std::shared_ptr<Node> hostNode;
                     try {
-                        hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                        auto nodeObject = class_(*args, **kwargs);
+                        nodeObject.attr("_setPythonNodeName")(class_.attr("__name__").cast<std::string>());
+                        hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(nodeObject);
                     } catch(...) {
                         delCreatingNodeFromPipelineCreate();
                         delImplicitPipeline();

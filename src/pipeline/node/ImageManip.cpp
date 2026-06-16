@@ -7,7 +7,7 @@ namespace dai {
 
 namespace node {
 
-inline std::array<float, 9> flatten(std::array<std::array<float, 3>, 3> mat) {
+inline std::array<float, 9> flatten(const std::array<std::array<float, 3>, 3>& mat) {
     return {mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1], mat[1][2], mat[2][0], mat[2][1], mat[2][2]};
 }
 
@@ -16,9 +16,9 @@ ImageManip::ImageManip(std::unique_ptr<Properties> props)
       initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)) {}
 
 void ImageManip::run() {
-    impl::ImageManipOperations<impl::_ImageManipBuffer, impl::_ImageManipMemory, impl::WarpH> manip(properties, pimpl->logger);
+    impl::ImageManipOperations<impl::_ImageManipMemory, impl::ColorChangeH, impl::WarpH> manip(properties, pimpl->logger);
     auto iConf = runOnHost() ? *initialConfig : properties.initialConfig;
-    impl::loop<ImageManip, impl::_ImageManipBuffer, impl::_ImageManipMemory>(
+    impl::loop<ImageManip>(
         *this,
         iConf,
         pimpl->logger,
@@ -37,10 +37,13 @@ void ImageManip::run() {
                                  manip.getOutputHeight());
             return manip.getOutputSize();
         },
-        [&](std::shared_ptr<Memory>& src, std::shared_ptr<impl::_ImageManipMemory> dst) {
-            auto srcMem = std::make_shared<impl::_ImageManipMemory>(src->getData());
-            return manip.apply(srcMem, dst);
+        [&](size_t outputSize) {
+            auto outImage = std::make_shared<ImgFrame>();
+            auto outImageData = std::make_shared<impl::_ImageManipMemory>(outputSize);
+            outImage->data = outImageData;
+            return outImage;
         },
+        [&](const std::shared_ptr<OffsetMemory>& src, std::shared_ptr<OffsetMemory> dst) { return manip.apply(src, std::move(dst)); },
         [&](const ImgFrame& srcFrame, ImgFrame& dstFrame) {
             auto outType = manip.getOutputFrameType();
             auto dstSpecs = manip.getOutputFrameSpecs(outType);

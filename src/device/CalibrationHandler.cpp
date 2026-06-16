@@ -55,6 +55,20 @@ void validateImuCalibrationMatrix(const std::vector<std::vector<float>>& calibra
     }
 }
 
+EepromData validateCBAEepromData(EepromData eepromData) {
+    if(eepromData.cameraData.size() != 1) {
+        throw std::runtime_error("CBA calibration data must contain exactly one cameraData entry.");
+    }
+
+    auto it = eepromData.cameraData.begin();
+    if(it->first != CameraBoardSocket::CBA) {
+        CameraInfo cameraInfo = it->second;
+        eepromData.cameraData.erase(it);
+        eepromData.cameraData.emplace(CameraBoardSocket::CBA, cameraInfo);
+    }
+    return eepromData;
+}
+
 }  // namespace
 
 LengthUnit CalibrationHandler::getEepromTranslationUnits() const {
@@ -159,7 +173,7 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path eepromDataPath, std
     }
 }
 
-CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson, std::optional<bool> validateCalibration) {
+CalibrationHandler CalibrationHandler::fromJson(const nlohmann::json& eepromDataJson, std::optional<bool> validateCalibration) {
     CalibrationHandler calib;
     calib.eepromData = eepromDataJson;
     if(validateCalibration.value_or(false)) {
@@ -298,7 +312,7 @@ CalibrationHandler::CalibrationHandler(std::filesystem::path calibrationDataPath
     }
 }
 
-CalibrationHandler::CalibrationHandler(EepromData newEepromData, std::optional<bool> validateCalibration) {
+CalibrationHandler::CalibrationHandler(const EepromData& newEepromData, std::optional<bool> validateCalibration) {
     eepromData = newEepromData;
     if(validateCalibration.value_or(false)) {
         validateCalibrationHandler();
@@ -412,7 +426,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
-    CameraBoardSocket cameraId, std::tuple<int, int> destShape, Point2f topLeftPixelId, Point2f bottomRightPixelId, bool keepAspectRatio) const {
+    CameraBoardSocket cameraId, const std::tuple<int, int>& destShape, Point2f topLeftPixelId, Point2f bottomRightPixelId, bool keepAspectRatio) const {
     return getCameraIntrinsics(cameraId, std::get<0>(destShape), std::get<1>(destShape), topLeftPixelId, bottomRightPixelId, keepAspectRatio);
 }
 
@@ -583,6 +597,9 @@ std::vector<std::vector<float>> CalibrationHandler::getExtrinsicsToOrigin(Camera
 }
 
 CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
+    if(eepromData.cameraData.empty()) {
+        throw std::runtime_error("No camera data available in the calibration data.");
+    }
     dai::CameraBoardSocket currentCameraId = eepromData.cameraData.begin()->first;
     for(const auto& cameraData : eepromData.cameraData) {
         if(static_cast<int>(cameraData.first) < static_cast<int>(currentCameraId)) {
@@ -935,20 +952,20 @@ bool CalibrationHandler::checkExtrinsicsLink(CameraBoardSocket srcCamera, Camera
     return isConnectionFound;
 }
 
-void CalibrationHandler::setBoardInfo(std::string boardName, std::string boardRev) {
+void CalibrationHandler::setBoardInfo(const std::string& boardName, const std::string& boardRev) {
     eepromData.boardName = boardName;
     eepromData.boardRev = boardRev;
 }
 
-void CalibrationHandler::setBoardInfo(std::string productName,
-                                      std::string boardName,
-                                      std::string boardRev,
-                                      std::string boardConf,
-                                      std::string hardwareConf,
-                                      std::string batchName,
+void CalibrationHandler::setBoardInfo(const std::string& productName,
+                                      const std::string& boardName,
+                                      const std::string& boardRev,
+                                      const std::string& boardConf,
+                                      const std::string& hardwareConf,
+                                      const std::string& batchName,
                                       uint64_t batchTime,
                                       uint32_t boardOptions,
-                                      std::string boardCustom) {
+                                      const std::string& boardCustom) {
     eepromData.productName = productName;
     eepromData.boardName = boardName;
     eepromData.boardRev = boardRev;
@@ -966,16 +983,16 @@ void CalibrationHandler::setBoardInfo(std::string productName,
     eepromData.version = 7;
 }
 
-void CalibrationHandler::setBoardInfo(std::string deviceName,
-                                      std::string productName,
-                                      std::string boardName,
-                                      std::string boardRev,
-                                      std::string boardConf,
-                                      std::string hardwareConf,
-                                      std::string batchName,
+void CalibrationHandler::setBoardInfo(const std::string& deviceName,
+                                      const std::string& productName,
+                                      const std::string& boardName,
+                                      const std::string& boardRev,
+                                      const std::string& boardConf,
+                                      const std::string& hardwareConf,
+                                      const std::string& batchName,
                                       uint64_t batchTime,
                                       uint32_t boardOptions,
-                                      std::string boardCustom) {
+                                      const std::string& boardCustom) {
     eepromData.productName = productName;
     eepromData.boardName = boardName;
     eepromData.boardRev = boardRev;
@@ -994,21 +1011,21 @@ void CalibrationHandler::setBoardInfo(std::string deviceName,
     eepromData.version = 7;
 }
 
-void CalibrationHandler::setDeviceName(std::string deviceName) {
+void CalibrationHandler::setDeviceName(const std::string& deviceName) {
     eepromData.deviceName = deviceName;
 
     // Bump version to V7
     eepromData.version = 7;
 }
 
-void CalibrationHandler::setProductName(std::string productName) {
+void CalibrationHandler::setProductName(const std::string& productName) {
     eepromData.productName = productName;
 
     // Bump version to V7
     eepromData.version = 7;
 }
 
-void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height) {
+void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& intrinsics, int width, int height) {
     if(intrinsics.size() != 3 || intrinsics[0].size() != 3) {
         throw std::runtime_error("Intrinsic Matrix size should always be 3x3 ");
     }
@@ -1031,12 +1048,14 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::ve
     return;
 }
 
-void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, Size2f frameSize) {
+void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& intrinsics, Size2f frameSize) {
     setCameraIntrinsics(cameraId, intrinsics, static_cast<int>(frameSize.width), static_cast<int>(frameSize.height));
     return;
 }
 
-void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, std::tuple<int, int> frameSize) {
+void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId,
+                                             const std::vector<std::vector<float>>& intrinsics,
+                                             const std::tuple<int, int>& frameSize) {
     setCameraIntrinsics(cameraId, intrinsics, std::get<0>(frameSize), std::get<1>(frameSize));
     return;
 }
@@ -1102,9 +1121,9 @@ void CalibrationHandler::setCameraType(CameraBoardSocket cameraId, CameraModel c
 
 void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
                                              CameraBoardSocket destCameraId,
-                                             std::vector<std::vector<float>> rotationMatrix,
-                                             std::vector<float> translation,
-                                             std::vector<float> specTranslation) {
+                                             const std::vector<std::vector<float>>& rotationMatrix,
+                                             const std::vector<float>& translation,
+                                             const std::vector<float>& specTranslation) {
     if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
@@ -1137,9 +1156,9 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
 }
 
 void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
-                                          std::vector<std::vector<float>> rotationMatrix,
-                                          std::vector<float> translation,
-                                          std::vector<float> specTranslation) {
+                                          const std::vector<std::vector<float>>& rotationMatrix,
+                                          const std::vector<float>& translation,
+                                          const std::vector<float>& specTranslation) {
     if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
@@ -1159,7 +1178,7 @@ void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
     return;
 }
 
-void CalibrationHandler::setStereoLeft(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation) {
+void CalibrationHandler::setStereoLeft(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& rectifiedRotation) {
     if(rectifiedRotation.size() != 3 || rectifiedRotation[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
@@ -1168,7 +1187,7 @@ void CalibrationHandler::setStereoLeft(CameraBoardSocket cameraId, std::vector<s
     return;
 }
 
-void CalibrationHandler::setStereoRight(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation) {
+void CalibrationHandler::setStereoRight(CameraBoardSocket cameraId, const std::vector<std::vector<float>>& rectifiedRotation) {
     if(rectifiedRotation.size() != 3 || rectifiedRotation[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
@@ -1236,6 +1255,95 @@ bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) const {
         logger::debug("Extrinsics between all the cameras is not found with single head and a tail");
     }
     return isConnectionValidated;
+}
+
+CBACalibrationHandler::CBACalibrationHandler() = default;
+
+CBACalibrationHandler::CBACalibrationHandler(const EepromData& newEepromData, std::optional<bool> validateCalibration)
+    : CalibrationHandler(validateCBAEepromData(newEepromData), validateCalibration) {}
+
+CBACalibrationHandler CBACalibrationHandler::fromJson(const nlohmann::json& eepromDataJson, std::optional<bool> validateCalibration) {
+    EepromData eepromData = eepromDataJson;
+    return CBACalibrationHandler(eepromData, validateCalibration);
+}
+
+bool CBACalibrationHandler::hasCameraCalibration() const {
+    return CalibrationHandler::hasCameraCalibration(cameraDataSocket);
+}
+
+std::vector<std::vector<float>> CBACalibrationHandler::getCameraIntrinsics(
+    int resizeWidth, int resizeHeight, Point2f topLeftPixelId, Point2f bottomRightPixelId, bool keepAspectRatio) const {
+    return CalibrationHandler::getCameraIntrinsics(cameraDataSocket, resizeWidth, resizeHeight, topLeftPixelId, bottomRightPixelId, keepAspectRatio);
+}
+
+std::vector<std::vector<float>> CBACalibrationHandler::getCameraIntrinsics(Size2f destShape,
+                                                                           Point2f topLeftPixelId,
+                                                                           Point2f bottomRightPixelId,
+                                                                           bool keepAspectRatio) const {
+    return CalibrationHandler::getCameraIntrinsics(cameraDataSocket, destShape, topLeftPixelId, bottomRightPixelId, keepAspectRatio);
+}
+
+std::vector<std::vector<float>> CBACalibrationHandler::getCameraIntrinsics(const std::tuple<int, int>& destShape,
+                                                                           Point2f topLeftPixelId,
+                                                                           Point2f bottomRightPixelId,
+                                                                           bool keepAspectRatio) const {
+    return CalibrationHandler::getCameraIntrinsics(cameraDataSocket, destShape, topLeftPixelId, bottomRightPixelId, keepAspectRatio);
+}
+
+std::tuple<std::vector<std::vector<float>>, int, int> CBACalibrationHandler::getDefaultIntrinsics() const {
+    return CalibrationHandler::getDefaultIntrinsics(cameraDataSocket);
+}
+
+uint32_t CBACalibrationHandler::getSourceHeight() const {
+    return CalibrationHandler::getSourceHeight(cameraDataSocket);
+}
+
+uint32_t CBACalibrationHandler::getSourceWidth() const {
+    return CalibrationHandler::getSourceWidth(cameraDataSocket);
+}
+
+std::vector<float> CBACalibrationHandler::getDistortionCoefficients() const {
+    return CalibrationHandler::getDistortionCoefficients(cameraDataSocket);
+}
+
+float CBACalibrationHandler::getFov(bool useSpec) const {
+    return CalibrationHandler::getFov(cameraDataSocket, useSpec);
+}
+
+uint8_t CBACalibrationHandler::getLensPosition() const {
+    return CalibrationHandler::getLensPosition(cameraDataSocket);
+}
+
+CameraModel CBACalibrationHandler::getDistortionModel() const {
+    return CalibrationHandler::getDistortionModel(cameraDataSocket);
+}
+
+void CBACalibrationHandler::setCameraIntrinsics(const std::vector<std::vector<float>>& intrinsics, Size2f frameSize) {
+    CalibrationHandler::setCameraIntrinsics(cameraDataSocket, intrinsics, frameSize);
+}
+
+void CBACalibrationHandler::setCameraIntrinsics(const std::vector<std::vector<float>>& intrinsics, int width, int height) {
+    CalibrationHandler::setCameraIntrinsics(cameraDataSocket, intrinsics, width, height);
+}
+
+void CBACalibrationHandler::setCameraIntrinsics(const std::vector<std::vector<float>>& intrinsics, const std::tuple<int, int>& frameSize) {
+    CalibrationHandler::setCameraIntrinsics(cameraDataSocket, intrinsics, frameSize);
+}
+
+void CBACalibrationHandler::setDistortionCoefficients(const std::vector<float>& distortionCoefficients) {
+    CalibrationHandler::setDistortionCoefficients(cameraDataSocket, distortionCoefficients);
+}
+
+void CBACalibrationHandler::setFov(float hfov) {
+    CalibrationHandler::setFov(cameraDataSocket, hfov);
+}
+
+void CBACalibrationHandler::setLensPosition(uint8_t lensPosition) {
+    CalibrationHandler::setLensPosition(cameraDataSocket, lensPosition);
+}
+
+void CBACalibrationHandler::setCameraType(CameraModel cameraModel) {
+    CalibrationHandler::setCameraType(cameraDataSocket, cameraModel);
 }
 
 }  // namespace dai

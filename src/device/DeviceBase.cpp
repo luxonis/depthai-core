@@ -4,11 +4,16 @@
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/fmt/ostr.h>
 
+#include <array>
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <optional>
+#include <random>
+#include <sstream>
 #include <stdexcept>
 #include <system_error>
 #include <thread>
@@ -55,6 +60,7 @@
 #include "spdlog/spdlog.h"
 #include "utility/LogCollection.hpp"
 #include "utility/Logging.hpp"
+#include "utility/Telemetry.hpp"
 
 namespace {
 
@@ -83,6 +89,67 @@ std::optional<std::chrono::milliseconds> currentRpcTimeout() {
 
 bool isDebuggerEnabled() {
     return dai::utility::getEnvAs<bool>("DEPTHAI_DEBUGGER", false);
+}
+
+dai::CameraBoardSocket validatePhysicalCBASocket(dai::CameraBoardSocket cbaSocket) {
+    if(cbaSocket == dai::CameraBoardSocket::AUTO || cbaSocket == dai::CameraBoardSocket::CBA) {
+        throw std::runtime_error("CBA EEPROM access requires a physical CBA socket.");
+    }
+    return cbaSocket;
+}
+
+bool validateCBACalibrationData(const dai::CBACalibrationHandler& calibrationDataHandler) {
+    const auto eepromData = calibrationDataHandler.getEepromData();
+    const auto& cameraData = eepromData.cameraData;
+    return cameraData.size() == 1 && cameraData.find(dai::CameraBoardSocket::CBA) != cameraData.end();
+}
+
+std::string lowercase(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return value;
+}
+
+std::string telemetryProtocolName(XLinkProtocol_t protocol) {
+    switch(protocol) {
+        case X_LINK_USB_VSC:
+        case X_LINK_USB_CDC:
+        case X_LINK_USB_EP:
+            return "usb";
+        case X_LINK_TCP_IP:
+        case X_LINK_TCP_IP_OR_LOCAL_SHDMEM:
+            return "ethernet";
+        case X_LINK_PCIE:
+        case X_LINK_IPC:
+        case X_LINK_LOCAL_SHDMEM:
+        case X_LINK_ANY_PROTOCOL:
+        case X_LINK_NMB_OF_PROTOCOLS:
+            return "unknown";
+        default:
+            return "unknown";
+    }
+}
+
+std::string telemetryProtocolSpeed(XLinkProtocol_t protocol, dai::UsbSpeed speed) {
+    if(protocol == X_LINK_USB_VSC || protocol == X_LINK_USB_CDC || protocol == X_LINK_USB_EP) {
+        switch(speed) {
+            case dai::UsbSpeed::SUPER:
+            case dai::UsbSpeed::SUPER_PLUS:
+                return "usb3";
+            case dai::UsbSpeed::LOW:
+            case dai::UsbSpeed::FULL:
+            case dai::UsbSpeed::HIGH:
+                return "usb2";
+            case dai::UsbSpeed::UNKNOWN:
+            default:
+                return "unknown";
+        }
+    }
+    return "unknown";
+}
+
+bool isLoopbackDeviceName(std::string name) {
+    name = lowercase(std::move(name));
+    return name == "localhost" || name == "::1" || name == "[::1]" || name.rfind("127.", 0) == 0;
 }
 
 }  // namespace
@@ -143,7 +210,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     return getAnyAvailableDevice(timeout, nullptr);
 }
 
-std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout, std::function<void()> cb) {
+std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout, const std::function<void()>& cb) {
     using namespace std::chrono;
     constexpr auto POOL_SLEEP_TIME = milliseconds(100);
 
@@ -248,7 +315,7 @@ std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
 }
 
 // First tries to find UNBOOTED device with deviceId, then BOOTLOADER device with deviceId
-std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(std::string deviceId) {
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(const std::string& deviceId) {
     std::vector<DeviceInfo> availableDevices;
     auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
     bool found;
@@ -264,7 +331,7 @@ std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(bool usb2Mode, Ope
     return Resources::getInstance().getDeviceFirmware(usb2Mode, version);
 }
 
-std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(Config config) {
+std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(const Config& config) {
     return Resources::getInstance().getDeviceFirmware(config);
 }
 
@@ -418,20 +485,20 @@ DeviceBase::DeviceBase(UsbSpeed maxUsbSpeed) {
     init(maxUsbSpeed);
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const Config& config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
     init(config, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly)
+DeviceBase::DeviceBase(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly)
     : deviceInfo(devInfo), dumpOnly(dumpOnly) {
     init2(config, pathToCmd, false);
 }
 
-DeviceBase::DeviceBase(Config config, const std::filesystem::path& pathToCmd) {
+DeviceBase::DeviceBase(const Config& config, const std::filesystem::path& pathToCmd) {
     init(config, pathToCmd);
 }
 
-DeviceBase::DeviceBase(Config config, UsbSpeed maxUsbSpeed) {
+DeviceBase::DeviceBase(const Config& config, UsbSpeed maxUsbSpeed) {
     init(config, maxUsbSpeed);
 }
 
@@ -454,41 +521,184 @@ void DeviceBase::init(UsbSpeed maxUsbSpeed) {
     init(maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
+void DeviceBase::init(const Config& config, UsbSpeed maxUsbSpeed) {
     tryGetDevice();
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const std::filesystem::path& pathToCmd) {
+void DeviceBase::init(const Config& config, const std::filesystem::path& pathToCmd) {
     tryGetDevice();
     init2(config, pathToCmd, false);
 }
 
-void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
+void DeviceBase::init(const Config& config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
     deviceInfo = devInfo;
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) {
+void DeviceBase::init(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) {
     deviceInfo = devInfo;
     init2(config, pathToCmd, false);
 }
 
-DeviceBase::DeviceBase(Config config) {
+DeviceBase::DeviceBase(const Config& config) {
     tryGetDevice();
     init2(config, {}, false);
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const Config& config, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
     init2(config, {}, false);
 }
 
 void DeviceBase::close() {
     std::unique_lock<std::mutex> lock(closedMtx);
     if(!closed) {
+        if(telemetryLifecycleStarted) {
+            // Match the shutdown behavior of the other long-lived XLink threads:
+            // request stop now, but only join after closeImpl() closes the
+            // connection and unblocks any blocking XLink reads.
+            telemetryEventRunning = false;
+            telemetryPingRunning = false;
+            telemetryPingCondVar.notify_all();
+        }
         closeImpl();
+        stopTelemetryLifecycle();
         closed = true;
     }
+}
+
+void DeviceBase::telemetryEventLoop() {
+    using namespace std::chrono_literals;
+
+    while(telemetryEventRunning) {
+        std::shared_ptr<XLinkStream> stream;
+        {
+            std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+            stream = telemetryEventStream;
+        }
+        if(!stream) {
+            std::this_thread::sleep_for(50ms);
+            continue;
+        }
+
+        try {
+            std::vector<std::uint8_t> data;
+            stream->read(data);
+            if(!telemetryEventRunning) break;
+
+            try {
+                auto payload = nlohmann::json::parse(data.begin(), data.end());
+                if(!payload.is_object()) {
+                    continue;
+                }
+
+                auto eventName = payload.value("event", std::string{});
+                auto properties = payload.value("properties", nlohmann::json::object());
+                if(!properties.is_object()) {
+                    properties = nlohmann::json::object();
+                }
+                dai::utility::Telemetry::getInstance().event(*this, eventName, std::move(properties));
+            } catch(const std::exception& ex) {
+                pimpl->logger.debug("Failed to parse telemetry event from device: {}", ex.what());
+            }
+        } catch(const XLinkReadError& ex) {
+            {
+                std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+                if(telemetryEventStream == stream) {
+                    telemetryEventStream.reset();
+                }
+            }
+            if(ex.status == X_LINK_COMMUNICATION_NOT_OPEN && !telemetryEventRunning) {
+                // Expected during shutdown once the XLink connection is closed
+                // while the telemetry thread is blocked in a stream read.
+                continue;
+            }
+            if(telemetryEventRunning) {
+                pimpl->logger.debug("Telemetry event thread exception caught: {}", ex.what());
+            }
+        } catch(const std::exception& ex) {
+            {
+                std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+                if(telemetryEventStream == stream) {
+                    telemetryEventStream.reset();
+                }
+            }
+            if(telemetryEventRunning) {
+                pimpl->logger.debug("Telemetry event thread exception caught: {}", ex.what());
+            }
+        }
+    }
+}
+
+void DeviceBase::telemetryPingLoop() {
+    using namespace std::chrono_literals;
+    constexpr auto TELEMETRY_PING_INTERVAL = 5min;
+
+    std::unique_lock<std::mutex> lock(telemetryPingMtx);
+    while(telemetryPingRunning) {
+        if(telemetryPingCondVar.wait_for(lock, TELEMETRY_PING_INTERVAL, [this]() { return !telemetryPingRunning.load(); })) {
+            break;
+        }
+
+        lock.unlock();
+        dai::utility::Telemetry::getInstance().event(*this, "depthai_ping", nlohmann::json::object());
+        lock.lock();
+    }
+}
+
+void DeviceBase::startTelemetryLifecycle(bool reconnect) {
+    if(reconnect || dumpOnly || telemetryLifecycleStarted || !dai::utility::Telemetry::isTelemetryEnabled()) {
+        return;
+    }
+
+    telemetryCreatedAt = std::chrono::steady_clock::now();
+    try {
+        tmpDeviceId = pimpl->rpcCallChecked<std::string>("getAnonymousTelemetryId");
+    } catch(const std::exception& ex) {
+        pimpl->logger.debug("Failed to get anonymous telemetry id from device: {}", ex.what());
+    }
+    if(tmpDeviceId.empty()) {
+        tmpDeviceId = utility::Telemetry::getTemporaryTelemetryDeviceId(deviceInfo.getDeviceId());
+    }
+    telemetryLifecycleStarted = true;
+    try {
+        nlohmann::json properties{
+            {"device_model", lowercase(getProductName())},
+            {"platform", lowercase(getPlatformAsString())},
+            {"protocol", telemetryProtocolName(deviceInfo.protocol)},
+            {"protocol_speed", telemetryProtocolSpeed(deviceInfo.protocol, getUsbSpeed())},
+            {"standalone", isLoopbackDeviceName(deviceInfo.name)},
+        };
+        properties["device_os_version"] = getOSVersion();
+        dai::utility::Telemetry::getInstance().event(*this, "depthai_device_constructor", std::move(properties));
+    } catch(const std::exception& ex) {
+        pimpl->logger.debug("Failed to emit device constructor telemetry: {}", ex.what());
+    }
+
+    telemetryEventRunning = true;
+    telemetryEventThread = std::thread(&DeviceBase::telemetryEventLoop, this);
+    telemetryPingRunning = true;
+    telemetryPingThread = std::thread(&DeviceBase::telemetryPingLoop, this);
+}
+
+void DeviceBase::stopTelemetryLifecycle() {
+    if(!telemetryLifecycleStarted) {
+        return;
+    }
+
+    telemetryEventRunning = false;
+    if(telemetryEventThread.joinable()) {
+        telemetryEventThread.join();
+    }
+    telemetryPingRunning = false;
+    telemetryPingCondVar.notify_all();
+    if(telemetryPingThread.joinable()) {
+        telemetryPingThread.join();
+    }
+
+    const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - telemetryCreatedAt).count();
+    dai::utility::Telemetry::getInstance().event(*this, "depthai_device_destructor", nlohmann::json{{"duration_ms", durationMs}});
+    telemetryLifecycleStarted = false;
 }
 
 unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
@@ -710,6 +920,10 @@ void DeviceBase::closeImpl() {
     // Close rpcStream
     pimpl->rpcStream = nullptr;
     pimpl->rpcClient = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+        telemetryEventStream = nullptr;
+    }
 
     if(!dumpOnly) {
         // Get crash dump if needed
@@ -772,7 +986,7 @@ void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std:
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, true);
 }
-void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
+void DeviceBase::init(const Config& config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg = config;
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
@@ -976,6 +1190,10 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
 
     // prepare rpc for both attached and host controlled mode
     pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
+    {
+        std::lock_guard<std::mutex> lock(telemetryEventStreamMtx);
+        telemetryEventStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_TELEMETRY, device::XLINK_USB_BUFFER_MAX_SIZE);
+    }
     auto rpcStream = pimpl->rpcStream;
 
     pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
@@ -1186,6 +1404,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
             // Starts and waits for initial timesync
             setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
             pimpl->rpcCallCheckedVoid("onInit");
+            startTelemetryLifecycle(reconnect);
         } catch(const std::exception&) {
             // close device (cleanup)
             close();
@@ -1195,7 +1414,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
     }
 }
 
-void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev) {
+void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, const PrevInfo& prev) {
     try {
         while(true) {
             while(watchdogRunning) {
@@ -1326,6 +1545,20 @@ std::string DeviceBase::getMxId() {
 
 std::string DeviceBase::getDeviceId() {
     return pimpl->rpcCallChecked<std::string>("getMxId");
+}
+
+std::string DeviceBase::getTemporaryTelemetryDeviceId() const {
+    if(!tmpDeviceId.empty()) {
+        return tmpDeviceId;
+    }
+    return utility::Telemetry::getTemporaryTelemetryDeviceId(deviceInfo.getDeviceId());
+}
+
+std::optional<std::string> DeviceBase::getActiveTelemetryPipelineId() const {
+    if(auto pipeline = pipelinePtr.lock()) {
+        return pipeline->telemetryPipelineId;
+    }
+    return std::nullopt;
 }
 
 std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
@@ -1523,12 +1756,26 @@ bool DeviceBase::isNeuralDepthSupported() {
     return pimpl->rpcCallChecked<bool>("isNeuralDepthSupported");
 }
 
+bool DeviceBase::hasGPU() {
+    if(getPlatform() != Platform::RVC4) return false;
+    return pimpl->rpcCallChecked<bool>("hasGPU");
+}
+
+bool DeviceBase::isGpuStereoSupported() {
+    return hasGPU();
+}
+
 std::vector<DeviceModelZoo> DeviceBase::getSupportedDeviceModels() {
     return pimpl->rpcCallChecked<std::vector<DeviceModelZoo>>("getSupportedDeviceModels");
 }
 
 std::optional<Version> DeviceBase::getBootloaderVersion() {
     return bootloaderVersion;
+}
+
+std::string DeviceBase::getOSVersion() {
+    isClosed();
+    return pimpl->rpcCallChecked<std::string>("getOSVersion");
 }
 
 bool DeviceBase::isPipelineRunning() {
@@ -1616,11 +1863,15 @@ LogLevel DeviceBase::getLogOutputLevel() {
 }
 
 bool DeviceBase::setIrLaserDotProjectorIntensity(float intensity, int mask) {
-    return pimpl->rpcCallChecked<bool>("setIrLaserDotProjectorBrightness", intensity, mask, true);
+    auto success = pimpl->rpcCallChecked<bool>("setIrLaserDotProjectorBrightness", intensity, mask, true);
+    dai::utility::Telemetry::getInstance().event(*this, "depthai_ir_intensity", nlohmann::json{{"value", intensity}});
+    return success;
 }
 
 bool DeviceBase::setIrFloodLightIntensity(float intensity, int mask) {
-    return pimpl->rpcCallChecked<bool>("setIrFloodLightBrightness", intensity, mask, true);
+    auto success = pimpl->rpcCallChecked<bool>("setIrFloodLightBrightness", intensity, mask, true);
+    dai::utility::Telemetry::getInstance().event(*this, "depthai_flood_intensity", nlohmann::json{{"value", intensity}});
+    return success;
 }
 
 std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
@@ -1666,7 +1917,7 @@ ProfilingData DeviceBase::getProfilingData() {
     return connection->getProfilingData();
 }
 
-int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
+int DeviceBase::addLogCallback(const std::function<void(LogMessage)>& callback) {
     // Lock first
     std::unique_lock<std::mutex> l(logCallbackMapMtx);
 
@@ -1733,14 +1984,19 @@ float DeviceBase::getSystemInformationLoggingRate() {
 }
 
 bool DeviceBase::isEepromAvailable() {
-    return pimpl->rpcCallChecked<bool>("isEepromAvailable");
+    return pimpl->rpcCallChecked<bool>("isEepromAvailable", CameraBoardSocket::AUTO);
+}
+
+bool DeviceBase::isCBAEepromAvailable(CameraBoardSocket camSocket) {
+    camSocket = validatePhysicalCBASocket(camSocket);
+    return pimpl->rpcCallChecked<bool>("isEepromAvailable", camSocket);
 }
 
 bool DeviceBase::isCalibrationAvailable() {
-    return pimpl->rpcCall("isCalibrationAvailable").as<bool>();
+    return pimpl->rpcCallChecked<bool>("isCalibrationAvailable");
 }
 
-bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
+bool DeviceBase::tryFlashCalibration(const CalibrationHandler& calibrationDataHandler) {
     try {
         flashCalibration(calibrationDataHandler);
     } catch(const EepromError& e) {
@@ -1750,7 +2006,42 @@ bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) 
     return true;
 }
 
-void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
+bool DeviceBase::tryFlashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket) {
+    if(!validateCBACalibrationData(calibrationDataHandler)) {
+        return false;
+    }
+
+    try {
+        flashCBACalibration(calibrationDataHandler, camSocket);
+    } catch(const EepromError& e) {
+        pimpl->logger.error("Failed to flash calibration: {}", e.what());
+        return false;
+    }
+    return true;
+}
+
+void DeviceBase::flashCalibration(const CalibrationHandler& calibrationDataHandler) {
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    pimpl->logger.debug("Flashing calibration. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>(
+        "storeToEeprom", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions, CameraBoardSocket::AUTO);
+
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+}
+
+void DeviceBase::flashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket) {
+    camSocket = validatePhysicalCBASocket(camSocket);
+    if(!validateCBACalibrationData(calibrationDataHandler)) {
+        throw std::runtime_error("CBA calibration data must contain exactly one CameraBoardSocket::CBA cameraData entry.");
+    }
+
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1762,8 +2053,8 @@ void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
 
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) =
-        pimpl->rpcCallChecked<std::tuple<bool, std::string>>("storeToEeprom", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions);
+    std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>(
+        "storeToEeprom", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions, camSocket);
 
     if(!success) {
         throw EepromError(errorMsg);
@@ -1779,7 +2070,7 @@ void DeviceBase::setCalibration(const std::optional<EepromData>& eepromData) {
     }
 }
 
-void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::setCalibration(const CalibrationHandler& calibrationDataHandler) {
     setCalibration(calibrationDataHandler.getEepromData());
 }
 
@@ -1817,22 +2108,73 @@ CalibrationHandler DeviceBase::readCalibration() {
     }
     return CalibrationHandler(eepromData);
 }
+
+CBACalibrationHandler DeviceBase::readCBACalibration(CameraBoardSocket camSocket) {
+    try {
+        return readCBACalibration2(camSocket);
+    } catch(const EepromError&) {
+        // ignore - use default
+    }
+    return CBACalibrationHandler();
+}
+
 CalibrationHandler DeviceBase::readCalibration2() {
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
-    std::tie(success, errorMsg, eepromData) = pimpl->rpcCallChecked<std::tuple<bool, std::string, dai::EepromData>>("readFromEeprom");
+    std::tie(success, errorMsg, eepromData) = pimpl->rpcCallChecked<std::tuple<bool, std::string, dai::EepromData>>("readFromEeprom", CameraBoardSocket::AUTO);
     if(!success) {
         throw EepromError(errorMsg);
     }
     return CalibrationHandler(eepromData);
 }
 
+CBACalibrationHandler DeviceBase::readCBACalibration2(CameraBoardSocket camSocket) {
+    camSocket = validatePhysicalCBASocket(camSocket);
+
+    bool success;
+    std::string errorMsg;
+    dai::EepromData eepromData;
+    std::tie(success, errorMsg, eepromData) = pimpl->rpcCallChecked<std::tuple<bool, std::string, dai::EepromData>>("readFromEeprom", camSocket);
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+    return CBACalibrationHandler(eepromData);
+}
+
 CalibrationHandler DeviceBase::readCalibrationOrDefault() {
     return readCalibration();
 }
 
-void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
+CBACalibrationHandler DeviceBase::readCBACalibrationOrDefault(CameraBoardSocket camSocket) {
+    return readCBACalibration(camSocket);
+}
+
+void DeviceBase::flashFactoryCalibration(const CalibrationHandler& calibrationDataHandler) {
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    pimpl->logger.debug("Flashing factory calibration. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!factoryPermissions) {
+        throw std::runtime_error("Calling factory API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>(
+        "storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions, CameraBoardSocket::AUTO);
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+}
+
+void DeviceBase::flashFactoryCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket) {
+    camSocket = validatePhysicalCBASocket(camSocket);
+    if(!validateCBACalibrationData(calibrationDataHandler)) {
+        throw std::runtime_error("CBA calibration data must contain exactly one CameraBoardSocket::CBA cameraData entry.");
+    }
+
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1849,7 +2191,7 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
     bool success;
     std::string errorMsg;
     std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>(
-        "storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions);
+        "storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions, camSocket);
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1859,11 +2201,25 @@ CalibrationHandler DeviceBase::readFactoryCalibration() {
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
-    std::tie(success, errorMsg, eepromData) = pimpl->rpcCallChecked<std::tuple<bool, std::string, dai::EepromData>>("readFromEepromFactory");
+    std::tie(success, errorMsg, eepromData) =
+        pimpl->rpcCallChecked<std::tuple<bool, std::string, dai::EepromData>>("readFromEepromFactory", CameraBoardSocket::AUTO);
     if(!success) {
         throw EepromError(errorMsg);
     }
     return CalibrationHandler(eepromData);
+}
+
+CBACalibrationHandler DeviceBase::readFactoryCBACalibration(CameraBoardSocket camSocket) {
+    camSocket = validatePhysicalCBASocket(camSocket);
+
+    bool success;
+    std::string errorMsg;
+    dai::EepromData eepromData;
+    std::tie(success, errorMsg, eepromData) = pimpl->rpcCallChecked<std::tuple<bool, std::string, dai::EepromData>>("readFromEepromFactory", camSocket);
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+    return CBACalibrationHandler(eepromData);
 }
 CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
     dai::EepromData eepromData{};
@@ -1875,10 +2231,30 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
     return CalibrationHandler(eepromData);
 }
 
+CBACalibrationHandler DeviceBase::readFactoryCBACalibrationOrDefault(CameraBoardSocket camSocket) {
+    try {
+        return readFactoryCBACalibration(camSocket);
+    } catch(const EepromError&) {
+        // ignore - use default
+    }
+    return CBACalibrationHandler();
+}
+
 void DeviceBase::factoryResetCalibration() {
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>("eepromFactoryReset");
+    std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>("eepromFactoryReset", CameraBoardSocket::AUTO);
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+}
+
+void DeviceBase::factoryResetCBACalibration(CameraBoardSocket camSocket) {
+    camSocket = validatePhysicalCBASocket(camSocket);
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>("eepromFactoryReset", camSocket);
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1888,18 +2264,61 @@ std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
-    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcCallChecked<std::tuple<bool, std::string, std::vector<uint8_t>>>("readFromEepromRaw");
+    std::tie(success, errorMsg, eepromDataRaw) =
+        pimpl->rpcCallChecked<std::tuple<bool, std::string, std::vector<uint8_t>>>("readFromEepromRaw", CameraBoardSocket::AUTO);
     if(!success) {
         throw EepromError(errorMsg);
     }
     return eepromDataRaw;
 }
 
+std::vector<std::uint8_t> DeviceBase::readCcmEepromRaw(CameraBoardSocket socket, int size, int offset) {
+    if(size < 0) {
+        throw std::runtime_error("size must be non-negative");
+    }
+    if(offset < 0) {
+        throw std::runtime_error("offset must be non-negative");
+    }
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> eepromDataRaw;
+    std::tie(success, errorMsg, eepromDataRaw) =
+        pimpl->rpcCall("readCcmEepromRaw", socket, size, offset).as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+    return eepromDataRaw;
+}
+
+void DeviceBase::writeCcmEepromRaw(CameraBoardSocket socket, std::vector<uint8_t> data, int offset) {
+    if(offset < 0) {
+        throw std::runtime_error("offset must be non-negative");
+    }
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    pimpl->logger.debug(
+        "Writing CCM EEPROM contents on socket {}. Factory permissions {}, Protected permissions {}", socket, factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions || !factoryPermissions) {
+        throw std::runtime_error("Calling factory API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) =
+        pimpl->rpcCall("writeCcmEepromRaw", protectedPermissions, factoryPermissions, socket, data, offset).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+}
+
 std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
-    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcCallChecked<std::tuple<bool, std::string, std::vector<uint8_t>>>("readFromEepromFactoryRaw");
+    std::tie(success, errorMsg, eepromDataRaw) =
+        pimpl->rpcCallChecked<std::tuple<bool, std::string, std::vector<uint8_t>>>("readFromEepromFactoryRaw", CameraBoardSocket::AUTO);
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1918,7 +2337,28 @@ void DeviceBase::flashEepromClear() {
 
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>("eepromClear", protectedPermissions, factoryPermissions);
+    std::tie(success, errorMsg) =
+        pimpl->rpcCallChecked<std::tuple<bool, std::string>>("eepromClear", protectedPermissions, factoryPermissions, CameraBoardSocket::AUTO);
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+}
+
+void DeviceBase::flashCBAEepromClear(CameraBoardSocket camSocket) {
+    camSocket = validatePhysicalCBASocket(camSocket);
+
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    pimpl->logger.debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions) {
+        throw std::runtime_error("Calling EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>("eepromClear", protectedPermissions, factoryPermissions, camSocket);
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1928,7 +2368,7 @@ void DeviceBase::flashFactoryEepromClear() {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
-    pimpl->logger.debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+    pimpl->logger.debug("Clearing Factory EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
 
     if(!protectedPermissions || !factoryPermissions) {
         throw std::runtime_error("Calling factory EEPROM clear API is not allowed in current configuration");
@@ -1936,7 +2376,29 @@ void DeviceBase::flashFactoryEepromClear() {
 
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>("eepromFactoryClear", protectedPermissions, factoryPermissions);
+    std::tie(success, errorMsg) =
+        pimpl->rpcCallChecked<std::tuple<bool, std::string>>("eepromFactoryClear", protectedPermissions, factoryPermissions, CameraBoardSocket::AUTO);
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+}
+
+void DeviceBase::flashFactoryCBAEepromClear(CameraBoardSocket camSocket) {
+    camSocket = validatePhysicalCBASocket(camSocket);
+
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    pimpl->logger.debug(
+        "Clearing Factory EEPROM contents on socket {}. Factory permissions {}, Protected permissions {}", camSocket, factoryPermissions, protectedPermissions);
+    if(!protectedPermissions || !factoryPermissions) {
+        throw std::runtime_error("Calling factory EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) =
+        pimpl->rpcCallChecked<std::tuple<bool, std::string>>("eepromFactoryClear", protectedPermissions, factoryPermissions, camSocket);
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -2021,8 +2483,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     // // print assets on device side for test
     // pimpl->rpcCallCheckedVoid("printAssets");
 
-    // Log the pipeline
-    logCollection::logPipeline(schema, deviceInfo);
     this->pipelineSchema = schema;  // Save the schema so it can be saved alongside the crashdump
 
     bool success = false;
@@ -2050,6 +2510,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 void DeviceBase::mockCameraFeatures(const std::filesystem::path& replayPath) {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(!replayPath.empty() && !hasMockedFeatures) hasMockedFeatures = utility::mockCameraFeatures(*this, replayPath);
+#else
+    (void)replayPath;
 #endif
 }
 

@@ -90,7 +90,7 @@ struct ImgTransformation {
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
-    dai::RotatedRect transformRect(dai::RotatedRect rect) const;
+    dai::RotatedRect transformRect(const dai::RotatedRect& rect) const;
     /**
      * Transform a point from the current frame to the source frame.
      * @param point Point to transform
@@ -102,7 +102,7 @@ struct ImgTransformation {
      * @param rect Rectangle to transform
      * @return Transformed rectangle
      */
-    dai::RotatedRect invTransformRect(dai::RotatedRect rect) const;
+    dai::RotatedRect invTransformRect(const dai::RotatedRect& rect) const;
 
     /**
      * Retrieve the size of the frame. Should be equal to the size of the corresponding ImgFrame message.
@@ -210,7 +210,7 @@ struct ImgTransformation {
      * Add a new transformation.
      * @param matrix Transformation matrix
      */
-    ImgTransformation& addTransformation(std::array<std::array<float, 3>, 3> matrix);
+    ImgTransformation& addTransformation(const std::array<std::array<float, 3>, 3>& matrix);
     /**
      * Add a crop transformation.
      * @param x X coordinate of the top-left corner of the crop
@@ -251,9 +251,9 @@ struct ImgTransformation {
     ImgTransformation& setSize(size_t width, size_t height);
     ImgTransformation& setSourceSize(size_t width, size_t height);
     ImgTransformation& setExtrinsics(const Extrinsics& extrinsics);
-    ImgTransformation& setIntrinsicMatrix(std::array<std::array<float, 3>, 3> intrinsicMatrix);
+    ImgTransformation& setIntrinsicMatrix(const std::array<std::array<float, 3>, 3>& intrinsicMatrix);
     ImgTransformation& setDistortionModel(CameraModel model);
-    ImgTransformation& setDistortionCoefficients(std::vector<float> coefficients);
+    ImgTransformation& setDistortionCoefficients(const std::vector<float>& coefficients);
 
     /**
      * Remap a point from this transformation to another. If the intrinsics are different (e.g. different camera), the function will also use the
@@ -283,7 +283,7 @@ struct ImgTransformation {
      * @param from Transformation to remap from
      * @param rect RotatedRect to remap
      */
-    dai::RotatedRect remapRectFrom(const ImgTransformation& from, dai::RotatedRect rect) const;
+    dai::RotatedRect remapRectFrom(const ImgTransformation& from, const dai::RotatedRect& rect) const;
 
     /**
      * Project a 3D spatial point into 2D point in the current frame defined by this transformation.
@@ -302,6 +302,16 @@ struct ImgTransformation {
      * @return Projected 2D point in the target frame (to transformation)
      */
     dai::Point2f projectPointTo(const ImgTransformation& to, dai::Point2f& point, float depth) const;
+
+    /**
+     * Project a rotated rectangle from the source frame defined by this transformation into the target frame defined by the to transformation. This function
+     * assumes the rectangle is parallel to the image plane (i.e. the entire rectangle is at the same depth away). The function fits the smallest possible
+     * rectangle on to the projected corners of the original rectangle.
+     * @param to Target transformation to project to
+     * @param rect Source rotated rectangle in the current frame
+     * @param depth (mm) Depth of the rectangle to project
+     */
+    dai::RotatedRect projectRectTo(const ImgTransformation& to, RotatedRect& rect, float depth) const;
 
     /**
      * Project a 3D spatial point from the source coordinate system (this transformation) into a 2D point in the target frame (to transformation).
@@ -343,6 +353,9 @@ struct ImgTransformation {
      * Get the extrinsic transformation matrix from the source coordinate system of this transformation to the target coordinate system of the to
      * transformation.
      * @param to Target transformation to get extrinsics to
+     * @param useSpecTranslation If true, the translation vector w.r.t. the CAD design will be used instead of the translation vector obtained through
+     * calibration.
+     * @param sourceUnit The desired measurement unit in which to return the transformation matrix in.
      * @return 4x4 homogeneous transformation matrix representing the extrinsics from this transformation to the target transformation
      * @note Both transformations must have a common toCameraSocket. Otherwise extrinsics cannot be calculated.
      */

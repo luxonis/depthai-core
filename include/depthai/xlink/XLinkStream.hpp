@@ -60,7 +60,7 @@ class XLinkStream {
     streamId_t streamId{INVALID_STREAM_ID};
 
    public:
-    XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t maxWriteSize);
+    XLinkStream(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, std::size_t maxWriteSize);
     XLinkStream(const XLinkStream&) = delete;
     XLinkStream(XLinkStream&& stream);
     XLinkStream& operator=(const XLinkStream&) = delete;

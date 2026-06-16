@@ -229,6 +229,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
             return true;
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
+        case DatatypeEnum::Transformable:
         case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
@@ -247,6 +248,7 @@ bool deserializationSupported(DatatypeEnum datatype) {
         case DatatypeEnum::Tracklets:
         case DatatypeEnum::StereoDepthConfig:
         case DatatypeEnum::NeuralDepthConfig:
+        case DatatypeEnum::GPUStereoConfig:
         case DatatypeEnum::FeatureTrackerConfig:
         case DatatypeEnum::ThermalConfig:
         case DatatypeEnum::ToFConfig:
@@ -431,6 +433,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
 
             // Spatial keypoints with spatial coordinates.
             auto* protoSpatialKeypoints = spatialImgDetection->mutable_keypoints();
+            protoSpatialKeypoints->set_unit(static_cast<proto::common::LengthUnit>(keypointsList.unit));
             for(const auto& keypoint : keypointsVec) {
                 auto* protoKeypoint = protoSpatialKeypoints->add_keypoints();
                 auto* coords = protoKeypoint->mutable_imagecoordinates();
@@ -461,6 +464,7 @@ std::unique_ptr<google::protobuf::Message> getProtoMessage(const SpatialImgDetec
 
     spatialImgDetections->set_segmentationmaskwidth(static_cast<std::int64_t>(message->getSegmentationMaskWidth()));
     spatialImgDetections->set_segmentationmaskheight(static_cast<std::int64_t>(message->getSegmentationMaskHeight()));
+    spatialImgDetections->set_unit(static_cast<proto::common::LengthUnit>(message->unit));
 
     if(!metadataOnly) {
         std::optional<std::vector<std::uint8_t>> segMaskData = message->getMaskData();
@@ -643,6 +647,9 @@ static void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* enco
     cam->set_fsync(static_cast<proto::common::CameraFsync>(message->cam.fsync));
     cam->set_sensormode(message->cam.sensorMode);
     cam->set_fps(message->cam.fps);
+    if(message->cam.sensorTemperatureC.has_value()) {
+        cam->set_sensortemperaturec(*message->cam.sensorTemperatureC);
+    }
 
     if(!metadataOnly) {
         // Set the encoded message data
@@ -703,6 +710,9 @@ static void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const 
     cam->set_fsync(static_cast<proto::common::CameraFsync>(message->cam.fsync));
     cam->set_sensormode(message->cam.sensorMode);
     cam->set_fps(message->cam.fps);
+    if(message->cam.sensorTemperatureC.has_value()) {
+        cam->set_sensortemperaturec(*message->cam.sensorTemperatureC);
+    }
 
     // instance number and category
     imgFrame->set_instancenum(message->instanceNum);
@@ -966,6 +976,7 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
     obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame->cam().fsync());
     obj.cam.sensorMode = imgFrame->cam().sensormode();
     obj.cam.fps = imgFrame->cam().fps();
+    obj.cam.sensorTemperatureC = imgFrame->cam().has_sensortemperaturec() ? std::make_optional(imgFrame->cam().sensortemperaturec()) : std::nullopt;
 
     obj.instanceNum = imgFrame->instancenum();
 
@@ -1014,6 +1025,7 @@ static void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encode
     obj.cam.fsync = static_cast<ImgFrame::Fsync>(encFrame.cam().fsync());
     obj.cam.sensorMode = encFrame.cam().sensormode();
     obj.cam.fps = encFrame.cam().fps();
+    obj.cam.sensorTemperatureC = encFrame.cam().has_sensortemperaturec() ? std::make_optional(encFrame.cam().sensortemperaturec()) : std::nullopt;
 
     obj.transformation = deserializeImgTransformation(encFrame.transformation());
 
@@ -1102,6 +1114,7 @@ static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::Img
     obj.cam.fsync = static_cast<ImgFrame::Fsync>(imgFrame.cam().fsync());
     obj.cam.sensorMode = imgFrame.cam().sensormode();
     obj.cam.fps = imgFrame.cam().fps();
+    obj.cam.sensorTemperatureC = imgFrame.cam().has_sensortemperaturec() ? std::make_optional(imgFrame.cam().sensortemperaturec()) : std::nullopt;
 
     // instance number and category
     obj.instanceNum = imgFrame.instancenum();

@@ -1,6 +1,7 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <stdexcept>
 
 #include "depthai/common/Point3f.hpp"
@@ -9,6 +10,10 @@
     #include "utility/ProtoSerialize.hpp"
 #endif
 namespace dai {
+
+PointCloudData::PointCloudData() {
+    transformation = dai::ImgTransformation{};
+}
 
 PointCloudData::~PointCloudData() = default;
 
@@ -58,7 +63,9 @@ std::vector<Point3fRGBA> PointCloudData::getPointsRGB() const {
 void PointCloudData::setPoints(const std::vector<Point3f>& points) {
     auto size = points.size();
     std::vector<uint8_t> data(size * sizeof(Point3f));
-    std::memcpy(data.data(), points.data(), size * sizeof(Point3f));
+    if(size > 0) {
+        std::memcpy(data.data(), points.data(), size * sizeof(Point3f));
+    }
     setData(std::move(data));
     setColor(false);
 }
@@ -66,7 +73,9 @@ void PointCloudData::setPoints(const std::vector<Point3f>& points) {
 void PointCloudData::setPointsRGB(const std::vector<Point3fRGBA>& points) {
     auto size = points.size();
     std::vector<uint8_t> data(size * sizeof(Point3fRGBA));
-    std::memcpy(data.data(), points.data(), size * sizeof(Point3fRGBA));
+    if(size > 0) {
+        std::memcpy(data.data(), points.data(), size * sizeof(Point3fRGBA));
+    }
     setData(std::move(data));
     setColor(true);
 }
@@ -116,7 +125,10 @@ PointCloudData& PointCloudData::setInstanceNum(unsigned int instanceNum) {
 }
 
 const ImgTransformation& PointCloudData::getTransformation() const {
-    return transformation;
+    if(!transformation.has_value()) {
+        throw std::runtime_error("Transformation is not set");
+    }
+    return *transformation;
 }
 
 PointCloudData& PointCloudData::setTransformation(const ImgTransformation& transformation) {
@@ -169,6 +181,14 @@ PointCloudData& PointCloudData::setSparse(bool /*val*/) {
     throw std::logic_error(
         "PointCloudData::setSparse() is deprecated and removed. "
         "Organization is now determined by width/height: set height=1 for sparse (N×1) or height>1 for organized.");
+}
+
+void PointCloudData::transformToInternal(const ImgTransformation&) {
+    // For efficiency reasons, point clouds should be created from aligned messages instead of tranforming them after the fact
+}
+
+PointCloudData PointCloudData::transformTo(const ImgTransformation& target) const {
+    return TransformableCRTP<PointCloudData>::transformTo(target);
 }
 
 PointCloudData& PointCloudData::updateBoundingBox() {

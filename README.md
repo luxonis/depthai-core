@@ -137,6 +137,10 @@ For VCPKG integration, check out the example [here](https://github.com/luxonis/d
 Note that the VCPKG integration is using a custom branch of DepthAI and we plan to integrate the support for it into the main branch in the future and add it to the official VCPKG repository.
 
 
+### Telemetry
+We collect some anonymized telemetry to understand how users use the library so we can improve it. This mainly includes which nodes are used most often, how long sessions last, and similar usage information. If you prefer, you can disable telemetry by setting the environment variable `DEPTHAI_TELEMETRY=0`.
+
+
 ### Android
 Android is not yet supported on the v3.x.y version of DepthAI. You can still use the v2.x.y version of DepthAI for RVC2 devices or open an issue on this repository to request Android support for v3.x.y.
 
@@ -216,33 +220,24 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
+| DEPTHAI_CACHE_DIR | Overrides the default DepthAI cache root directory. Default: macOS `~/Library/Caches/depthai`, Windows `%LOCALAPPDATA%\\depthai\\cache`, Linux `${XDG_CACHE_HOME:-~/.cache}/depthai` |
 | DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. Automatic crash dump collection is disabled if set to 0. |
 | DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in milliseconds to wait for device reboot when obtaining a crash dump. Automatic crash dump collection is disabled if set to 0. |
-| DEPTHAI_ENABLE_ANALYTICS_COLLECTION | Enables automatic analytics collection (pipeline schemas) used to improve the library |
+| DEPTHAI_TELEMETRY | Telemetry is enabled by default. Set to `0` or `false` to disable event capture. |
+| DEPTHAI_TELEMETRY_URL | Overrides the telemetry capture URL. |
+| DEPTHAI_TELEMETRY_API_KEY | Overrides the telemetry API key. |
 | DEPTHAI_DISABLE_CRASHDUMP_COLLECTION | Disables automatic crash dump collection used to improve the library |
 | DEPTHAI_HUB_EVENTS_BASE_URL | URL for events of the Luxonis Hub |
 | DEPTHAI_HUB_API_KEY | API key for the Luxonis Hub |
 | DEPTHAI_ZOO_INTERNET_CHECK | (Default) 1 - perform internet check, if available, download the newest model version 0 - skip internet check and use cached model |
 | DEPTHAI_ZOO_INTERNET_CHECK_TIMEOUT | (Default) 1000 - timeout in milliseconds for the internet check |
-| DEPTHAI_ZOO_CACHE_PATH | (Default) .depthai_cached_models - Folder where cached zoo models are stored |
+| DEPTHAI_ZOO_CACHE_PATH | (Default) `${DEPTHAI_CACHE_DIR}/models` - Folder where cached zoo models are stored |
 | DEPTHAI_ZOO_MODELS_PATH | (Default) depthai_models - Folder where zoo model description files are stored |
 | DEPTHAI_RECORD | Enables holistic record to the specified directory. |
 | DEPTHAI_REPLAY | Replays holistic replay from the specified file or directory. |
 | DEPTHAI_PROFILING | Enables runtime profiling of data transfer between the host and connected devices. Set to 1 to enable. Requires DEPTHAI_LEVEL=debug or lower to print. |
 | DEPTHAI_PIPELINE_DEBUGGING | Enables pipeline debugging with state dumps. DEPTHAI_LEVEL=trace is required to print the state dumps. |
-| DEPTHAI_AUTOCALIBRATION | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)` (or `setAutoCalibration(...)` alias). If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
-
-You can set the mode directly on the pipeline:
-
-```cpp
-dai::Pipeline pipeline;
-pipeline.setAutoCalibrationMode(dai::Pipeline::AutoCalibrationMode::ON_START);
-```
-
-```python
-pipeline = dai.Pipeline()
-pipeline.setAutoCalibrationMode(dai.Pipeline.AutoCalibrationMode.ON_START)
-```
+| DEPTHAI_AUTOCALIBRATION | Runs recalibration of the stereo pair and, by default, flashes successful calibration to non-volatile memory (EEPROM). `CONTINUOUS`: runs check repetitively; `ON_START`: runs calibration only at the start of the pipeline; `OFF`: no recalibration. The same mode can be configured from code with `pipeline.setAutoCalibrationMode(...)`. If this environment variable is set, it overrides the pipeline-set value. AutoCalibration currently initializes only for stereo inputs at 1280x800. |
 
 ## Running tests
 

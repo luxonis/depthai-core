@@ -158,7 +158,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 #endif
     ErrorCode computeCoverage();
 
-    ErrorCode initializePipeline(const std::shared_ptr<dai::Device> daiDevice);
+    ErrorCode initializePipeline(const std::shared_ptr<dai::Device>& daiDevice);
 
     ErrorCode doWork(std::chrono::steady_clock::time_point& previousLoadingAndCalibrationTime);
 
@@ -179,6 +179,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      * DAI held properties
      */
     CalibrationHandler calibrationHandler;
+    ImgTransformation imgTransformationA;
+    ImgTransformation imgTransformationB;
 
     CameraBoardSocket daiSocketA = CameraBoardSocket::CAM_B;
     CameraBoardSocket daiSocketB = CameraBoardSocket::CAM_C;
