@@ -86,11 +86,6 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              DOC(dai, CalibrationHandler, getDistortionCoefficients))
 
         .def("getFov", &CalibrationHandler::getFov, py::arg("cameraId"), py::arg("useSpec") = true, DOC(dai, CalibrationHandler, getFov))
-        .def("getCameraZAxisAngle",
-             &CalibrationHandler::getCameraZAxisAngle,
-             py::arg("cameraId1"),
-             py::arg("cameraId2"),
-             "Returns the angle in radians between the optical z-axes of two cameras.")
         .def("getLensPosition", &CalibrationHandler::getLensPosition, py::arg("cameraId"), DOC(dai, CalibrationHandler, getLensPosition))
         .def("getDistortionModel", &CalibrationHandler::getDistortionModel, py::arg("cameraId"), DOC(dai, CalibrationHandler, getDistortionModel))
         .def("getCameraWithLowestId", &CalibrationHandler::getCameraWithLowestId, DOC(dai, CalibrationHandler, getCameraWithLowestId))
