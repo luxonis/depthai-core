@@ -101,7 +101,8 @@ class ToF : public DeviceNodeGroup {
           ,
           imageFiltersNode{*imageFilters}
 #endif
-    {}
+    {
+    }
 
     ~ToF() override;
 
