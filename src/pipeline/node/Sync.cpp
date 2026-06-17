@@ -77,7 +77,7 @@ double getTimestampMs(Sync::TimestampSource source, const dai::Buffer& buffer) {
         case Sync::TimestampSource::SYSTEM: {
             auto tsOpt = buffer.getTimestampSystem();
             if(!tsOpt.has_value()) {
-                return 0;
+                throw InvalidTimestampException("Buffer does not have system timestamp, but Sync node is set to use system timestamps for synchronization.");
             }
             return static_cast<double>(duration_cast<nanoseconds>(tsOpt.value().time_since_epoch()).count()) / 1e6;
         }

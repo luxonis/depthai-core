@@ -113,6 +113,6 @@ void bind_pipelinestate(pybind11::module& m, void* pCallstack) {
         .def("getSequenceNum", &PipelineState::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("setTimestamp", &PipelineState::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
         .def("setTimestampDevice", &PipelineState::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
-        .def("setTimestampSystem", &PipelineState::setTimestampSystem, DOC(dai, Buffer, setTimestampSystem))
+        .def("setTimestampSystem", &PipelineState::setTimestampSystem, py::arg("timestampSystem"), DOC(dai, Buffer, setTimestampSystem))
         .def("setSequenceNum", &PipelineState::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum));
 }
