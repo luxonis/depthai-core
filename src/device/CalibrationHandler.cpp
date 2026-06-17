@@ -1146,6 +1146,11 @@ void CalibrationHandler::updateCameraExtrinsics(CameraBoardSocket srcCameraId,
         throw std::runtime_error("No existing extrinsics found for the source camera socket");
     }
 
+    if(cameraData->second.extrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("Cannot overwrite extrinsics for source camera socket " + toString(srcCameraId)
+                                 + " because toCameraSocket is AUTO and there is no existing link to update.");
+    }
+
     if(cameraData->second.extrinsics.toCameraSocket != destCameraId) {
         throw std::runtime_error("overwriteExtrinsics crash: source camera socket " + toString(srcCameraId) + " has different toCameraSocket "
                                  + toString(cameraData->second.extrinsics.toCameraSocket) + ". Correct link should be set with "

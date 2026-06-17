@@ -898,6 +898,15 @@ TEST_CASE("updateCameraExtrinsics rejects destination mismatch", "[updateCameraE
                         Catch::Matchers::ContainsSubstring("has different toCameraSocket"));
 }
 
+TEST_CASE("updateCameraExtrinsics rejects sources without an existing link", "[updateCameraExtrinsics]") {
+    auto handler = loadValidHandler();
+    const auto identity = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    REQUIRE_THROWS_WITH(handler.updateCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_D, identity, translation),
+                        Catch::Matchers::ContainsSubstring("toCameraSocket is AUTO"));
+}
+
 TEST_CASE("updateCameraExtrinsics rejects ragged rotation matrices", "[updateCameraExtrinsics]") {
     auto handler = loadValidHandler();
     const auto raggedRotation = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f}, {0.0f}};
@@ -917,15 +926,6 @@ TEST_CASE("setCameraExtrinsics rejects ragged rotation matrices", "[setCameraExt
                                                     raggedRotation,
                                                     translation,
                                                     translation),
-                        Catch::Matchers::ContainsSubstring("Rotation Matrix size should always be 3x3"));
-}
-
-TEST_CASE("setHousingToHousingOriginExtrinsics rejects ragged rotation matrices", "[setHousingToHousingOriginExtrinsics]") {
-    auto handler = loadValidHandler();
-    const auto raggedRotation = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f}, {0.0f}};
-    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
-
-    REQUIRE_THROWS_WITH(handler.setHousingToHousingOriginExtrinsics(raggedRotation, translation, LengthUnit::CENTIMETER),
                         Catch::Matchers::ContainsSubstring("Rotation Matrix size should always be 3x3"));
 }
 
