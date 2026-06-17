@@ -23,15 +23,32 @@ enum class HealthCheckResult : std::uint8_t { NOT_RUN, PASS, FAIL };
  * Configures which device health-check steps should run.
  */
 struct HealthCheckConfig {
-    bool checkUsbGeneration = true;
-    bool measureBandwidth = true;
-    bool verifyCameraFunctionality = true;
-    bool verifyCameraCalibration = true;
-    bool verifyImuFunctionality = true;
-    bool verifyImuCalibration = true;
-    bool verifyPowerSupply = true;
+    bool checkUsbGeneration;
+    bool measureBandwidth;
+    bool verifyCameraFunctionality;
+    bool verifyCameraCalibration;
+    bool verifyImuFunctionality;
+    bool verifyImuCalibration;
+    bool verifyPowerSupply;
 
-    std::chrono::milliseconds powerSupplyCheckDuration{std::chrono::seconds(20)};
+    std::chrono::milliseconds powerSupplyCheckDuration;
+
+    explicit HealthCheckConfig(bool checkUsbGeneration = true,
+                               bool measureBandwidth = true,
+                               bool verifyCameraFunctionality = true,
+                               bool verifyCameraCalibration = true,
+                               bool verifyImuFunctionality = true,
+                               bool verifyImuCalibration = true,
+                               bool verifyPowerSupply = true,
+                               std::chrono::milliseconds powerSupplyCheckDuration = std::chrono::seconds(20))
+        : checkUsbGeneration(checkUsbGeneration),
+          measureBandwidth(measureBandwidth),
+          verifyCameraFunctionality(verifyCameraFunctionality),
+          verifyCameraCalibration(verifyCameraCalibration),
+          verifyImuFunctionality(verifyImuFunctionality),
+          verifyImuCalibration(verifyImuCalibration),
+          verifyPowerSupply(verifyPowerSupply),
+          powerSupplyCheckDuration(powerSupplyCheckDuration) {}
 };
 
 /**
@@ -100,7 +117,7 @@ class DeviceHealthCheck {
      * Performs all configured health-check steps and aggregates the results.
      */
    private:
-    static HealthCheckMetrics run(const DeviceInfo& devInfo, const HealthCheckConfig& config = {});
+    static HealthCheckMetrics run(const DeviceInfo& devInfo, const HealthCheckConfig& config);
 };
 
 }  // namespace dai

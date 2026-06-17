@@ -179,7 +179,7 @@ class DeviceBase {
      * @param config Health-check steps to execute
      * @returns HealthCheckMetrics with per-check pass/fail status and measured values
      */
-    static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config = {});
+    static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.

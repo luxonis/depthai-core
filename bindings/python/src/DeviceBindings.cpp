@@ -323,7 +323,16 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("message", &HealthCheckIssue::message, DOC(dai, HealthCheckIssue, message));
 
     // Bind HealthCheckConfig
-    healthCheckConfig.def(py::init<>())
+    healthCheckConfig
+        .def(py::init<bool, bool, bool, bool, bool, bool, bool, std::chrono::milliseconds>(),
+             py::arg("checkUsbGeneration") = true,
+             py::arg("measureBandwidth") = true,
+             py::arg("verifyCameraFunctionality") = true,
+             py::arg("verifyCameraCalibration") = true,
+             py::arg("verifyImuFunctionality") = true,
+             py::arg("verifyImuCalibration") = true,
+             py::arg("verifyPowerSupply") = true,
+             py::arg("powerSupplyCheckDuration") = std::chrono::seconds(20))
         .def_readwrite("checkUsbGeneration", &HealthCheckConfig::checkUsbGeneration, DOC(dai, HealthCheckConfig, checkUsbGeneration))
         .def_readwrite("measureBandwidth", &HealthCheckConfig::measureBandwidth, DOC(dai, HealthCheckConfig, measureBandwidth))
         .def_readwrite("verifyCameraFunctionality", &HealthCheckConfig::verifyCameraFunctionality, DOC(dai, HealthCheckConfig, verifyCameraFunctionality))

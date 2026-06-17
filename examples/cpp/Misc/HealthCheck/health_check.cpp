@@ -7,14 +7,7 @@
 
 int main() {
     dai::HealthCheckConfig config;
-    config.checkUsbGeneration = true;
-    config.measureBandwidth = true;
-    config.verifyCameraFunctionality = true;
-    config.verifyCameraCalibration = true;
-    config.verifyImuFunctionality = true;
-    config.verifyImuCalibration = true;
-    config.verifyPowerSupply = true;
-    config.powerSupplyCheckDuration = std::chrono::milliseconds(10000);
+    config.powerSupplyCheckDuration = std::chrono::milliseconds(20000);
 
     dai::DeviceInfo deviceInfo;
     bool found = false;

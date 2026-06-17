@@ -8,15 +8,7 @@ import depthai as dai
 
 
 def main() -> int:
-    config = dai.HealthCheckConfig()
-    config.checkUsbGeneration = True
-    config.measureBandwidth = True
-    config.verifyCameraFunctionality = True
-    config.verifyCameraCalibration = True
-    config.verifyImuFunctionality = True
-    config.verifyImuCalibration = True
-    config.verifyPowerSupply = True
-    config.powerSupplyCheckDuration = timedelta(milliseconds=10000)
+    config = dai.HealthCheckConfig(powerSupplyCheckDuration=timedelta(milliseconds=20000))
 
     found, device_info = dai.Device.getFirstAvailableDevice(False)
     if not found:
