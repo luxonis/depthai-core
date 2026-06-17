@@ -38,7 +38,7 @@ Node::Connection::Connection(Output out, Input in) {
     inputGroup = in.getGroup();
 }
 
-Node::Connection::Connection(ConnectionInternal c) {
+Node::Connection::Connection(const ConnectionInternal& c) {
     auto out = c.outputNode.lock();
     auto in = c.inputNode.lock();
     if(out == nullptr || in == nullptr) {
@@ -316,17 +316,17 @@ AssetManager& Node::getAssetManager() {
     return assetManager;
 }
 
-std::vector<uint8_t> Node::loadResource(std::filesystem::path uri) {
+std::vector<uint8_t> Node::loadResource(const std::filesystem::path& uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-std::vector<uint8_t> Node::moveResource(std::filesystem::path uri) {
+std::vector<uint8_t> Node::moveResource(const std::filesystem::path& uri) {
     std::string cwd = fmt::format("/node/{}/", id);
     return parent.lock()->loadResourceCwd(uri, cwd, true);
 }
 
-Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescription defaultOutput, bool ref)
+Node::OutputMap::OutputMap(Node& parent, std::string name, const Node::OutputDescription& defaultOutput, bool ref)
     : defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
     if(ref) {
         parent.setOutputMapRefs(this);
@@ -489,10 +489,10 @@ std::vector<const Node::Input*> Node::getInputRefs() const {
     return tmpInputRefs;
 }
 
-Node::Output* Node::getOutputRef(std::string name) {
+Node::Output* Node::getOutputRef(const std::string& name) {
     return getOutputRef("", name);
 }
-Node::Output* Node::getOutputRef(std::string group, std::string name) {
+Node::Output* Node::getOutputRef(const std::string& group, const std::string& name) {
     auto refs = getOutputRefs();
     for(auto& out : refs) {
         if(out->getGroup() == group && out->getName() == name) {
@@ -502,10 +502,10 @@ Node::Output* Node::getOutputRef(std::string group, std::string name) {
     return nullptr;
 }
 
-Node::Input* Node::getInputRef(std::string name) {
+Node::Input* Node::getInputRef(const std::string& name) {
     return getInputRef("", name);
 }
-Node::Input* Node::getInputRef(std::string group, std::string name) {
+Node::Input* Node::getInputRef(const std::string& group, const std::string& name) {
     auto refs = getInputRefs();
     for(auto& input : refs) {
         if(input->getGroup() == group && input->getName() == name) {
@@ -537,7 +537,7 @@ std::vector<Node::OutputMap*> Node::getOutputMapRefs() {
     return tmpOutputMapRefs;
 }
 
-Node::InputMap* Node::getInputMapRef(std::string group) {
+Node::InputMap* Node::getInputMapRef(const std::string& group) {
     for(auto* inMapRef : inputMapRefs) {
         if(inMapRef->name == group) {
             return inMapRef;
@@ -546,7 +546,7 @@ Node::InputMap* Node::getInputMapRef(std::string group) {
     return nullptr;
 }
 
-Node::OutputMap* Node::getOutputMapRef(std::string group) {
+Node::OutputMap* Node::getOutputMapRef(const std::string& group) {
     for(auto* outMapRef : outputMapRefs) {
         if(outMapRef->name == group) {
             return outMapRef;
@@ -612,13 +612,13 @@ void Node::setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef) {
     setNodeRefs({alias, nodeRef});
 }
 
-void Node::add(std::shared_ptr<Node> node) {
+void Node::add(const std::shared_ptr<Node>& node) {
     // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
     node->parentId = this->id;
     nodeMap.push_back(node);
 }
 
-void Node::remove(std::shared_ptr<Node> node) {
+void Node::remove(const std::shared_ptr<Node>& node) {
     // Remove the connection to the removed node and all it's children from all the nodes in the pipeline
     auto pipeline = parent.lock();
 
@@ -636,7 +636,7 @@ void Node::remove(std::shared_ptr<Node> node) {
     nodeMap.erase(std::remove(nodeMap.begin(), nodeMap.end(), node), nodeMap.end());
 }
 
-void Node::removeConnectionToNode(std::shared_ptr<Node> node) {
+void Node::removeConnectionToNode(const std::shared_ptr<Node>& node) {
     // Remove all connections to this node
     for(auto it = connections.begin(); it != connections.end();) {
         if(it->inputNode.lock() == node || it->outputNode.lock() == node) {

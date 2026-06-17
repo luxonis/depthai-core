@@ -86,7 +86,7 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
      * Specify detection labels to track.
      * @param labels Detection labels to track. Default every label is tracked from image detection network output.
      */
-    void setDetectionLabelsToTrack(std::vector<std::uint32_t> labels);
+    void setDetectionLabelsToTrack(const std::vector<std::uint32_t>& labels);
 
     /**
      * Specify tracker type algorithm.

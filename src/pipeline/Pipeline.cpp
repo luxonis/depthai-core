@@ -232,7 +232,7 @@ GlobalProperties PipelineImpl::getGlobalProperties() const {
     return globalProperties;
 }
 
-void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
+void PipelineImpl::setGlobalProperties(const GlobalProperties& globalProperties) {
     this->globalProperties = globalProperties;
 }
 
@@ -633,7 +633,7 @@ void PipelineImpl::setSippDmaBufferSize(int sizeBytes) {
     }
 }
 
-void PipelineImpl::setBoardConfig(BoardConfig boardCfg) {
+void PipelineImpl::setBoardConfig(const BoardConfig& boardCfg) {
     board = boardCfg;
 }
 
@@ -652,7 +652,7 @@ BoardConfig PipelineImpl::getBoardConfig() const {
 }
 
 // Remove node capability
-void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
+void PipelineImpl::remove(const std::shared_ptr<Node>& toRemove) {
     DAI_CHECK_V(!isBuilt(), "Cannot remove node from pipeline once it is built.");
     DAI_CHECK_V(toRemove->parent.lock() != nullptr, "Cannot remove a node that is not a part of any pipeline");
     DAI_CHECK_V(toRemove->parent.lock() == shared_from_this(), "Cannot remove a node that is not a part of this pipeline");
@@ -706,7 +706,7 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
     return false;
 }
 
-void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
+void PipelineImpl::setCalibrationData(const CalibrationHandler& calibrationDataHandler) {
     setEepromData(calibrationDataHandler.getEepromData());
 }
 
@@ -734,7 +734,7 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
     throw std::runtime_error("No default device properties set in pipeline");
 }
 
-void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
+void PipelineImpl::setEepromData(const std::optional<EepromData>& eepromData) {
     if(defaultDevice) {
         defaultDevice->setCalibration(eepromData);
     } else if(defaultDeviceProperties != nullptr) {
@@ -805,7 +805,7 @@ PipelineStateApi PipelineImpl::getPipelineState() {
     return PipelineStateApi(pipelineStateOut, pipelineStateRequest, getAllNodes());
 }
 
-void PipelineImpl::add(std::shared_ptr<Node> node) {
+void PipelineImpl::add(const std::shared_ptr<Node>& node) {
     if(node == nullptr) {
         throw std::invalid_argument(fmt::format("Given node pointer is null"));
     }
@@ -1348,7 +1348,7 @@ void PipelineImpl::run() {
     wait();
 }
 
-std::vector<uint8_t> PipelineImpl::loadResource(fs::path uri) {
+std::vector<uint8_t> PipelineImpl::loadResource(const fs::path& uri) {
     return loadResourceCwd(uri, "/pipeline");
 }
 

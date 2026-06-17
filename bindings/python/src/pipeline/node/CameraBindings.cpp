@@ -25,7 +25,7 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         .def_readonly("mockIsp", &Camera::mockIsp, DOC(dai, node, Camera, mockIsp))
         .def_readonly("raw", &Camera::raw, DOC(dai, node, Camera, raw))
         .def("build",
-             py::overload_cast<dai::CameraBoardSocket, std::optional<std::pair<uint32_t, uint32_t>>, std::optional<float>>(&Camera::build),
+             py::overload_cast<dai::CameraBoardSocket, const std::optional<std::pair<uint32_t, uint32_t>>&, std::optional<float>>(&Camera::build),
              "boardSocket"_a = CameraBoardSocket::AUTO,
              "sensorResolution"_a = std::nullopt,
              "sensorFps"_a = std::nullopt,
@@ -62,7 +62,7 @@ void bind_camera(pybind11::module& m, void* pCallstack) {
         // .def("setCamera", &Camera::setCamera, "name"_a, DOC(dai, node, Camera, setCamera))
         // .def("getCamera", &Camera::getCamera, DOC(dai, node, Camera, getCamera))
         .def("requestOutput",
-             py::overload_cast<std::pair<uint32_t, uint32_t>, std::optional<ImgFrame::Type>, ImgResizeMode, std::optional<float>, std::optional<bool>>(
+             py::overload_cast<const std::pair<uint32_t, uint32_t>&, std::optional<ImgFrame::Type>, ImgResizeMode, std::optional<float>, std::optional<bool>>(
                  &Camera::requestOutput),
              "size"_a,
              "type"_a = std::nullopt,

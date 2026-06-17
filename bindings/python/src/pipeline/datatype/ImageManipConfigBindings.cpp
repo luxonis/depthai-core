@@ -53,7 +53,7 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack) {
              py::arg("h"),
              DOC(dai, ImageManipConfig, addCrop))
         .def("addCrop",
-             static_cast<ImageManipConfig& (ImageManipConfig::*)(dai::Rect, bool)>(&ImageManipConfig::addCrop),
+             static_cast<ImageManipConfig& (ImageManipConfig::*)(const dai::Rect&, bool)>(&ImageManipConfig::addCrop),
              py::arg("rect"),
              py::arg("normalizedCoords"),
              DOC(dai, ImageManipConfig, addCrop))

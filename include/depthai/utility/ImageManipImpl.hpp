@@ -282,7 +282,7 @@ class UndistortOpenCvImpl {
     uint32_t dstWidth;
     uint32_t dstHeight;
 
-    bool validMatrix(std::array<float, 9> matrix) const;
+    bool validMatrix(const std::array<float, 9>& matrix) const;
     void initMaps(std::array<float, 9> cameraMatrix,
                   std::array<float, 9> newCameraMatrix,
                   std::vector<float> distCoeffs,
@@ -370,7 +370,7 @@ class WarpH : public Warp {
 #endif
 
     void transform(const std::shared_ptr<OffsetMemory>& srcData,
-                   std::shared_ptr<OffsetMemory> dstData,
+                   const std::shared_ptr<OffsetMemory>& dstData,
                    const size_t srcWidth,
                    const size_t srcHeight,
                    const size_t srcStride,
@@ -379,7 +379,7 @@ class WarpH : public Warp {
                    const size_t dstStride,
                    const uint16_t numChannels,
                    const uint16_t bpp,
-                   const std::array<std::array<float, 3>, 3> matrix,
+                   const std::array<std::array<float, 3>, 3>& matrix,
                    const std::vector<uint32_t>& backgroundColor);
 
    public:
@@ -523,7 +523,7 @@ struct ColorChangeArgs {
     std::shared_ptr<OffsetMemory> auxFrame;
 };
 FrameSpecs getSrcFrameSpecs(dai::ImgFrame::Specs srcSpecs);
-FrameSpecs getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to);
+FrameSpecs getCcDstFrameSpecs(const FrameSpecs& srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to);
 FrameSpecs getDstFrameSpecs(size_t width, size_t height, dai::ImgFrame::Type type);
 size_t getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, size_t height);
 void printSpecs(spdlog::async_logger& logger, FrameSpecs specs);
@@ -540,12 +540,12 @@ bool colorConvertToNV12(const ColorChangeArgs& args);
 bool colorConvertToYUV420p(const ColorChangeArgs& args);
 bool colorConvertToGRAY8(const ColorChangeArgs& args);
 
-std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>> points);
+std::tuple<float, float, float, float> getOuterRect(const std::vector<std::array<float, 2>>& points);
 dai::RotatedRect getOuterRotatedRect(const std::vector<std::array<float, 2>>& points);
 std::array<std::array<float, 3>, 3> getResizeMat(Resize o, float width, float height, uint32_t outputWidth, uint32_t outputHeight);
 void getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
                               const bool center,
-                              const std::array<std::array<float, 3>, 3> transformInv,
+                              const std::array<std::array<float, 3>, 3>& transformInv,
                               const uint32_t srcWidth,
                               const uint32_t srcHeight,
                               uint32_t& outputWidth,
