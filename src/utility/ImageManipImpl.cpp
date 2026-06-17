@@ -42,6 +42,33 @@ inline bool isSingleChannel(const dai::ImgFrame::Type type) {
            || type == dai::ImgFrame::Type::RAW32;
 }
 
+static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
+    if(bpp == 1) {
+        switch(channels) {
+            case 1:
+                return CV_8UC1;
+            case 2:
+                return CV_8UC2;
+            case 3:
+                return CV_8UC3;
+            default:
+                break;
+        }
+    } else if(bpp == 2) {
+        switch(channels) {
+            case 1:
+                return CV_16UC1;
+            case 2:
+                return CV_16UC2;
+            case 3:
+                return CV_16UC3;
+            default:
+                break;
+        }
+    }
+    throw std::invalid_argument(fmt::format("Unsupported combination of bpp {} and channels {}", bpp, channels));
+}
+
 void transformOpenCV(const uint8_t* src,
                      uint8_t* dst,
                      const size_t srcWidth,
@@ -60,31 +87,7 @@ void transformOpenCV(const uint8_t* src,
                      const size_t sourceMaxX,
                      const size_t sourceMaxY) {
 #if defined(DEPTHAI_HAVE_OPENCV_SUPPORT) && DEPTHAI_IMAGEMANIPV2_OPENCV
-    auto type = CV_8UC1;
-    switch(numChannels) {
-        case 1:
-            switch(bpp) {
-                case 1:
-                    type = CV_8UC1;
-                    break;
-                case 2:
-                    type = CV_16UC1;
-                    break;
-                default:
-                    assert(false);
-            }
-            break;
-        case 2:
-            assert(bpp == 1);
-            type = CV_8UC2;
-            break;
-        case 3:
-            assert(bpp == 1);
-            type = CV_8UC3;
-            break;
-        default:
-            assert(false);
-    }
+    auto type = getCvMatTypeFrom(bpp, numChannels);
     auto bg = numChannels == 1 ? cv::Scalar(background[0])
                                : (numChannels == 2 ? cv::Scalar(background[0], background[1]) : cv::Scalar(background[0], background[1], background[2]));
     const cv::Mat cvSrc(srcHeight, srcWidth, type, const_cast<uint8_t*>(src), srcStride);
@@ -934,33 +937,6 @@ dai::impl::UndistortOpenCvImpl::BuildStatus dai::impl::UndistortOpenCvImpl::buil
         return BuildStatus::NOT_BUILT;
     }
     return BuildStatus::NOT_USED;
-}
-
-static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
-    if(bpp == 1) {
-        switch(channels) {
-            case 1:
-                return CV_8UC1;
-            case 2:
-                return CV_8UC2;
-            case 3:
-                return CV_8UC3;
-            default:
-                break;
-        }
-    } else if(bpp == 2) {
-        switch(channels) {
-            case 1:
-                return CV_16UC1;
-            case 2:
-                return CV_16UC2;
-            case 3:
-                return CV_16UC3;
-            default:
-                break;
-        }
-    }
-    throw std::invalid_argument(fmt::format("Unsupported combination of bpp {} and channels {}", bpp, channels));
 }
 
 void dai::impl::UndistortOpenCvImpl::undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t) {

@@ -42,6 +42,8 @@ struct ImageManipProperties : PropertiesSerializable<Properties, ImageManipPrope
 
     /// Backend preference for ImageManip. Only applied on RVC4.
     Backend backend = Backend::AUTO;
+
+    /// Performance mode for ImageManip. Only applied on RVC4.
     PerformanceMode performanceMode = PerformanceMode::PERFORMANCE;
 
     ~ImageManipProperties() override;
