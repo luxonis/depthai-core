@@ -91,7 +91,7 @@ dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthU
 }
 
 float StereoDepthConfig::getMaxDisparity() const {
-    float maxDisp = 95.0;
+    uint32_t maxDisp = 95;
     if(cfg.costMatching.disparityWidth == RawStereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64) {
         maxDisp = 63;
     }
@@ -99,6 +99,48 @@ float StereoDepthConfig::getMaxDisparity() const {
     maxDisp += cfg.algorithmControl.disparityShift;
     if(cfg.algorithmControl.enableExtended) maxDisp *= 2;
     if(cfg.algorithmControl.enableSubpixel) maxDisp *= (1 << cfg.algorithmControl.subpixelFractionalBits);
+
+    std::vector<dai::StereoDepthConfig::PostProcessing::Filter> filtersToExecute;
+    for(auto filter : cfg.postProcessing.filteringOrder) {
+        switch(filter) {
+            case RawStereoDepthConfig::PostProcessing::Filter::SPECKLE:
+                if(cfg.postProcessing.speckleFilter.enable) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case RawStereoDepthConfig::PostProcessing::Filter::TEMPORAL:
+                if(cfg.postProcessing.temporalFilter.enable) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case RawStereoDepthConfig::PostProcessing::Filter::SPATIAL:
+                if(cfg.postProcessing.spatialFilter.enable) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case RawStereoDepthConfig::PostProcessing::Filter::DECIMATION:
+                if(cfg.postProcessing.decimationFilter.decimationFactor > 1) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case RawStereoDepthConfig::PostProcessing::Filter::MEDIAN:
+                if(cfg.postProcessing.median != dai::MedianFilter::MEDIAN_OFF) {
+                    filtersToExecute.push_back(filter);
+                }
+                break;
+            case RawStereoDepthConfig::PostProcessing::Filter::NONE:
+                break;
+            default:
+                break;
+        }
+    }
+
+    if(filtersToExecute.size() != 0) {
+        if(filtersToExecute.back() != RawStereoDepthConfig::PostProcessing::Filter::MEDIAN) {
+            maxDisp = maxDisp * ((1 << 13) / maxDisp);
+        }
+    }
+
     return maxDisp;
 }
 

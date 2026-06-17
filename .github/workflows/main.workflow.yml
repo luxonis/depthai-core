@@ -20,39 +20,39 @@ on:
 jobs:
 
   style:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
     - name: Install format dependencies
       run: |
-        sudo apt-get install clang-format-10
+        sudo apt-get install clang-format-18
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=clang-format-10
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=clang-format-18
 
     - name: check style
       run: ci/check_format.sh build
 
 
   tidy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install clang-tidy-10
+        sudo apt-get install clang-tidy-18
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-10
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-18
 
     - name: Run clang-tidy
       run: cmake --build build --parallel 4
@@ -62,29 +62,29 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-14, windows-latest, ubuntu-latest]
         cmake: ['3.10.x', '3.29.x'] # Older version (Ubuntu 18.04) and newest
         exclude:
           - os: windows-latest
             cmake: '3.10.x'
-          - os: macos-latest # Skip the old cmake on latest macos - doesn't handle ARM64 aarch correctly
+          - os: macos-14 # Skip the old cmake on latest macos - doesn't handle ARM64 aarch correctly
             cmake: '3.10.x'
 
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.hunter/
         key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
     - name: Cache .hunter folder
       if: matrix.os == 'windows-latest'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: C:/.hunter/
         key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
@@ -94,7 +94,7 @@ jobs:
         cmake-version: ${{ matrix.cmake }}
 
     - name: Install dependencies
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-14'
       run: |
         brew install opencv
 
@@ -133,7 +133,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-14, windows-latest, ubuntu-latest]
         build-type: [Debug, Release]
         shared: [true, false]
         platform: [x64]
@@ -149,23 +149,23 @@ jobs:
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.hunter/
         key: hunter-${{ matrix.os }}-shared_${{ matrix.shared }}
     - name: Cache .hunter folder
       if: matrix.os == 'windows-latest'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: C:/.hunter/
         key: hunter-${{ matrix.os }}-shared_${{ matrix.shared }}
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
     - name: Install dependencies
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-14'
       run: |
         brew install opencv
 
@@ -200,16 +200,16 @@ jobs:
 
     - name: Upload Win64 shared library
       if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'x64'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: windows-prebuilt-win64
+        name: windows-prebuilt-win64-${{ matrix.build-type }}
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Upload Win32 shared library
       if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: windows-prebuilt-win32-no-opencv
+        name: windows-prebuilt-win32-no-opencv-${{ matrix.build-type }}
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Build and test add_subdirectory
@@ -241,7 +241,7 @@ jobs:
 
     # Clone repository
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
@@ -255,22 +255,24 @@ jobs:
     #- name: Check if version matches
     #   run: |
 
-    - uses: actions/setup-python@v3
+    - uses: actions/setup-python@v4
       with:
         python-version: '3.8'
     - name: Install dependencies
       run: python3.8 -m pip install git-archive-all
 
     - name: Download Win64 artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: 'windows-prebuilt-win64'
+        pattern: windows-prebuilt-win64*
+        merge-multiple: true
         path: depthai-core-${{ steps.tag.outputs.version }}-win64
 
     - name: Download Win32 artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: 'windows-prebuilt-win32-no-opencv'
+        pattern: windows-prebuilt-win32-no-opencv*
+        merge-multiple: true
         path: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     - name: Create release assets

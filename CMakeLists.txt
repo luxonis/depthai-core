@@ -55,7 +55,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.28.0" LANGUAGES CXX C)
+project(depthai VERSION "2.32.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -276,6 +276,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/ObjectTrackerConfig.cpp
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp

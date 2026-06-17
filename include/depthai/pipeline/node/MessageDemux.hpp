@@ -22,6 +22,18 @@ class MessageDemux : public NodeCRTP<Node, MessageDemux, MessageDemuxProperties>
      * A map of outputs, where keys are same as in the input MessageGroup
      */
     OutputMap outputs;
+
+    /**
+     * Set on which processor the node should run
+     * @param type Processor type - Leon CSS or Leon MSS
+     */
+    void setProcessor(ProcessorType type);
+
+    /**
+     * Get on which processor the node should run
+     * @returns Processor type - Leon CSS or Leon MSS
+     */
+    ProcessorType getProcessor() const;
 };
 
 }  // namespace node

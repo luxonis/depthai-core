@@ -42,6 +42,12 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
     Input inputDetections{*this, "inputDetections", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgDetections, true}}};
 
     /**
+     * Input ObjectTrackerConfig message with ability to modify parameters at runtime.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ObjectTrackerConfig, false}}};
+
+    /**
      * Outputs Tracklets message that carries object tracking results.
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Tracklets, false}}};
@@ -98,6 +104,22 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
      * Whether tracker should take into consideration class label for tracking.
      */
     void setTrackingPerClass(bool trackingPerClass);
+
+    /**
+     * Specify occlusion ratio threshold.
+     * @param occlusionRatioThreshold Occlusion ratio threshold. Used to filter out overlapping tracklets. Default 0.4.
+     */
+    void setOcclusionRatioThreshold(float occlusionRatioThreshold);
+    /**
+     * Specify tracklet lifespan.
+     * @param lifespan Tracklet lifespan in number of frames. Number of frames after which a LOST tracklet is removed. Default 120.
+     */
+    void setTrackletMaxLifespan(uint32_t lifespan);
+    /**
+     * Specify tracklet birth threshold.
+     * @param threshold Tracklet birth threshold. Minimum consecutive tracked frames required to consider a tracklet as a new instance. Default 3.
+     */
+    void setTrackletBirthThreshold(uint32_t birthThreshold);
 };
 
 }  // namespace node

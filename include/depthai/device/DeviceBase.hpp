@@ -569,6 +569,13 @@ class DeviceBase {
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
 
     /**
+     * Retrieves current device state in a crash dump format.
+     * It halts the device temporarily and might affect the running pipeline,
+     * it's best to close the device after this operation
+     */
+    dai::CrashDump getState();
+
+    /**
      * Retrieves crash dump for debugging.
      */
     dai::CrashDump getCrashDump(bool clearCrashDump = true);
@@ -957,6 +964,12 @@ class DeviceBase {
      * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
+
+    /**
+     * Crashes the device
+     * @warning ONLY FOR TESTING PURPOSES, it causes an unrecoverable crash on the device
+     */
+    void crashDevice();
 
     /**
      * Returns underlying XLinkConnection

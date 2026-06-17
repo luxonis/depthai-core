@@ -192,6 +192,14 @@ bool XLinkStream::write(const std::vector<std::uint8_t>& data, std::chrono::mill
     return write(data.data(), data.size(), timeout);
 }
 
+std::vector<std::uint8_t> XLinkStream::read(std::chrono::milliseconds timeout) {
+    std::vector<std::uint8_t> data;
+    if(!read(data, timeout)) {
+        throw XLinkReadError(X_LINK_TIMEOUT, streamName);
+    }
+    return data;
+}
+
 bool XLinkStream::read(std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) {
     StreamPacketDesc packet;
     const auto status = XLinkReadMoveDataWithTimeout(streamId, &packet, static_cast<unsigned int>(timeout.count()));

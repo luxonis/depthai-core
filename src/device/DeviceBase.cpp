@@ -2,7 +2,9 @@
 
 // std
 #include <fstream>
+#include <chrono>
 #include <iostream>
+#include <stdexcept>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -45,6 +47,32 @@
 #include "utility/Logging.hpp"
 #include "utility/spdlog-fmt.hpp"
 
+namespace {
+
+struct ScopedRpcTimeout {
+   public:
+    static thread_local tl::optional<std::chrono::milliseconds> tlRpcTimeout;
+
+    explicit ScopedRpcTimeout(tl::optional<std::chrono::milliseconds> timeout) : prev(tlRpcTimeout) {
+        tlRpcTimeout = timeout;
+    }
+    ~ScopedRpcTimeout() {
+        tlRpcTimeout = prev;
+    }
+
+    ScopedRpcTimeout(const ScopedRpcTimeout&) = delete;
+    ScopedRpcTimeout& operator=(const ScopedRpcTimeout&) = delete;
+
+    tl::optional<std::chrono::milliseconds> prev;
+};
+
+thread_local tl::optional<std::chrono::milliseconds> ScopedRpcTimeout::tlRpcTimeout;
+
+tl::optional<std::chrono::milliseconds> currentRpcTimeout() {
+    return ScopedRpcTimeout::tlRpcTimeout;
+}
+
+}  // namespace
 namespace dai {
 
 // Using
@@ -56,6 +84,8 @@ const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
 const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 
 const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
+const unsigned int DEFAULT_RPC_READ_TIMEOUT = 10000;
+const unsigned int DEFAULT_RPC_WRITE_TIMEOUT = 0;  // 0 means blocking
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
@@ -302,6 +332,25 @@ class DeviceBase::Impl {
     void setLogLevel(LogLevel level);
     LogLevel getLogLevel();
     void setPattern(const std::string& pattern);
+
+    /*
+     * RPC call with custom timeout. Set timeout to 0 to enable endless wait.
+     */
+    template <typename... Args>
+    auto rpcCall(std::chrono::milliseconds timeout, std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name),
+                                                                                                                  std::forward<Args>(args)...)) {
+        ScopedRpcTimeout guard(timeout);
+        return rpcClient->call(name, std::forward<Args>(args)...);
+    }
+
+    /*
+     * Default RPC call with timeout set to RPC_READ_TIMEOUT.
+     */
+    template <typename... Args>
+    auto rpcCall(std::string name, Args&&... args) -> decltype(rpcClient->call(std::string(name), std::forward<Args>(args)...)) {
+        // ScopedRpcTimeout guard(std::nullopt);
+        return rpcClient->call(name, std::forward<Args>(args)...);
+    }
 };
 
 void DeviceBase::Impl::setPattern(const std::string& pattern) {
@@ -329,13 +378,17 @@ void DeviceBase::tryGetDevice() {
     bool found = false;
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
-    // If no device found, throw
     if(!found) {
         auto numConnected = getAllAvailableDevices().size();
         if(numConnected > 0) {
-            throw std::runtime_error(fmt::format("No available devices ({} connected, but in use)", numConnected));
-        } else {
-            throw std::runtime_error("No available devices");
+            throw std::runtime_error("No available devices (" + std::to_string(numConnected) + " connected, but in use)");
+        }
+        auto numDevicesAnyPlatform = dai::XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false, X_LINK_ANY_PLATFORM).size();
+        auto numDevicesRVC2 = dai::XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false, X_LINK_MYRIAD_X).size();
+        auto nonRVC2Devices = numDevicesAnyPlatform - numDevicesRVC2;
+        if(nonRVC2Devices > 0) {
+            throw std::runtime_error("No available RVC2 devices found, but found " + std::to_string(nonRVC2Devices)
+                                     + " non RVC2 device[s]. To use RVC4 devices, please update DepthAI to version v3.x or newer.");
         }
     }
 }
@@ -536,19 +589,56 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
 }
 
+unsigned int getRPCReadTimeout() {
+    auto currentTimeout = currentRpcTimeout();
+    if(currentTimeout) {
+        return static_cast<unsigned int>(currentTimeout->count());
+    }
+
+    std::string timeoutStr = utility::getEnv("DEPTHAI_RPC_READ_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr);
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_RPC_READ_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_RPC_READ_TIMEOUT;
+}
+
+unsigned int getRPCWriteTimeout() {
+    std::string timeoutStr = utility::getEnv("DEPTHAI_RPC_WRITE_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr);
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_RPC_WRITE_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_RPC_WRITE_TIMEOUT;
+}
+
+tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
+    std::vector<uint8_t> data;
+    utility::serialize<SerializationType::JSON>(dump, data);
+    auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+    return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
+}
+
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
+    auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
     bool shouldGetCrashDump = false;
-    if(!dumpOnly) {
-        pimpl->logger.debug("Device about to be closed...");
+    if(!dumpOnly && timeout > 0) {
+        pimpl->logger.debug("Crash dump collection enabled - first try to extract an existing crash dump");
         try {
             if(hasCrashDump()) {
                 connection->setRebootOnDestruction(true);
                 auto dump = getCrashDump();
                 logCollection::logCrashDump(pipelineSchema, dump, deviceInfo);
             } else {
-                bool isRunning = pimpl->rpcClient->call("isRunning").as<bool>();
+                bool isRunning = pimpl->rpcCall("isRunning").as<bool>();
                 shouldGetCrashDump = !isRunning;
                 connection->setRebootOnDestruction(connection->getRebootOnDestruction() || shouldGetCrashDump);
                 pimpl->logger.debug("Shutdown {}", isRunning ? "OK" : "error");
@@ -557,8 +647,10 @@ void DeviceBase::closeImpl() {
             pimpl->logger.debug("shutdown call error: {}", ex.what());
             shouldGetCrashDump = true;
         }
+    } else {
+        pimpl->logger.debug("Crash dump collection disabled - skipping existing crash dump extraction");
     }
-
+    pimpl->logger.debug("Device about to be closed...");
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
     // always manage ownership because other threads (e.g. watchdog) are running and need to
@@ -589,7 +681,6 @@ void DeviceBase::closeImpl() {
     pimpl->rpcClient = nullptr;
 
     if(!dumpOnly) {
-        auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
         // Get crash dump if needed
         if(shouldGetCrashDump && timeout > 0) {
             pimpl->logger.debug("Getting crash dump...");
@@ -618,6 +709,8 @@ void DeviceBase::closeImpl() {
             }
         } else if(shouldGetCrashDump) {
             pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
+        } else if(timeout == 0) {
+            pimpl->logger.debug("Crash dump collection disabled, skip device reconnection");
         }
 
         pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
@@ -829,11 +922,23 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
         try {
             // Send request to device
-            rpcStream->write(std::move(request));
-
+            auto writeTimeout = getRPCWriteTimeout();
+            if(writeTimeout > 0) {
+                auto success = rpcStream->write(std::move(request), std::chrono::milliseconds(writeTimeout));
+                if(!success) {
+                    throw std::runtime_error("RPC write timed out in " + std::to_string(writeTimeout) + "ms");
+                }
+            } else {
+                rpcStream->write(std::move(request));
+            }
             // Receive response back
             // Send to nanorpc to parse
-            return rpcStream->read();
+            auto timeout = getRPCReadTimeout();
+            if(timeout > 0) {
+                return rpcStream->read(std::chrono::milliseconds(timeout));
+            } else {
+                return rpcStream->read();
+            }
         } catch(const std::exception& e) {
             // If any exception is thrown, log it and rethrow
             pimpl->logger.debug("RPC error: {}", e.what());
@@ -1033,11 +1138,11 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 }
 
 std::string DeviceBase::getMxId() {
-    return pimpl->rpcClient->call("getMxId").as<std::string>();
+    return pimpl->rpcCall("getMxId").as<std::string>();
 }
 
 std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
-    return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
+    return pimpl->rpcCall("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
 std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
@@ -1106,27 +1211,40 @@ std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
 }
 
 std::vector<ConnectionInterface> DeviceBase::getConnectionInterfaces() {
-    return pimpl->rpcClient->call("getConnectionInterfaces").as<std::vector<ConnectionInterface>>();
+    return pimpl->rpcCall("getConnectionInterfaces").as<std::vector<ConnectionInterface>>();
 }
 
 std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
-    return pimpl->rpcClient->call("getConnectedCameraFeatures").as<std::vector<CameraFeatures>>();
+    return pimpl->rpcCall("getConnectedCameraFeatures").as<std::vector<CameraFeatures>>();
 }
 
 std::vector<StereoPair> DeviceBase::getStereoPairs() {
-    return pimpl->rpcClient->call("getStereoPairs").as<std::vector<StereoPair>>();
+    return pimpl->rpcCall("getStereoPairs").as<std::vector<StereoPair>>();
 }
 
 std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNames() {
-    return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
+    return pimpl->rpcCall("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
 std::string DeviceBase::getConnectedIMU() {
-    return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
+    return pimpl->rpcCall("getConnectedIMU").as<std::string>();
+}
+
+void DeviceBase::crashDevice() {
+    // Check that the protective ENV variable is set
+    if(utility::getEnv("DEPTHAI_CRASH_DEVICE") != "1") {
+        pimpl->logger.error("Crashing the device is disabled. Set DEPTHAI_CRASH_DEVICE=1 to enable.");
+        return;
+    }
+    try {
+        pimpl->rpcCall("crashDevice");
+    } catch(const std::system_error& ex) {
+        pimpl->logger.debug("Crash device threw an exception: {} (expected)", ex.what());
+    }
 }
 
 dai::Version DeviceBase::getIMUFirmwareVersion() {
-    std::string versionStr = pimpl->rpcClient->call("getIMUFirmwareVersion").as<std::string>();
+    std::string versionStr = pimpl->rpcCall("getIMUFirmwareVersion").as<std::string>();
     try {
         dai::Version version = dai::Version(versionStr);
         return version;
@@ -1137,7 +1255,7 @@ dai::Version DeviceBase::getIMUFirmwareVersion() {
 }
 
 dai::Version DeviceBase::getEmbeddedIMUFirmwareVersion() {
-    std::string versionStr = pimpl->rpcClient->call("getEmbeddedIMUFirmwareVersion").as<std::string>();
+    std::string versionStr = pimpl->rpcCall("getEmbeddedIMUFirmwareVersion").as<std::string>();
     try {
         dai::Version version = dai::Version(versionStr);
         return version;
@@ -1148,44 +1266,44 @@ dai::Version DeviceBase::getEmbeddedIMUFirmwareVersion() {
 }
 
 bool DeviceBase::startIMUFirmwareUpdate(bool forceUpdate) {
-    return pimpl->rpcClient->call("startIMUFirmwareUpdate", forceUpdate).as<bool>();
+    return pimpl->rpcCall("startIMUFirmwareUpdate", forceUpdate).as<bool>();
 }
 
 std::tuple<bool, unsigned int> DeviceBase::getIMUFirmwareUpdateStatus() {
-    return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, unsigned int>>();
+    return pimpl->rpcCall("getIMUFirmwareUpdateStatus").as<std::tuple<bool, unsigned int>>();
 }
 
 // Convenience functions for querying current system information
 MemoryInfo DeviceBase::getDdrMemoryUsage() {
-    return pimpl->rpcClient->call("getDdrUsage").as<MemoryInfo>();
+    return pimpl->rpcCall("getDdrUsage").as<MemoryInfo>();
 }
 
 MemoryInfo DeviceBase::getCmxMemoryUsage() {
-    return pimpl->rpcClient->call("getCmxUsage").as<MemoryInfo>();
+    return pimpl->rpcCall("getCmxUsage").as<MemoryInfo>();
 }
 
 MemoryInfo DeviceBase::getLeonCssHeapUsage() {
-    return pimpl->rpcClient->call("getLeonCssHeapUsage").as<MemoryInfo>();
+    return pimpl->rpcCall("getLeonCssHeapUsage").as<MemoryInfo>();
 }
 
 MemoryInfo DeviceBase::getLeonMssHeapUsage() {
-    return pimpl->rpcClient->call("getLeonMssHeapUsage").as<MemoryInfo>();
+    return pimpl->rpcCall("getLeonMssHeapUsage").as<MemoryInfo>();
 }
 
 ChipTemperature DeviceBase::getChipTemperature() {
-    return pimpl->rpcClient->call("getChipTemperature").as<ChipTemperature>();
+    return pimpl->rpcCall("getChipTemperature").as<ChipTemperature>();
 }
 
 CpuUsage DeviceBase::getLeonCssCpuUsage() {
-    return pimpl->rpcClient->call("getLeonCssCpuUsage").as<CpuUsage>();
+    return pimpl->rpcCall("getLeonCssCpuUsage").as<CpuUsage>();
 }
 
 CpuUsage DeviceBase::getLeonMssCpuUsage() {
-    return pimpl->rpcClient->call("getLeonMssCpuUsage").as<CpuUsage>();
+    return pimpl->rpcCall("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
 UsbSpeed DeviceBase::getUsbSpeed() {
-    return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
+    return pimpl->rpcCall("getUsbSpeed").as<UsbSpeed>();
 }
 
 tl::optional<Version> DeviceBase::getBootloaderVersion() {
@@ -1193,27 +1311,27 @@ tl::optional<Version> DeviceBase::getBootloaderVersion() {
 }
 
 bool DeviceBase::isPipelineRunning() {
-    return pimpl->rpcClient->call("isPipelineRunning").as<bool>();
+    return pimpl->rpcCall("isPipelineRunning").as<bool>();
 }
 
 void DeviceBase::setLogLevel(LogLevel level) {
-    pimpl->rpcClient->call("setLogLevel", level);
+    pimpl->rpcCall("setLogLevel", level);
 }
 
 LogLevel DeviceBase::getLogLevel() {
-    return pimpl->rpcClient->call("getLogLevel").as<LogLevel>();
+    return pimpl->rpcCall("getLogLevel").as<LogLevel>();
 }
 
 void DeviceBase::setXLinkChunkSize(int sizeBytes) {
-    pimpl->rpcClient->call("setXLinkChunkSize", sizeBytes);
+    pimpl->rpcCall("setXLinkChunkSize", sizeBytes);
 }
 
 int DeviceBase::getXLinkChunkSize() {
-    return pimpl->rpcClient->call("getXLinkChunkSize").as<int>();
+    return pimpl->rpcCall("getXLinkChunkSize").as<int>();
 }
 
 void DeviceBase::setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize, int waitUs) {
-    pimpl->rpcClient->call("setXLinkRateLimit", maxRateBytesPerSecond, burstSize, waitUs);
+    pimpl->rpcCall("setXLinkRateLimit", maxRateBytesPerSecond, burstSize, waitUs);
 }
 
 DeviceInfo DeviceBase::getDeviceInfo() const {
@@ -1241,31 +1359,40 @@ LogLevel DeviceBase::getLogOutputLevel() {
 }
 
 bool DeviceBase::setIrLaserDotProjectorBrightness(float mA, int mask) {
-    return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask, false);
+    return pimpl->rpcCall("setIrLaserDotProjectorBrightness", mA, mask, false);
 }
 
 bool DeviceBase::setIrLaserDotProjectorIntensity(float intensity, int mask) {
-    return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", intensity, mask, true);
+    return pimpl->rpcCall("setIrLaserDotProjectorBrightness", intensity, mask, true);
 }
 
 bool DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
-    return pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask, false);
+    return pimpl->rpcCall("setIrFloodLightBrightness", mA, mask, false);
 }
 
 bool DeviceBase::setIrFloodLightIntensity(float intensity, int mask) {
-    return pimpl->rpcClient->call("setIrFloodLightBrightness", intensity, mask, true);
+    return pimpl->rpcCall("setIrFloodLightBrightness", intensity, mask, true);
 }
 
 std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
-    return pimpl->rpcClient->call("getIrDrivers");
+    return pimpl->rpcCall("getIrDrivers");
+}
+
+dai::CrashDump DeviceBase::getState() {
+    auto state = pimpl->rpcCall("getState").as<dai::CrashDump>();
+    // There is a small chance retrieving the state may hang,
+    // so it's not auto-cleared in the same call,
+    // allowing to be returned as a crashdump in the next run
+    pimpl->rpcCall("clearCrashDump");
+    return state;
 }
 
 dai::CrashDump DeviceBase::getCrashDump(bool clearCrashDump) {
-    return pimpl->rpcClient->call("getCrashDump", clearCrashDump).as<dai::CrashDump>();
+    return pimpl->rpcCall("getCrashDump", clearCrashDump).as<dai::CrashDump>();
 }
 
 bool DeviceBase::hasCrashDump() {
-    return pimpl->rpcClient->call("hasCrashDump").as<bool>();
+    return pimpl->rpcCall("hasCrashDump").as<bool>();
 }
 
 ProfilingData DeviceBase::getProfilingData() {
@@ -1304,7 +1431,7 @@ void DeviceBase::setTimesync(std::chrono::milliseconds period, int numSamples, b
     }
 
     using namespace std::chrono;
-    pimpl->rpcClient->call("setTimesync", duration_cast<milliseconds>(period).count(), numSamples, random);
+    pimpl->rpcCall("setTimesync", duration_cast<milliseconds>(period).count(), numSamples, random);
 }
 
 void DeviceBase::setTimesync(bool enable) {
@@ -1316,15 +1443,15 @@ void DeviceBase::setTimesync(bool enable) {
 }
 
 void DeviceBase::setSystemInformationLoggingRate(float rateHz) {
-    pimpl->rpcClient->call("setSystemInformationLoggingRate", rateHz);
+    pimpl->rpcCall("setSystemInformationLoggingRate", rateHz);
 }
 
 float DeviceBase::getSystemInformationLoggingRate() {
-    return pimpl->rpcClient->call("getSystemInformationLoggingRate").as<float>();
+    return pimpl->rpcCall("getSystemInformationLoggingRate").as<float>();
 }
 
 bool DeviceBase::isEepromAvailable() {
-    return pimpl->rpcClient->call("isEepromAvailable").as<bool>();
+    return pimpl->rpcCall("isEepromAvailable").as<bool>();
 }
 
 bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
@@ -1348,8 +1475,8 @@ void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
 
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcClient->call("storeToEeprom", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions)
-                                      .as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) =
+        pimpl->rpcCall("storeToEeprom", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions).as<std::tuple<bool, std::string>>();
 
     if(!success) {
         throw std::runtime_error(errorMsg);
@@ -1359,7 +1486,7 @@ void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
 void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcClient->call("setCalibration", calibrationDataHandler.getEepromData()).as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcCall("setCalibration", calibrationDataHandler.getEepromData()).as<std::tuple<bool, std::string>>();
     if(!success) {
         throw std::runtime_error(errorMsg);
     }
@@ -1369,7 +1496,7 @@ CalibrationHandler DeviceBase::getCalibration() {
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
-    std::tie(success, errorMsg, eepromData) = pimpl->rpcClient->call("getCalibration").as<std::tuple<bool, std::string, dai::EepromData>>();
+    std::tie(success, errorMsg, eepromData) = pimpl->rpcCall("getCalibration").as<std::tuple<bool, std::string, dai::EepromData>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1389,7 +1516,7 @@ CalibrationHandler DeviceBase::readCalibration2() {
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
-    std::tie(success, errorMsg, eepromData) = pimpl->rpcClient->call("readFromEeprom").as<std::tuple<bool, std::string, dai::EepromData>>();
+    std::tie(success, errorMsg, eepromData) = pimpl->rpcCall("readFromEeprom").as<std::tuple<bool, std::string, dai::EepromData>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1416,9 +1543,8 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
 
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) =
-        pimpl->rpcClient->call("storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions)
-            .as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcCall("storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions)
+                                      .as<std::tuple<bool, std::string>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1428,7 +1554,7 @@ CalibrationHandler DeviceBase::readFactoryCalibration() {
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
-    std::tie(success, errorMsg, eepromData) = pimpl->rpcClient->call("readFromEepromFactory").as<std::tuple<bool, std::string, dai::EepromData>>();
+    std::tie(success, errorMsg, eepromData) = pimpl->rpcCall("readFromEepromFactory").as<std::tuple<bool, std::string, dai::EepromData>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1447,7 +1573,7 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
 void DeviceBase::factoryResetCalibration() {
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryReset").as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcCall("eepromFactoryReset").as<std::tuple<bool, std::string>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1457,7 +1583,7 @@ std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
-    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcCall("readFromEepromRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1489,7 +1615,7 @@ std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
-    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromFactoryRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcCall("readFromEepromFactoryRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1508,7 +1634,7 @@ void DeviceBase::flashEepromClear() {
 
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcCall("eepromClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1526,7 +1652,7 @@ void DeviceBase::flashFactoryEepromClear() {
 
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcCall("eepromFactoryClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
     if(!success) {
         throw EepromError(errorMsg);
     }
@@ -1604,11 +1730,11 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     }
 
     // Load pipelineDesc, assets, and asset storage
-    pimpl->rpcClient->call("setPipelineSchema", schema);
+    pimpl->rpcCall("setPipelineSchema", schema);
 
     // Transfer storage != empty
     if(!assetStorage.empty()) {
-        pimpl->rpcClient->call("setAssets", assets);
+        pimpl->rpcCall("setAssets", assets);
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
@@ -1621,13 +1747,21 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
                 offset += toTransfer;
             } while(offset < static_cast<int64_t>(assetStorage.size()));
         });
-
-        pimpl->rpcClient->call("readAssetStorageFromXLink", streamAssetStorage, assetStorage.size());
+        try {
+            pimpl->rpcCall(std::chrono::milliseconds(0), "readAssetStorageFromXLink", streamAssetStorage, assetStorage.size());
+        } catch(const std::exception& e) {
+            if(t1.joinable()) {
+                t1.join();
+            }
+            logger::error("Exception while transferring asset storage: {}", e.what());
+            throw;
+            return false;
+        }
         t1.join();
     }
 
     // print assets on device side for test
-    pimpl->rpcClient->call("printAssets");
+    pimpl->rpcCall("printAssets");
 
     // Log the pipeline
     logCollection::logPipeline(schema, deviceInfo);
@@ -1636,9 +1770,9 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     // Build and start the pipeline
     bool success = false;
     std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcClient->call("buildPipeline").as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcCall("buildPipeline").as<std::tuple<bool, std::string>>();
     if(success) {
-        pimpl->rpcClient->call("startPipeline");
+        pimpl->rpcCall("startPipeline");
     } else {
         throw std::runtime_error(errorMsg);
         return false;

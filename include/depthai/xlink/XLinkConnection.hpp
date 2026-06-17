@@ -57,9 +57,12 @@ class XLinkConnection {
      *
      * @param state State which the devices should be in
      * @param skipInvalidDevices whether or not to skip over devices that cannot be successfully communicated with
+     * @param platform Which platforms to search for
      * @returns Vector of connected device information
      */
-    static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevices = true);
+    static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE,
+                                                          bool skipInvalidDevices = true,
+                                                          XLinkPlatform_t platform = X_LINK_MYRIAD_X);
 
     /**
      * Returns information of first device with given state
