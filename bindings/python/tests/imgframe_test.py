@@ -3,6 +3,7 @@ import depthai as dai
 import numpy as np
 import pytest
 import numpy.typing as npt
+from pathlib import Path
 
 DEBUG = False
 
@@ -42,6 +43,38 @@ def max_abs_diff(expected, recovered):
 def assert_images_close(expected, recovered, tolerance, msg):
     max_diff = max_abs_diff(expected, recovered)
     assert max_diff <= tolerance, f"{msg} max abs diff too high: {max_diff} > {tolerance}"
+
+
+def make_test_frame():
+    image = generate_color_image()
+    frame = dai.ImgFrame()
+    frame.setCvFrame(image, dai.ImgFrame.Type.BGR888i)
+    frame.setTimestamp(frame.getTimestamp())
+    frame.setTimestampDevice(frame.getTimestampDevice())
+    frame.setSequenceNum(123)
+    frame.setInstanceNum(7)
+    frame.setCategory(11)
+
+    transformation = dai.ImgTransformation(160, 120, image.shape[1], image.shape[0])
+    transformation.addCrop(8, 6, image.shape[1] - 12, image.shape[0] - 10)
+    frame.setTransformation(transformation)
+
+    return frame, image
+
+
+def assert_frame_metadata_equal(expected, actual):
+    assert actual.getSequenceNum() == expected.getSequenceNum()
+    assert actual.getInstanceNum() == expected.getInstanceNum()
+    assert actual.getCategory() == expected.getCategory()
+    assert actual.getWidth() == expected.getWidth()
+    assert actual.getHeight() == expected.getHeight()
+    assert actual.getType() == expected.getType()
+    assert actual.getTimestamp() == expected.getTimestamp()
+    assert actual.getTimestampDevice() == expected.getTimestampDevice()
+
+    expected_transform = np.array(expected.getTransformation().getTransformationMatrix())
+    actual_transform = np.array(actual.getTransformation().getTransformationMatrix())
+    np.testing.assert_allclose(actual_transform, expected_transform)
 
 
 
@@ -127,3 +160,28 @@ def test_setcvframe_raw32():
     assert recovered.shape == image.shape
     assert recovered.dtype == np.int32
     assert_images_close(image, recovered, tolerance=0.0, msg="RAW32")
+
+
+def test_imgframe_file_roundtrip(tmp_path: Path):
+    frame, image = make_test_frame()
+    path = tmp_path / "frame.pb"
+
+    frame.save(path)
+    recovered = dai.ImgFrame()
+    recovered.load(path)
+
+    assert_frame_metadata_equal(frame, recovered)
+    assert np.array_equal(np.asarray(recovered.getData()), np.asarray(frame.getData()))
+    assert_images_close(image, recovered.getCvFrame(), tolerance=0.5, msg="imgframe file roundtrip")
+
+
+def test_imgframe_metadata_only_roundtrip(tmp_path: Path):
+    frame, _ = make_test_frame()
+    path = tmp_path / "frame-metadata.pb"
+
+    frame.save(path, metadataOnly=True)
+    recovered = dai.ImgFrame()
+    recovered.load(path, metadataOnly=True)
+
+    assert_frame_metadata_equal(frame, recovered)
+    assert recovered.getData().size == 0

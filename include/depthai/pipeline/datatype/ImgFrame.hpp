@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <filesystem>
 #include <unordered_map>
 #include <vector>
 
@@ -367,6 +368,22 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * @returns cloned ImgFrame
      */
     std::shared_ptr<ImgFrame> clone() const;
+
+    /**
+     * Save the frame in the XLink packet format used by host/device transport.
+     *
+     * @param path Output file path
+     * @param metadataOnly If true, only metadata is written and image payload is omitted
+     */
+    void save(const std::filesystem::path& path, bool metadataOnly = false) const;
+
+    /**
+     * Load the frame from the XLink packet format used by host/device transport.
+     *
+     * @param path Input file path
+     * @param metadataOnly If true, loaded payload bytes are discarded after parsing
+     */
+    void load(const std::filesystem::path& path, bool metadataOnly = false);
 
     /**
      * @note Fov API works correctly only on rectilinear frames

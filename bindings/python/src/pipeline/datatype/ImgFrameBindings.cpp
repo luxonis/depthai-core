@@ -326,6 +326,19 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("setTransformation", &ImgFrame::setTransformation, py::arg("transformation"), DOC(dai, ImgFrame, setTransformation))
         // .def("set", &ImgFrame::set, py::arg("type"), DOC(dai, ImgFrame, set))
         ;
+
+    imgFrame
+        .def(
+            "save",
+            &ImgFrame::save,
+            py::arg("path"),
+            py::arg("metadataOnly") = false)
+        .def(
+            "load",
+            &ImgFrame::load,
+            py::arg("path"),
+            py::arg("metadataOnly") = false);
+
     // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
     // m.attr("ImgFrame").attr("Type") = m.attr("RawImgFrame").attr("Type");
     // m.attr("ImgFrame").attr("Specs") = m.attr("RawImgFrame").attr("Specs");
