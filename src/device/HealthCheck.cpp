@@ -634,24 +634,11 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         }
     }
 
-    // Measure the bandwidth
-    if(config.measureBandwidth) {
-        measureBandwidth(device, metrics);
-        device.reset();
-        try {
-            device = std::make_shared<Device>(devInfo);
-        } catch(const std::exception& ex) {
-            metrics.bandwidthMbps = 0.0f;
-            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, ex.what());
-            return metrics;
-        }
-    }
-
     // Read the calibration
     std::optional<CalibrationHandler> calibration;
     if(config.verifyCameraCalibration || config.verifyImuCalibration) {
         try {
-            calibration = device->readCalibration2();
+            calibration = device->getCalibration();
         } catch(const std::exception& ex) {
             if(config.verifyCameraCalibration) {
                 metrics.cameraCalibration = HealthCheckResult::FAIL;
@@ -735,6 +722,19 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
 
     if(config.verifyCameraFunctionality || config.verifyImuFunctionality || config.verifyPowerSupply) {
         runDiagnosticPipeline(device, config, connectedCameras, imuName, metrics);
+    }
+
+    // Measure the bandwidth
+    if(config.measureBandwidth) {
+        device.reset();
+        try {
+            device = std::make_shared<Device>(devInfo);
+        } catch(const std::exception& ex) {
+            metrics.bandwidthMbps = 0.0f;
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, ex.what());
+            return metrics;
+        }
+        measureBandwidth(device, metrics);
     }
 
     return metrics;
