@@ -1134,8 +1134,8 @@ void CalibrationHandler::setCameraType(CameraBoardSocket cameraId, CameraModel c
 
 void CalibrationHandler::updateCameraExtrinsics(CameraBoardSocket srcCameraId,
                                                 CameraBoardSocket destCameraId,
-                                                std::vector<std::vector<float>> rotationMatrix,
-                                                std::vector<float> translation) {
+                                                const std::vector<std::vector<float>>& rotationMatrix,
+                                                const std::vector<float>& translation) {
     validateRotationMatrix3x3(rotationMatrix);
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");

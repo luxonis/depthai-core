@@ -660,8 +660,8 @@ class CalibrationHandler {
      */
     void updateCameraExtrinsics(CameraBoardSocket srcCameraId,
                                 CameraBoardSocket destCameraId,
-                                std::vector<std::vector<float>> rotationMatrix,
-                                std::vector<float> translation);
+                                const std::vector<std::vector<float>>& rotationMatrix,
+                                const std::vector<float>& translation);
     /**
      * Set the Imu to Camera Extrinsics object
      *
