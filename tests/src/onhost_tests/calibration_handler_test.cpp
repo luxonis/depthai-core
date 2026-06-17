@@ -898,6 +898,37 @@ TEST_CASE("updateCameraExtrinsics rejects destination mismatch", "[updateCameraE
                         Catch::Matchers::ContainsSubstring("has different toCameraSocket"));
 }
 
+TEST_CASE("updateCameraExtrinsics rejects ragged rotation matrices", "[updateCameraExtrinsics]") {
+    auto handler = loadValidHandler();
+    const auto raggedRotation = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f}, {0.0f}};
+    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    REQUIRE_THROWS_WITH(handler.updateCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, raggedRotation, translation),
+                        Catch::Matchers::ContainsSubstring("Rotation Matrix size should always be 3x3"));
+}
+
+TEST_CASE("setCameraExtrinsics rejects ragged rotation matrices", "[setCameraExtrinsics]") {
+    auto handler = loadValidHandler();
+    const auto raggedRotation = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f}, {0.0f}};
+    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_A,
+                                                    CameraBoardSocket::CAM_B,
+                                                    raggedRotation,
+                                                    translation,
+                                                    translation),
+                        Catch::Matchers::ContainsSubstring("Rotation Matrix size should always be 3x3"));
+}
+
+TEST_CASE("setHousingToHousingOriginExtrinsics rejects ragged rotation matrices", "[setHousingToHousingOriginExtrinsics]") {
+    auto handler = loadValidHandler();
+    const auto raggedRotation = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f}, {0.0f}};
+    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    REQUIRE_THROWS_WITH(handler.setHousingToHousingOriginExtrinsics(raggedRotation, translation, LengthUnit::CENTIMETER),
+                        Catch::Matchers::ContainsSubstring("Rotation Matrix size should always be 3x3"));
+}
+
 TEST_CASE("EEPROM data default set fields are present", "[getEepromData]") {
     auto handler = loadInvalidHandler();
     auto eeprom = handler.getEepromData();

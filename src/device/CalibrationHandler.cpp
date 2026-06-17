@@ -55,6 +55,17 @@ void validateImuCalibrationMatrix(const std::vector<std::vector<float>>& calibra
     }
 }
 
+void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix) {
+    if(rotationMatrix.size() != 3) {
+        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
+    }
+    for(const auto& row : rotationMatrix) {
+        if(row.size() != 3) {
+            throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
+        }
+    }
+}
+
 EepromData validateCBAEepromData(EepromData eepromData) {
     if(eepromData.cameraData.size() != 1) {
         throw std::runtime_error("CBA calibration data must contain exactly one cameraData entry.");
@@ -1125,9 +1136,7 @@ void CalibrationHandler::updateCameraExtrinsics(CameraBoardSocket srcCameraId,
                                                 CameraBoardSocket destCameraId,
                                                 std::vector<std::vector<float>> rotationMatrix,
                                                 std::vector<float> translation) {
-    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
-        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
-    }
+    validateRotationMatrix3x3(rotationMatrix);
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
@@ -1153,9 +1162,7 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
                                              const std::vector<std::vector<float>>& rotationMatrix,
                                              const std::vector<float>& translation,
                                              const std::vector<float>& specTranslation) {
-    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
-        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
-    }
+    validateRotationMatrix3x3(rotationMatrix);
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
@@ -1185,9 +1192,7 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
 }
 
 void CalibrationHandler::setHousingToHousingOriginExtrinsics(std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation, LengthUnit unit) {
-    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
-        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
-    }
+    validateRotationMatrix3x3(rotationMatrix);
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
@@ -1205,9 +1210,7 @@ void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
                                           const std::vector<std::vector<float>>& rotationMatrix,
                                           const std::vector<float>& translation,
                                           const std::vector<float>& specTranslation) {
-    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
-        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
-    }
+    validateRotationMatrix3x3(rotationMatrix);
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
