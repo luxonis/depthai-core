@@ -3,7 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <string>
-#include <unordered_map>
+#include <vector>
 
 #include "depthai/xlink/XLinkConnection.hpp"
 
@@ -23,7 +23,7 @@ enum class HealthCheckResult : std::uint8_t { NOT_RUN, PASS, FAIL };
  * Configures which device health-check steps should run.
  */
 struct HealthCheckConfig {
-    bool checkUsbSpeed = true;
+    bool checkUsbGeneration = true;
     bool measureBandwidth = true;
     bool verifyCameraFunctionality = true;
     bool verifyCameraCalibration = true;
@@ -32,6 +32,41 @@ struct HealthCheckConfig {
     bool verifyPowerSupply = true;
 
     std::chrono::milliseconds powerSupplyCheckDuration{std::chrono::seconds(20)};
+};
+
+/**
+ * Health check issue type
+ */
+enum class HealthCheckIssueType : std::uint8_t {
+    Warning,
+    Error,
+};
+
+/**
+ * Health check issue stage
+ */
+enum class HealthCheckIssueStage : std::uint8_t {
+    Connection,
+    DeviceAvailability,
+    UsbGeneration,
+    Bandwidth,
+    CameraFunctionality,
+    CameraCalibration,
+    ImuFunctionality,
+    ImuCalibration,
+    PowerSupply,
+};
+
+/**
+ * Health check issue, which contains the details of the issue
+ */
+struct HealthCheckIssue {
+    HealthCheckIssueType type;
+    HealthCheckIssueStage stage;
+    std::string message;
+
+    HealthCheckIssue() = delete;
+    HealthCheckIssue(HealthCheckIssueType type, HealthCheckIssueStage stage, std::string message) : type(type), stage(stage), message(std::move(message)) {}
 };
 
 /**
@@ -50,8 +85,9 @@ struct HealthCheckMetrics {
     bool inSetupMode = false;
     bool udevRulesSet = false;
 
-    std::unordered_map<std::string, std::string> errors;
-    std::unordered_map<std::string, std::string> warnings;
+    std::vector<HealthCheckIssue> issues;
+
+    std::string toString() const;
 };
 
 class DeviceHealthCheck {

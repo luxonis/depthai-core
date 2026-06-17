@@ -136,7 +136,10 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
     py::class_<Device, DeviceBase, std::shared_ptr<Device>> device(m, "Device", DOC(dai, Device));
     py::class_<Device::Config> deviceConfig(device, "Config", DOC(dai, DeviceBase, Config));
     py::class_<HealthCheckConfig> healthCheckConfig(m, "HealthCheckConfig", DOC(dai, HealthCheckConfig));
+    py::class_<HealthCheckIssue> healthCheckIssue(m, "HealthCheckIssue", DOC(dai, HealthCheckIssue));
     py::class_<HealthCheckMetrics> healthCheckMetrics(m, "HealthCheckMetrics", DOC(dai, HealthCheckMetrics));
+    py::enum_<HealthCheckIssueType> healthCheckIssueType(m, "HealthCheckIssueType", DOC(dai, HealthCheckIssueType));
+    py::enum_<HealthCheckIssueStage> healthCheckIssueStage(m, "HealthCheckIssueStage", DOC(dai, HealthCheckIssueStage));
     py::enum_<UsbGeneration> usbGeneration(m, "UsbGeneration", DOC(dai, UsbGeneration));
     py::enum_<HealthCheckResult> healthCheckResult(m, "HealthCheckResult", DOC(dai, HealthCheckResult));
     py::class_<BoardConfig> boardConfig(m, "BoardConfig", DOC(dai, BoardConfig));
@@ -298,9 +301,30 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("PASS", HealthCheckResult::PASS, DOC(dai, HealthCheckResult, PASS))
         .value("FAIL", HealthCheckResult::FAIL, DOC(dai, HealthCheckResult, FAIL));
 
+    // Bind HealthCheckIssueType
+    healthCheckIssueType.value("Warning", HealthCheckIssueType::Warning, DOC(dai, HealthCheckIssueType, Warning))
+        .value("Error", HealthCheckIssueType::Error, DOC(dai, HealthCheckIssueType, Error));
+
+    // Bind HealthCheckIssueStage
+    healthCheckIssueStage.value("Connection", HealthCheckIssueStage::Connection, DOC(dai, HealthCheckIssueStage, Connection))
+        .value("DeviceAvailability", HealthCheckIssueStage::DeviceAvailability, DOC(dai, HealthCheckIssueStage, DeviceAvailability))
+        .value("UsbGeneration", HealthCheckIssueStage::UsbGeneration, DOC(dai, HealthCheckIssueStage, UsbGeneration))
+        .value("Bandwidth", HealthCheckIssueStage::Bandwidth, DOC(dai, HealthCheckIssueStage, Bandwidth))
+        .value("CameraFunctionality", HealthCheckIssueStage::CameraFunctionality, DOC(dai, HealthCheckIssueStage, CameraFunctionality))
+        .value("CameraCalibration", HealthCheckIssueStage::CameraCalibration, DOC(dai, HealthCheckIssueStage, CameraCalibration))
+        .value("ImuFunctionality", HealthCheckIssueStage::ImuFunctionality, DOC(dai, HealthCheckIssueStage, ImuFunctionality))
+        .value("ImuCalibration", HealthCheckIssueStage::ImuCalibration, DOC(dai, HealthCheckIssueStage, ImuCalibration))
+        .value("PowerSupply", HealthCheckIssueStage::PowerSupply, DOC(dai, HealthCheckIssueStage, PowerSupply));
+
+    // Bind HealthCheckIssue
+    healthCheckIssue.def(py::init<HealthCheckIssueType, HealthCheckIssueStage, const std::string&>(), py::arg("type"), py::arg("stage"), py::arg("message"))
+        .def_readwrite("type", &HealthCheckIssue::type, DOC(dai, HealthCheckIssue, type))
+        .def_readwrite("stage", &HealthCheckIssue::stage, DOC(dai, HealthCheckIssue, stage))
+        .def_readwrite("message", &HealthCheckIssue::message, DOC(dai, HealthCheckIssue, message));
+
     // Bind HealthCheckConfig
     healthCheckConfig.def(py::init<>())
-        .def_readwrite("checkUsbSpeed", &HealthCheckConfig::checkUsbSpeed, DOC(dai, HealthCheckConfig, checkUsbSpeed))
+        .def_readwrite("checkUsbGeneration", &HealthCheckConfig::checkUsbGeneration, DOC(dai, HealthCheckConfig, checkUsbGeneration))
         .def_readwrite("measureBandwidth", &HealthCheckConfig::measureBandwidth, DOC(dai, HealthCheckConfig, measureBandwidth))
         .def_readwrite("verifyCameraFunctionality", &HealthCheckConfig::verifyCameraFunctionality, DOC(dai, HealthCheckConfig, verifyCameraFunctionality))
         .def_readwrite("verifyCameraCalibration", &HealthCheckConfig::verifyCameraCalibration, DOC(dai, HealthCheckConfig, verifyCameraCalibration))
@@ -321,8 +345,10 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
         .def_readwrite("appRunningOnDevice", &HealthCheckMetrics::appRunningOnDevice, DOC(dai, HealthCheckMetrics, appRunningOnDevice))
         .def_readwrite("inSetupMode", &HealthCheckMetrics::inSetupMode, DOC(dai, HealthCheckMetrics, inSetupMode))
         .def_readwrite("udevRulesSet", &HealthCheckMetrics::udevRulesSet, DOC(dai, HealthCheckMetrics, udevRulesSet))
-        .def_readwrite("errors", &HealthCheckMetrics::errors, DOC(dai, HealthCheckMetrics, errors))
-        .def_readwrite("warnings", &HealthCheckMetrics::warnings, DOC(dai, HealthCheckMetrics, warnings));
+        .def_readwrite("issues", &HealthCheckMetrics::issues, DOC(dai, HealthCheckMetrics, issues))
+        .def("toString", &HealthCheckMetrics::toString, DOC(dai, HealthCheckMetrics, toString))
+        .def("__repr__", &HealthCheckMetrics::toString)
+        .def("__str__", &HealthCheckMetrics::toString);
 
     // Bind constructors
     bindConstructors<DeviceBase>(deviceBase);

@@ -7,8 +7,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <iomanip>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -78,14 +80,84 @@ UsbGeneration usbSpeedToGeneration(UsbSpeed speed) {
     }
 }
 
-void setWarning(HealthCheckMetrics& metrics, const std::string& key, const std::string& message) {
-    logger::warn("Health check warning at {}: {}", key, message);
-    metrics.warnings[key] = message;
+std::string usbGenerationToString(UsbGeneration generation) {
+    switch(generation) {
+        case UsbGeneration::USB_1_0:
+            return "USB 1.0";
+        case UsbGeneration::USB_1_1:
+            return "USB 1.1";
+        case UsbGeneration::USB_2_0:
+            return "USB 2.0";
+        case UsbGeneration::USB_3_0:
+            return "USB 3.0";
+        case UsbGeneration::USB_3_1:
+            return "USB 3.1";
+        case UsbGeneration::UNKNOWN:
+        default:
+            return "UNKNOWN";
+    }
 }
 
-void setError(HealthCheckMetrics& metrics, const std::string& key, const std::string& message) {
-    logger::warn("Health check failed at {}: {}", key, message);
-    metrics.errors[key] = message;
+std::string healthCheckResultToString(HealthCheckResult result) {
+    switch(result) {
+        case HealthCheckResult::PASS:
+            return "pass";
+        case HealthCheckResult::FAIL:
+            return "fail";
+        case HealthCheckResult::NOT_RUN:
+        default:
+            return "not run";
+    }
+}
+
+std::string healthCheckIssueTypeToString(HealthCheckIssueType type) {
+    switch(type) {
+        case HealthCheckIssueType::Warning:
+            return "warning";
+        case HealthCheckIssueType::Error:
+            return "error";
+        default:
+            return "unknown";
+    }
+}
+
+std::string healthCheckIssueStageToString(HealthCheckIssueStage stage) {
+    switch(stage) {
+        case HealthCheckIssueStage::Connection:
+            return "connection";
+        case HealthCheckIssueStage::DeviceAvailability:
+            return "deviceAvailability";
+        case HealthCheckIssueStage::UsbGeneration:
+            return "usbGeneration";
+        case HealthCheckIssueStage::Bandwidth:
+            return "bandwidth";
+        case HealthCheckIssueStage::CameraFunctionality:
+            return "cameraFunctionality";
+        case HealthCheckIssueStage::CameraCalibration:
+            return "cameraCalibration";
+        case HealthCheckIssueStage::ImuFunctionality:
+            return "imuFunctionality";
+        case HealthCheckIssueStage::ImuCalibration:
+            return "imuCalibration";
+        case HealthCheckIssueStage::PowerSupply:
+            return "powerSupply";
+        default:
+            return "unknown";
+    }
+}
+
+std::string serializeIssues(const std::vector<HealthCheckIssue>& issues) {
+    std::ostringstream stream;
+    stream << "[";
+    for(std::size_t i = 0; i < issues.size(); ++i) {
+        if(i != 0) {
+            stream << ", ";
+        }
+        stream << "{type=" << healthCheckIssueTypeToString(issues[i].type) << ", stage=" << healthCheckIssueStageToString(issues[i].stage)
+               << ", message=" << std::quoted(issues[i].message) << "}";
+    }
+    stream << "]";
+    return stream.str();
 }
 
 struct IrPowerGuard {
@@ -124,7 +196,8 @@ void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMet
     try {
         const auto irDrivers = device->getIrDrivers();
         if(irDrivers.empty()) {
-            setWarning(metrics, "powerSupply", "No IR drivers detected; power supply check ran without IR load.");
+            metrics.issues.emplace_back(
+                HealthCheckIssueType::Warning, HealthCheckIssueStage::PowerSupply, "No IR drivers detected; power supply check ran without IR load.");
             return;
         }
 
@@ -133,24 +206,26 @@ void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMet
         try {
             laserEnabled = device->setIrLaserDotProjectorIntensity(MAX_POWER_IR_INTENSITY);
         } catch(const std::exception& ex) {
-            setWarning(metrics, "powerSupplyIrLaser", std::string("Failed to enable IR laser dot projector: ") + ex.what());
+            metrics.issues.emplace_back(
+                HealthCheckIssueType::Warning, HealthCheckIssueStage::PowerSupply, std::string("Failed to enable IR laser dot projector: ") + ex.what());
         }
         try {
             floodEnabled = device->setIrFloodLightIntensity(MAX_POWER_IR_INTENSITY);
         } catch(const std::exception& ex) {
-            setWarning(metrics, "powerSupplyIrFlood", std::string("Failed to enable IR flood light: ") + ex.what());
+            metrics.issues.emplace_back(
+                HealthCheckIssueType::Warning, HealthCheckIssueStage::PowerSupply, std::string("Failed to enable IR flood light: ") + ex.what());
         }
         guard.enabled = laserEnabled || floodEnabled;
 
         if(!guard.enabled) {
             metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
-            setError(metrics, "powerSupply", "Failed to enable IR laser/flood drivers.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "Failed to enable IR laser/flood drivers.");
         } else if(!laserEnabled || !floodEnabled) {
-            setWarning(metrics, "powerSupply", "Only one IR driver accepted maximum intensity.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Warning, HealthCheckIssueStage::PowerSupply, "Only one IR driver accepted maximum intensity.");
         }
     } catch(const std::exception& ex) {
         metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
-        setError(metrics, "powerSupply", ex.what());
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, ex.what());
     }
 }
 
@@ -158,15 +233,16 @@ bool waitForPowerSupplyLoad(const std::shared_ptr<Device>& device, std::chrono::
     while(std::chrono::steady_clock::now() < deadline) {
         try {
             if(device->hasCrashed()) {
-                setError(metrics, "powerSupply", "Device crashed during power supply load.");
+                metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "Device crashed during power supply load.");
                 return false;
             }
             if(device->isClosed()) {
-                setError(metrics, "powerSupply", "Device connection closed during power supply load.");
+                metrics.issues.emplace_back(
+                    HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "Device connection closed during power supply load.");
                 return false;
             }
         } catch(const std::exception& ex) {
-            setError(metrics, "powerSupply", ex.what());
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, ex.what());
             return false;
         }
 
@@ -177,15 +253,15 @@ bool waitForPowerSupplyLoad(const std::shared_ptr<Device>& device, std::chrono::
 
     try {
         if(device->hasCrashed()) {
-            setError(metrics, "powerSupply", "Device crashed during power supply load.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "Device crashed during power supply load.");
             return false;
         }
         if(device->isClosed()) {
-            setError(metrics, "powerSupply", "Device connection closed during power supply load.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "Device connection closed during power supply load.");
             return false;
         }
     } catch(const std::exception& ex) {
-        setError(metrics, "powerSupply", ex.what());
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, ex.what());
         return false;
     }
 
@@ -195,7 +271,7 @@ bool waitForPowerSupplyLoad(const std::shared_ptr<Device>& device, std::chrono::
 void setRequestedChecksFailed(HealthCheckMetrics& metrics, const HealthCheckConfig& config) {
     logger::warn("Requested health check diagnostics will be marked failed because a prerequisite failed.");
 
-    if(config.checkUsbSpeed) {
+    if(config.checkUsbGeneration) {
         metrics.usbGeneration = UsbGeneration::UNKNOWN;
     }
     if(config.measureBandwidth) {
@@ -222,12 +298,12 @@ bool performDeviceAvailabilityCheck(const std::shared_ptr<Device>& device, const
     try {
         if(device->isPipelineRunning()) {
             metrics.appRunningOnDevice = true;
-            setError(metrics, "deviceAvailability", "Pipeline is already running on the device.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::DeviceAvailability, "Pipeline is already running on the device.");
             setRequestedChecksFailed(metrics, config);
             return false;
         }
     } catch(const std::exception& ex) {
-        setError(metrics, "deviceAvailability", ex.what());
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::DeviceAvailability, ex.what());
         setRequestedChecksFailed(metrics, config);
         return false;
     }
@@ -259,12 +335,13 @@ bool verifyCameraCalibrationMetadata(const std::vector<CameraBoardSocket>& conne
                                      const std::optional<CalibrationHandler>& calibration,
                                      HealthCheckMetrics& metrics) {
     if(connectedCameras.empty()) {
-        setError(metrics, "cameraCalibration", "No connected cameras detected.");
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::CameraCalibration, "No connected cameras detected.");
         return false;
     }
 
     if(!calibration) {
-        setError(metrics, "cameraCalibration", "No readable calibration containing camera parameters.");
+        metrics.issues.emplace_back(
+            HealthCheckIssueType::Error, HealthCheckIssueStage::CameraCalibration, "No readable calibration containing camera parameters.");
         return false;
     }
 
@@ -272,54 +349,58 @@ bool verifyCameraCalibrationMetadata(const std::vector<CameraBoardSocket>& conne
         CalibrationHandler validatedCalibration(calibration->getEepromData(), true);
         for(auto socket : connectedCameras) {
             if(!validatedCalibration.hasCameraCalibration(socket)) {
-                setError(metrics, "cameraCalibration", "Missing calibration for camera socket " + socketToString(socket) + ".");
+                metrics.issues.emplace_back(HealthCheckIssueType::Error,
+                                            HealthCheckIssueStage::CameraCalibration,
+                                            "Missing calibration for camera socket " + socketToString(socket) + ".");
                 return false;
             }
 
             const auto intrinsics = validatedCalibration.getDefaultIntrinsics(socket);
             const auto& matrix = std::get<0>(intrinsics);
             if(!isFiniteMatrix(matrix, 3, 3)) {
-                setError(metrics, "cameraCalibration", "Invalid intrinsics for camera socket " + socketToString(socket) + ".");
+                metrics.issues.emplace_back(HealthCheckIssueType::Error,
+                                            HealthCheckIssueStage::CameraCalibration,
+                                            "Invalid intrinsics for camera socket " + socketToString(socket) + ".");
                 return false;
             }
         }
 
         if(!deviceStereoPairs.empty() && !hasAvailableUserCalibratedStereoPair(connectedCameras, deviceStereoPairs, validatedCalibration)) {
-            setError(metrics, "cameraCalibration", "No calibrated stereo pair is available.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::CameraCalibration, "No calibrated stereo pair is available.");
             return false;
         }
 
         return true;
     } catch(const std::exception& ex) {
-        setError(metrics, "cameraCalibration", ex.what());
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::CameraCalibration, ex.what());
         return false;
     }
 }
 
 bool verifyImuCalibrationMetadata(const std::string& imuName, const std::optional<CalibrationHandler>& calibration, HealthCheckMetrics& metrics) {
     if(imuName.empty()) {
-        setError(metrics, "imuCalibration", "No connected IMU detected.");
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuCalibration, "No connected IMU detected.");
         return false;
     }
 
     if(!calibration) {
-        setError(metrics, "imuCalibration", "No readable calibration containing IMU parameters.");
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuCalibration, "No readable calibration containing IMU parameters.");
         return false;
     }
 
     try {
         const auto params = calibration->getImuParameters();
         if(!isFiniteMatrix(params.accelerometer, 3, 4)) {
-            setError(metrics, "imuCalibration", "Invalid accelerometer calibration matrix.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuCalibration, "Invalid accelerometer calibration matrix.");
             return false;
         }
         if(!isFiniteMatrix(params.gyroscope, 3, 4)) {
-            setError(metrics, "imuCalibration", "Invalid gyroscope calibration matrix.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuCalibration, "Invalid gyroscope calibration matrix.");
             return false;
         }
         return true;
     } catch(const std::exception& ex) {
-        setError(metrics, "imuCalibration", ex.what());
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuCalibration, ex.what());
         return false;
     }
 }
@@ -344,11 +425,15 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             if(output == nullptr) {
                 if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
                     metrics.cameraFunctionality = HealthCheckResult::FAIL;
-                    setError(metrics, "cameraFunctionality", "Failed to create diagnostic output for camera socket " + socketToString(socket) + ".");
+                    metrics.issues.emplace_back(HealthCheckIssueType::Error,
+                                                HealthCheckIssueStage::CameraFunctionality,
+                                                "Failed to create diagnostic output for camera socket " + socketToString(socket) + ".");
                 }
                 if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
                     metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
-                    setError(metrics, "powerSupply", "Failed to create camera load for socket " + socketToString(socket) + ".");
+                    metrics.issues.emplace_back(HealthCheckIssueType::Error,
+                                                HealthCheckIssueStage::PowerSupply,
+                                                "Failed to create camera load for socket " + socketToString(socket) + ".");
                 }
                 break;
             }
@@ -369,7 +454,7 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     // Prepare power supply verification
     if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN && cameraQueues.empty()) {
         metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
-        setError(metrics, "powerSupply", "No camera streams were created for power supply load.");
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "No camera streams were created for power supply load.");
     }
     IrPowerGuard irGuard{device, false};
 
@@ -385,11 +470,15 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
                 if(timedOut || frame == nullptr || frame->getData().empty()) {
                     allCamerasStreaming = false;
                     if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
-                        setError(metrics, "cameraFunctionality", "Camera socket " + socketToString(socketAndQueue.first) + " did not stream a frame.");
+                        metrics.issues.emplace_back(HealthCheckIssueType::Error,
+                                                    HealthCheckIssueStage::CameraFunctionality,
+                                                    "Camera socket " + socketToString(socketAndQueue.first) + " did not stream a frame.");
                     }
                     if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
                         metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
-                        setError(metrics, "powerSupply", "Camera socket " + socketToString(socketAndQueue.first) + " did not stream before power supply load.");
+                        metrics.issues.emplace_back(HealthCheckIssueType::Error,
+                                                    HealthCheckIssueStage::PowerSupply,
+                                                    "Camera socket " + socketToString(socketAndQueue.first) + " did not stream before power supply load.");
                     }
                     break;
                 }
@@ -405,7 +494,7 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             auto imuData = getUntil<IMUData>(imuQueue, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut);
             if(timedOut || imuData == nullptr || imuData->packets.empty()) {
                 metrics.imuFunctionality = HealthCheckResult::FAIL;
-                setError(metrics, "imuFunctionality", "IMU did not stream packets.");
+                metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuFunctionality, "IMU did not stream packets.");
             } else {
                 metrics.imuFunctionality = HealthCheckResult::PASS;
             }
@@ -424,7 +513,9 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
         const bool irDisableSucceeded = irGuard.disable();
         if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN && !irDisableSucceeded) {
             metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
-            setError(metrics, "powerSupply", "Failed to disable IR load after validation; device disconnected during cleanup.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Error,
+                                        HealthCheckIssueStage::PowerSupply,
+                                        "Failed to disable IR load after validation; device disconnected during cleanup.");
         }
 
         pipeline.stop();
@@ -437,15 +528,15 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
     } catch(const std::exception& ex) {
         if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
             metrics.cameraFunctionality = HealthCheckResult::FAIL;
-            setError(metrics, "cameraFunctionality", ex.what());
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::CameraFunctionality, ex.what());
         }
         if(config.verifyImuFunctionality && metrics.imuFunctionality == HealthCheckResult::NOT_RUN) {
             metrics.imuFunctionality = HealthCheckResult::FAIL;
-            setError(metrics, "imuFunctionality", ex.what());
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuFunctionality, ex.what());
         }
         if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
             metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
-            setError(metrics, "powerSupply", ex.what());
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, ex.what());
         }
 
         try {
@@ -487,7 +578,7 @@ void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics&
         auto report = getUntil<BenchmarkReport>(bandwidthReportQueue, std::chrono::steady_clock::now() + DIAGNOSTIC_OUTPUT_TIMEOUT, timedOut);
         if(timedOut || report == nullptr || report->fps <= 0.0f) {
             metrics.bandwidthMbps = 0.0f;
-            setError(metrics, "bandwidth", "Timed out waiting for bandwidth benchmark report.");
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, "Timed out waiting for bandwidth benchmark report.");
         } else {
             metrics.bandwidthMbps = report->fps * static_cast<float>(BANDWIDTH_TEST_BYTES) * 8.0f / 1000000.0f;
         }
@@ -496,7 +587,7 @@ void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics&
         pipeline.wait();
     } catch(const std::exception& ex) {
         metrics.bandwidthMbps = 0.0f;
-        setError(metrics, "bandwidth", ex.what());
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, ex.what());
 
         try {
             pipeline.stop();
@@ -521,7 +612,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         device = std::make_shared<Device>(devInfo);
     } catch(const std::exception& ex) {
         setRequestedChecksFailed(metrics, config);
-        setError(metrics, "connection", ex.what());
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Connection, ex.what());
 
         return metrics;
     }
@@ -531,14 +622,14 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     }
 
     // USB speed and generation check
-    if(config.checkUsbSpeed) {
+    if(config.checkUsbGeneration) {
         if(device->getDeviceInfo().protocol == X_LINK_TCP_IP) {
             metrics.usbGeneration = UsbGeneration::UNKNOWN;
         } else {
             const auto usbSpeed = device->getUsbSpeed();
             metrics.usbGeneration = usbSpeedToGeneration(usbSpeed);
             if(metrics.usbGeneration == UsbGeneration::UNKNOWN) {
-                setWarning(metrics, "usbGeneration", "Connected USB generation is unknown.");
+                metrics.issues.emplace_back(HealthCheckIssueType::Warning, HealthCheckIssueStage::UsbGeneration, "Connected USB generation is unknown.");
             }
         }
     }
@@ -551,7 +642,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
             device = std::make_shared<Device>(devInfo);
         } catch(const std::exception& ex) {
             metrics.bandwidthMbps = 0.0f;
-            setError(metrics, "bandwidth", ex.what());
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, ex.what());
             return metrics;
         }
     }
@@ -564,11 +655,15 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         } catch(const std::exception& ex) {
             if(config.verifyCameraCalibration) {
                 metrics.cameraCalibration = HealthCheckResult::FAIL;
-                setError(metrics, "cameraCalibration", std::string("No readable user calibration. User calibration error: ") + ex.what());
+                metrics.issues.emplace_back(HealthCheckIssueType::Error,
+                                            HealthCheckIssueStage::CameraCalibration,
+                                            std::string("No readable user calibration. User calibration error: ") + ex.what());
             }
             if(config.verifyImuCalibration) {
                 metrics.imuCalibration = HealthCheckResult::FAIL;
-                setError(metrics, "imuCalibration", std::string("No readable user calibration. User calibration error: ") + ex.what());
+                metrics.issues.emplace_back(HealthCheckIssueType::Error,
+                                            HealthCheckIssueStage::ImuCalibration,
+                                            std::string("No readable user calibration. User calibration error: ") + ex.what());
             }
         }
     }
@@ -582,21 +677,22 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
             if(connectedCameras.empty()) {
                 if(config.verifyCameraFunctionality) {
                     metrics.cameraFunctionality = HealthCheckResult::FAIL;
-                    setError(metrics, "cameraFunctionality", "No connected cameras detected.");
+                    metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::CameraFunctionality, "No connected cameras detected.");
                 }
                 if(config.verifyPowerSupply) {
                     metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
-                    setError(metrics, "powerSupply", "No connected cameras detected for power supply load.");
+                    metrics.issues.emplace_back(
+                        HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "No connected cameras detected for power supply load.");
                 }
             }
         } catch(const std::exception& ex) {
             if(config.verifyCameraFunctionality) {
                 metrics.cameraFunctionality = HealthCheckResult::FAIL;
-                setError(metrics, "cameraFunctionality", ex.what());
+                metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::CameraFunctionality, ex.what());
             }
             if(config.verifyPowerSupply) {
                 metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
-                setError(metrics, "powerSupply", ex.what());
+                metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, ex.what());
             }
         }
     }
@@ -607,7 +703,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
             deviceStereoPairs = device->getStereoPairs();
         } catch(const std::exception& ex) {
             metrics.cameraCalibration = HealthCheckResult::FAIL;
-            setError(metrics, "cameraCalibration", ex.what());
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::CameraCalibration, ex.what());
         }
 
         if(metrics.cameraCalibration == HealthCheckResult::NOT_RUN) {
@@ -623,12 +719,12 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
             imuName = device->getConnectedIMU();
             if(config.verifyImuFunctionality && imuName.empty()) {
                 metrics.imuFunctionality = HealthCheckResult::FAIL;
-                setError(metrics, "imuFunctionality", "No connected IMU detected.");
+                metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuFunctionality, "No connected IMU detected.");
             }
         } catch(const std::exception& ex) {
             if(config.verifyImuFunctionality) {
                 metrics.imuFunctionality = HealthCheckResult::FAIL;
-                setError(metrics, "imuFunctionality", ex.what());
+                metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::ImuFunctionality, ex.what());
             }
         }
 
@@ -642,6 +738,17 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     }
 
     return metrics;
+}
+
+std::string HealthCheckMetrics::toString() const {
+    std::ostringstream stream;
+    stream << std::boolalpha << "HealthCheckMetrics(usbGeneration=" << usbGenerationToString(usbGeneration) << ", bandwidthMbps=" << bandwidthMbps
+           << ", cameraFunctionality=" << healthCheckResultToString(cameraFunctionality)
+           << ", cameraCalibration=" << healthCheckResultToString(cameraCalibration) << ", imuFunctionality=" << healthCheckResultToString(imuFunctionality)
+           << ", imuCalibration=" << healthCheckResultToString(imuCalibration)
+           << ", powerSupplyFunctionality=" << healthCheckResultToString(powerSupplyFunctionality) << ", appRunningOnDevice=" << appRunningOnDevice
+           << ", inSetupMode=" << inSetupMode << ", udevRulesSet=" << udevRulesSet << ", issues=" << serializeIssues(issues) << ")";
+    return stream.str();
 }
 
 }  // namespace dai
