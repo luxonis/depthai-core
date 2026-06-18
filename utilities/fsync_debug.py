@@ -21,6 +21,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--main-camera", default="CAM_B", choices=DEFAULT_CAMERAS)
     parser.add_argument("--frames", type=int, default=400)
     parser.add_argument("--edge-exclusion", type=int, default=10)
+    parser.add_argument("--verbose", action="store_true", help="Log per-frame timestamps and sequence numbers.")
+    parser.add_argument(
+        "--loop",
+        action="store_true",
+        help="Keep collecting and emitting a new sync summary every --frames frames per camera.",
+    )
     return parser.parse_args()
 
 
@@ -40,6 +46,8 @@ def main() -> None:
     camera_names = unique_preserve_order(args.cameras)
     if args.main_camera not in camera_names:
         raise SystemExit(f"--main-camera {args.main_camera} must be included in --cameras")
+    if args.frames <= 0:
+        raise SystemExit("--frames must be greater than 0")
 
     pipeline = dai.Pipeline()
     script = pipeline.create(dai.node.Script)
@@ -57,6 +65,8 @@ CAMERA_LABELS = {camera_labels!r}
 MAIN_CAMERA = {args.main_camera!r}
 TARGET_FRAMES = {args.frames}
 EDGE_EXCLUSION = {args.edge_exclusion}
+VERBOSE = {args.verbose}
+LOOP = {args.loop}
 MATCH_WINDOW_1US = 1
 MATCH_WINDOW_1MS_US = 1000
 
@@ -66,6 +76,9 @@ def timestamp_to_us(timestamp):
 
 
 def log_frame(name, frame_idx, frame):
+    if not VERBOSE:
+        return
+
     node.warn(
         name
         + " frame_idx="
@@ -174,6 +187,36 @@ def median_value(values):
     return (sorted_values[middle_idx - 1] + sorted_values[middle_idx]) // 2
 
 
+def overlap_duration_us(left_timestamps_us, right_timestamps_us):
+    if len(left_timestamps_us) < 2 or len(right_timestamps_us) < 2:
+        return 0
+
+    overlap_start_us = left_timestamps_us[0]
+    if right_timestamps_us[0] > overlap_start_us:
+        overlap_start_us = right_timestamps_us[0]
+
+    overlap_end_us = left_timestamps_us[-1]
+    if right_timestamps_us[-1] < overlap_end_us:
+        overlap_end_us = right_timestamps_us[-1]
+
+    if overlap_end_us <= overlap_start_us:
+        return 0
+
+    return overlap_end_us - overlap_start_us
+
+
+def calculate_synced_fps(left_timestamps_us, right_timestamps_us, matching_pairs):
+    shared_duration_us = overlap_duration_us(left_timestamps_us, right_timestamps_us)
+    if shared_duration_us <= 0:
+        return 0.0
+
+    return matching_pairs * 1000000.0 / shared_duration_us
+
+
+def format_float(value):
+    return "{{:.3f}}".format(value)
+
+
 def summarize_pair(left_name, left_timestamps_us, right_name, right_timestamps_us):
     matching_pairs_1us = count_matching_pairs(left_timestamps_us, right_timestamps_us, MATCH_WINDOW_1US)
     matching_pairs_1ms = count_matching_pairs(left_timestamps_us, right_timestamps_us, MATCH_WINDOW_1MS_US)
@@ -193,6 +236,7 @@ def summarize_pair(left_name, left_timestamps_us, right_name, right_timestamps_u
     median_delta_us = median_value(pair_deltas_us)
     min_delta_us = min(pair_deltas_us)
     max_delta_us = max(pair_deltas_us)
+    synced_fps = calculate_synced_fps(left_timestamps_us, right_timestamps_us, matching_pairs_1ms)
 
     node.warn(
         "pair="
@@ -209,6 +253,8 @@ def summarize_pair(left_name, left_timestamps_us, right_name, right_timestamps_u
         + str(ignored_left + ignored_right)
         + " matching_pairs_within_1ms="
         + str(matching_pairs_1ms)
+        + " synced_fps="
+        + format_float(synced_fps)
         + " matched_frames_within_1ms="
         + str(matched_left_1ms + matched_right_1ms)
         + " unmatched_frames_within_1ms="
@@ -224,9 +270,14 @@ def summarize_pair(left_name, left_timestamps_us, right_name, right_timestamps_u
     )
 
 
-camera_timestamps_us = {{}}
-for camera_name in CAMERAS:
-    camera_timestamps_us[camera_name] = []
+def create_timestamp_buckets():
+    timestamps_us = {{}}
+    for camera_name in CAMERAS:
+        timestamps_us[camera_name] = []
+    return timestamps_us
+
+
+camera_timestamps_us = create_timestamp_buckets()
 
 while True:
     collected_all_frames = True
@@ -243,33 +294,60 @@ while True:
         log_frame(CAMERA_LABELS[camera_name], len(camera_timestamps_us[camera_name]), frame)
         camera_timestamps_us[camera_name].append(timestamp_to_us(frame.getTimestampDevice()))
 
-    if collected_all_frames:
+    if not collected_all_frames:
+        continue
+
+    collected_summary = "main_camera=" + CAMERA_LABELS[MAIN_CAMERA]
+    for camera_name in CAMERAS:
+        collected_summary += " collected_" + CAMERA_LABELS[camera_name].lower() + "=" + str(len(camera_timestamps_us[camera_name]))
+    node.warn(collected_summary)
+
+    for camera_name in CAMERAS:
+        if camera_name == MAIN_CAMERA:
+            continue
+        summarize_pair(
+            CAMERA_LABELS[camera_name],
+            camera_timestamps_us[camera_name],
+            CAMERA_LABELS[MAIN_CAMERA],
+            camera_timestamps_us[MAIN_CAMERA],
+        )
+
+    node.outputs["done"].send(Buffer(1))
+    if not LOOP:
         break
 
-collected_summary = "main_camera=" + CAMERA_LABELS[MAIN_CAMERA]
-for camera_name in CAMERAS:
-    collected_summary += " collected_" + CAMERA_LABELS[camera_name].lower() + "=" + str(len(camera_timestamps_us[camera_name]))
-node.warn(collected_summary)
-
-for camera_name in CAMERAS:
-    if camera_name == MAIN_CAMERA:
-        continue
-    summarize_pair(CAMERA_LABELS[camera_name], camera_timestamps_us[camera_name], CAMERA_LABELS[MAIN_CAMERA], camera_timestamps_us[MAIN_CAMERA])
-
-node.outputs["done"].send(Buffer(1))
+    camera_timestamps_us = create_timestamp_buckets()
 """
     )
 
     pipeline.start()
 
-    print(
-        "Collecting "
-        f"{args.frames} raw frames from {', '.join(camera_names)} "
-        f"and comparing every non-main camera to {args.main_camera}."
-    )
-    done_queue.get()
-    time.sleep(0.2)
-    pipeline.stop()
+    if args.loop:
+        print(
+            "Collecting "
+            f"{args.frames} raw frames from {', '.join(camera_names)} "
+            f"and recomputing sync stats against {args.main_camera} every batch. Press Ctrl+C to stop."
+        )
+    else:
+        print(
+            "Collecting "
+            f"{args.frames} raw frames from {', '.join(camera_names)} "
+            f"and comparing every non-main camera to {args.main_camera}."
+        )
+
+    try:
+        while True:
+            if done_queue.tryGet() is None:
+                time.sleep(0.1)
+                continue
+
+            if not args.loop:
+                break
+    except KeyboardInterrupt:
+        pass
+    finally:
+        time.sleep(0.2)
+        pipeline.stop()
 
 
 if __name__ == "__main__":
