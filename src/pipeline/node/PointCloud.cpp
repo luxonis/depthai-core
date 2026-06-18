@@ -3,7 +3,6 @@
 #include <spdlog/logger.h>
 
 #include <chrono>
-#include <cmath>
 #include <cstring>
 #include <future>
 #include <thread>
