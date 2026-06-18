@@ -670,10 +670,9 @@ void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
         auto colorExtrinsics = colorFrame->transformation.getExtrinsics();
         if(depthExtrinsics.toCameraSocket != colorExtrinsics.toCameraSocket) {
             pimpl->logger->error("PointCloud: color extrinsics toCameraSocket ({}) does not match depth ({}) -- colorization may be misaligned",
-                                toString(colorExtrinsics.toCameraSocket),
-                                toString(depthExtrinsics.toCameraSocket));
-        } else if(depthExtrinsics.rotationMatrix != colorExtrinsics.rotationMatrix || depthExtrinsics.translation.x != colorExtrinsics.translation.x
-                  || depthExtrinsics.translation.y != colorExtrinsics.translation.y || depthExtrinsics.translation.z != colorExtrinsics.translation.z) {
+                                 toString(colorExtrinsics.toCameraSocket),
+                                 toString(depthExtrinsics.toCameraSocket));
+        } else if(!depthExtrinsics.isEqualExtrinsics(colorExtrinsics)) {
             pimpl->logger->error(
                 "PointCloud: depth and color extrinsics differ (same toCameraSocket={} but different rotation/translation) "
                 "-- colorization may be misaligned",
@@ -681,38 +680,9 @@ void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
         }
     }
 
-    // Epsilon-based float comparison helper (reused for intrinsics and distortion coefficients)
-    constexpr float kEpsilon = 1e-6f;
-    auto approxEqualFloatVectors = [kEpsilon](const float* a, const float* b, size_t n) {
-        for(size_t i = 0; i < n; ++i) {
-            if(std::abs(a[i] - b[i]) > kEpsilon) return false;
-        }
-        return true;
-    };
-
-    // Check intrinsics mismatches (non-fatal)
-    {
-        auto depthIntrinsics = depthFrame->transformation.getIntrinsicMatrix();
-        auto colorIntrinsics = colorFrame->transformation.getIntrinsicMatrix();
-        if(!approxEqualFloatVectors(&depthIntrinsics[0][0], &colorIntrinsics[0][0], 9)) {
-            pimpl->logger->error("PointCloud: color intrinsics do not match depth intrinsics -- colorization may be misaligned");
-        }
-    }
-
-    // Check distortion mismatches (non-fatal)
-    {
-        auto depthDistModel = depthFrame->transformation.getDistortionModel();
-        auto colorDistModel = colorFrame->transformation.getDistortionModel();
-        auto depthDistCoeffs = depthFrame->transformation.getDistortionCoefficients();
-        auto colorDistCoeffs = colorFrame->transformation.getDistortionCoefficients();
-        if(depthDistModel != colorDistModel) {
-            pimpl->logger->error("PointCloud: color distortion model ({}) does not match depth ({}) -- colorization may be misaligned",
-                                static_cast<int>(colorDistModel),
-                                static_cast<int>(depthDistModel));
-        } else if(depthDistCoeffs.size() != colorDistCoeffs.size()
-                  || !approxEqualFloatVectors(depthDistCoeffs.data(), colorDistCoeffs.data(), depthDistCoeffs.size())) {
-            pimpl->logger->error("PointCloud: depth and color distortion coefficients differ -- colorization may be misaligned");
-        }
+    // Check intrinsics and distortion mismatches (non-fatal)
+    if(!depthFrame->transformation.isAlignedTo(colorFrame->transformation)) {
+        pimpl->logger->error("PointCloud: depth and color transformations are not aligned (intrinsics/distortion differ) -- colorization may be misaligned");
     }
 
     const auto* depthData = depthFrame->getData().data();
