@@ -25,6 +25,9 @@ message CameraSettings {
     int32 sensorMode = 7;
     float fps = 8;
     optional float sensorTemperatureC = 9;
+    int64 sofTimestampNs = 10;
+    int64 soeTimestampNs = 11;
+    int64 eoeTimestampNs = 12;
 }
 
 message Extrinsics {
