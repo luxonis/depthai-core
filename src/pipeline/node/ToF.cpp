@@ -14,7 +14,7 @@ ToFBase::Properties& ToFBase::getProperties() {
     return properties;
 }
 
-std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ImageFiltersPresetMode presetMode, std::optional<float> fps) {
+std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig::Profile profile, std::optional<float> fps) {
     if(isBuilt) {
         throw std::runtime_error("ToF node is already built");
     }
@@ -41,12 +41,35 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ImageFilt
     }
 
     // Set profile preset for ToFConfig
-    initialConfig->setProfilePreset(presetMode);
+    initialConfig->profile = profile;
 
     properties.boardSocket = boardSocket;
     properties.fps = fps.value_or(ToFProperties::AUTO);
 
     isBuilt = true;
+    return std::static_pointer_cast<ToFBase>(shared_from_this());
+}
+
+std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ImageFiltersPresetMode presetMode, std::optional<float> fps) {
+    ToFConfig::Profile profile;
+    switch(presetMode) {
+        case TOF_LOW_RANGE:
+            profile = ToFConfig::LOW_RANGE;
+            break;
+
+        case TOF_MID_RANGE:
+            profile = ToFConfig::MID_RANGE;
+            break;
+
+        case TOF_HIGH_RANGE:
+            profile = ToFConfig::HIGHT_RANGE;
+            break;
+    }
+    if(platform == Platform::RVC2) {
+        initialConfig->setProfilePresetprofile(presetMode);
+    }
+    build(boardSocket, profile, fps);
+
     return std::static_pointer_cast<ToFBase>(shared_from_this());
 }
 
