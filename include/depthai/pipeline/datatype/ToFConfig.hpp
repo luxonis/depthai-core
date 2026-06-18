@@ -11,6 +11,13 @@ namespace dai {
  */
 class ToFConfig : public Buffer {
    public:
+    enum class Profile : uint32_t {
+        LOW_RANGE,
+        MID_RANGE,
+        HIGH_RANGE,
+    };
+
+    Profile profile = Profile::MID_RANGE;
     /**
      * Set kernel size for depth median filtering, or disable
      */
@@ -89,6 +96,7 @@ class ToFConfig : public Buffer {
     void setProfilePreset(ImageFiltersPresetMode presetMode);
 
     DEPTHAI_SERIALIZE(ToFConfig,
+                      profile,
                       median,
                       enablePhaseShuffleTemporalFilter,
                       enableBurstMode,
