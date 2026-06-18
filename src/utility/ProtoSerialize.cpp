@@ -650,9 +650,6 @@ static void populateEncodedFrameToProto(proto::encoded_frame::EncodedFrame* enco
     if(message->cam.sensorTemperatureC.has_value()) {
         cam->set_sensortemperaturec(*message->cam.sensorTemperatureC);
     }
-    cam->set_softimestampns(message->cam.sofTimestampNs);
-    cam->set_soetimestampns(message->cam.soeTimestampNs);
-    cam->set_eoetimestampns(message->cam.eoeTimestampNs);
 
     if(!metadataOnly) {
         // Set the encoded message data
@@ -716,9 +713,6 @@ static void populateImgFrameToProto(proto::img_frame::ImgFrame* imgFrame, const 
     if(message->cam.sensorTemperatureC.has_value()) {
         cam->set_sensortemperaturec(*message->cam.sensorTemperatureC);
     }
-    cam->set_softimestampns(message->cam.sofTimestampNs);
-    cam->set_soetimestampns(message->cam.soeTimestampNs);
-    cam->set_eoetimestampns(message->cam.eoeTimestampNs);
 
     // instance number and category
     imgFrame->set_instancenum(message->instanceNum);
@@ -983,9 +977,6 @@ void setProtoMessage(ImgFrame& obj, const google::protobuf::Message* msg, bool m
     obj.cam.sensorMode = imgFrame->cam().sensormode();
     obj.cam.fps = imgFrame->cam().fps();
     obj.cam.sensorTemperatureC = imgFrame->cam().has_sensortemperaturec() ? std::make_optional(imgFrame->cam().sensortemperaturec()) : std::nullopt;
-    obj.cam.sofTimestampNs = imgFrame->cam().softimestampns();
-    obj.cam.soeTimestampNs = imgFrame->cam().soetimestampns();
-    obj.cam.eoeTimestampNs = imgFrame->cam().eoetimestampns();
 
     obj.instanceNum = imgFrame->instancenum();
 
@@ -1035,9 +1026,6 @@ static void populateEncodedFrameFromProto(EncodedFrame& obj, const proto::encode
     obj.cam.sensorMode = encFrame.cam().sensormode();
     obj.cam.fps = encFrame.cam().fps();
     obj.cam.sensorTemperatureC = encFrame.cam().has_sensortemperaturec() ? std::make_optional(encFrame.cam().sensortemperaturec()) : std::nullopt;
-    obj.cam.sofTimestampNs = encFrame.cam().softimestampns();
-    obj.cam.soeTimestampNs = encFrame.cam().soetimestampns();
-    obj.cam.eoeTimestampNs = encFrame.cam().eoetimestampns();
 
     obj.transformation = deserializeImgTransformation(encFrame.transformation());
 
@@ -1127,9 +1115,6 @@ static void populateImgFrameFromProto(ImgFrame& obj, const proto::img_frame::Img
     obj.cam.sensorMode = imgFrame.cam().sensormode();
     obj.cam.fps = imgFrame.cam().fps();
     obj.cam.sensorTemperatureC = imgFrame.cam().has_sensortemperaturec() ? std::make_optional(imgFrame.cam().sensortemperaturec()) : std::nullopt;
-    obj.cam.sofTimestampNs = imgFrame.cam().softimestampns();
-    obj.cam.soeTimestampNs = imgFrame.cam().soetimestampns();
-    obj.cam.eoeTimestampNs = imgFrame.cam().eoetimestampns();
 
     // instance number and category
     obj.instanceNum = imgFrame.instancenum();
