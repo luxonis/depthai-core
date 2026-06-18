@@ -21,6 +21,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--main-camera", default="CAM_B", choices=DEFAULT_CAMERAS)
     parser.add_argument("--frames", type=int, default=400)
     parser.add_argument("--edge-exclusion", type=int, default=10)
+    parser.add_argument(
+        "--disable-fsync",
+        action="store_true",
+        help="Disable camera frame sync via camera.initialControl.setFrameSyncMode(OFF).",
+    )
+    parser.add_argument(
+        "--non-raw",
+        action="store_true",
+        help="Use camera.requestFullResolutionOutput() instead of the raw stream.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Log per-frame timestamps and sequence numbers.")
     parser.add_argument(
         "--loop",
@@ -53,10 +63,16 @@ def main() -> None:
     script = pipeline.create(dai.node.Script)
     done_queue = script.outputs["done"].createOutputQueue()
 
-    camera_labels = {name: f"{name}_RAW" for name in camera_names}
+    stream_label_suffix = "FULL_RES" if args.non_raw else "RAW"
+    camera_labels = {name: f"{name}_{stream_label_suffix}" for name in camera_names}
     for camera_name in camera_names:
         camera = pipeline.create(dai.node.Camera).build(CAMERA_SOCKETS[camera_name])
-        camera.raw.link(script.inputs[camera_name])
+        if args.disable_fsync:
+            camera.initialControl.setFrameSyncMode(dai.CameraControl.FrameSyncMode.OFF)
+        if args.non_raw:
+            camera.requestFullResolutionOutput().link(script.inputs[camera_name])
+        else:
+            camera.raw.link(script.inputs[camera_name])
 
     script.setScript(
         f"""
@@ -321,17 +337,18 @@ while True:
     )
 
     pipeline.start()
+    stream_description = "full-resolution" if args.non_raw else "raw"
 
     if args.loop:
         print(
             "Collecting "
-            f"{args.frames} raw frames from {', '.join(camera_names)} "
+            f"{args.frames} {stream_description} frames from {', '.join(camera_names)} "
             f"and recomputing sync stats against {args.main_camera} every batch. Press Ctrl+C to stop."
         )
     else:
         print(
             "Collecting "
-            f"{args.frames} raw frames from {', '.join(camera_names)} "
+            f"{args.frames} {stream_description} frames from {', '.join(camera_names)} "
             f"and comparing every non-main camera to {args.main_camera}."
         )
 
