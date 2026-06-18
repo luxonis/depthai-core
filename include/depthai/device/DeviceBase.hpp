@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <thread>
 #include <tuple>
@@ -131,6 +132,15 @@ class DeviceBase {
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getDeviceById(std::string deviceId);
+
+    /**
+     * Resolves a device from an IP address, name, or device ID without connecting to it
+     * and returns whether the resolved device is in setup mode.
+     * @param deviceIdOrName IP address, name, or device ID of the target device
+     * @returns std::nullopt if the device could not be resolved, otherwise true if the resolved
+     * device is in X_LINK_GATE_SETUP state and false otherwise
+     */
+    static std::optional<bool> isInSetupMode(std::string deviceIdOrName);
 
     /**
      * Returns all available devices

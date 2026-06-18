@@ -415,6 +415,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                     py::arg("config"),
                     DOC(dai, DeviceBase, getEmbeddedDeviceBinary, 2))
         .def_static("getDeviceById", &DeviceBase::getDeviceById, py::arg("deviceId"), DOC(dai, DeviceBase, getDeviceById))
+        .def_static("isInSetupMode", &DeviceBase::isInSetupMode, py::arg("deviceIdOrName"), DOC(dai, DeviceBase, isInSetupMode))
         .def_static("getAllConnectedDevices", &DeviceBase::getAllConnectedDevices, DOC(dai, DeviceBase, getAllConnectedDevices))
         .def_static("getGlobalProfilingData", &DeviceBase::getGlobalProfilingData, DOC(dai, DeviceBase, getGlobalProfilingData))
         .def_static(

@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <system_error>
 #include <thread>
+#include <utility>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -312,6 +313,32 @@ std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(std::string deviceId) {
         if(found) return {true, dev};
     }
     return {false, DeviceInfo()};
+}
+
+std::optional<bool> DeviceBase::isInSetupMode(std::string deviceIdOrName) {
+    DeviceInfo deviceInfo(std::move(deviceIdOrName));
+    deviceDesc_t xlinkDesc = deviceInfo.getXLinkDeviceDesc();
+    deviceDesc_t foundDesc = {};
+    auto ret = XLinkFindFirstSuitableDevice(xlinkDesc, &foundDesc);
+    if(ret != X_LINK_SUCCESS) {
+        logger::warn("Device with given deviceIdOrName was not found: {}", !deviceInfo.name.empty() ? deviceInfo.name : deviceInfo.deviceId);
+        return std::nullopt;
+    }
+
+    logger::debug("isInSetupMode() foundDesc: name={}, mxid={}, state={}, protocol={}, platform={}, status={}",
+                  foundDesc.name,
+                  foundDesc.mxid,
+                  XLinkDeviceStateToStr(foundDesc.state),
+                  XLinkProtocolToStr(foundDesc.protocol),
+                  XLinkPlatformToStr(foundDesc.platform),
+                  XLinkErrorToStr(foundDesc.status));
+
+    if(foundDesc.status != X_LINK_SUCCESS) {
+        logger::warn("Resolved device with given deviceIdOrName has invalid status: {}", XLinkErrorToStr(foundDesc.status));
+        return std::nullopt;
+    }
+
+    return foundDesc.state == X_LINK_GATE_SETUP;
 }
 
 std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version) {
