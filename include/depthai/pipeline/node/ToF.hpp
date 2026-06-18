@@ -23,11 +23,12 @@ namespace dai {
 
 struct ToFBuildOptions {
     CameraBoardSocket boardSocket = CameraBoardSocket::AUTO;
-    std::optional<ToFSensorMode> sensorMode;
     /// Integer FPS stored as float (matches ToFProperties/CameraProperties wire format).
     std::optional<float> fps;
-    /// RVC4 IPP preset. Applied only when set; tune initialConfig after build() for further overrides.
+    /// RVC4 IPP preset (LOW_RANGE / MID_RANGE / HIGH_RANGE / FAST_OBJECTS). Applied only when
+    /// set; tune initialConfig after build() for further overrides.
     std::optional<ToFPreset> preset;
+    // Note: VD55H1 capture mode is fixed to ToFSensorMode::F3_FULL in BETA and is not user-selectable.
 };
 
 namespace node {
@@ -141,13 +142,13 @@ class ToF : public DeviceNodeGroup {
 
     /**
      * Depth / amplitude / confidence output size (width, height) after IPP and landscape transpose.
-     * RVC4 only — derived from the selected ToFSensorMode. On RVC2, read dimensions from depth frames.
+     * RVC4 only — fixed F3_FULL capture (804 x 672). On RVC2, read dimensions from depth frames.
      */
     std::pair<uint32_t, uint32_t> getOutputResolution() const;
 
     /**
      * Raw VD55H1 superframe size (width, height) for Camera.build(sensorResolution=...).
-     * RVC4 only — matches the ToFSensorMode passed to build().
+     * RVC4 only — fixed F3_FULL capture (1344 x 7244).
      */
     std::pair<uint32_t, uint32_t> getRawResolution() const;
 
@@ -191,7 +192,7 @@ class ToF : public DeviceNodeGroup {
     Output& confidence;
 
     /**
-     * Phase output
+     * Phase output. **Deprecated**, kept for RVC2 backward compatibility; not produced on RVC4.
      */
     Output& phase;
 
@@ -243,7 +244,6 @@ class ToF : public DeviceNodeGroup {
     void logWarnOnce(bool& warned, const char* message) const;
     void validateBuildFps(const std::optional<float>& fps);
     void warnIfMisconfiguredInitialConfig() const;
-    void warnIfPhaseOrRawConnected() const;
 
     bool isRvc4Platform;
     bool isGroupBuilt = false;
@@ -252,7 +252,6 @@ class ToF : public DeviceNodeGroup {
 
     mutable bool warnedDecoderFieldsRvc4 = false;
     mutable bool warnedIppFieldsRvc2 = false;
-    mutable bool warnedPhaseRawRvc4 = false;
     mutable bool warnedFpsRangeRvc4 = false;
     mutable bool warnedSensorResolutionDeprecated = false;
 };

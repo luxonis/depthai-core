@@ -21,7 +21,7 @@ Run (device must be RVC4 with ToF):
 ```
 
 API notes:
-- Use `dai::ToFBuildOptions` with `sensorMode`, `fps`, and optional `preset`
-- `getOutputResolution()` — IPP depth/amplitude frame size
+- Use `dai::ToFBuildOptions` with `fps` and optional `preset` (capture is fixed to `F3_FULL` — no `sensorMode`)
+- `getOutputResolution()` — IPP depth/amplitude frame size (804 × 672)
 - `getRawResolution()` — raw superframe size for manual `Camera.build()`
 - `getCamera()` — valid after `pipeline.start()` when auto-camera was used

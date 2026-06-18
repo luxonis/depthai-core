@@ -14,7 +14,7 @@ Examples:
 
     # Full IPP tuning + extra outputs
     python3 tof_rvc4_config.py \\
-        --socket CAM_D --mode F3_FULL --fps 10 --preset MID_RANGE \\
+        --socket CAM_D --fps 10 --preset MID_RANGE \\
         --bilateral true --tnr true --fpc true --r2p false \\
         --amplitude --confidence --ambient
 
@@ -34,30 +34,16 @@ import cv2
 import depthai as dai
 import numpy as np
 
-# Depth/amplitude output size after IPP — use tof.getOutputResolution()
-# Raw superframe for manual Camera — use tof.getRawResolution()
-SENSOR_MODE_OUTPUT_RESOLUTION = {
-    "F1_FULL": (804, 672),
-    "F2_FULL": (804, 672),
-    "F3_FULL": (804, 672),
-    "F2_BINNING_2X2": (402, 336),
-    "F3_BINNING_2X2": (402, 336),
-}
-
-# Raw superframe size — only needed for manual Camera.build(sensorResolution=...)
-SENSOR_MODE_RAW_RESOLUTION = {
-    "F1_FULL": (1344, 2420),
-    "F2_FULL": (1344, 4832),
-    "F3_FULL": (1344, 7244),
-    "F2_BINNING_2X2": (672, 2420),
-    "F3_BINNING_2X2": (672, 3626),
-}
+# BETA: VD55H1 capture is fixed to F3_FULL — depth/amplitude/confidence output is 804x672.
+# Query at runtime with tof.getOutputResolution(); raw superframe via tof.getRawResolution().
+OUTPUT_RESOLUTION = (804, 672)
 
 PRESET_PHASE_UNWRAP = {
     "OFF": 10000,
     "LOW_RANGE": 50,
     "MID_RANGE": 75,
     "HIGH_RANGE": 130,
+    "FAST_OBJECTS": 75,
 }
 
 
@@ -73,8 +59,7 @@ def _parse_optional_bool(value: str) -> bool:
 @dataclass
 class Rvc4ToFConfig:
     board_socket: str
-    sensor_mode: str
-    sensor_resolution: tuple[int, int]
+    output_resolution: tuple[int, int]
     fps: Optional[float]
     preset: str
     phase_unwrap_error_threshold: int
@@ -94,10 +79,6 @@ class Rvc4ToFConfig:
 
 def _socket(name: str) -> dai.CameraBoardSocket:
     return getattr(dai.CameraBoardSocket, name)
-
-
-def _sensor_mode(name: str) -> dai.ToFSensorMode:
-    return getattr(dai.ToFSensorMode, name)
 
 
 def _preset(name: str) -> dai.ToFPreset:
@@ -125,8 +106,7 @@ def _dry_run_config(args: argparse.Namespace) -> Rvc4ToFConfig:
     preset_name = "OFF" if args.no_ipp_filters else args.preset
     return Rvc4ToFConfig(
         board_socket=args.socket,
-        sensor_mode=args.mode,
-        sensor_resolution=SENSOR_MODE_OUTPUT_RESOLUTION[args.mode],
+        output_resolution=OUTPUT_RESOLUTION,
         fps=args.fps,
         preset=preset_name,
         phase_unwrap_error_threshold=args.phase_unwrap
@@ -183,8 +163,7 @@ def _apply_ipp_args(cfg: dai.ToFConfig, args: argparse.Namespace) -> None:
 def _collect_config(args: argparse.Namespace, cfg: dai.ToFConfig, outputs: list[str], auto_camera: bool) -> Rvc4ToFConfig:
     return Rvc4ToFConfig(
         board_socket=args.socket,
-        sensor_mode=args.mode,
-        sensor_resolution=SENSOR_MODE_OUTPUT_RESOLUTION[args.mode],
+        output_resolution=OUTPUT_RESOLUTION,
         fps=args.fps,
         preset="OFF" if args.no_ipp_filters else args.preset,
         phase_unwrap_error_threshold=cfg.phaseUnwrapErrorThreshold,
@@ -204,10 +183,10 @@ def _collect_config(args: argparse.Namespace, cfg: dai.ToFConfig, outputs: list[
 
 
 def print_config_summary(conf: Rvc4ToFConfig) -> None:
-    w, h = conf.sensor_resolution
+    w, h = conf.output_resolution
     print("\n=== RVC4 ToF configuration ===")
     print(f"  board socket          : {conf.board_socket}")
-    print(f"  sensor mode           : {conf.sensor_mode}  (depth/amplitude output {w} x {h})")
+    print(f"  capture mode          : F3_FULL (fixed)  (depth/amplitude/confidence output {w} x {h})")
     print(f"  fps                   : {conf.fps if conf.fps is not None else 'auto'}")
     print(f"  IPP preset            : {conf.preset}  (phase unwrap threshold hint: {PRESET_PHASE_UNWRAP.get(conf.preset, '?')})")
     print(f"  auto camera           : {conf.auto_camera}")
@@ -247,14 +226,6 @@ def colorize_depth(frame: np.ndarray, depth_min: float, depth_max: float) -> np.
     return colored
 
 
-def normalize_float(frame: np.ndarray) -> np.ndarray:
-    f = frame.astype(np.float32)
-    lo, hi = np.min(f), np.max(f)
-    if hi <= lo:
-        return np.zeros(f.shape, dtype=np.uint8)
-    return ((f - lo) / (hi - lo) * 255).astype(np.uint8)
-
-
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="RVC4 ToF config showcase")
 
@@ -264,12 +235,7 @@ def parse_args() -> argparse.Namespace:
 
     build = p.add_argument_group("build")
     build.add_argument("--socket", "-s", default="AUTO", choices=["AUTO", "CAM_A", "CAM_B", "CAM_C", "CAM_D"])
-    build.add_argument(
-        "--mode",
-        default="F3_FULL",
-        choices=list(SENSOR_MODE_OUTPUT_RESOLUTION.keys()),
-        help="ToFSensorMode (depth/amplitude output size)",
-    )
+    # capture mode is fixed to F3_FULL in BETA (no --mode); output is always 804x672
     build.add_argument("--fps", type=float, default=10.0, help="Sensor FPS")
     build.add_argument(
         "--preset",
@@ -293,9 +259,9 @@ def parse_args() -> argparse.Namespace:
     ipp.add_argument("--r2p", type=_parse_optional_bool, default=None, help="enableRadialToPerp")
 
     view = p.add_argument_group("live preview")
-    view.add_argument("--amplitude", action="store_true")
-    view.add_argument("--confidence", action="store_true")
-    view.add_argument("--ambient", action="store_true", help="intensity / ambient")
+    view.add_argument("--amplitude", action="store_true", help="show amplitude (RAW8 uint8, log1p-normalized)")
+    view.add_argument("--confidence", action="store_true", help="show confidence (RAW8 uint8, max-entropy log1p)")
+    view.add_argument("--ambient", action="store_true", help="show intensity/ambient (RAW8 uint8, log1p-normalized)")
     view.add_argument("--depth-min", type=float, default=0.0)
     view.add_argument("--depth-max", type=float, default=6000.0)
 
@@ -312,7 +278,6 @@ def setup_tof(pipeline: dai.Pipeline, args: argparse.Namespace) -> dai.node.ToF:
     preset = _preset("OFF" if args.no_ipp_filters else args.preset)
     tof.build(
         _socket(args.socket),
-        sensorMode=_sensor_mode(args.mode),
         fps=args.fps,
         preset=preset,
     )
@@ -334,7 +299,6 @@ def main() -> int:
 
     if args.print_only:
         print_config_summary(_dry_run_config(args))
-        print("Available ToFSensorMode values:", ", ".join(SENSOR_MODE_OUTPUT_RESOLUTION))
         print("Available ToFPreset values:", ", ".join(PRESET_PHASE_UNWRAP))
         return 0
 
@@ -365,17 +329,20 @@ def main() -> int:
             if amp_q:
                 amp = amp_q.tryGet()
                 if amp is not None:
-                    cv2.imshow("amplitude", normalize_float(amp.getFrame()))
+                    # amplitude is RAW8 (log1p-normalized uint8) — display directly
+                    cv2.imshow("amplitude", amp.getFrame())
 
             if conf_q:
                 c = conf_q.tryGet()
                 if c is not None:
-                    cv2.imshow("confidence", normalize_float(c.getFrame()))
+                    # confidence is RAW8 (max-entropy log1p uint8) — display directly
+                    cv2.imshow("confidence", c.getFrame())
 
             if amb_q:
                 a = amb_q.tryGet()
                 if a is not None:
-                    cv2.imshow("ambient", normalize_float(a.getFrame()))
+                    # intensity/ambient is RAW8 (log1p-normalized uint8) — display directly
+                    cv2.imshow("ambient", a.getFrame())
 
             if cv2.waitKey(1) == ord("q"):
                 break

@@ -16,10 +16,6 @@ namespace node {
 
 namespace {
 
-bool outputHasConsumers(Node::Output& output) {
-    return !output.getConnections().empty() || !output.getQueueConnections().empty();
-}
-
 bool configHasIppFieldsSet(const ToFConfig& config) {
     return config.enableBilateralFilter.has_value() || config.bilateralStdFactor.has_value() || config.bilateralFilterKernelSize.has_value()
            || config.enableTemporalNoiseReduction.has_value() || config.tnrMaxGain.has_value() || config.tnrStdFactor.has_value()
@@ -207,10 +203,6 @@ std::shared_ptr<ToF> ToF::build(const ToFBuildOptions& options) {
             tofBase->initialConfig->setToFPreset(*options.preset);
         }
     } else {
-        if(options.sensorMode.has_value()) {
-            throw std::runtime_error("sensorMode is RVC4-only (VD55H1)");
-        }
-
         buildOptions = options;
         // Keep the build surface unified across platforms: map ToFPreset to the equivalent
         // host ImageFiltersPresetMode on RVC2 instead of silently dropping it to MID_RANGE.
@@ -255,11 +247,7 @@ std::shared_ptr<ToF> ToF::build(CameraBoardSocket boardSocket, ImageFiltersPrese
 }
 
 void ToF::buildStage1() {
-    if(!isGroupBuilt) {
-        return;
-    }
-
-    warnIfPhaseOrRawConnected();
+    // No cross-node validation needed at this stage; retained for lifecycle symmetry.
 }
 
 void ToF::buildStage2() {
@@ -271,7 +259,7 @@ void ToF::buildStage2() {
         Logging::getInstance().logger.info("ToF: Using external rawInput; auto-camera skipped");
     } else {
         auto pipeline = getParentPipeline();
-        const auto mode = buildOptions.sensorMode.value_or(ToFSensorMode::F3_FULL);
+        const auto mode = ToFSensorMode::F3_FULL;  // BETA: VD55H1 capture mode fixed
         const auto rawResolution = getToFSensorModeRawResolution(mode);
         autoCamera = pipeline.create<Camera>();
         autoCamera->setSensorType(CameraSensorType::TOF);
@@ -299,7 +287,7 @@ std::pair<uint32_t, uint32_t> ToF::getOutputResolution() const {
     if(!isRvc4Platform) {
         throw std::runtime_error("getOutputResolution() is RVC4-only (VD55H1 ToFSensorMode); on RVC2 use depth frame dimensions at runtime");
     }
-    const auto mode = buildOptions.sensorMode.value_or(ToFSensorMode::F3_FULL);
+    const auto mode = ToFSensorMode::F3_FULL;  // BETA: VD55H1 capture mode fixed
     return getToFSensorModeOutputResolution(mode);
 }
 
@@ -310,7 +298,7 @@ std::pair<uint32_t, uint32_t> ToF::getRawResolution() const {
     if(!isRvc4Platform) {
         throw std::runtime_error("getRawResolution() is RVC4-only (VD55H1 raw superframe)");
     }
-    const auto mode = buildOptions.sensorMode.value_or(ToFSensorMode::F3_FULL);
+    const auto mode = ToFSensorMode::F3_FULL;  // BETA: VD55H1 capture mode fixed
     return getToFSensorModeRawResolution(mode);
 }
 
@@ -327,12 +315,6 @@ void ToF::warnIfMisconfiguredInitialConfig() const {
         }
     } else if(configHasIppFieldsSet(config)) {
         logWarnOnce(warnedIppFieldsRvc2, "IPP fields in ToFConfig are ignored on RVC2");
-    }
-}
-
-void ToF::warnIfPhaseOrRawConnected() const {
-    if(isRvc4Platform && (outputHasConsumers(phase) || outputHasConsumers(raw))) {
-        logWarnOnce(warnedPhaseRawRvc4, "ToF phase and raw outputs are not available on RVC4");
     }
 }
 

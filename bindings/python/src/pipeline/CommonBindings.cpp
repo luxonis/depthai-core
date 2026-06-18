@@ -456,7 +456,8 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
     tofPreset.value("OFF", ToFPreset::OFF)
         .value("LOW_RANGE", ToFPreset::LOW_RANGE)
         .value("MID_RANGE", ToFPreset::MID_RANGE)
-        .value("HIGH_RANGE", ToFPreset::HIGH_RANGE);
+        .value("HIGH_RANGE", ToFPreset::HIGH_RANGE)
+        .value("FAST_OBJECTS", ToFPreset::FAST_OBJECTS);
     // ConnectionInterface enum bindings
     connectionInterface.value("USB", ConnectionInterface::USB).value("ETHERNET", ConnectionInterface::ETHERNET).value("WIFI", ConnectionInterface::WIFI);
     // CameraImageOrientation enum bindings

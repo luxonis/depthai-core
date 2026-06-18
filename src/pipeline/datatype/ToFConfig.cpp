@@ -139,6 +139,15 @@ void ToFIppConfig::applyPreset(ToFPreset preset) {
             enableFlyingPixelCorrection = std::nullopt;
             enableRadialToPerp = std::nullopt;
             break;
+        case ToFPreset::FAST_OBJECTS:
+            // Tuned for fast-moving scenes: disable temporal noise reduction to cut motion
+            // blur/ghosting; keep other IPP filters at their IPP defaults. Exact tuning TBD.
+            phaseUnwrapErrorThreshold = 75;
+            enableBilateralFilter = std::nullopt;
+            enableTemporalNoiseReduction = false;
+            enableFlyingPixelCorrection = std::nullopt;
+            enableRadialToPerp = std::nullopt;
+            break;
         case ToFPreset::OFF:
             phaseUnwrapErrorThreshold = 10000;
             enableBilateralFilter = false;

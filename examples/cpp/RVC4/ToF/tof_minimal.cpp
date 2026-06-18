@@ -8,7 +8,6 @@
 #include <opencv2/opencv.hpp>
 
 #include "depthai/common/ToFPreset.hpp"
-#include "depthai/common/ToFSensorMode.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
 
@@ -79,8 +78,7 @@ int main() {
 
     dai::ToFBuildOptions options;
     options.boardSocket = dai::CameraBoardSocket::AUTO;
-    options.sensorMode = dai::ToFSensorMode::F3_FULL;
-    options.fps = 10.f;
+    options.fps = 10.f;  // VD55H1 capture mode fixed to F3_FULL internally
     options.preset = dai::ToFPreset::MID_RANGE;
     tof->build(options);
 

@@ -69,9 +69,9 @@ TEST_CASE("ToFIppConfig round-trip from ToFConfig", "[ToF][Host]") {
 TEST_CASE("ToFBuildOptions defaults", "[ToF][Host]") {
     dai::ToFBuildOptions options;
     REQUIRE(options.boardSocket == dai::CameraBoardSocket::AUTO);
-    REQUIRE_FALSE(options.sensorMode.has_value());
     REQUIRE_FALSE(options.fps.has_value());
     REQUIRE_FALSE(options.preset.has_value());
+    // BETA: capture is fixed to F3_FULL — ToFBuildOptions has no sensorMode field.
 }
 
 TEST_CASE("ToFPreset maps to expected phase unwrap thresholds via ToFIppConfig", "[ToF][Host]") {
@@ -79,6 +79,7 @@ TEST_CASE("ToFPreset maps to expected phase unwrap thresholds via ToFIppConfig",
         {dai::ToFPreset::LOW_RANGE, 50},
         {dai::ToFPreset::MID_RANGE, 75},
         {dai::ToFPreset::HIGH_RANGE, 130},
+        {dai::ToFPreset::FAST_OBJECTS, 75},
         {dai::ToFPreset::OFF, 10000},
     };
 
@@ -87,4 +88,17 @@ TEST_CASE("ToFPreset maps to expected phase unwrap thresholds via ToFIppConfig",
         ipp.applyPreset(preset);
         REQUIRE(ipp.phaseUnwrapErrorThreshold == threshold);
     }
+}
+
+TEST_CASE("ToFPreset FAST_OBJECTS disables temporal noise reduction", "[ToF][Host]") {
+    dai::ToFIppConfig ipp;
+    ipp.applyPreset(dai::ToFPreset::FAST_OBJECTS);
+    // FAST_OBJECTS turns TNR off to reduce motion blur on fast-moving scenes.
+    REQUIRE(ipp.enableTemporalNoiseReduction.has_value());
+    REQUIRE(*ipp.enableTemporalNoiseReduction == false);
+
+    // Range presets leave TNR at the IPP default (unset).
+    dai::ToFIppConfig mid;
+    mid.applyPreset(dai::ToFPreset::MID_RANGE);
+    REQUIRE_FALSE(mid.enableTemporalNoiseReduction.has_value());
 }

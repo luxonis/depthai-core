@@ -33,6 +33,9 @@ inline ImageFiltersPresetMode toFPresetToImageFiltersPreset(ToFPreset preset) {
             return ImageFiltersPresetMode::TOF_MID_RANGE;
         case ToFPreset::HIGH_RANGE:
             return ImageFiltersPresetMode::TOF_HIGH_RANGE;
+        case ToFPreset::FAST_OBJECTS:
+            // RVC4-only preset; no exact RVC2 host-filter equivalent — map to mid-range.
+            return ImageFiltersPresetMode::TOF_MID_RANGE;
         case ToFPreset::OFF:
             return ImageFiltersPresetMode::TOF_OFF;
     }

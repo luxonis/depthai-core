@@ -32,9 +32,9 @@ def main() -> None:
     pipeline = dai.Pipeline()
 
     tof = pipeline.create(dai.node.ToF)
+    # VD55H1 capture mode is fixed to F3_FULL internally (not user-selectable).
     tof.build(
         dai.CameraBoardSocket.AUTO,
-        sensorMode=dai.ToFSensorMode.F3_FULL,
         fps=10,
         preset=dai.ToFPreset.MID_RANGE,
     )

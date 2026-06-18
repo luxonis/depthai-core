@@ -72,7 +72,15 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
 
     // ToF Node (DeviceNodeGroup)
     tof.def_property_readonly(
-           "rawDepth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.rawDepth; }, DOC(dai, node, ToF, rawDepth))
+           "rawDepth",
+           [](const ToF& self) -> const dai::DeviceNode::Output& {
+               const auto device = self.getDevice();
+               if(device && device->getPlatform() == Platform::RVC4) {
+                   warnOncePerToF(self, "rawDepth", "On RVC4 rawDepth is the same IPP output as depth; use tof.depth");
+               }
+               return self.rawDepth;
+           },
+           DOC(dai, node, ToF, rawDepth))
         .def_property_readonly(
             "rawInput", [](const ToF& self) -> const dai::DeviceNode::Input& { return self.rawInput; }, DOC(dai, node, ToF, rawInput))
         .def_property_readonly(
@@ -84,7 +92,17 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "confidence", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.confidence; }, DOC(dai, node, ToF, confidence))
         .def_property_readonly(
-            "phase", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.phase; }, DOC(dai, node, ToF, phase))
+            "phase",
+            [](const ToF& self) -> const dai::DeviceNode::Output& {
+                const auto device = self.getDevice();
+                if(device && device->getPlatform() == Platform::RVC4) {
+                    warnOncePerToF(self, "phase", "tof.phase is not produced on RVC4 ToF");
+                } else {
+                    warnOncePerToF(self, "phase", "tof.phase is deprecated (kept for RVC2 backward compatibility)");
+                }
+                return self.phase;
+            },
+            DOC(dai, node, ToF, phase))
         .def_property_readonly(
             "raw", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.raw; }, DOC(dai, node, ToF, raw))
         .def_property_readonly(
@@ -131,7 +149,6 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
                 CameraBoardSocket boardSocket,
                 py::object presetMode,
                 py::object fps,
-                py::object sensorMode,
                 py::object preset) -> std::shared_ptr<ToF> {
                  ToFBuildOptions options;
                  options.boardSocket = boardSocket;
@@ -139,16 +156,12 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
                  if(!fps.is_none()) {
                      options.fps = fps.cast<float>();
                  }
-                 if(!sensorMode.is_none()) {
-                     options.sensorMode = sensorMode.cast<ToFSensorMode>();
-                 }
                  if(!preset.is_none()) {
                      options.preset = preset.cast<ToFPreset>();
                  }
 
                  const bool hasPresetMode = !presetMode.is_none();
                  const bool hasPreset = !preset.is_none();
-                 const bool hasSensorMode = !sensorMode.is_none();
 
                  if(hasPresetMode && py::isinstance<ToFPreset>(presetMode)) {
                      throw std::runtime_error("Pass ToFPreset via preset= keyword, not as the second positional argument");
@@ -167,9 +180,6 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
                      return self.build(options);
                  }
 
-                 if(hasSensorMode) {
-                     throw std::runtime_error("sensorMode is RVC4-only (VD55H1)");
-                 }
                  if(hasPresetMode && hasPreset) {
                      throw std::runtime_error("Specify either presetMode or preset on RVC2, not both");
                  }
@@ -188,7 +198,6 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
              py::arg("boardSocket") = CameraBoardSocket::AUTO,
              py::arg("presetMode") = py::none(),
              py::arg("fps") = py::none(),
-             py::arg("sensorMode") = py::none(),
              py::arg("preset") = py::none(),
              "Build ToF node for the connected device platform")
         .def("build",
@@ -199,7 +208,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def("getBoardSocket", &ToF::getBoardSocket, "Board socket selected at build time")
         .def("getOutputResolution",
              &ToF::getOutputResolution,
-             "RVC4: depth/amplitude/confidence output size (width, height) for the selected ToFSensorMode")
+             "RVC4: depth/amplitude/confidence output size (width, height) for the fixed F3_FULL capture")
         .def("getRawResolution",
              &ToF::getRawResolution,
              "RVC4: raw VD55H1 superframe size (width, height) for manual Camera.build(sensorResolution=...)")

@@ -52,18 +52,14 @@ with dai.Pipeline() as pipeline:
 
     tof.build(
         dai.CameraBoardSocket.AUTO,
-        sensorMode=dai.ToFSensorMode.F3_FULL,
         fps=10,
         preset=dai.ToFPreset.MID_RANGE,
     )
 
-    # Optional IPP overrides after build() — not overwritten by build()
-    tof.initialConfig.enableRadialToPerp = False
-
     depth_q = tof.depth.createOutputQueue()
     pipeline.start()
     frame = depth_q.get()
-    print(frame.getWidth(), frame.getHeight())  # e.g. 804 x 672 for F3_FULL
+    print(frame.getWidth(), frame.getHeight())  # 804 x 672 (fixed F3_FULL capture)
 ```
 
 ---
@@ -75,18 +71,19 @@ Called **before** `pipeline.start()`. Requires a connected RVC4 device on the pi
 ```python
 tof.build(
     boardSocket,           # positional: dai.CameraBoardSocket
-    sensorMode=...,        # RVC4 only: dai.ToFSensorMode
     fps=10,                # integer value; stored as float on wire
-    preset=...,            # RVC4 only: dai.ToFPreset
+    preset=...,            # RVC4: dai.ToFPreset
 )
 ```
+
+> **Capture mode is fixed to `F3_FULL`** in BETA and is not user-selectable (no `sensorMode`
+> parameter). Output is always 804 × 672.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `boardSocket` | `CameraBoardSocket` | `AUTO` | Camera socket. `AUTO` picks first socket with `CameraSensorType.TOF`. |
-| `sensorMode` | `ToFSensorMode` | `F3_FULL` | VD55H1 capture mode. **RVC4 only.** |
 | `fps` | `int` / `float` | sensor default | Integer frame rate (10–30 recommended on RVC4). Stored as `float` in `ToFProperties` / `CameraProperties` — same wire type as other camera nodes. Non-integer values are rejected. |
-| `preset` | `ToFPreset` | *(none)* | IPP processing preset. Applied only when explicitly passed. Tune `tof.initialConfig` **after** `build()` for further overrides. **RVC4 only.** |
+| `preset` | `ToFPreset` | *(none)* | IPP processing preset (`LOW_RANGE`/`MID_RANGE`/`HIGH_RANGE`/`FAST_OBJECTS`). Applied only when explicitly passed. Tune `tof.initialConfig` **after** `build()` for further overrides. **RVC4 only.** |
 
 After build:
 
@@ -109,50 +106,36 @@ Auto-camera uses `getRawResolution()` internally. You only need it when wiring a
 
 ---
 
-## 2. Sensor modes (`dai.ToFSensorMode`)
+## 2. Resolution (fixed F3_FULL)
 
-### Output resolution (`tof.getOutputResolution()`)
+Capture is fixed to `F3_FULL` in BETA, so the two relevant sizes are constant:
 
-This is the size of `tof.depth`, `tof.amplitude`, `tof.confidence`, and `tof.intensity` frames.
-
-| Mode | Output width × height |
-|------|----------------------|
-| `F1_FULL` | 804 × 672 |
-| `F2_FULL` | 804 × 672 |
-| `F3_FULL` | 804 × 672 |
-| `F2_BINNING_2X2` | 402 × 336 |
-| `F3_BINNING_2X2` | 402 × 336 |
+| What you need | Method | Value |
+|---------------|--------|-------|
+| Size of `tof.depth` / `tof.amplitude` / `tof.confidence` / `tof.intensity` frames | `tof.getOutputResolution()` | **804 × 672** |
+| `Camera.build(sensorResolution=...)` for a manual camera | `tof.getRawResolution()` | **1344 × 7244** |
 
 ```python
-tof.build(dai.CameraBoardSocket.CAM_D, sensorMode=dai.ToFSensorMode.F3_FULL, fps=10)
-print(tof.getOutputResolution())  # (804, 672) — depth frame size
+tof.build(dai.CameraBoardSocket.CAM_D, fps=10)
+print(tof.getOutputResolution())  # (804, 672) — depth/amplitude/confidence frame size
 print(tof.getRawResolution())     # (1344, 7244) — Camera raw superframe
 ```
 
-### Raw superframe (manual Camera only)
-
-Auto-camera uses this internally. Only specify it yourself when linking a manual `Camera` (or call `tof.getRawResolution()` after `build()`):
-
-| Mode | Raw width × height |
-|------|-------------------|
-| `F1_FULL` | 1344 × 2420 |
-| `F2_FULL` | 1344 × 4832 |
-| `F3_FULL` | 1344 × 7244 |
-| `F2_BINNING_2X2` | 672 × 2420 |
-| `F3_BINNING_2X2` | 672 × 3626 |
+Auto-camera uses `getRawResolution()` internally; you only need it when wiring a manual `Camera`.
 
 ---
 
 ## 3. IPP presets (`dai.ToFPreset`)
 
-Replaces `ImageFiltersPresetMode` on RVC4. Sets phase-unwrap threshold and (for `OFF`) bypasses IPP filters.
+Replaces `ImageFiltersPresetMode` on RVC4. Selects phase-unwrap threshold and filter behavior.
 
 | Preset | Phase unwrap threshold | IPP filters |
 |--------|------------------------|-------------|
 | `LOW_RANGE` | 50 | IPP defaults (bilateral, TNR, FPC, R2P enabled unless overridden) |
 | `MID_RANGE` | 75 | same |
 | `HIGH_RANGE` | 130 | same |
-| `OFF` | 10000 | Bilateral, TNR, flying-pixel, R2P **disabled** |
+| `FAST_OBJECTS` | 75 | TNR **disabled** (reduces motion blur on fast scenes); other filters at IPP defaults |
+| `OFF` *(internal)* | 10000 | Bilateral, TNR, flying-pixel, R2P **disabled**. Not part of the public BETA surface. |
 
 ```python
 tof.build(..., preset=dai.ToFPreset.MID_RANGE)
@@ -219,12 +202,13 @@ cfg_q.send(cfg)
 
 | Output | RVC4 type | Description |
 |--------|-----------|-------------|
-| `tof.depth` | `ImgFrame` | **Final IPP depth** (use this) |
-| `tof.amplitude` | `ImgFrame` float32 | Per-pixel amplitude |
-| `tof.confidence` | `ImgFrame` float32 | IPP confidence (connect only if needed) |
-| `tof.intensity` | `ImgFrame` float32 | Ambient / intensity |
-| `tof.rawDepth` | alias of depth | Same as `depth` on RVC4 — prefer `depth` |
-| `tof.phase`, `tof.raw` | not emitted | RVC2 only — connecting on RVC4 logs a warning |
+| `tof.depth` | `ImgFrame` `RAW16` | **Final IPP depth** in mm (use this) |
+| `tof.amplitude` | `ImgFrame` `RAW8` | Per-pixel amplitude, log1p-normalized uint8 |
+| `tof.confidence` | `ImgFrame` `RAW8` | IPP confidence, max-entropy log1p uint8 (connect only if needed) |
+| `tof.intensity` | `ImgFrame` `RAW8` | Ambient / intensity, log1p-normalized uint8 |
+| `tof.rawDepth` | alias of depth | Same IPP output as `depth` on RVC4 — accessing it logs a warning; use `depth` |
+| `tof.raw` | sensor passthrough | Preferred path for raw sensor frames on RVC4 (via the node) |
+| `tof.phase` | not produced on RVC4 | Deprecated (RVC2 only); accessing on RVC4 logs a warning |
 
 Optional outputs are only produced when connected (queue or link) before start.
 
@@ -243,7 +227,7 @@ amb_q = tof.intensity.createOutputQueue()     # opt-in
 **Override:** connect `rawInput` **before** `pipeline.start()`:
 
 ```python
-tof.build(dai.CameraBoardSocket.CAM_D, sensorMode=dai.ToFSensorMode.F3_FULL, fps=10)
+tof.build(dai.CameraBoardSocket.CAM_D, fps=10)
 
 cam = pipeline.create(dai.node.Camera)
 cam.setSensorType(dai.CameraSensorType.TOF)
@@ -282,9 +266,8 @@ python examples/python/RVC4/ToF/tof_rvc4_config.py --print-only
 | Flag | Maps to |
 |------|---------|
 | `--socket` | `boardSocket` |
-| `--mode` | `sensorMode` |
 | `--fps` | `fps` (integer) |
-| `--preset` | `ToFPreset` |
+| `--preset` | `ToFPreset` (`LOW_RANGE`/`MID_RANGE`/`HIGH_RANGE`/`FAST_OBJECTS`) |
 | `--phase-unwrap` | `phaseUnwrapErrorThreshold` |
 | `--no-ipp-filters` | `ToFPreset.OFF` |
 | `--bilateral`, `--bilateral-std`, `--bilateral-kernel` | bilateral IPP |
@@ -301,7 +284,7 @@ python examples/python/RVC4/ToF/tof_rvc4_config.py --print-only
 | Issue | Fix |
 |-------|-----|
 | `AttributeError: ToFPreset` | Rebuild Python bindings: `TARGET=depthai ./scripts/build_depthai_core.sh` |
-| `sensorMode is RVC4-only` | You're on RVC2; use `presetMode=ImageFiltersPresetMode` instead |
+| `build() got an unexpected keyword argument 'sensorMode'` | `sensorMode` was removed in BETA; capture is fixed to `F3_FULL`. Drop the argument. |
 | `rawInput` not connected | Call `tof.build()` before start, or link `cam.raw → tof.rawInput` manually |
 | `ToF fps must be an integer value` | Pass whole-number fps (e.g. `10`, not `10.5`) |
 | Old script uses `tof.tofBaseNode` | Replace with `tof.initialConfig`, `tof.inputConfig`, `tof.rawInput` |

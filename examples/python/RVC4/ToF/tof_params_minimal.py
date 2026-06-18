@@ -5,17 +5,16 @@ import depthai as dai
 
 # --- build parameters ---
 BOARD_SOCKET = dai.CameraBoardSocket.AUTO
-SENSOR_MODE = dai.ToFSensorMode.F1_FULL   # raw superframe: 1344 x 2420
 FPS = 10.0
-PRESET = dai.ToFPreset.MID_RANGE         # IPP phase-unwrap profile
+PRESET = dai.ToFPreset.MID_RANGE         # IPP profile: LOW_RANGE / MID_RANGE / HIGH_RANGE / FAST_OBJECTS
 
 with dai.Pipeline() as pipeline:
     tof = pipeline.create(dai.node.ToF)
 
-    # build resolves socket; preset= applies IPP profile when explicitly passed
+    # build resolves socket; preset= selects the IPP profile.
+    # VD55H1 capture mode is fixed to F3_FULL internally (not user-selectable).
     tof.build(
         BOARD_SOCKET,
-        sensorMode=SENSOR_MODE,
         fps=FPS,
         preset=PRESET,
     )

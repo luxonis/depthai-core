@@ -49,25 +49,6 @@ TEST_CASE("ToF output reference aliases by platform", "[ToF][Device][API]") {
     }
 }
 
-TEST_CASE("ToF build rejects sensorMode on RVC2", "[ToF][Device][API]") {
-    dai::Pipeline pipeline;
-    const auto device = pipeline.getDefaultDevice();
-    REQUIRE(device != nullptr);
-    if(device->getPlatform() == dai::Platform::RVC4) {
-        WARN("Skipping RVC2-only build validation on RVC4 device");
-        return;
-    }
-    if(!deviceHasToF(device)) {
-        WARN("Skipping: device has no ToF sensor");
-        return;
-    }
-
-    auto tof = pipeline.create<dai::node::ToF>();
-    dai::ToFBuildOptions options;
-    options.sensorMode = dai::ToFSensorMode::F3_FULL;
-    REQUIRE_THROWS_AS(tof->build(options), std::runtime_error);
-}
-
 TEST_CASE("ToF build rejects double build", "[ToF][Device][API]") {
     dai::Pipeline pipeline;
     const auto device = pipeline.getDefaultDevice();
@@ -109,7 +90,6 @@ TEST_CASE("ToF build preserves initialConfig when preset omitted on RVC4", "[ToF
 
     dai::ToFBuildOptions options;
     options.fps = 10.f;
-    options.sensorMode = dai::ToFSensorMode::F3_FULL;
     tof->build(options);
 
     REQUIRE(tof->tofBaseNode.initialConfig->phaseUnwrapErrorThreshold == 123);
@@ -156,13 +136,13 @@ TEST_CASE("ToF resolution helpers after build on RVC4", "[ToF][Device][API]") {
 
     auto tof = pipeline.create<dai::node::ToF>();
     dai::ToFBuildOptions options;
-    options.sensorMode = dai::ToFSensorMode::F3_BINNING_2X2;
     options.fps = 10.f;
     options.preset = dai::ToFPreset::MID_RANGE;
     tof->build(options);
 
-    REQUIRE(tof->getOutputResolution() == dai::getToFSensorModeOutputResolution(dai::ToFSensorMode::F3_BINNING_2X2));
-    REQUIRE(tof->getRawResolution() == dai::getToFSensorModeRawResolution(dai::ToFSensorMode::F3_BINNING_2X2));
+    // sensorMode is fixed to F3_FULL in BETA (not user-selectable)
+    REQUIRE(tof->getOutputResolution() == dai::getToFSensorModeOutputResolution(dai::ToFSensorMode::F3_FULL));
+    REQUIRE(tof->getRawResolution() == dai::getToFSensorModeRawResolution(dai::ToFSensorMode::F3_FULL));
     REQUIRE(tof->getSensorResolution() == tof->getOutputResolution());
 }
 
@@ -181,7 +161,6 @@ TEST_CASE("ToF auto-camera streams IPP depth on RVC4", "[ToF][Device][Stream]") 
 
     auto tof = pipeline.create<dai::node::ToF>();
     dai::ToFBuildOptions options;
-    options.sensorMode = dai::ToFSensorMode::F3_FULL;
     options.fps = 10.f;
     options.preset = dai::ToFPreset::MID_RANGE;
     tof->build(options);
@@ -218,7 +197,6 @@ TEST_CASE("ToF manual rawInput skips auto-camera on RVC4", "[ToF][Device][Stream
     auto tof = pipeline.create<dai::node::ToF>();
     dai::ToFBuildOptions options;
     options.boardSocket = tofSocket;
-    options.sensorMode = dai::ToFSensorMode::F3_FULL;
     options.fps = 10.f;
     options.preset = dai::ToFPreset::MID_RANGE;
     tof->build(options);
