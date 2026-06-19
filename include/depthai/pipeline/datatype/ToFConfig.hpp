@@ -93,7 +93,7 @@ class ToFConfig : public Buffer {
      * Set preset mode for ToFConfig.
      * @param presetMode Preset mode for ToFConfig.
      */
-    void setProfilePreset(ImageFiltersPresetMode presetMode);
+    void setProfilePreset(Profile profile);
 
     DEPTHAI_SERIALIZE(ToFConfig,
                       profile,

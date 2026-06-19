@@ -1,9 +1,58 @@
 #include "depthai/pipeline/node/ToF.hpp"
 
+#include <utility>
+
+#include "depthai/common/CameraSensorType.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
 namespace node {
+
+namespace {
+
+bool usesImageFilters(const std::shared_ptr<Device>& device) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    return device && device->getPlatform() == Platform::RVC2;
+#else
+    (void)device;
+    return false;
+#endif
+}
+
+bool usesAutoCamera(const std::shared_ptr<Device>& device) {
+    return device && device->getPlatform() == Platform::RVC4;
+}
+
+ToFConfig::Profile presetModeToProfile(ImageFiltersPresetMode presetMode) {
+    switch(presetMode) {
+        case ImageFiltersPresetMode::TOF_LOW_RANGE:
+            return ToFConfig::Profile::LOW_RANGE;
+        case ImageFiltersPresetMode::TOF_MID_RANGE:
+            return ToFConfig::Profile::MID_RANGE;
+        case ImageFiltersPresetMode::TOF_HIGH_RANGE:
+            return ToFConfig::Profile::HIGH_RANGE;
+    }
+
+    throw std::runtime_error("Unknown ImageFilters preset mode");
+}
+
+}  // namespace
+
+ToF::ToF(const std::shared_ptr<Device>& device)
+    : DeviceNodeGroup(device)
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+      ,
+      depth{usesImageFilters(device) ? imageFilters->output : tofBase->depth}
+    #else
+      ,
+      depth{tofBase->depth}
+    #endif
+#endif
+{
+}
 
 ToFBase::ToFBase(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties>(std::move(props)),
@@ -12,6 +61,40 @@ ToFBase::ToFBase(std::unique_ptr<Properties> props)
 ToFBase::Properties& ToFBase::getProperties() {
     properties.initialConfig = *initialConfig;
     return properties;
+}
+
+void ToF::buildInternal() {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    if(usesImageFilters(getDevice())) {
+        tofBase->depth.link(imageFilters->input);
+    }
+#endif
+}
+
+std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ImageFiltersPresetMode presetMode, std::optional<float> fps) {
+    const auto profile = presetModeToProfile(presetMode);
+    tofBase->build(boardSocket, profile, fps);
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    if(usesImageFilters(getDevice())) {
+        imageFilters->build(presetMode);
+    }
+#endif
+
+    if(usesAutoCamera(getDevice())) {
+        autoCamera->setSensorType(CameraSensorType::TOF);
+        autoCamera->build(tofBase->getBoardSocket(),
+                          std::pair<uint32_t, uint32_t>{1344, 7244},
+                          tofBase->properties.fps > 0 ? std::optional<float>(tofBase->properties.fps) : std::nullopt);
+
+        autoCamera->raw.link(tofBase->rawInput);
+    }
+    return std::static_pointer_cast<ToF>(shared_from_this());
+}
+
+std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ToFConfig::Profile profile, std::optional<float> fps) {
+    tofBase->build(boardSocket, profile, fps);
+    return std::static_pointer_cast<ToF>(shared_from_this());
 }
 
 std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig::Profile profile, std::optional<float> fps) {
@@ -23,7 +106,7 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig
     }
 
     auto cameraFeatures = device->getConnectedCameraFeatures();
-    // First handle the case if the boardSocket is set to AUTO
+    bool found = boardSocket != CameraBoardSocket::AUTO;
     if(boardSocket == CameraBoardSocket::AUTO) {
         for(const auto& cf : cameraFeatures) {
             for(const auto& sensorType : cf.supportedTypes) {
@@ -33,6 +116,9 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig
                     break;
                 }
             }
+            if(found) {
+                break;
+            }
         }
     }
 
@@ -40,8 +126,7 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig
         throw std::runtime_error("Camera socket not found on the connected device");
     }
 
-    // Set profile preset for ToFConfig
-    initialConfig->profile = profile;
+    initialConfig->setProfilePreset(profile);
 
     properties.boardSocket = boardSocket;
     properties.fps = fps.value_or(ToFProperties::AUTO);
@@ -50,32 +135,8 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig
     return std::static_pointer_cast<ToFBase>(shared_from_this());
 }
 
-std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ImageFiltersPresetMode presetMode, std::optional<float> fps) {
-    ToFConfig::Profile profile;
-    switch(presetMode) {
-        case TOF_LOW_RANGE:
-            profile = ToFConfig::LOW_RANGE;
-            break;
-
-        case TOF_MID_RANGE:
-            profile = ToFConfig::MID_RANGE;
-            break;
-
-        case TOF_HIGH_RANGE:
-            profile = ToFConfig::HIGHT_RANGE;
-            break;
-    }
-    if(platform == Platform::RVC2) {
-        initialConfig->setProfilePresetprofile(presetMode);
-    }
-    build(boardSocket, profile, fps);
-
-    return std::static_pointer_cast<ToFBase>(shared_from_this());
-}
-
 ToF::~ToF() = default;
 
-// Get current board socket
 CameraBoardSocket ToFBase::getBoardSocket() const {
     if(!isBuilt) {
         throw std::runtime_error("ToF node must be built before calling getBoardSocket()");

@@ -3,6 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/DeviceNodeGroup.hpp>
 #include <depthai/pipeline/Subnode.hpp>
+#include <depthai/pipeline/node/Camera.hpp>
 #include <depthai/pipeline/node/ImageFilters.hpp>
 
 // standard
@@ -44,6 +45,13 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     Input inputConfig{*this,
                       {"inputConfig", DEFAULT_GROUP, DEFAULT_BLOCKING, DEFAULT_QUEUE_SIZE, {{{DatatypeEnum::ToFConfig, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
+    /**
+     * Input for raw sensor frames used by the RVC4 host implementation.
+     * This stays internal to the node group API, but must remain on the base
+     * node so the auto-created ToF camera can be linked in the pipeline schema.
+     */
+    Input rawInput{*this, {"rawInput", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
+
     Output depth{*this, {"depth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}};
 
     Output amplitude{*this, {"amplitude", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, true}}}}};
@@ -57,18 +65,6 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
     std::shared_ptr<ToFBase> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                    ToFConfig::Profile profile = dai::ToFConfig::Profile::MID_RANGE,
                                    std::optional<float> fps = std::nullopt);
-
-    std::shared_ptr<ToFBase> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
-                                   dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::TOF_MID_RANGE,
-                                   std::optional<float> fps = std::nullopt);
-
-    /**
-     * Set profile preset for ToFConfig
-     * @param presetMode Preset mode for ToFConfig
-     */
-    void setProfilePreset(dai::ImageFiltersPresetMode presetMode) {
-        initialConfig->setProfilePreset(presetMode);
-    }
 
     /**
      * Retrieves which board socket to use
@@ -84,29 +80,7 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
 class ToF : public DeviceNodeGroup {
    public:
-    ToF(const std::shared_ptr<Device>& device)
-        : DeviceNodeGroup(device),
-          rawDepth{tofBase->depth},
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-          depth{imageFilters->output},
-#else
-          depth{tofBase->depth},
-#endif
-          amplitude{tofBase->amplitude},
-          intensity{tofBase->intensity},
-          phase{tofBase->phase},
-          raw{tofBase->raw},
-          tofBaseInputConfig{tofBase->inputConfig},
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-          imageFiltersInputConfig{imageFilters->inputConfig},
-#endif
-          tofBaseNode{*tofBase}
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-          ,
-          imageFiltersNode{*imageFilters}
-#endif
-    {
-    }
+    ToF(const std::shared_ptr<Device>& device);
 
     ~ToF() override;
 
@@ -116,36 +90,28 @@ class ToF : public DeviceNodeGroup {
         return tofPtr;
     }
 
-    void buildInternal() override {
-        // Build all subnodes, call their internal build functions
-        tofBase->buildInternal();
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        imageFilters->buildInternal();
+    void buildInternal() override;
 
-        // Link subnodes together
-        tofBase->depth.link(imageFilters->input);
-#endif
-    }
-
+    // TODO deprecate
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                dai::ImageFiltersPresetMode presetMode = dai::ImageFiltersPresetMode::TOF_MID_RANGE,
-                               std::optional<float> fps = std::nullopt) {
-        tofBase->build(boardSocket, presetMode, fps);
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-        imageFilters->build(presetMode);
-#endif
-        return std::static_pointer_cast<ToF>(shared_from_this());
-    }
+                               std::optional<float> fps = std::nullopt);
+
+    std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
+                               dai::ToFConfig::Profile presetMode = dai::ToFConfig::Profile::MID_RANGE,
+                               std::optional<float> fps = std::nullopt);
 
     Subnode<ToFBase> tofBase{*this, "tofBase"};
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     Subnode<ImageFilters> imageFilters{*this, "imageFilters"};
 #endif
+    Subnode<Camera> autoCamera{*this, "autoCamera"};
 
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /**
      * Raw depth output from ToF sensor
      */
-    Output& rawDepth;
+    Output& rawDepth{tofBase->depth};
 
     /**
      * Filtered depth output
@@ -155,45 +121,55 @@ class ToF : public DeviceNodeGroup {
     /**
      * Amplitude output
      */
-    Output& amplitude;
+    Output& amplitude{tofBase->amplitude};
 
     /**
      * Intensity output
      */
-    Output& intensity;
+    Output& intensity{tofBase->intensity};
 
     /**
      * Phase output
      */
-    Output& phase;
+    Output& phase{tofBase->phase};
 
     /**
      * Raw data coming from the sensor
      */
-    Output& raw;
+    Output& raw{tofBase->raw};
+
+    /** Runtime ToFConfig input for the ToF base node (decoder on RVC2, IPP on RVC4).
+     *
+     * RVC4: directly reconfigures the IPP that produces `depth`.
+     * RVC2: reconfigures the decoder that feeds the host ImageFilters. The host-filter
+     *       stage that actually produces `depth` is NOT controlled here — to retune the
+     *       host filters at runtime send an ImageFiltersConfig to `imageFiltersInputConfig`.
+     */
+    Input& inputConfig{tofBase->inputConfig};
 
     /**
      * Input config for ToF base node
      */
-    Input& tofBaseInputConfig;
+    Input& tofBaseInputConfig{tofBase->inputConfig};
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Input config for image filters
      */
-    Input& imageFiltersInputConfig;
+    Input& imageFiltersInputConfig{imageFilters->inputConfig};
+    #endif
 #endif
 
     /**
      * ToF base node
      */
-    ToFBase& tofBaseNode;
+    ToFBase& tofBaseNode{*tofBase};
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
      * Image filters node
      */
-    ImageFilters& imageFiltersNode;
+    ImageFilters& imageFiltersNode{*imageFilters};
 #endif
 };
 

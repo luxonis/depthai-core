@@ -17,6 +17,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     py::class_<ToFConfig, Py<ToFConfig>, Buffer, std::shared_ptr<ToFConfig>> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
+    py::enum_<ToFConfig::Profile> toFConfigProfile(toFConfig, "Profile", DOC(dai, ToFConfig, Profile));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -32,10 +33,16 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
 
     // Message
+    toFConfigProfile.value("LOW_RANGE", ToFConfig::Profile::LOW_RANGE)
+        .value("MID_RANGE", ToFConfig::Profile::MID_RANGE)
+        .value("HIGH_RANGE", ToFConfig::Profile::HIGH_RANGE)
+        .export_values();
+
     toFConfig.def(py::init<>())
         .def("__repr__", &ToFConfig::str)
         // .def(py::init<std::shared_ptr<ToFConfig>>())
 
+        .def_readwrite("profile", &ToFConfig::profile, DOC(dai, ToFConfig, profile))
         .def_readwrite("median", &ToFConfig::median, DOC(dai, ToFConfig, median))
         .def_readwrite("enablePhaseShuffleTemporalFilter", &ToFConfig::enablePhaseShuffleTemporalFilter, DOC(dai, ToFConfig, enablePhaseShuffleTemporalFilter))
         .def_readwrite("enableBurstMode", &ToFConfig::enableBurstMode, DOC(dai, ToFConfig, enableBurstMode))
