@@ -609,12 +609,11 @@ CameraBoardSocket CalibrationHandler::getCameraWithLowestId() const {
     return currentCameraId;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
-                                                                              bool useSpecTranslation,
-                                                                              CameraBoardSocket& originSocket) const {
-    // Define scale parameter for mm to cm conversion
-    constexpr float MM_TO_CM_SCALE = getLengthUnitMultiplier(DepthUnit::MILLIMETER) / getLengthUnitMultiplier(DepthUnit::CENTIMETER);
-
+std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExtrinsics(const HousingCoordinateSystem housingCS,
+                                                                                        bool useSpecTranslation,
+                                                                                        CameraBoardSocket& originSocket,
+                                                                                        LengthUnit unit) const {
+    const float mmToUnitScale = getDistanceUnitScale(unit, LengthUnit::MILLIMETER);
     const Extrinsics& housingExtrinsics = eepromData.housingExtrinsics;
 
     originSocket = housingExtrinsics.toCameraSocket;
@@ -623,8 +622,10 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
     HousingCoordinateSystem housingOrigin = static_cast<HousingCoordinateSystem>(static_cast<int32_t>(housingExtrinsics.toCameraSocket));
 
     auto housingRotation = housingExtrinsics.rotationMatrix;
-    auto housingTranslation = housingExtrinsics.translation;          // Point3f
-    auto housingSpecTranslation = housingExtrinsics.specTranslation;  // Point3f
+    const auto housingTranslationVector = housingExtrinsics.getTranslationVector(false, unit);
+    auto housingTranslation = Point3f(housingTranslationVector[0], housingTranslationVector[1], housingTranslationVector[2]);
+    const auto housingSpecTranslationVector = housingExtrinsics.getTranslationVector(true, unit);
+    auto housingSpecTranslation = Point3f(housingSpecTranslationVector[0], housingSpecTranslationVector[1], housingSpecTranslationVector[2]);
 
     // ------------------------------------------------------------
     // If using spec translation, try to get it from the database
@@ -636,19 +637,19 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
             // column of [R | t] must be in the destination (housing-origin) frame:
             // t = -R * db / scale
             std::vector<std::vector<float>> c = {
-                {-(*dbTranslation)[0] / MM_TO_CM_SCALE}, {-(*dbTranslation)[1] / MM_TO_CM_SCALE}, {-(*dbTranslation)[2] / MM_TO_CM_SCALE}};
+                {-(*dbTranslation)[0] * mmToUnitScale}, {-(*dbTranslation)[1] * mmToUnitScale}, {-(*dbTranslation)[2] * mmToUnitScale}};
             auto rc = matMul(housingRotation, c);
             housingSpecTranslation = Point3f(rc[0][0], rc[1][0], rc[2][0]);
         }
     }
 
     // Build 4x4 transform matrix from HousingOrigin to Housing
-    std::vector<std::vector<float>> T_HousingToHousingOrigin(4, std::vector<float>(4, 0.0f));
+    std::vector<std::vector<float>> translationHousingToHousingOrigin(4, std::vector<float>(4, 0.0f));
 
     for(int r = 0; r < 3; ++r) {
         // Copy rotation row
         for(int c = 0; c < 3; ++c) {
-            T_HousingToHousingOrigin[r][c] = housingRotation[r][c];
+            translationHousingToHousingOrigin[r][c] = housingRotation[r][c];
         }
 
         // Pick translation vector
@@ -656,11 +657,11 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
 
         // Map row index -> x/y/z
         float tval = (r == 0 ? t.x : (r == 1 ? t.y : t.z));
-        T_HousingToHousingOrigin[r][3] = tval;
+        translationHousingToHousingOrigin[r][3] = tval;
     }
 
     // Last row = [0 0 0 1]
-    T_HousingToHousingOrigin[3][3] = 1.0f;
+    translationHousingToHousingOrigin[3][3] = 1.0f;
 
     // ------------------------------------------------------------
     // Get the requested specific housing coordinate system translation and subtract it
@@ -669,18 +670,18 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOrigin(co
         if(const auto requestedDbTranslation = lookupHousingEntry(eepromData.productName, housingCS)) {
             // All housing coordinate systems share the same orientation;
             // only their origins differ. Build the pure-translation transform
-            // T_SpecificHousing_to_Housing from the database position.
-            std::vector<std::vector<float>> T_SpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] / MM_TO_CM_SCALE},
-                                                                          {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] / MM_TO_CM_SCALE},
-                                                                          {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] / MM_TO_CM_SCALE},
-                                                                          {0.0f, 0.0f, 0.0f, 1.0f}};
+            // translationSpecificHousing_to_Housing from the database position.
+            std::vector<std::vector<float>> translationSpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] * mmToUnitScale},
+                                                                                   {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] * mmToUnitScale},
+                                                                                   {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] * mmToUnitScale},
+                                                                                   {0.0f, 0.0f, 0.0f, 1.0f}};
 
-            // Compose: T_SpecificHousing→HousingOrigin = T_Housing→HousingOrigin * T_SpecificHousing→Housing
-            T_HousingToHousingOrigin = matMul(T_HousingToHousingOrigin, T_SpecificHousingToHousing);
+            // Compose: translationSpecificHousing→HousingOrigin = translationHousing→HousingOrigin * translationSpecificHousing→Housing
+            translationHousingToHousingOrigin = matMul(translationHousingToHousingOrigin, translationSpecificHousingToHousing);
         }
     }
 
-    return T_HousingToHousingOrigin;
+    return translationHousingToHousingOrigin;
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(CameraBoardSocket srcCamera,
@@ -706,7 +707,7 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(Camera
     // These are provided by the calibration data.
     // ------------------------------------------------------------
 
-    std::vector<std::vector<float>> housingToHousingOrigin = getHousingToHousingOrigin(housingCS, useSpecTranslation, housingOriginCamera);
+    std::vector<std::vector<float>> housingToHousingOrigin = getHousingToHousingOriginExtrinsics(housingCS, useSpecTranslation, housingOriginCamera);
 
     std::vector<std::vector<float>> housingOriginToOrigin = getExtrinsicsToOrigin(housingOriginCamera, useSpecTranslation, originCamera1);
 
@@ -1119,14 +1120,42 @@ void CalibrationHandler::setCameraType(CameraBoardSocket cameraId, CameraModel c
     return;
 }
 
+void CalibrationHandler::updateCameraExtrinsics(CameraBoardSocket srcCameraId,
+                                                CameraBoardSocket destCameraId,
+                                                const std::vector<std::vector<float>>& rotationMatrix,
+                                                const std::vector<float>& translation) {
+    validateRotationMatrix3x3(rotationMatrix);
+    if(translation.size() != 3) {
+        throw std::runtime_error("Translation vector size should always be 3x1");
+    }
+
+    auto cameraData = eepromData.cameraData.find(srcCameraId);
+    if(cameraData == eepromData.cameraData.end()) {
+        throw std::runtime_error("No existing extrinsics found for the source camera socket");
+    }
+
+    if(cameraData->second.extrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("Cannot overwrite extrinsics for source camera socket " + toString(srcCameraId)
+                                 + " because toCameraSocket is AUTO and there is no existing link to update.");
+    }
+
+    if(cameraData->second.extrinsics.toCameraSocket != destCameraId) {
+        throw std::runtime_error("overwriteExtrinsics crash: source camera socket " + toString(srcCameraId) + " has different toCameraSocket "
+                                 + toString(cameraData->second.extrinsics.toCameraSocket) + ". Correct link should be set with "
+                                 + "setCameraExtrinsics(sourceCameraSocket, destinationCameraSocket, rotationMatrix, translation, specTranslation).");
+    }
+
+    cameraData->second.extrinsics.rotationMatrix = rotationMatrix;
+    cameraData->second.extrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
+    return;
+}
+
 void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
                                              CameraBoardSocket destCameraId,
                                              const std::vector<std::vector<float>>& rotationMatrix,
                                              const std::vector<float>& translation,
                                              const std::vector<float>& specTranslation) {
-    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
-        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
-    }
+    validateRotationMatrix3x3(rotationMatrix);
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
@@ -1155,13 +1184,26 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
     return;
 }
 
+void CalibrationHandler::setHousingToHousingOriginExtrinsics(std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation, LengthUnit unit) {
+    validateRotationMatrix3x3(rotationMatrix);
+    if(translation.size() != 3) {
+        throw std::runtime_error("Translation vector size should always be 3x1");
+    }
+    const float scale = getDistanceUnitScale(getEepromTranslationUnits(), unit);
+    if(scale != 1.0f) {
+        for(auto& value : translation) {
+            value *= scale;
+        }
+    }
+    eepromData.housingExtrinsics.rotationMatrix = rotationMatrix;
+    eepromData.housingExtrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
+}
+
 void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
                                           const std::vector<std::vector<float>>& rotationMatrix,
                                           const std::vector<float>& translation,
                                           const std::vector<float>& specTranslation) {
-    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
-        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
-    }
+    validateRotationMatrix3x3(rotationMatrix);
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }

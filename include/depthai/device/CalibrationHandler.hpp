@@ -27,6 +27,10 @@ namespace dai {
  *  - productName
  */
 
+namespace node {
+class DclUtils;
+}  // namespace node
+
 class CalibrationHandler {
    public:
     CalibrationHandler() = default;
@@ -634,11 +638,13 @@ class CalibrationHandler {
     /**
      * Set the Camera Extrinsics object
      *
+     * Translation values are stored in the default CalibrationHandler length unit: centimeters (cm).
+     *
      * @param srcCameraId Camera Id of the camera which will be considered as relative origin.
      * @param destCameraId Camera Id of the camera which will be considered as destination from srcCameraId.
      * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
-     * @param translation Translation between srcCameraId and destCameraId origins.
-     * @param specTranslation Translation between srcCameraId and destCameraId origins from the design.
+     * @param translation Translation between srcCameraId and destCameraId origins, in centimeters (cm).
+     * @param specTranslation Translation between srcCameraId and destCameraId origins from the design, in centimeters (cm).
      */
     void setCameraExtrinsics(CameraBoardSocket srcCameraId,
                              CameraBoardSocket destCameraId,
@@ -647,13 +653,30 @@ class CalibrationHandler {
                              const std::vector<float>& specTranslation = {0, 0, 0});
 
     /**
+     * Overwrite the Camera Extrinsics object where the link already exists
+     *
+     * Translation values are stored in the default CalibrationHandler length unit: centimeters (cm).
+     *
+     * @param srcCameraId Camera Id of the camera which will be considered as relative origin.
+     * @param destCameraId Camera Id of the camera which will be considered as destination from srcCameraId.
+     * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
+     * @param translation Translation between srcCameraId and destCameraId origins, in centimeters (cm).
+     */
+    void updateCameraExtrinsics(CameraBoardSocket srcCameraId,
+                                CameraBoardSocket destCameraId,
+                                const std::vector<std::vector<float>>& rotationMatrix,
+                                const std::vector<float>& translation);
+    /**
      * Set the Imu to Camera Extrinsics object
+     *
+     * Translation values are stored in the default CalibrationHandler length unit: centimeters (cm).
      *
      * @param destCameraId Camera Id of the camera which will be considered as destination from IMU.
      * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
-     * @param translation Translation between IMU and destCameraId origins.
-     * @param specTranslation Translation between IMU and destCameraId origins from the design.
+     * @param translation Translation between IMU and destCameraId origins, in centimeters (cm).
+     * @param specTranslation Translation between IMU and destCameraId origins from the design, in centimeters (cm).
      */
+
     void setImuExtrinsics(CameraBoardSocket destCameraId,
                           const std::vector<std::vector<float>>& rotationMatrix,
                           const std::vector<float>& translation,
@@ -754,13 +777,19 @@ class CalibrationHandler {
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
     std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
-    std::vector<std::vector<float>> getHousingToHousingOrigin(const HousingCoordinateSystem housingCS,
-                                                              bool useSpecTranslation,
-                                                              CameraBoardSocket& originSocket) const;
+    std::vector<std::vector<float>> getHousingToHousingOriginExtrinsics(const HousingCoordinateSystem housingCS,
+                                                                        bool useSpecTranslation,
+                                                                        CameraBoardSocket& originSocket,
+                                                                        LengthUnit unit = LengthUnit::CENTIMETER) const;
+
+    void setHousingToHousingOriginExtrinsics(std::vector<std::vector<float>> rotationMatrix,
+                                             std::vector<float> translation,
+                                             LengthUnit unit = LengthUnit::CENTIMETER);
 
     DEPTHAI_SERIALIZE(CalibrationHandler, eepromData);
     void scaleTranslationInPlace(std::vector<std::vector<float>>& mat, LengthUnit unit) const;
     void validateIntrinsicsMatrix(CameraBoardSocket cameraId) const;
+    friend dai::node::DclUtils;
 
    protected:
     static constexpr LengthUnit eepromTranslationUnits = LengthUnit::CENTIMETER;
