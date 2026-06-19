@@ -65,6 +65,7 @@ class WaitAnyNotifier {
         }
 
         struct WaitingGuard {
+            explicit WaitingGuard(std::atomic<bool>& waiting) : waitingRef(waiting) {}
             WaitingGuard(const WaitingGuard&) = delete;
             WaitingGuard(WaitingGuard&&) = delete;
             WaitingGuard& operator=(const WaitingGuard&) = delete;

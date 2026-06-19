@@ -11,6 +11,10 @@
 #endif
 namespace dai {
 
+PointCloudData::PointCloudData() {
+    transformation = dai::ImgTransformation{};
+}
+
 PointCloudData::~PointCloudData() = default;
 
 void PointCloudData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {

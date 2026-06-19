@@ -103,7 +103,7 @@ std::string lowercase(std::string value) {
 }
 
 std::filesystem::path defaultTelemetryBaseDir() {
-    return std::filesystem::current_path() / ".cache" / "depthai" / DEFAULT_TELEMETRY_ROOT_DIR;
+    return dai::platform::getDaiCacheDir() / DEFAULT_TELEMETRY_ROOT_DIR;
 }
 
 std::string generateUuidV4() {
@@ -429,7 +429,7 @@ TelemetrySharedState::TelemetrySharedState() {
         std::filesystem::create_directories(queueDir);
         loadQueueFromDisk();
     } catch(const std::exception& ex) {
-        logger::warn("Failed to initialize telemetry storage at '{}': {}", queueDir.string(), ex.what());
+        logger::info("Failed to initialize telemetry storage at '{}': {}", queueDir.string(), ex.what());
         return;
     }
 
@@ -881,6 +881,9 @@ void Telemetry::event(std::string eventName, nlohmann::json properties) {
 }
 
 void Telemetry::event(const DeviceBase& device, std::string eventName, nlohmann::json properties) {
+    if(!isTelemetryEnabled()) {
+        return;
+    }
     addDeviceTelemetryProperties(device, properties);
     if(impl) {
         impl->event(std::move(eventName), std::move(properties));
@@ -888,6 +891,9 @@ void Telemetry::event(const DeviceBase& device, std::string eventName, nlohmann:
 }
 
 void Telemetry::event(const Pipeline& pipeline, std::string eventName, nlohmann::json properties) {
+    if(!isTelemetryEnabled()) {
+        return;
+    }
     addPipelineTelemetryProperties(pipeline, properties);
     if(impl) {
         impl->event(std::move(eventName), std::move(properties));

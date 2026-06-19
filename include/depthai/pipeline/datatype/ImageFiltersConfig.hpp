@@ -43,13 +43,13 @@ class ImageFiltersConfig : public Buffer {
      * @param index Index of the filter to be inserted
      * @param params Parameters of the filter to be inserted
      */
-    ImageFiltersConfig& updateFilterAtIndex(std::int32_t index, FilterParams params);
+    ImageFiltersConfig& updateFilterAtIndex(std::int32_t index, const FilterParams& params);
 
     /**
      * Insert filter parameters describing how a new filter should be inserted
      * @param params Parameters of the filter to be inserted
      */
-    ImageFiltersConfig& insertFilter(FilterParams params);
+    ImageFiltersConfig& insertFilter(const FilterParams& params);
 
     /**
      * Index of the filter to be applied

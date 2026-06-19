@@ -52,7 +52,7 @@ void transformOpenCV(const uint8_t* src,
                      const size_t dstStride,
                      const uint16_t numChannels,
                      const uint16_t bpp,
-                     const std::array<std::array<float, 3>, 3> matrix,
+                     const std::array<std::array<float, 3>, 3>& matrix,
                      const std::vector<uint32_t>& background,
                      const dai::impl::FrameSpecs& srcImgSpecs,
                      const size_t sourceMinX,
@@ -161,7 +161,7 @@ bool transformFastCV(const uint8_t* src,
                      const size_t dstStride,
                      const uint16_t numChannels,
                      const uint16_t bpp,
-                     const std::array<std::array<float, 3>, 3> matrix,
+                     const std::array<std::array<float, 3>, 3>& matrix,
                      const std::vector<uint32_t>& background,
                      const dai::impl::FrameSpecs& srcImgSpecs,
                      const size_t sourceMinX,
@@ -392,7 +392,7 @@ dai::impl::FrameSpecs dai::impl::getDstFrameSpecs(size_t width, size_t height, d
     return specs;
 }
 
-dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(FrameSpecs srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to) {
+dai::impl::FrameSpecs dai::impl::getCcDstFrameSpecs(const FrameSpecs& srcSpecs, dai::ImgFrame::Type from, dai::ImgFrame::Type to) {
     if(from == to)
         return srcSpecs;
     else
@@ -480,7 +480,7 @@ bool dai::impl::getFrameTypeInfo(dai::ImgFrame::Type outFrameType, int& outNumPl
     return true;
 }
 
-std::tuple<float, float, float, float> dai::impl::getOuterRect(const std::vector<std::array<float, 2>> points) {
+std::tuple<float, float, float, float> dai::impl::getOuterRect(const std::vector<std::array<float, 2>>& points) {
     float minx = points[0][0];
     float maxx = points[0][0];
     float miny = points[0][1];
@@ -539,7 +539,7 @@ std::array<std::array<float, 3>, 3> dai::impl::getResizeMat(Resize o, float widt
 
 void dai::impl::getOutputSizeFromCorners(const std::array<std::array<float, 2>, 4>& corners,
                                          const bool center,
-                                         const std::array<std::array<float, 3>, 3> transformInv,
+                                         const std::array<std::array<float, 3>, 3>& transformInv,
                                          const uint32_t srcWidth,
                                          const uint32_t srcHeight,
                                          uint32_t& outputWidth,
@@ -631,8 +631,8 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                            mat = matmul({{{1, 0, moveX}, {0, 1, moveY}, {0, 0, 1}}}, mat);
                        }
                    },
-                   [&](Resize o) { mat = getResizeMat(o, width, height, outputWidth, outputHeight); },
-                   [&](Flip o) {
+                   [&](const Resize& o) { mat = getResizeMat(o, width, height, outputWidth, outputHeight); },
+                   [&](const Flip& o) {
                        float moveX = centerX;
                        float moveY = centerY;
                        switch(o.direction) {
@@ -690,8 +690,8 @@ void dai::impl::getTransformImpl(const ManipOp& op,
                        mat = matrix::getHomographyMatrix(o.src, o.dst);
 #endif
                    },
-                   [&](Affine o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
-                   [&](Perspective o) {
+                   [&](const Affine& o) { mat = {{{o.matrix[0], o.matrix[1], 0}, {o.matrix[2], o.matrix[3], 0}, {0, 0, 1}}}; },
+                   [&](const Perspective& o) {
                        mat = {{{o.matrix[0], o.matrix[1], o.matrix[2]}, {o.matrix[3], o.matrix[4], o.matrix[5]}, {o.matrix[6], o.matrix[7], o.matrix[8]}}};
                    },
                    [&](Crop o) {
@@ -845,7 +845,7 @@ size_t dai::impl::getAlignedOutputFrameSize(ImgFrame::Type type, size_t width, s
 }
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-bool dai::impl::UndistortOpenCvImpl::validMatrix(std::array<float, 9> matrix) const {
+bool dai::impl::UndistortOpenCvImpl::validMatrix(const std::array<float, 9>& matrix) const {
     return !floatEq(matrix[0], 0) && floatEq(matrix[1], 0) && floatEq(matrix[3], 0) && !floatEq(matrix[4], 0) && floatEq(matrix[6], 0) && floatEq(matrix[7], 0)
            && floatEq(matrix[8], 1);
 }
@@ -3050,7 +3050,7 @@ void WarpH::buildUndistort(bool enable,
 }
 
 void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
-                      std::shared_ptr<OffsetMemory> dst,
+                      const std::shared_ptr<OffsetMemory>& dst,
                       const size_t srcWidth,
                       const size_t srcHeight,
                       const size_t srcStride,
@@ -3059,7 +3059,7 @@ void WarpH::transform(const std::shared_ptr<OffsetMemory>& src,
                       const size_t dstStride,
                       const uint16_t numChannels,
                       const uint16_t bpp,
-                      const std::array<std::array<float, 3>, 3> matrix,
+                      const std::array<std::array<float, 3>, 3>& matrix,
                       const std::vector<uint32_t>& background) {
 #ifdef DEPTHAI_IMAGEMANIPV2_OPENCV
     transformOpenCV(src->getOffsetData().data(),
