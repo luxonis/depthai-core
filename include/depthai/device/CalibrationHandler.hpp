@@ -638,11 +638,13 @@ class CalibrationHandler {
     /**
      * Set the Camera Extrinsics object
      *
+     * Translation values are stored in the default CalibrationHandler length unit: centimeters (cm).
+     *
      * @param srcCameraId Camera Id of the camera which will be considered as relative origin.
      * @param destCameraId Camera Id of the camera which will be considered as destination from srcCameraId.
      * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
-     * @param translation Translation between srcCameraId and destCameraId origins.
-     * @param specTranslation Translation between srcCameraId and destCameraId origins from the design.
+     * @param translation Translation between srcCameraId and destCameraId origins, in centimeters (cm).
+     * @param specTranslation Translation between srcCameraId and destCameraId origins from the design, in centimeters (cm).
      */
     void setCameraExtrinsics(CameraBoardSocket srcCameraId,
                              CameraBoardSocket destCameraId,
@@ -653,10 +655,12 @@ class CalibrationHandler {
     /**
      * Overwrite the Camera Extrinsics object where the link already exists
      *
+     * Translation values are stored in the default CalibrationHandler length unit: centimeters (cm).
+     *
      * @param srcCameraId Camera Id of the camera which will be considered as relative origin.
      * @param destCameraId Camera Id of the camera which will be considered as destination from srcCameraId.
      * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
-     * @param translation Translation between srcCameraId and destCameraId origins.
+     * @param translation Translation between srcCameraId and destCameraId origins, in centimeters (cm).
      */
     void updateCameraExtrinsics(CameraBoardSocket srcCameraId,
                                 CameraBoardSocket destCameraId,
@@ -665,10 +669,12 @@ class CalibrationHandler {
     /**
      * Set the Imu to Camera Extrinsics object
      *
+     * Translation values are stored in the default CalibrationHandler length unit: centimeters (cm).
+     *
      * @param destCameraId Camera Id of the camera which will be considered as destination from IMU.
      * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
-     * @param translation Translation between IMU and destCameraId origins.
-     * @param specTranslation Translation between IMU and destCameraId origins from the design.
+     * @param translation Translation between IMU and destCameraId origins, in centimeters (cm).
+     * @param specTranslation Translation between IMU and destCameraId origins from the design, in centimeters (cm).
      */
 
     void setImuExtrinsics(CameraBoardSocket destCameraId,
