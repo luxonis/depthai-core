@@ -663,21 +663,14 @@ void PointCloud::processColorized(const std::shared_ptr<ImgFrame>& depthFrame,
         return;
     }
 
-    // Warn about extrinsics mismatches (non-fatal)
-    {
-        auto depthExtrinsics = depthFrame->transformation.getExtrinsics();
-        auto colorExtrinsics = colorFrame->transformation.getExtrinsics();
-        if(depthExtrinsics.toCameraSocket != colorExtrinsics.toCameraSocket) {
-            pimpl->logger->warn("PointCloud: color extrinsics toCameraSocket ({}) does not match depth ({}) -- colorization may be misaligned",
-                                toString(colorExtrinsics.toCameraSocket),
-                                toString(depthExtrinsics.toCameraSocket));
-        } else if(depthExtrinsics.rotationMatrix != colorExtrinsics.rotationMatrix || depthExtrinsics.translation.x != colorExtrinsics.translation.x
-                  || depthExtrinsics.translation.y != colorExtrinsics.translation.y || depthExtrinsics.translation.z != colorExtrinsics.translation.z) {
-            pimpl->logger->warn(
-                "PointCloud: depth and color extrinsics differ (same toCameraSocket={} but different rotation/translation) "
-                "-- colorization may be misaligned",
-                toString(depthExtrinsics.toCameraSocket));
-        }
+    // Check extrinsics mismatches (non-fatal)
+    if(!depthFrame->transformation.getExtrinsics().isEqualExtrinsics(colorFrame->transformation.getExtrinsics())) {
+        pimpl->logger->warn("PointCloud: depth and color extrinsics differ -- colorization may be misaligned");
+    }
+
+    // Check intrinsics and distortion mismatches (non-fatal)
+    if(!depthFrame->transformation.isAlignedTo(colorFrame->transformation)) {
+        pimpl->logger->warn("PointCloud: depth and color transformations are not aligned (intrinsics/distortion differ) -- colorization may be misaligned");
     }
 
     const auto* depthData = depthFrame->getData().data();

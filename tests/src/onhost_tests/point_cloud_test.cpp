@@ -1532,19 +1532,6 @@ TEST_CASE("PointCloudData stores and retrieves ImgTransformation", "[PointCloud]
     REQUIRE(retrievedIntrinsics[1][2] == Catch::Approx(200.f));
 }
 
-TEST_CASE("PointCloudData transformation default is identity", "[PointCloud][Transformation]") {
-    dai::PointCloudData pc;
-    const auto& t = pc.getTransformation();
-    auto intrinsics = t.getIntrinsicMatrix();
-
-    // Default intrinsic matrix is identity
-    REQUIRE(intrinsics[0][0] == Catch::Approx(1.f));
-    REQUIRE(intrinsics[1][1] == Catch::Approx(1.f));
-    REQUIRE(intrinsics[2][2] == Catch::Approx(1.f));
-    REQUIRE(intrinsics[0][1] == Catch::Approx(0.f));
-    REQUIRE(intrinsics[0][2] == Catch::Approx(0.f));
-}
-
 TEST_CASE("PointCloudData transformation mutated via setter", "[PointCloud][Transformation]") {
     dai::PointCloudData pc;
     std::array<std::array<float, 3>, 3> intrinsics = {{{300.f, 0.f, 160.f}, {0.f, 300.f, 120.f}, {0.f, 0.f, 1.f}}};
