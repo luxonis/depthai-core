@@ -66,12 +66,12 @@ TEST_CASE("sparse pointcloud") {
 }
 
 // ============================================================================
-// Colorization proceeds with mismatched extrinsics (error logged, no skip)
+// Colorization proceeds with mismatched extrinsics (warning logged, no skip)
 // ============================================================================
 TEST_CASE("Colorization proceeds despite mismatched frame extrinsics") {
     // This test verifies that when depth and color frames have different
     // toCameraSocket extrinsics, the PointCloud node still produces a
-    // colorized point cloud (with an error log) rather than falling back to
+    // colorized point cloud (with a warning log) rather than falling back to
     // depth-only output.
 
     dai::Pipeline pipeline;
@@ -150,12 +150,12 @@ TEST_CASE("Colorization proceeds despite mismatched frame extrinsics") {
 }
 
 // ============================================================================
-// Colorization proceeds with mismatched intrinsics (error logged, no skip)
+// Colorization proceeds with mismatched intrinsics (warning logged, no skip)
 // ============================================================================
 TEST_CASE("Colorization proceeds despite mismatched frame intrinsics") {
     // This test verifies that when depth and color frames have different
     // intrinsic matrices, the PointCloud node still produces a colorized
-    // point cloud (with an error log) rather than falling back to depth-only.
+    // point cloud (with a warning log) rather than falling back to depth-only.
 
     dai::Pipeline pipeline;
     if(pipeline.getDefaultDevice()->getPlatform() == dai::Platform::RVC2) {
@@ -229,12 +229,12 @@ TEST_CASE("Colorization proceeds despite mismatched frame intrinsics") {
 }
 
 // ============================================================================
-// Colorization proceeds with mismatched distortion (error logged, no skip)
+// Colorization proceeds with mismatched distortion (warning logged, no skip)
 // ============================================================================
 TEST_CASE("Colorization proceeds despite mismatched frame distortion") {
     // This test verifies that when depth and color frames have different
     // distortion models or coefficients, the PointCloud node still produces
-    // a colorized point cloud (with an error log) rather than falling back
+    // a colorized point cloud (with a warning log) rather than falling back
     // to depth-only.
 
     dai::Pipeline pipeline;
