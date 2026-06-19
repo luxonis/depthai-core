@@ -55,17 +55,6 @@ void validateImuCalibrationMatrix(const std::vector<std::vector<float>>& calibra
     }
 }
 
-void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix) {
-    if(rotationMatrix.size() != 3) {
-        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
-    }
-    for(const auto& row : rotationMatrix) {
-        if(row.size() != 3) {
-            throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
-        }
-    }
-}
-
 EepromData validateCBAEepromData(EepromData eepromData) {
     if(eepromData.cameraData.size() != 1) {
         throw std::runtime_error("CBA calibration data must contain exactly one cameraData entry.");
