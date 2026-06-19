@@ -421,7 +421,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     return DynamicCalibration::ErrorCode::OK;
 }
 
-DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device> daiDevice) {
+DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device>& daiDevice) {
     logger->trace("Initializing DynamicCalibration pipeline for device: {}", daiDevice->getDeviceId());
 
     auto inSyncGroup = syncInput.get<dai::MessageGroup>();

@@ -28,7 +28,7 @@ class NodeEventAggregation {
     uint32_t eventWaitWindow;
 
    public:
-    NodeEventAggregation(uint32_t windowSize, uint32_t statsUpdateIntervalMs, uint32_t eventWaitWindow, std::shared_ptr<spdlog::async_logger> logger)
+    NodeEventAggregation(uint32_t windowSize, uint32_t statsUpdateIntervalMs, uint32_t eventWaitWindow, const std::shared_ptr<spdlog::async_logger>& logger)
         : logger(logger),
           windowSize(windowSize),
           statsUpdateIntervalMs(statsUpdateIntervalMs),
@@ -454,7 +454,7 @@ class PipelineEventHandler {
                          uint32_t aggregationWindowSize,
                          uint32_t statsUpdateIntervalMs,
                          uint32_t eventWaitWindow,
-                         std::shared_ptr<spdlog::async_logger> logger)
+                         const std::shared_ptr<spdlog::async_logger>& logger)
         : inputs(inputs),
           aggregationWindowSize(aggregationWindowSize),
           statsUpdateIntervalMs(statsUpdateIntervalMs),
@@ -499,7 +499,7 @@ class PipelineEventHandler {
         running = false;
         if(thread.joinable()) thread.join();
     }
-    bool getState(std::shared_ptr<PipelineState> outState, bool sendEvents) {
+    bool getState(const std::shared_ptr<PipelineState>& outState, bool sendEvents) {
         // Copy over node states and return if any were recently updated
         std::shared_lock lock(mutex);
         bool updated = false;
@@ -530,7 +530,7 @@ class TraceOutputHandler {
     std::shared_ptr<spdlog::async_logger> logger;
 
    public:
-    TraceOutputHandler(Node::Output& outTrace, PipelineEventHandler& handler, std::shared_ptr<spdlog::async_logger> logger)
+    TraceOutputHandler(Node::Output& outTrace, PipelineEventHandler& handler, const std::shared_ptr<spdlog::async_logger>& logger)
         : outTrace(outTrace), handler(handler), logger(logger) {}
 
     void run(const std::optional<PipelineEventAggregationConfig>& traceOutputConfig) {

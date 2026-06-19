@@ -29,13 +29,13 @@ class UVC : public DeviceNodeCRTP<DeviceNode, UVC, UVCProperties> {
     Input input{*this, {"in", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::Buffer, true}}}, true}};
 
     /// Set GPIO list <gpio_number, value> for GPIOs to set (on/off) at init
-    void setGpiosOnInit(std::unordered_map<int, int> list);
+    void setGpiosOnInit(const std::unordered_map<int, int>& list);
 
     /// Set GPIO list <gpio_number, value> for GPIOs to set when streaming is enabled
-    void setGpiosOnStreamOn(std::unordered_map<int, int> list);
+    void setGpiosOnStreamOn(const std::unordered_map<int, int>& list);
 
     /// Set GPIO list <gpio_number, value> for GPIOs to set when streaming is disabled
-    void setGpiosOnStreamOff(std::unordered_map<int, int> list);
+    void setGpiosOnStreamOff(const std::unordered_map<int, int>& list);
 };
 
 }  // namespace node

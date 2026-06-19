@@ -15,7 +15,7 @@
 namespace dai {
 namespace utility {
 
-void PipelineImplHelper::setupHolisticRecordAndReplay(std::weak_ptr<PipelineImpl> pipelineWeak) {
+void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<PipelineImpl>& pipelineWeak) {
     auto pipeline = pipelineWeak.lock();
     if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
@@ -166,7 +166,7 @@ void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
         pipeline->recordConfig.state = RecordConfig::RecordReplayState::NONE;
     }
 }
-void PipelineImplHelper::setupPipelineDebuggingPre(std::weak_ptr<PipelineImpl> pipelineWeak) {
+void PipelineImplHelper::setupPipelineDebuggingPre(const std::weak_ptr<PipelineImpl>& pipelineWeak) {
     auto pipeline = pipelineWeak.lock();
     if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
@@ -234,7 +234,7 @@ void PipelineImplHelper::setupPipelineDebuggingPre(std::weak_ptr<PipelineImpl> p
         }
     }
 }
-void PipelineImplHelper::setupPipelineDebuggingPost(std::weak_ptr<PipelineImpl> pipelineWeak,
+void PipelineImplHelper::setupPipelineDebuggingPost(const std::weak_ptr<PipelineImpl>& pipelineWeak,
                                                     std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>& bridgesOut,
                                                     std::unordered_map<dai::Node::Input*, node::internal::XLinkInBridge>& bridgesIn) {
     auto pipeline = pipelineWeak.lock();

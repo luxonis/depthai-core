@@ -38,7 +38,7 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
      *
      * @param size width and height in pixels
      */
-    void setOutputSize(std::tuple<int, int> size);
+    void setOutputSize(const std::tuple<int, int>& size);
     void setOutputSize(int width, int height);
 
     /**
@@ -66,7 +66,7 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
      * Specify which hardware warp engines to use
      * @param ids Which warp engines to use (0, 1, 2)
      */
-    void setHwIds(std::vector<int> ids);
+    void setHwIds(const std::vector<int>& ids);
     /// Retrieve which hardware warp engines to use
     std::vector<int> getHwIds() const;
 

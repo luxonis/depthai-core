@@ -119,7 +119,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack) {
              py::arg("useCached"),
              DOC(dai, node, SpatialDetectionNetwork, setFromModelZoo))
         .def("setBlob",
-             py::overload_cast<dai::OpenVINO::Blob>(&SpatialDetectionNetwork::setBlob),
+             py::overload_cast<const dai::OpenVINO::Blob&>(&SpatialDetectionNetwork::setBlob),
              py::arg("blob"),
              DOC(dai, node, SpatialDetectionNetwork, setBlob))
         .def("setBlob",
