@@ -624,9 +624,10 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExt
     HousingCoordinateSystem housingOrigin = static_cast<HousingCoordinateSystem>(static_cast<int32_t>(housingExtrinsics.toCameraSocket));
 
     auto housingRotation = housingExtrinsics.rotationMatrix;
-    auto housingTranslation = Point3f(
-        housingExtrinsics.translation.x * cmToUnitScale, housingExtrinsics.translation.y * cmToUnitScale, housingExtrinsics.translation.z * cmToUnitScale);
-    auto housingSpecTranslation = housingExtrinsics.specTranslation;  // Point3f
+    const auto housingTranslationVector = housingExtrinsics.getTranslationVector(false, unit);
+    auto housingTranslation = Point3f(housingTranslationVector[0], housingTranslationVector[1], housingTranslationVector[2]);
+    const auto housingSpecTranslationVector = housingExtrinsics.getTranslationVector(true, unit);
+    auto housingSpecTranslation = Point3f(housingSpecTranslationVector[0], housingSpecTranslationVector[1], housingSpecTranslationVector[2]);
 
     // ------------------------------------------------------------
     // If using spec translation, try to get it from the database
