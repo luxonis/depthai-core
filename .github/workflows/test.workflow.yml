@@ -31,14 +31,15 @@ jobs:
       replay: ${{ steps.check.outputs.replay }}
       sanitizers: ${{ steps.check.outputs.sanitizers }}
       dcl: ${{ steps.check.outputs.dcl }}
+    env:
+      RAW_LABELS: ${{ toJson(github.event.pull_request.labels) }}
     steps:
       - name: Evaluate trigger condition
         id: check
         run: |
           EVENT_NAME="${{ github.event_name }}"
-          RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
 
-          if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
+          if [[ -z "$RAW_LABELS" || "$RAW_LABELS" == "null" ]]; then
             LABELS="[]"
           else
             LABELS="$RAW_LABELS"
