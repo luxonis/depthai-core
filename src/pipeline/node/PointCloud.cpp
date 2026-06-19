@@ -665,12 +665,12 @@ void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
 
     // Check extrinsics mismatches (non-fatal)
     if(!depthFrame->transformation.getExtrinsics().isEqualExtrinsics(colorFrame->transformation.getExtrinsics())) {
-        pimpl->logger->error("PointCloud: depth and color extrinsics differ -- colorization may be misaligned");
+        pimpl->logger->warn("PointCloud: depth and color extrinsics differ -- colorization may be misaligned");
     }
 
     // Check intrinsics and distortion mismatches (non-fatal)
     if(!depthFrame->transformation.isAlignedTo(colorFrame->transformation)) {
-        pimpl->logger->error("PointCloud: depth and color transformations are not aligned (intrinsics/distortion differ) -- colorization may be misaligned");
+        pimpl->logger->warn("PointCloud: depth and color transformations are not aligned (intrinsics/distortion differ) -- colorization may be misaligned");
     }
 
     const auto* depthData = depthFrame->getData().data();
