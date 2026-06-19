@@ -5,8 +5,22 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 namespace dai {
+namespace {
+
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getGroupTimestampDevice(
+    const std::shared_ptr<ADatatype>& value) {
+    auto buffer = std::dynamic_pointer_cast<Buffer>(value);
+    if(auto imgFrame = std::dynamic_pointer_cast<ImgFrame>(buffer)) {
+        return imgFrame->getTimestampDevice(CameraExposureOffset::END);
+    }
+
+    return buffer->getTimestampDevice();
+}
+
+}  // namespace
 
 MessageGroup::~MessageGroup() = default;
 
@@ -31,10 +45,10 @@ std::map<std::string, std::shared_ptr<ADatatype>>::iterator MessageGroup::end() 
 
 int64_t MessageGroup::getIntervalNs() const {
     if(!group.empty()) {
-        auto oldest = std::dynamic_pointer_cast<Buffer>(group.begin()->second)->getTimestampDevice();
+        auto oldest = getGroupTimestampDevice(group.begin()->second);
         auto latest = oldest;
         for(const auto& entry : group) {
-            auto ts = std::dynamic_pointer_cast<Buffer>(entry.second)->getTimestampDevice();
+            auto ts = getGroupTimestampDevice(entry.second);
             if(ts < oldest) oldest = ts;
             if(ts > latest) latest = ts;
         }

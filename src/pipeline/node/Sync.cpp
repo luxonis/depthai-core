@@ -2,11 +2,34 @@
 
 #include <chrono>
 
+#include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 
 namespace dai {
 namespace node {
+namespace {
+
+using SteadyTimePoint = std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>;
+
+SteadyTimePoint getSyncTimestamp(const std::shared_ptr<dai::Buffer>& buffer) {
+    if(auto imgFrame = std::dynamic_pointer_cast<dai::ImgFrame>(buffer)) {
+        return imgFrame->getTimestamp(dai::CameraExposureOffset::END);
+    }
+
+    return buffer->getTimestamp();
+}
+
+SteadyTimePoint getSyncTimestampDevice(const std::shared_ptr<dai::Buffer>& buffer) {
+    if(auto imgFrame = std::dynamic_pointer_cast<dai::ImgFrame>(buffer)) {
+        return imgFrame->getTimestampDevice(dai::CameraExposureOffset::END);
+    }
+
+    return buffer->getTimestampDevice();
+}
+
+}  // namespace
 
 void Sync::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
     properties.syncThresholdNs = syncThreshold.count();
@@ -76,11 +99,10 @@ void Sync::run() {
                     throw std::runtime_error("Received nullptr from input " + name);
                 }
             }
-            // Print out the timestamps
             for(const auto& frame : inputFrames) {
-                logger->debug("Starting input {} timestamp is {} ms",
+                logger->debug("Starting input {} sync timestamp is {} ms",
                               frame.first,
-                              static_cast<float>(frame.second->getTimestampDevice().time_since_epoch().count()) / 1000000.f);
+                              static_cast<float>(getSyncTimestampDevice(frame.second).time_since_epoch().count()) / 1000000.f);
             }
             tAfterMessageBeginning = steady_clock::now();
             int attempts = 0;
@@ -89,9 +111,9 @@ void Sync::run() {
                 if(attempts > 50) {
                     logger->warn("Sync node has been trying to sync for {} messages, but the messages are still not in sync.", attempts);
                     for(const auto& frame : inputFrames) {
-                        logger->warn("Output {} timestamp is {} ms",
+                        logger->warn("Output {} sync timestamp is {} ms",
                                      frame.first,
-                                     static_cast<float>(frame.second->getTimestampDevice().time_since_epoch().count()) / 1000000.f);
+                                     static_cast<float>(getSyncTimestampDevice(frame.second).time_since_epoch().count()) / 1000000.f);
                     }
                 }
                 if(attempts > properties.syncAttempts && properties.syncAttempts != -1) {
@@ -102,19 +124,20 @@ void Sync::run() {
                             attempts);
                     break;
                 }
-                // Find a minimum timestamp
-                auto minTs = inputFrames.begin()->second->getTimestampDevice();
+
+                auto minTs = getSyncTimestampDevice(inputFrames.begin()->second);
                 for(const auto& frame : inputFrames) {
-                    if(frame.second->getTimestampDevice() < minTs) {
-                        minTs = frame.second->getTimestampDevice();
+                    const auto ts = getSyncTimestampDevice(frame.second);
+                    if(ts < minTs) {
+                        minTs = ts;
                     }
                 }
 
-                // Find a max timestamp
-                auto maxTs = inputFrames.begin()->second->getTimestampDevice();
+                auto maxTs = getSyncTimestampDevice(inputFrames.begin()->second);
                 for(const auto& frame : inputFrames) {
-                    if(frame.second->getTimestampDevice() > maxTs) {
-                        maxTs = frame.second->getTimestampDevice();
+                    const auto ts = getSyncTimestampDevice(frame.second);
+                    if(ts > maxTs) {
+                        maxTs = ts;
                     }
                 }
                 logger->debug("Diff: {} ms", duration_cast<milliseconds>(maxTs - minTs).count());
@@ -123,10 +146,9 @@ void Sync::run() {
                     break;
                 }
 
-                // Get the message with the minimum timestamp (oldest message)
                 std::string minTsName;
                 for(const auto& frame : inputFrames) {
-                    if(frame.second->getTimestampDevice() == minTs) {
+                    if(getSyncTimestampDevice(frame.second) == minTs) {
                         minTsName = frame.first;
                         break;
                     }
@@ -138,18 +160,25 @@ void Sync::run() {
         }
         auto tBeforeSend = steady_clock::now();
         auto outputGroup = std::make_shared<dai::MessageGroup>();
-        dai::Buffer* newestFrame = inputFrames.begin()->second.get();
+        auto newestFrame = inputFrames.begin()->second;
+        auto newestTimestamp = getSyncTimestamp(newestFrame);
+        auto newestTimestampDevice = getSyncTimestampDevice(newestFrame);
         for(const auto& name : inputNames) {
             logger->trace("Sending output: {}", name);
-            logger->trace("Timestamp: {} ms",
-                          static_cast<float>(duration_cast<microseconds>(inputFrames[name]->getTimestampDevice().time_since_epoch()).count()) / 1000.f);
+            logger->trace("Sync timestamp: {} ms",
+                          static_cast<float>(duration_cast<microseconds>(getSyncTimestampDevice(inputFrames[name]).time_since_epoch()).count()) /
+                              1000.f);
             outputGroup->add(name, inputFrames[name]);
-            if(inputFrames[name]->getTimestampDevice() > newestFrame->getTimestampDevice()) {
-                newestFrame = inputFrames[name].get();
+
+            const auto tsDevice = getSyncTimestampDevice(inputFrames[name]);
+            if(tsDevice > newestTimestampDevice) {
+                newestFrame = inputFrames[name];
+                newestTimestamp = getSyncTimestamp(inputFrames[name]);
+                newestTimestampDevice = tsDevice;
             }
         }
-        outputGroup->setTimestamp(newestFrame->getTimestamp());
-        outputGroup->setTimestampDevice(newestFrame->getTimestampDevice());
+        outputGroup->setTimestamp(newestTimestamp);
+        outputGroup->setTimestampDevice(newestTimestampDevice);
         outputGroup->setSequenceNum(newestFrame->getSequenceNum());
         {
             auto blockEvent = this->outputBlockEvent();
