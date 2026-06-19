@@ -239,7 +239,7 @@ YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string
 
     if(subtypeStr == "yolov6r1") return YoloDecodingFamily::R1AF;
     if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov6" || subtypeStr == "yolov8" || subtypeStr == "yolov10"
-       || subtypeStr == "yolov11")
+       || subtypeStr == "yolov11" || subtypeStr == "yolov12")
         return YoloDecodingFamily::TLBR;
     if(subtypeStr == "yolov3" || subtypeStr == "yolov3-tiny") return YoloDecodingFamily::v3AB;
     if(subtypeStr == "yolov5" || subtypeStr == "yolov7" || subtypeStr == "yolo-p" || subtypeStr == "yolov5-u") return YoloDecodingFamily::v5AB;
