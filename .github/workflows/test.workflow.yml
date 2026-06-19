@@ -22,36 +22,76 @@ concurrency:
 
 jobs:
 
-  # The precheck job determines whether a workflow should be run in full
   precheck:
     runs-on: ubuntu-latest
     outputs:
-      should_run: ${{ steps.check.outputs.should_run }}
+      linux: ${{ steps.check.outputs.linux }}
+      windows: ${{ steps.check.outputs.windows }}
+      mac: ${{ steps.check.outputs.mac }}
+      replay: ${{ steps.check.outputs.replay }}
+      sanitizers: ${{ steps.check.outputs.sanitizers }}
+      dcl: ${{ steps.check.outputs.dcl }}
     steps:
-    - name: Evaluate trigger condition
-      id: check
-      run: |
-        EVENT_NAME="${{ github.event_name }}"
+      - name: Evaluate trigger condition
+        id: check
+        run: |
+          EVENT_NAME="${{ github.event_name }}"
+          RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
 
-        RAW_LABELS='${{ toJson(github.event.pull_request.labels) }}'
-        if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
-          LABELS="[]"
-        else
-          LABELS="$RAW_LABELS"
-        fi
-
-        SHOULD_RUN="true"
-        if [[ "$EVENT_NAME" == "pull_request" ]]; then
-          if ! echo "$LABELS" | jq -r '.[].name' | grep -q "testable"; then
-            SHOULD_RUN="false"
+          if [[ "$RAW_LABELS" == "null" || -z "$RAW_LABELS" ]]; then
+            LABELS="[]"
+          else
+            LABELS="$RAW_LABELS"
           fi
-        fi
 
-        echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
+          has_label() {
+            echo "$LABELS" | jq -r '.[].name' | grep -qx "$1"
+          }
+
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "linux=true" >> "$GITHUB_OUTPUT"
+            echo "windows=true" >> "$GITHUB_OUTPUT"
+            echo "mac=true" >> "$GITHUB_OUTPUT"
+            echo "replay=true" >> "$GITHUB_OUTPUT"
+            echo "sanitizers=true" >> "$GITHUB_OUTPUT"
+            echo "dcl=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ALL=false
+          OS=false
+
+          has_label "testable_all" && ALL=true
+          has_label "testable_os" && OS=true
+
+          { has_label "testable" || [[ "$OS" == "true" || "$ALL" == "true" ]]; } \
+            && LINUX=true || LINUX=false
+
+          { [[ "$OS" == "true" || "$ALL" == "true" ]]; } \
+            && WINDOWS=true || WINDOWS=false
+
+          { [[ "$OS" == "true" || "$ALL" == "true" ]]; } \
+            && MAC=true || MAC=false
+
+          { has_label "testable_replay" || [[ "$ALL" == "true" ]]; } \
+            && REPLAY=true || REPLAY=false
+
+          { has_label "testable_sanitizers" || [[ "$ALL" == "true" ]]; } \
+            && SANITIZERS=true || SANITIZERS=false
+
+          has_label "testable_with_dcl" && DCL=true || DCL=false
+
+          echo "linux=$LINUX" >> "$GITHUB_OUTPUT"
+          echo "windows=$WINDOWS" >> "$GITHUB_OUTPUT"
+          echo "mac=$MAC" >> "$GITHUB_OUTPUT"
+          echo "replay=$REPLAY" >> "$GITHUB_OUTPUT"
+          echo "sanitizers=$SANITIZERS" >> "$GITHUB_OUTPUT"
+          echo "dcl=$DCL" >> "$GITHUB_OUTPUT"
+
 
   run_vanilla_tests:
     needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
+    if: needs.precheck.outputs.linux == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
@@ -68,7 +108,7 @@ jobs:
 
   run_tsan_tests:
     needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
+    if: needs.precheck.outputs.sanitizers == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "tsan"
@@ -81,7 +121,7 @@ jobs:
 
   run_asan-ubsan_tests:
     needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
+    if: needs.precheck.outputs.sanitizers == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "asan-ubsan"
@@ -94,7 +134,7 @@ jobs:
 
   run_windows_tests:
     needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
+    if: needs.precheck.outputs.windows == 'true'
     uses: ./.github/workflows/test_child_windows.yml
     with:
       luxonis_os_versions_to_test: "['1.33.0']"
@@ -107,7 +147,7 @@ jobs:
 
   run_replay_tests:
     needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
+    if: needs.precheck.outputs.replay == 'true'
     uses: ./.github/workflows/test_child.yml
     with:
       flavor: "vanilla"
@@ -123,7 +163,7 @@ jobs:
 
   run_vanilla_mac_tests:
     needs: [precheck]
-    if: needs.precheck.outputs.should_run == 'true'
+    if: needs.precheck.outputs.mac == 'true'
     uses: ./.github/workflows/test_child_mac.yml
     with:
       flavor: "vanilla"
