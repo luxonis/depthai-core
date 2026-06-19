@@ -612,12 +612,32 @@ with contextlib.ExitStack() as stack:
             fpsCounter.tick()
             if latestFrameGroup.getNumMessages() == len(outputNames):
                 tsValues = {}
+                debugRows = []
                 for name in outputNames:
-                    tsValues[name] = latestFrameGroup[name].getTimestampDevice(dai.CameraExposureOffset.END).total_seconds()
+                    frame = latestFrameGroup[name]
+                    tsValues[name] = frame.getTimestamp(dai.CameraExposureOffset.END).total_seconds()
+                    debugRows.append(
+                        (
+                            name,
+                            frame.getSequenceNum(),
+                            frame.getTimestamp().total_seconds(),
+                            frame.getTimestamp(dai.CameraExposureOffset.END).total_seconds(),
+                            frame.getTimestampDevice().total_seconds(),
+                            frame.getTimestampDevice(dai.CameraExposureOffset.END).total_seconds(),
+                        )
+                    )
 
                 delta = max(tsValues.values()) - min(tsValues.values())
                 syncStatus = abs(delta) < syncThresholdSec
                 deltaSamples.append((actualDurationSec, delta * 1e6))
+                if len(deltaSamples) <= 5 or (len(deltaSamples) % 30) == 0:
+                    debugSummary = " | ".join(
+                        [
+                            f"{name}:seq={seq},host={hostTs:.9f},hostEnd={hostEndTs:.9f},dev={devTs:.9f},devEnd={devEndTs:.9f}"
+                            for name, seq, hostTs, hostEndTs, devTs, devEndTs in debugRows
+                        ]
+                    )
+                    print(f"TSDBG example group={len(deltaSamples)} delta_us={delta * 1e6:.3f} {debugSummary}")
                 latestFrameMetrics = {
                     "tsValues": tsValues,
                     "delta": delta,

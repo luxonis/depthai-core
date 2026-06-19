@@ -10,6 +10,50 @@
 #endif
 namespace dai {
 
+namespace {
+
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> adjustExposureOffsetTimestamp(
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> baseTimestamp,
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> baseDeviceTimestamp,
+    const ImgFrame::CameraSettings& cameraSettings,
+    CameraExposureOffset offset) {
+    const auto exposureTime = std::chrono::microseconds(cameraSettings.exposureTimeUs);
+
+    if(cameraSettings.sofTimestampNs.has_value() && cameraSettings.sofToEoeOffsetNs.has_value()) {
+        const auto eoeDeviceTimestamp =
+            std::chrono::nanoseconds(*cameraSettings.sofTimestampNs - *cameraSettings.sofToEoeOffsetNs);
+        const auto baseDeviceTimeSinceEpoch =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(baseDeviceTimestamp.time_since_epoch());
+        auto adjustedTimestamp = baseTimestamp + (eoeDeviceTimestamp - baseDeviceTimeSinceEpoch);
+
+        switch(offset) {
+            case CameraExposureOffset::START:
+                adjustedTimestamp -= exposureTime;
+                break;
+            case CameraExposureOffset::MIDDLE:
+                adjustedTimestamp -= exposureTime / 2;
+                break;
+            case CameraExposureOffset::END:
+            default:
+                break;
+        }
+
+        return adjustedTimestamp;
+    }
+
+    switch(offset) {
+        case CameraExposureOffset::START:
+            return baseTimestamp - exposureTime;
+        case CameraExposureOffset::MIDDLE:
+            return baseTimestamp - exposureTime / 2;
+        case CameraExposureOffset::END:
+        default:
+            return baseTimestamp;
+    }
+}
+
+}  // namespace
+
 ImgFrame::~ImgFrame() = default;
 
 void ImgFrame::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
@@ -39,30 +83,10 @@ ImgFrame::ImgFrame(long fd, size_t size) : ImgFrame() {
 }
 
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestamp(CameraExposureOffset offset) const {
-    auto ts = getTimestamp();
-    auto expTime = getExposureTime();
-    switch(offset) {
-        case CameraExposureOffset::START:
-            return ts - expTime;
-        case CameraExposureOffset::MIDDLE:
-            return ts - expTime / 2;
-        case CameraExposureOffset::END:
-        default:
-            return ts;
-    }
+    return adjustExposureOffsetTimestamp(getTimestamp(), getTimestampDevice(), cam, offset);
 }
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestampDevice(CameraExposureOffset offset) const {
-    auto ts = getTimestampDevice();
-    auto expTime = getExposureTime();
-    switch(offset) {
-        case CameraExposureOffset::START:
-            return ts - expTime;
-        case CameraExposureOffset::MIDDLE:
-            return ts - expTime / 2;
-        case CameraExposureOffset::END:
-        default:
-            return ts;
-    }
+    return adjustExposureOffsetTimestamp(getTimestampDevice(), getTimestampDevice(), cam, offset);
 }
 
 unsigned int ImgFrame::getInstanceNum() const {

@@ -746,8 +746,22 @@ class ImgFrame : public Buffer, public ProtoSerializable {
         int32_t sensorMode = -1;
         float fps = -1.0f;
         std::optional<float> sensorTemperatureC = std::nullopt;
+        std::optional<int64_t> sofTimestampNs = std::nullopt;
+        std::optional<int64_t> sofToEoeOffsetNs = std::nullopt;
 
-        DEPTHAI_SERIALIZE(CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw, fsync, sensorMode, fps, sensorTemperatureC);
+        DEPTHAI_SERIALIZE(
+            CameraSettings,
+            exposureTimeUs,
+            sensitivityIso,
+            lensPosition,
+            wbColorTemp,
+            lensPositionRaw,
+            fsync,
+            sensorMode,
+            fps,
+            sensorTemperatureC,
+            sofTimestampNs,
+            sofToEoeOffsetNs);
     };
 
     Specs fb = {};
