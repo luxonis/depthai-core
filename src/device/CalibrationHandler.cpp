@@ -1190,7 +1190,7 @@ void CalibrationHandler::setHousingToHousingOriginExtrinsics(std::vector<std::ve
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
-    const float scale = getLengthUnitMultiplier(getEepromTranslationUnits()) / getLengthUnitMultiplier(unit);
+    const float scale = getDistanceUnitScale(getEepromTranslationUnits(), unit);
     if(scale != 1.0f) {
         for(auto& value : translation) {
             value *= scale;
