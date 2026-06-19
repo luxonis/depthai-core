@@ -644,12 +644,12 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExt
     }
 
     // Build 4x4 transform matrix from HousingOrigin to Housing
-    std::vector<std::vector<float>> T_HousingToHousingOrigin(4, std::vector<float>(4, 0.0f));
+    std::vector<std::vector<float>> translationHousingToHousingOrigin(4, std::vector<float>(4, 0.0f));
 
     for(int r = 0; r < 3; ++r) {
         // Copy rotation row
         for(int c = 0; c < 3; ++c) {
-            T_HousingToHousingOrigin[r][c] = housingRotation[r][c];
+            translationHousingToHousingOrigin[r][c] = housingRotation[r][c];
         }
 
         // Pick translation vector
@@ -657,11 +657,11 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExt
 
         // Map row index -> x/y/z
         float tval = (r == 0 ? t.x : (r == 1 ? t.y : t.z));
-        T_HousingToHousingOrigin[r][3] = tval;
+        translationHousingToHousingOrigin[r][3] = tval;
     }
 
     // Last row = [0 0 0 1]
-    T_HousingToHousingOrigin[3][3] = 1.0f;
+    translationHousingToHousingOrigin[3][3] = 1.0f;
 
     // ------------------------------------------------------------
     // Get the requested specific housing coordinate system translation and subtract it
@@ -670,18 +670,18 @@ std::vector<std::vector<float>> CalibrationHandler::getHousingToHousingOriginExt
         if(const auto requestedDbTranslation = lookupHousingEntry(eepromData.productName, housingCS)) {
             // All housing coordinate systems share the same orientation;
             // only their origins differ. Build the pure-translation transform
-            // T_SpecificHousing_to_Housing from the database position.
-            std::vector<std::vector<float>> T_SpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] * mmToUnitScale},
-                                                                          {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] * mmToUnitScale},
-                                                                          {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] * mmToUnitScale},
-                                                                          {0.0f, 0.0f, 0.0f, 1.0f}};
+            // translationSpecificHousing_to_Housing from the database position.
+            std::vector<std::vector<float>> translationSpecificHousingToHousing = {{1.0f, 0.0f, 0.0f, (*requestedDbTranslation)[0] * mmToUnitScale},
+                                                                                   {0.0f, 1.0f, 0.0f, (*requestedDbTranslation)[1] * mmToUnitScale},
+                                                                                   {0.0f, 0.0f, 1.0f, (*requestedDbTranslation)[2] * mmToUnitScale},
+                                                                                   {0.0f, 0.0f, 0.0f, 1.0f}};
 
-            // Compose: T_SpecificHousing→HousingOrigin = T_Housing→HousingOrigin * T_SpecificHousing→Housing
-            T_HousingToHousingOrigin = matMul(T_HousingToHousingOrigin, T_SpecificHousingToHousing);
+            // Compose: translationSpecificHousing→HousingOrigin = translationHousing→HousingOrigin * translationSpecificHousing→Housing
+            translationHousingToHousingOrigin = matMul(translationHousingToHousingOrigin, translationSpecificHousingToHousing);
         }
     }
 
-    return T_HousingToHousingOrigin;
+    return translationHousingToHousingOrigin;
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getHousingCalibration(CameraBoardSocket srcCamera,
