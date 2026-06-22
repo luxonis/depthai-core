@@ -79,7 +79,7 @@ class Buffer : public ADatatype {
     void setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
 
     /**
-     * Sets image timestamp related to dai::Clock::now()
+     * Sets optional system_clock timestamp (device system clock; may be PTP-synchronized).
      */
     void setTimestampSystem(std::optional<std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>> timestamp);
 
