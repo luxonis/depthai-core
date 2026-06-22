@@ -662,7 +662,9 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     else if(std::holds_alternative<DC::Commands::CalibrationQuality>(cmd)) {
         const auto& c = std::get<DC::Commands::CalibrationQuality>(cmd);
         logger->trace("Received CalibrationQuality Command: force={}", c.force);
-        return ErrorCode::INVALID_COMMAND;
+        logger->warn("CalibrationQuality command is deprecated and returns an empty result");
+        qualityOutput.send(std::make_shared<CalibrationQuality>());
+        return ErrorCode::OK;
     }
     // Start calibration loop
     else if(std::holds_alternative<DC::Commands::StartCalibration>(cmd)) {
