@@ -20,9 +20,7 @@
 namespace dai {
 namespace node {
 
-namespace {
-
-std::vector<std::vector<float>> calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
+std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
     dcl::scalar_t rvec[3];
     calibration->getRvec(rvec);
     const double rvecDouble[3] = {static_cast<double>(rvec[0]), static_cast<double>(rvec[1]), static_cast<double>(rvec[2])};
@@ -33,7 +31,7 @@ std::vector<std::vector<float>> calibrationHandleToTransform(const std::shared_p
                                               std::vector<float>{static_cast<float>(tvec[0]), static_cast<float>(tvec[1]), static_cast<float>(tvec[2])});
 }
 
-std::vector<CameraBoardSocket> buildSocketConnection(const EepromData& eepromData) {
+std::vector<CameraBoardSocket> DclUtils::buildSocketConnection(const EepromData& eepromData) {
     std::vector<CameraBoardSocket> referencedSockets;
     referencedSockets.reserve(eepromData.cameraData.size());
     for(const auto& [socket, info] : eepromData.cameraData) {
@@ -81,9 +79,9 @@ std::vector<CameraBoardSocket> buildSocketConnection(const EepromData& eepromDat
     return connection;
 }
 
-std::vector<std::vector<float>> computeBaseToSocketTransform(const CalibrationHandler& currentCalibration,
-                                                             const std::variant<CameraBoardSocket, HousingCoordinateSystem>& boardSocketBase,
-                                                             CameraBoardSocket boardSocket) {
+std::vector<std::vector<float>> DclUtils::computeBaseToSocketTransform(const CalibrationHandler& currentCalibration,
+                                                                       const std::variant<CameraBoardSocket, HousingCoordinateSystem>& boardSocketBase,
+                                                                       CameraBoardSocket boardSocket) {
     if(const auto* cameraBase = std::get_if<CameraBoardSocket>(&boardSocketBase)) {
         if(*cameraBase == boardSocket) {
             return {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
@@ -95,7 +93,6 @@ std::vector<std::vector<float>> computeBaseToSocketTransform(const CalibrationHa
     matrix::invertSe3Matrix4x4InPlace(socketToHousingTransform);
     return socketToHousingTransform;
 }
-}  // namespace
 
 class DynamicCalibration::Impl {
    public:
@@ -152,7 +149,7 @@ std::shared_ptr<dcl::CameraCalibrationHandle> DclUtils::convertDaiCalibrationToD
                                                                                    const std::vector<std::vector<float>>& intrinsicsOverride,
                                                                                    const std::vector<float>& distortionOverride,
                                                                                    const CameraModel distortionModelOverride) {
-    const auto baseToSocketTransform = computeBaseToSocketTransform(currentCalibration, boardSocketBase, boardSocket);
+    const auto baseToSocketTransform = DclUtils::computeBaseToSocketTransform(currentCalibration, boardSocketBase, boardSocket);
 
     return DclUtils::createDclCalibration(matrix::vectorMatrixToMatrix3x3(intrinsicsOverride),
                                           distortionOverride,
@@ -293,7 +290,7 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash)
     socketToSensorExtrinsics.clear();
     socketToSensorExtrinsics.reserve(socketsInHandler.size());
     for(const auto& socket : socketsInHandler) {
-        socketToSensorExtrinsics.push_back(computeBaseToSocketTransform(handler, daiSocketBase, socket));
+        socketToSensorExtrinsics.push_back(DclUtils::computeBaseToSocketTransform(handler, daiSocketBase, socket));
     }
 
     for(const auto& sensor : connectedSensors) {
@@ -384,7 +381,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
     for(size_t idx = 0; idx < connectedSensors.size(); ++idx) {
         const auto& calibration = dclResult.value.calibrations[idx];
         const auto& sensor = connectedSensors[idx];
-        candidateSocketToSensorExtrinsics[sensor.connectionOrder] = calibrationHandleToTransform(calibration);
+        candidateSocketToSensorExtrinsics[sensor.connectionOrder] = DclUtils::calibrationHandleToTransform(calibration);
     }
 
     for(size_t idx = 0; idx + 1 < socketsInHandler.size(); ++idx) {
@@ -564,7 +561,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     auto eepromData = calibrationHandler.getEepromData();
 
     try {
-        socketsInHandler = buildSocketConnection(eepromData);
+        socketsInHandler = DclUtils::buildSocketConnection(eepromData);
     } catch(const std::exception& ex) {
         logger->error("Failed to build calibration socketConnection: {}", ex.what());
         return DynamicCalibration::ErrorCode::PIPELINE_INITIALIZATION_FAILED;
@@ -625,7 +622,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
     socketToSensorExtrinsics.reserve(socketsInHandler.size());
 
     for(const auto& socket : socketsInHandler) {
-        const auto baseToSocketTransform = computeBaseToSocketTransform(calibrationHandler, daiSocketBase, socket);
+        const auto baseToSocketTransform = DclUtils::computeBaseToSocketTransform(calibrationHandler, daiSocketBase, socket);
         socketToSensorExtrinsics.push_back(baseToSocketTransform);
     }
 
