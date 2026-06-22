@@ -1,6 +1,6 @@
 # Dynamic Calibration (C++) — DepthAI
 
-This folder contains three minimal, end-to-end **C++** examples that use **`dai::node::DynamicCalibration`** to (a) **calibrate** a stereo rig live and (b) **evaluate** calibration quality on demand, (c) combination of both — while streaming synchronized stereo frames and disparity for visual feedback.
+This folder contains minimal, end-to-end **C++** examples that use **`dai::node::DynamicCalibration`** to (a) **calibrate** a stereo rig live, (b) **evaluate** calibration quality on demand, (c) combine both flows, and (d) run a **3-sensor** calibration flow that uses the newer socket-keyed outputs.
 
 > Close your preview window or stop the program to quit.
 
@@ -53,6 +53,22 @@ This folder contains three minimal, end-to-end **C++** examples that use **`dai:
 5. When a result arrives:
    - **Apply** it by sending `DynamicCalibrationControl::Command::ApplyCalibration{newCalibration}` on the control queue.
    - Print quality deltas.
+
+---
+
+## 1b) Live dynamic calibration with 3 sensors
+
+**File:** `calibration_dynamic_3_sensors.cpp`
+
+**What it does:**
+- Links `CAM_A -> dynCalib.rgb`, `CAM_B -> dynCalib.left`, and `CAM_C -> dynCalib.right`
+- Starts periodic calibration
+- Prints `coveragePerCell` keyed by `CameraBoardSocket`
+- Prints `pairwiseRotationDifference` for the calibrated sensor pairs
+
+**Use this when:**
+- You want a concrete example of the newer 3-input DynamicCalibration API
+- You want to inspect socket-keyed coverage instead of the deprecated `coveragePerCellA/B` aliases
 
 ---
 
@@ -152,6 +168,7 @@ cmake --build . -j
 Run:
 ```bash
 ./calibration_dynamic      # applies new calibration when ready
+./calibration_dynamic_3_sensors  # calibrates CAM_A + CAM_B + CAM_C
 ./calibration_quality_dynamic  # reports metrics; does not apply
 ./calibration_integration   # monitors quality, auto-recalibrates, and applies in one loop
 ```

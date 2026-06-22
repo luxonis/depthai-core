@@ -1,6 +1,6 @@
 # Dynamic Calibration (Python) — DepthAI
 
-This folder contains three minimal, end-to-end examples that use **`dai.node.DynamicCalibration`** to (a) **calibrate** a stereo device real-time and (b) **evaluate** calibration quality on demand (c) combination of both — while streaming synchronized stereo frames and disparity for visual feedback.
+This folder contains minimal, end-to-end examples that use **`dai.node.DynamicCalibration`** to (a) **calibrate** a stereo device in real time, (b) **evaluate** calibration quality on demand, (c) combine both flows, and (d) run a **3-sensor** calibration flow that uses the newer socket-keyed outputs.
 
 > Press **`q`** in the preview window to quit either example.
 
@@ -75,6 +75,22 @@ Theoretical Depth Error Difference @1m:-4.20%, 2m:-3.10%, 5m:-1.60%, 10m:-0.90%
 ```
 
 > Applying the calibration updates downstream nodes (e.g., `StereoDepth`) immediately for subsequent frames.
+
+---
+
+## 1b) Real-time dynamic calibration with 3 sensors
+
+**Script:** `calibration_dynamic_3_sensors.py`
+
+**What it does:**
+- Links `CAM_A -> dynCalib.rgb`, `CAM_B -> dynCalib.left`, and `CAM_C -> dynCalib.right`
+- Starts periodic calibration
+- Prints `coveragePerCell` keyed by `CameraBoardSocket`
+- Prints `pairwiseRotationDifference` for the calibrated sensor pairs
+
+**Use this when:**
+- You want a concrete example of the newer 3-input DynamicCalibration API
+- You want to inspect socket-keyed coverage instead of the deprecated `coveragePerCellA/B` aliases
 
 ---
 
@@ -172,6 +188,9 @@ pip install depthai opencv-python numpy
 ```bash
 # Live calibration (applies new calibration when ready)
 python calibration_dynamic.py
+
+# Live calibration with CAM_A + CAM_B + CAM_C
+python calibration_dynamic_3_sensors.py
 
 # Quality evaluation (reports metrics of when recalibration is required)
 python calibration_quality_dynamic.py
