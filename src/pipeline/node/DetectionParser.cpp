@@ -239,7 +239,7 @@ YoloDecodingFamily DetectionParser::yoloDecodingFamilyResolver(const std::string
 
     if(subtypeStr == "yolov6r1") return YoloDecodingFamily::R1AF;
     if(subtypeStr == "yolov6r2" || subtypeStr == "yolov8n" || subtypeStr == "yolov6" || subtypeStr == "yolov8" || subtypeStr == "yolov10"
-       || subtypeStr == "yolov11")
+       || subtypeStr == "yolov11" || subtypeStr == "yolov12")
         return YoloDecodingFamily::TLBR;
     if(subtypeStr == "yolov3" || subtypeStr == "yolov3-tiny") return YoloDecodingFamily::v3AB;
     if(subtypeStr == "yolov5" || subtypeStr == "yolov7" || subtypeStr == "yolo-p" || subtypeStr == "yolov5-u") return YoloDecodingFamily::v5AB;
@@ -274,7 +274,7 @@ void DetectionParser::setNNArchiveOther(const NNArchive& nnArchive) {
     setConfig(nnArchive.getVersionedConfig());
 }
 
-void DetectionParser::setBlob(OpenVINO::Blob blob) {
+void DetectionParser::setBlob(const OpenVINO::Blob& blob) {
     properties.networkInputs = blob.networkInputs;
 }
 
@@ -286,7 +286,7 @@ void DetectionParser::setBlob(const std::filesystem::path& path) {
     setBlobPath(path);
 }
 
-void DetectionParser::setInputImageSize(std::tuple<int, int> size) {
+void DetectionParser::setInputImageSize(const std::tuple<int, int>& size) {
     setInputImageSize(std::get<0>(size), std::get<1>(size));
 }
 
@@ -305,7 +305,7 @@ void DetectionParser::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
 }
 
-int DetectionParser::getNumFramesPool() {
+int DetectionParser::getNumFramesPool() const {
     return properties.numFramesPool;
 }
 
@@ -313,7 +313,7 @@ void DetectionParser::setNNFamily(DetectionNetworkType type) {
     properties.parser.nnFamily = type;
 }
 
-DetectionNetworkType DetectionParser::getNNFamily() {
+DetectionNetworkType DetectionParser::getNNFamily() const {
     return properties.parser.nnFamily;
 }
 
@@ -333,11 +333,11 @@ void DetectionParser::setCoordinateSize(const int coordinates) {
     properties.parser.coordinates = coordinates;
 }
 
-void DetectionParser::setAnchors(std::vector<float> anchors) {
+void DetectionParser::setAnchors(const std::vector<float>& anchors) {
     properties.parser.anchors = anchors;
 }
 
-void DetectionParser::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
+void DetectionParser::setAnchorMasks(const std::map<std::string, std::vector<int>>& anchorMasks) {
     properties.parser.anchorMasks = anchorMasks;
 }
 

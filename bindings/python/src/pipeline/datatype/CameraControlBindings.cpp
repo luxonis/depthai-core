@@ -238,10 +238,7 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
              py::overload_cast<std::chrono::microseconds>(&CameraControl::setAutoExposureLimit),
              py::arg("maxExposureTime"),
              DOC(dai, CameraControl, setAutoExposureLimit, 2))
-        .def("setAutoExposureMaxISO",
-             &CameraControl::setAutoExposureMaxISO,
-             py::arg("aeMaxISO"),
-             DOC(dai, CameraControl, setAutoExposureMaxISO))
+        .def("setAutoExposureMaxISO", &CameraControl::setAutoExposureMaxISO, py::arg("aeMaxISO"), DOC(dai, CameraControl, setAutoExposureMaxISO))
         .def("setAntiBandingMode", &CameraControl::setAntiBandingMode, py::arg("mode"), DOC(dai, CameraControl, setAntiBandingMode))
         .def("setManualExposure",
              py::overload_cast<uint32_t, uint32_t>(&CameraControl::setManualExposure),
@@ -269,9 +266,13 @@ void bind_cameracontrol(pybind11::module& m, void* pCallstack) {
              py::arg("control"),
              py::arg("value"),
              DOC(dai, CameraControl, setMisc))
-        .def("setMisc", py::overload_cast<std::string, int>(&CameraControl::setMisc), py::arg("control"), py::arg("value"), DOC(dai, CameraControl, setMisc, 2))
         .def("setMisc",
-             py::overload_cast<std::string, float>(&CameraControl::setMisc),
+             py::overload_cast<const std::string&, int>(&CameraControl::setMisc),
+             py::arg("control"),
+             py::arg("value"),
+             DOC(dai, CameraControl, setMisc, 2))
+        .def("setMisc",
+             py::overload_cast<const std::string&, float>(&CameraControl::setMisc),
              py::arg("control"),
              py::arg("value"),
              DOC(dai, CameraControl, setMisc, 3))

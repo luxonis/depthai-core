@@ -333,7 +333,7 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack) {
                     py::arg("version") = OpenVINO::VERSION_UNIVERSAL,
                     DOC(dai, DeviceBase, getEmbeddedDeviceBinary))
         .def_static("getEmbeddedDeviceBinary",
-                    py::overload_cast<DeviceBase::Config>(&DeviceBase::getEmbeddedDeviceBinary),
+                    py::overload_cast<const DeviceBase::Config&>(&DeviceBase::getEmbeddedDeviceBinary),
                     py::arg("config"),
                     DOC(dai, DeviceBase, getEmbeddedDeviceBinary, 2))
         .def_static("getDeviceById", &DeviceBase::getDeviceById, py::arg("deviceId"), DOC(dai, DeviceBase, getDeviceById))

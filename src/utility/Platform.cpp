@@ -74,7 +74,7 @@ std::filesystem::path getHomePath() {
 
 }  // namespace
 
-uint32_t getIPv4AddressAsBinary(std::string address) {
+uint32_t getIPv4AddressAsBinary(const std::string& address) {
     uint32_t binary = 0;
     if(address == "") {
         // inet_addr returns 0xFFFFFFFF if addr is ""

@@ -38,7 +38,7 @@ namespace fs = std::filesystem;
 static std::string modelZooHealthEndpoint = "https://easyml.cloud.luxonis.com/models/api/v1/health/";
 static std::string modelZooDownloadEndpoint = "https://easyml.cloud.luxonis.com/models/api/v1/models/download";
 static fs::path modelZooDefaultCachePath = dai::platform::getDaiCacheDir() / "models";
-static fs::path modelZooDefaultModelsPath = "depthai_models";         // folder
+static fs::path modelZooDefaultModelsPath = "depthai_models";  // folder
 
 #ifdef DEPTHAI_ENABLE_CURL
 class ZooManager {

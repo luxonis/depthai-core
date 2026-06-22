@@ -140,7 +140,7 @@ constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::POLLING_DELAY_TIME;
 
-bool isInCommaSeparatedVar(std::string list, std::string value) {
+bool isInCommaSeparatedVar(const std::string& list, const std::string& value) {
     const std::string delimiter = ",";
     for(auto& val : utility::splitList(list, delimiter)) {
         if(val == value) {
@@ -294,7 +294,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
     return {false, {}};
 }
 
-std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceById(std::string deviceId, XLinkDeviceState_t state, bool skipInvalidDevices) {
+std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceById(const std::string& deviceId, XLinkDeviceState_t state, bool skipInvalidDevices) {
     initialize();
 
     DeviceInfo dev;
