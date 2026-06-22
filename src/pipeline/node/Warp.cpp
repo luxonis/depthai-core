@@ -2,7 +2,7 @@
 namespace dai {
 namespace node {
 
-void Warp::setOutputSize(std::tuple<int, int> size) {
+void Warp::setOutputSize(const std::tuple<int, int>& size) {
     properties.outputWidth = std::get<0>(size);
     properties.outputHeight = std::get<1>(size);
 }
@@ -72,7 +72,7 @@ void Warp::setWarpMesh(const std::vector<std::pair<float, float>>& meshData, int
     setWarpMesh(reinterpret_cast<const float*>(meshData.data()), static_cast<int>(meshData.size()), width, height);
 }
 
-void Warp::setHwIds(std::vector<int> ids) {
+void Warp::setHwIds(const std::vector<int>& ids) {
     properties.warpHwIds = ids;
 }
 

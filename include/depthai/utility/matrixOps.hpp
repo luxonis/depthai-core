@@ -46,6 +46,7 @@ std::vector<float> matrix3x3ToVector(const std::array<std::array<float, 3>, 3>& 
 std::vector<float> rotationMatrixToVector(const std::vector<std::vector<float>>& R);
 std::vector<std::vector<float>> matrix3x3ToVectorMatrix(const std::array<std::array<float, 3>, 3>& R);
 std::array<std::array<float, 3>, 3> vectorMatrixToMatrix3x3(const std::vector<std::vector<float>>& R);
+void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix);
 
 std::array<std::array<float, 3>, 3> getRotationMatrixFromProjection4x4(const std::array<std::array<float, 4>, 4>& projection);
 

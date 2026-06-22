@@ -19,7 +19,7 @@ std::vector<std::string> split(const std::string& s, char delimiter) {
     return tokens;
 }
 
-std::string parseProductName(EepromData eeprom, EepromData eepromFactory) {
+std::string parseProductName(const EepromData& eeprom, const EepromData& eepromFactory) {
     std::string productName;
     if((productName = eepromFactory.productName).empty()) {
         if((productName = eeprom.productName).empty()) {
@@ -43,7 +43,7 @@ std::string parseProductName(EepromData eeprom, EepromData eepromFactory) {
     return productName;
 }
 
-std::string parseDeviceName(EepromData eeprom, EepromData eepromFactory) {
+std::string parseDeviceName(const EepromData& eeprom, const EepromData& eepromFactory) {
     std::string deviceName;
     if((deviceName = eepromFactory.deviceName).empty()) {
         if((deviceName = eeprom.deviceName).empty()) {

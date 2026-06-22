@@ -70,7 +70,7 @@ class ByteRecorder {
         throw std::runtime_error("ByteRecorder not supported without protobuf support");
 #endif
     }
-    void write(std::vector<uint8_t> data) {
+    void write(const std::vector<uint8_t>& data) {
         mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         mcap::Message msg;
         msg.channelId = channelId;

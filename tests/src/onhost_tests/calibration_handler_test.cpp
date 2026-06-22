@@ -852,6 +852,83 @@ TEST_CASE("Rotation matrix matches getCameraExtrinsics", "[getCameraRotationMatr
         for(int j = 0; j < 3; ++j) REQUIRE(R[i][j] == Catch::Approx(M[i][j]).margin(1e-6));
 }
 
+TEST_CASE("updateCameraExtrinsics overwrites calibrated pose and preserves existing link metadata", "[updateCameraExtrinsics]") {
+    auto handler = loadValidHandler();
+
+    const auto specBefore = handler.getCameraTranslationVector(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, true);
+    const auto updatedRotation = std::vector<std::vector<float>>{{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const auto updatedTranslation = std::vector<float>{8.0f, -2.0f, 1.5f};
+
+    handler.updateCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, updatedRotation, updatedTranslation);
+
+    const auto calibratedAfter = handler.getCameraTranslationVector(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, false);
+    const auto specAfter = handler.getCameraTranslationVector(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, true);
+    const auto rotationAfter = handler.getCameraRotationMatrix(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B);
+
+    REQUIRE(calibratedAfter[0] == Catch::Approx(updatedTranslation[0]).margin(1e-6));
+    REQUIRE(calibratedAfter[1] == Catch::Approx(updatedTranslation[1]).margin(1e-6));
+    REQUIRE(calibratedAfter[2] == Catch::Approx(updatedTranslation[2]).margin(1e-6));
+
+    REQUIRE(specAfter[0] == Catch::Approx(specBefore[0]).margin(1e-6));
+    REQUIRE(specAfter[1] == Catch::Approx(specBefore[1]).margin(1e-6));
+    REQUIRE(specAfter[2] == Catch::Approx(specBefore[2]).margin(1e-6));
+
+    for(size_t row = 0; row < updatedRotation.size(); ++row) {
+        for(size_t col = 0; col < updatedRotation[row].size(); ++col) {
+            REQUIRE(rotationAfter[row][col] == Catch::Approx(updatedRotation[row][col]).margin(1e-6));
+        }
+    }
+}
+
+TEST_CASE("updateCameraExtrinsics rejects missing source camera", "[updateCameraExtrinsics]") {
+    auto handler = loadValidHandler();
+    const auto identity = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    REQUIRE_THROWS_WITH(handler.updateCameraExtrinsics(CameraBoardSocket::CAM_E, CameraBoardSocket::CAM_B, identity, translation),
+                        Catch::Matchers::ContainsSubstring("No existing extrinsics found for the source camera socket"));
+}
+
+TEST_CASE("updateCameraExtrinsics rejects destination mismatch", "[updateCameraExtrinsics]") {
+    auto handler = loadValidHandler();
+    const auto identity = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    REQUIRE_THROWS_WITH(handler.updateCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_C, identity, translation),
+                        Catch::Matchers::ContainsSubstring("has different toCameraSocket"));
+}
+
+TEST_CASE("updateCameraExtrinsics rejects sources without an existing link", "[updateCameraExtrinsics]") {
+    auto handler = loadValidHandler();
+    const auto identity = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    REQUIRE_THROWS_WITH(handler.updateCameraExtrinsics(CameraBoardSocket::CAM_D, CameraBoardSocket::CAM_D, identity, translation),
+                        Catch::Matchers::ContainsSubstring("toCameraSocket is AUTO"));
+}
+
+TEST_CASE("updateCameraExtrinsics rejects ragged rotation matrices", "[updateCameraExtrinsics]") {
+    auto handler = loadValidHandler();
+    const auto raggedRotation = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f}, {0.0f}};
+    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    REQUIRE_THROWS_WITH(handler.updateCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, raggedRotation, translation),
+                        Catch::Matchers::ContainsSubstring("Rotation Matrix size should always be 3x3"));
+}
+
+TEST_CASE("setCameraExtrinsics rejects ragged rotation matrices", "[setCameraExtrinsics]") {
+    auto handler = loadValidHandler();
+    const auto raggedRotation = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f}, {0.0f}};
+    const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
+
+    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_A,
+                                                    CameraBoardSocket::CAM_B,
+                                                    raggedRotation,
+                                                    translation,
+                                                    translation),
+                        Catch::Matchers::ContainsSubstring("Rotation Matrix size should always be 3x3"));
+}
+
 TEST_CASE("EEPROM data default set fields are present", "[getEepromData]") {
     auto handler = loadInvalidHandler();
     auto eeprom = handler.getEepromData();
@@ -1340,6 +1417,20 @@ TEST_CASE("getHousingCalibration scales translation for all units", "[getHousing
 
     for(const auto& [unit, scale] : getAllUnitScales(LengthUnit::CENTIMETER)) {
         auto result = handler.getHousingCalibration(CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::FRONT_CAM_A, false, unit);
+        auto expected = base;
+        expected[0][3] *= scale;
+        expected[1][3] *= scale;
+        expected[2][3] *= scale;
+        requireMatrixApproxEqual(result, expected);
+    }
+}
+
+TEST_CASE("getHousingCalibration scales spec translation for all units", "[getHousingCalibration][units]") {
+    auto handler = loadHandlerWithHousing();
+    auto base = handler.getHousingCalibration(CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::FRONT_CAM_A, true, LengthUnit::CENTIMETER);
+
+    for(const auto& [unit, scale] : getAllUnitScales(LengthUnit::CENTIMETER)) {
+        auto result = handler.getHousingCalibration(CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::FRONT_CAM_A, true, unit);
         auto expected = base;
         expected[0][3] *= scale;
         expected[1][3] *= scale;
