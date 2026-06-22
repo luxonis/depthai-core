@@ -329,26 +329,6 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
         REQUIRE_FALSE(result->calibrationData.has_value());
     }
 
-    // 3) CalibrationQuality(force=true)
-    // {
-    //     commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::CalibrationQuality{true}));
-    //     auto qres = qualityOutput->get<dai::CalibrationQuality>();
-    //     REQUIRE(qres != nullptr);
-    //     INFO("Quality #1 (force) info: " << qres->info);
-    //     REQUIRE_FALSE(qres->qualityData.has_value());
-    //     std::cout << "-3-\n";
-    // }
-
-    // 4) CalibrationQuality(force=false)
-    // {
-    //     commandInput->send(std::make_shared<dai::DynamicCalibrationControl>(dai::DynamicCalibrationControl::Commands::CalibrationQuality{false}));
-    //     auto qres = qualityOutput->get<dai::CalibrationQuality>();
-    //     REQUIRE(qres != nullptr);
-    //     INFO("Quality #2 (no force) info: " << qres->info);
-    //     REQUIRE_FALSE(qres->qualityData.has_value());
-    //     std::cout << "-4-\n";
-    // }
-
     REQUIRE_FALSE(sawWarnOrError);
 
     pipeline.stop();
