@@ -39,6 +39,8 @@ void bind_dynamic_calibration(pybind11::module& m, void* pCallstack) {
             "left", [](DynamicCalibration& node) { return &node.left; }, py::return_value_policy::reference_internal)
         .def_property_readonly(
             "right", [](DynamicCalibration& node) { return &node.right; }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "rgb", [](DynamicCalibration& node) { return &node.rgb; }, py::return_value_policy::reference_internal)
         .def("setRunOnHost", &DynamicCalibration::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, DynamicCalibration, setRunOnHost))
         .def("runOnHost", &DynamicCalibration::runOnHost, DOC(dai, node, DynamicCalibration, runOnHost));
 
