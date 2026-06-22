@@ -225,6 +225,14 @@ class Depth : public DeviceNodeGroup {
     /** Resolve algorithm + config, then wire stereo inputs from pipeline cameras / build() overrides. */
     void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
 
+    /** Left/right camera outputs plus the resolution and FPS actually wired for the stereo pair. */
+    struct StereoWiring {
+        Node::Output* left{};
+        Node::Output* right{};
+        std::pair<uint32_t, uint32_t> resolution{};
+        float maxCameraFps{0.f};
+    };
+
     /**
      * Ensures stereo cameras exist and returns left/right outputs.
      * When @p frameSize is set (e.g. NeuralDepth model input size), always requests that size.
@@ -233,10 +241,10 @@ class Depth : public DeviceNodeGroup {
      * When Depth creates the cameras and @p frameSize is unset, uses full sensor resolution via
      * ``requestFullResolutionOutput``.
      */
-    std::pair<Node::Output*, Node::Output*> ensureStereoOutputs(Pipeline& pipeline,
-                                                                const StereoPair& pair,
-                                                                std::optional<std::pair<uint32_t, uint32_t>> frameSize,
-                                                                const std::optional<float>& fps);
+    StereoWiring ensureStereoOutputs(Pipeline& pipeline,
+                                     const StereoPair& pair,
+                                     std::optional<std::pair<uint32_t, uint32_t>> frameSize,
+                                     const std::optional<float>& fps);
 
     /**
      * Wire the optional ``alignTo`` source to the active backend (no-op when ``alignTo`` is unset).

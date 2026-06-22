@@ -22,6 +22,7 @@
 #include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -120,6 +121,67 @@ const char* algorithmName(Depth::Algorithm algorithm) {
             return "TOF";
         case Depth::Algorithm::GPU_STEREO:
             return "GPU_STEREO";
+    }
+    return "UNKNOWN";
+}
+
+const char* presetModeName(StereoDepth::PresetMode preset) {
+    switch(preset) {
+        case StereoDepth::PresetMode::FAST_ACCURACY:
+            return "FAST_ACCURACY";
+        case StereoDepth::PresetMode::FAST_DENSITY:
+            return "FAST_DENSITY";
+        case StereoDepth::PresetMode::DEFAULT:
+            return "DEFAULT";
+        case StereoDepth::PresetMode::FACE:
+            return "FACE";
+        case StereoDepth::PresetMode::HIGH_DETAIL:
+            return "HIGH_DETAIL";
+        case StereoDepth::PresetMode::ROBOTICS:
+            return "ROBOTICS";
+        case StereoDepth::PresetMode::DENSITY:
+            return "DENSITY";
+        case StereoDepth::PresetMode::ACCURACY:
+            return "ACCURACY";
+    }
+    return "UNKNOWN";
+}
+
+const char* deviceModelZooName(DeviceModelZoo model) {
+    switch(model) {
+        case DeviceModelZoo::NEURAL_DEPTH_1248X780:
+            return "NEURAL_DEPTH_EXTRA_LARGE";
+        case DeviceModelZoo::NEURAL_DEPTH_768X480:
+            return "NEURAL_DEPTH_LARGE";
+        case DeviceModelZoo::NEURAL_DEPTH_576X360:
+            return "NEURAL_DEPTH_MEDIUM";
+        case DeviceModelZoo::NEURAL_DEPTH_480X300:
+            return "NEURAL_DEPTH_SMALL";
+        case DeviceModelZoo::NEURAL_DEPTH_384X240:
+            return "NEURAL_DEPTH_NANO";
+        case DeviceModelZoo::NEURAL_DEPTH_1056X660:
+            return "NEURAL_DEPTH_1056X660";
+        case DeviceModelZoo::NEURAL_DEPTH_960X600:
+            return "NEURAL_DEPTH_960X600";
+        case DeviceModelZoo::NEURAL_DEPTH_864X540:
+            return "NEURAL_DEPTH_864X540";
+        case DeviceModelZoo::NEURAL_DEPTH_288X180:
+            return "NEURAL_DEPTH_288X180";
+        case DeviceModelZoo::NEURAL_DEPTH_192X120:
+            return "NEURAL_DEPTH_192X120";
+    }
+    return "UNKNOWN";
+}
+
+const char* configName(const Depth::Config& config) {
+    if(std::holds_alternative<std::monostate>(config)) {
+        return "none";
+    }
+    if(const auto* model = std::get_if<DeviceModelZoo>(&config)) {
+        return deviceModelZooName(*model);
+    }
+    if(const auto* preset = std::get_if<StereoDepth::PresetMode>(&config)) {
+        return presetModeName(*preset);
     }
     return "UNKNOWN";
 }
@@ -608,6 +670,9 @@ void Depth::buildInternal() {
     resolveWiring(device, pipeline);
     const Algorithm active = resolved_.algorithm;
 
+    std::optional<float> wiredFps = stereoOutputFps_;
+    std::optional<std::pair<uint32_t, uint32_t>> wiredResolution;
+
     switch(active) {
         case Algorithm::AUTO:
             DAI_CHECK_V(false, "Depth: AUTO must be resolved before wiring.");
@@ -622,18 +687,26 @@ void Depth::buildInternal() {
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
-            auto [leftOut, rightOut] = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
-            nasBackend_->build(*leftOut, *rightOut, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
+            nasBackend_->build(*stereo.left, *stereo.right, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
             depthOut_ = &nasBackend_->depth;
             confidenceOut_ = &(*nasBackend_->stereoDepth).confidenceMap;
+            wiredResolution = stereo.resolution;
+            if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
+                wiredFps = stereo.maxCameraFps;
+            }
             break;
         }
         case Algorithm::GPU_STEREO: {
             gpuStereoBackend_ = std::make_unique<Subnode<GPUStereo>>(*this, "gpuStereo");
-            auto [leftOut, rightOut] = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
-            (*gpuStereoBackend_)->setRectification(true).build(*leftOut, *rightOut);
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
+            (*gpuStereoBackend_)->setRectification(true).build(*stereo.left, *stereo.right);
             depthOut_ = &(**gpuStereoBackend_).depth;
             confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
+            wiredResolution = stereo.resolution;
+            if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
+                wiredFps = stereo.maxCameraFps;
+            }
             break;
         }
         case Algorithm::NEURAL: {
@@ -641,23 +714,51 @@ void Depth::buildInternal() {
             const auto is = NeuralDepth::getInputSize(model);
             const std::pair<uint32_t, uint32_t> monoSize{static_cast<uint32_t>(is.first), static_cast<uint32_t>(is.second)};
             neuralBackend_ = std::make_unique<Subnode<NeuralDepth>>(*this, "neuralDepth");
-            auto [leftOut, rightOut] = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), monoSize, stereoOutputFps_);
-            (*neuralBackend_)->build(*leftOut, *rightOut, model);
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), monoSize, stereoOutputFps_);
+            (*neuralBackend_)->build(*stereo.left, *stereo.right, model);
             depthOut_ = &(**neuralBackend_).depth;
             confidenceOut_ = &(**neuralBackend_).confidence;
+            wiredResolution = stereo.resolution;
+            if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
+                wiredFps = stereo.maxCameraFps;
+            }
             break;
         }
         case Algorithm::STEREO: {
             stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
-            auto [leftOut, rightOut] = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
-            (*stereoBackend_)->build(*leftOut, *rightOut, stereoPresetFromConfig(resolved_.config));
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
+            (*stereoBackend_)->build(*stereo.left, *stereo.right, stereoPresetFromConfig(resolved_.config));
             depthOut_ = &(**stereoBackend_).depth;
             confidenceOut_ = &(**stereoBackend_).confidenceMap;
+            wiredResolution = stereo.resolution;
+            if((!wiredFps || *wiredFps <= 0.f) && stereo.maxCameraFps > 0.f) {
+                wiredFps = stereo.maxCameraFps;
+            }
             break;
         }
     }
 
     wireAlignment(active, device);
+
+    if(!wiredFps || *wiredFps <= 0.f) {
+        wiredFps = DEFAULT_TARGET_FPS;
+    }
+
+    if(active == Algorithm::TOF) {
+        pimpl->logger->info("Depth wired: algorithm={}, config={}, fps={:.1f}, resolution=sensor-native",
+                            algorithmName(resolved_.algorithm),
+                            configName(resolved_.config),
+                            *wiredFps);
+    } else {
+        DAI_CHECK_V(wiredResolution.has_value(), "Depth: missing wired stereo resolution.");
+        pimpl->logger->info("Depth wired: algorithm={}, config={}, fps={:.1f}, resolution={}x{}",
+                            algorithmName(resolved_.algorithm),
+                            configName(resolved_.config),
+                            *wiredFps,
+                            wiredResolution->first,
+                            wiredResolution->second);
+    }
+
     graphBuilt_ = true;
 }
 
@@ -690,10 +791,10 @@ void Depth::wireAlignment(Algorithm active, const std::shared_ptr<Device>& devic
 
 // --- Stereo camera wiring ---
 
-std::pair<Node::Output*, Node::Output*> Depth::ensureStereoOutputs(Pipeline& pipeline,
-                                                                   const StereoPair& pair,
-                                                                   std::optional<std::pair<uint32_t, uint32_t>> frameSize,
-                                                                   const std::optional<float>& fps) {
+Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
+                                               const StereoPair& pair,
+                                               std::optional<std::pair<uint32_t, uint32_t>> frameSize,
+                                               const std::optional<float>& fps) {
     auto [left, right] = findCamerasForPair(pipeline, pair);
     const bool stereoCamerasPreexist = left && right;
 
@@ -727,7 +828,11 @@ std::pair<Node::Output*, Node::Output*> Depth::ensureStereoOutputs(Pipeline& pip
         ro = right->requestFullResolutionOutput(std::nullopt, outputFps, false);
         DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera full-resolution stereo output request failed.");
     }
-    return {lo, ro};
+
+    const std::pair<uint32_t, uint32_t> resolution{left->getMaxRequestedWidth(), left->getMaxRequestedHeight()};
+    DAI_CHECK_V(resolution.first > 0 && resolution.second > 0, "Depth: failed to determine wired stereo resolution.");
+    const float maxCameraFps = std::max(left->getMaxRequestedFps(), right->getMaxRequestedFps());
+    return {lo, ro, resolution, maxCameraFps};
 }
 
 // --- Public outputs (trigger lazy wiring) ---
