@@ -277,13 +277,6 @@ std::array<std::array<float, 4>, 4> createTransformationMatrixInternal(const std
     return transformationMatrix;
 }
 
-std::vector<std::vector<float>> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const std::vector<float>& translation) {
-    if(translation.size() != 3) {
-        throw std::invalid_argument("Expected a 3x1 translation vector.");
-    }
-    return toVecMatrix4x4(createTransformationMatrix(rotation, dai::Point3f(translation[0], translation[1], translation[2])));
-}
-
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const dai::Point3f& translation) {
     if(rotation.size() != 3 || rotation[0].size() != 3 || rotation[1].size() != 3 || rotation[2].size() != 3) {
         throw std::invalid_argument("Expected a 3x3 rotation matrix.");

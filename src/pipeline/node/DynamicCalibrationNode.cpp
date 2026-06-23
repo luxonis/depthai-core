@@ -27,8 +27,8 @@ std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std
 
     dcl::scalar_t tvec[3];
     calibration->getTvec(tvec);
-    return matrix::createTransformationMatrix(matrix::rvecToRotationMatrix(rvecDouble),
-                                              std::vector<float>{static_cast<float>(tvec[0]), static_cast<float>(tvec[1]), static_cast<float>(tvec[2])});
+    return matrix::toVecMatrix4x4(matrix::createTransformationMatrix(
+        matrix::rvecToRotationMatrix(rvecDouble), dai::Point3f{static_cast<float>(tvec[0]), static_cast<float>(tvec[1]), static_cast<float>(tvec[2])}));
 }
 
 std::vector<CameraBoardSocket> DclUtils::buildSocketConnection(const EepromData& eepromData) {
