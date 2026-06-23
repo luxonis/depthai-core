@@ -46,24 +46,24 @@ def print_calibration_result(result: dai.DynamicCalibrationResult) -> None:
 
 with dai.Pipeline() as pipeline:
     rgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    mono_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    mono_right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+    monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+    monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
-    rgb_out = rgb.requestOutput((1280, 800), fps=30)
-    mono_left_out = mono_left.requestFullResolutionOutput()
-    mono_right_out = mono_right.requestFullResolutionOutput()
+    rgbOut = rgb.requestOutput((1280, 800), fps=30)
+    monoLeftOut = monoLeft.requestFullResolutionOutput()
+    monoRightOut = monoRight.requestFullResolutionOutput()
 
-    dyn_calib = pipeline.create(dai.node.DynamicCalibration)
-    rgb_out.link(dyn_calib.rgb)
-    mono_left_out.link(dyn_calib.left)
-    mono_right_out.link(dyn_calib.right)
+    dynCalib = pipeline.create(dai.node.DynamicCalibration)
+    rgbOut.link(dynCalib.rgb)
+    monoLeftOut.link(dynCalib.left)
+    monoRightOut.link(dynCalib.right)
 
-    rgb_queue = rgb_out.createOutputQueue()
-    left_queue = mono_left_out.createOutputQueue()
-    right_queue = mono_right_out.createOutputQueue()
-    coverage_queue = dyn_calib.coverageOutput.createOutputQueue()
-    calibration_queue = dyn_calib.calibrationOutput.createOutputQueue()
-    input_control = dyn_calib.inputControl.createInputQueue()
+    rgbQueue = rgbOut.createOutputQueue()
+    leftQueue = monoLeftOut.createOutputQueue()
+    rightQueue = monoRightOut.createOutputQueue()
+    coverageQueue = dynCalib.coverageOutput.createOutputQueue()
+    calibrationQueue = dynCalib.calibrationOutput.createOutputQueue()
+    inputControl = dynCalib.inputControl.createInputQueue()
 
     device = pipeline.getDefaultDevice()
     device.setCalibration(device.readCalibration())
@@ -71,27 +71,27 @@ with dai.Pipeline() as pipeline:
     pipeline.start()
     time.sleep(1)
 
-    input_control.send(
+    inputControl.send(
         dai.DynamicCalibrationControl.setPerformanceMode(
             dai.DynamicCalibrationControl.PerformanceMode.OPTIMIZE_PERFORMANCE
         )
     )
-    input_control.send(dai.DynamicCalibrationControl.startCalibration())
+    inputControl.send(dai.DynamicCalibrationControl.startCalibration())
 
     while pipeline.isRunning():
-        cv2.imshow("rgb", rgb_queue.get().getCvFrame())
-        cv2.imshow("left", left_queue.get().getCvFrame())
-        cv2.imshow("right", right_queue.get().getCvFrame())
+        cv2.imshow("rgb", rgbQueue.get().getCvFrame())
+        cv2.imshow("left", leftQueue.get().getCvFrame())
+        cv2.imshow("right", rightQueue.get().getCvFrame())
 
-        coverage = coverage_queue.tryGet()
+        coverage = coverageQueue.tryGet()
         if coverage is not None:
             print_coverage(coverage)
 
-        calibration_result = calibration_queue.tryGet()
+        calibration_result = calibrationQueue.tryGet()
         if calibration_result is not None:
             print_calibration_result(calibration_result)
             if calibration_result.calibrationData is not None:
-                input_control.send(
+                inputControl.send(
                     dai.DynamicCalibrationControl.applyCalibration(
                         calibration_result.calibrationData.newCalibration,
                         flash=False
