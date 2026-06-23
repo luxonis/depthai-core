@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/PointCloud.hpp"
 
 #include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <cstring>
@@ -479,12 +480,28 @@ void PointCloud::useGPU(uint32_t device) {
     pimplPointCloud->useGPU(device);
 }
 
+void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera) {
+    initialConfig->setTargetCoordinateSystem(targetCamera);
+}
+
+void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS) {
+    initialConfig->setTargetCoordinateSystem(housingCS);
+}
+
 void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation) {
-    initialConfig->setTargetCoordinateSystem(targetCamera, useSpecTranslation);
+    spdlog::warn("PointCloud::setTargetCoordinateSystem(CameraBoardSocket, bool) is deprecated. "
+                 "Use PointCloud::setTargetCoordinateSystem(CameraBoardSocket) instead.");
+    initialConfig->coordSystemType = PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET;
+    initialConfig->targetCameraSocket = targetCamera;
+    initialConfig->useSpecTranslation = useSpecTranslation;
 }
 
 void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation) {
-    initialConfig->setTargetCoordinateSystem(housingCS, useSpecTranslation);
+    spdlog::warn("PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem, bool) is deprecated. "
+                 "Use PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem) instead.");
+    initialConfig->coordSystemType = PointCloudConfig::CoordinateSystemType::HOUSING;
+    initialConfig->targetHousingCS = housingCS;
+    initialConfig->useSpecTranslation = useSpecTranslation;
 }
 
 bool PointCloud::hasTransformationChanged(const ImgFrame& frame) {

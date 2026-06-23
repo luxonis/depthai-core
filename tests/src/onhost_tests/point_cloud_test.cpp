@@ -1752,3 +1752,61 @@ TEST_CASE("setSparse throws logic_error", "[PointCloud][PointCloudData]") {
     REQUIRE_THROWS_AS(pcd.setSparse(false), std::logic_error);
 #pragma GCC diagnostic pop
 }
+
+// ============================================================================
+// Frame extrinsics: getTransformationMatrix(false) uses measured translation
+// ============================================================================
+TEST_CASE("Extrinsics getTransformationMatrix(false) uses measured translation, not spec", "[PointCloud][Extrinsics]") {
+    // Create extrinsics with different measured and spec translation values
+    dai::Extrinsics ext;
+    ext.rotationMatrix = eye3();
+    ext.translation = {1.0f, 2.0f, 3.0f};          // measured (calibrated)
+    ext.specTranslation = {10.0f, 20.0f, 30.0f};   // spec (CAD design)
+    ext.toCameraSocket = dai::CameraBoardSocket::CAM_C;
+
+    // getTransformationMatrix(false) should use measured translation
+    auto matMeasured = ext.getTransformationMatrix(false, dai::LengthUnit::CENTIMETER);
+    REQUIRE(matMeasured[0][3] == Catch::Approx(1.0f));
+    REQUIRE(matMeasured[1][3] == Catch::Approx(2.0f));
+    REQUIRE(matMeasured[2][3] == Catch::Approx(3.0f));
+
+    // getTransformationMatrix(true) should use spec translation
+    auto matSpec = ext.getTransformationMatrix(true, dai::LengthUnit::CENTIMETER);
+    REQUIRE(matSpec[0][3] == Catch::Approx(10.0f));
+    REQUIRE(matSpec[1][3] == Catch::Approx(20.0f));
+    REQUIRE(matSpec[2][3] == Catch::Approx(30.0f));
+
+    // Verify rotation part is identity in both cases
+    for(int i = 0; i < 3; ++i) {
+        for(int j = 0; j < 3; ++j) {
+            float expected = (i == j) ? 1.0f : 0.0f;
+            REQUIRE(matMeasured[i][j] == Catch::Approx(expected));
+            REQUIRE(matSpec[i][j] == Catch::Approx(expected));
+        }
+    }
+}
+
+// ============================================================================
+// PointCloudConfig: new overloads preserve the current useSpecTranslation value
+// ============================================================================
+TEST_CASE("PointCloudConfig overloads preserve useSpecTranslation behavior", "[PointCloud][Config]") {
+    dai::PointCloudConfig cfg;
+
+    REQUIRE_FALSE(cfg.getUseSpecTranslation());
+
+    cfg.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A);
+    REQUIRE(cfg.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET);
+    REQUIRE(cfg.getTargetCameraSocket() == dai::CameraBoardSocket::CAM_A);
+    REQUIRE_FALSE(cfg.getUseSpecTranslation());
+
+    cfg.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_B, false);
+    REQUIRE_FALSE(cfg.getUseSpecTranslation());
+
+    cfg.setTargetCoordinateSystem(dai::HousingCoordinateSystem::VESA_A);
+    REQUIRE(cfg.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::HOUSING);
+    REQUIRE(cfg.getTargetHousingCS() == dai::HousingCoordinateSystem::VESA_A);
+    REQUIRE_FALSE(cfg.getUseSpecTranslation());
+
+    cfg.setTargetCoordinateSystem(dai::HousingCoordinateSystem::VESA_B, true);
+    REQUIRE(cfg.getUseSpecTranslation());
+}

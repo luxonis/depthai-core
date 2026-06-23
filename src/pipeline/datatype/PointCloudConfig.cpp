@@ -1,5 +1,7 @@
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 
+#include <spdlog/spdlog.h>
+
 namespace dai {
 
 PointCloudConfig::~PointCloudConfig() = default;
@@ -42,7 +44,21 @@ PointCloudConfig& PointCloudConfig::setLengthUnit(LengthUnit unit) {
     return *this;
 }
 
+PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket targetCamera) {
+    coordSystemType = CoordinateSystemType::CAMERA_SOCKET;
+    targetCameraSocket = targetCamera;
+    return *this;
+}
+
+PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem housingCS) {
+    coordSystemType = CoordinateSystemType::HOUSING;
+    targetHousingCS = housingCS;
+    return *this;
+}
+
 PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpec) {
+    spdlog::warn("PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket, bool) is deprecated. "
+                 "Use PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket) instead.");
     coordSystemType = CoordinateSystemType::CAMERA_SOCKET;
     targetCameraSocket = targetCamera;
     useSpecTranslation = useSpec;
@@ -50,6 +66,8 @@ PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket 
 }
 
 PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpec) {
+    spdlog::warn("PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem, bool) is deprecated. "
+                 "Use PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem) instead.");
     coordSystemType = CoordinateSystemType::HOUSING;
     targetHousingCS = housingCS;
     useSpecTranslation = useSpec;

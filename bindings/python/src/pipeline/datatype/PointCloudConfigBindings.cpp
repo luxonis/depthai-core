@@ -60,19 +60,29 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
         .def("getLengthUnit", &PointCloudConfig::getLengthUnit, DOC(dai, PointCloudConfig, getLengthUnit))
         .def("setLengthUnit", &PointCloudConfig::setLengthUnit, DOC(dai, PointCloudConfig, setLengthUnit))
         .def("setTargetCoordinateSystem",
-             py::overload_cast<CameraBoardSocket, bool>(&PointCloudConfig::setTargetCoordinateSystem),
+             py::overload_cast<CameraBoardSocket>(&PointCloudConfig::setTargetCoordinateSystem),
              py::arg("targetCamera"),
-             py::arg("useSpecTranslation") = false,
              DOC(dai, PointCloudConfig, setTargetCoordinateSystem))
         .def("setTargetCoordinateSystem",
-             py::overload_cast<HousingCoordinateSystem, bool>(&PointCloudConfig::setTargetCoordinateSystem),
+             py::overload_cast<HousingCoordinateSystem>(&PointCloudConfig::setTargetCoordinateSystem),
              py::arg("housingCS"),
-             py::arg("useSpecTranslation") = true,
              DOC(dai, PointCloudConfig, setTargetCoordinateSystem, 2))
         .def("getCoordinateSystemType", &PointCloudConfig::getCoordinateSystemType, DOC(dai, PointCloudConfig, getCoordinateSystemType))
         .def("getTargetCameraSocket", &PointCloudConfig::getTargetCameraSocket, DOC(dai, PointCloudConfig, getTargetCameraSocket))
         .def("getTargetHousingCS", &PointCloudConfig::getTargetHousingCS, DOC(dai, PointCloudConfig, getTargetHousingCS))
         .def("getUseSpecTranslation", &PointCloudConfig::getUseSpecTranslation, DOC(dai, PointCloudConfig, getUseSpecTranslation))
+        .def(
+            "setTargetCoordinateSystem",
+            py::overload_cast<CameraBoardSocket, bool>(&PointCloudConfig::setTargetCoordinateSystem),
+            py::arg("targetCamera"),
+            py::arg("useSpecTranslation"),
+            "**Deprecated:** Use setTargetCoordinateSystem(targetCamera) instead.")
+        .def(
+            "setTargetCoordinateSystem",
+            py::overload_cast<HousingCoordinateSystem, bool>(&PointCloudConfig::setTargetCoordinateSystem),
+            py::arg("housingCS"),
+            py::arg("useSpecTranslation"),
+            "**Deprecated:** Use setTargetCoordinateSystem(housingCS) instead.")
         // Deprecated
         .def(
             "getSparse",

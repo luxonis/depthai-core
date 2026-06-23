@@ -9,6 +9,9 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
+namespace node {
+class PointCloud;
+}
 
 /**
  * PointCloudConfig message. Carries point cloud output settings.
@@ -30,10 +33,12 @@ class PointCloudConfig : public Buffer {
     };
 
    private:
+    friend class node::PointCloud;
+
     CoordinateSystemType coordSystemType = CoordinateSystemType::DEFAULT;
     CameraBoardSocket targetCameraSocket = CameraBoardSocket::AUTO;
     HousingCoordinateSystem targetHousingCS = HousingCoordinateSystem::AUTO;
-    bool useSpecTranslation = true;
+    bool useSpecTranslation = false;
 
    public:
     PointCloudConfig() = default;
@@ -81,16 +86,24 @@ class PointCloudConfig : public Buffer {
     /**
      * Set target coordinate system to another camera socket.
      * @param targetCamera Target camera socket
-     * @param useSpecTranslation Use spec translation instead of calibration (default: false)
      */
-    PointCloudConfig& setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation = false);
+    PointCloudConfig& setTargetCoordinateSystem(CameraBoardSocket targetCamera);
 
     /**
      * Set target coordinate system to housing coordinate system.
      * @param housingCS Target housing coordinate system
-     * @param useSpecTranslation Whether to use spec translation (default: true)
      */
-    PointCloudConfig& setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation = true);
+    PointCloudConfig& setTargetCoordinateSystem(HousingCoordinateSystem housingCS);
+
+    /**
+     * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
+     */
+    PointCloudConfig& setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation);
+
+    /**
+     * Deprecated: use setTargetCoordinateSystem(housingCS) instead.
+     */
+    PointCloudConfig& setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation);
 
     /**
      * Retrieve the coordinate system type.
