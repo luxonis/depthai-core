@@ -103,10 +103,12 @@ class ToF : public DeviceNodeGroup {
                                std::optional<float> fps = std::nullopt);
 
     Subnode<ToFBase> tofBase{*this, "tofBase"};
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    Subnode<ImageFilters> imageFilters{*this, "imageFilters"};
-#endif
-    Subnode<Camera> autoCamera{*this, "autoCamera"};
+
+   private:
+    std::unique_ptr<Subnode<ImageFilters>> imageFilters = nullptr;
+    std::unique_ptr<Subnode<Camera>> autoCamera = nullptr;
+
+   public:
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /**
@@ -157,7 +159,7 @@ class ToF : public DeviceNodeGroup {
     /**
      * Input config for image filters
      */
-    Input& imageFiltersInputConfig{imageFilters->inputConfig};
+    Input* imageFiltersInputConfig = nullptr;
     #endif
 #endif
 
@@ -170,7 +172,7 @@ class ToF : public DeviceNodeGroup {
     /**
      * Image filters node
      */
-    ImageFilters& imageFiltersNode{*imageFilters};
+    ImageFilters* imageFiltersNode = nullptr;
 #endif
 };
 
