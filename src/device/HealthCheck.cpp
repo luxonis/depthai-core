@@ -32,7 +32,9 @@
 
 namespace dai {
 
-constexpr std::uint32_t BANDWIDTH_TEST_BYTES = 1024 * 1024;
+constexpr std::uint32_t BANDWIDTH_TEST_WIDTH = 1024;
+constexpr std::uint32_t BANDWIDTH_TEST_HEIGHT = 1024;
+constexpr std::uint32_t BANDWIDTH_TEST_BYTES = BANDWIDTH_TEST_WIDTH * BANDWIDTH_TEST_HEIGHT;
 constexpr std::uint32_t BANDWIDTH_REPORT_MESSAGES = 128;
 constexpr std::uint32_t IMU_REPORT_RATE = 400;
 constexpr std::uint32_t IMU_BATCH_REPORT_THRESHOLD = 10;
@@ -151,7 +153,7 @@ std::string serializeIssues(const std::vector<HealthCheckIssue>& issues) {
     stream << "[";
     for(std::size_t i = 0; i < issues.size(); ++i) {
         if(i != 0) {
-            stream << ", ";
+            stream << ",\n";
         }
         stream << "{type=" << healthCheckIssueTypeToString(issues[i].type) << ", stage=" << healthCheckIssueStageToString(issues[i].stage)
                << ", message=" << std::quoted(issues[i].message) << "}";
@@ -230,7 +232,7 @@ void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMet
 }
 
 bool waitForPowerSupplyLoad(const std::shared_ptr<Device>& device, std::chrono::steady_clock::time_point deadline, HealthCheckMetrics& metrics) {
-    while(std::chrono::steady_clock::now() < deadline) {
+    const auto isDeviceAvailable = [&]() {
         try {
             if(device->hasCrashed()) {
                 metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "Device crashed during power supply load.");
@@ -245,31 +247,28 @@ bool waitForPowerSupplyLoad(const std::shared_ptr<Device>& device, std::chrono::
             metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, ex.what());
             return false;
         }
+        return true;
+    };
+
+    while(std::chrono::steady_clock::now() < deadline) {
+        if(!isDeviceAvailable()) {
+            return false;
+        }
 
         const auto now = std::chrono::steady_clock::now();
         if(now >= deadline) break;
         std::this_thread::sleep_for(std::min(POWER_SUPPLY_POLL_INTERVAL, std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now)));
     }
 
-    try {
-        if(device->hasCrashed()) {
-            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "Device crashed during power supply load.");
-            return false;
-        }
-        if(device->isClosed()) {
-            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "Device connection closed during power supply load.");
-            return false;
-        }
-    } catch(const std::exception& ex) {
-        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, ex.what());
-        return false;
-    }
-
-    return true;
+    return isDeviceAvailable();
 }
 
 void setRequestedChecksFailed(HealthCheckMetrics& metrics, const HealthCheckConfig& config) {
-    logger::warn("Requested health check diagnostics will be marked failed because a prerequisite failed.");
+    if(metrics.issues.empty()) {
+        logger::warn("Requested health check diagnostics will be marked failed because a prerequisite failed.");
+    } else {
+        logger::warn("Requested health check diagnostics will be marked failed because a prerequisite failed: {}", serializeIssues(metrics.issues));
+    }
 
     if(config.checkUsbGeneration) {
         metrics.usbGeneration = UsbGeneration::UNKNOWN;
@@ -501,10 +500,9 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
         }
 
         // Verify power supply
-        bool sufficientPower = true;
         if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
             enablePowerSupplyLoad(device, metrics, irGuard);
-            sufficientPower = waitForPowerSupplyLoad(device, std::chrono::steady_clock::now() + config.powerSupplyCheckDuration, metrics);
+            bool sufficientPower = waitForPowerSupplyLoad(device, std::chrono::steady_clock::now() + config.powerSupplyCheckDuration, metrics);
             if(!sufficientPower) {
                 metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
             }
@@ -517,13 +515,12 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
                                         HealthCheckIssueStage::PowerSupply,
                                         "Failed to disable IR load after validation; device disconnected during cleanup.");
         }
-
-        pipeline.stop();
-        pipeline.wait();
-
         if(config.verifyPowerSupply && metrics.powerSupplyFunctionality == HealthCheckResult::NOT_RUN) {
             metrics.powerSupplyFunctionality = HealthCheckResult::PASS;
         }
+
+        pipeline.stop();
+        pipeline.wait();
 
     } catch(const std::exception& ex) {
         if(config.verifyCameraFunctionality && metrics.cameraFunctionality == HealthCheckResult::NOT_RUN) {
@@ -539,13 +536,9 @@ void runDiagnosticPipeline(const std::shared_ptr<Device>& device,
             metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, ex.what());
         }
 
-        try {
-            irGuard.disable();
-            pipeline.stop();
-            pipeline.wait();
-        } catch(const std::exception& cleanupError) {
-            logger::warn("Health check diagnostic pipeline cleanup failed after exception: {}", cleanupError.what());
-        }
+        irGuard.disable();
+        pipeline.stop();
+        pipeline.wait();
     }
 }
 
@@ -570,7 +563,7 @@ void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics&
 
         auto frame = std::make_shared<ImgFrame>();
         frame->setType(ImgFrame::Type::RAW8);
-        frame->setSize(BANDWIDTH_TEST_BYTES, 1);
+        frame->setSize(BANDWIDTH_TEST_WIDTH, BANDWIDTH_TEST_HEIGHT);
         frame->setData(std::vector<std::uint8_t>(BANDWIDTH_TEST_BYTES, 0xAA));
         bandwidthInputQueue->send(frame);
 
@@ -589,12 +582,8 @@ void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics&
         metrics.bandwidthMbps = 0.0f;
         metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, ex.what());
 
-        try {
-            pipeline.stop();
-            pipeline.wait();
-        } catch(const std::exception& cleanupError) {
-            logger::warn("Health check bandwidth pipeline cleanup failed after exception: {}", cleanupError.what());
-        }
+        pipeline.stop();
+        pipeline.wait();
     }
 }
 
@@ -607,12 +596,13 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     metrics.udevRulesSet = devInfo.status != X_LINK_INSUFFICIENT_PERMISSIONS;
 
     // Create a device object for a health check, check its availability
+    logger::info("Health check: Connecting to device and checking availability");
     std::shared_ptr<Device> device;
     try {
         device = std::make_shared<Device>(devInfo);
     } catch(const std::exception& ex) {
-        setRequestedChecksFailed(metrics, config);
         metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Connection, ex.what());
+        setRequestedChecksFailed(metrics, config);
 
         return metrics;
     }
@@ -623,7 +613,8 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
 
     // USB speed and generation check
     if(config.checkUsbGeneration) {
-        if(device->getDeviceInfo().protocol == X_LINK_TCP_IP) {
+        logger::info("Health check: Checking USB generation");
+        if(devInfo.protocol == X_LINK_TCP_IP) {
             metrics.usbGeneration = UsbGeneration::UNKNOWN;
         } else {
             const auto usbSpeed = device->getUsbSpeed();
@@ -637,6 +628,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     // Read the calibration
     std::optional<CalibrationHandler> calibration;
     if(config.verifyCameraCalibration || config.verifyImuCalibration) {
+        logger::info("Health check: Reading calibration");
         try {
             calibration = device->getCalibration();
         } catch(const std::exception& ex) {
@@ -659,6 +651,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     std::vector<CameraBoardSocket> connectedCameras;
     std::vector<StereoPair> deviceStereoPairs;
     if(config.verifyCameraFunctionality || config.verifyCameraCalibration || config.verifyPowerSupply) {
+        logger::info("Health check: Querying connected cameras");
         try {
             connectedCameras = device->getConnectedCameras();
             if(connectedCameras.empty()) {
@@ -686,6 +679,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
 
     // Verify camera calibration metadata
     if(config.verifyCameraCalibration) {
+        logger::info("Health check: Verifying camera calibration");
         try {
             deviceStereoPairs = device->getStereoPairs();
         } catch(const std::exception& ex) {
@@ -702,6 +696,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     // Verify IMU functionality and calibration metadata
     std::string imuName;
     if(config.verifyImuFunctionality || config.verifyImuCalibration) {
+        logger::info("Health check: Verifying IMU");
         try {
             imuName = device->getConnectedIMU();
             if(config.verifyImuFunctionality && imuName.empty()) {
@@ -721,11 +716,13 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     }
 
     if(config.verifyCameraFunctionality || config.verifyImuFunctionality || config.verifyPowerSupply) {
+        logger::info("Health check: Running diagnostic pipeline");
         runDiagnosticPipeline(device, config, connectedCameras, imuName, metrics);
     }
 
     // Measure the bandwidth
     if(config.measureBandwidth) {
+        logger::info("Health check: Measuring bandwidth");
         device.reset();
         try {
             device = std::make_shared<Device>(devInfo);
@@ -742,12 +739,19 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
 
 std::string HealthCheckMetrics::toString() const {
     std::ostringstream stream;
-    stream << std::boolalpha << "HealthCheckMetrics(usbGeneration=" << usbGenerationToString(usbGeneration) << ", bandwidthMbps=" << bandwidthMbps
-           << ", cameraFunctionality=" << healthCheckResultToString(cameraFunctionality)
-           << ", cameraCalibration=" << healthCheckResultToString(cameraCalibration) << ", imuFunctionality=" << healthCheckResultToString(imuFunctionality)
-           << ", imuCalibration=" << healthCheckResultToString(imuCalibration)
-           << ", powerSupplyFunctionality=" << healthCheckResultToString(powerSupplyFunctionality) << ", appRunningOnDevice=" << appRunningOnDevice
-           << ", inSetupMode=" << inSetupMode << ", udevRulesSet=" << udevRulesSet << ", issues=" << serializeIssues(issues) << ")";
+    stream << std::boolalpha << "HealthCheckMetrics(\n"
+           << "  usbGeneration=" << usbGenerationToString(usbGeneration) << ",\n"
+           << "  bandwidthMbps=" << bandwidthMbps << ",\n"
+           << "  cameraFunctionality=" << healthCheckResultToString(cameraFunctionality) << ",\n"
+           << "  cameraCalibration=" << healthCheckResultToString(cameraCalibration) << ",\n"
+           << "  imuFunctionality=" << healthCheckResultToString(imuFunctionality) << ",\n"
+           << "  imuCalibration=" << healthCheckResultToString(imuCalibration) << ",\n"
+           << "  powerSupplyFunctionality=" << healthCheckResultToString(powerSupplyFunctionality) << ",\n"
+           << "  appRunningOnDevice=" << appRunningOnDevice << ",\n"
+           << "  inSetupMode=" << inSetupMode << ",\n"
+           << "  udevRulesSet=" << udevRulesSet << ",\n"
+           << "  issues=" << serializeIssues(issues) << "\n"
+           << ")";
     return stream.str();
 }
 

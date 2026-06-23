@@ -317,7 +317,6 @@ std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
 
 // First tries to find UNBOOTED device with deviceId, then BOOTLOADER device with deviceId
 std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(const std::string& deviceId) {
-    std::vector<DeviceInfo> availableDevices;
     auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
     bool found;
     DeviceInfo dev;
@@ -328,30 +327,35 @@ std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(const std::string& device
     return {false, DeviceInfo()};
 }
 
-std::optional<bool> DeviceBase::isInSetupMode(std::string deviceIdOrName) {
-    DeviceInfo deviceInfo(std::move(deviceIdOrName));
-    deviceDesc_t xlinkDesc = deviceInfo.getXLinkDeviceDesc();
-    deviceDesc_t foundDesc = {};
-    auto ret = XLinkFindFirstSuitableDevice(xlinkDesc, &foundDesc);
-    if(ret != X_LINK_SUCCESS) {
-        logger::warn("Device with given deviceIdOrName was not found: {}", !deviceInfo.name.empty() ? deviceInfo.name : deviceInfo.deviceId);
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByIdOrName(const std::string& deviceIdOrName) {
+    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
+    DeviceInfo dev(deviceIdOrName);
+    for(const auto& state : states) {
+        dev.state = state;
+        deviceDesc_t desc = {};
+        auto ret = XLinkFindFirstSuitableDevice(dev.getXLinkDeviceDesc(), &desc);
+        if(ret == X_LINK_SUCCESS) {
+            if(desc.status == X_LINK_SUCCESS) {
+                return {true, DeviceInfo(desc)};
+            } else {
+                logger::warn("skipping {} device having name \"{}\" (status: {})", XLinkDeviceStateToStr(desc.state), desc.name, XLinkErrorToStr(desc.status));
+            }
+        }
+    }
+    return {false, DeviceInfo()};
+}
+
+std::optional<bool> DeviceBase::isInSetupMode(const std::string& deviceIdOrName) {
+    bool found = false;
+    DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = getDeviceByIdOrName(deviceIdOrName);
+    if(!found) {
         return std::nullopt;
     }
 
-    logger::debug("isInSetupMode() foundDesc: name={}, mxid={}, state={}, protocol={}, platform={}, status={}",
-                  foundDesc.name,
-                  foundDesc.mxid,
-                  XLinkDeviceStateToStr(foundDesc.state),
-                  XLinkProtocolToStr(foundDesc.protocol),
-                  XLinkPlatformToStr(foundDesc.platform),
-                  XLinkErrorToStr(foundDesc.status));
+    logger::debug("isInSetupMode() resolved device info: {}", deviceInfo.toString());
 
-    if(foundDesc.status != X_LINK_SUCCESS) {
-        logger::warn("Resolved device with given deviceIdOrName has invalid status: {}", XLinkErrorToStr(foundDesc.status));
-        return std::nullopt;
-    }
-
-    return foundDesc.state == X_LINK_GATE_SETUP;
+    return deviceInfo.state == X_LINK_GATE_SETUP;
 }
 
 std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version) {
