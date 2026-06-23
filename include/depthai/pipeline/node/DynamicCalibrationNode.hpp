@@ -147,6 +147,8 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
     std::vector<ConnectedSensor> connectedSensors;
     std::vector<CameraBoardSocket> socketsInHandler;
     std::vector<std::vector<std::vector<float>>> socketToSensorExtrinsics;
+    std::optional<CameraBoardSocket> leftQueueSocket;
+    std::optional<CameraBoardSocket> rightQueueSocket;
 
     class Impl;
     spimpl::impl_ptr<Impl> pimplDCL;
