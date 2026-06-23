@@ -36,7 +36,6 @@ std::array<std::array<float, 3>, 3> getHomographyMatrix(const std::array<dai::Po
 std::vector<std::vector<float>> createRotationMatrix(float theta);
 std::vector<std::vector<float>> createScalingMatrix(float scaleX, float scaleY);
 std::vector<std::vector<float>> createTranslationMatrix(float dx, float dy);
-std::vector<std::vector<float>> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const std::vector<float>& translation);
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::vector<std::vector<float>>& rotation, const dai::Point3f& translation);
 std::array<std::array<float, 4>, 4> createTransformationMatrix(const std::array<std::array<float, 3>, 3>& rotation, const dai::Point3f& translation);
 dai::Point3f transformPoint3f(const std::array<std::array<float, 4>, 4>& matrix, const dai::Point3f& point);
