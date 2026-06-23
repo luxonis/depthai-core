@@ -13,6 +13,7 @@
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 #include "depthai/utility/matrixOps.hpp"
 #include "depthai/utility/spimpl.h"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
@@ -427,7 +428,15 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         const auto socket2It = sensorHandleToSocket.find(sensorPair.second.get());
         if(socket1It == sensorHandleToSocket.end() || socket2It == sensorHandleToSocket.end()) continue;
 
-        qualityData.pairwiseRotationDifference[std::make_pair(socket1It->second, socket2It->second)] = rotationChange;
+        const auto socketPair = std::make_pair(socket1It->second, socket2It->second);
+        qualityData.pairwiseRotationDifference[socketPair] = rotationChange;
+
+        if(leftQueueSocket && rightQueueSocket
+           && ((socketPair.first == *leftQueueSocket && socketPair.second == *rightQueueSocket)
+               || (socketPair.first == *rightQueueSocket && socketPair.second == *leftQueueSocket))) {
+            const auto copyCount = std::min(qualityData.rotationChange.size(), rotationChange.size());
+            std::copy_n(rotationChange.begin(), copyCount, qualityData.rotationChange.begin());
+        }
     }
 
     DynamicCalibrationResult::Data resultData{};
@@ -513,11 +522,17 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     for(size_t idx = 0; idx < coverageCount; ++idx) {
         coverageResult->coveragePerCell[connectedSensors[idx].socket] = coverage.coveragesPerCell[idx];
     }
-    if(coverageCount > 0) {
-        coverageResult->coveragePerCellA = coverage.coveragesPerCell[0];
+    if(leftQueueSocket) {
+        const auto leftCoverageIt = coverageResult->coveragePerCell.find(*leftQueueSocket);
+        if(leftCoverageIt != coverageResult->coveragePerCell.end()) {
+            coverageResult->coveragePerCellA = leftCoverageIt->second;
+        }
     }
-    if(coverageCount > 1) {
-        coverageResult->coveragePerCellB = coverage.coveragesPerCell[1];
+    if(rightQueueSocket) {
+        const auto rightCoverageIt = coverageResult->coveragePerCell.find(*rightQueueSocket);
+        if(rightCoverageIt != coverageResult->coveragePerCell.end()) {
+            coverageResult->coveragePerCellB = rightCoverageIt->second;
+        }
     }
     coverageResult->meanCoverage = coverage.meanCoverage;
     coverageResult->coverageAcquired = coverage.coverageAcquired;
@@ -546,6 +561,8 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
 
     socketsInHandler.clear();
     socketToSensorExtrinsics.clear();
+    leftQueueSocket.reset();
+    rightQueueSocket.reset();
 
     if(names.empty()) {
         logger->error("DynamicCalibration Sync node has no connected image inputs.");
@@ -607,6 +624,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::
                                     static_cast<size_t>(std::distance(socketsInHandler.begin(), socketIt)),
                                     resolution,
                                     nullptr});
+
+        if(name == leftInputName) {
+            leftQueueSocket = socket;
+        } else if(name == rightInputName) {
+            rightQueueSocket = socket;
+        }
     }
 
     logger->trace("Converting dai calibration to dcl");
