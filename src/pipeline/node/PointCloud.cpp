@@ -421,7 +421,12 @@ void PointCloud::Impl::setExtrinsics(const std::vector<std::vector<float>>& tran
 }
 
 // PointCloud main class implementations
-PointCloud::PointCloud() : pimplPointCloud() {}
+PointCloud::PointCloud() : PointCloud(std::make_unique<Properties>()) {}
+
+PointCloud::PointCloud(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties>(std::move(props)),
+      initialConfig(std::make_shared<PointCloudConfig>(properties.initialConfig)),
+      pimplPointCloud() {}
 
 PointCloud::~PointCloud() = default;
 
@@ -745,7 +750,7 @@ void PointCloud::run() {
             continue;
         }
 
-        auto colorFrame = colorMode ? group->get<ImgFrame>(colorInputName) : nullptr;
+        auto colorFrame = group->get<ImgFrame>(colorInputName);
 
         // Check for runtime config update
         auto newConfig = inputConfig.tryGet<PointCloudConfig>();

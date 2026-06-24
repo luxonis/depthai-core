@@ -118,6 +118,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
    public:
     PointCloud();
+    PointCloud(std::unique_ptr<Properties> props);
     ~PointCloud();
 
     /**
