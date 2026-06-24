@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/PointCloud.hpp"
 
 #include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <cstring>
@@ -477,6 +478,14 @@ void PointCloud::useCPUMT(uint32_t numThreads) {
 
 void PointCloud::useGPU(uint32_t device) {
     pimplPointCloud->useGPU(device);
+}
+
+void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera) {
+    initialConfig->setTargetCoordinateSystem(targetCamera);
+}
+
+void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS) {
+    initialConfig->setTargetCoordinateSystem(housingCS);
 }
 
 void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation) {
