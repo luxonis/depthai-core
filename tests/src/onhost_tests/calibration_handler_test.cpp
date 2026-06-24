@@ -921,11 +921,7 @@ TEST_CASE("setCameraExtrinsics rejects ragged rotation matrices", "[setCameraExt
     const auto raggedRotation = std::vector<std::vector<float>>{{1.0f, 0.0f, 0.0f}, {0.0f}, {0.0f}};
     const auto translation = std::vector<float>{0.0f, 0.0f, 0.0f};
 
-    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_A,
-                                                    CameraBoardSocket::CAM_B,
-                                                    raggedRotation,
-                                                    translation,
-                                                    translation),
+    REQUIRE_THROWS_WITH(handler.setCameraExtrinsics(CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B, raggedRotation, translation, translation),
                         Catch::Matchers::ContainsSubstring("Rotation Matrix size should always be 3x3"));
 }
 

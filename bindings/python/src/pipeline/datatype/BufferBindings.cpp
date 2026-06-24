@@ -100,6 +100,7 @@ void bind_buffer(pybind11::module& m, void* pCallstack) {
         .def("setTimestampDevice", &Buffer::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
         .def("setTimestampSystem", &Buffer::setTimestampSystem, DOC(dai, Buffer, setTimestampSystem))
         .def("setSequenceNum", &Buffer::setSequenceNum, py::arg("sequenceNum"), DOC(dai, Buffer, setSequenceNum))
-        .def("setBufferMetadataFrom", py::overload_cast<const std::shared_ptr<Buffer>&>(&Buffer::setBufferMetadataFrom), DOC(dai, Buffer, setBufferMetadataFrom))
+        .def(
+            "setBufferMetadataFrom", py::overload_cast<const std::shared_ptr<Buffer>&>(&Buffer::setBufferMetadataFrom), DOC(dai, Buffer, setBufferMetadataFrom))
         .def("getVisualizationMessage", &Buffer::getVisualizationMessage, DOC(dai, Buffer, getVisualizationMessage));
 }

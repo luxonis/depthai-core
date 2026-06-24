@@ -243,8 +243,7 @@ void getImages(bool debugOn,
                 std::cout << "Adding origFramesBuffer size was: " << origFramesBuffer.size() << "\n" << std::flush;
             }
             for(auto& compare : imgComparesOut) {
-                if(compare.second == nullptr
-                   && compare.first->tsDevice.get() == inRgbOrig->tsDevice.get()) {
+                if(compare.second == nullptr && compare.first->tsDevice.get() == inRgbOrig->tsDevice.get()) {
                     if(debugOn) {
                         std::cout << "Found compare.second...\n" << std::flush;
                     }
@@ -279,8 +278,7 @@ void getImages(bool debugOn,
         }
         if(imgComparesOut.size() == framesWantedCount) {
             if(std::find_if(imgComparesOut.begin(), imgComparesOut.end(), [](const auto& iter) { return iter.second == nullptr; }) == imgComparesOut.end()
-               || (inRgbOrig
-                   && inRgbOrig->tsDevice.get() > imgComparesOut.back().first->tsDevice.get())) {
+               || (inRgbOrig && inRgbOrig->tsDevice.get() > imgComparesOut.back().first->tsDevice.get())) {
                 if(debugOn) {
                     std::cout << "Got all frames\n" << std::flush;
                 }

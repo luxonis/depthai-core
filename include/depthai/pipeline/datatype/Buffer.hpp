@@ -112,9 +112,9 @@ class Buffer : public ADatatype {
     virtual dai::VisualizeType getVisualizationMessage() const;
 
     // TODO(Morato) // Make this private
-    int64_t sequenceNum = 0;  // increments for each message
-    Timestamp ts = {};        // generation timestamp, synced to host time
-    Timestamp tsDevice = {};  // generation timestamp, direct device monotonic clock
+    int64_t sequenceNum = 0;            // increments for each message
+    Timestamp ts = {};                  // generation timestamp, synced to host time
+    Timestamp tsDevice = {};            // generation timestamp, direct device monotonic clock
     std::optional<Timestamp> tsSystem;  // generation timestamp, direct device system clock
 
     DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice, tsSystem);

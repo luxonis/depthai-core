@@ -35,7 +35,6 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties>, public Hos
     virtual TimestampSource getDefaultTimestampSource() const;
 
    public:
-
     /**
      * Set the maximal interval between messages in the group
      * @param syncThreshold Maximal interval between messages in the group

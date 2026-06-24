@@ -11,12 +11,7 @@ namespace dai {
  * Specify properties for Sync.
  */
 struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
-    enum class TimestampSource : uint8_t {
-        DEFAULT,
-        DEVICE,
-        HOST,
-        SYSTEM
-    };
+    enum class TimestampSource : uint8_t { DEFAULT, DEVICE, HOST, SYSTEM };
 
     /**
      * The maximal interval the messages can be apart in nanoseconds.

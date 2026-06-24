@@ -182,7 +182,8 @@ class TimestampCompare {
             case Sync::TimestampSource::SYSTEM: {
                 auto tsOpt = buffer.getTimestampSystem();
                 if(!tsOpt.has_value()) {
-                    throw InvalidTimestampException("Buffer does not have system timestamp, but Sync node is set to use system timestamps for synchronization.");
+                    throw InvalidTimestampException(
+                        "Buffer does not have system timestamp, but Sync node is set to use system timestamps for synchronization.");
                 }
                 std::get<TimestampCompareGeneric<std::chrono::system_clock>>(impl)(name, tsOpt.value());
                 break;
@@ -273,9 +274,7 @@ void Sync::run() {
             }
             // Print out the timestamps
             for(const auto& frame : inputFrames) {
-                logger->debug("Starting input {} timestamp is {} ms",
-                              frame.first,
-                              getTimestampMs(timestampSource, *frame.second));
+                logger->debug("Starting input {} timestamp is {} ms", frame.first, getTimestampMs(timestampSource, *frame.second));
             }
             tAfterMessageBeginning = steady_clock::now();
             int attempts = 0;
@@ -321,8 +320,7 @@ void Sync::run() {
         dai::Buffer* newestFrame = inputFrames.begin()->second.get();
         for(const auto& name : inputNames) {
             logger->trace("Sending output: {}", name);
-            logger->trace("Timestamp: {} ms",
-                          getTimestampMs(timestampSource, *inputFrames[name]));
+            logger->trace("Timestamp: {} ms", getTimestampMs(timestampSource, *inputFrames[name]));
             outputGroup->add(name, inputFrames[name]);
             newestFrame = getNewerBuffer(timestampSource, newestFrame, inputFrames[name].get());
         }
