@@ -424,7 +424,7 @@ PointCloud::PointCloud() : PointCloud(std::make_unique<Properties>()) {}
 
 PointCloud::PointCloud(std::unique_ptr<Properties> props)
     : DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties>(std::move(props)),
-      initialConfig(std::make_shared<decltype(properties.initialConfig)>(properties.initialConfig)),
+      initialConfig(std::make_shared<PointCloudConfig>(properties.initialConfig)),
       pimplPointCloud() {}
 
 PointCloud::~PointCloud() = default;
@@ -742,7 +742,6 @@ void PointCloud::run() {
         }
 
         auto colorFrame = group->get<ImgFrame>(colorInputName);
-        colorMode = (colorFrame != nullptr);
 
         // Check for runtime config update
         auto newConfig = inputConfig.tryGet<PointCloudConfig>();
