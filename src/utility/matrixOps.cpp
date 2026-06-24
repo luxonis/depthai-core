@@ -135,6 +135,17 @@ std::vector<std::vector<float>> matMul(const std::vector<std::vector<float>>& A,
     return res;
 }
 
+void validateRotationMatrix3x3(const std::vector<std::vector<float>>& rotationMatrix) {
+    if(rotationMatrix.size() != 3) {
+        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
+    }
+    for(const auto& row : rotationMatrix) {
+        if(row.size() != 3) {
+            throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
+        }
+    }
+}
+
 static void getCofactor(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>& temp, size_t p, size_t q, size_t n) {
     size_t i = 0, j = 0;
 

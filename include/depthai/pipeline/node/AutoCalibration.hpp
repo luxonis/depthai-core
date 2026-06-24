@@ -103,7 +103,7 @@ class AutoCalibration : public DeviceNodeCRTP<DeviceNode, AutoCalibration, AutoC
 
     void loadData(unsigned int numImages);
 
-    std::shared_ptr<dai::CalibrationMetrics> getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration);
+    std::shared_ptr<dai::CalibrationMetrics> getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration);
 
     AutoCalibrationProperties properties;
 

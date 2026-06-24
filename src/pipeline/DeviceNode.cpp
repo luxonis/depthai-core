@@ -17,7 +17,7 @@ DeviceNode::DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Pr
     configureMode = conf;
 }
 
-void DeviceNode::setDevice(std::shared_ptr<Device> device) {
+void DeviceNode::setDevice(const std::shared_ptr<Device>& device) {
     this->device = device;
 }
 

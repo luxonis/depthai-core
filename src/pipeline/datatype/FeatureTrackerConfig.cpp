@@ -14,7 +14,7 @@ FeatureTrackerConfig& FeatureTrackerConfig::setCornerDetector(FeatureTrackerConf
     return *this;
 }
 
-FeatureTrackerConfig& FeatureTrackerConfig::setCornerDetector(FeatureTrackerConfig::CornerDetector config) {
+FeatureTrackerConfig& FeatureTrackerConfig::setCornerDetector(const FeatureTrackerConfig::CornerDetector& config) {
     cornerDetector = config;
     return *this;
 }
@@ -24,7 +24,7 @@ FeatureTrackerConfig& FeatureTrackerConfig::setMotionEstimator(bool enable) {
     return *this;
 }
 
-FeatureTrackerConfig& FeatureTrackerConfig::setMotionEstimator(FeatureTrackerConfig::MotionEstimator config) {
+FeatureTrackerConfig& FeatureTrackerConfig::setMotionEstimator(const FeatureTrackerConfig::MotionEstimator& config) {
     motionEstimator = config;
     return *this;
 }
@@ -35,7 +35,7 @@ FeatureTrackerConfig& FeatureTrackerConfig::setOpticalFlow() {
     return *this;
 }
 
-FeatureTrackerConfig& FeatureTrackerConfig::setOpticalFlow(FeatureTrackerConfig::MotionEstimator::OpticalFlow config) {
+FeatureTrackerConfig& FeatureTrackerConfig::setOpticalFlow(const FeatureTrackerConfig::MotionEstimator::OpticalFlow& config) {
     motionEstimator.type = FeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
     motionEstimator.opticalFlow = config;
     setMotionEstimator(true);

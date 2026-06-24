@@ -33,7 +33,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
         .def("setBlobPath", &DetectionParser::setBlobPath, py::arg("path"), DOC(dai, node, DetectionParser, setBlobPath))
         .def("setNumFramesPool", &DetectionParser::setNumFramesPool, py::arg("numFramesPool"), DOC(dai, node, DetectionParser, setNumFramesPool))
         .def("getNumFramesPool", &DetectionParser::getNumFramesPool, DOC(dai, node, DetectionParser, getNumFramesPool))
-        .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionParser::setBlob), py::arg("blob"), DOC(dai, node, DetectionParser, setBlob))
+        .def("setBlob", py::overload_cast<const dai::OpenVINO::Blob&>(&DetectionParser::setBlob), py::arg("blob"), DOC(dai, node, DetectionParser, setBlob))
         .def(
             "setBlob", py::overload_cast<const std::filesystem::path&>(&DetectionParser::setBlob), py::arg("path"), DOC(dai, node, DetectionParser, setBlob, 2))
         .def("setNNArchive",
@@ -46,7 +46,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
              py::arg("height"),
              DOC(dai, node, DetectionParser, setInputImageSize))
         .def("setInputImageSize",
-             static_cast<void (DetectionParser::*)(std::tuple<int, int>)>(&DetectionParser::setInputImageSize),
+             static_cast<void (DetectionParser::*)(const std::tuple<int, int>&)>(&DetectionParser::setInputImageSize),
              py::arg("size"),
              DOC(dai, node, DetectionParser, setInputImageSize, 2))
         .def("setNNFamily", &DetectionParser::setNNFamily, py::arg("type"), DOC(dai, node, DetectionParser, setNNFamily))
@@ -60,7 +60,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
              py::arg("anchors"),
              DOC(dai, node, DetectionParser, setAnchors))
         .def("setAnchors",
-             py::overload_cast<std::vector<float>>(&DetectionParser::setAnchors),
+             py::overload_cast<const std::vector<float>&>(&DetectionParser::setAnchors),
              py::arg("anchors"),
              DOC(dai, node, DetectionParser, setAnchors, 2))
         .def("setAnchorMasks", &DetectionParser::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, DetectionParser, setAnchorMasks))

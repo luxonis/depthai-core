@@ -276,6 +276,7 @@ set(TARGET_CORE_SOURCES
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
+    src/device/HealthCheck.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
     src/device/Platform.cpp
@@ -981,8 +982,10 @@ macro(add_runtime_dependencies depending_target dependency)
         message(STATUS "Required dlls for core are: ${required_dll_files}")
     endif()
 endmacro()
-# Add libusb dll in build time
-add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+# Add libusb dll in build time when libusb is provided by vcpkg.
+if(DEPTHAI_ENABLE_LIBUSB AND NOT XLINK_LIBUSB_SYSTEM)
+    add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+endif()
 # Add dynamic calibration dll in build time
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)

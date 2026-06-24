@@ -41,7 +41,7 @@ void ArchiveUtil::init(NNArchiveEntry::Compression format) {
     }
 }
 
-void ArchiveUtil::unpackArchiveInDirectory(const std::filesystem::path directory) {
+void ArchiveUtil::unpackArchiveInDirectory(const std::filesystem::path& directory) {
     struct archive* a = getA();
     struct archive_entry* entry = nullptr;
     std::filesystem::create_directories(directory);

@@ -15,7 +15,7 @@
 namespace dai {
 namespace utility {
 
-void PipelineImplHelper::setupHolisticRecordAndReplay(std::weak_ptr<PipelineImpl> pipelineWeak) {
+void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<PipelineImpl>& pipelineWeak) {
     auto pipeline = pipelineWeak.lock();
     if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
@@ -75,24 +75,20 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(std::weak_ptr<PipelineImpl
                         }
                     } else if(!replayPath.empty()) {
                         if(platform::checkPathExists(replayPath)) {
-                            if(platform::checkWritePermissions(replayPath)) {
-                                if(utility::setupHolisticReplay(dai::Pipeline(pipeline),
-                                                                replayPath,
-                                                                pipeline->defaultDeviceId,
-                                                                pipeline->recordConfig,
-                                                                pipeline->recordReplayFilenames,
-                                                                pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-                                                                    || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
-                                    pipeline->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
-                                    if(platform::checkPathExists(replayPath, true)) {
-                                        pipeline->removeRecordReplayFiles = false;
-                                    }
-                                    Logging::getInstance().logger.info("Replay enabled.");
-                                } else {
-                                    Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
+                            if(utility::setupHolisticReplay(dai::Pipeline(pipeline),
+                                                            replayPath,
+                                                            pipeline->defaultDeviceId,
+                                                            pipeline->recordConfig,
+                                                            pipeline->recordReplayFilenames,
+                                                            pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
+                                pipeline->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
+                                if(platform::checkPathExists(replayPath, true)) {
+                                    pipeline->removeRecordReplayFiles = false;
                                 }
+                                Logging::getInstance().logger.info("Replay enabled.");
                             } else {
-                                Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+                                Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
                             }
                         } else {
                             Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
@@ -166,7 +162,7 @@ void PipelineImplHelper::finishHolisticRecordAndReplay(PipelineImpl* pipeline) {
         pipeline->recordConfig.state = RecordConfig::RecordReplayState::NONE;
     }
 }
-void PipelineImplHelper::setupPipelineDebuggingPre(std::weak_ptr<PipelineImpl> pipelineWeak) {
+void PipelineImplHelper::setupPipelineDebuggingPre(const std::weak_ptr<PipelineImpl>& pipelineWeak) {
     auto pipeline = pipelineWeak.lock();
     if(!pipeline) throw std::runtime_error("PipelineImplHelper: Pipeline is no longer available.");
 
@@ -234,7 +230,7 @@ void PipelineImplHelper::setupPipelineDebuggingPre(std::weak_ptr<PipelineImpl> p
         }
     }
 }
-void PipelineImplHelper::setupPipelineDebuggingPost(std::weak_ptr<PipelineImpl> pipelineWeak,
+void PipelineImplHelper::setupPipelineDebuggingPost(const std::weak_ptr<PipelineImpl>& pipelineWeak,
                                                     std::unordered_map<dai::Node::Output*, node::internal::XLinkOutBridge>& bridgesOut,
                                                     std::unordered_map<dai::Node::Input*, node::internal::XLinkInBridge>& bridgesIn) {
     auto pipeline = pipelineWeak.lock();
