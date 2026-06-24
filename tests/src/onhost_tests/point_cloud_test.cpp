@@ -1760,8 +1760,8 @@ TEST_CASE("Extrinsics getTransformationMatrix(false) uses measured translation, 
     // Create extrinsics with different measured and spec translation values
     dai::Extrinsics ext;
     ext.rotationMatrix = eye3();
-    ext.translation = {1.0f, 2.0f, 3.0f};          // measured (calibrated)
-    ext.specTranslation = {10.0f, 20.0f, 30.0f};   // spec (CAD design)
+    ext.translation = {1.0f, 2.0f, 3.0f};         // measured (calibrated)
+    ext.specTranslation = {10.0f, 20.0f, 30.0f};  // spec (CAD design)
     ext.toCameraSocket = dai::CameraBoardSocket::CAM_C;
 
     // getTransformationMatrix(false) should use measured translation

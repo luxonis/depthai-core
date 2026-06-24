@@ -57,8 +57,9 @@ PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateS
 }
 
 PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpec) {
-    spdlog::warn("PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket, bool) is deprecated. "
-                 "Use PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket) instead.");
+    spdlog::warn(
+        "PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket, bool) is deprecated. "
+        "Use PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket) instead.");
     coordSystemType = CoordinateSystemType::CAMERA_SOCKET;
     targetCameraSocket = targetCamera;
     useSpecTranslation = useSpec;
@@ -66,8 +67,9 @@ PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket 
 }
 
 PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpec) {
-    spdlog::warn("PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem, bool) is deprecated. "
-                 "Use PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem) instead.");
+    spdlog::warn(
+        "PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem, bool) is deprecated. "
+        "Use PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem) instead.");
     coordSystemType = CoordinateSystemType::HOUSING;
     targetHousingCS = housingCS;
     useSpecTranslation = useSpec;
