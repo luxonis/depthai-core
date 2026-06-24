@@ -1561,7 +1561,11 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, cons
             if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
             pimpl->logger.warn("Reconnection successful\n");
             if(isCrashDumpCollectionEnabled()) {
-                crashed = hasCrashDump();
+                const bool hasPendingCrashDump = hasCrashDump();
+                crashed = hasPendingCrashDump;
+                if(!hasPendingCrashDump) {
+                    crashDumpHandled.store(false);
+                }
             }
         }
     } catch(const std::exception& ex) {
