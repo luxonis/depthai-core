@@ -93,8 +93,6 @@ int main() {
             printCalibrationResult(calibration);
             if(calibration->calibrationData) {
                 inputControl->send(DCC::applyCalibration(calibration->calibrationData->newCalibration));
-                pipeline.stop();
-                break;
             }
         }
 
