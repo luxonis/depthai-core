@@ -122,7 +122,7 @@ void Buffer::setSequenceNum(int64_t sequenceNum) {
     this->sequenceNum = sequenceNum;
 }
 
-void Buffer::copyBufferMetadataFrom(const Buffer* other) {
+void Buffer::setBufferMetadataFrom(const Buffer* other) {
     if(other == nullptr) return;
     this->sequenceNum = other->sequenceNum;
     this->ts = other->ts;
@@ -130,8 +130,8 @@ void Buffer::copyBufferMetadataFrom(const Buffer* other) {
     this->tsSystem = other->tsSystem;
 }
 
-void Buffer::copyBufferMetadataFrom(const std::shared_ptr<Buffer>& other) {
-    copyBufferMetadataFrom(other.get());
+void Buffer::setBufferMetadataFrom(const std::shared_ptr<Buffer>& other) {
+    setBufferMetadataFrom(other.get());
 }
 
 span<const uint8_t> Buffer::getRecordData() const {

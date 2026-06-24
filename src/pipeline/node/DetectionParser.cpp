@@ -499,7 +499,7 @@ void DetectionParser::run() {
         auto tBeforeSend = steady_clock::now();
 
         // Copy over seq and ts
-        outDetections->copyBufferMetadataFrom(&inputData);
+        outDetections->setBufferMetadataFrom(&inputData);
         outDetections->transformation = inputData.transformation;
 
         {

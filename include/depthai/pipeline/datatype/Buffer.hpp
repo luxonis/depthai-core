@@ -94,10 +94,14 @@ class Buffer : public ADatatype {
     void setSequenceNum(int64_t sequenceNum);
 
     /**
-     * Copies metadata from another buffer
+     * Copies all metadata from another buffer
      */
-    void copyBufferMetadataFrom(const Buffer* other);
-    void copyBufferMetadataFrom(const std::shared_ptr<Buffer>& other);
+    void setBufferMetadataFrom(const Buffer* other);
+
+    /**
+     * Copies all metadata from another buffer
+     */
+    void setBufferMetadataFrom(const std::shared_ptr<Buffer>& other);
 
     virtual span<const uint8_t> getRecordData() const;
 

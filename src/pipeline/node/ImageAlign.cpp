@@ -593,7 +593,7 @@ void ImageAlign::run() {
 
         alignedImg->setInstanceNum((uint32_t)alignTo);
 
-        alignedImg->copyBufferMetadataFrom(inputImg);
+        alignedImg->setBufferMetadataFrom(inputImg);
 
         alignedImg->transformation = inputAlignToTransform;
         const auto alignToDistortion = inputAlignToTransform.getDistortionCoefficients();

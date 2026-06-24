@@ -11,6 +11,7 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
 
     // Node and Properties declare upfront
     py::class_<SyncProperties> syncProperties(m, "SyncProperties", DOC(dai, SyncProperties));
+    py::enum_<SyncProperties::TimestampSource> tsSource(syncProperties, "TimestampSource");
     auto sync = ADD_NODE(Sync);
 
     ///////////////////////////////////////////////////////////////////////
@@ -25,6 +26,13 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
+
+    tsSource.value("DEFAULT", SyncProperties::TimestampSource::DEFAULT)
+        .value("DEVICE", SyncProperties::TimestampSource::DEVICE)
+        .value("HOST", SyncProperties::TimestampSource::HOST)
+        .value("SYSTEM", SyncProperties::TimestampSource::SYSTEM);
+
+    sync.attr("TimestampSource") = tsSource;
 
     // Properties
     syncProperties.def_readwrite("syncThresholdNs", &SyncProperties::syncThresholdNs, DOC(dai, SyncProperties, syncThresholdNs))

@@ -348,7 +348,7 @@ void Sync::run() {
             newestFrame = getNewerBuffer(timestampSource, newestFrame, inputFrames[name].get());
         }
 
-        outputGroup->copyBufferMetadataFrom(newestFrame);
+        outputGroup->setBufferMetadataFrom(newestFrame);
 
         {
             auto blockEvent = this->outputBlockEvent();

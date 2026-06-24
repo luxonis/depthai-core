@@ -778,7 +778,7 @@ void PointCloud::run() {
 
         // Create PointCloudData
         auto pc = std::make_shared<PointCloudData>();
-        pc->copyBufferMetadataFrom(depthFrame);
+        pc->setBufferMetadataFrom(depthFrame);
         pc->setInstanceNum(depthFrame->getInstanceNum());
         auto outputTransformation = depthFrame->getTransformation();
         if(targetExtrinsics_) {

@@ -101,7 +101,7 @@ void SegmentationMask::setMask(dai::ImgFrame& frame) {
         }
     }
     this->transformation = frame.transformation;
-    this->copyBufferMetadataFrom(&frame);
+    this->setBufferMetadataFrom(&frame);
 }
 
 std::vector<std::uint8_t> SegmentationMask::getMaskData() const {
@@ -114,7 +114,7 @@ std::vector<std::uint8_t> SegmentationMask::getMaskData() const {
 
 dai::ImgFrame SegmentationMask::getFrame() const {
     dai::ImgFrame img;
-    img.copyBufferMetadataFrom(this);
+    img.setBufferMetadataFrom(this);
     if(transformation) {
         img.transformation = *transformation;
     }

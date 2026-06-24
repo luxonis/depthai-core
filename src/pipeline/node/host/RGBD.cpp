@@ -384,7 +384,7 @@ void RGBD::run() {
 
             // Create the point cloud
             auto pc = std::make_shared<PointCloudData>();
-            pc->copyBufferMetadataFrom(colorFrame);
+            pc->setBufferMetadataFrom(colorFrame);
             pc->setInstanceNum(colorFrame->getInstanceNum());
             auto width = colorFrame->getWidth();
             auto height = colorFrame->getHeight();
@@ -419,7 +419,7 @@ void RGBD::run() {
             pc->setMaxZ(maxZ);
 
             pc->setPointsRGB(points);
-            pc->copyBufferMetadataFrom(colorFrame);
+            pc->setBufferMetadataFrom(colorFrame);
             pc->setInstanceNum(colorFrame->getInstanceNum());
             {
                 auto blockEvent = this->outputBlockEvent();
@@ -430,7 +430,7 @@ void RGBD::run() {
                 }
                 if(!rgbd.getQueueConnections().empty() || !rgbd.getConnections().empty()) {
                     auto rgbdData = std::make_shared<RGBDData>();
-                    rgbdData->copyBufferMetadataFrom(colorFrame);
+                    rgbdData->setBufferMetadataFrom(colorFrame);
                     rgbdData->setDepthFrame(depthFrame);
                     rgbdData->setRGBFrame(colorFrame);
                     rgbd.send(rgbdData);
