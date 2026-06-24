@@ -97,7 +97,6 @@ with dai.Pipeline() as pipeline:
                         flash=False
                     )
                 )
-                break
 
         if cv2.waitKey(1) == ord("q"):
             pipeline.stop()
