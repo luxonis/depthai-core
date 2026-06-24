@@ -9,9 +9,6 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
-namespace node {
-class PointCloud;
-}
 
 /**
  * PointCloudConfig message. Carries point cloud output settings.
@@ -33,8 +30,6 @@ class PointCloudConfig : public Buffer {
     };
 
    private:
-    friend class node::PointCloud;
-
     CoordinateSystemType coordSystemType = CoordinateSystemType::DEFAULT;
     CameraBoardSocket targetCameraSocket = CameraBoardSocket::AUTO;
     HousingCoordinateSystem targetHousingCS = HousingCoordinateSystem::AUTO;

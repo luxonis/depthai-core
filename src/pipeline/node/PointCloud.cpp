@@ -489,21 +489,11 @@ void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS) {
 }
 
 void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation) {
-    spdlog::warn(
-        "PointCloud::setTargetCoordinateSystem(CameraBoardSocket, bool) is deprecated. "
-        "Use PointCloud::setTargetCoordinateSystem(CameraBoardSocket) instead.");
-    initialConfig->coordSystemType = PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET;
-    initialConfig->targetCameraSocket = targetCamera;
-    initialConfig->useSpecTranslation = useSpecTranslation;
+    initialConfig->setTargetCoordinateSystem(targetCamera, useSpecTranslation);
 }
 
 void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation) {
-    spdlog::warn(
-        "PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem, bool) is deprecated. "
-        "Use PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem) instead.");
-    initialConfig->coordSystemType = PointCloudConfig::CoordinateSystemType::HOUSING;
-    initialConfig->targetHousingCS = housingCS;
-    initialConfig->useSpecTranslation = useSpecTranslation;
+    initialConfig->setTargetCoordinateSystem(housingCS, useSpecTranslation);
 }
 
 bool PointCloud::hasTransformationChanged(const ImgFrame& frame) {
