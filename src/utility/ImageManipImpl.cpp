@@ -42,6 +42,7 @@ inline bool isSingleChannel(const dai::ImgFrame::Type type) {
            || type == dai::ImgFrame::Type::RAW32;
 }
 
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
 static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
     if(bpp == 1) {
         switch(channels) {
@@ -68,6 +69,11 @@ static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
     }
     throw std::invalid_argument(fmt::format("Unsupported combination of bpp {} and channels {}", bpp, channels));
 }
+#else
+static int getCvMatTypeFrom(uint32_t bpp, uint32_t channels) {
+    throw std::runtime_error("Function getCvMatTypeFrom requires OpenCV support");
+}
+#endif
 
 void transformOpenCV(const uint8_t* src,
                      uint8_t* dst,
