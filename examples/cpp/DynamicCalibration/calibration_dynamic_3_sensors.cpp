@@ -30,14 +30,6 @@ void printCalibrationResult(const std::shared_ptr<dai::DynamicCalibrationResult>
     std::cout << std::setprecision(3) << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px\n";
     std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px\n";
 
-    if(q.depthErrorDifference.size() >= 4) {
-        std::cout << std::setprecision(2) << "Theoretical Depth Error Difference "
-                  << "@1m:" << q.depthErrorDifference[0] << "%, "
-                  << "2m:" << q.depthErrorDifference[1] << "%, "
-                  << "5m:" << q.depthErrorDifference[2] << "%, "
-                  << "10m:" << q.depthErrorDifference[3] << "%\n";
-    }
-
     for(const auto& [socketPair, rotationDelta] : q.pairwiseRotationDifference) {
         std::cout << std::setprecision(3) << "Pairwise rotation difference " << socketPair.first << " -> " << socketPair.second << ": [" << rotationDelta[0]
                   << ", " << rotationDelta[1] << ", " << rotationDelta[2] << "]\n";
