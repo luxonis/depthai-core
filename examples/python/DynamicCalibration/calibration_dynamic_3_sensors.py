@@ -29,15 +29,6 @@ def print_calibration_result(result: dai.DynamicCalibrationResult) -> None:
     print(f"Mean Sampson error achievable = {quality.sampsonErrorNew:.3f} px")
     print(f"Mean Sampson error current    = {quality.sampsonErrorCurrent:.3f} px")
 
-    if len(quality.depthErrorDifference) >= 4:
-        print(
-            "Theoretical Depth Error Difference "
-            f"@1m:{quality.depthErrorDifference[0]:.2f}%, "
-            f"2m:{quality.depthErrorDifference[1]:.2f}%, "
-            f"5m:{quality.depthErrorDifference[2]:.2f}%, "
-            f"10m:{quality.depthErrorDifference[3]:.2f}%"
-        )
-
     for socket_pair, rotation_delta in quality.pairwiseRotationDifference.items():
         socket_a, socket_b = socket_pair
         formatted_delta = ", ".join(f"{value:.3f}" for value in rotation_delta)
