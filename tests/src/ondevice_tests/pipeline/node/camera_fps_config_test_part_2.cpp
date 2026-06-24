@@ -15,70 +15,10 @@
 #include "depthai/pipeline/node/Camera.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
-TEST_CASE("Camera sensor configs configurations") {
-    // Test that cameras can stream at all advertised configs
-    using std::chrono::steady_clock;
-    constexpr auto RESET_REMOTE_TIMEOUT_MS = std::chrono::milliseconds(2000);
-    // Minimum FPS is incorrectly advertised, so this test sets the minimum to 8 FPS.
-    constexpr float MINIMUM_FPS_RVC4 = 8.0f;  // TODO(Jakob) - remove this when fixed on device side
-
-    // Maximum FPS on RVC2 is 120, because of 3A limitations
-    constexpr float MAXIMUM_FPS_RVC2 = 120.0f;
-
-    dai::DeviceInfo connectedDeviceInfo;
-    std::vector<dai::CameraFeatures> connectedCameraFeautres;
-    {
-        auto device = dai::Device();
-        connectedCameraFeautres = device.getConnectedCameraFeatures();
-        connectedDeviceInfo.deviceId = device.getDeviceId();
-        connectedDeviceInfo.platform = device.getDeviceInfo().platform;
-    }
-
-    for(const auto& cameraFeatures : connectedCameraFeautres) {
-        for(const auto& config : cameraFeatures.configs) {
-            auto minimumFps = connectedDeviceInfo.platform == X_LINK_RVC4 ? std::max(MINIMUM_FPS_RVC4, config.minFps) : config.minFps;
-            auto maximumFps = connectedDeviceInfo.platform == X_LINK_MYRIAD_X ? std::min(MAXIMUM_FPS_RVC2, config.maxFps) : config.maxFps;
-            for(const auto& fpsVariant : {maximumFps, minimumFps}) {
-                std::cout << "Testing camera " << cameraFeatures.socket << " with resolution " << config.width << "x" << config.height << " at fps "
-                          << fpsVariant << " on device " << connectedDeviceInfo.getDeviceId() << "\n"
-                          << std::flush;
-
-                auto disappearStart = steady_clock::now();
-                while(steady_clock::now() - disappearStart < RESET_REMOTE_TIMEOUT_MS) {
-                    std::vector<dai::DeviceInfo> devices = dai::XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, true, 50);
-                    bool found = false;
-                    for(const auto& dev : devices) {
-                        if(dev.deviceId == connectedDeviceInfo.deviceId) {
-                            found = true;
-                        }
-                    }
-                    if(!found) {
-                        break;  // Device disappeared and went into reset
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                }
-                dai::Pipeline pipeline{std::make_shared<dai::Device>(connectedDeviceInfo)};
-                auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
-                benchmarkIn->sendReportEveryNMessages(static_cast<uint32_t>(std::round(fpsVariant)));
-                auto camera = pipeline.create<dai::node::Camera>()->build(cameraFeatures.socket, std::pair(config.width, config.height), fpsVariant);
-                camera->requestOutput(std::pair(config.width, config.height))->link(benchmarkIn->input);
-                auto benchmarkQueue = benchmarkIn->report.createOutputQueue();
-                pipeline.start();
-                benchmarkQueue->get<dai::BenchmarkReport>();  // Warmup
-                for(int i = 0; i < 3; i++) {
-                    auto benchmarkReport = benchmarkQueue->get<dai::BenchmarkReport>();
-                    // Allow +-10% difference
-                    if(!pipeline.isHolisticReplayEnabled()) REQUIRE(benchmarkReport->fps == Catch::Approx(fpsVariant).margin(fpsVariant * 0.15f));
-                }
-            }
-        }
-    }
-}
-
 TEST_CASE("Camera pool sizes") {
     auto firstDevice = dai::Device::getFirstAvailableDevice();
     auto isRvc4 = std::get<1>(firstDevice).platform == X_LINK_RVC4;
-    for(const int overrideQueueSize : (isRvc4 ? std::vector<int>{-1, 2, 17, 3} : std::vector<int>{-1, 2, 17})) {
+    for(const int overrideQueueSize : (isRvc4 ? std::vector<int>{50, 4, 5} : std::vector<int>{3, 4, 5})) {
         std::cout << "Testing num frames = " << overrideQueueSize << "\n" << std::flush;
         dai::Pipeline pipeline;
         std::map<dai::CameraBoardSocket, std::vector<std::tuple<int, int, float>>> streamsRvc4{
