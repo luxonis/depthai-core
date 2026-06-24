@@ -276,6 +276,7 @@ set(TARGET_CORE_SOURCES
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
+    src/device/HealthCheck.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
     src/device/Platform.cpp

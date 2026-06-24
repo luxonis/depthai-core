@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <system_error>
 #include <thread>
+#include <utility>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -316,7 +317,6 @@ std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
 
 // First tries to find UNBOOTED device with deviceId, then BOOTLOADER device with deviceId
 std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(const std::string& deviceId) {
-    std::vector<DeviceInfo> availableDevices;
     auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
     bool found;
     DeviceInfo dev;
@@ -325,6 +325,37 @@ std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(const std::string& device
         if(found) return {true, dev};
     }
     return {false, DeviceInfo()};
+}
+
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByIdOrName(const std::string& deviceIdOrName) {
+    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
+    DeviceInfo dev(deviceIdOrName);
+    for(const auto& state : states) {
+        dev.state = state;
+        deviceDesc_t desc = {};
+        auto ret = XLinkFindFirstSuitableDevice(dev.getXLinkDeviceDesc(), &desc);
+        if(ret == X_LINK_SUCCESS) {
+            if(desc.status == X_LINK_SUCCESS) {
+                return {true, DeviceInfo(desc)};
+            } else {
+                logger::warn("skipping {} device having name \"{}\" (status: {})", XLinkDeviceStateToStr(desc.state), desc.name, XLinkErrorToStr(desc.status));
+            }
+        }
+    }
+    return {false, DeviceInfo()};
+}
+
+std::optional<bool> DeviceBase::isInSetupMode(const std::string& deviceIdOrName) {
+    bool found = false;
+    DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = getDeviceByIdOrName(deviceIdOrName);
+    if(!found) {
+        return std::nullopt;
+    }
+
+    logger::debug("isInSetupMode() resolved device info: {}", deviceInfo.toString());
+
+    return deviceInfo.state == X_LINK_GATE_SETUP;
 }
 
 std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version) {
@@ -337,6 +368,10 @@ std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(const Config& conf
 
 ProfilingData DeviceBase::getGlobalProfilingData() {
     return XLinkConnection::getGlobalProfilingData();
+}
+
+HealthCheckMetrics DeviceBase::performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config) {
+    return DeviceHealthCheck::run(devInfo, config);
 }
 
 /*

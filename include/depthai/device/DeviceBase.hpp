@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <thread>
 #include <tuple>
@@ -22,6 +23,7 @@
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "depthai/device/HealthCheck.hpp"
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
@@ -132,6 +134,22 @@ class DeviceBase {
     static std::tuple<bool, DeviceInfo> getDeviceById(const std::string& deviceId);
 
     /**
+     * Resolves a device from an IP address, name, or device ID without connecting to it.
+     * @param deviceIdOrName IP address, name, or device ID of the target device
+     * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     */
+    static std::tuple<bool, DeviceInfo> getDeviceByIdOrName(const std::string& deviceIdOrName);
+
+    /**
+     * Resolves a device from an IP address, name, or device ID without connecting to it
+     * and returns whether the resolved device is in setup mode.
+     * @param deviceIdOrName IP address, name, or device ID of the target device
+     * @returns std::nullopt if the device could not be resolved, otherwise true if the resolved
+     * device is in X_LINK_GATE_SETUP state and false otherwise
+     */
+    static std::optional<bool> isInSetupMode(const std::string& deviceIdOrName);
+
+    /**
      * Returns all available devices
      * @returns Vector of available devices
      */
@@ -166,6 +184,19 @@ class DeviceBase {
      * @returns ProfilingData from all devices
      */
     static ProfilingData getGlobalProfilingData();
+
+    /**
+     * Performs a device health check.
+     *
+     * The function connects to the supplied device, gathers device
+     * properties, and runs a short diagnostic pipeline for the checks enabled
+     * in the config.
+     *
+     * @param devInfo DeviceInfo which specifies which device to check
+     * @param config Health-check steps to execute
+     * @returns HealthCheckMetrics with per-check pass/fail status and measured values
+     */
+    static HealthCheckMetrics performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
