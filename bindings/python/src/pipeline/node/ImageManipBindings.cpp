@@ -9,8 +9,7 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
     using namespace dai::node;
 
     // Node and Properties declare upfront
-    py::class_<ImageManipProperties, std::shared_ptr<ImageManipProperties>> imageManipProperties(
-        m, "ImageManipProperties", DOC(dai, ImageManipProperties));
+    py::class_<ImageManipProperties, std::shared_ptr<ImageManipProperties>> imageManipProperties(m, "ImageManipProperties", DOC(dai, ImageManipProperties));
     auto imageManip = ADD_NODE(ImageManip);
 
     ///////////////////////////////////////////////////////////////////////
@@ -32,7 +31,10 @@ void bind_imagemanip(pybind11::module& m, void* pCallstack) {
         .value("LOW_POWER", ImageManipProperties::PerformanceMode::LOW_POWER);
 
     py::enum_<ImageManipProperties::Backend> backend(imageManipProperties, "Backend");
-    backend.value("HW", ImageManipProperties::Backend::HW).value("CPU", ImageManipProperties::Backend::CPU).value("GPU", ImageManipProperties::Backend::GPU).value("AUTO", ImageManipProperties::Backend::AUTO);
+    backend.value("HW", ImageManipProperties::Backend::HW)
+        .value("CPU", ImageManipProperties::Backend::CPU)
+        .value("GPU", ImageManipProperties::Backend::GPU)
+        .value("AUTO", ImageManipProperties::Backend::AUTO);
 
     imageManipProperties.def_readwrite("initialConfig", &ImageManipProperties::initialConfig)
         .def_readwrite("outputFrameSize", &ImageManipProperties::outputFrameSize)
