@@ -34,11 +34,12 @@ class DynamicCalibrationControl : public Buffer {
      * are performed on the device.
      */
     enum class PerformanceMode : int {
-        DEFAULT,               ///< Default behavior (balance quality and speed)
-        STATIC_SCENERY,        ///< Optimized for scenes with little or no motion
-        OPTIMIZE_SPEED,        ///< Favor faster processing at possible quality trade-off
-        OPTIMIZE_PERFORMANCE,  ///< Favor accuracy even at reduced speed
-        SKIP_CHECKS            ///< Skip quality checks; force calibration actions
+        DEFAULT = 0,               ///< Default behavior (balance quality and speed)
+        STATIC_SCENERY = 1,        ///< Optimized for scenes with little or no motion
+        OPTIMIZE_SPEED = 2,        ///< Favor faster processing at possible quality trade-off
+        OPTIMIZE_PERFORMANCE = 3,  ///< Favor accuracy even at reduced speed
+        SKIP_CHECKS = 4,           ///< Skip quality checks; force calibration actions
+        RELAXED_COVERAGE = 5       ///< Allow lower coverage requirements before calibration actions
     };
 
     /**

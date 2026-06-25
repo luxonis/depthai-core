@@ -32,6 +32,7 @@ def test_performance_mode_enum_all_values():
         DCC.PerformanceMode.OPTIMIZE_SPEED,
         DCC.PerformanceMode.OPTIMIZE_PERFORMANCE,
         DCC.PerformanceMode.SKIP_CHECKS,
+        DCC.PerformanceMode.RELAXED_COVERAGE,
     ]
 
     assert len(set(modes)) == len(modes)  # All values unique
@@ -132,6 +133,9 @@ def test_command_set_performance_mode_rw_and_owner_init():
     cmd.performanceMode = DCC.PerformanceMode.OPTIMIZE_PERFORMANCE
     assert cmd.performanceMode == DCC.PerformanceMode.OPTIMIZE_PERFORMANCE
 
+    cmd.performanceMode = DCC.PerformanceMode.RELAXED_COVERAGE
+    assert cmd.performanceMode == DCC.PerformanceMode.RELAXED_COVERAGE
+
     ctrl = DCC(cmd)
     assert isinstance(ctrl, DCC)
 
@@ -200,6 +204,7 @@ def test_static_factory_set_performance_mode_all_modes():
         DCC.PerformanceMode.OPTIMIZE_SPEED,
         DCC.PerformanceMode.OPTIMIZE_PERFORMANCE,
         DCC.PerformanceMode.SKIP_CHECKS,
+        DCC.PerformanceMode.RELAXED_COVERAGE,
     ]:
         c = DCC.setPerformanceMode(mode)
         assert isinstance(c, DCC)

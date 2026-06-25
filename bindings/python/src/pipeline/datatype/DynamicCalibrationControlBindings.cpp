@@ -23,6 +23,7 @@ void bind_dynamic_calibration_control(py::module& m, void* pCallstack) {
         .value("OPTIMIZE_SPEED", DCC::PerformanceMode::OPTIMIZE_SPEED)
         .value("OPTIMIZE_PERFORMANCE", DCC::PerformanceMode::OPTIMIZE_PERFORMANCE)
         .value("SKIP_CHECKS", DCC::PerformanceMode::SKIP_CHECKS)
+        .value("RELAXED_COVERAGE", DCC::PerformanceMode::RELAXED_COVERAGE)
         .export_values();
 
     // Aliases for readability
