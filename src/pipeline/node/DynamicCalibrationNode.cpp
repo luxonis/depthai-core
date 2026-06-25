@@ -177,6 +177,8 @@ dcl::PerformanceMode DclUtils::daiPerformanceModeToDclPerformanceMode(const dai:
             return dcl::PerformanceMode::OPTIMIZE_PERFORMANCE;
         case DynamicCalibrationControl::PerformanceMode::SKIP_CHECKS:
             return dcl::PerformanceMode::SKIP_CHECKS;
+        case DynamicCalibrationControl::PerformanceMode::RELAXED_COVERAGE:
+            return dcl::PerformanceMode::RELAXED_COVERAGE;
         default:
             throw std::invalid_argument("Unknown PerformanceMode");
     }
