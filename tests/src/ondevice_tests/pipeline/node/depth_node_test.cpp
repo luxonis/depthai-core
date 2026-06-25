@@ -1,7 +1,3 @@
-/**
- * @file depth_node_test.cpp
- * @brief On-device tests for `dai::node::Depth` (algorithms, lazy wiring, user camera coexistence).
- */
 #include <catch2/catch_all.hpp>
 #include <chrono>
 #include <cmath>

@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
 """
-Stereo-style demo using the unified dai.node.Depth group (AUTO: NeuralDepth on RVC4, ToF on RVC2 with a ToF sensor,
-otherwise StereoDepth on RVC2).
-
-- On RVC4 the NeuralDepth zoo model is fixed inside the ``Depth`` wiring path (not user-configurable).
-- Create host queues on ``depthNode.depth`` / ``confidence`` **before** ``pipeline.build()`` (the pipeline
-  rejects new queues after build). The first ``depth``/``confidence`` access wires the chosen backend (and stereo cameras when that backend needs them).
-- For a non-``AUTO`` backend, call ``depthNode.build(dai.node.Depth.Algorithm.TOF)`` (or another algorithm)
-  before first ``depth`` / ``confidence`` access. Every backend exposes a confidence-like stream:
-  ``confidence()`` returns StereoDepth/NAS confidence, NeuralDepth confidence, GPUStereo confidence map, or ToF amplitude.
-- Depth is colorized with adaptive log-scale percentile clipping (same helper as ``tof_align.py``).
-- Use ``--ip ADDR`` to connect over Ethernet (e.g. PoE) instead of auto-picking the first USB device.
+Unified Depth node demo (AUTO backend: NeuralDepth on RVC4, ToF or StereoDepth elsewhere).
 """
 
 import argparse

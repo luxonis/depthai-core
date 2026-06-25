@@ -1,9 +1,3 @@
-/**
- * @file Depth.cpp
- * @brief Implementation of the composite Depth node: algorithm selection, lazy backend wiring,
- *        stereo camera provisioning, and unified depth/confidence outputs.
- */
-
 #include "depthai/pipeline/node/Depth.hpp"
 
 #include <algorithm>
@@ -38,21 +32,8 @@ constexpr float DEFAULT_TARGET_FPS = 30.f;
 constexpr float SELECTION_FPS_SAFETY_MARGIN = 0.9f;
 constexpr float NEURAL_TENSOR_COVER_SCALE = 1.4142135f;
 
-/**
- * Unified backend-profile catalog.
- *
- * One row per (algorithm, sub-profile) describes everything ``Depth`` needs to score a candidate:
- * the user-visible config (a ``DeviceModelZoo`` for ``NEURAL``, a ``StereoDepth::PresetMode``
- * for ``STEREO``, or ``std::monostate`` for backends with no selectable profile), the maximum
- * input resolution, and the maximum sustained FPS.
- *
- * For ``NEURAL`` rows ``maxSize`` is the model's native tensor size: the resolution
- * check uses a tensor-cover band (resize without aggressive up/down-scaling) rather than a plain
- * cap. Every other algorithm uses a simple ``user <= max`` cap.
- *
- * Rows are listed in selection priority order (NEURAL → NEURAL_ASSISTED_STEREO → STEREO →
- * GPU_STEREO); within a single algorithm rows are ordered best-quality first.
- */
+// Backend profiles for AUTO selection: config, max resolution, and max FPS per algorithm.
+// Rows are in priority order (NEURAL, NEURAL_ASSISTED_STEREO, STEREO, GPU_STEREO).
 struct BackendProfile {
     Depth::Algorithm algorithm;
     Depth::Config config;
@@ -186,7 +167,6 @@ const char* configName(const Depth::Config& config) {
     return "UNKNOWN";
 }
 
-/** Validate an explicit (algorithm, config) pair against the algorithm's expected Config type and device support. */
 void validateExplicitConfig(Depth::Algorithm algorithm,
                             const Depth::Config& config,
                             const std::vector<Depth::Algorithm>& supportedAlgorithms,
@@ -228,10 +208,7 @@ StereoDepth::PresetMode stereoPresetFromConfig(const Depth::Config& config) {
     return StereoDepth::PresetMode::DEFAULT;
 }
 
-/**
- * Per-algorithm resolution semantics: NEURAL uses a tensor-cover band (±sqrt(2)) around the
- * model's native size; everything else is a simple ``user <= max`` cap.
- */
+// NEURAL uses a tensor-cover band around the model size; other algorithms use a simple max cap.
 bool resolutionFits(const BackendProfile& profile, std::pair<uint32_t, uint32_t> resolution) {
     const auto [maxWidth, maxHeight] = profile.maxSize;
     if(profile.algorithm == Depth::Algorithm::NEURAL) {
@@ -261,7 +238,6 @@ std::optional<BackendProfile> findBackendProfile(Predicate&& predicate) {
     return std::nullopt;
 }
 
-/** True when @p profile would accept this (algorithm, model, fps, resolution) request. */
 bool profileMatches(const BackendProfile& profile,
                     const std::vector<Depth::Algorithm>& supportedAlgorithms,
                     const std::vector<DeviceModelZoo>& modelFilter,
@@ -282,12 +258,7 @@ bool profileMatches(const BackendProfile& profile,
     return true;
 }
 
-/**
- * Among catalog rows that accept @p resolution (and pass algorithm/model gates), pick the one with
- * the highest ``maxFps``. Used when the priority scan finds no row meeting the requested FPS, so
- * the algorithm able to serve the resolution at the highest available FPS is preferred over the
- * generic StereoDepth last-resort.
- */
+// Pick the highest-FPS profile that fits the resolution when the priority scan finds no exact match.
 std::optional<BackendProfile> pickHighestFpsForResolution(std::pair<uint32_t, uint32_t> resolution,
                                                           const std::vector<Depth::Algorithm>& supportedAlgorithms,
                                                           const std::vector<DeviceModelZoo>& modelFilter) {
@@ -303,7 +274,6 @@ std::optional<BackendProfile> pickHighestFpsForResolution(std::pair<uint32_t, ui
     return best;
 }
 
-/** NeuralDepth model lookup for the explicit-algorithm path (skips non-NEURAL rows). */
 std::optional<DeviceModelZoo> pickNeuralModel(float requiredFps,
                                               std::optional<std::pair<uint32_t, uint32_t>> resolution,
                                               const std::vector<DeviceModelZoo>& modelFilter) {
@@ -317,7 +287,6 @@ std::optional<DeviceModelZoo> pickNeuralModel(float requiredFps,
     return std::nullopt;
 }
 
-/** StereoDepth preset lookup for the explicit-algorithm path (skips non-STEREO rows). */
 std::optional<StereoDepth::PresetMode> pickStereoPreset(float requiredFps, std::optional<std::pair<uint32_t, uint32_t>> resolution) {
     const auto picked = findBackendProfile([&](const BackendProfile& profile) {
         return profile.algorithm == Depth::Algorithm::STEREO && profile.maxFps >= requiredFps
@@ -347,7 +316,6 @@ float targetFpsWithDefault(float targetFps) {
     return targetFps > 0.f ? targetFps : DEFAULT_TARGET_FPS;
 }
 
-/** Locate existing Camera nodes for @p pair.left / @p pair.right sockets, if already in @p pipeline. */
 std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(const Pipeline& pipeline, const StereoPair& pair) {
     std::shared_ptr<Camera> left;
     std::shared_ptr<Camera> right;
@@ -366,10 +334,6 @@ std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(c
     return {left, right};
 }
 
-/**
- * When both stereo cameras exist before Depth wiring, use their requested output size if the user
- * already requested camera outputs. Otherwise fall back to the cameras' configured sensor size.
- */
 std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromExistingCameras(const std::shared_ptr<Camera>& left, const std::shared_ptr<Camera>& right) {
     if(!left || !right) {
         return std::nullopt;
@@ -382,12 +346,6 @@ std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromExistingCameras(const
     return std::nullopt;
 }
 
-/**
- * Sensor native max for the stereo pair sockets, queried directly from the device when no
- * upstream ``Camera`` nodes are present and the user has not provided a ``stereoSize`` override.
- * Returns the smaller of ``left`` / ``right`` per axis when both sockets advertise features;
- * ``std::nullopt`` if neither socket is advertised.
- */
 std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromDeviceFeatures(const std::shared_ptr<Device>& device, const StereoPair& pair) {
     const auto features = device->getConnectedCameraFeatures();
     auto findSocket = [&](CameraBoardSocket socket) -> std::optional<std::pair<uint32_t, uint32_t>> {
@@ -406,14 +364,12 @@ std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromDeviceFeatures(const 
     return std::make_pair(std::min(leftSize->first, rightSize->first), std::min(leftSize->second, rightSize->second));
 }
 
-/** Returns the device's primary stereo pair; fails if none are configured. */
 StereoPair requireFirstStereoPair(const std::shared_ptr<Device>& device) {
     const auto pairs = device->getStereoPairs();
     DAI_CHECK_V(!pairs.empty(), "Device has no stereo camera pair for Depth node.");
     return pairs[0];
 }
 
-/** True if any connected camera advertises CameraSensorType::TOF. */
 bool cameraFeaturesIncludeTof(const std::vector<dai::CameraFeatures>& features) {
     for(const auto& cf : features) {
         for(const auto sensorType : cf.supportedTypes) {
