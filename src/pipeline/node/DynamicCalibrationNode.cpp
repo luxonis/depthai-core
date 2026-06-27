@@ -10,6 +10,7 @@
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/log/LogLevel.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationControl.hpp"
 #include "depthai/pipeline/datatype/DynamicCalibrationResults.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -128,6 +129,7 @@ void DynamicCalibration::buildInternal() {
     logger = pimpl->logger;
     sync->out.link(syncInput);
     sync->setRunOnHost(true);
+    sync->setLogLevel(dai::LogLevel::ERR);
 }
 
 void DynamicCalibration::postBuildStage() {

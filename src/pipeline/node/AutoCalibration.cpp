@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/AutoCalibration.hpp"
+#include "depthai/log/LogLevel.hpp"
 
 #include <pipeline/ThreadedNodeImpl.hpp>
 #include <pipeline/datatype/MessageGroup.hpp>
@@ -14,6 +15,7 @@ constexpr int MAX_FAILS_PER_RECALIBRATION_DEFAULT = 5;
 constexpr int GATE_FPS_DEFAULT = 5;
 constexpr int BYTES_PER_SECOND_LIMIT_DEFAULT = GATE_FPS_DEFAULT * 1280 * 800 * 2;
 constexpr int PACKET_SIZE_DEFAULT = 100000;
+constexpr auto SYNC_WAIT_TIMEOUT = std::chrono::seconds(10);
 
 bool areLensesWide(const std::shared_ptr<Device>& device) {
     auto handler = device->getCalibration();
@@ -112,6 +114,7 @@ std::shared_ptr<AutoCalibration> AutoCalibration::build(const std::shared_ptr<Ca
     }
 
     sync->setRunOnHost(false);
+    sync->setLogLevel(dai::LogLevel::ERR);
     gate->setRunOnHost(false);
     auto outputCameraLeft = cameraLeft->requestIspOutput();
     auto outputCameraRight = cameraRight->requestIspOutput();
@@ -157,15 +160,22 @@ void AutoCalibration::postBuildStage() {
     xlinkBridge->xLinkOut->input.setBlocking(false);
 }
 
-void AutoCalibration::loadData(unsigned int numImages) {
+bool AutoCalibration::loadData(unsigned int numImages) {
     gateControlQueue.send(dai::GateControl::openGate(-1, gate->initialConfig->fps));
     coverageQueue.tryGetAll<dai::CoverageData>();
     for(unsigned int i = 0; i < numImages; i++) {
         dynamicCalibrationCommandQueue.send(DCC::loadImage());
-        coverageQueue.get<dai::CoverageData>();  // wait until the data are loaded
+        bool timedout = false;
+        auto coverage = coverageQueue.get<dai::CoverageData>(SYNC_WAIT_TIMEOUT, timedout);
+        if(timedout || !coverage) {
+            logger->warn("AutoCalibration stalled: sync inputs are not arriving");
+            gateControlQueue.send(dai::GateControl::closeGate());
+            return false;
+        }
     }
     gateControlQueue.send(dai::GateControl::closeGate());
     dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
+    return true;
 }
 
 std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration) {
@@ -192,8 +202,19 @@ std::shared_ptr<dai::CalibrationHandler> AutoCalibration::getNewCalibration(unsi
         dynamicCalibrationCommandQueue.send(DCC::startCalibration());
         for(unsigned int numLoadedImages = 0; numLoadedImages < initialConfig->maxImagesPerRecalibration; numLoadedImages++) {
             if(!mainLoop()) return nullptr;
-            auto dynCalibrationResult = dynamicCalibrationQueue.get<dai::DynamicCalibrationResult>();
-            coverage = coverageQueue.get<dai::CoverageData>();
+            bool timedout = false;
+            auto dynCalibrationResult = dynamicCalibrationQueue.get<dai::DynamicCalibrationResult>(SYNC_WAIT_TIMEOUT, timedout);
+            if(timedout || !dynCalibrationResult) {
+                logger->warn("AutoCalibration stalled: sync inputs are not arriving");
+                gateControlQueue.send(dai::GateControl::closeGate());
+                return nullptr;
+            }
+            coverage = coverageQueue.get<dai::CoverageData>(SYNC_WAIT_TIMEOUT, timedout);
+            if(timedout || !coverage) {
+                logger->warn("AutoCalibration stalled: sync inputs are not arriving");
+                gateControlQueue.send(dai::GateControl::closeGate());
+                return nullptr;
+            }
             logger->debug("=== AutoCalibration: MID recalib {}/{} img {}/{} noData info=\"{}\" cov={:.2f} data={:.2f} ===",
                           i + 1,
                           maxNumIteration,
@@ -277,7 +298,9 @@ bool AutoCalibration::updateCalibrationProcess(std::shared_ptr<dai::CalibrationH
             }
         } else {
             logger->info("=== AutoCalibration: loading validation data ({}) ---", initialConfig->validationSetSize);
-            loadData(static_cast<unsigned int>(initialConfig->validationSetSize));
+            if(!loadData(static_cast<unsigned int>(initialConfig->validationSetSize))) {
+                return false;
+            }
             auto metrics = getMetrics(calibration);
             report.dataConfidence = metrics->dataConfidence;
             report.calibrationConfidence = metrics->calibrationConfidence;
@@ -373,6 +396,10 @@ bool AutoCalibration::validateIncomingData() {
                 return false;
             }
             return true;
+        }
+        if(timedout) {
+            logger->warn("AutoCalibration stalled: sync inputs are not arriving");
+            return false;
         }
     }
     return false;
