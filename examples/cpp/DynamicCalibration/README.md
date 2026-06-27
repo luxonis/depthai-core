@@ -23,16 +23,20 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
   - `coveragePerCellA/B` — deprecated aliases for the first two connected sensors
 
 - **`DynamicCalibrationResult`** (`calibrationOutput`)
-  - `newCalibration` — `CalibrationHandler` with updated parameters
-  - `calibrationDifference` — quality deltas:
-    - `rotationChange[3]` — extrinsic angle deltas (deg)
+  - `calibrationData->newCalibration` — `CalibrationHandler` with updated parameters
+  - `calibrationData->calibrationDifference` — quality deltas:
+    - `pairwiseRotationDifference` — per-sensor-pair rotation deltas keyed by camera socket pairs
     - `sampsonErrorCurrent`, `sampsonErrorNew` — reprojection proxy (px)
-    - `depthErrorDifference[4]` — theoretical depth error change at 1/2/5/10 m (%)
   - `info` — human-readable status (e.g., "success")
 
-- **`CalibrationQuality`** (`qualityOutput`)
+- **`CalibrationQuality`** (`qualityOutput`, legacy)
   - `qualityData` (optional) — same fields as `calibrationDifference`
   - `info` — human-readable status
+
+> `CalibrationQuality` is a legacy command: the node still accepts it for compatibility, but current runtime implementations return an empty result and log a deprecation warning.
+> The same metric fields are available on `DynamicCalibrationResult::calibrationData->calibrationDifference`, returned on `calibrationOutput` after `Calibrate` or `StartCalibration`.
+> Prefer `pairwiseRotationDifference` in new code. If older code used `rotationChange`, migrate to `pairwiseRotationDifference` by reading the per-sensor-pair deltas directly instead of relying on a single aggregate vector. `rotationChange` is a deprecated compatibility field and should be treated as a candidate for future removal.
+> `depthErrorDifference[4]` should also be treated as deprecated here and should not be relied on in new code.
 
 ---
 
@@ -45,14 +49,14 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
    - `DynamicCalibration.left/right`
    - `StereoDepth.left/right` (for live disparity view)
 2. Start the pipeline, give AE a moment to settle.
-3. **Start calibration** by sending `DynamicCalibrationControl::Command::StartCalibration{}`.
+3. **Start calibration** by sending `DynamicCalibrationControl::Commands::StartCalibration{}`.
 4. In the loop:
    - Show `left`, `right`, and `disparity`.
    - Poll `coverageOutput` for progress.
    - Poll `calibrationOutput` for a result.
 5. When a result arrives:
-   - **Apply** it by sending `DynamicCalibrationControl::Command::ApplyCalibration{newCalibration}` on the control queue.
-   - Print quality deltas.
+   - **Apply** it by sending `DynamicCalibrationControl::Commands::ApplyCalibration{result.calibrationData->newCalibration}` on the control queue.
+   - Print pairwise rotation deltas and other quality metrics.
 
 ---
 
@@ -72,17 +76,25 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 
 ---
 
-## 2) Calibration **quality check** (no applying)
+## 2) Calibration **quality check** (legacy)
 
 **File idea:** `calibration_quality_dynamic.cpp`
 
 **Flow:**
 1. Same camera / StereoDepth / DynamicCalibration setup as above.
 2. In the loop:
-   - Send **coverage** request (`DynamicCalibrationControl::Command::LoadImage{}`) and read `coverageOutput`.
-   - Send **quality** request (`DynamicCalibrationControl::Command::CalibrationQuality{}`) and read `qualityOutput`.
-3. If `qualityData` is present, print rotation/Sampson/depth-error metrics.
-4. Optionally reset internal sample store (`DynamicCalibrationControl::Command::ResetData{}`).
+   - Send **coverage** request (`DynamicCalibrationControl::Commands::LoadImage{}`) and read `coverageOutput`.
+   - Send **quality** request (`DynamicCalibrationControl::Commands::CalibrationQuality{}`) and read `qualityOutput`.
+3. If `qualityData` is present, print pairwise rotation and Sampson metrics.
+4. Optionally reset internal sample store (`DynamicCalibrationControl::Commands::ResetData{}`).
+
+> This flow is kept only as a legacy reference. New code should prefer the calibration output / load-image flow and avoid relying on `CalibrationQuality`.
+
+**Replace this API with:**
+- Old: `DynamicCalibrationControl::Commands::CalibrationQuality{}`
+- New for one-shot metrics: `DynamicCalibrationControl::Commands::Calibrate{}`
+- New for continuous operation: `DynamicCalibrationControl::Commands::StartCalibration{}`
+- Read metrics from: `DynamicCalibrationResult::calibrationData->calibrationDifference` on `calibrationOutput`
 
 
 ---
@@ -92,18 +104,18 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 **File:** `calibration_integration.cpp`
 
 **What it does:**  
-Runs one loop that periodically checks calibration quality and, if drift is detected, starts calibration and applies the new calibration automatically — while showing `left`, `right`, and a colorized `disparity` preview.
+Runs one loop that periodically refreshes coverage, executes calibration, and applies a new calibration automatically when the returned metrics indicate drift — while showing `left`, `right`, and a colorized `disparity` preview.
 
 **Flow:**
 1. Create mono cameras → request **full-res NV12** (unrectified) → link to `dai::node::DynamicCalibration` and `dai::node::StereoDepth` for live disparity. Read the device’s current calibration as the baseline.
 2. On a fixed interval (e.g., ~3 seconds), send on the control queue:
-   - `DynamicCalibrationControl::Command::LoadImage{}` to compute coverage on the current frames, and
-   - `DynamicCalibrationControl::Command::CalibrationQuality{true}` to request a (forced) quality estimate.
-3. When a **quality** message arrives on `qualityOutput`:
-   - Log status; if `qualityData` is present, you may **reset** the internal data store with `DynamicCalibrationControl::Command::ResetData{}`.
-   - If quality indicates drift (for example, `abs(sampsonErrorNew - sampsonErrorCurrent) > 0.05f`), **start calibration** with `DynamicCalibrationControl::Command::StartCalibration{}`.
-4. When a **calibration** message arrives on `calibrationOutput`:
-   - **Apply** the new `CalibrationHandler` with `DynamicCalibrationControl::Command::ApplyCalibration{result.newCalibration}`, then **reset** data again (`ResetData{}`) to begin monitoring afresh.
+   - `DynamicCalibrationControl::Commands::LoadImage{}` to compute coverage on the current frames, and
+   - `DynamicCalibrationControl::Commands::Calibrate{true}` to compute a new candidate calibration and return metrics on `calibrationOutput`.
+3. When a **calibration** message arrives on `calibrationOutput`:
+   - If `result.calibrationData` is present, inspect `result.calibrationData->calibrationDifference` for the same rotation and Sampson metrics that older code previously read from `CalibrationQuality::qualityData`.
+   - If those metrics indicate drift (for example, `abs(sampsonErrorNew - sampsonErrorCurrent) > 0.05f`), **apply** the new `CalibrationHandler` with `DynamicCalibrationControl::Commands::ApplyCalibration{result.calibrationData->newCalibration}`.
+   - Reset the internal data store with `DynamicCalibrationControl::Commands::ResetData{}` before the next monitoring cycle.
+4. Treat `result.calibrationData->calibrationDifference` as the replacement source for legacy quality metrics, even if you choose not to apply `result.calibrationData->newCalibration`.
 5. Exit on `q` keypress or window close.
 
 **Notes & defaults:**
@@ -113,9 +125,9 @@ Runs one loop that periodically checks calibration quality and, if drift is dete
 **Example console output:**
 ```
 Dynamic calibration status: success
-Successfully evaluated Quality
-Start recalibration process
-Successfully calibrated
+Successfully evaluated metrics from calibration output.
+Pairwise rotation difference CAM_B -> CAM_C = [0.12, -0.08, 0.40] deg
+Applying new calibration
 ```
 ---
 
@@ -124,7 +136,7 @@ Successfully calibrated
 ```
 Mono CAM_B ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibration.left
                   │                             └─────▶ coverageOutput
-                  └───────────▶ StereoDepth.left        calibrationOutput / qualityOutput
+                  └───────────▶ StereoDepth.left        calibrationOutput
 
 Mono CAM_C ──▶ [Camera] ── NV12 (full-res) ──▶ DynamicCalibration.right
                   │
@@ -169,36 +181,41 @@ Run:
 ```bash
 ./calibration_dynamic      # applies new calibration when ready
 ./calibration_dynamic_3_sensors  # calibrates CAM_A + CAM_B + CAM_C
-./calibration_quality_dynamic  # reports metrics; does not apply
-./calibration_integration   # monitors quality, auto-recalibrates, and applies in one loop
+./calibration_quality_dynamic  # legacy quality-check flow
+./calibration_integration   # runs calibration, inspects metrics, and applies when needed
 ```
 
 ---
 
 ## Commands overview (C++)
 
-- `DynamicCalibrationControl::Command::StartCalibration{}`  
+- `DynamicCalibrationControl::Commands::Calibrate{bool force=false, bool keepCameraCenters=true}`  
+  Runs a calibration immediately and returns metrics on `calibrationOutput`.
+
+- `DynamicCalibrationControl::Commands::StartCalibration{}`  
   Begins dynamic calibration collection/solve.
 
-- `DynamicCalibrationControl::Command::ApplyCalibration{CalibrationHandler}`  
+- `DynamicCalibrationControl::Commands::ApplyCalibration{CalibrationHandler}`  
   Applies the provided calibration on-device (affects downstream nodes in-session).
 
-- `DynamicCalibrationControl::Command::LoadImage{}`  
+- `DynamicCalibrationControl::Commands::LoadImage{}`  
   Triggers coverage computation for the latest frames.
 
-- `DynamicCalibrationControl::Command::CalibrationQuality{bool force=false}`  
-  Produces a `CalibrationQuality` message with `qualityData` if estimation is possible.
+- `DynamicCalibrationControl::Commands::CalibrationQuality{bool force=false}`  
+  Legacy command. Produces an empty `CalibrationQuality` result in current runtimes.
 
-- `DynamicCalibrationControl::Command::ResetData{}`  
+If you previously read fields from `CalibrationQuality::qualityData`, read the same fields from `DynamicCalibrationResult::calibrationData->calibrationDifference` after `Calibrate` or `StartCalibration`.
+
+- `DynamicCalibrationControl::Commands::ResetData{}`  
   Clears accumulated samples/coverage state.
 
 ---
 
 ## Metrics glossary
 
-- **Rotation change (deg)** — magnitude of extrinsic delta between current and proposed stereo poses.  
+- **Pairwise rotation difference (deg)** — per-sensor-pair rotation deltas keyed by camera socket pairs. This is the preferred current API field for rotation deltas.  
 - **Sampson error (px)** — proxy for geometric reprojection error; lower is better.  
-- **Depth error difference (%) at 1/2/5/10 m** — theoretical change in relative depth error (negative = improvement).
+- **Rotation change (deg, legacy)** — deprecated aggregate rotation delta kept for compatibility. Prefer `pairwiseRotationDifference`.
 
 ---
 
