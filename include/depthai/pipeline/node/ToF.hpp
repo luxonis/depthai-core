@@ -103,6 +103,7 @@ class ToF : public DeviceNodeGroup {
                                std::optional<float> fps = std::nullopt);
 
     Subnode<ToFBase> tofBase{*this, "tofBase"};
+    void postBuildStage() override;
 
    private:
     std::unique_ptr<Subnode<ImageFilters>> imageFilters = nullptr;

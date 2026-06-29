@@ -5,6 +5,7 @@
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
+#include "pipeline/ThreadedNodeImpl.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
@@ -52,6 +53,25 @@ ToFConfig::Profile presetModeToProfile(ImageFiltersPresetMode presetMode) {
 }
 
 }  // namespace
+
+void ToF::postBuildStage() {
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    auto& logger = pimpl->logger;
+    if(device->getPlatform() == Platform::RVC2) {
+        if(!confidence.getConnections().empty()) {
+            if(logger) logger->warn("Confidence is not supported on this platform and will stream aplitude instead.");
+        }
+    }
+    if(device->getPlatform() == Platform::RVC4) {
+        if(!intensity.getConnections().empty()) {
+            if(logger) logger->warn("Intensity is not supported on this platform and will stream aplitude instead.");
+        }
+        if(!rawDepth.getConnections().empty()) {
+            if(logger) logger->warn("RawDepth is not supported on this platform and will not stream the data.");
+        }
+    }
+#endif
+}
 
 ToF::ToF(const std::shared_ptr<Device>& device)
     : DeviceNodeGroup(device)
