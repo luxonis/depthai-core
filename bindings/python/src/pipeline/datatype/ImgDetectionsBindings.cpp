@@ -119,19 +119,19 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack) {
         .def("__repr__", &ImgDetections::str)
         .def_property(
             "detections",
-            [](ImgDetections& det) { return &det.detections; },
-            [](ImgDetections& det, std::vector<ImgDetection> val) { det.detections = val; },
+            [](ImgDetections& det) -> std::vector<ImgDetection>& { return det.detections; },
+            [](ImgDetections& det, std::vector<ImgDetection>& val) { det.detections = val; },
             DOC(dai, ImgDetectionsT, detections),
             py::return_value_policy::reference_internal)
         .def_property(
             "segmentationMaskWidth",
-            [](ImgDetections& det) { return &det.segmentationMaskWidth; },
+            [](ImgDetections& det) -> size_t& { return det.segmentationMaskWidth; },
             [](ImgDetections& det, size_t val) { det.segmentationMaskWidth = val; },
             DOC(dai, ImgDetectionsT, segmentationMaskWidth),
             py::return_value_policy::reference_internal)
         .def_property(
             "segmentationMaskHeight",
-            [](ImgDetections& det) { return &det.segmentationMaskHeight; },
+            [](ImgDetections& det) -> size_t& { return det.segmentationMaskHeight; },
             [](ImgDetections& det, size_t val) { det.segmentationMaskHeight = val; },
             DOC(dai, ImgDetectionsT, segmentationMaskHeight),
             py::return_value_policy::reference_internal)

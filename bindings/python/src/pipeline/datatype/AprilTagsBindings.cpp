@@ -45,8 +45,7 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
     // Message
     aprilTags.def(py::init<>())
         .def("__repr__", &AprilTags::str)
-        .def_property(
-            "aprilTags", [](AprilTags& det) { return &det.aprilTags; }, [](AprilTags& det, std::vector<AprilTag> val) { det.aprilTags = val; })
+        .def_readwrite("aprilTags", &AprilTags::aprilTags)
         .def("getTimestamp", &AprilTags::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &AprilTags::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getTimestampSystem", &AprilTags::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
