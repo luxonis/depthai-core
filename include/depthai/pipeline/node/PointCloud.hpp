@@ -118,6 +118,7 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
 
    public:
     PointCloud();
+    PointCloud(std::unique_ptr<Properties> props);
     ~PointCloud();
 
     /**
@@ -203,17 +204,25 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /**
      * Set target coordinate system to transform point cloud
      * @param targetCamera Target camera socket
-     * @param useSpecTranslation Use spec translation instead of calibration (default: false)
      */
-    void setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation = false);
+    void setTargetCoordinateSystem(CameraBoardSocket targetCamera);
 
     /**
      * Set target coordinate system to housing coordinate system
      * Point cloud will be transformed to this housing coordinate system
      * @param housingCS Target housing coordinate system
-     * @param useSpecTranslation Whether to use spec translation (default: true)
      */
-    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation = true);
+    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS);
+
+    /**
+     * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
+     */
+    void setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation);
+
+    /**
+     * Deprecated: use setTargetCoordinateSystem(housingCS) instead.
+     */
+    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation);
 
     bool runOnHost() const override;
 

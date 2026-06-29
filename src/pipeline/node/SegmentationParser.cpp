@@ -258,9 +258,7 @@ void SegmentationParser::run() {
         if(properties.labels.size() > 0) {
             outMask->setLabels(properties.labels);
         }
-        outMask->setSequenceNum(sharedNNData->getSequenceNum());
-        outMask->setTimestamp(sharedNNData->getTimestamp());
-        outMask->setTimestampDevice(sharedNNData->getTimestampDevice());
+        outMask->setBufferMetadataFrom(sharedNNData);
         outMask->transformation = sharedNNData->transformation;
         const float invStep = 1.0f / static_cast<float>(inConfig->stepSize);
         outMask->transformation->addScale(invStep, invStep);

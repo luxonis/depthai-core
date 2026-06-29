@@ -499,9 +499,7 @@ void DetectionParser::run() {
         auto tBeforeSend = steady_clock::now();
 
         // Copy over seq and ts
-        outDetections->setSequenceNum(inputData.getSequenceNum());
-        outDetections->setTimestamp(inputData.getTimestamp());
-        outDetections->setTimestampDevice(inputData.getTimestampDevice());
+        outDetections->setBufferMetadataFrom(&inputData);
         outDetections->transformation = inputData.transformation;
 
         {
