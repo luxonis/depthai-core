@@ -92,7 +92,7 @@ DeviceGate::HTTPImpl::HTTPImpl(DeviceInfo deviceInfo) {
     // pimpl->cli->set_connection_timeout(2);
 }
 
-DeviceGate::USBImpl::USBImpl(DeviceInfo deviceInfo, int timeout) : deviceInfo(deviceInfo), timeout(timeout) {}
+DeviceGate::USBImpl::USBImpl(const DeviceInfo& deviceInfo, int timeout) : deviceInfo(deviceInfo), timeout(timeout) {}
 
 bool DeviceGate::isOkay() {
     return impl->isOkay();

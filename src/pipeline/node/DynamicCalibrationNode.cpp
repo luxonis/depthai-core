@@ -57,7 +57,7 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
     const ImgTransformation& imgTransformationA,
     const ImgTransformation& imgTransformationB) {
     // clang-format off
-    std::array<std::array<float, 3>, 3> cameraMatrixA = imgTransformationA.getSourceIntrinsicMatrix();
+    std::array<std::array<float, 3>, 3> cameraMatrixA = imgTransformationA.getIntrinsicMatrix();
     std::shared_ptr<dcl::CameraCalibrationHandle> calibA = DclUtils::createDclCalibration(cameraMatrixA, imgTransformationA.getDistortionCoefficients(),
 	{
 	    {1.0f, 0.0f, 0.0f},
@@ -67,7 +67,7 @@ std::pair<std::shared_ptr<dcl::CameraCalibrationHandle>, std::shared_ptr<dcl::Ca
 	{0.0f, 0.0f, 0.0f},
 	currentCalibration.getDistortionModel(boardSocketA)
     );
-    std::array<std::array<float, 3>, 3> cameraMatrixB = imgTransformationB.getSourceIntrinsicMatrix();
+    std::array<std::array<float, 3>, 3> cameraMatrixB = imgTransformationB.getIntrinsicMatrix();
     std::shared_ptr<dcl::CameraCalibrationHandle> calibB = DclUtils::createDclCalibration(cameraMatrixB,
         imgTransformationB.getDistortionCoefficients(),
 	    currentCalibration.getCameraRotationMatrix(boardSocketA, boardSocketB),
@@ -421,7 +421,7 @@ DynamicCalibration::ErrorCode DynamicCalibration::computeCoverage() {
     return DynamicCalibration::ErrorCode::OK;
 }
 
-DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device> daiDevice) {
+DynamicCalibration::ErrorCode DynamicCalibration::initializePipeline(const std::shared_ptr<dai::Device>& daiDevice) {
     logger->trace("Initializing DynamicCalibration pipeline for device: {}", daiDevice->getDeviceId());
 
     auto inSyncGroup = syncInput.get<dai::MessageGroup>();

@@ -65,6 +65,8 @@ constexpr float getAngleUnitToRadianMultiplier(AngleUnit unit) {
             return 1.0f;
         case AngleUnit::DEGREE:
             return 57.29577951308232f;
+        default:
+            return 1.0f;
     }
 }
 

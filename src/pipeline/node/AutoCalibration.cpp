@@ -15,7 +15,7 @@ constexpr int GATE_FPS_DEFAULT = 5;
 constexpr int BYTES_PER_SECOND_LIMIT_DEFAULT = GATE_FPS_DEFAULT * 1280 * 800 * 2;
 constexpr int PACKET_SIZE_DEFAULT = 100000;
 
-bool areLensesWide(std::shared_ptr<Device> device) {
+bool areLensesWide(const std::shared_ptr<Device>& device) {
     auto handler = device->getCalibration();
     auto eepromData = handler.getEepromData();
     const auto& hardwareConf = eepromData.hardwareConf;
@@ -168,7 +168,7 @@ void AutoCalibration::loadData(unsigned int numImages) {
     dynamicCalibration->syncInput.tryGetAll<dai::MessageGroup>();
 }
 
-std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(std::shared_ptr<dai::CalibrationHandler> calibration) {
+std::shared_ptr<dai::CalibrationMetrics> AutoCalibration::getMetrics(const std::shared_ptr<dai::CalibrationHandler>& calibration) {
     dynamicCalibrationCommandQueue.send(DCC::computeCalibrationMetrics(*calibration));
     return metricsQueue.get<dai::CalibrationMetrics>();
 }

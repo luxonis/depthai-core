@@ -103,7 +103,7 @@ std::string lowercase(std::string value) {
 }
 
 std::filesystem::path defaultTelemetryBaseDir() {
-    return std::filesystem::current_path() / ".cache" / "depthai" / DEFAULT_TELEMETRY_ROOT_DIR;
+    return dai::platform::getDaiCacheDir() / DEFAULT_TELEMETRY_ROOT_DIR;
 }
 
 std::string generateUuidV4() {
@@ -204,6 +204,10 @@ std::filesystem::path tmpIdsPath() {
     return defaultTelemetryBaseDir() / TMP_IDS_FILENAME;
 }
 
+std::filesystem::path tmpIdsLockPath() {
+    return defaultTelemetryBaseDir() / (std::string(TMP_IDS_FILENAME) + ".lock");
+}
+
 TemporaryIdsDocument readTemporaryIdsDocument(const std::filesystem::path& path) {
     TemporaryIdsDocument document;
 
@@ -276,6 +280,11 @@ class TemporaryIdsManager {
    public:
     std::string getHostId() {
         std::lock_guard<std::mutex> guard(mutex);
+        // Keep a stable host distinct_id for the lifetime of the process.
+        if(cachedHost.has_value()) {
+            return cachedHost->id;
+        }
+
         const auto currentMs = nowMs();
         auto fileLock = acquireLock();
         (void)fileLock;
@@ -287,7 +296,8 @@ class TemporaryIdsManager {
             changed = true;
         }
         if(changed) saveLocked(document);
-        return document.host.id;
+        cachedHost = document.host;
+        return cachedHost->id;
     }
 
     std::string getDeviceId(const std::string& mxid) {
@@ -324,7 +334,7 @@ class TemporaryIdsManager {
    private:
     std::unique_ptr<dai::platform::FileLock> acquireLock() {
         std::filesystem::create_directories(defaultTelemetryBaseDir());
-        return dai::platform::FileLock::lock(tmpIdsPath(), true);
+        return dai::platform::FileLock::lock(tmpIdsLockPath(), true);
     }
 
     TemporaryIdsDocument loadLocked(int64_t currentMs, bool& changed) {
@@ -343,6 +353,7 @@ class TemporaryIdsManager {
     }
 
     std::mutex mutex;
+    std::optional<TemporaryIdEntry> cachedHost;
 };
 
 TemporaryIdsManager& temporaryIdsManager() {
@@ -429,7 +440,7 @@ TelemetrySharedState::TelemetrySharedState() {
         std::filesystem::create_directories(queueDir);
         loadQueueFromDisk();
     } catch(const std::exception& ex) {
-        logger::warn("Failed to initialize telemetry storage at '{}': {}", queueDir.string(), ex.what());
+        logger::info("Failed to initialize telemetry storage at '{}': {}", queueDir.string(), ex.what());
         return;
     }
 
@@ -881,6 +892,9 @@ void Telemetry::event(std::string eventName, nlohmann::json properties) {
 }
 
 void Telemetry::event(const DeviceBase& device, std::string eventName, nlohmann::json properties) {
+    if(!isTelemetryEnabled()) {
+        return;
+    }
     addDeviceTelemetryProperties(device, properties);
     if(impl) {
         impl->event(std::move(eventName), std::move(properties));
@@ -888,6 +902,9 @@ void Telemetry::event(const DeviceBase& device, std::string eventName, nlohmann:
 }
 
 void Telemetry::event(const Pipeline& pipeline, std::string eventName, nlohmann::json properties) {
+    if(!isTelemetryEnabled()) {
+        return;
+    }
     addPipelineTelemetryProperties(pipeline, properties);
     if(impl) {
         impl->event(std::move(eventName), std::move(properties));
