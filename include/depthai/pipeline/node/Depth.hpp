@@ -119,6 +119,16 @@ class Depth : public DeviceNodeGroup {
                                  std::optional<std::pair<uint32_t, uint32_t>> stereoSize = std::nullopt);
 
     /**
+     * Output depth map from the active backend.
+     */
+    Node::Output& depth();
+
+    /**
+     * Output confidence map from the active backend.
+     */
+    Node::Output& confidence();
+
+    /**
      * Align depth output to another image source.
      * Must be called before first depth() or confidence() access.
      * Only depth() is aligned; confidence() stays in the backend frame.
@@ -171,22 +181,19 @@ class Depth : public DeviceNodeGroup {
 
     void buildInternal() override;
 
-    /**
-     * Output depth map from the active backend.
-     */
-    Node::Output& depth();
-
-    /**
-     * Output confidence map from the active backend.
-     */
-    Node::Output& confidence();
-
    private:
     friend struct DepthTestAccess;
 
     struct Selection {
         Algorithm algorithm;
         Config config;
+    };
+
+    struct StereoWiring {
+        Node::Output* left{};
+        Node::Output* right{};
+        std::pair<uint32_t, uint32_t> resolution{};
+        float maxCameraFps{0.f};
     };
 
     void requireNotBuilt(const char* method) const;
@@ -202,13 +209,6 @@ class Depth : public DeviceNodeGroup {
                                    bool requireFpsAndResolutionMatch = false);
 
     void resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipeline);
-
-    struct StereoWiring {
-        Node::Output* left{};
-        Node::Output* right{};
-        std::pair<uint32_t, uint32_t> resolution{};
-        float maxCameraFps{0.f};
-    };
 
     StereoWiring ensureStereoOutputs(Pipeline& pipeline,
                                      const StereoPair& pair,
