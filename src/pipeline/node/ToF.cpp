@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/ToF.hpp"
 
 #include <utility>
+#include <vector>
 
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -50,6 +51,54 @@ ToFConfig::Profile presetModeToProfile(ImageFiltersPresetMode presetMode) {
     }
 
     throw std::runtime_error("Unknown ImageFilters preset mode");
+}
+
+std::vector<CameraBoardSocket> getAllToFSockets(const std::vector<CameraFeatures>& cameraFeatures) {
+    std::vector<CameraBoardSocket> tofSockets;
+    for(const auto& cf : cameraFeatures) {
+        for(const auto& sensorType : cf.supportedTypes) {
+            if(sensorType == CameraSensorType::TOF) {
+                tofSockets.push_back(cf.socket);
+                break;
+            }
+        }
+    }
+    return tofSockets;
+}
+
+bool isSocketAlreadyConnected(const Pipeline& pipeline, CameraBoardSocket boardSocket) {
+    for(const auto& node : pipeline.getAllNodes()) {
+        auto camera = std::dynamic_pointer_cast<Camera>(node);
+        if(camera) {
+            try {
+                if(camera->getBoardSocket() == boardSocket) {
+                    return true;
+                }
+            } catch(const std::exception&) {
+            }
+        }
+
+        auto tofBase = std::dynamic_pointer_cast<ToFBase>(node);
+        if(tofBase) {
+            try {
+                if(tofBase->getBoardSocket() == boardSocket) {
+                    return true;
+                }
+            } catch(const std::exception&) {
+            }
+        }
+
+        auto tof = std::dynamic_pointer_cast<ToF>(node);
+        if(tof) {
+            try {
+                if(tof->tofBaseNode.getBoardSocket() == boardSocket) {
+                    return true;
+                }
+            } catch(const std::exception&) {
+            }
+        }
+    }
+    return false;
 }
 
 }  // namespace
@@ -151,22 +200,30 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig
         throw std::runtime_error("Device pointer is not valid");
     }
 
-    auto cameraFeatures = device->getConnectedCameraFeatures();
-    bool found = boardSocket != CameraBoardSocket::AUTO;
+    const auto cameraFeatures = device->getConnectedCameraFeatures();
+    const auto tofSockets = getAllToFSockets(cameraFeatures);
+    const auto pipeline = getParentPipeline();
+
     if(boardSocket == CameraBoardSocket::AUTO) {
-        for(const auto& cf : cameraFeatures) {
-            for(const auto& sensorType : cf.supportedTypes) {
-                if(sensorType == CameraSensorType::TOF) {
-                    boardSocket = cf.socket;
-                    found = true;
-                    break;
-                }
+        bool foundAvailableSocket = false;
+        for(const auto& tofSocket : tofSockets) {
+            if(!isSocketAlreadyConnected(pipeline, tofSocket)) {
+                boardSocket = tofSocket;
+                foundAvailableSocket = true;
+                break;
             }
         }
-    }
-
-    if(!found) {
-        throw std::runtime_error("Camera socket not found on the connected device");
+        if(!foundAvailableSocket) {
+            throw std::runtime_error("No available ToF camera socket found on the connected device");
+        }
+    } else {
+        if(isSocketAlreadyConnected(pipeline, boardSocket)) {
+            throw std::runtime_error(fmt::format("Camera socket {} is already used by another Camera node in this pipeline", static_cast<int>(boardSocket)));
+        }
+        const bool isToFSocket = std::find(tofSockets.begin(), tofSockets.end(), boardSocket) != tofSockets.end();
+        if(!isToFSocket) {
+            throw std::runtime_error(fmt::format("Camera socket {} is not a ToF-capable socket on the connected device", static_cast<int>(boardSocket)));
+        }
     }
 
     initialConfig->setProfilePreset(profile);
