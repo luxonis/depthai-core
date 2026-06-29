@@ -41,8 +41,11 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack) {
     toFConfig.def(py::init<>())
         .def("__repr__", &ToFConfig::str)
         // .def(py::init<std::shared_ptr<ToFConfig>>())
-
-        .def_readwrite("profile", &ToFConfig::profile, DOC(dai, ToFConfig, profile))
+        .def_property(
+            "profile",
+            [](const ToFConfig& self) { return self.profile; },
+            [](ToFConfig& self, ToFConfig::Profile profile) { self.setProfilePreset(profile); },
+            DOC(dai, ToFConfig, profile))
         .def_readwrite("median", &ToFConfig::median, DOC(dai, ToFConfig, median))
         .def_readwrite("enablePhaseShuffleTemporalFilter", &ToFConfig::enablePhaseShuffleTemporalFilter, DOC(dai, ToFConfig, enablePhaseShuffleTemporalFilter))
         .def_readwrite("enableBurstMode", &ToFConfig::enableBurstMode, DOC(dai, ToFConfig, enableBurstMode))
