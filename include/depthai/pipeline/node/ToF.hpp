@@ -132,6 +132,11 @@ class ToF : public DeviceNodeGroup {
     Output& intensity{tofBase->intensity};
 
     /**
+     * Confidence output
+     */
+    Output& confidence{tofBase->confidence};
+
+    /**
      * Phase output
      */
     Output& phase{tofBase->phase};

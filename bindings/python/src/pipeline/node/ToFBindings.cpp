@@ -89,6 +89,8 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "phase", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.phase; }, DOC(dai, node, ToF, phase))
         .def_property_readonly(
+            "confidence", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.confidence; }, DOC(dai, node, ToF, confidence))
+        .def_property_readonly(
             "raw", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.raw; }, DOC(dai, node, ToF, raw))
         .def_property_readonly(
             "tofBaseInputConfig",
