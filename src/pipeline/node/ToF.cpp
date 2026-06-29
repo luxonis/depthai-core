@@ -162,9 +162,6 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig
                     break;
                 }
             }
-            if(found) {
-                break;
-            }
         }
     }
 
