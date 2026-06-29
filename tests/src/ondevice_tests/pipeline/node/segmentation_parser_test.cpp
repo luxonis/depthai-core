@@ -4,18 +4,23 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/TensorInfo.hpp"
 #include "depthai/depthai.hpp"
+#include "depthai/modelzoo/Zoo.hpp"
+#include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SegmentationMask.hpp"
 #include "depthai/pipeline/datatype/SegmentationParserConfig.hpp"
+#include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/SegmentationParser.hpp"
 
 namespace {
@@ -234,6 +239,28 @@ std::vector<float> makeArgmaxTestValues() {
     };
 }
 
+void compareParserHead(const dai::node::SegmentationParser& parser, const dai::nn_archive::v1::Head& head) {
+    REQUIRE(head.outputs.has_value());
+    REQUIRE(head.outputs->size() <= 1);
+    if(head.outputs->empty()) {
+        REQUIRE(parser.properties.networkOutputName.empty());
+    } else {
+        REQUIRE(parser.properties.networkOutputName == head.outputs->front());
+    }
+    if(head.metadata.extraParams.contains("classes_in_one_layer")) {
+        REQUIRE(parser.properties.classesInOneLayer == head.metadata.extraParams.at("classes_in_one_layer").get<bool>());
+    }
+    if(head.metadata.extraParams.contains("background_class")) {
+        REQUIRE(parser.getBackgroundClass() == head.metadata.extraParams.at("background_class").get<bool>());
+    }
+    if(head.metadata.classes) {
+        REQUIRE(parser.getLabels() == *head.metadata.classes);
+    }
+    if(head.metadata.confThreshold) {
+        REQUIRE(parser.initialConfig->getConfidenceThreshold() == Catch::Approx(static_cast<float>(*head.metadata.confThreshold)));
+    }
+}
+
 }  // namespace
 
 TEST_CASE("SegmentationParser argmax backends produce expected mask") {
@@ -378,4 +405,71 @@ TEST_CASE("SegmentationParser runtime config update changes thresholding") {
     REQUIRE(outputs.size() == 2);
     checkMaskMatches(*outputs[0], expectedInitial, initialWidth, initialHeight);
     checkMaskMatches(*outputs[1], expectedUpdated, updatedWidth, updatedHeight);
+}
+
+TEST_CASE("SegmentationParser can set a specific head") {
+    auto description = dai::NNModelDescription{"yolo-p", "RVC4"};
+    auto archivePath = dai::getModelFromZoo(description);
+    dai::NNArchive nnArchive{archivePath};
+
+    const auto& archiveConfig = nnArchive.getConfig<dai::nn_archive::v1::Config>();
+    REQUIRE(archiveConfig.model.heads.has_value());
+    const auto& heads = *archiveConfig.model.heads;
+    REQUIRE(heads.size() == 3);
+
+    for(std::size_t index = 0; index < heads.size(); ++index) {
+        auto head = nnArchive.getHeadConfig(static_cast<uint32_t>(index));
+        CAPTURE(index, head.parser);
+
+        dai::node::SegmentationParser parser;
+        parser.setNNArchiveHead(head);
+
+        if(head.parser != "SegmentationParser") {
+            REQUIRE_THROWS(parser.setNNArchive(nnArchive));
+            continue;
+        }
+
+        REQUIRE_NOTHROW(parser.setNNArchive(nnArchive));
+        compareParserHead(parser, head);
+    }
+
+    auto missingHead = nnArchive.getHeadConfig(0);
+    missingHead.name = missingHead.name.value_or("head") + "_missing";
+
+    dai::node::SegmentationParser missingHeadParser;
+    missingHeadParser.setNNArchiveHead(missingHead);
+    REQUIRE_THROWS(missingHeadParser.setNNArchive(nnArchive));
+}
+
+TEST_CASE("SegmentationParser can be build with an NNArchive") {
+    auto description = dai::NNModelDescription{"yolo-p", "RVC4"};
+    auto archivePath = dai::getModelFromZoo(description);
+    dai::NNArchive nnArchive{archivePath};
+
+    const auto& archiveConfig = nnArchive.getConfig<dai::nn_archive::v1::Config>();
+    REQUIRE(archiveConfig.model.heads.has_value());
+    const auto& heads = *archiveConfig.model.heads;
+
+    const auto segmentationHeadIt = std::find_if(heads.begin(), heads.end(), [](const auto& head) { return head.parser == "SegmentationParser"; });
+    REQUIRE(segmentationHeadIt != heads.end());
+    REQUIRE(std::count_if(heads.begin(), heads.end(), [](const auto& head) { return head.parser == "SegmentationParser"; }) == 2);
+
+    dai::Pipeline pipeline;
+    auto nn = pipeline.create<dai::node::NeuralNetwork>();
+    auto ambiguousParser = pipeline.create<dai::node::SegmentationParser>();
+    auto parser = pipeline.create<dai::node::SegmentationParser>();
+
+    REQUIRE_THROWS(ambiguousParser->build(nn->out, nnArchive));
+    REQUIRE(nn->out.getConnections().empty());
+
+    parser->setNNArchiveHead(*segmentationHeadIt);
+    std::shared_ptr<dai::node::SegmentationParser> builtParser;
+    REQUIRE_NOTHROW(builtParser = parser->build(nn->out, nnArchive));
+    REQUIRE(builtParser == parser);
+    compareParserHead(*parser, *segmentationHeadIt);
+
+    const auto connections = nn->out.getConnections();
+    REQUIRE(connections.size() == 1);
+    REQUIRE(connections.front().out == &nn->out);
+    REQUIRE(connections.front().in == &parser->input);
 }

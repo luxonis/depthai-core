@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <memory>
@@ -74,9 +75,29 @@ NNArchive SegmentationParser::decodeModel(const Model& model) {
     return *nnArchive;
 }
 
+void SegmentationParser::setNNArchive(const NNArchive& nnArchive) {
+    setConfig(nnArchive.getVersionedConfig());
+}
+
+void SegmentationParser::setNNArchiveHead(const dai::nn_archive::v1::Head& head) {
+    nnArchiveHead = head;
+}
+
 std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const Model& model) {
     auto nnArchive = decodeModel(model);
     setConfig(nnArchive.getVersionedConfig());
+    nnInput.link(input);
+    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
+}
+
+std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
+    setConfig(nnArchive.getVersionedConfig());
+    nnInput.link(input);
+    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
+}
+
+std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
     nnInput.link(input);
     return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
@@ -88,25 +109,25 @@ void SegmentationParser::setConfig(const dai::NNArchiveVersionedConfig& config) 
     const auto& configV1 = config.getConfig<nn_archive::v1::Config>();
     DAI_CHECK(configV1.model.heads, "Heads array is not defined in the NN Archive config file.");
 
-    int segmentationHeads = 0;
     auto segHead = dai::nn_archive::v1::Head{};
-    for(const auto& head : *configV1.model.heads) {
-        if(head.parser == "SegmentationParser") {
-            segmentationHeads++;
-            segHead = head;
+    if(nnArchiveHead != std::nullopt) {
+        const auto& heads = *configV1.model.heads;
+        DAI_CHECK_V(std::find(heads.begin(), heads.end(), nnArchiveHead.value()) != heads.end(), "Heads array does not contain the set NN Archive head.");
+        segHead = nnArchiveHead.value();
+    } else {
+        int segmentationHeads = 0;
+        for(const auto& head : *configV1.model.heads) {
+            if(head.parser == "SegmentationParser") {
+                segmentationHeads++;
+                segHead = head;
+            }
         }
+
+        DAI_CHECK_V(segmentationHeads > 0, "NNArchive does not contain a segmentation head.");
+        DAI_CHECK_V(segmentationHeads == 1, "NNArchive contains {} segmentation heads. Please build with a specific head.", segmentationHeads);
     }
 
-    DAI_CHECK_V(segmentationHeads > 0, "NNArchive does not contain a segmentation head.");
-    DAI_CHECK_V(segmentationHeads == 1, "NNArchive contains {} segmentation heads. Please build with a specific head.", segmentationHeads);
-
     setConfig(segHead);
-}
-
-std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
-    setConfig(head);
-    nnInput.link(input);
-    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
 
 void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {

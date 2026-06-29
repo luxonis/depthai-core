@@ -40,6 +40,7 @@ void bind_detectionparser(pybind11::module& m, void* pCallstack) {
              py::overload_cast<const NNArchive&>(&DetectionParser::setNNArchive),
              py::arg("nnArchive"),
              DOC(dai, node, DetectionParser, setNNArchive))
+        .def("setNNArchiveHead", &DetectionParser::setNNArchiveHead, py::arg("head"), DOC(dai, node, DetectionParser, setNNArchiveHead))
         .def("setInputImageSize",
              static_cast<void (DetectionParser::*)(int, int)>(&DetectionParser::setInputImageSize),
              py::arg("width"),

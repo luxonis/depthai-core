@@ -4,6 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -440,6 +441,48 @@ TEST_CASE("DetectionParser can set properties") {
 
         REQUIRE_THROWS(parser.setNNArchive(nnArchive));
     }
+}
+
+TEST_CASE("DetectionParser can set a specific head") {
+    auto description = dai::NNModelDescription{"yolo-p", "RVC4"};
+    auto archivePath = dai::getModelFromZoo(description);
+    dai::NNArchive nnArchive{archivePath};
+
+    const auto& archiveConfig = nnArchive.getConfig<dai::nn_archive::v1::Config>();
+    const auto headCount = archiveConfig.model.heads ? archiveConfig.model.heads->size() : 0;
+    REQUIRE(headCount == 3);
+
+    dai::node::DetectionParser parser;
+    for(int index = 0; index < headCount; ++index) {
+        auto head = nnArchive.getHeadConfig(static_cast<uint32_t>(index));
+        parser.setNNArchiveHead(head);
+
+        // Should work only for detection heads
+        const bool isDetectionHead = head.parser == "YOLO" || head.parser == "YOLOExtendedParser" || head.parser == "SSD" || head.parser == "MOBILENET";
+        if(!isDetectionHead) {
+            REQUIRE_THROWS(parser.setNNArchive(nnArchive));
+            continue;
+        }
+        REQUIRE_NOTHROW(parser.setNNArchive(nnArchive));
+
+        if(head.metadata.nClasses) {
+            REQUIRE(parser.properties.parser.classes == static_cast<int>(*head.metadata.nClasses));
+        }
+        if(head.metadata.classes) {
+            REQUIRE(parser.properties.parser.classNames.has_value());
+            REQUIRE(*parser.properties.parser.classNames == *head.metadata.classes);
+        }
+        if(head.metadata.yoloOutputs) {
+            REQUIRE(parser.properties.parser.outputNamesToUse == *head.metadata.yoloOutputs);
+        }
+    }
+
+    auto missingHead = nnArchive.getHeadConfig(0);
+    missingHead.name = missingHead.name.value_or("head") + "_missing";
+
+    dai::node::DetectionParser missingHeadParser;
+    missingHeadParser.setNNArchiveHead(missingHead);
+    REQUIRE_THROWS(missingHeadParser.setNNArchive(nnArchive));
 }
 
 TEST_CASE("DetectionParser replay test") {

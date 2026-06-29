@@ -66,6 +66,13 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchive(const NNArchive& nnArchive);
 
     /**
+     * @brief Set NNArchive head for this Node.
+     *
+     * @param head: NNArchive head to set
+     */
+    void setNNArchiveHead(const dai::nn_archive::v1::Head& head);
+
+    /**
      * Load network xml and bin files into assets.
      * @param xmlModelPath Path to the neural network model file.
      */
@@ -306,11 +313,9 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     uint32_t imgWidth;
     uint32_t imgHeight;
     uint32_t imgSizesSet = false;
-    //
-
-    std::optional<NNArchive> mArchive;
 
     std::optional<NNArchiveVersionedConfig> archiveConfig;
+    std::optional<nn_archive::v1::Head> nnArchiveHead;
 };
 
 }  // namespace node

@@ -61,6 +61,10 @@ struct Head {
      * Name of the parser responsible for processing the models output.
      */
     std::string parser;
+
+    bool operator==(const Head& other) const {
+        return metadata == other.metadata && name == other.name && outputs == other.outputs && parser == other.parser;
+    }
 };
 }  // namespace v1
 }  // namespace nn_archive
