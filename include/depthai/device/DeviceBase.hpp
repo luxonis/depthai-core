@@ -743,6 +743,7 @@ class DeviceBase {
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @returns True if EEPROM is present on board, false otherwise
      */
     bool isCBAEepromAvailable(CameraBoardSocket camSocket);
@@ -769,6 +770,7 @@ class DeviceBase {
      * @param calibrationObj CBACalibrationHandler object which is loaded with calibration information.
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return true on successful flash, false on failure
      */
     bool tryFlashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket);
@@ -787,6 +789,7 @@ class DeviceBase {
      * @throws std::runtime_error if failed to flash the calibration
      * @param calibrationObj CBACalibrationHandler object which is loaded with calibration information.
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
+     * @warning Experimental feature. This API might change or be removed in a future release.
      */
     void flashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket);
 
@@ -839,6 +842,7 @@ class DeviceBase {
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM
      */
     CBACalibrationHandler readCBACalibration(CameraBoardSocket camSocket);
@@ -859,6 +863,7 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if no calibration is flashed
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM
      */
     CBACalibrationHandler readCBACalibration2(CameraBoardSocket camSocket);
@@ -879,6 +884,7 @@ class DeviceBase {
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM
      */
     CBACalibrationHandler readCBACalibrationOrDefault(CameraBoardSocket camSocket);
@@ -896,6 +902,7 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error If factory reset was unsuccessful
+     * @warning Experimental feature. This API might change or be removed in a future release.
      */
     void factoryResetCBACalibration(CameraBoardSocket camSocket);
 
@@ -916,6 +923,7 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if failed to flash the calibration
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return True on successful flash, false on failure
      */
     void flashFactoryCBACalibration(const CBACalibrationHandler& calibrationHandler, CameraBoardSocket camSocket);
@@ -936,6 +944,7 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if failed to flash the calibration
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return True on successful flash, false on failure
      */
     void flashCBAEepromClear(CameraBoardSocket camSocket);
@@ -956,6 +965,7 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if failed to flash the calibration
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return True on successful flash, false on failure
      */
     void flashFactoryCBAEepromClear(CameraBoardSocket camSocket);
@@ -974,6 +984,7 @@ class DeviceBase {
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
      * @throws std::runtime_error if no calibration is flashed
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM in Factory Area
      */
     CBACalibrationHandler readFactoryCBACalibration(CameraBoardSocket camSocket);
@@ -992,6 +1003,7 @@ class DeviceBase {
      *
      * @param camSocket CameraBoardSocket of the CBA (Camera Board Assembly)
      *
+     * @warning Experimental feature. This API might change or be removed in a future release.
      * @return The CalibrationHandler object containing the calibration currently flashed on CBA EEPROM in Factory Area
      */
     CBACalibrationHandler readFactoryCBACalibrationOrDefault(CameraBoardSocket camSocket);
