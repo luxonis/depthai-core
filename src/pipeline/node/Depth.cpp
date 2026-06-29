@@ -387,11 +387,7 @@ bool cameraFeaturesIncludeTof(const std::vector<dai::CameraFeatures>& features) 
 
 Depth::Depth() : DeviceNodeGroup(nullptr) {}
 
-// --- Pre-wiring configuration ---
-
-void Depth::requireNotBuilt(const char* method) const {
-    DAI_CHECK_V(!graphBuilt_, "{} must be called before the graph is wired (before first depth()/confidence() access).", method);
-}
+// --- Build methods ---
 
 std::shared_ptr<Depth> Depth::build(std::optional<float> fps) {
     requireNotBuilt("Depth::build(fps)");
@@ -421,6 +417,26 @@ std::shared_ptr<Depth> Depth::build(Algorithm algorithm, Config config, std::opt
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
+// --- Outputs ---
+
+Node::Output& Depth::depth() {
+    if(!graphBuilt_) {
+        buildInternal();
+    }
+    DAI_CHECK_V(depthOut_ != nullptr, "Depth backend output missing.");
+    return *depthOut_;
+}
+
+Node::Output& Depth::confidence() {
+    if(!graphBuilt_) {
+        buildInternal();
+    }
+    DAI_CHECK_V(confidenceOut_ != nullptr, "Depth backend confidence output missing.");
+    return *confidenceOut_;
+}
+
+// --- Setters ---
+
 std::shared_ptr<Depth> Depth::setAlgorithm(Algorithm algorithm) {
     requireNotBuilt("Depth::setAlgorithm");
     algorithmOverride_ = algorithm;
@@ -439,7 +455,11 @@ std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
-// --- Device queries ---
+// --- Internal ---
+
+void Depth::requireNotBuilt(const char* method) const {
+    DAI_CHECK_V(!graphBuilt_, "{} must be called before the graph is wired (before first depth()/confidence() access).", method);
+}
 
 std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device, const std::vector<DeviceModelZoo>& supportedModels) const {
     std::vector<Algorithm> supported = {Algorithm::STEREO};
@@ -607,7 +627,76 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 }
 
-// --- Lazy graph wiring ---
+Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
+                                               const StereoPair& pair,
+                                               std::optional<std::pair<uint32_t, uint32_t>> frameSize,
+                                               const std::optional<float>& fps) {
+    auto [left, right] = findCamerasForPair(pipeline, pair);
+    const bool stereoCamerasPreexist = left && right;
+
+    // Create missing cameras on the sockets from the device's stereo pair.
+    if(!left) {
+        left = pipeline.create<Camera>()->build(pair.left);
+    }
+    if(!right) {
+        right = pipeline.create<Camera>()->build(pair.right);
+    }
+
+    // When @p frameSize is unset and both stereo cameras already exist, match their sensor resolution.
+    std::optional<std::pair<uint32_t, uint32_t>> outputSize = frameSize;
+    if(stereoCamerasPreexist && !frameSize.has_value()) {
+        if(const auto existingSize = stereoSizeFromExistingCameras(left, right)) {
+            outputSize = existingSize;
+        }
+    }
+    const std::optional<float>& outputFps = fps;
+
+    Node::Output* lo = nullptr;
+    Node::Output* ro = nullptr;
+    if(outputSize) {
+        // Sized output (e.g. NeuralDepth model dimensions) or matched pre-existing camera size.
+        lo = left->requestOutput(*outputSize, std::nullopt, ImgResizeMode::CROP, outputFps);
+        ro = right->requestOutput(*outputSize, std::nullopt, ImgResizeMode::CROP, outputFps);
+        DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera stereo output request failed.");
+    } else {
+        // Depth-created cameras: use full sensor resolution.
+        lo = left->requestFullResolutionOutput(std::nullopt, outputFps, false);
+        ro = right->requestFullResolutionOutput(std::nullopt, outputFps, false);
+        DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera full-resolution stereo output request failed.");
+    }
+
+    const std::pair<uint32_t, uint32_t> resolution{left->getMaxRequestedWidth(), left->getMaxRequestedHeight()};
+    DAI_CHECK_V(resolution.first > 0 && resolution.second > 0, "Depth: failed to determine wired stereo resolution.");
+    const float maxCameraFps = std::max(left->getMaxRequestedFps(), right->getMaxRequestedFps());
+    return {lo, ro, resolution, maxCameraFps};
+}
+
+void Depth::wireAlignment(Algorithm active, const std::shared_ptr<Device>& device) {
+    if(alignToOutput_ == nullptr) {
+        return;
+    }
+    DAI_CHECK_V(depthOut_ != nullptr, "Depth: cannot align an unbound depth output.");
+
+    const bool isRvc4 = device->getPlatform() == Platform::RVC4;
+
+    // RVC2 + StereoDepth: alignment is handled natively on-device via StereoDepth's inputAlignTo,
+    // which aligns the depth output without an extra node.
+    if(!isRvc4 && active == Algorithm::STEREO) {
+        alignToOutput_->link((*stereoBackend_)->inputAlignTo);
+        return;
+    }
+
+    // Every other case (all RVC4 backends, and non-StereoDepth backends on RVC2 such as ToF) routes
+    // the backend depth through an ImageAlign node. On RVC2 there is no hardware ImageAlign path for
+    // these backends, so the node runs on host.
+    imageAlignBackend_ = std::make_unique<Subnode<ImageAlign>>(*this, "imageAlign");
+    if(!isRvc4) {
+        (*imageAlignBackend_)->setRunOnHost(true);
+    }
+    depthOut_->link((*imageAlignBackend_)->input);
+    alignToOutput_->link((*imageAlignBackend_)->inputAlignTo);
+    depthOut_ = &(*imageAlignBackend_)->outputAligned;
+}
 
 void Depth::buildInternal() {
     if(graphBuilt_) {
@@ -716,97 +805,6 @@ void Depth::buildInternal() {
     }
 
     graphBuilt_ = true;
-}
-
-void Depth::wireAlignment(Algorithm active, const std::shared_ptr<Device>& device) {
-    if(alignToOutput_ == nullptr) {
-        return;
-    }
-    DAI_CHECK_V(depthOut_ != nullptr, "Depth: cannot align an unbound depth output.");
-
-    const bool isRvc4 = device->getPlatform() == Platform::RVC4;
-
-    // RVC2 + StereoDepth: alignment is handled natively on-device via StereoDepth's inputAlignTo,
-    // which aligns the depth output without an extra node.
-    if(!isRvc4 && active == Algorithm::STEREO) {
-        alignToOutput_->link((*stereoBackend_)->inputAlignTo);
-        return;
-    }
-
-    // Every other case (all RVC4 backends, and non-StereoDepth backends on RVC2 such as ToF) routes
-    // the backend depth through an ImageAlign node. On RVC2 there is no hardware ImageAlign path for
-    // these backends, so the node runs on host.
-    imageAlignBackend_ = std::make_unique<Subnode<ImageAlign>>(*this, "imageAlign");
-    if(!isRvc4) {
-        (*imageAlignBackend_)->setRunOnHost(true);
-    }
-    depthOut_->link((*imageAlignBackend_)->input);
-    alignToOutput_->link((*imageAlignBackend_)->inputAlignTo);
-    depthOut_ = &(*imageAlignBackend_)->outputAligned;
-}
-
-// --- Stereo camera wiring ---
-
-Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
-                                               const StereoPair& pair,
-                                               std::optional<std::pair<uint32_t, uint32_t>> frameSize,
-                                               const std::optional<float>& fps) {
-    auto [left, right] = findCamerasForPair(pipeline, pair);
-    const bool stereoCamerasPreexist = left && right;
-
-    // Create missing cameras on the sockets from the device's stereo pair.
-    if(!left) {
-        left = pipeline.create<Camera>()->build(pair.left);
-    }
-    if(!right) {
-        right = pipeline.create<Camera>()->build(pair.right);
-    }
-
-    // When @p frameSize is unset and both stereo cameras already exist, match their sensor resolution.
-    std::optional<std::pair<uint32_t, uint32_t>> outputSize = frameSize;
-    if(stereoCamerasPreexist && !frameSize.has_value()) {
-        if(const auto existingSize = stereoSizeFromExistingCameras(left, right)) {
-            outputSize = existingSize;
-        }
-    }
-    const std::optional<float>& outputFps = fps;
-
-    Node::Output* lo = nullptr;
-    Node::Output* ro = nullptr;
-    if(outputSize) {
-        // Sized output (e.g. NeuralDepth model dimensions) or matched pre-existing camera size.
-        lo = left->requestOutput(*outputSize, std::nullopt, ImgResizeMode::CROP, outputFps);
-        ro = right->requestOutput(*outputSize, std::nullopt, ImgResizeMode::CROP, outputFps);
-        DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera stereo output request failed.");
-    } else {
-        // Depth-created cameras: use full sensor resolution.
-        lo = left->requestFullResolutionOutput(std::nullopt, outputFps, false);
-        ro = right->requestFullResolutionOutput(std::nullopt, outputFps, false);
-        DAI_CHECK_V(lo != nullptr && ro != nullptr, "Camera full-resolution stereo output request failed.");
-    }
-
-    const std::pair<uint32_t, uint32_t> resolution{left->getMaxRequestedWidth(), left->getMaxRequestedHeight()};
-    DAI_CHECK_V(resolution.first > 0 && resolution.second > 0, "Depth: failed to determine wired stereo resolution.");
-    const float maxCameraFps = std::max(left->getMaxRequestedFps(), right->getMaxRequestedFps());
-    return {lo, ro, resolution, maxCameraFps};
-}
-
-// --- Public outputs (trigger lazy wiring) ---
-
-Node::Output& Depth::depth() {
-    if(!graphBuilt_) {
-        buildInternal();
-    }
-    DAI_CHECK_V(depthOut_ != nullptr, "Depth backend output missing.");
-    return *depthOut_;
-}
-
-Node::Output& Depth::confidence() {
-    if(!graphBuilt_) {
-        buildInternal();
-    }
-    DAI_CHECK_V(confidenceOut_ != nullptr, "Depth backend confidence output missing.");
-    return *confidenceOut_;
 }
 
 }  // namespace node
