@@ -232,7 +232,8 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
                       transformation,
                       Buffer::sequenceNum,
                       Buffer::ts,
-                      Buffer::tsDevice);
+                      Buffer::tsDevice,
+                      Buffer::tsSystem);
 };
 
 }  // namespace dai

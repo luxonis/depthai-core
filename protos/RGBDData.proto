@@ -22,4 +22,6 @@ message RGBDData {
         img_frame.ImgFrame depthImgFrame = 6;
         encoded_frame.EncodedFrame depthEncodedFrame = 7;
     }
+
+    optional common.Timestamp tsSystem = 8;
 }

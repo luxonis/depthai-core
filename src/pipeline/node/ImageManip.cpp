@@ -50,9 +50,7 @@ void ImageManip::run() {
             dstFrame.sourceFb = srcFrame.sourceFb;
             dstFrame.cam = srcFrame.cam;
             dstFrame.instanceNum = srcFrame.instanceNum;
-            dstFrame.sequenceNum = srcFrame.sequenceNum;
-            dstFrame.tsDevice = srcFrame.tsDevice;
-            dstFrame.ts = srcFrame.ts;
+            dstFrame.setBufferMetadataFrom(&srcFrame);
             dstFrame.category = srcFrame.category;
             dstFrame.event = srcFrame.event;
             dstFrame.fb.height = dstSpecs.height;

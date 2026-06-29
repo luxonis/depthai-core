@@ -130,6 +130,7 @@ class PointCloudConfig : public Buffer {
                       Buffer::sequenceNum,
                       Buffer::ts,
                       Buffer::tsDevice,
+                      Buffer::tsSystem,
                       organized,
                       transformationMatrix,
                       lengthUnit,
