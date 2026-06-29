@@ -95,8 +95,9 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "tofBaseInputConfig",
             [](const ToF& self) -> const dai::DeviceNode::Input& { return self.tofBaseInputConfig; },
-            DOC(dai, node, ToF, tofBaseInputConfig))
-        .def_property_readonly(
+            DOC(dai, node, ToF, tofBaseInputConfig));
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    tof.def_property_readonly(
             "imageFiltersInputConfig",
             [](const ToF& self) -> const dai::DeviceNode::Input& {
                 if(self.imageFiltersInputConfig == nullptr) {
@@ -105,6 +106,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
                 return *self.imageFiltersInputConfig;
             },
             DOC(dai, node, ToF, imageFiltersInputConfig));
+#endif
 #endif
 
     // ALIAS
