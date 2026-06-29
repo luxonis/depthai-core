@@ -90,6 +90,7 @@ class Tracklets : public Buffer, public TransformableCRTP<Tracklets> {
     using Buffer::sequenceNum;
     using Buffer::ts;
     using Buffer::tsDevice;
+    using Buffer::tsSystem;
     using Transformable::getTransformation;
     using Transformable::setTransformation;
     using Transformable::transformation;
@@ -124,7 +125,7 @@ class Tracklets : public Buffer, public TransformableCRTP<Tracklets> {
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override;
 
-    DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, ts, tsDevice, sequenceNum, unit);
+    DEPTHAI_SERIALIZE(Tracklets, tracklets, transformation, ts, tsDevice, tsSystem, sequenceNum, unit);
 };
 
 }  // namespace dai

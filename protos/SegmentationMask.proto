@@ -12,4 +12,5 @@ message SegmentationMask {
     int64 height = 6;
     bytes data = 7;
     repeated string labels = 8;
+    optional common.Timestamp tsSystem = 9;
 }

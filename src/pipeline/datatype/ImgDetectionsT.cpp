@@ -66,9 +66,7 @@ std::optional<dai::ImgFrame> ImgDetectionsT<DetectionT>::getSegmentationMask() c
     img.setWidth(segmentationMaskWidth);
     img.setHeight(segmentationMaskHeight);
     img.setType(dai::ImgFrame::Type::GRAY8);
-    img.setSequenceNum(sequenceNum);
-    img.setTimestamp(getTimestamp());
-    img.setTimestampDevice(getTimestampDevice());
+    img.setBufferMetadataFrom(this);
     img.setData(*maskData);
 
     return img;
