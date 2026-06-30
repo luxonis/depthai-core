@@ -133,7 +133,7 @@ void DynamicCalibration::buildInternal() {
 void DynamicCalibration::postBuildStage() {
     auto eraseIfUnused = [&](const std::string& name) {
         auto it = inputs.find({inputs.name, name});
-        if(it != inputs.end() && !it->second.isConnected()) {
+        if(it != inputs.end() && !it->second.isConnected() && inputs.size() > 1) {
             logger->trace("Ignoring unconnected DynamicCalibration input '{}'", name);
             inputs.erase(it);
         }
