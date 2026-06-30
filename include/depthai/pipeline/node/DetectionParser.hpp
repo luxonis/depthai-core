@@ -302,6 +302,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     void setConfig(const dai::NNArchiveVersionedConfig& config);
+    void setConfig(const dai::nn_archive::v1::Head& head);
     YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& subtype);
     bool decodeSegmentationResolver(const std::vector<std::string>& outputs);
     void configureYOLONetworkParser(DetectionParserOptions& parser, const nn_archive::v1::Head& metadata);
@@ -315,7 +316,6 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     uint32_t imgSizesSet = false;
 
     std::optional<NNArchiveVersionedConfig> archiveConfig;
-    std::optional<nn_archive::v1::Head> nnArchiveHead;
 };
 
 }  // namespace node

@@ -452,18 +452,17 @@ TEST_CASE("DetectionParser can set a specific head") {
     const auto headCount = archiveConfig.model.heads ? archiveConfig.model.heads->size() : 0;
     REQUIRE(headCount == 3);
 
-    dai::node::DetectionParser parser;
     for(int index = 0; index < headCount; ++index) {
         auto head = nnArchive.getHeadConfig(static_cast<uint32_t>(index));
-        parser.setNNArchiveHead(head);
+        dai::node::DetectionParser parser;
 
         // Should work only for detection heads
         const bool isDetectionHead = head.parser == "YOLO" || head.parser == "YOLOExtendedParser" || head.parser == "SSD" || head.parser == "MOBILENET";
         if(!isDetectionHead) {
-            REQUIRE_THROWS(parser.setNNArchive(nnArchive));
+            REQUIRE_THROWS(parser.setNNArchiveHead(head));
             continue;
         }
-        REQUIRE_NOTHROW(parser.setNNArchive(nnArchive));
+        REQUIRE_NOTHROW(parser.setNNArchiveHead(head));
 
         if(head.metadata.nClasses) {
             REQUIRE(parser.properties.parser.classes == static_cast<int>(*head.metadata.nClasses));
@@ -476,13 +475,6 @@ TEST_CASE("DetectionParser can set a specific head") {
             REQUIRE(parser.properties.parser.outputNamesToUse == *head.metadata.yoloOutputs);
         }
     }
-
-    auto missingHead = nnArchive.getHeadConfig(0);
-    missingHead.name = missingHead.name.value_or("head") + "_missing";
-
-    dai::node::DetectionParser missingHeadParser;
-    missingHeadParser.setNNArchiveHead(missingHead);
-    REQUIRE_THROWS(missingHeadParser.setNNArchive(nnArchive));
 }
 
 TEST_CASE("DetectionParser replay test") {

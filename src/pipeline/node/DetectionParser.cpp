@@ -47,7 +47,7 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
 }
 
 void DetectionParser::setNNArchiveHead(const dai::nn_archive::v1::Head& head) {
-    nnArchiveHead = head;
+    setConfig(head);
 }
 
 std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
@@ -159,48 +159,45 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     DAI_CHECK_V(config.getVersion() == NNArchiveConfigVersion::V1, "Only NNArchive config V1 is supported.");
     auto configV1 = config.getConfig<nn_archive::v1::Config>();
 
-    const auto model = configV1.model;
+    const auto& model = configV1.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
 
-    dai::nn_archive::v1::Head head;
-    if(nnArchiveHead != std::nullopt) {
-        auto heads = *model.heads;
-        DAI_CHECK_V(std::find(heads.begin(), heads.end(), nnArchiveHead) != heads.end(), "Heads array does not contain the set NN Archive head.");
-        head = nnArchiveHead.value();
-    } else {
-        std::vector<nn_archive::v1::Head> modelHeads = *model.heads;
-        int yoloHeadIndex = 0;
-        int numYoloHeads = 0;
-        int numMobilenetHeads = 0;
-        int mobilenetHeadIndex = 0;
-        for(size_t i = 0; i < modelHeads.size(); i++) {
-            if(modelHeads[i].parser == "YOLO" || modelHeads[i].parser == "YOLOExtendedParser") {
-                yoloHeadIndex = static_cast<int>(i);
-                numYoloHeads++;
-            } else if(modelHeads[i].parser == "SSD" || modelHeads[i].parser == "MOBILENET") {
-                numMobilenetHeads++;
-                mobilenetHeadIndex = static_cast<int>(i);
-            }
+    const auto& modelHeads = *model.heads;
+    int yoloHeadIndex = 0;
+    int numYoloHeads = 0;
+    int numMobilenetHeads = 0;
+    int mobilenetHeadIndex = 0;
+    for(size_t i = 0; i < modelHeads.size(); i++) {
+        if(modelHeads[i].parser == "YOLO" || modelHeads[i].parser == "YOLOExtendedParser") {
+            yoloHeadIndex = static_cast<int>(i);
+            numYoloHeads++;
+        } else if(modelHeads[i].parser == "SSD" || modelHeads[i].parser == "MOBILENET") {
+            numMobilenetHeads++;
+            mobilenetHeadIndex = static_cast<int>(i);
         }
-
-        DAI_CHECK_V(numYoloHeads > 0 || numMobilenetHeads > 0, "NNArchive should contain at least one detection head (YOLO or Mobilenet-SSD).");
-        DAI_CHECK_V(!(numYoloHeads > 0 && numMobilenetHeads > 0),
-                    "NNArchive should contain only one type of detection head (YOLO or Mobilenet-SSD). Found {} YOLO heads and {} Mobilenet-SSD heads.",
-                    numYoloHeads,
-                    numMobilenetHeads);
-
-        int headIndex = (numYoloHeads > 0) ? yoloHeadIndex : mobilenetHeadIndex;
-
-        head = (*model.heads)[headIndex];
-        pimpl->logger->info(
-            "Auto-selected NN Archive detection head at index {} of {} (parser: {}, name: {}). Use setNNArchiveHead(...) to select a specific head.",
-            headIndex,
-            modelHeads.size(),
-            head.parser,
-            head.name.value_or("<unnamed>"));
     }
 
+    DAI_CHECK_V(numYoloHeads > 0 || numMobilenetHeads > 0, "NNArchive should contain at least one detection head (YOLO or Mobilenet-SSD).");
+    DAI_CHECK_V(!(numYoloHeads > 0 && numMobilenetHeads > 0),
+                "NNArchive should contain only one type of detection head (YOLO or Mobilenet-SSD). Found {} YOLO heads and {} Mobilenet-SSD heads.",
+                numYoloHeads,
+                numMobilenetHeads);
+
+    int headIndex = (numYoloHeads > 0) ? yoloHeadIndex : mobilenetHeadIndex;
+    const auto& head = modelHeads[headIndex];
+
+    pimpl->logger->info(
+        "Auto-selected NN Archive detection head at index {} of {} (parser: {}, name: {}). Use setNNArchiveHead(...) to select a specific head.",
+        headIndex,
+        modelHeads.size(),
+        head.parser,
+        head.name.value_or("<unnamed>"));
+
+    setConfig(head);
+}
+
+void DetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
     auto& parser = properties.parser;
     resetParser(parser);
 

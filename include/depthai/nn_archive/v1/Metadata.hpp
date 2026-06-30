@@ -255,15 +255,6 @@ struct Metadata {
      * Additional parameters
      */
     nlohmann::json extraParams;
-
-    bool operator==(const Metadata& other) const {
-        return anchors == other.anchors && classes == other.classes && confThreshold == other.confThreshold && iouThreshold == other.iouThreshold
-               && maxDet == other.maxDet && nClasses == other.nClasses && postprocessorPath == other.postprocessorPath && isSoftmax == other.isSoftmax
-               && boxesOutputs == other.boxesOutputs && scoresOutputs == other.scoresOutputs && anglesOutputs == other.anglesOutputs
-               && keypointsOutputs == other.keypointsOutputs && maskOutputs == other.maskOutputs && nKeypoints == other.nKeypoints
-               && nPrototypes == other.nPrototypes && protosOutputs == other.protosOutputs && subtype == other.subtype && yoloOutputs == other.yoloOutputs
-               && extraParams == other.extraParams;
-    }
 };
 }  // namespace v1
 }  // namespace nn_archive

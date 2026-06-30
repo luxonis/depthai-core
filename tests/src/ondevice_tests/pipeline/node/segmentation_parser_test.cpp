@@ -422,26 +422,18 @@ TEST_CASE("SegmentationParser can set a specific head") {
         CAPTURE(index, head.parser);
 
         dai::node::SegmentationParser parser;
-        parser.setNNArchiveHead(head);
 
         if(head.parser != "SegmentationParser") {
-            REQUIRE_THROWS(parser.setNNArchive(nnArchive));
+            REQUIRE_THROWS(parser.setNNArchiveHead(head));
             continue;
         }
 
-        REQUIRE_NOTHROW(parser.setNNArchive(nnArchive));
+        REQUIRE_NOTHROW(parser.setNNArchiveHead(head));
         compareParserHead(parser, head);
     }
-
-    auto missingHead = nnArchive.getHeadConfig(0);
-    missingHead.name = missingHead.name.value_or("head") + "_missing";
-
-    dai::node::SegmentationParser missingHeadParser;
-    missingHeadParser.setNNArchiveHead(missingHead);
-    REQUIRE_THROWS(missingHeadParser.setNNArchive(nnArchive));
 }
 
-TEST_CASE("SegmentationParser can be build with an NNArchive") {
+TEST_CASE("SegmentationParser can build with a specific head") {
     auto description = dai::NNModelDescription{"yolo-p", "RVC4"};
     auto archivePath = dai::getModelFromZoo(description);
     dai::NNArchive nnArchive{archivePath};
@@ -462,9 +454,8 @@ TEST_CASE("SegmentationParser can be build with an NNArchive") {
     REQUIRE_THROWS(ambiguousParser->build(nn->out, nnArchive));
     REQUIRE(nn->out.getConnections().empty());
 
-    parser->setNNArchiveHead(*segmentationHeadIt);
     std::shared_ptr<dai::node::SegmentationParser> builtParser;
-    REQUIRE_NOTHROW(builtParser = parser->build(nn->out, nnArchive));
+    REQUIRE_NOTHROW(builtParser = parser->build(nn->out, *segmentationHeadIt));
     REQUIRE(builtParser == parser);
     compareParserHead(*parser, *segmentationHeadIt);
 

@@ -142,7 +142,6 @@ class SegmentationParser : public DeviceNodeCRTP<DeviceNode, SegmentationParser,
     NNArchive createNNArchive(NNModelDescription& modelDesc);
 
     std::optional<NNArchiveVersionedConfig> archiveConfig;
-    std::optional<dai::nn_archive::v1::Head> nnArchiveHead;
 
    protected:
     Properties& getProperties() override;
