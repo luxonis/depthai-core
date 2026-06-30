@@ -236,6 +236,10 @@ class SpatialLocationCalculatorConfig : public Buffer {
     }
 
     DEPTHAI_SERIALIZE(SpatialLocationCalculatorConfig,
+                      Buffer::sequenceNum,
+                      Buffer::ts,
+                      Buffer::tsDevice,
+                      Buffer::tsSystem,
                       globalStepSize,
                       globalLowerThreshold,
                       globalUpperThreshold,
