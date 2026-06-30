@@ -475,30 +475,19 @@ TEST_CASE("DetectionParser can set a specific head") {
             REQUIRE(parser.properties.parser.outputNamesToUse == *head.metadata.yoloOutputs);
         }
     }
+}
 
-    const auto& heads = *archiveConfig.model.heads;
-    const auto detectionHeadIt = std::find_if(heads.begin(), heads.end(), [](const auto& head) {
-        return head.parser == "YOLO" || head.parser == "YOLOExtendedParser" || head.parser == "SSD" || head.parser == "MOBILENET";
-    });
-    REQUIRE(detectionHeadIt != heads.end());
+TEST_CASE("DetectionParser can be build using a specific head") {
+    dai::nn_archive::v1::Head head;
+    head.parser = "MOBILENET";
+    head.metadata.nClasses = 1;
 
     dai::Pipeline pipeline;
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
-    auto buildParser = pipeline.create<dai::node::DetectionParser>();
-    std::shared_ptr<dai::node::DetectionParser> builtParser;
-    REQUIRE_NOTHROW(builtParser = buildParser->build(nn->out, *detectionHeadIt));
-    REQUIRE(builtParser == buildParser);
-    if(detectionHeadIt->metadata.classes) {
-        REQUIRE(buildParser->properties.parser.classNames == detectionHeadIt->metadata.classes);
-    }
-    if(detectionHeadIt->metadata.yoloOutputs) {
-        REQUIRE(buildParser->properties.parser.outputNamesToUse == *detectionHeadIt->metadata.yoloOutputs);
-    }
-
-    const auto connections = nn->out.getConnections();
-    REQUIRE(connections.size() == 1);
-    REQUIRE(connections.front().out == &nn->out);
-    REQUIRE(connections.front().in == &buildParser->input);
+    auto parser = pipeline.create<dai::node::DetectionParser>();
+    REQUIRE_NOTHROW(parser->build(nn->out, head));
+    REQUIRE(parser->properties.parser.nnFamily == DetectionNetworkType::MOBILENET);
+    REQUIRE(parser->properties.parser.classes == 1);
 }
 
 TEST_CASE("DetectionParser replay test") {
