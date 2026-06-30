@@ -40,7 +40,7 @@ int main() {
 
     auto dynCalibInputControl = dynCalib->inputControl.createInputQueue();
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(device->getCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));  // wait for autoexposure to settle

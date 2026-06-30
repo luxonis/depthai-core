@@ -34,7 +34,7 @@ bool Rectification::runOnHost() const {
 
 CalibrationHandler Rectification::getCalibrationData() const {
     if(device) {
-        return device->readCalibration();
+        return device->getCalibration();
     } else {
         return getParentPipeline().getCalibrationData();
     }

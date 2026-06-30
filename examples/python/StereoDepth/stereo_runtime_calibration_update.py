@@ -5,7 +5,7 @@ import depthai as dai
 import numpy as np
 
 device = dai.Device()
-calibration = device.readCalibration()
+calibration = device.getCalibration()
 pipeline = dai.Pipeline(device)
 monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
 monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)

@@ -197,7 +197,7 @@ TEST_CASE("DynamicCalibration reaches a result and applies only when ready") {
     auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(device->getCalibration());
 
     pipeline.start();
 
@@ -281,7 +281,7 @@ TEST_CASE("DynamicCalibration: empty-data requests yield no calibration/quality 
     auto qualityOutput = dynCalib->qualityOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(device->getCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(1s);
@@ -345,7 +345,7 @@ TEST_CASE("DynamicCalibration: StopCalibration halts further results") {
     auto calibrationOutput = dynCalib->calibrationOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(device->getCalibration());
 
     pipeline.start();
 
@@ -387,7 +387,7 @@ TEST_CASE("DynamicCalibration: reset data") {
     auto coverageOutput = dynCalib->coverageOutput.createOutputQueue();
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(device->getCalibration());
 
     pipeline.start();
     std::this_thread::sleep_for(1s);
@@ -427,7 +427,7 @@ TEST_CASE("DynamicCalibration: Empty command") {
 
     auto commandInput = dynCalib->inputControl.createInputQueue();  // no DatatypeEnum argument
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(device->getCalibration());
 
     pipeline.start();
 

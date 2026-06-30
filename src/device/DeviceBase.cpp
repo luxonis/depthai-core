@@ -1608,7 +1608,7 @@ std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
     std::vector<dai::StereoPair> stereoPairs;
     dai::CalibrationHandler calibHandler;
     try {
-        calibHandler = readCalibration2();
+        calibHandler = getCalibration();
         if(calibHandler.getEepromData().cameraData.empty()) {
             throw std::runtime_error("No camera data found.");
         }
