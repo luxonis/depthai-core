@@ -306,7 +306,7 @@ class Pipeline {
     Pipeline& operator=(const Pipeline&) = default;
     Pipeline(Pipeline&& other) noexcept : Pipeline(static_cast<const Pipeline&>(other)) {}
     Pipeline& operator=(Pipeline&& other) noexcept {
-        return operator=(other);
+        return operator=(static_cast<const Pipeline&>(other));
     }
     ~Pipeline() = default;
 
