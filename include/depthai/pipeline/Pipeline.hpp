@@ -302,6 +302,15 @@ class Pipeline {
         return pimpl.get();
     }
 
+    Pipeline(const Pipeline&) = default;
+    Pipeline& operator=(const Pipeline&) = default;
+    Pipeline(Pipeline&& other) noexcept : pimpl(other.pimpl) {}
+    Pipeline& operator=(Pipeline&& other) noexcept {
+        pimpl = other.pimpl;
+        return *this;
+    }
+    ~Pipeline() = default;
+
     std::vector<std::shared_ptr<Node>> getSourceNodes() {
         return impl()->getSourceNodes();
     }
