@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import platform
+import shutil
 import subprocess
 import find_version
 
@@ -58,6 +59,35 @@ buildCommitHash = None
 if len(__version__.split("+")) > 1 :
     buildCommitHash = __version__.split("+")[1]
 
+repo_root = os.path.abspath(os.path.join(here, os.pardir, os.pardir))
+source_license = os.path.join(repo_root, "LICENSE")
+source_notices_dir = os.path.join(repo_root, "notices")
+wheel_license_output_dir = os.path.join(here, "generated", "wheel_licenses")
+packaged_license_dir = os.path.join(here, "generated", "license")
+packaged_license = os.path.join(packaged_license_dir, "LICENSE")
+packaged_notices_dir = os.path.join(here, "generated", "notices")
+
+def _stage_license_files():
+    if not os.path.isfile(source_license):
+        raise RuntimeError(f"Root license file does not exist: {source_license}")
+    os.makedirs(packaged_license_dir, exist_ok=True)
+    shutil.copy2(source_license, packaged_license)
+
+    if os.path.isdir(source_notices_dir):
+        if os.path.isdir(packaged_notices_dir):
+            shutil.rmtree(packaged_notices_dir)
+        shutil.copytree(source_notices_dir, packaged_notices_dir)
+
+def _license_data_files():
+    if not os.path.isdir(packaged_notices_dir):
+        return []
+    notice_files = sorted(str(path) for path in Path(packaged_notices_dir).iterdir() if path.is_file())
+    if not notice_files:
+        return []
+    return [("notices", notice_files)]
+
+_stage_license_files()
+
 
 ## Read description (README.md)
 long_description = open("README.md", "r", encoding="utf-8").read()
@@ -89,6 +119,48 @@ def _configure_macos_build_settings():
 if sys.platform == "darwin":
     MACOS_SETTINGS = _configure_macos_build_settings()
 
+def _read_cmake_cache(build_dir):
+    cache_path = os.path.join(build_dir, "CMakeCache.txt")
+    if not os.path.isfile(cache_path):
+        return {}
+
+    values = {}
+    with open(cache_path, "r", encoding="utf-8", errors="replace") as cache_file:
+        for line in cache_file:
+            line = line.strip()
+            if not line or line.startswith(("#", "//")) or "=" not in line:
+                continue
+            key_type, value = line.split("=", 1)
+            key = key_type.split(":", 1)[0]
+            values[key] = value
+    return values
+
+def _generate_wheel_license_notices(build_dir):
+    cache = _read_cmake_cache(build_dir)
+    install_root = cache.get("VCPKG_INSTALLED_DIR") or os.path.join(build_dir, "vcpkg_installed")
+    triplet = cache.get("VCPKG_TARGET_TRIPLET") or os.environ.get("VCPKG_DEFAULT_TRIPLET")
+
+    if not triplet:
+        candidates = sorted(Path(install_root).glob("*/share"))
+        if candidates:
+            triplet = candidates[0].parent.name
+
+    if not triplet:
+        raise RuntimeError("Cannot determine VCPKG_TARGET_TRIPLET for third-party notice generation.")
+
+    script_path = os.path.join(repo_root, "scripts", "generate_third_party_notices.py")
+    cmd = [
+        sys.executable,
+        script_path,
+        "--repo-root", repo_root,
+        "--build-dir", build_dir,
+        "--install-root", install_root,
+        "--triplet", triplet,
+        "--output-dir", wheel_license_output_dir,
+    ]
+    subprocess.check_call(cmd)
+    _stage_license_files()
+
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
         Extension.__init__(self, name, sources=[])
@@ -115,7 +187,6 @@ class CMakeBuild(build_ext):
     def build_extension(self, ext):
         if ext.name == DEPTHAI_CLI_MODULE_NAME:
             # Copy cam_test.py and it's dependencies to depthai_cli/
-            repo_root = os.path.abspath(os.path.join(here, os.pardir, os.pardir))
             cam_test_path      = os.path.join(str(repo_root), "utilities", "cam_test.py")
             cam_test_dest = os.path.join(self.build_lib, DEPTHAI_CLI_MODULE_NAME, "cam_test.py")
             cam_test_gui_path  = os.path.join(str(repo_root), "utilities", "cam_test_gui.py")
@@ -263,6 +334,11 @@ class CMakeBuild(build_ext):
         # Configure and build
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp, env=env)
+        _generate_wheel_license_notices(self.build_temp)
+
+cmdclass = {
+    'build_ext': CMakeBuild,
+}
 
 setup(
     name=MODULE_NAME,
@@ -271,6 +347,8 @@ setup(
     author_email='support@luxonis.com',
     description='DepthAI Python Library',
     license="MIT",
+    license_files=["generated/license/LICENSE"],
+    data_files=_license_data_files(),
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/luxonis/depthai-core/tree/main/bindings/python",
@@ -278,9 +356,7 @@ setup(
         CMakeExtension(MODULE_NAME, str(Path(__file__).absolute().parent.parent.parent.absolute())),
         Extension(DEPTHAI_CLI_MODULE_NAME, sources=[])
     ],
-    cmdclass={
-        'build_ext': CMakeBuild,
-    },
+    cmdclass=cmdclass,
     packages=[DEPTHAI_CLI_MODULE_NAME],
     zip_safe=False,
     classifiers=[

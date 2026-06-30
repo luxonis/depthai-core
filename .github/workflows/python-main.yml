@@ -276,6 +276,9 @@ jobs:
           python -m pip install --upgrade pip
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
+      - name: Verify wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
@@ -292,6 +295,9 @@ jobs:
           for wheel in ./wheelhouse/*.whl; do
             delvewheel repair "$wheel" --add-path "$EXTRA_DLL_PATH" --include vcruntime140.dll --include vcruntime140_1.dll --include ucrtbase.dll -w wheelhouse/audited
           done
+      - name: Verify repaired wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -360,11 +366,17 @@ jobs:
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --no-deps --verbose
+      - name: Verify wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
       - name: Auditing wheels
         run: cd bindings/python && ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
+      - name: Verify repaired wheel license files
+        shell: bash
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -474,12 +486,22 @@ jobs:
       - name: Build wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
+      - name: Verify generated third-party notices
+        run: |
+          for cache in $(find bindings/python/build -name CMakeCache.txt); do
+            build_dir=$(dirname "$cache")
+            python scripts/generate_third_party_notices.py --repo-root "$PWD" --build-dir "$build_dir" --output-dir "$build_dir/generated_notices_check" --check-file notices/THIRD_PARTY_NOTICES
+          done
+      - name: Verify wheel license files
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
+      - name: Verify repaired wheel license files
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -598,12 +620,16 @@ jobs:
       - name: Building wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
+      - name: Verify wheel license files
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails
         if: failure()    # Only run this if the build step fails
         run: cd bindings/python && bash ./ci/show_vcpkg_logs.sh
 
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT --strip -w wheelhouse/audited/; done
+      - name: Verify repaired wheel license files
+        run: python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/audited/*.whl
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v4
         with:
