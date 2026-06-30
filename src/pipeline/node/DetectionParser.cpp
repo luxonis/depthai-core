@@ -56,6 +56,12 @@ std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, c
     return std::static_pointer_cast<DetectionParser>(shared_from_this());
 }
 
+std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
+    nnInput.link(input);
+    return std::static_pointer_cast<DetectionParser>(shared_from_this());
+}
+
 void DetectionParser::setModelPath(const std::filesystem::path& modelPath) {
     switch(model::readModelType(modelPath.string())) {
         case model::ModelType::BLOB:

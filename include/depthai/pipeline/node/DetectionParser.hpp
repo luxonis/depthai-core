@@ -35,6 +35,14 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @param nnArchive: Neural network archive
      */
     std::shared_ptr<DetectionParser> build(Node::Output& nnInput, const NNArchive& nnArchive);
+
+    /**
+     * @brief Build DetectionParser node with a specific NNArchive head.
+     * @param nnInput: Output to link
+     * @param head: Specific head from NNArchive to use for this parser
+     */
+    std::shared_ptr<DetectionParser> build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head);
+
     /**
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5
