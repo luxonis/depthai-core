@@ -1,58 +1,25 @@
 #!/usr/bin/env python3
+"""Align ToF depth over left or right camera and show a blended overlay.
 
-import numpy as np
+Usage:
+    python tof_align_overlay.py --camera left   # align over CAM_B (default)
+    python tof_align_overlay.py --camera right  # align over CAM_C
+"""
+
+import argparse
+from datetime import timedelta
+
 import cv2
 import depthai as dai
-import time
-from datetime import timedelta
-from collections import deque
+import numpy as np
 
-# This example is intended to run unchanged on an OAK-ToF camera
-FPS = 30.0
 
-RGB_SOCKET = dai.CameraBoardSocket.CAM_C
-TOF_SOCKET = dai.CameraBoardSocket.CAM_A
-ALIGN_SOCKET = RGB_SOCKET
-SIZE=(640, 400)
+FPS = 10.0
+CAMERA_SIZE = (640, 400)
 
-class FPSCounter:
-    def __init__(self, max_samples=1000):
-        self.timestamps = deque(maxlen=max_samples)
 
-    def tick(self):
-        self.timestamps.append(time.time())
-
-    def getFps(self):
-        if len(self.timestamps) < 2:
-            return 0.0
-        intervals = [t2 - t1 for t1, t2 in zip(self.timestamps, list(self.timestamps)[1:])]
-        avg_interval = sum(intervals) / len(intervals)
-        return 1.0 / avg_interval if avg_interval > 0 else 0.0
-
-pipeline = dai.Pipeline()
-
-# Define sources and outputs
-camRgb = pipeline.create(dai.node.Camera).build(RGB_SOCKET)
-tof = pipeline.create(dai.node.ToF).build(TOF_SOCKET, dai.ToFConfig.Profile.MID_RANGE, FPS)
-sync = pipeline.create(dai.node.Sync)
-align = pipeline.create(dai.node.ImageAlign)
-align.setRunOnHost(True)
-
-sync.setSyncThreshold(timedelta(seconds=0.5 / FPS))
-sync.setRunOnHost(True)
-
-# Linking
-cameraOutput = camRgb.requestOutput(SIZE, enableUndistortion=True, fps=FPS)
-cameraOutput.link(sync.inputs["rgb"])
-tof.depth.link(align.input)
-align.outputAligned.link(sync.inputs["depth_aligned"])
-sync.inputs["rgb"].setBlocking(False)
-cameraOutput.link(align.inputAlignTo)
-syncQueue = sync.out.createOutputQueue()
-
-def colorizeDepth(frameDepth):
+def colorizeDepth(frameDepth: np.ndarray) -> np.ndarray:
     invalidMask = frameDepth == 0
-    # Log the depth, minDepth and maxDepth
     try:
         minDepth = np.percentile(frameDepth[frameDepth != 0], 3)
         maxDepth = np.percentile(frameDepth[frameDepth != 0], 95)
@@ -60,90 +27,107 @@ def colorizeDepth(frameDepth):
         logMinDepth = np.log(minDepth)
         logMaxDepth = np.log(maxDepth)
         np.nan_to_num(logDepth, copy=False, nan=logMinDepth)
-        # Clip the values to be in the 0-255 range
         logDepth = np.clip(logDepth, logMinDepth, logMaxDepth)
-
-        # Interpolate only valid logDepth values, setting the rest based on the mask
         depthFrameColor = np.interp(logDepth, (logMinDepth, logMaxDepth), (0, 255))
         depthFrameColor = np.nan_to_num(depthFrameColor)
         depthFrameColor = depthFrameColor.astype(np.uint8)
         depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_JET)
-        # Set invalid depth pixels to black
         depthFrameColor[invalidMask] = 0
     except IndexError:
-        # Frame is likely empty
         depthFrameColor = np.zeros((frameDepth.shape[0], frameDepth.shape[1], 3), dtype=np.uint8)
     except Exception as e:
         raise e
     return depthFrameColor
 
 
-rgbWeight = 0.4
-depthWeight = 0.6
+rgbWeight = 0.5
+depthWeight = 0.5
 
 
 def updateBlendWeights(percentRgb):
-    """
-    Update the rgb and depth weights used to blend depth/rgb image
-
-    @param[in] percent_rgb The rgb weight expressed as a percentage (0..100)
-    """
-    global depthWeight
-    global rgbWeight
+    global rgbWeight, depthWeight
     rgbWeight = float(percentRgb) / 100.0
     depthWeight = 1.0 - rgbWeight
 
 
-
-# Connect to device and start pipeline
-with pipeline:
-    pipeline.start()
-
-    # Configure windows; trackbar adjusts blending ratio of rgb/depth
-    rgbDepthWindowName = "rgb-depth"
-
-    cv2.namedWindow(rgbDepthWindowName)
-    cv2.createTrackbar(
-        "RGB Weight %",
-        rgbDepthWindowName,
-        int(rgbWeight * 100),
-        100,
-        updateBlendWeights,
+def main():
+    parser = argparse.ArgumentParser(description="ToF depth overlay on left or right camera")
+    parser.add_argument(
+        "--camera",
+        choices=["left", "right"],
+        default="left",
+        help="Camera to align depth onto: left=CAM_B, right=CAM_C (default: left)",
     )
-    fpsCounter = FPSCounter()
-    while True:
-        messageGroup = syncQueue.get()
-        fpsCounter.tick()
-        assert isinstance(messageGroup, dai.MessageGroup)
-        frameRgb = messageGroup["rgb"]
-        assert isinstance(frameRgb, dai.ImgFrame)
-        frameDepth = messageGroup["depth_aligned"]
-        assert isinstance(frameDepth, dai.ImgFrame)
+    args = parser.parse_args()
 
-        sizeRgb = frameRgb.getData().size
-        sizeDepth = frameDepth.getData().size
-        # Blend when both received
-        if frameDepth is not None:
+    pipeline = dai.Pipeline()
+
+    camera_sockets = {
+        "left": dai.CameraBoardSocket.CAM_B,
+        "right": dai.CameraBoardSocket.CAM_C,
+    }
+
+    align_socket = camera_sockets[args.camera]
+    print(f"Aligning ToF depth over {args.camera} camera ({align_socket})")
+
+    tof = pipeline.create(dai.node.ToF)
+    tof.build(
+        boardSocket=dai.CameraBoardSocket.AUTO,
+        profile=dai.ToFConfig.Profile.MID_RANGE,
+        fps=FPS,
+    )
+
+    cam = pipeline.create(dai.node.Camera).build(align_socket)
+    camOut = cam.requestOutput(CAMERA_SIZE, enableUndistortion=True, fps=FPS)
+
+    align = pipeline.create(dai.node.ImageAlign)
+    align.setRunOnHost(True)
+    tof.depth.link(align.input)
+    camOut.link(align.inputAlignTo)
+
+    sync = pipeline.create(dai.node.Sync)
+    sync.setSyncThreshold(timedelta(seconds=0.5 / FPS))
+    sync.setRunOnHost(True)
+    camOut.link(sync.inputs["rgb"])
+    align.outputAligned.link(sync.inputs["depth_aligned"])
+    sync.inputs["rgb"].setBlocking(False)
+
+    syncQueue = sync.out.createOutputQueue()
+
+    window_blend = f"tof-overlay-{args.camera}"
+    window_depth = "depth-aligned"
+
+    with pipeline as p:
+        p.start()
+        cv2.namedWindow(window_blend)
+        cv2.namedWindow(window_depth)
+        cv2.createTrackbar("RGB Weight %", window_blend, int(rgbWeight * 100), 100, updateBlendWeights)
+
+        while p.isRunning():
+            msgGroup = syncQueue.get()
+            assert isinstance(msgGroup, dai.MessageGroup)
+
+            frameRgb = msgGroup["rgb"]
+            frameDepth = msgGroup["depth_aligned"]
+
             cvFrame = frameRgb.getCvFrame()
-            # Colorize the aligned depth
-            alignedDepthColorized = colorizeDepth(frameDepth.getFrame())
-            # Resize depth to match the rgb frame
-            cv2.putText(
-                alignedDepthColorized,
-                f"FPS: {fpsCounter.getFps():.2f}",
-                (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (255, 255, 255),
-                2,
-            )
-            cv2.imshow("depth", alignedDepthColorized)
+            if len(cvFrame.shape) == 2:
+                cvFrame = cv2.cvtColor(cvFrame, cv2.COLOR_GRAY2BGR)
 
-            blended = cv2.addWeighted(
-                cvFrame, rgbWeight, alignedDepthColorized, depthWeight, 0
-            )
-            cv2.imshow(rgbDepthWindowName, blended)
+            depthColorized = colorizeDepth(frameDepth.getFrame())
+            if depthColorized.shape[:2] != cvFrame.shape[:2]:
+                depthColorized = cv2.resize(
+                    depthColorized, (cvFrame.shape[1], cvFrame.shape[0])
+                )
 
-        key = cv2.waitKey(1)
-        if key == ord("q"):
-            break
+            cv2.imshow(window_depth, depthColorized)
+
+            blended = cv2.addWeighted(cvFrame, rgbWeight, depthColorized, depthWeight, 0)
+            cv2.imshow(window_blend, blended)
+
+            if cv2.waitKey(1) == ord("q"):
+                break
+
+
+if __name__ == "__main__":
+    main()
