@@ -40,8 +40,8 @@ def main():
     pipeline = dai.Pipeline()
 
     # ToF node
-    socket, preset_mode = dai.CameraBoardSocket.AUTO, dai.ImageFiltersPresetMode.TOF_MID_RANGE
-    tof = pipeline.create(dai.node.ToF).build(socket, preset_mode)
+    socket, profile = dai.CameraBoardSocket.AUTO, dai.ToFConfig.Profile.MID_RANGE
+    tof = pipeline.create(dai.node.ToF).build(socket, profile)
 
     # Output queues
     depthQueue = tof.depth.createOutputQueue()

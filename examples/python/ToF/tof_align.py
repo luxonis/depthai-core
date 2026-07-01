@@ -33,7 +33,7 @@ pipeline = dai.Pipeline()
 
 # Define sources and outputs
 camRgb = pipeline.create(dai.node.Camera).build(RGB_SOCKET)
-tof = pipeline.create(dai.node.ToF).build(TOF_SOCKET, fps=FPS)
+tof = pipeline.create(dai.node.ToF).build(TOF_SOCKET, dai.ToFConfig.Profile.MID_RANGE, FPS)
 sync = pipeline.create(dai.node.Sync)
 align = pipeline.create(dai.node.ImageAlign)
 align.setRunOnHost(True)
