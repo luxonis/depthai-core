@@ -98,7 +98,7 @@ int main() {
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - lastSent);
         if(elapsed.count() >= 3) {
             dynCalibInputControl->send(DCC::loadImage());
-            dynCalibInputControl->send(DCC::calibrate(true));
+            dynCalibInputControl->send(DCC::calibrate(false));
             lastSent = now;
         }
 

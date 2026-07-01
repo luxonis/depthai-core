@@ -78,7 +78,7 @@ with dai.Pipeline() as pipeline:
         # Run one-shot calibration every 3 seconds and inspect metrics from calibrationOutput.
         if np.abs(time.time() - start) > 3:
             dynCalibInputControl.send(dai.DynamicCalibrationControl.loadImage())
-            dynCalibInputControl.send(dai.DynamicCalibrationControl.calibrate(True))
+            dynCalibInputControl.send(dai.DynamicCalibrationControl.calibrate(False))
             start = time.time()
 
         dynCalibrationResult = dynCalibCalibrationQueue.tryGet()
