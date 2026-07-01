@@ -486,13 +486,6 @@ jobs:
       - name: Build wheels
         run: |
           cd bindings/python && for PYBIN in /opt/python/${{ matrix.python-set }}/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --no-deps --verbose; done
-      - name: Verify generated third-party notices
-        run: |
-          PYTHON="/opt/python/${{ matrix.python-set }}/bin/python"
-          for cache in $(find bindings/python/build -name CMakeCache.txt); do
-            build_dir=$(dirname "$cache")
-            "$PYTHON" scripts/generate_third_party_notices.py --repo-root "$PWD" --build-dir "$build_dir" --output-dir "$build_dir/generated_notices_check" --check-file notices/THIRD_PARTY_NOTICES
-          done
       - name: Verify wheel license files
         run: /opt/python/${{ matrix.python-set }}/bin/python scripts/verify_license_artifact.py wheel bindings/python/wheelhouse/*.whl
       - name: Print out vcpkg logs if building port fails

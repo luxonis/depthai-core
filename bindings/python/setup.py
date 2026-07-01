@@ -63,14 +63,12 @@ repo_root = os.path.abspath(os.path.join(here, os.pardir, os.pardir))
 source_license = os.path.join(repo_root, "LICENSE")
 source_notices_dir = os.path.join(repo_root, "notices")
 wheel_license_output_dir = os.path.join(here, "generated", "wheel_licenses")
-packaged_license_dir = os.path.join(here, "generated", "license")
-packaged_license = os.path.join(packaged_license_dir, "LICENSE")
+packaged_license = os.path.join(here, "LICENSE")
 packaged_notices_dir = os.path.join(here, "generated", "notices")
 
 def _stage_license_files():
     if not os.path.isfile(source_license):
         raise RuntimeError(f"Root license file does not exist: {source_license}")
-    os.makedirs(packaged_license_dir, exist_ok=True)
     shutil.copy2(source_license, packaged_license)
 
     if os.path.isdir(source_notices_dir):
@@ -347,7 +345,7 @@ setup(
     author_email='support@luxonis.com',
     description='DepthAI Python Library',
     license="MIT",
-    license_files=["generated/license/LICENSE"],
+    license_files=["LICENSE"],
     data_files=_license_data_files(),
     long_description=long_description,
     long_description_content_type="text/markdown",
