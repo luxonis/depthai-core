@@ -1,6 +1,7 @@
 #include "Common.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 void bind_tof(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -48,6 +49,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def("getBoardSocket", &ToFBase::getBoardSocket, DOC(dai, node, ToFBase, getBoardSocket));
 
     // ToF Node (DeviceNodeGroup)
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
     tof.def_property_readonly(
            "tofBaseNode", [](const ToF& self) -> const dai::node::ToFBase& { return self.tofBaseNode; }, DOC(dai, node, ToF, tofBaseNode))
         .def_static("create", &ToF::create, "device"_a, DOC(dai, node, ToF, create))
@@ -64,6 +66,7 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
              "fps"_a = std::nullopt)
         .def("getInitialConfig", [&](const ToF& self) { return *self.tofBaseNode.initialConfig; })
         .def("setInitialConfig", [&](ToF& self, ToFConfig& config) { self.tofBaseNode.initialConfig = std::make_shared<ToFConfig>(config); });
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     tof.def_property_readonly(

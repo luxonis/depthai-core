@@ -93,8 +93,8 @@ class ToF : public DeviceNodeGroup {
 
     void buildInternal() override;
 
-    // TODO deprecate
-    std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket, dai::ImageFiltersPresetMode presetMode, std::optional<float> fps);
+    [[deprecated("Use build(boardSocket, dai::ToFConfig::Profile, fps) instead")]] std::shared_ptr<ToF> build(
+        dai::CameraBoardSocket boardSocket, dai::ImageFiltersPresetMode presetMode, std::optional<float> fps);
 
     std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket = dai::CameraBoardSocket::AUTO,
                                dai::ToFConfig::Profile presetMode = dai::ToFConfig::Profile::MID_RANGE,
