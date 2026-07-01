@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -42,6 +43,8 @@ constexpr std::uint32_t IMU_MAX_BATCH_REPORTS = 10;
 constexpr float MAX_POWER_IR_INTENSITY = 1.0f;
 constexpr auto DIAGNOSTIC_OUTPUT_TIMEOUT = std::chrono::seconds(10);
 constexpr auto POWER_SUPPLY_POLL_INTERVAL = std::chrono::milliseconds(100);
+constexpr auto BANDWIDTH_RECONNECT_TIMEOUT = std::chrono::seconds(10);
+constexpr auto BANDWIDTH_RECONNECT_POLL_INTERVAL = std::chrono::milliseconds(100);
 
 template <typename T>
 std::shared_ptr<T> getUntil(const std::shared_ptr<MessageQueue>& queue, std::chrono::steady_clock::time_point deadline, bool& timedOut) {
@@ -296,7 +299,7 @@ void setRequestedChecksFailed(HealthCheckMetrics& metrics, const HealthCheckConf
 bool performDeviceAvailabilityCheck(const std::shared_ptr<Device>& device, const HealthCheckConfig& config, HealthCheckMetrics& metrics) {
     try {
         if(device->isPipelineRunning()) {
-            metrics.appRunningOnDevice = true;
+            metrics.deviceInUse = true;
             metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::DeviceAvailability, "Pipeline is already running on the device.");
             setRequestedChecksFailed(metrics, config);
             return false;
@@ -590,22 +593,25 @@ void measureBandwidth(const std::shared_ptr<Device>& device, HealthCheckMetrics&
 HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const HealthCheckConfig& config) {
     HealthCheckMetrics metrics;
 
-    // Perform basic device info check
-    metrics.appRunningOnDevice = devInfo.status == X_LINK_DEVICE_ALREADY_IN_USE;
-    metrics.inSetupMode = devInfo.state == X_LINK_GATE_SETUP;
-    metrics.udevRulesSet = devInfo.status != X_LINK_INSUFFICIENT_PERMISSIONS;
-
     // Create a device object for a health check, check its availability
     logger::info("Health check: Connecting to device and checking availability");
     std::shared_ptr<Device> device;
     try {
         device = std::make_shared<Device>(devInfo);
     } catch(const std::exception& ex) {
-        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Connection, ex.what());
+        const std::string errorMessage = ex.what();
+        metrics.deviceInUse = errorMessage.find("X_LINK_DEVICE_ALREADY_IN_USE") != std::string::npos;
+        metrics.missingUdevRules = errorMessage.find("X_LINK_INSUFFICIENT_PERMISSIONS") != std::string::npos;
+        metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Connection, errorMessage);
         setRequestedChecksFailed(metrics, config);
 
         return metrics;
     }
+
+    // Perform basic device info check
+    metrics.deviceInUse = device->getDeviceInfo().status == X_LINK_DEVICE_ALREADY_IN_USE;
+    metrics.deviceInSetupMode = device->getDeviceInfo().state == X_LINK_GATE_SETUP;
+    metrics.missingUdevRules = device->getDeviceInfo().status == X_LINK_INSUFFICIENT_PERMISSIONS;
 
     if(!performDeviceAvailabilityCheck(device, config, metrics)) {
         return metrics;
@@ -614,7 +620,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     // USB speed and generation check
     if(config.checkUsbGeneration) {
         logger::info("Health check: Checking USB generation");
-        if(devInfo.protocol == X_LINK_TCP_IP) {
+        if(device->getDeviceInfo().protocol == X_LINK_TCP_IP) {
             metrics.usbGeneration = UsbGeneration::UNKNOWN;
         } else {
             const auto usbSpeed = device->getUsbSpeed();
@@ -724,11 +730,22 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
     if(config.measureBandwidth) {
         logger::info("Health check: Measuring bandwidth");
         device.reset();
-        try {
-            device = std::make_shared<Device>(devInfo);
-        } catch(const std::exception& ex) {
+
+        std::string lastErrorMessage;
+        auto deadline = std::chrono::steady_clock::now() + BANDWIDTH_RECONNECT_TIMEOUT;
+        while(std::chrono::steady_clock::now() < deadline) {
+            try {
+                device = std::make_shared<Device>(devInfo);
+                break;
+            } catch(const std::exception& ex) {
+                lastErrorMessage = ex.what();
+                std::this_thread::sleep_for(BANDWIDTH_RECONNECT_POLL_INTERVAL);
+            }
+        }
+
+        if(!device) {
             metrics.bandwidthMbps = 0.0f;
-            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, ex.what());
+            metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Bandwidth, lastErrorMessage);
             return metrics;
         }
         measureBandwidth(device, metrics);
@@ -747,9 +764,9 @@ std::string HealthCheckMetrics::toString() const {
            << "  imuFunctionality=" << healthCheckResultToString(imuFunctionality) << ",\n"
            << "  imuCalibration=" << healthCheckResultToString(imuCalibration) << ",\n"
            << "  powerSupplyFunctionality=" << healthCheckResultToString(powerSupplyFunctionality) << ",\n"
-           << "  appRunningOnDevice=" << appRunningOnDevice << ",\n"
-           << "  inSetupMode=" << inSetupMode << ",\n"
-           << "  udevRulesSet=" << udevRulesSet << ",\n"
+           << "  deviceInUse=" << deviceInUse << ",\n"
+           << "  deviceInSetupMode=" << deviceInSetupMode << ",\n"
+           << "  missingUdevRules=" << missingUdevRules << ",\n"
            << "  issues=" << serializeIssues(issues) << "\n"
            << ")";
     return stream.str();
