@@ -32,17 +32,16 @@ def verify_wheel(wheel_path: Path) -> None:
         names = wheel.namelist()
 
         has_root_license = any(
-            name.endswith(".dist-info/licenses/LICENSE") or name.endswith(".dist-info/LICENSE")
+            name.endswith(".dist-info/licenses/LICENSE")
             for name in names
         )
         has_third_party_notices = any(
-            name.endswith(".data/data/notices/THIRD_PARTY_NOTICES")
-            or name == "notices/THIRD_PARTY_NOTICES"
+            name.endswith(".dist-info/licenses/notices/THIRD_PARTY_NOTICES")
             for name in names
         )
 
         _require(has_root_license, f"Wheel is missing root LICENSE: {wheel_path}")
-        _require(has_third_party_notices, f"Wheel is missing notices/THIRD_PARTY_NOTICES: {wheel_path}")
+        _require(has_third_party_notices, f"Wheel is missing .dist-info/licenses/notices/THIRD_PARTY_NOTICES: {wheel_path}")
 
 
 def verify_install_tree(prefix: Path) -> None:

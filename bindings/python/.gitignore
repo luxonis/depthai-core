@@ -5,6 +5,7 @@
 build*/*
 # Auto-generated
 generated/*
+notices/
 LICENSE
 
 #pybind11

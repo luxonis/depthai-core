@@ -64,7 +64,7 @@ source_license = os.path.join(repo_root, "LICENSE")
 source_notices_dir = os.path.join(repo_root, "notices")
 wheel_license_output_dir = os.path.join(here, "generated", "wheel_licenses")
 packaged_license = os.path.join(here, "LICENSE")
-packaged_notices_dir = os.path.join(here, "generated", "notices")
+packaged_notices_dir = os.path.join(here, "notices")
 
 def _stage_license_files():
     if not os.path.isfile(source_license):
@@ -76,13 +76,13 @@ def _stage_license_files():
             shutil.rmtree(packaged_notices_dir)
         shutil.copytree(source_notices_dir, packaged_notices_dir)
 
-def _license_data_files():
+def _license_files():
     if not os.path.isdir(packaged_notices_dir):
-        return []
-    notice_files = sorted(str(path) for path in Path(packaged_notices_dir).iterdir() if path.is_file())
+        return ["LICENSE"]
+    notice_files = sorted(f"notices/{path.name}" for path in Path(packaged_notices_dir).iterdir() if path.is_file())
     if not notice_files:
-        return []
-    return [("notices", notice_files)]
+        return ["LICENSE"]
+    return ["LICENSE", *notice_files]
 
 _stage_license_files()
 
@@ -345,8 +345,7 @@ setup(
     author_email='support@luxonis.com',
     description='DepthAI Python Library',
     license="MIT",
-    license_files=["LICENSE"],
-    data_files=_license_data_files(),
+    license_files=_license_files(),
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/luxonis/depthai-core/tree/main/bindings/python",
