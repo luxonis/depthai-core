@@ -12,14 +12,14 @@ function(DepthaiVerifyDownloadedLicense downloaded expected)
 
     if(NOT downloaded_sha STREQUAL expected_sha)
         message(FATAL_ERROR
-            "Downloaded firmware license does not match committed source license.\n"
+            "Downloaded license does not match committed source license.\n"
             "Downloaded: ${downloaded}\n"
             "Committed:  ${expected}\n"
             "Downloaded SHA256: ${downloaded_sha}\n"
             "Committed SHA256:  ${expected_sha}\n"
-            "Update the committed notice file if the firmware third-party licenses changed intentionally."
+            "Update the committed notice file if the third-party licenses changed intentionally."
         )
     else()
-        message(STATUS "Downloaded firmware license matches committed source license.")
+        message(STATUS "Downloaded license matches committed source license.")
     endif()
 endfunction()

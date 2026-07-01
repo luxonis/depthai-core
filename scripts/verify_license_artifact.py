@@ -39,9 +39,24 @@ def verify_wheel(wheel_path: Path) -> None:
             name.endswith(".dist-info/licenses/notices/THIRD_PARTY_NOTICES")
             for name in names
         )
+        has_rvc2_license = any(
+            name.endswith(".dist-info/licenses/notices/depthai-device-RVC2-LICENSE")
+            for name in names
+        )
+        has_rvc4_license = any(
+            name.endswith(".dist-info/licenses/notices/depthai-device-RVC4-LICENSE")
+            for name in names
+        )
+        has_dynamic_calibration_license = any(
+            name.endswith(".dist-info/licenses/notices/dynamic_calibration-LICENSE")
+            for name in names
+        )
 
         _require(has_root_license, f"Wheel is missing root LICENSE: {wheel_path}")
         _require(has_third_party_notices, f"Wheel is missing .dist-info/licenses/notices/THIRD_PARTY_NOTICES: {wheel_path}")
+        _require(has_rvc2_license, f"Wheel is missing .dist-info/licenses/notices/depthai-device-RVC2-LICENSE: {wheel_path}")
+        _require(has_rvc4_license, f"Wheel is missing .dist-info/licenses/notices/depthai-device-RVC4-LICENSE: {wheel_path}")
+        _require(has_dynamic_calibration_license, f"Wheel is missing .dist-info/licenses/notices/dynamic_calibration-LICENSE: {wheel_path}")
 
 
 def verify_install_tree(prefix: Path) -> None:
@@ -58,6 +73,18 @@ def verify_install_tree(prefix: Path) -> None:
     _require(
         (root / "notices" / "THIRD_PARTY_NOTICES").is_file(),
         f"Install tree is missing notices/THIRD_PARTY_NOTICES under: {root}",
+    )
+    _require(
+        (root / "notices" / "depthai-device-RVC2-LICENSE").is_file(),
+        f"Install tree is missing notices/depthai-device-RVC2-LICENSE under: {root}",
+    )
+    _require(
+        (root / "notices" / "depthai-device-RVC4-LICENSE").is_file(),
+        f"Install tree is missing notices/depthai-device-RVC4-LICENSE under: {root}",
+    )
+    _require(
+        (root / "notices" / "dynamic_calibration-LICENSE").is_file(),
+        f"Install tree is missing notices/dynamic_calibration-LICENSE under: {root}",
     )
 
 

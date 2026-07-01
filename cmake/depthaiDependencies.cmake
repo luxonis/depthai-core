@@ -240,6 +240,30 @@ if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
             dynamic_calibration
             URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_${DEPTHAI_HOST_PLATFORM_ARCH}.zip"
         )
+
+        include(DownloadAndChecksum)
+        include(VerifyLicense)
+        set(DOWNLOADER_TIMEOUT_S 300)
+        set(DOWNLOADER_INACTIVE_TIMEOUT_S 60)
+        set(DOWNLOADER_RETRY_NUM 5)
+        set(dynamic_calibration_license_url "https://artifacts.luxonis.com/artifactory/luxonis-depthai-helper-binaries/dynamic_calibration/${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_LICENSE")
+        set(dynamic_calibration_license_path "${FETCHCONTENT_BASE_DIR}/dynamic_calibration_${DEPTHAI_DYNAMIC_CALIBRATION_VERSION}_LICENSE")
+        message(STATUS "Downloading and checking dynamic_calibration-LICENSE")
+        message(STATUS "Download URL: ${dynamic_calibration_license_url}")
+        DownloadAndChecksum(
+            "${dynamic_calibration_license_url}"
+            "${dynamic_calibration_license_url}.sha256"
+            "${dynamic_calibration_license_path}"
+            status
+        )
+        if(${status})
+            message(STATUS "\nCouldn't download dynamic_calibration-LICENSE\n")
+            message(FATAL_ERROR "Download failed with status ${status}. Aborting.\n")
+        endif()
+        DepthaiVerifyDownloadedLicense(
+            "${dynamic_calibration_license_path}"
+            "${CMAKE_CURRENT_LIST_DIR}/../notices/dynamic_calibration-LICENSE"
+        )
     endif()
 
     FetchContent_MakeAvailable(dynamic_calibration)
