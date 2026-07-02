@@ -38,7 +38,7 @@ int main() {
 
     auto dynCalibInputControl = dynCalib->inputControl.createInputQueue();
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(device->getCalibration());
 
     double maxDisparity = 1.0;
 

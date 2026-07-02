@@ -38,7 +38,7 @@ with dai.Pipeline() as pipeline:
     dynCalibInputControl = dynCalib.inputControl.createInputQueue()
 
     device = pipeline.getDefaultDevice()
-    device.setCalibration(device.readCalibration())
+    device.setCalibration(device.getCalibration())
 
     # Setup the colormap for visualization
     colorMap = cv2.applyColorMap(np.arange(256, dtype=np.uint8), cv2.COLORMAP_JET)
