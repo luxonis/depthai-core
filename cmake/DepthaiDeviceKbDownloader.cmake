@@ -1,5 +1,6 @@
 # This script downloads depthai device side artifacts for different device types
 include(DownloadAndChecksum)
+include(VerifyLicense)
 function(DepthaiDeviceDownloader)
 
     ### VARIABLES
@@ -141,6 +142,29 @@ function(DepthaiDeviceDownloader)
     endif()
     # add depthai-device-kb-fwp.tar.xz to list
     list(APPEND "${output_list_var}" "${folder}/${device_type}-fwp-${_version_commit_identifier}.tar.xz")
+
+    if("${device_type}" STREQUAL "depthai-device-rvc4")
+        # Download firmware package license
+        message(STATUS "Downloading and checking ${device_type}-fwp-LICENSE")
+        message(STATUS "Download URL: ${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}-LICENSE")
+        DownloadAndChecksum(
+            "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}-LICENSE" # File
+            "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}-LICENSE.sha256" # File checksum
+            "${folder}/${device_type}-fwp-${_version_commit_identifier}-LICENSE"
+            status
+        )
+        if(${status})
+            message(STATUS "\nCouldn't download ${device_type}-fwp-LICENSE\n")
+            PrintErrorMessage(${status})
+            message(FATAL_ERROR "Aborting.\n")
+        endif()
+        # add depthai-device-rvc4-fwp-LICENSE to list
+        list(APPEND "${output_list_var}" "${folder}/${device_type}-fwp-${_version_commit_identifier}-LICENSE")
+        DepthaiVerifyDownloadedLicense(
+            "${folder}/${device_type}-fwp-${_version_commit_identifier}-LICENSE"
+            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../notices/depthai-device-RVC4-LICENSE"
+        )
+    endif()
 
 
     # Set list of files as output

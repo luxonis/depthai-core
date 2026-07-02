@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <system_error>
 #include <thread>
+#include <utility>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -210,7 +211,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     return getAnyAvailableDevice(timeout, nullptr);
 }
 
-std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout, std::function<void()> cb) {
+std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout, const std::function<void()>& cb) {
     using namespace std::chrono;
     constexpr auto POOL_SLEEP_TIME = milliseconds(100);
 
@@ -315,8 +316,7 @@ std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
 }
 
 // First tries to find UNBOOTED device with deviceId, then BOOTLOADER device with deviceId
-std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(std::string deviceId) {
-    std::vector<DeviceInfo> availableDevices;
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(const std::string& deviceId) {
     auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
     bool found;
     DeviceInfo dev;
@@ -327,16 +327,51 @@ std::tuple<bool, DeviceInfo> DeviceBase::getDeviceById(std::string deviceId) {
     return {false, DeviceInfo()};
 }
 
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByIdOrName(const std::string& deviceIdOrName) {
+    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE, X_LINK_GATE_SETUP};
+    DeviceInfo dev(deviceIdOrName);
+    for(const auto& state : states) {
+        dev.state = state;
+        deviceDesc_t desc = {};
+        auto ret = XLinkFindFirstSuitableDevice(dev.getXLinkDeviceDesc(), &desc);
+        if(ret == X_LINK_SUCCESS) {
+            if(desc.status == X_LINK_SUCCESS) {
+                return {true, DeviceInfo(desc)};
+            } else {
+                logger::warn("skipping {} device having name \"{}\" (status: {})", XLinkDeviceStateToStr(desc.state), desc.name, XLinkErrorToStr(desc.status));
+            }
+        }
+    }
+    return {false, DeviceInfo()};
+}
+
+std::optional<bool> DeviceBase::isInSetupMode(const std::string& deviceIdOrName) {
+    bool found = false;
+    DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = getDeviceByIdOrName(deviceIdOrName);
+    if(!found) {
+        return std::nullopt;
+    }
+
+    logger::debug("isInSetupMode() resolved device info: {}", deviceInfo.toString());
+
+    return deviceInfo.state == X_LINK_GATE_SETUP;
+}
+
 std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version) {
     return Resources::getInstance().getDeviceFirmware(usb2Mode, version);
 }
 
-std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(Config config) {
+std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(const Config& config) {
     return Resources::getInstance().getDeviceFirmware(config);
 }
 
 ProfilingData DeviceBase::getGlobalProfilingData() {
     return XLinkConnection::getGlobalProfilingData();
+}
+
+HealthCheckMetrics DeviceBase::performHealthCheck(const DeviceInfo& devInfo, const HealthCheckConfig& config) {
+    return DeviceHealthCheck::run(devInfo, config);
 }
 
 /*
@@ -485,20 +520,20 @@ DeviceBase::DeviceBase(UsbSpeed maxUsbSpeed) {
     init(maxUsbSpeed);
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const Config& config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
     init(config, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly)
+DeviceBase::DeviceBase(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd, bool dumpOnly)
     : deviceInfo(devInfo), dumpOnly(dumpOnly) {
     init2(config, pathToCmd, false);
 }
 
-DeviceBase::DeviceBase(Config config, const std::filesystem::path& pathToCmd) {
+DeviceBase::DeviceBase(const Config& config, const std::filesystem::path& pathToCmd) {
     init(config, pathToCmd);
 }
 
-DeviceBase::DeviceBase(Config config, UsbSpeed maxUsbSpeed) {
+DeviceBase::DeviceBase(const Config& config, UsbSpeed maxUsbSpeed) {
     init(config, maxUsbSpeed);
 }
 
@@ -521,32 +556,32 @@ void DeviceBase::init(UsbSpeed maxUsbSpeed) {
     init(maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
+void DeviceBase::init(const Config& config, UsbSpeed maxUsbSpeed) {
     tryGetDevice();
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const std::filesystem::path& pathToCmd) {
+void DeviceBase::init(const Config& config, const std::filesystem::path& pathToCmd) {
     tryGetDevice();
     init2(config, pathToCmd, false);
 }
 
-void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
+void DeviceBase::init(const Config& config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
     deviceInfo = devInfo;
     init(config, maxUsbSpeed, "");
 }
 
-void DeviceBase::init(Config config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) {
+void DeviceBase::init(const Config& config, const DeviceInfo& devInfo, const std::filesystem::path& pathToCmd) {
     deviceInfo = devInfo;
     init2(config, pathToCmd, false);
 }
 
-DeviceBase::DeviceBase(Config config) {
+DeviceBase::DeviceBase(const Config& config) {
     tryGetDevice();
     init2(config, {}, false);
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const Config& config, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
     init2(config, {}, false);
 }
 
@@ -986,7 +1021,7 @@ void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std:
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, true);
 }
-void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
+void DeviceBase::init(const Config& config, UsbSpeed maxUsbSpeed, const std::filesystem::path& pathToMvcmd) {
     Config cfg = config;
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
@@ -1414,7 +1449,7 @@ void DeviceBase::init2(Config cfg, const std::filesystem::path& pathToMvcmd, boo
     }
 }
 
-void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, PrevInfo prev) {
+void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, const PrevInfo& prev) {
     try {
         while(true) {
             while(watchdogRunning) {
@@ -1526,7 +1561,11 @@ void DeviceBase::monitorCallback(std::chrono::milliseconds watchdogTimeout, Prev
             if(reconnectionCallback) reconnectionCallback(ReconnectionStatus::RECONNECTED);
             pimpl->logger.warn("Reconnection successful\n");
             if(isCrashDumpCollectionEnabled()) {
-                crashed = hasCrashDump();
+                const bool hasPendingCrashDump = hasCrashDump();
+                crashed = hasPendingCrashDump;
+                if(!hasPendingCrashDump) {
+                    crashDumpHandled.store(false);
+                }
             }
         }
     } catch(const std::exception& ex) {
@@ -1582,8 +1621,8 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
     dai::CalibrationHandler calibrationHandler;
 
     try {
-        calibrationHandler = readCalibration2();
-        if(calibrationHandler.getEepromData().cameraData.empty()) {
+        calibHandler = getCalibration();
+        if(calibHandler.getEepromData().cameraData.empty()) {
             throw std::runtime_error("No camera data found.");
         }
     } catch(const std::exception&) {
@@ -1942,7 +1981,7 @@ ProfilingData DeviceBase::getProfilingData() {
     return connection->getProfilingData();
 }
 
-int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
+int DeviceBase::addLogCallback(const std::function<void(LogMessage)>& callback) {
     // Lock first
     std::unique_lock<std::mutex> l(logCallbackMapMtx);
 
@@ -2021,7 +2060,7 @@ bool DeviceBase::isCalibrationAvailable() {
     return pimpl->rpcCallChecked<bool>("isCalibrationAvailable");
 }
 
-bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) {
+bool DeviceBase::tryFlashCalibration(const CalibrationHandler& calibrationDataHandler) {
     try {
         flashCalibration(calibrationDataHandler);
     } catch(const EepromError& e) {
@@ -2031,7 +2070,7 @@ bool DeviceBase::tryFlashCalibration(CalibrationHandler calibrationDataHandler) 
     return true;
 }
 
-bool DeviceBase::tryFlashCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
+bool DeviceBase::tryFlashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket) {
     if(!validateCBACalibrationData(calibrationDataHandler)) {
         return false;
     }
@@ -2045,7 +2084,7 @@ bool DeviceBase::tryFlashCBACalibration(CBACalibrationHandler calibrationDataHan
     return true;
 }
 
-void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::flashCalibration(const CalibrationHandler& calibrationDataHandler) {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -2061,7 +2100,7 @@ void DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     }
 }
 
-void DeviceBase::flashCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
+void DeviceBase::flashCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket) {
     camSocket = validatePhysicalCBASocket(camSocket);
     if(!validateCBACalibrationData(calibrationDataHandler)) {
         throw std::runtime_error("CBA calibration data must contain exactly one CameraBoardSocket::CBA cameraData entry.");
@@ -2095,7 +2134,7 @@ void DeviceBase::setCalibration(const std::optional<EepromData>& eepromData) {
     }
 }
 
-void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::setCalibration(const CalibrationHandler& calibrationDataHandler) {
     setCalibration(calibrationDataHandler.getEepromData());
 }
 
@@ -2175,7 +2214,7 @@ CBACalibrationHandler DeviceBase::readCBACalibrationOrDefault(CameraBoardSocket 
     return readCBACalibration(camSocket);
 }
 
-void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::flashFactoryCalibration(const CalibrationHandler& calibrationDataHandler) {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -2194,7 +2233,7 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
     }
 }
 
-void DeviceBase::flashFactoryCBACalibration(CBACalibrationHandler calibrationDataHandler, CameraBoardSocket camSocket) {
+void DeviceBase::flashFactoryCBACalibration(const CBACalibrationHandler& calibrationDataHandler, CameraBoardSocket camSocket) {
     camSocket = validatePhysicalCBASocket(camSocket);
     if(!validateCBACalibrationData(calibrationDataHandler)) {
         throw std::runtime_error("CBA calibration data must contain exactly one CameraBoardSocket::CBA cameraData entry.");

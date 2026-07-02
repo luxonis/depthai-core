@@ -72,7 +72,7 @@ class DeviceGate {
 
     class USBImpl : public GateImpl {
        public:
-        USBImpl(DeviceInfo deviceInfo, int timeout);
+        USBImpl(const DeviceInfo& deviceInfo, int timeout);
         ~USBImpl() = default;
         bool isOkay() override;
         bool createSession(std::string version, bool exclusive, XLinkPlatform_t platform, std::string& sessionId, std::atomic_bool& sessionCreated) override;

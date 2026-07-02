@@ -96,7 +96,7 @@ def eulerAnglesToRotationMatrix(phi, theta, psi):
 
 
 def botchCalibration(device : dai.Device):
-    calibrationHandler = device.readCalibration()
+    calibrationHandler = device.getCalibration()
     extrinsics = calibrationHandler.getCameraExtrinsics(
         dai.CameraBoardSocket.CAM_B, dai.CameraBoardSocket.CAM_C
     )

@@ -306,7 +306,11 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
             return stream.str();
         });
 
-    timestamp.def(py::init<>()).def_readwrite("sec", &Timestamp::sec).def_readwrite("nsec", &Timestamp::nsec).def("get", &Timestamp::get);
+    timestamp.def(py::init<>())
+        .def_readwrite("sec", &Timestamp::sec)
+        .def_readwrite("nsec", &Timestamp::nsec)
+        .def("get", &Timestamp::get<std::chrono::steady_clock>)
+        .def("getSystemClock", &Timestamp::get<std::chrono::system_clock>);
 
     point2f.def(py::init<>(), DOC(dai, Point2f, Point2f))
         .def(py::init<float, float>(), py::arg("x"), py::arg("y"), DOC(dai, Point2f, Point2f, 2))
@@ -370,7 +374,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
         .value("CAM_F", CameraBoardSocket::CAM_F)
         .value("CAM_G", CameraBoardSocket::CAM_G)
         .value("CAM_H", CameraBoardSocket::CAM_H)
-        .value("CBA", CameraBoardSocket::CBA)
+        .value("CBA", CameraBoardSocket::CBA, "Experimental feature. This API might change or be removed in a future release.")
 
         .value("RGB", CameraBoardSocket::RGB, "**Deprecated:** Use CAM_A or address camera by name instead")
         .value("LEFT", CameraBoardSocket::LEFT, "**Deprecated:** Use CAM_B or address camera by name instead")

@@ -255,7 +255,7 @@ NodeState::Timing NodeStateApi::otherTimings(const std::string& statName) {
     }
     return state->nodeStates[nodeId].otherTimings[statName];
 }
-void PipelineStateApi::stateAsync(std::function<void(const PipelineState&)> callback, std::optional<PipelineEventAggregationConfig> config) {
+void PipelineStateApi::stateAsync(std::function<void(const PipelineState&)> callback, const std::optional<PipelineEventAggregationConfig>& config) {
     PipelineEventAggregationConfig cfg;
     if(config.has_value()) {
         cfg = *config;

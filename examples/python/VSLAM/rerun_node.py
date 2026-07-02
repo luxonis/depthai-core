@@ -25,7 +25,7 @@ class RerunNode(dai.node.ThreadedHostNode):
 
     def getFocalLengthFromImage(self, imgFrame):
         p = self.getParentPipeline()
-        calibHandler = p.getDefaultDevice().readCalibration()
+        calibHandler = p.getDefaultDevice().getCalibration()
         intrinsics = calibHandler.getCameraIntrinsics(dai.CameraBoardSocket(imgFrame.getInstanceNum()), imgFrame.getWidth(), imgFrame.getHeight())
         self.fx = intrinsics[0][0]
         self.fy = intrinsics[1][1]

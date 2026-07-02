@@ -171,7 +171,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      *
      * @param blob Network blob
      */
-    void setBlob(OpenVINO::Blob blob);
+    void setBlob(const OpenVINO::Blob& blob);
 
     /**
      * Same functionality as the setBlobPath(). Load network blob into assets and use once pipeline is started.
@@ -215,13 +215,13 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      * Specifies backend to use
      * @param backend String specifying backend to use
      */
-    void setBackend(std::string backend);
+    void setBackend(const std::string& backend);
 
     /**
      * Set backend properties
      * @param backendProperties backend properties map
      */
-    void setBackendProperties(std::map<std::string, std::string> properties);
+    void setBackendProperties(const std::map<std::string, std::string>& properties);
 
     /**
      * How many inference threads will be used to run the network

@@ -141,7 +141,7 @@ Vec3 captureAverageAccelerometer(dai::IMUSensor accelerometerSensor = dai::IMUSe
     auto imuQueue = imu->out.createOutputQueue(50, false);
 
     auto device = p.getDefaultDevice();
-    auto calibHandler = device->readCalibration();
+    auto calibHandler = device->getCalibration();
     const auto& requestedCalibration = calibration.value_or(kIdentityCalibration);
     calibHandler.setAccelerometerCalibration(requestedCalibration);
     calibHandler.setGyroscopeCalibration(requestedCalibration);
@@ -191,7 +191,7 @@ Vec3 captureAverageGyroscope(std::optional<std::vector<std::vector<float>>> cali
     auto imuQueue = imu->out.createOutputQueue(50, false);
 
     auto device = p.getDefaultDevice();
-    auto calibHandler = device->readCalibration();
+    auto calibHandler = device->getCalibration();
     const auto& requestedCalibration = calibration.value_or(kIdentityCalibration);
     calibHandler.setAccelerometerCalibration(requestedCalibration);
     calibHandler.setGyroscopeCalibration(requestedCalibration);
@@ -314,7 +314,7 @@ Vec3 captureAverageAccelWithImuRotation(const std::vector<std::vector<float>>& r
     auto imuQueue = imu->out.createOutputQueue(50, false);
 
     auto device = p.getDefaultDevice();
-    auto calibHandler = device->readCalibration();
+    auto calibHandler = device->getCalibration();
     calibHandler.setAccelerometerCalibration(kIdentityCalibration);
     calibHandler.setGyroscopeCalibration(kIdentityCalibration);
     setImuExtrinsicsRotation(calibHandler, rotation);

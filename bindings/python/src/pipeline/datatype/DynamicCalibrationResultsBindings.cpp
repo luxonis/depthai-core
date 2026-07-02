@@ -21,6 +21,7 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def(py::init<>())
         .def_readwrite("coveragePerCellA", &CoverageData::coveragePerCellA)
         .def_readwrite("coveragePerCellB", &CoverageData::coveragePerCellB)
+        .def_readwrite("coveragePerCell", &CoverageData::coveragePerCell)
         .def_readwrite("meanCoverage", &CoverageData::meanCoverage)
         .def_readwrite("dataAcquired", &CoverageData::dataAcquired)
         .def_readwrite("coverageAcquired", &CoverageData::coverageAcquired);
@@ -31,7 +32,8 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
         .def_readwrite("rotationChange", &CalibrationQuality::Data::rotationChange)              // std::array<float,3>
         .def_readwrite("depthErrorDifference", &CalibrationQuality::Data::depthErrorDifference)  // std::vector<float>
         .def_readwrite("sampsonErrorCurrent", &CalibrationQuality::Data::sampsonErrorCurrent)
-        .def_readwrite("sampsonErrorNew", &CalibrationQuality::Data::sampsonErrorNew);
+        .def_readwrite("sampsonErrorNew", &CalibrationQuality::Data::sampsonErrorNew)
+        .def_readwrite("pairwiseRotationDifference", &CalibrationQuality::Data::pairwiseRotationDifference);
 
     // CalibrationQuality
     py::class_<CalibrationQuality, Buffer, std::shared_ptr<CalibrationQuality>>(m, "CalibrationQuality")
@@ -49,9 +51,10 @@ void bind_dynamic_calibration_results(pybind11::module& m, void* pCallstack) {
     // DynamicCalibrationResult::Data
     py::class_<DynamicCalibrationResult::Data>(m, "DynamicCalibrationResultData")
         .def(py::init<>())
-        .def_readwrite("newCalibration", &DynamicCalibrationResult::Data::newCalibration)                 // dai::CalibrationHandler
-        .def_readwrite("currentCalibration", &DynamicCalibrationResult::Data::currentCalibration)         // dai::CalibrationHandler
-        .def_readwrite("calibrationDifference", &DynamicCalibrationResult::Data::calibrationDifference);  // CalibrationQuality::Data
+        .def_readwrite("newCalibration", &DynamicCalibrationResult::Data::newCalibration)                // dai::CalibrationHandler
+        .def_readwrite("currentCalibration", &DynamicCalibrationResult::Data::currentCalibration)        // dai::CalibrationHandler
+        .def_readwrite("calibrationDifference", &DynamicCalibrationResult::Data::calibrationDifference)  // CalibrationQuality::Data
+        .def_readwrite("dataConfidence", &DynamicCalibrationResult::Data::dataConfidence);
 
     // DynamicCalibrationResult
     py::class_<DynamicCalibrationResult, Buffer, std::shared_ptr<DynamicCalibrationResult>>(m, "DynamicCalibrationResult")

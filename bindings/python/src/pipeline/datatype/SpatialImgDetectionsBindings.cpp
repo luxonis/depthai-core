@@ -124,12 +124,13 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
         .def_readwrite("unit", &SpatialImgDetections::unit, DOC(dai, SpatialImgDetections, unit))
         .def_property(
             "detections",
-            [](SpatialImgDetections& det) { return &det.detections; },
-            [](SpatialImgDetections& det, std::vector<SpatialImgDetection> val) { det.detections = val; },
+            [](SpatialImgDetections& det) -> std::vector<SpatialImgDetection>& { return det.detections; },
+            [](SpatialImgDetections& det, std::vector<SpatialImgDetection>& val) { det.detections = val; },
             DOC(dai, ImgDetectionsT, detections),
             py::return_value_policy::reference_internal)
         .def("getTimestamp", &SpatialImgDetections::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &SpatialImgDetections::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", &SpatialImgDetections::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
         .def("getSequenceNum", &SpatialImgDetections::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation", [](SpatialImgDetections& msg) { return msg.transformation; })
         .def("setTransformation",

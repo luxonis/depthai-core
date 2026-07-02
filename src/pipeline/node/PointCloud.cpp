@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/PointCloud.hpp"
 
 #include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <cstring>
@@ -33,7 +34,7 @@ namespace node {
 
 // ── Impl: apply / get methods ──
 
-void PointCloud::Impl::setLogger(std::shared_ptr<::spdlog::logger> log) {
+void PointCloud::Impl::setLogger(const std::shared_ptr<::spdlog::logger>& log) {
     logger = log;
 }
 
@@ -420,7 +421,12 @@ void PointCloud::Impl::setExtrinsics(const std::vector<std::vector<float>>& tran
 }
 
 // PointCloud main class implementations
-PointCloud::PointCloud() : pimplPointCloud() {}
+PointCloud::PointCloud() : PointCloud(std::make_unique<Properties>()) {}
+
+PointCloud::PointCloud(std::unique_ptr<Properties> props)
+    : DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties>(std::move(props)),
+      initialConfig(std::make_shared<PointCloudConfig>(properties.initialConfig)),
+      pimplPointCloud() {}
 
 PointCloud::~PointCloud() = default;
 
@@ -477,6 +483,14 @@ void PointCloud::useCPUMT(uint32_t numThreads) {
 
 void PointCloud::useGPU(uint32_t device) {
     pimplPointCloud->useGPU(device);
+}
+
+void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera) {
+    initialConfig->setTargetCoordinateSystem(targetCamera);
+}
+
+void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS) {
+    initialConfig->setTargetCoordinateSystem(housingCS);
 }
 
 void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation) {
@@ -616,7 +630,7 @@ void PointCloud::initialize(const ImgFrame& depthFrame, const PointCloudConfig& 
 // Processing helpers (depth-only and colorized paths)
 //------------------------------------------------------------------
 
-void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::shared_ptr<PointCloudData> pc, bool organized) {
+void PointCloud::processDepthOnly(const std::shared_ptr<ImgFrame>& depthFrame, const std::shared_ptr<PointCloudData>& pc, bool organized) {
     const auto width = depthFrame->getWidth();
     const auto height = depthFrame->getHeight();
     const auto* depthData = depthFrame->getData().data();
@@ -640,9 +654,9 @@ void PointCloud::processDepthOnly(std::shared_ptr<ImgFrame> depthFrame, std::sha
     pc->setPoints(std::move(points));
 }
 
-void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
-                                  std::shared_ptr<ImgFrame> colorFrame,
-                                  std::shared_ptr<PointCloudData> pc,
+void PointCloud::processColorized(const std::shared_ptr<ImgFrame>& depthFrame,
+                                  const std::shared_ptr<ImgFrame>& colorFrame,
+                                  const std::shared_ptr<PointCloudData>& pc,
                                   bool organized) {
     const auto width = depthFrame->getWidth();
     const auto height = depthFrame->getHeight();
@@ -663,21 +677,14 @@ void PointCloud::processColorized(std::shared_ptr<ImgFrame> depthFrame,
         return;
     }
 
-    // Warn about extrinsics mismatches (non-fatal)
-    {
-        auto depthExtrinsics = depthFrame->transformation.getExtrinsics();
-        auto colorExtrinsics = colorFrame->transformation.getExtrinsics();
-        if(depthExtrinsics.toCameraSocket != colorExtrinsics.toCameraSocket) {
-            pimpl->logger->warn("PointCloud: color extrinsics toCameraSocket ({}) does not match depth ({}) -- colorization may be misaligned",
-                                toString(colorExtrinsics.toCameraSocket),
-                                toString(depthExtrinsics.toCameraSocket));
-        } else if(depthExtrinsics.rotationMatrix != colorExtrinsics.rotationMatrix || depthExtrinsics.translation.x != colorExtrinsics.translation.x
-                  || depthExtrinsics.translation.y != colorExtrinsics.translation.y || depthExtrinsics.translation.z != colorExtrinsics.translation.z) {
-            pimpl->logger->warn(
-                "PointCloud: depth and color extrinsics differ (same toCameraSocket={} but different rotation/translation) "
-                "-- colorization may be misaligned",
-                toString(depthExtrinsics.toCameraSocket));
-        }
+    // Check extrinsics mismatches (non-fatal)
+    if(!depthFrame->transformation.getExtrinsics().isEqualExtrinsics(colorFrame->transformation.getExtrinsics())) {
+        pimpl->logger->warn("PointCloud: depth and color extrinsics differ -- colorization may be misaligned");
+    }
+
+    // Check intrinsics and distortion mismatches (non-fatal)
+    if(!depthFrame->transformation.isAlignedTo(colorFrame->transformation)) {
+        pimpl->logger->warn("PointCloud: depth and color transformations are not aligned (intrinsics/distortion differ) -- colorization may be misaligned");
     }
 
     const auto* depthData = depthFrame->getData().data();
@@ -743,7 +750,7 @@ void PointCloud::run() {
             continue;
         }
 
-        auto colorFrame = colorMode ? group->get<ImgFrame>(colorInputName) : nullptr;
+        auto colorFrame = group->get<ImgFrame>(colorInputName);
 
         // Check for runtime config update
         auto newConfig = inputConfig.tryGet<PointCloudConfig>();
@@ -785,9 +792,7 @@ void PointCloud::run() {
 
         // Create PointCloudData
         auto pc = std::make_shared<PointCloudData>();
-        pc->setTimestamp(depthFrame->getTimestamp());
-        pc->setTimestampDevice(depthFrame->getTimestampDevice());
-        pc->setSequenceNum(depthFrame->getSequenceNum());
+        pc->setBufferMetadataFrom(depthFrame);
         pc->setInstanceNum(depthFrame->getInstanceNum());
         auto outputTransformation = depthFrame->getTransformation();
         if(targetExtrinsics_) {

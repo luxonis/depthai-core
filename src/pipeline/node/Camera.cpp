@@ -69,7 +69,7 @@ Camera::Camera(std::shared_ptr<Device>& defaultDevice)
     : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
 
 std::shared_ptr<Camera> Camera::build(CameraBoardSocket boardSocket,
-                                      std::optional<std::pair<uint32_t, uint32_t>> sensorResolution,
+                                      const std::optional<std::pair<uint32_t, uint32_t>>& sensorResolution,
                                       std::optional<float> sensorFps) {
     if(isBuilt) {
         throw std::runtime_error("Camera node is already built");
@@ -228,7 +228,7 @@ Node::Output* Camera::requestFullResolutionOutput(std::optional<ImgFrame::Type> 
     return pimpl->requestOutput(*this, cap, false);
 }
 
-Node::Output* Camera::requestOutput(std::pair<uint32_t, uint32_t> size,
+Node::Output* Camera::requestOutput(const std::pair<uint32_t, uint32_t>& size,
                                     std::optional<ImgFrame::Type> type,
                                     ImgResizeMode resizeMode,
                                     std::optional<float> fps,
