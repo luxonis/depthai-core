@@ -1,2 +1,2 @@
 [build-system]
-requires = ["setuptools", "wheel", "mypy", "numpy", "jinja2", "cmake==3.30"]
+requires = ["setuptools>=77.0.3", "wheel>=0.45.1", "mypy", "numpy", "jinja2", "cmake==3.30"]
