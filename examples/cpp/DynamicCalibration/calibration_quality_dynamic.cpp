@@ -1,11 +1,24 @@
 #include <chrono>
-#include <cmath>
-#include <iomanip>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <thread>
 
 #include "depthai/depthai.hpp"
+
+namespace {
+void printMetrics(const dai::CalibrationQuality::Data& q) {
+    for(const auto& [socketPair, rotation] : q.pairwiseRotationDifference) {
+        std::cout << "Pairwise rotation difference " << static_cast<int>(socketPair.first) << " -> " << static_cast<int>(socketPair.second) << " = [";
+        for(std::size_t i = 0; i < rotation.size(); ++i) {
+            if(i > 0) std::cout << ", ";
+            std::cout << rotation[i];
+        }
+        std::cout << "] deg" << std::endl;
+    }
+    std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px" << std::endl;
+    std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px" << std::endl;
+}
+}  // namespace
 
 int main() {
     auto device = std::make_shared<dai::Device>();
@@ -33,8 +46,8 @@ int main() {
     auto rightSyncedQueue = stereo->syncedRight.createOutputQueue();
     auto disparityQueue = stereo->disparity.createOutputQueue();
 
-    auto dynQualityOutQ = dynCalib->qualityOutput.createOutputQueue();
     auto dynCoverageOutQ = dynCalib->coverageOutput.createOutputQueue();
+    auto dynCalibOutQ = dynCalib->calibrationOutput.createOutputQueue();
     auto dynCalibInputControl = dynCalib->inputControl.createInputQueue();
 
     device->setCalibration(device->getCalibration());
@@ -62,37 +75,17 @@ int main() {
             std::cout << "Data Acquired       = " << coverageMsg->dataAcquired << " / 100 [%]" << std::endl;
         }
 
-        // Request a calibration quality evaluation (non-forced)
-        dynCalibInputControl->send(DCC::calibrationQuality(false));
+        // Run one-shot calibration and inspect the returned metrics.
+        dynCalibInputControl->send(DCC::calibrate(false));
 
         // Wait for calibration result
-        auto dynCalibrationResult = dynQualityOutQ->get<dai::CalibrationQuality>();
+        auto dynCalibrationResult = dynCalibOutQ->get<dai::DynamicCalibrationResult>();
         if(dynCalibrationResult) {
             std::cout << "Dynamic calibration status: " << dynCalibrationResult->info << std::endl;
 
-            if(dynCalibrationResult->qualityData) {
-                std::cout << "Successfully evaluated Quality." << std::endl;
-
-                const auto& q = *dynCalibrationResult->qualityData;
-
-                // --- Rotation difference magnitude (degrees) ---
-                float rotDiff = std::sqrt(q.rotationChange[0] * q.rotationChange[0] + q.rotationChange[1] * q.rotationChange[1]
-                                          + q.rotationChange[2] * q.rotationChange[2]);
-                std::cout << "Rotation difference: || r_current - r_new || = " << rotDiff << " deg" << std::endl;
-
-                // --- Sampson error (px) ---
-                std::cout << "Mean Sampson error achievable = " << q.sampsonErrorNew << " px" << std::endl;
-                std::cout << "Mean Sampson error current    = " << q.sampsonErrorCurrent << " px" << std::endl;
-
-                // --- Depth error difference (%) at 1/2/5/10 m ---
-                std::cout << "Theoretical Depth Error Difference " << "@1m:" << std::fixed << std::setprecision(2) << q.depthErrorDifference[0] << "%, "
-                          << "2m:" << q.depthErrorDifference[1] << "%, " << "5m:" << q.depthErrorDifference[2] << "%, " << "10m:" << q.depthErrorDifference[3]
-                          << "%" << std::endl;
-
-                // (Optional) Trigger a calibration step if desired:
-                // dynCalibInputControl->send(DCC::calibrate(true));
-
-                // Reset temporary data after reading metrics
+            if(dynCalibrationResult->calibrationData) {
+                std::cout << "Successfully evaluated metrics from calibration output." << std::endl;
+                printMetrics(dynCalibrationResult->calibrationData->calibrationDifference);
                 dynCalibInputControl->send(DCC::resetData());
             }
         } else {
