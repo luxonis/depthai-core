@@ -36,9 +36,14 @@ def print_calibration_result(result: dai.DynamicCalibrationResult) -> None:
 
 
 with dai.Pipeline() as pipeline:
+    device = pipeline.getDefaultDevice()
+    calibrationHandler = device.readCalibration()
+    rgbLensPosition = calibrationHandler.getLensPosition(dai.CameraBoardSocket.CAM_A)
+
     rgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+    rgb.initialControl.setManualFocus(rgbLensPosition)
 
     rgbOut = rgb.requestOutput((1280, 800), fps=30)
     monoLeftOut = monoLeft.requestFullResolutionOutput()
@@ -56,11 +61,11 @@ with dai.Pipeline() as pipeline:
     calibrationQueue = dynCalib.calibrationOutput.createOutputQueue()
     inputControl = dynCalib.inputControl.createInputQueue()
 
-    device = pipeline.getDefaultDevice()
-    device.setCalibration(device.readCalibration())
+    device.setCalibration(calibrationHandler)
 
     pipeline.start()
     time.sleep(1)
+    print(f"RGB manual focus locked to calibration lens position: {rgbLensPosition}")
 
     inputControl.send(
         dai.DynamicCalibrationControl.setPerformanceMode(

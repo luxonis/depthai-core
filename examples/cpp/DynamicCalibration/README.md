@@ -66,6 +66,7 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 
 **What it does:**
 - Links `CAM_A -> dynCalib.rgb`, `CAM_B -> dynCalib.left`, and `CAM_C -> dynCalib.right`
+- Locks the RGB camera to the fixed lens position stored in `CalibrationHandler`
 - Starts periodic calibration
 - Prints `coveragePerCell` keyed by `CameraBoardSocket`
 - Prints `pairwiseRotationDifference` for the calibrated sensor pairs
@@ -73,6 +74,11 @@ This folder contains minimal, end-to-end **C++** examples that use **`dai::node:
 **Use this when:**
 - You want a concrete example of the newer 3-input DynamicCalibration API
 - You want to inspect socket-keyed coverage instead of the deprecated `coveragePerCellA/B` aliases
+
+**Important for RGB cameras:**
+- Keep the RGB lens position fixed during dynamic calibration.
+- Read the RGB lens position from `CalibrationHandler` and apply it with manual focus before starting the pipeline.
+- Do not leave RGB autofocus running during calibration, or the RGB camera intrinsics can drift with focus changes.
 
 ---
 

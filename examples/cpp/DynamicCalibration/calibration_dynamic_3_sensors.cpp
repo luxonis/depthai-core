@@ -42,11 +42,14 @@ int main() {
     using DCC = dai::DynamicCalibrationControl;
 
     auto device = std::make_shared<dai::Device>();
+    auto calibrationHandler = device->readCalibration();
+    auto rgbLensPosition = calibrationHandler.getLensPosition(dai::CameraBoardSocket::CAM_A);
     dai::Pipeline pipeline(device);
 
     auto rgb = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_A);
     auto monoLeft = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_B);
     auto monoRight = pipeline.create<dai::node::Camera>()->build(dai::CameraBoardSocket::CAM_C);
+    rgb->initialControl.setManualFocus(rgbLensPosition);
 
     auto* rgbOut = rgb->requestOutput(std::make_pair(1280U, 800U), std::nullopt, dai::ImgResizeMode::CROP, 30.0f);
     auto* leftOut = monoLeft->requestFullResolutionOutput();
@@ -64,10 +67,11 @@ int main() {
     auto calibrationQueue = dynCalib->calibrationOutput.createOutputQueue();
     auto inputControl = dynCalib->inputControl.createInputQueue();
 
-    device->setCalibration(device->readCalibration());
+    device->setCalibration(calibrationHandler);
 
     pipeline.start();
     std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::cout << "RGB manual focus locked to calibration lens position: " << static_cast<int>(rgbLensPosition) << '\n';
 
     inputControl->send(DCC::setPerformanceMode(DCC::PerformanceMode::OPTIMIZE_PERFORMANCE));
     inputControl->send(DCC::startCalibration());
