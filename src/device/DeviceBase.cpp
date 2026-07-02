@@ -4,6 +4,7 @@
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/fmt/ostr.h>
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <chrono>
@@ -1621,8 +1622,8 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
     dai::CalibrationHandler calibrationHandler;
 
     try {
-        calibHandler = getCalibration();
-        if(calibHandler.getEepromData().cameraData.empty()) {
+        calibrationHandler = getCalibration();
+        if(calibrationHandler.getEepromData().cameraData.empty()) {
             throw std::runtime_error("No camera data found.");
         }
     } catch(const std::exception&) {
@@ -1656,18 +1657,21 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
         for(size_t i = 0; i < sockets.size(); ++i) {
             const auto socket1 = sockets[i];
             const auto& feature1 = featureBySocket.at(socket1);
+            if(!calibrationHandler.hasCameraCalibration(socket1)) continue;
 
             const float fov1 = calibrationHandler.getFov(socket1, false);
 
             for(size_t j = i + 1; j < sockets.size(); ++j) {
                 const auto socket2 = sockets[j];
                 const auto& feature2 = featureBySocket.at(socket2);
+                if(!calibrationHandler.hasCameraCalibration(socket2)) continue;
+                if(!calibrationHandler.checkExtrinsicsLink(socket1, socket2)) continue;
+
                 const float fov2 = calibrationHandler.getFov(socket2, false);
                 bool sameSensors = feature1.sensorName == feature2.sensorName;
                 if(!sameSensors) {
                     bool sameResolution = (feature1.width == feature2.width) && (feature1.height == feature2.height);
                     if(!sameResolution) continue;
-                    // The fields of view can differ by at most 10 degrees.
                     bool similarFov = std::abs(fov1 - fov2) < 10.f;
                     if(!similarFov) continue;
                 }
@@ -1681,6 +1685,12 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
                 if(calibrationHandler.getCameraZAxisAngle(socket1, socket2) > maximalAngle) continue;
 
                 const auto translationVector = calibrationHandler.getCameraTranslationVector(socket1, socket2, false);
+                const float xMagnitude = std::abs(translationVector[0]);
+                const float yMagnitude = std::abs(translationVector[1]);
+                const float zMagnitude = std::abs(translationVector[2]);
+                const float dominantPlanarMagnitude = std::max(xMagnitude, yMagnitude);
+                if(dominantPlanarMagnitude <= zMagnitude) continue;
+
                 const bool isVertical = std::abs(translationVector[0]) < std::abs(translationVector[1]);
                 const float baseline = isVertical ? translationVector[1] : translationVector[0];
 

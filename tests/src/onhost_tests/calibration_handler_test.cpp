@@ -7,6 +7,17 @@
 
 using namespace dai;
 
+namespace {
+
+// Expose the protected helper for direct testing without changing
+// CalibrationHandler's production API visibility.
+struct CalibrationHandlerTestAccess : CalibrationHandler {
+    using CalibrationHandler::CalibrationHandler;
+    using CalibrationHandler::getCameraZAxisAngle;
+};
+
+}  // namespace
+
 static ImuNoiseParameters makeImuNoiseParams() {
     ImuNoiseParameters params;
     params.name = "BNO086";
@@ -1464,10 +1475,10 @@ TEST_CASE("getCameraToImuExtrinsics scales translation for all units", "[getCame
 }
 
 TEST_CASE("getCameraZAxisAngle returns angle between camera optical axes", "[getCameraZAxisAngle]") {
-    auto identityHandler = loadHandlerWithHousing();
+    CalibrationHandlerTestAccess identityHandler(loadHandlerWithHousing().getEepromData());
     REQUIRE(identityHandler.getCameraZAxisAngle(CameraBoardSocket::CAM_B, CameraBoardSocket::CAM_C) == Catch::Approx(0.0f).margin(1e-6));
 
-    auto rotatedHandler = CalibrationHandler::fromJson(loadValidCalibJson());
+    CalibrationHandlerTestAccess rotatedHandler(CalibrationHandler::fromJson(loadValidCalibJson()).getEepromData());
     const auto angle = rotatedHandler.getCameraZAxisAngle(CameraBoardSocket::CAM_C, CameraBoardSocket::CAM_D);
     REQUIRE(angle == Catch::Approx(std::acos(0.9999464154243469f)).margin(1e-6));
 }
