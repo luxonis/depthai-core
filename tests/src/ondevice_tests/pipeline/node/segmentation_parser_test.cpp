@@ -154,6 +154,23 @@ std::vector<uint8_t> computeExpectedMask(int width, int height, int channels, fl
     return mask;
 }
 
+template <typename ValueFn>
+std::vector<uint8_t> computeExpectedMaskSingleChScore(int width, int height, float scoreFloor, ValueFn valueFn, int stepSize = 1) {
+    const int outWidth = width / stepSize;
+    const int outHeight = height / stepSize;
+    std::vector<uint8_t> mask(static_cast<size_t>(outWidth) * static_cast<size_t>(outHeight), 255);
+
+    int outY = 0;
+    for(int h = 0; h < height; h += stepSize, ++outY) {
+        int outX = 0;
+        for(int w = 0; w < width; w += stepSize, ++outX) {
+            mask[static_cast<size_t>(outY) * static_cast<size_t>(outWidth) + static_cast<size_t>(outX)] = valueFn(h, w) > scoreFloor ? 0 : 255;
+        }
+    }
+
+    return mask;
+}
+
 void checkMaskMatches(const dai::SegmentationMask& mask, const std::vector<uint8_t>& expected, size_t width, size_t height) {
     REQUIRE(mask.getWidth() == width);
     REQUIRE(mask.getHeight() == height);
@@ -331,6 +348,47 @@ TEST_CASE("SegmentationParser background class ignores channel 0") {
     const size_t maskWidth = static_cast<size_t>(kWidth) / config.getStepSize();
     const size_t maskHeight = static_cast<size_t>(kHeight) / config.getStepSize();
     checkMaskMatches(*outputs.front(), expected, maskWidth, maskHeight);
+}
+
+TEST_CASE("SegmentationParser single-channel foreground scores use an implicit 0.0f background") {
+    constexpr int kWidth = 3;
+    constexpr int kHeight = 2;
+
+    const std::vector<float> values = {
+        -0.4f,
+        0.0f,
+        0.2f,  // (0,0) - (0,2)
+        0.6f,
+        -1.2f,
+        0.5f  // (1,0) - (1,2)
+    };
+    auto valueFn = [&](int, int h, int w) { return values[static_cast<size_t>(h * kWidth + w)]; };
+
+    auto info = makeNCHWTensorInfo("seg", dai::TensorInfo::DataType::FP32, 1, kHeight, kWidth);
+    auto nnData = createSyntheticNNData<float>(info, valueFn);
+    const size_t maskWidth = kWidth;
+    const size_t maskHeight = kHeight;
+
+    SECTION("default config uses an implicit 0.0f background boundary") {
+        dai::SegmentationParserConfig config;
+        config.setStepSize(1);
+
+        const auto expected =
+            computeExpectedMaskSingleChScore(kWidth, kHeight, 0.0f, [&](int h, int w) { return values[static_cast<size_t>(h * kWidth + w)]; });
+        auto outputs = processSegmentationFrames(config, {nnData}, false, false);
+        checkMaskMatches(*outputs.front(), expected, maskWidth, maskHeight);
+    }
+
+    SECTION("explicit threshold overrides the implicit 0.0f boundary") {
+        dai::SegmentationParserConfig config;
+        config.setConfidenceThreshold(0.5f);
+        config.setStepSize(1);
+
+        const auto expected = computeExpectedMaskSingleChScore(
+            kWidth, kHeight, config.getConfidenceThreshold(), [&](int h, int w) { return values[static_cast<size_t>(h * kWidth + w)]; });
+        auto outputs = processSegmentationFrames(config, {nnData}, false, false);
+        checkMaskMatches(*outputs.front(), expected, maskWidth, maskHeight);
+    }
 }
 
 TEST_CASE("SegmentationParser classes-in-one-layer passes through mask") {
