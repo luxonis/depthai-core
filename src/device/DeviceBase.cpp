@@ -1635,23 +1635,23 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
     }
 
     try {  // if there are no intrinsics / extrinsics stored this can failed
-    const auto connectedFeatures = getConnectedCameraFeatures();
+        const auto connectedFeatures = getConnectedCameraFeatures();
 
-    std::unordered_map<CameraBoardSocket, CameraFeatures> featureBySocket;
-    std::vector<CameraBoardSocket> sockets;
-    sockets.reserve(connectedFeatures.size());
+        std::unordered_map<CameraBoardSocket, CameraFeatures> featureBySocket;
+        std::vector<CameraBoardSocket> sockets;
+        sockets.reserve(connectedFeatures.size());
 
-    auto isStereoCapable = [](const CameraFeatures& feature) {
-        return std::find(feature.supportedTypes.begin(), feature.supportedTypes.end(), CameraSensorType::COLOR) != feature.supportedTypes.end()
-               || std::find(feature.supportedTypes.begin(), feature.supportedTypes.end(), CameraSensorType::MONO) != feature.supportedTypes.end();
-    };
+        auto isStereoCapable = [](const CameraFeatures& feature) {
+            return std::find(feature.supportedTypes.begin(), feature.supportedTypes.end(), CameraSensorType::COLOR) != feature.supportedTypes.end()
+                   || std::find(feature.supportedTypes.begin(), feature.supportedTypes.end(), CameraSensorType::MONO) != feature.supportedTypes.end();
+        };
 
-    for(const auto& feature : connectedFeatures) {
-        if(!isStereoCapable(feature)) continue;
+        for(const auto& feature : connectedFeatures) {
+            if(!isStereoCapable(feature)) continue;
 
-        featureBySocket.emplace(feature.socket, feature);
-        sockets.push_back(feature.socket);
-    }
+            featureBySocket.emplace(feature.socket, feature);
+            sockets.push_back(feature.socket);
+        }
 
         for(size_t i = 0; i < sockets.size(); ++i) {
             const auto socket1 = sockets[i];
