@@ -2462,6 +2462,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
     pipeline.serialize(schema, assets, assetStorage);
+    const bool enableDotProjectorOnStart =
+        std::any_of(schema.nodes.begin(), schema.nodes.end(), [](const auto& nodeInfo) { return nodeInfo.second.name == "StereoDepth"; });
 
     // if debug or lower
     if(getLogOutputLevel() <= LogLevel::DEBUG) {
@@ -2538,6 +2540,17 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     std::tie(success, errorMsg) = pimpl->rpcCallChecked<std::tuple<bool, std::string>>("buildPipeline");
     if(success) {
         pimpl->rpcCallCheckedVoid("startPipeline");
+        if(enableDotProjectorOnStart) {
+            try {
+                if(setIrLaserDotProjectorIntensity(1.0f)) {
+                    pimpl->logger.debug("Pipeline contains StereoDepth node. Turning on dot projector to 100% by default");
+                } else {
+                    pimpl->logger.debug("Enabling default dot projector intensity failed");
+                }
+            } catch(const std::exception& ex) {
+                pimpl->logger.warn("Failed to enable default dot projector intensity: {}", ex.what());
+            }
+        }
     } else {
         throw std::runtime_error("Device " + getDeviceId() + " error: " + errorMsg);
         return false;

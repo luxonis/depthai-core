@@ -333,7 +333,9 @@ class DeviceBase {
     bool isPipelineRunning();
 
     /**
-     * Starts the execution of a given pipeline
+     * Starts the execution of a given pipeline.
+     * Pipelines that contain a `StereoDepth` node currently attempt to turn the
+     * IR laser dot projector on to 100% after startup.
      * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with.
      *
      * @returns True if pipeline started, false otherwise
