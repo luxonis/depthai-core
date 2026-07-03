@@ -7,12 +7,6 @@
 #include <utility>
 #include <variant>
 
-#include "depthai/capabilities/ImgFrameCapability.hpp"
-#include "depthai/common/CameraBoardSocket.hpp"
-#include "depthai/common/CameraFeatures.hpp"
-#include "depthai/common/CameraSensorType.hpp"
-#include "depthai/common/DeviceModelZoo.hpp"
-#include "depthai/common/StereoPair.hpp"
 #include "depthai/device/Platform.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImageFiltersConfig.hpp"
