@@ -112,11 +112,13 @@ void ToF::postBuildStage() {
         }
     }
     if(device->getPlatform() == Platform::RVC4) {
-        if(!intensity.getConnections().empty()) {
-            if(logger) logger->warn("Intensity is not supported on this platform and will stream aplitude instead.");
-        }
-        if(!rawDepth.getConnections().empty()) {
-            if(logger) logger->warn("RawDepth is not supported on this platform and will not stream the data.");
+        const bool hasIntensityConnections = !intensity.getConnections().empty() || !intensity.getQueueConnections().empty();
+        const bool hasRawDepthConnections = !rawDepth.getConnections().empty() || !rawDepth.getQueueConnections().empty();
+        if(hasIntensityConnections || hasRawDepthConnections) {
+            const auto unsupportedOutputs = hasIntensityConnections && hasRawDepthConnections
+                                                ? "intensity and rawDepth outputs"
+                                                : (hasIntensityConnections ? "intensity output" : "rawDepth output");
+            throw std::runtime_error(fmt::format("ToF on RVC4 does not support {}.", unsupportedOutputs));
         }
     }
 #endif
@@ -131,6 +133,8 @@ ToF::ToF(const std::shared_ptr<Device>& device)
       ,
       autoCamera{usesAutoCamera(device) ? std::make_unique<Subnode<Camera>>(*this, "autoCamera") : nullptr}
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+      ,
+      rawDepth{device && device->getPlatform() == Platform::RVC2 ? tofBase->depth : rawDepthPlaceholder}
     #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
       ,
       depth{usesImageFilters(device) ? (*imageFilters)->output : tofBase->depth}
@@ -143,9 +147,9 @@ ToF::ToF(const std::shared_ptr<Device>& device)
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     if(imageFilters) {
         imageFiltersNode = &**imageFilters;
-#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
         imageFiltersInputConfig = &(*imageFilters)->inputConfig;
-#endif
+    #endif
     }
 #endif
 }
@@ -183,9 +187,10 @@ std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ToFConf
 
     if(autoCamera) {
         (*autoCamera)->setSensorType(CameraSensorType::TOF);
-        (*autoCamera)->build(tofBase->getBoardSocket(),
-                             std::pair<uint32_t, uint32_t>{1344, 7244},
-                             tofBase->properties.fps > 0 ? std::optional<float>(tofBase->properties.fps) : std::nullopt);
+        (*autoCamera)
+            ->build(tofBase->getBoardSocket(),
+                    std::pair<uint32_t, uint32_t>{1344, 7244},
+                    tofBase->properties.fps > 0 ? std::optional<float>(tofBase->properties.fps) : std::nullopt);
 
         (*autoCamera)->raw.link(tofBase->rawInput);
     }

@@ -99,8 +99,9 @@ class ToF : public DeviceNodeGroup {
      * @param presetMode Legacy ToF image filter preset mode
      * @param fps Requested ToF camera FPS
      */
-    [[deprecated("Use build(boardSocket, dai::ToFConfig::Profile, fps) instead")]] std::shared_ptr<ToF> build(
-        dai::CameraBoardSocket boardSocket, dai::ImageFiltersPresetMode presetMode, std::optional<float> fps);
+    [[deprecated("Use build(boardSocket, dai::ToFConfig::Profile, fps) instead")]] std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket,
+                                                                                                              dai::ImageFiltersPresetMode presetMode,
+                                                                                                              std::optional<float> fps);
 
     /**
      * Build the ToF node with a specific board socket, profile, and optional FPS.
@@ -118,14 +119,16 @@ class ToF : public DeviceNodeGroup {
    private:
     std::unique_ptr<Subnode<ImageFilters>> imageFilters = nullptr;
     std::unique_ptr<Subnode<Camera>> autoCamera = nullptr;
+    Output rawDepthPlaceholder{*this, {"rawDepth", DEFAULT_GROUP, {{{DatatypeEnum::ImgFrame, false}}}}, false};
 
    public:
-
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     /**
-     * Raw depth output from ToF sensor
+     * Raw depth output from ToF sensor.
+     * On RVC2 this is connected to the unfiltered base depth output.
+     * On RVC4 this is an unconnected placeholder output.
      */
-    Output& rawDepth{tofBase->depth};
+    Output& rawDepth;
 
     /**
      * Filtered depth output
