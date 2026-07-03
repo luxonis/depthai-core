@@ -252,7 +252,7 @@ void VideoPlayer::init(const std::string& filePath) {
     if(filePath.empty()) {
         throw std::runtime_error("VideoPlayer file path is empty");
     }
-    if(!std::filesystem::exists(filePath)) {
+    if(!std::filesystem::is_regular_file(filePath)) {
         throw std::runtime_error("VideoPlayer file does not exist: " + filePath);
     }
     cvReader = std::make_unique<cv::VideoCapture>();

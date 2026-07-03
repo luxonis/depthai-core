@@ -53,12 +53,8 @@ class ByteRecorder {
         if(initialized) {
             throw std::runtime_error("ByteRecorder already initialized");
         }
-        // Check if file exists
         if(filePath.empty()) {
             throw std::runtime_error("ByteRecorder file path is empty");
-        }
-        if(!std::filesystem::exists(filePath)) {
-            throw std::runtime_error("ByteRecorder file does not exist: " + filePath);
         }
         setWriter(filePath, compressionLevel);
         {
