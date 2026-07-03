@@ -1674,9 +1674,18 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
                 }
                 // The cameras' z-axes must be similarly oriented.
                 if(calibrationHandler.getCameraZAxisAngle(socket1, socket2) > maximalAngle) continue;
-
                 const auto translationVector = calibrationHandler.getCameraTranslationVector(socket1, socket2, false);
-                const bool isVertical = std::abs(translationVector[0]) < std::abs(translationVector[1]);
+
+                const auto ax = std::abs(translationVector[0]);
+                const auto ay = std::abs(translationVector[1]);
+                const auto az = std::abs(translationVector[2]);
+
+                const bool isVertical = ax < ay;
+
+                if(std::max(ax, ay) < az) {
+                    continue;
+                }
+
                 const float baseline = isVertical ? translationVector[1] : translationVector[0];
 
                 StereoPair pair;
