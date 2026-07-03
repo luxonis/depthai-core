@@ -133,6 +133,38 @@ jobs:
           path: rvc4_test_output.log
           if-no-files-found: warn
 
+ linux_rvc4lite_test:
+      needs: [build_docker_container]
+      strategy:
+        matrix:
+          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
+        fail-fast: false
+      runs-on: ['self-hosted', 'testbed-runner']
+      steps:
+      - uses: actions/checkout@v3
+
+      - name: Run RVC4 tests
+        run: |
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+          TEST_ARG="rvc4"
+          if [ "${{ inputs.enable_replay_tests }}" = "true" ]; then
+            TEST_ARG="rvc4replay"
+          fi
+          REPO="https://github.com/${GITHUB_REPOSITORY}"
+          RUN=${GITHUB_RUN_ID}
+          JOB=${{ job.check_run_id }}
+          export RESERVATION_NAME="${REPO}/actions/runs/${RUN}/job/${JOB}"
+          set -o pipefail
+          hil_runner --scope 4lite --basic-sanity --models "oak4_lite_poe" --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh $TEST_ARG" 2>&1 | tee rvc4lite_test_output.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4lite_test-rvc4os=${{ matrix.rvc4os }}
+          path: rvc4lite_test_output.log
+          if-no-files-found: warn
+
  linux_rvc4_usb_test:
       needs: [build_docker_container]
       strategy:
@@ -156,6 +188,31 @@ jobs:
         with:
           name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4_usb_test-rvc4os=${{ matrix.rvc4os }}
           path: rvc4_usb_test_output.log
+          if-no-files-found: warn
+          
+ linux_rvc4lite_usb_test:
+      needs: [build_docker_container]
+      strategy:
+        matrix:
+          rvc4os: ${{ fromJson(inputs.luxonis_os_versions_to_test_usb) }}
+        fail-fast: false
+      runs-on: ['self-hosted', 'testbed-runner']
+      steps:
+      - uses: actions/checkout@v3
+
+      - name: Run RVC4 tests
+        run: |
+          source scripts/hil/prepare_hil_framework.sh ${{ secrets.HIL_PAT_TOKEN }}
+          export RESERVATION_NAME="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID#rvc4-${{ matrix.rvc4os }}-${{ inputs.flavor }}-lite-usb"
+          set -o pipefail
+          hil_runner --models "oak4_lite_usb" --scope 4lite --basic-sanity --reservation-name $RESERVATION_NAME --wait --rvc4-os-version ${{ matrix.rvc4os }} --docker-image ${{ secrets.CONTAINER_REGISTRY }}/depthai-core-hil:${{ needs.build_docker_container.outputs.tag }} --commands "export DEPTHAI_TELEMETRY_URL='${{ secrets.CI_TELEMETRY_URL }}'; export DEPTHAI_TELEMETRY_API_KEY='${{ secrets.CI_TELEMETRY_API_KEY }}'; ./tests/run_tests_entrypoint.sh rvc4usb" 2>&1 | tee rvc4_usb_lite_test_output.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-${{ inputs.job_prefix || inputs.flavor }}-linux_rvc4lite_usb_test-rvc4os=${{ matrix.rvc4os }}
+          path: rvc4_usb_lite_test_output.log
           if-no-files-found: warn
 
  linux_rvc4_rgb_test:
