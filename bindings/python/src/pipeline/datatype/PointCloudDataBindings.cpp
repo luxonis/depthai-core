@@ -183,4 +183,8 @@ void bind_pointclouddata(pybind11::module& m, void* pCallstack) {
         .def("updateBoundingBox", &PointCloudData::updateBoundingBox, DOC(dai, PointCloudData, updateBoundingBox))
         .def("getTransformation", &PointCloudData::getTransformation, py::return_value_policy::reference_internal)
         .def("setTransformation", &PointCloudData::setTransformation, py::arg("transformation"));
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    pointCloudData.def("save", &PointCloudData::save, py::arg("path"), py::arg("metadataOnly") = false)
+        .def("load", &PointCloudData::load, py::arg("path"), py::arg("metadataOnly") = false);
+#endif
 }

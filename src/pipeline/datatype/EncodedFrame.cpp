@@ -1,6 +1,7 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/EncodedFrame.pb.h"
+    #include "utility/ProtoFileIO.hpp"
     #include "utility/ProtoSerialize.hpp"
 #endif
 
@@ -161,6 +162,10 @@ ImgFrame EncodedFrame::getImgFrameMeta() const {
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+void EncodedFrame::deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) {
+    utility::loadProtoMessageFromBytes(*this, bytes, metadataOnly);
+}
+
 ProtoSerializable::SchemaPair EncodedFrame::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));
 }

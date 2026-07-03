@@ -120,6 +120,10 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .def("setLossless", &EncodedFrame::setLossless, DOC(dai, EncodedFrame, getLossless))
         .def("setProfile", &EncodedFrame::setProfile, DOC(dai, EncodedFrame, getProfile))
         .def("setTransformation", [](EncodedFrame& msg, const ImgTransformation& transformation) { msg.transformation = transformation; });
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    encodedFrame.def("save", &EncodedFrame::save, py::arg("path"), py::arg("metadataOnly") = false)
+        .def("load", &EncodedFrame::load, py::arg("path"), py::arg("metadataOnly") = false);
+#endif
     //   // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
     //   m.attr("EncodedFrame").attr("FrameType") =
     //       m.attr("RawEncodedFrame").attr("FrameType");

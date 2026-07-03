@@ -327,6 +327,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         // .def("set", &ImgFrame::set, py::arg("type"), DOC(dai, ImgFrame, set))
         ;
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
     imgFrame
         .def(
             "save",
@@ -338,6 +339,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
             &ImgFrame::load,
             py::arg("path"),
             py::arg("metadataOnly") = false);
+#endif
 
     // add aliases dai.ImgFrame.Type and dai.ImgFrame.Specs
     // m.attr("ImgFrame").attr("Type") = m.attr("RawImgFrame").attr("Type");

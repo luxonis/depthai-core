@@ -6,6 +6,7 @@
 #include "depthai/utility/SharedMemory.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/ImgFrame.pb.h"
+    #include "utility/ProtoFileIO.hpp"
     #include "utility/ProtoSerialize.hpp"
 #endif
 namespace dai {
@@ -361,6 +362,10 @@ Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& or
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+void ImgFrame::deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) {
+    utility::loadProtoMessageFromBytes(*this, bytes, metadataOnly);
+}
+
 ProtoSerializable::SchemaPair ImgFrame::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));
 }

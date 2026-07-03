@@ -7,6 +7,7 @@
 #include "depthai/common/Point3f.hpp"
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/PointCloudData.pb.h"
+    #include "utility/ProtoFileIO.hpp"
     #include "utility/ProtoSerialize.hpp"
 #endif
 namespace dai {
@@ -244,6 +245,10 @@ PointCloudData& PointCloudData::setColor(bool val) {
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+void PointCloudData::deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) {
+    utility::loadProtoMessageFromBytes(*this, bytes, metadataOnly);
+}
+
 std::vector<std::uint8_t> PointCloudData::serializeProto(bool metadataOnly) const {
     return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }

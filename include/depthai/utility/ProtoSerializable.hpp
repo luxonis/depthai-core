@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,9 @@ class ProtoSerializable {
     virtual ~ProtoSerializable();
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    void save(const std::filesystem::path& path, bool metadataOnly = false) const;
+    void load(const std::filesystem::path& path, bool metadataOnly = false);
+
     /**
      * @brief Serialize the protobuf message of this object
      * @return serialized protobuf message
@@ -27,6 +31,9 @@ class ProtoSerializable {
      * @return schemaPair
      */
     virtual SchemaPair serializeSchema() const = 0;
+
+   protected:
+    virtual void deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly);
 
 #else
     // Helper struct for compile-time check

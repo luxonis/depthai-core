@@ -3,6 +3,7 @@
 #if DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/IMUData.pb.h"
     #include "depthai/schemas/common.pb.h"
+    #include "utility/ProtoFileIO.hpp"
     #include "utility/ProtoSerialize.hpp"
 #endif
 
@@ -16,6 +17,9 @@ void IMUData::serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datat
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+void IMUData::deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) {
+    utility::loadProtoMessageFromBytes(*this, bytes, metadataOnly);
+}
 
 ProtoSerializable::SchemaPair IMUData::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));

@@ -2,6 +2,7 @@
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
     #include "depthai/schemas/RGBDData.pb.h"
+    #include "utility/ProtoFileIO.hpp"
     #include "utility/ProtoSerialize.hpp"
 #endif
 
@@ -62,6 +63,10 @@ std::optional<RGBDData::FrameVariant> RGBDData::getDepthFrame() const {
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+void RGBDData::deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) {
+    utility::loadProtoMessageFromBytes(*this, bytes, metadataOnly);
+}
+
 std::vector<std::uint8_t> RGBDData::serializeProto(bool metadataOnly) const {
     return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }

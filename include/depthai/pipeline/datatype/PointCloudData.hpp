@@ -268,6 +268,13 @@ class PointCloudData : public Buffer, public ProtoSerializable, public Transform
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+   protected:
+    void deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) override;
+
+   public:
+#endif
+
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
     /**
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>

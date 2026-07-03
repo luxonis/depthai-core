@@ -36,4 +36,8 @@ void bind_rgbddata(pybind11::module& m, void* pCallstack) {
         .def("getDepthFrame", &RGBDData::getDepthFrame, DOC(dai, RGBDData, getDepthFrame))
         .def("setRGBFrame", &RGBDData::setRGBFrame, py::arg("frame"), DOC(dai, RGBDData, setRGBFrame))
         .def("setDepthFrame", &RGBDData::setDepthFrame, py::arg("frame"), DOC(dai, RGBDData, setDepthFrame));
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    rgbdData.def("save", &RGBDData::save, py::arg("path"), py::arg("metadataOnly") = false)
+        .def("load", &RGBDData::load, py::arg("path"), py::arg("metadataOnly") = false);
+#endif
 }

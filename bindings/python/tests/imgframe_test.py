@@ -185,3 +185,30 @@ def test_imgframe_metadata_only_roundtrip(tmp_path: Path):
 
     assert_frame_metadata_equal(frame, recovered)
     assert recovered.getData().size == 0
+
+
+def test_encodedframe_file_roundtrip(tmp_path: Path):
+    frame = dai.EncodedFrame()
+    frame.setWidth(320)
+    frame.setHeight(180)
+    frame.setQuality(90)
+    frame.setBitrate(1_000_000)
+    frame.setProfile(dai.EncodedFrame.Profile.JPEG)
+    frame.setFrameType(dai.EncodedFrame.FrameType.I)
+    frame.setLossless(False)
+    frame.setData(np.arange(64, dtype=np.uint8))
+
+    path = tmp_path / "encoded-frame.pb"
+    frame.save(path)
+
+    recovered = dai.EncodedFrame()
+    recovered.load(path)
+
+    assert recovered.getWidth() == frame.getWidth()
+    assert recovered.getHeight() == frame.getHeight()
+    assert recovered.getQuality() == frame.getQuality()
+    assert recovered.getBitrate() == frame.getBitrate()
+    assert recovered.getProfile() == frame.getProfile()
+    assert recovered.getFrameType() == frame.getFrameType()
+    assert recovered.getLossless() == frame.getLossless()
+    assert np.array_equal(np.asarray(recovered.getData()), np.asarray(frame.getData()))

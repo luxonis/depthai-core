@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <filesystem>
 #include <unordered_map>
 #include <vector>
 
@@ -102,6 +101,7 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * @returns serialized schema
      */
     ProtoSerializable::SchemaPair serializeSchema() const override;
+
 #endif
 
     // getters
@@ -368,22 +368,6 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      * @returns cloned ImgFrame
      */
     std::shared_ptr<ImgFrame> clone() const;
-
-    /**
-     * Save the frame in the XLink packet format used by host/device transport.
-     *
-     * @param path Output file path
-     * @param metadataOnly If true, only metadata is written and image payload is omitted
-     */
-    void save(const std::filesystem::path& path, bool metadataOnly = false) const;
-
-    /**
-     * Load the frame from the XLink packet format used by host/device transport.
-     *
-     * @param path Input file path
-     * @param metadataOnly If true, loaded payload bytes are discarded after parsing
-     */
-    void load(const std::filesystem::path& path, bool metadataOnly = false);
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -785,7 +769,14 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     dai::FrameEvent event = dai::FrameEvent::NONE;
     ImgTransformation transformation;
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+   protected:
+    void deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) override;
+
    public:
+#else
+   public:
+#endif
     DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
 };
 

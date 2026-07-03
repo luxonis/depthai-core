@@ -2,86 +2,18 @@
 
 #include <cassert>
 #include <cmath>
-#include <fstream>
 #include <opencv2/core/base.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include "depthai/pipeline/datatype/StreamMessageParser.hpp"
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "utility/ProtoFileIO.hpp"
+#endif
 
 // #include "spdlog/spdlog.h"
 
 namespace dai {
-
-namespace {
-
-std::vector<uint8_t> readBinaryFile(const std::filesystem::path& path) {
-    std::ifstream file(path, std::ios::binary);
-    if(!file) {
-        throw std::runtime_error("Failed to open file for reading: " + path.string());
-    }
-
-    file.seekg(0, std::ios::end);
-    const auto size = file.tellg();
-    if(size < 0) {
-        throw std::runtime_error("Failed to determine file size: " + path.string());
-    }
-    file.seekg(0, std::ios::beg);
-
-    std::vector<uint8_t> buffer(static_cast<size_t>(size));
-    if(!buffer.empty()) {
-        file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
-        if(!file) {
-            throw std::runtime_error("Failed to read file: " + path.string());
-        }
-    }
-    return buffer;
-}
-
-void writeBinaryFile(const std::filesystem::path& path, const std::vector<uint8_t>& bytes) {
-    std::ofstream file(path, std::ios::binary);
-    if(!file) {
-        throw std::runtime_error("Failed to open file for writing: " + path.string());
-    }
-    if(!bytes.empty()) {
-        file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
-        if(!file) {
-            throw std::runtime_error("Failed to write file: " + path.string());
-        }
-    }
-}
-
-std::vector<uint8_t> serializeImgFrameXLinkPacket(const ImgFrame& frame, bool metadataOnly) {
-    std::vector<uint8_t> serialized;
-    if(!metadataOnly) {
-        auto data = frame.getData();
-        serialized.insert(serialized.end(), data.begin(), data.end());
-    }
-    auto metadata = StreamMessageParser::serializeMetadata(frame);
-    serialized.insert(serialized.end(), metadata.begin(), metadata.end());
-    return serialized;
-}
-
-std::shared_ptr<ImgFrame> parseImgFrameBytes(const std::vector<uint8_t>& serialized, bool metadataOnly) {
-    auto packetBytes = serialized;
-    streamPacketDesc_t packet{};
-    packet.data = packetBytes.data();
-    packet.length = packetBytes.size();
-    packet.fd = -1;
-
-    auto parsed = StreamMessageParser::parseMessage(&packet);
-    auto frame = std::dynamic_pointer_cast<ImgFrame>(parsed);
-    if(frame == nullptr) {
-        throw std::runtime_error("Failed to parse ImgFrame payload");
-    }
-    if(metadataOnly) {
-        frame->setData(std::vector<std::uint8_t>{});
-    }
-    return frame;
-}
-
-}  // namespace
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
@@ -97,14 +29,6 @@ ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
     }
     setData(dataVec);
     return *this;
-}
-
-void ImgFrame::save(const std::filesystem::path& path, bool metadataOnly) const {
-    writeBinaryFile(path, serializeImgFrameXLinkPacket(*this, metadataOnly));
-}
-
-void ImgFrame::load(const std::filesystem::path& path, bool metadataOnly) {
-    *this = *parseImgFrameBytes(readBinaryFile(path), metadataOnly);
 }
 
 cv::Mat ImgFrame::getFrame(bool deepCopy) {

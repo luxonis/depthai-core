@@ -156,4 +156,8 @@ void bind_imudata(pybind11::module& m, void* pCallstack) {
             [](IMUData& imuDta) -> std::vector<IMUPacket>& { return imuDta.packets; },
             [](IMUData& imuDta, std::vector<IMUPacket>& val) { imuDta.packets = val; },
             DOC(dai, IMUData, packets));
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+    imuData.def("save", &IMUData::save, py::arg("path"), py::arg("metadataOnly") = false)
+        .def("load", &IMUData::load, py::arg("path"), py::arg("metadataOnly") = false);
+#endif
 }

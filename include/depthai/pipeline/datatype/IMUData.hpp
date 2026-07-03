@@ -259,6 +259,13 @@ class IMUData : public Buffer, public ProtoSerializable {
     ProtoSerializable::SchemaPair serializeSchema() const override;
 #endif
 
+#ifdef DEPTHAI_ENABLE_PROTOBUF
+   protected:
+    void deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) override;
+
+   public:
+#endif
+
     DEPTHAI_SERIALIZE(IMUData, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, packets);
 };
 
