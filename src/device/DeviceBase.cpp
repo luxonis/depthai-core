@@ -1663,13 +1663,8 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
                 const auto socket2 = sockets[j];
                 const auto& feature2 = featureBySocket.at(socket2);
                 const float fov2 = calibrationHandler.getFov(socket2, false);
-                bool sameSensors = feature1.sensorName == feature2.sensorName;
-                if(!sameSensors) {
-                    bool sameResolution = (feature1.width == feature2.width) && (feature1.height == feature2.height);
-                    if(!sameResolution) continue;
-                    // The fields of view can differ by at most 10 degrees.
-                    bool similarFov = std::abs(fov1 - fov2) < 10.f;
-                    if(!similarFov) continue;
+                if(feature1.sensorName != feature2.sensorName) {
+                    continue;
                 }
 
                 float maximalAngle = std::min(fov1, fov2) * static_cast<float>(M_PI) / 180.0f * 0.5f;
