@@ -4,6 +4,7 @@
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/fmt/ostr.h>
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <chrono>
@@ -1621,7 +1622,7 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
     dai::CalibrationHandler calibrationHandler;
 
     try {
-        calibrationHandler = readCalibration2();
+        calibrationHandler = getCalibration();
         if(calibrationHandler.getEepromData().cameraData.empty()) {
             throw std::runtime_error("No camera data found.");
         }
@@ -1656,12 +1657,16 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
         for(size_t i = 0; i < sockets.size(); ++i) {
             const auto socket1 = sockets[i];
             const auto& feature1 = featureBySocket.at(socket1);
+            if(!calibrationHandler.hasCameraCalibration(socket1)) continue;
 
             const float fov1 = calibrationHandler.getFov(socket1, false);
 
             for(size_t j = i + 1; j < sockets.size(); ++j) {
                 const auto socket2 = sockets[j];
                 const auto& feature2 = featureBySocket.at(socket2);
+                if(!calibrationHandler.hasCameraCalibration(socket2)) continue;
+                if(!calibrationHandler.checkExtrinsicsLink(socket1, socket2)) continue;
+
                 const float fov2 = calibrationHandler.getFov(socket2, false);
                 if(feature1.sensorName != feature2.sensorName) {
                     continue;
@@ -1685,7 +1690,6 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
                 if(std::max(ax, ay) < az) {
                     continue;
                 }
-
                 const float baseline = isVertical ? translationVector[1] : translationVector[0];
 
                 StereoPair pair;
