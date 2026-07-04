@@ -1,3 +1,15 @@
+/**
+ * Unified Depth node demo.
+ *
+ * The Depth node picks an algorithm and backend config automatically from the connected device,
+ * target FPS, and/or stereo resolution (Algorithm::AUTO). You can also pin the algorithm yourself
+ * via CLI or Depth::build().
+ *
+ * Supported algorithms: AUTO, STEREO, NEURAL, NEURAL_ASSISTED_STEREO, TOF, GPU_STEREO.
+ *
+ * Configure the node via CLI to exercise Depth::build() overloads (fps-only, algorithm + fps/res,
+ * algorithm + config) or pre-built user stereo cameras.
+ */
 #include <algorithm>
 #include <argparse/argparse.hpp>
 #include <cstdlib>
@@ -260,8 +272,13 @@ dai::Pipeline makePipeline(const CliOptions& options) {
 int main(int argc, char** argv) {
     argparse::ArgumentParser program("unified_depth", "1.0.0");
     program.add_description(
-        "Unified Depth node demo (AUTO backend: NeuralDepth on RVC4, ToF or StereoDepth elsewhere). "
-        "Configure fps, resolution, algorithm, or config via CLI to exercise Depth.build() overloads.");
+        "Unified Depth node demo.\n\n"
+        "The Depth node picks an algorithm and backend config automatically from the connected device, "
+        "target FPS, and/or stereo resolution (Algorithm::AUTO). You can also pin the algorithm yourself "
+        "via CLI or Depth::build().\n\n"
+        "Supported algorithms: AUTO, STEREO, NEURAL, NEURAL_ASSISTED_STEREO, TOF, GPU_STEREO.\n\n"
+        "Configure the node via CLI to exercise Depth::build() overloads (fps-only, algorithm + fps/res, "
+        "algorithm + config) or pre-built user stereo cameras.");
     program.add_argument("--ip").default_value(std::string("")).help("Device IP for TCP/IP (e.g. PoE)");
     program.add_argument("--fps").scan<'g', float>().help("Stereo camera FPS for Depth.build() or user cameras");
     program.add_argument("--width").scan<'u', uint32_t>().help("Stereo frame width (requires --height)");

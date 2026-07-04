@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """
-Unified Depth node demo (AUTO backend: NeuralDepth on RVC4, ToF or StereoDepth elsewhere).
+Unified Depth node demo.
+
+The Depth node picks an algorithm and backend config automatically from the connected device,
+target FPS, and/or stereo resolution (Algorithm.AUTO). You can also pin the algorithm yourself
+via CLI or Depth.build().
+
+Supported algorithms: AUTO, STEREO, NEURAL, NEURAL_ASSISTED_STEREO, TOF, GPU_STEREO.
 
 Configure the node via CLI to exercise Depth.build() overloads (fps-only, algorithm + fps/res,
 algorithm + config) or pre-built user stereo cameras.
