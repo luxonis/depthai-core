@@ -75,24 +75,20 @@ void PipelineImplHelper::setupHolisticRecordAndReplay(const std::weak_ptr<Pipeli
                         }
                     } else if(!replayPath.empty()) {
                         if(platform::checkPathExists(replayPath)) {
-                            if(platform::checkWritePermissions(replayPath)) {
-                                if(utility::setupHolisticReplay(dai::Pipeline(pipeline),
-                                                                replayPath,
-                                                                pipeline->defaultDeviceId,
-                                                                pipeline->recordConfig,
-                                                                pipeline->recordReplayFilenames,
-                                                                pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
-                                                                    || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
-                                    pipeline->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
-                                    if(platform::checkPathExists(replayPath, true)) {
-                                        pipeline->removeRecordReplayFiles = false;
-                                    }
-                                    Logging::getInstance().logger.info("Replay enabled.");
-                                } else {
-                                    Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
+                            if(utility::setupHolisticReplay(dai::Pipeline(pipeline),
+                                                            replayPath,
+                                                            pipeline->defaultDeviceId,
+                                                            pipeline->recordConfig,
+                                                            pipeline->recordReplayFilenames,
+                                                            pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+                                                                || pipeline->defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X)) {
+                                pipeline->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
+                                if(platform::checkPathExists(replayPath, true)) {
+                                    pipeline->removeRecordReplayFiles = false;
                                 }
+                                Logging::getInstance().logger.info("Replay enabled.");
                             } else {
-                                Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+                                Logging::getInstance().logger.warn("Could not set up holistic replay. Record and replay disabled.");
                             }
                         } else {
                             Logging::getInstance().logger.warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");

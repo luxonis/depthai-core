@@ -276,6 +276,7 @@ set(TARGET_CORE_SOURCES
     src/device/Device.cpp
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
+    src/device/HealthCheck.cpp
     # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
     src/device/Platform.cpp
@@ -981,8 +982,10 @@ macro(add_runtime_dependencies depending_target dependency)
         message(STATUS "Required dlls for core are: ${required_dll_files}")
     endif()
 endmacro()
-# Add libusb dll in build time
-add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+# Add libusb dll in build time when libusb is provided by vcpkg.
+if(DEPTHAI_ENABLE_LIBUSB AND NOT XLINK_LIBUSB_SYSTEM)
+    add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+endif()
 # Add dynamic calibration dll in build time
 if(DEPTHAI_DYNAMIC_CALIBRATION_SUPPORT)
     add_runtime_dependencies(${TARGET_CORE_NAME} dynamic_calibration_imported)
@@ -1341,6 +1344,9 @@ if(DEPTHAI_INSTALL)
     # Install depthai public headers
     install(DIRECTORY include/depthai DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     install(FILES "${DEPTHAI_VERSION_HEADER}" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai/build")
+    # Install license and notices
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/notices/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/notices")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install resources if not RC'd

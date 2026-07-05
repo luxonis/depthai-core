@@ -82,7 +82,7 @@ with dai.Pipeline() as pipeline:
     imu.setMaxBatchReports(10)
 
     imuQueue = imu.out.createOutputQueue(maxSize=50, blocking=False)
-    calibration = device.readCalibration()
+    calibration = device.getCalibration()
     eepromData = calibration.getEepromData()
     imuExtrinsics = eepromData.imuExtrinsics
 

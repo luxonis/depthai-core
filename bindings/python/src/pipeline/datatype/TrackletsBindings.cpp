@@ -1,5 +1,7 @@
 #include <memory>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "DatatypeBindings.hpp"
 #include "pipeline/CommonBindings.hpp"
@@ -63,11 +65,12 @@ void bind_tracklets(pybind11::module& m, void* pCallstack) {
         .def_readwrite("unit", &Tracklets::unit, DOC(dai, Tracklets, unit))
         .def_property(
             "tracklets",
-            [](Tracklets& track) { return &track.tracklets; },
-            [](Tracklets& track, std::vector<Tracklet> val) { track.tracklets = val; },
+            [](Tracklets& track) -> std::vector<Tracklet>& { return track.tracklets; },
+            [](Tracklets& track, std::vector<Tracklet> val) { track.tracklets = std::move(val); },
             DOC(dai, Tracklets, tracklets))
         .def("getTimestamp", &Tracklets::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &Tracklets::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
+        .def("getTimestampSystem", &Tracklets::Buffer::getTimestampSystem, DOC(dai, Buffer, getTimestampSystem))
         .def("getSequenceNum", &Tracklets::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getTransformation",
              [](Tracklets& msg) {

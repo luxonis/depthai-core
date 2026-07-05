@@ -304,7 +304,7 @@ void VideoPlayer::close() {
 
 std::tuple<size_t, size_t, double> getVideoSize(const std::string& filePath) {
     cv::VideoCapture cvReader;
-    cvReader.open(filePath);
+    cvReader.open(filePath, cv::CAP_FFMPEG);
     if(!cvReader.isOpened()) {
         throw std::runtime_error("Failed to open video file");
     }

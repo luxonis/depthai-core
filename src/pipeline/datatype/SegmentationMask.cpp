@@ -101,9 +101,7 @@ void SegmentationMask::setMask(dai::ImgFrame& frame) {
         }
     }
     this->transformation = frame.transformation;
-    setTimestamp(frame.getTimestamp());
-    setTimestampDevice(frame.getTimestampDevice());
-    setSequenceNum(frame.getSequenceNum());
+    this->setBufferMetadataFrom(&frame);
 }
 
 std::vector<std::uint8_t> SegmentationMask::getMaskData() const {
@@ -116,9 +114,7 @@ std::vector<std::uint8_t> SegmentationMask::getMaskData() const {
 
 dai::ImgFrame SegmentationMask::getFrame() const {
     dai::ImgFrame img;
-    img.setSequenceNum(getSequenceNum());
-    img.setTimestamp(getTimestamp());
-    img.setTimestampDevice(getTimestampDevice());
+    img.setBufferMetadataFrom(this);
     if(transformation) {
         img.transformation = *transformation;
     }

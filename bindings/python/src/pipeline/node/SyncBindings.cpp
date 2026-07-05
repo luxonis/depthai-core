@@ -11,6 +11,7 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
 
     // Node and Properties declare upfront
     py::class_<SyncProperties> syncProperties(m, "SyncProperties", DOC(dai, SyncProperties));
+    py::enum_<SyncProperties::TimestampSource> tsSource(syncProperties, "TimestampSource");
     auto sync = ADD_NODE(Sync);
 
     ///////////////////////////////////////////////////////////////////////
@@ -26,10 +27,18 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    tsSource.value("DEFAULT", SyncProperties::TimestampSource::DEFAULT)
+        .value("DEVICE", SyncProperties::TimestampSource::DEVICE)
+        .value("HOST", SyncProperties::TimestampSource::HOST)
+        .value("SYSTEM", SyncProperties::TimestampSource::SYSTEM);
+
+    sync.attr("TimestampSource") = tsSource;
+
     // Properties
     syncProperties.def_readwrite("syncThresholdNs", &SyncProperties::syncThresholdNs, DOC(dai, SyncProperties, syncThresholdNs))
         .def_readwrite("syncAttempts", &SyncProperties::syncAttempts, DOC(dai, SyncProperties, syncAttempts))
-        .def_readwrite("processor", &SyncProperties::processor, DOC(dai, SyncProperties, processor));
+        .def_readwrite("processor", &SyncProperties::processor, DOC(dai, SyncProperties, processor))
+        .def_readwrite("timestampSource", &SyncProperties::timestampSource, DOC(dai, SyncProperties, timestampSource));
 
     // Node
     sync.def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
@@ -40,6 +49,8 @@ void bind_sync(pybind11::module& m, void* pCallstack) {
         .def("getSyncAttempts", &Sync::getSyncAttempts, DOC(dai, node, Sync, getSyncAttempts))
         .def("setProcessor", &Sync::setProcessor, DOC(dai, node, Sync, setProcessor))
         .def("getProcessor", &Sync::getProcessor, DOC(dai, node, Sync, getProcessor))
+        .def("setTimestampSource", &Sync::setTimestampSource, DOC(dai, node, Sync, setTimestampSource))
+        .def("getTimestampSource", &Sync::getTimestampSource, DOC(dai, node, Sync, getTimestampSource))
         .def("setRunOnHost", &Sync::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Sync, setRunOnHost))
         .def("runOnHost", &Sync::runOnHost, DOC(dai, node, Sync, runOnHost));
     daiNodeModule.attr("Sync").attr("Properties") = syncProperties;

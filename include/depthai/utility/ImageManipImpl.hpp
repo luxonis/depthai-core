@@ -260,27 +260,55 @@ struct FrameSpecs {
     uint32_t p3Stride;
 };
 
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-class UndistortOpenCvImpl {
+struct UndistortInput {
+    size_t width;
+    size_t height;
+    size_t stride;
+    uint32_t bpp;
+    uint32_t channels;
+    std::shared_ptr<OffsetMemory> data;
+};
+
+class Undistort {
    public:
     enum class BuildStatus { ONE_SHOT, TWO_SHOT, NOT_USED, NOT_BUILT, ERROR };
 
-   private:
+    Undistort(std::shared_ptr<spdlog::async_logger> logger) : logger(std::move(logger)) {}
+    virtual ~Undistort() = default;
+
+    virtual BuildStatus build(std::array<float, 9> cameraMatrix,
+                              std::array<float, 9> newCameraMatrix,
+                              std::vector<float> distCoeffs,
+                              dai::ImgFrame::Type type,
+                              uint32_t srcWidth,
+                              uint32_t srcHeight,
+                              uint32_t dstWidth,
+                              uint32_t dstHeight) = 0;
+    virtual void undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t planeIndex) = 0;
+    virtual void finish() {}
+
+   protected:
+    std::shared_ptr<spdlog::async_logger> logger;
+
+    std::vector<float> distCoeffs;
+    dai::ImgFrame::Type type = dai::ImgFrame::Type::NONE;
+    uint32_t srcWidth = 0;
+    uint32_t srcHeight = 0;
+    uint32_t dstWidth = 0;
+    uint32_t dstHeight = 0;
+
+    std::array<float, 9> cameraMatrix{};
+    std::array<float, 9> newCameraMatrix{};
+};
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+class UndistortOpenCvImpl : public Undistort {
     cv::Mat undistortMap1;
     cv::Mat undistortMap2;
     cv::Mat undistortMap1Half;
     cv::Mat undistortMap2Half;
 
-    std::shared_ptr<spdlog::async_logger> logger;
-
-    std::array<float, 9> cameraMatrix;
-    std::array<float, 9> newCameraMatrix;
-    std::vector<float> distCoeffs;
-    dai::ImgFrame::Type type;
-    uint32_t srcWidth;
-    uint32_t srcHeight;
-    uint32_t dstWidth;
-    uint32_t dstHeight;
+    using Undistort::Undistort;
 
     bool validMatrix(const std::array<float, 9>& matrix) const;
     void initMaps(std::array<float, 9> cameraMatrix,
@@ -293,7 +321,6 @@ class UndistortOpenCvImpl {
                   uint32_t dstHeight);
 
    public:
-    UndistortOpenCvImpl(std::shared_ptr<spdlog::async_logger> logger) : logger(std::move(logger)) {}
     BuildStatus build(std::array<float, 9> cameraMatrix,
                       std::array<float, 9> newCameraMatrix,
                       std::vector<float> distCoeffs,
@@ -301,8 +328,8 @@ class UndistortOpenCvImpl {
                       uint32_t srcWidth,
                       uint32_t srcHeight,
                       uint32_t dstWidth,
-                      uint32_t dstHeight);
-    void undistort(cv::Mat& src, cv::Mat& dst);
+                      uint32_t dstHeight) override;
+    void undistort(const UndistortInput& srcI, const UndistortInput& dstI, uint32_t planeIndex) override;
 };
 #endif
 

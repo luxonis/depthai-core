@@ -415,7 +415,9 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
             xout[thermal_color_name] = cam[c].color
             streams.append(thermal_color_name)
         else:
-            cam[c] = pipeline.create(dai.node.Camera).build(cam_socket_opts[c])
+            cam[c] = pipeline.create(dai.node.Camera)
+            cam[c].setSensorType(dai.CameraSensorType.COLOR if cam_type_color[c] else dai.CameraSensorType.MONO)
+            cam[c].build(cam_socket_opts[c], get_socket_resolution(c), args.fps)
             cap = dai.ImgFrameCapability()
             cap.size.fixed(get_socket_resolution(c))
             cap.fps.fixed(args.fps)
