@@ -63,9 +63,9 @@ inline constexpr std::array BACKEND_PROFILES = {
 
     noConfig(Depth::Algorithm::NEURAL_ASSISTED_STEREO, 1280, 800, 55.f),
 
-    stereo(StereoDepth::PresetMode::DEFAULT, 30.f),
-    stereo(StereoDepth::PresetMode::FAST_DENSITY, 60.f),
-    stereo(StereoDepth::PresetMode::FAST_ACCURACY, 60.f),
+    stereo(StereoDepth::PresetMode::DEFAULT, 16.f),
+    stereo(StereoDepth::PresetMode::FAST_ACCURACY, 30.f),
+    stereo(StereoDepth::PresetMode::FAST_DENSITY, 30.f),
 
     noConfig(Depth::Algorithm::GPU_STEREO, 2592, 1944, 5.f),
     noConfig(Depth::Algorithm::GPU_STEREO, 1280, 800, 30.f),
@@ -385,6 +385,63 @@ void validateStereoDepthResolution(uint32_t width, uint32_t height) {
                 height);
 }
 
+struct WiringInputs {
+    float targetFps{};
+    std::optional<std::pair<uint32_t, uint32_t>> resolution{};
+};
+
+WiringInputs gatherWiringInputs(const std::shared_ptr<Device>& device,
+                                const StereoPair& pair,
+                                const std::shared_ptr<Camera>& left,
+                                const std::shared_ptr<Camera>& right,
+                                std::optional<float> stereoOutputFps,
+                                std::optional<std::pair<uint32_t, uint32_t>> stereoSizeOverride) {
+    WiringInputs inputs{};
+    inputs.targetFps = stereoOutputFps.value_or(0.f);
+    if(inputs.targetFps <= 0.f && left && right) {
+        inputs.targetFps = std::max(left->getMaxRequestedFps(), right->getMaxRequestedFps());
+    }
+    inputs.targetFps = targetFpsWithDefault(inputs.targetFps);
+
+    inputs.resolution = stereoSizeOverride;
+    if(!inputs.resolution) {
+        inputs.resolution = stereoSizeFromExistingCameras(left, right);
+    }
+    if(!inputs.resolution) {
+        inputs.resolution = stereoSizeFromDeviceFeatures(device, pair);
+    }
+    return inputs;
+}
+
+std::optional<StereoDepth::PresetMode> pickFastestStereoPreset(std::optional<std::pair<uint32_t, uint32_t>> resolution) {
+    const BackendProfile* best = nullptr;
+    for(const auto& profile : BACKEND_PROFILES) {
+        if(profile.algorithm != Depth::Algorithm::STEREO) {
+            continue;
+        }
+        if(resolution.has_value() && !resolutionFits(profile, *resolution)) {
+            continue;
+        }
+        if(best == nullptr || profile.maxFps > best->maxFps) {
+            best = &profile;
+        }
+    }
+    if(best != nullptr) {
+        return std::get<StereoDepth::PresetMode>(best->config);
+    }
+    return std::nullopt;
+}
+
+StereoDepth::PresetMode resolveStereoPreset(float targetFps, std::optional<std::pair<uint32_t, uint32_t>> resolution) {
+    if(const auto preset = pickStereoPreset(targetFps * SELECTION_FPS_SAFETY_MARGIN, resolution)) {
+        return *preset;
+    }
+    if(const auto preset = pickFastestStereoPreset(resolution)) {
+        return *preset;
+    }
+    return StereoDepth::PresetMode::FAST_ACCURACY;
+}
+
 }  // namespace
 
 // --- Construction ---
@@ -523,9 +580,9 @@ Depth::Selection Depth::selectBackend(std::optional<std::pair<uint32_t, uint32_t
         }
     }
 
-    // 3. Last-resort fallback: drop the FPS gate, honor resolution if possible, else fastest StereoDepth preset.
+    // 3. Last-resort fallback: fastest StereoDepth preset that fits resolution, if any.
     if(supportsAlgorithm(supportedAlgorithms, Algorithm::STEREO)) {
-        if(const auto preset = pickStereoPreset(0.f, resolution)) {
+        if(const auto preset = pickFastestStereoPreset(resolution)) {
             return {Algorithm::STEREO, *preset};
         }
     }
@@ -554,43 +611,27 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     }
 
     if(!isRvc4) {
-        // Non-RVC4 has no catalog scan; pick the algorithm and populate the preset that
-        // actually goes into the backend's build() (so getResolvedConfig() matches reality).
         const Algorithm chosen =
             (algorithmOverride_ == Algorithm::AUTO) ? (supportsAlgorithm(supported, Algorithm::TOF) ? Algorithm::TOF : Algorithm::STEREO) : algorithmOverride_;
         Config config = std::monostate{};
         if(chosen == Algorithm::STEREO) {
-            config = StereoDepth::PresetMode::DEFAULT;
-            if(stereoSizeOverride_) {
-                validateStereoDepthResolution(stereoSizeOverride_->first, stereoSizeOverride_->second);
+            const auto pair = requireFirstStereoPair(device);
+            const auto [left, right] = findCamerasForPair(pipeline, pair);
+            const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, stereoSizeOverride_);
+            if(inputs.resolution) {
+                validateStereoDepthResolution(inputs.resolution->first, inputs.resolution->second);
             }
+            config = resolveStereoPreset(inputs.targetFps, inputs.resolution);
         }
         resolved_ = {chosen, config};
         return;
     }
 
-    // RVC4: target FPS from build() override, upstream cameras, or default 30.
     const auto pair = requireFirstStereoPair(device);
     const auto [left, right] = findCamerasForPair(pipeline, pair);
-
-    float targetFps = stereoOutputFps_.value_or(0.f);
-    if(targetFps <= 0.f && left && right) {
-        targetFps = std::max(left->getMaxRequestedFps(), right->getMaxRequestedFps());
-    }
-    targetFps = targetFpsWithDefault(targetFps);
-
-    // Resolution comes from (in order): build() override, upstream stereo cameras' requested output
-    // size (falling back to configured/native sensor size), or device features. Falling back to
-    // device features lets AUTO see the camera resolution even when the user wires only the Depth
-    // node, so e.g. a 2592x1944 sensor steers selection toward GPUStereo via the resolution-fit
-    // fallback in ``selectBackend``.
-    std::optional<std::pair<uint32_t, uint32_t>> resolution = stereoSizeOverride_;
-    if(!resolution) {
-        resolution = stereoSizeFromExistingCameras(left, right);
-    }
-    if(!resolution) {
-        resolution = stereoSizeFromDeviceFeatures(device, pair);
-    }
+    const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, stereoSizeOverride_);
+    const float targetFps = inputs.targetFps;
+    const auto& resolution = inputs.resolution;
 
     if(algorithmOverride_ == Algorithm::AUTO) {
         // Only enforce an exact FPS+resolution match when the user pinned both via build().
@@ -630,11 +671,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
             }
             break;
         case Algorithm::STEREO:
-            if(const auto preset = pickStereoPreset(targetFps * SELECTION_FPS_SAFETY_MARGIN, resolution)) {
-                resolved_.config = *preset;
-            } else {
-                resolved_.config = StereoDepth::PresetMode::DEFAULT;
-            }
+            resolved_.config = resolveStereoPreset(targetFps, resolution);
             break;
         case Algorithm::NEURAL_ASSISTED_STEREO:
         case Algorithm::GPU_STEREO:
