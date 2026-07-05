@@ -15,13 +15,12 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
+#include <opencv2/opencv.hpp>
 #include <optional>
 #include <string>
 #include <utility>
 #include <variant>
 #include <vector>
-
-#include <opencv2/opencv.hpp>
 
 #include "depthai/common/DeviceModelZoo.hpp"
 #include "depthai/depthai.hpp"
@@ -333,15 +332,11 @@ int main(int argc, char** argv) {
             buildUserStereoCameras(pipeline, options);
         }
 
-        auto benchmarkIn = pipeline.create<dai::node::BenchmarkIn>();
-        benchmarkIn->setRunOnHost(true);
-
         auto depthNode = pipeline.create<dai::node::Depth>();
         configureDepth(depthNode, options);
 
         auto depthQueue = depthNode->depth().createOutputQueue();
         auto confidenceQueue = depthNode->confidence().createOutputQueue();
-        depthNode->depth().link(benchmarkIn->input);
 
         pipeline.build();
 
