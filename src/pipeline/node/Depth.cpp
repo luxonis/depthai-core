@@ -25,8 +25,10 @@ constexpr bool DEFAULT_NAS_RECTIFY = true;
 constexpr float DEFAULT_TARGET_FPS = 30.f;
 constexpr float SELECTION_FPS_SAFETY_MARGIN = 0.9f;
 constexpr float NEURAL_TENSOR_COVER_SCALE = 1.4142135f;
+constexpr uint32_t STEREO_DEPTH_WIDTH_ALIGNMENT = 16;
 
 // Backend profiles for AUTO selection: config, max resolution, and max FPS per algorithm.
+// Neural FPS values: https://docs.luxonis.com/overview/toplevel-features/depth/ (RVC4 Neural Stereo table).
 // Rows are in priority order (NEURAL, NEURAL_ASSISTED_STEREO, STEREO, GPU_STEREO).
 struct BackendProfile {
     Depth::Algorithm algorithm;
@@ -48,16 +50,16 @@ constexpr BackendProfile noConfig(Depth::Algorithm algorithm, uint32_t width, ui
 }
 
 inline constexpr std::array BACKEND_PROFILES = {
-    neural(DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780, 1.6f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_1056X660, 1056, 660, 3.0f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_960X600, 960, 600, 5.0f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_864X540, 864, 540, 8.0f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480, 10.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_576X360, 576, 360, 24.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300, 40.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_384X240, 384, 240, 55.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180, 55.f),
-    neural(DeviceModelZoo::NEURAL_DEPTH_192X120, 192, 120, 55.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_1248X780, 1248, 780, 8.5f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_1056X660, 1056, 660, 12.5f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_960X600, 960, 600, 14.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_864X540, 864, 540, 18.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_768X480, 768, 480, 22.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_576X360, 576, 360, 38.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_480X300, 480, 300, 56.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_384X240, 384, 240, 60.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_288X180, 288, 180, 60.f),
+    neural(DeviceModelZoo::NEURAL_DEPTH_192X120, 192, 120, 60.f),
 
     noConfig(Depth::Algorithm::NEURAL_ASSISTED_STEREO, 1280, 800, 55.f),
 
@@ -375,6 +377,14 @@ bool cameraFeaturesIncludeTof(const std::vector<dai::CameraFeatures>& features) 
     return false;
 }
 
+void validateStereoDepthResolution(uint32_t width, uint32_t height) {
+    DAI_CHECK_V(width % STEREO_DEPTH_WIDTH_ALIGNMENT == 0,
+                "Depth: StereoDepth requires width to be a multiple of {} (requested {}x{}).",
+                STEREO_DEPTH_WIDTH_ALIGNMENT,
+                width,
+                height);
+}
+
 }  // namespace
 
 // --- Construction ---
@@ -533,6 +543,9 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         validateExplicitConfig(
             algorithmOverride_, *configOverride_, supported, algorithmOverride_ == Algorithm::NEURAL ? supportedModels : std::vector<DeviceModelZoo>{});
         resolved_ = {algorithmOverride_, *configOverride_};
+        if(resolved_.algorithm == Algorithm::STEREO && stereoSizeOverride_) {
+            validateStereoDepthResolution(stereoSizeOverride_->first, stereoSizeOverride_->second);
+        }
         return;
     }
 
@@ -548,6 +561,9 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         Config config = std::monostate{};
         if(chosen == Algorithm::STEREO) {
             config = StereoDepth::PresetMode::DEFAULT;
+            if(stereoSizeOverride_) {
+                validateStereoDepthResolution(stereoSizeOverride_->first, stereoSizeOverride_->second);
+            }
         }
         resolved_ = {chosen, config};
         return;
@@ -580,6 +596,9 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         // Only enforce an exact FPS+resolution match when the user pinned both via build().
         const bool userPinnedFpsAndResolution = stereoOutputFps_.has_value() && stereoSizeOverride_.has_value();
         resolved_ = selectBackend(resolution, targetFps, supported, supportedModels, userPinnedFpsAndResolution);
+        if(resolved_.algorithm == Algorithm::STEREO && resolution) {
+            validateStereoDepthResolution(resolution->first, resolution->second);
+        }
         return;
     }
 
@@ -596,6 +615,10 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
                     "(largest profile: {}x{}).",
                     maxW,
                     maxH);
+    }
+
+    if(resolved_.algorithm == Algorithm::STEREO && resolution) {
+        validateStereoDepthResolution(resolution->first, resolution->second);
     }
 
     switch(resolved_.algorithm) {
@@ -766,6 +789,7 @@ void Depth::buildInternal() {
         case Algorithm::STEREO: {
             stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
             const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), stereoSizeOverride_, stereoOutputFps_);
+            validateStereoDepthResolution(stereo.resolution.first, stereo.resolution.second);
             (*stereoBackend_)->build(*stereo.left, *stereo.right, stereoPresetFromConfig(resolved_.config));
             depthOut_ = &(**stereoBackend_).depth;
             confidenceOut_ = &(**stereoBackend_).confidenceMap;
