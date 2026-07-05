@@ -184,15 +184,11 @@ def main() -> int:
     if args.user_cameras:
         build_user_stereo_cameras(pipeline, args)
 
-    benchmarkIn = pipeline.create(dai.node.BenchmarkIn)
-    benchmarkIn.setRunOnHost(True)
-
     depthNode = pipeline.create(dai.node.Depth)
     configure_depth(depthNode, args)
 
     depthQueue = depthNode.depth.createOutputQueue()
     confidenceQueue = depthNode.confidence.createOutputQueue()
-    depthNode.depth.link(benchmarkIn.input)
 
     pipeline.build()
 

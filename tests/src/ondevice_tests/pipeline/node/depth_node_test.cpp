@@ -304,10 +304,7 @@ struct UserDepthCameraSetup {
     std::shared_ptr<node::Depth> depth;
 };
 
-UserDepthCameraSetup wireUserStereoCamerasAndDepth(Pipeline& pipeline,
-                                                     const StereoPair& pair,
-                                                     std::optional<float> depthRequestedFps,
-                                                     bool userPreviewStream) {
+UserDepthCameraSetup wireUserStereoCamerasAndDepth(Pipeline& pipeline, const StereoPair& pair, std::optional<float> depthRequestedFps, bool userPreviewStream) {
     UserDepthCameraSetup setup;
     std::tie(setup.leftCam, setup.rightCam) = buildUserStereoCamerasOrSkip(pipeline, pair);
 
