@@ -27,7 +27,7 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
 
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    ~DynamicCalibration() override = default;
+    ~DynamicCalibration() override;
 
     // clang-format off
     /**
@@ -169,8 +169,6 @@ class DynamicCalibration : public DeviceNodeCRTP<DeviceNode, DynamicCalibration,
      */
 
     void run() override;
-
-    ErrorCode runQualityCheck(const bool force = false);
 
     ErrorCode runCalibration(const dai::CalibrationHandler& calibHandler, const bool force = false, const bool keepCameraCenters = true);
 

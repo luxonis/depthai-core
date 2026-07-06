@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <nlohmann/json.hpp>
@@ -16,6 +17,7 @@ namespace utility {
 class Telemetry {
    public:
     using AggregateMetricsCallback = std::function<void(nlohmann::json&)>;
+    using AggregateMetricsHandle = std::uint64_t;
 
     static Telemetry& getInstance();
     static std::string getTemporaryTelemetryDeviceId(const std::string& mxid);
@@ -41,7 +43,9 @@ class Telemetry {
     /**
      * Use this functions if you want to send aggregate metrics. Don't schedule your custom events
      */
-    void addAggregateMetrics(AggregateMetricsCallback functionLikeCb);
+    AggregateMetricsHandle addAggregateMetrics(AggregateMetricsCallback functionLikeCb);
+
+    void removeAggregateMetrics(AggregateMetricsHandle handle);
 
    private:
     Telemetry();
