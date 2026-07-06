@@ -51,7 +51,7 @@ with dai.Pipeline() as pipeline:
     # Set performance mode
     dynCalibInputControl.send(
         dai.DynamicCalibrationControl.setPerformanceMode(
-            dai.DynamicCalibrationControl.OPTIMIZE_PERFORMANCE
+            dai.DynamicCalibrationControl.PerformanceMode.OPTIMIZE_PERFORMANCE
         )
     )
 
@@ -103,17 +103,12 @@ with dai.Pipeline() as pipeline:
             )
 
             q = calibrationData.calibrationDifference
-            rotDiff = float(np.sqrt(q.rotationChange[0]**2 +
-                                    q.rotationChange[1]**2 +
-                                    q.rotationChange[2]**2))
-            print(f"Rotation difference: || r_current - r_new || = {rotDiff:.2f} deg")
+            if q.pairwiseRotationDifference:
+                pairwiseRotation = next(iter(q.pairwiseRotationDifference.values()))
+                rotDiff = float(np.sqrt(sum(axis * axis for axis in pairwiseRotation)))
+                print(f"Rotation difference: || r_current - r_new || = {rotDiff:.2f} deg")
             print(f"Mean Sampson error achievable = {q.sampsonErrorNew:.3f} px")
             print(f"Mean Sampson error current    = {q.sampsonErrorCurrent:.3f} px")
-            print("Theoretical Depth Error Difference "
-                  f"@1m:{q.depthErrorDifference[0]:.2f}%, "
-                  f"2m:{q.depthErrorDifference[1]:.2f}%, "
-                  f"5m:{q.depthErrorDifference[2]:.2f}%, "
-                  f"10m:{q.depthErrorDifference[3]:.2f}%")
 
             # Reset accumulators and continue periodic calibration
             dynCalibInputControl.send(
