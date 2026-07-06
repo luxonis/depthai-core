@@ -506,7 +506,9 @@ class DeviceBase {
      * Sets the intensity of the IR Laser Dot Projector. Limits: up to 765mA at 30% frame time duty cycle when exposure time is longer than 30% frame time.
      * Otherwise, duty cycle is 100% of exposure time, with current increased up to max 1200mA to make up for shorter duty cycle.
      * The duty cycle is controlled by `left` camera STROBE, aligned to start of exposure.
-     * The emitter is turned off by default
+     * The emitter is turned off by default on device start. Pipelines that contain
+     * a `StereoDepth` node currently attempt to turn the dot projector on to 100%
+     * after startup.
      *
      * @param intensity Intensity on range 0 to 1, that will determine brightness. 0 or negative to turn off
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV

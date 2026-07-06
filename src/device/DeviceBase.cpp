@@ -34,6 +34,7 @@
 // project
 #include "DeviceLogger.hpp"
 #include "depthai/device/EepromError.hpp"
+#include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/internal/XLinkIn.hpp"
 #include "depthai/pipeline/node/internal/XLinkOut.hpp"
 #include "device/DeviceGate.hpp"
@@ -2463,7 +2464,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     std::vector<std::uint8_t> assetStorage;
     pipeline.serialize(schema, assets, assetStorage);
     const bool enableDotProjectorOnStart =
-        std::any_of(schema.nodes.begin(), schema.nodes.end(), [](const auto& nodeInfo) { return nodeInfo.second.name == "StereoDepth"; });
+        std::any_of(schema.nodes.begin(), schema.nodes.end(), [](const auto& nodeInfo) { return nodeInfo.second.name == dai::node::StereoDepth::NAME; });
 
     // if debug or lower
     if(getLogOutputLevel() <= LogLevel::DEBUG) {
@@ -2545,7 +2546,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
                 if(setIrLaserDotProjectorIntensity(1.0f)) {
                     pimpl->logger.debug("Pipeline contains StereoDepth node. Turning on dot projector to 100% by default");
                 } else {
-                    pimpl->logger.debug("Enabling default dot projector intensity failed");
+                    pimpl->logger.warn("Failed to enable default dot projector intensity");
                 }
             } catch(const std::exception& ex) {
                 pimpl->logger.warn("Failed to enable default dot projector intensity: {}", ex.what());
