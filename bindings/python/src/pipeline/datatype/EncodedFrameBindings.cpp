@@ -74,13 +74,9 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
     encodedFrame.def(py::init<>())
         .def("__repr__", &EncodedFrame::str)
         // getters
-        .def("getTimestamp", py::overload_cast<>(&EncodedFrame::Buffer::getTimestamp, py::const_), DOC(dai, Buffer, getTimestamp))
-        .def("getTimestampDevice", py::overload_cast<>(&EncodedFrame::Buffer::getTimestampDevice, py::const_), DOC(dai, Buffer, getTimestampDevice))
-        .def("getTimestampSystem", py::overload_cast<>(&EncodedFrame::Buffer::getTimestampSystem, py::const_), DOC(dai, Buffer, getTimestampSystem))
         .def("getInstanceNum", &EncodedFrame::getInstanceNum, DOC(dai, EncodedFrame, getInstanceNum))
         .def("getWidth", &EncodedFrame::getWidth, DOC(dai, EncodedFrame, getWidth))
         .def("getHeight", &EncodedFrame::getHeight, DOC(dai, EncodedFrame, getHeight))
-        .def("getSequenceNum", &EncodedFrame::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getExposureTime", &EncodedFrame::getExposureTime, DOC(dai, EncodedFrame, getExposureTime))
         .def("getSensitivity", &EncodedFrame::getSensitivity, DOC(dai, EncodedFrame, getSensitivity))
         .def("getColorTemperature", &EncodedFrame::getColorTemperature, DOC(dai, EncodedFrame, getColorTemperature))

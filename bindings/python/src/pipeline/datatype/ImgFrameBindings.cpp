@@ -239,7 +239,6 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::overload_cast<CameraExposureOffset>(&ImgFrame::getTimestampSystem, py::const_),
              py::arg("offset"),
              DOC(dai, ImgFrame, getTimestampSystem))
-        .def("getSequenceNum", &ImgFrame::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
         .def("getInstanceNum", &ImgFrame::getInstanceNum, DOC(dai, ImgFrame, getInstanceNum))
         .def("getCategory", &ImgFrame::getCategory, DOC(dai, ImgFrame, getCategory))
         .def("getWidth", &ImgFrame::getWidth, DOC(dai, ImgFrame, getWidth))
@@ -304,9 +303,6 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
             DOC(dai, ImgFrame, setCvFrame))
 #endif
         // setters
-        .def("setTimestamp", &ImgFrame::setTimestamp, py::arg("timestamp"), DOC(dai, Buffer, setTimestamp))
-        .def("setTimestampDevice", &ImgFrame::setTimestampDevice, py::arg("timestampDevice"), DOC(dai, Buffer, setTimestampDevice))
-        .def("setTimestampSystem", &ImgFrame::setTimestampSystem, py::arg("timestampSystem"), DOC(dai, Buffer, setTimestampSystem))
         .def("setInstanceNum", &ImgFrame::setInstanceNum, py::arg("instance"), DOC(dai, ImgFrame, setInstanceNum))
         .def("setCategory", &ImgFrame::setCategory, py::arg("category"), DOC(dai, ImgFrame, setCategory))
         // .def("setSequenceNum", &ImgFrame::setSequenceNum, py::arg("seq"), DOC(dai, ImgFrame, setSequenceNum))

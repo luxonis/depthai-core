@@ -78,6 +78,27 @@ def test_python_is_kept_alive():
             assert isinstance(message, CustomMessage)
             assert message.test_field == i
 
+def test_buffer_methods_are_inherited_by_derived_messages():
+    timestamp = dai.Buffer().getTimestamp()
+    device_timestamp = dai.Buffer().getTimestampDevice()
+
+    for message_type in [dai.NNData, dai.MessageGroup, dai.EncodedFrame, dai.SegmentationMask]:
+        message = message_type()
+        message.setTimestamp(timestamp)
+        message.setTimestampDevice(device_timestamp)
+        message.setSequenceNum(42)
+
+        assert message.getTimestamp() == timestamp
+        assert message.getTimestampDevice() == device_timestamp
+        assert message.getSequenceNum() == 42
+
+def test_imgframe_keeps_timestamp_overloads():
+    frame = dai.ImgFrame()
+
+    assert frame.getTimestamp(dai.CameraExposureOffset.END) == frame.getTimestamp()
+    assert frame.getTimestampDevice(dai.CameraExposureOffset.END) == frame.getTimestampDevice()
+    assert frame.getTimestampSystem(dai.CameraExposureOffset.END) == frame.getTimestampSystem()
+
 def test_transformable_buffer_dispatches_to_python_override():
     class CustomTransformableBuffer(dai.TransformableBuffer):
         def __init__(self):
