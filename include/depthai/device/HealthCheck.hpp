@@ -98,9 +98,9 @@ struct HealthCheckMetrics {
     HealthCheckResult imuCalibration = HealthCheckResult::NOT_RUN;
     HealthCheckResult powerSupplyFunctionality = HealthCheckResult::NOT_RUN;
 
-    bool appRunningOnDevice = false;
-    bool inSetupMode = false;
-    bool udevRulesSet = false;
+    bool deviceInUse = false;
+    bool deviceInSetupMode = false;
+    bool missingUdevRules = false;
 
     std::vector<HealthCheckIssue> issues;
 
