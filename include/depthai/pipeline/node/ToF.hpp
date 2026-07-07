@@ -99,7 +99,7 @@ class ToF : public DeviceNodeGroup {
      * @param presetMode Legacy ToF image filter preset mode
      * @param fps Requested ToF camera FPS
      */
-    [[deprecated("Use build(boardSocket, dai::ToFConfig::Profile, fps) instead")]] std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket,
+    [[deprecated("Use 'build(boardSocket, dai::ToFConfig::Profile, fps)' instead.")]] std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket,
                                                                                                               dai::ImageFiltersPresetMode presetMode,
                                                                                                               std::optional<float> fps = std::nullopt);
 
