@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <functional>
 #include <iomanip>
 #include <memory>
 #include <optional>
@@ -41,7 +42,9 @@ constexpr std::uint32_t IMU_REPORT_RATE = 400;
 constexpr std::uint32_t IMU_BATCH_REPORT_THRESHOLD = 10;
 constexpr std::uint32_t IMU_MAX_BATCH_REPORTS = 10;
 constexpr float MAX_POWER_IR_INTENSITY = 1.0f;
+constexpr std::uint32_t POWER_SUPPLY_IR_RAMP_STEPS = 10;
 constexpr auto DIAGNOSTIC_OUTPUT_TIMEOUT = std::chrono::seconds(10);
+constexpr auto POWER_SUPPLY_IR_RAMP_INTERVAL = std::chrono::milliseconds(100);
 constexpr auto POWER_SUPPLY_POLL_INTERVAL = std::chrono::milliseconds(100);
 constexpr auto BANDWIDTH_RECONNECT_TIMEOUT = std::chrono::seconds(10);
 constexpr auto BANDWIDTH_RECONNECT_POLL_INTERVAL = std::chrono::milliseconds(100);
@@ -197,6 +200,21 @@ struct IrPowerGuard {
     }
 };
 
+bool rampIrIntensity(const std::function<bool(float)>& setIntensityFunction, IrPowerGuard& guard) {
+    for(std::uint32_t step = 1; step <= POWER_SUPPLY_IR_RAMP_STEPS; ++step) {
+        const float intensity = MAX_POWER_IR_INTENSITY * static_cast<float>(step) / static_cast<float>(POWER_SUPPLY_IR_RAMP_STEPS);
+        if(!setIntensityFunction(intensity)) {
+            return false;
+        }
+        guard.enabled = true;
+        if(step != POWER_SUPPLY_IR_RAMP_STEPS) {
+            std::this_thread::sleep_for(POWER_SUPPLY_IR_RAMP_INTERVAL);
+        }
+    }
+
+    return true;
+}
+
 void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMetrics& metrics, IrPowerGuard& guard) {
     try {
         const auto irDrivers = device->getIrDrivers();
@@ -209,20 +227,18 @@ void enablePowerSupplyLoad(const std::shared_ptr<Device>& device, HealthCheckMet
         bool laserEnabled = false;
         bool floodEnabled = false;
         try {
-            laserEnabled = device->setIrLaserDotProjectorIntensity(MAX_POWER_IR_INTENSITY);
+            laserEnabled = rampIrIntensity([&](float intensity) { return device->setIrLaserDotProjectorIntensity(intensity); }, guard);
         } catch(const std::exception& ex) {
             metrics.issues.emplace_back(
                 HealthCheckIssueType::Warning, HealthCheckIssueStage::PowerSupply, std::string("Failed to enable IR laser dot projector: ") + ex.what());
         }
         try {
-            floodEnabled = device->setIrFloodLightIntensity(MAX_POWER_IR_INTENSITY);
+            floodEnabled = rampIrIntensity([&](float intensity) { return device->setIrFloodLightIntensity(intensity); }, guard);
         } catch(const std::exception& ex) {
             metrics.issues.emplace_back(
                 HealthCheckIssueType::Warning, HealthCheckIssueStage::PowerSupply, std::string("Failed to enable IR flood light: ") + ex.what());
         }
-        guard.enabled = laserEnabled || floodEnabled;
-
-        if(!guard.enabled) {
+        if(!laserEnabled && !floodEnabled) {
             metrics.powerSupplyFunctionality = HealthCheckResult::FAIL;
             metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::PowerSupply, "Failed to enable IR laser/flood drivers.");
         } else if(!laserEnabled || !floodEnabled) {
@@ -600,7 +616,7 @@ HealthCheckMetrics DeviceHealthCheck::run(const DeviceInfo& devInfo, const Healt
         device = std::make_shared<Device>(devInfo);
     } catch(const std::exception& ex) {
         const std::string errorMessage = ex.what();
-        metrics.deviceInUse = errorMessage.find("X_LINK_DEVICE_ALREADY_IN_USE") != std::string::npos;
+        metrics.deviceInUse = errorMessage.find("X_LINK_DEVICE_ALREADY_IN_USE") != std::string::npos || devInfo.state == X_LINK_GATE_BOOTED;
         metrics.missingUdevRules = errorMessage.find("X_LINK_INSUFFICIENT_PERMISSIONS") != std::string::npos;
         metrics.issues.emplace_back(HealthCheckIssueType::Error, HealthCheckIssueStage::Connection, errorMessage);
         setRequestedChecksFailed(metrics, config);
