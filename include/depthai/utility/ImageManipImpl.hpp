@@ -541,7 +541,7 @@ class ImageManipOperations {
     bool undistortEnabled() const {
         return warpEngine.enableUndistort;
     }
-    bool getUndistortAlpha() const {
+    float getUndistortAlpha() const {
         return warpEngine.alphaScaling;
     }
 
