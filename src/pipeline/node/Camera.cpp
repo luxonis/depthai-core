@@ -232,7 +232,8 @@ Node::Output* Camera::requestOutput(const std::pair<uint32_t, uint32_t>& size,
                                     std::optional<ImgFrame::Type> type,
                                     ImgResizeMode resizeMode,
                                     std::optional<float> fps,
-                                    std::optional<bool> enableUndistortion) {
+                                    std::optional<bool> enableUndistortion,
+                                    std::optional<float> alphaScaling) {
     ImgFrameCapability cap;
     cap.size.fixed(size);
 
@@ -243,6 +244,7 @@ Node::Output* Camera::requestOutput(const std::pair<uint32_t, uint32_t>& size,
     cap.type = type;
     cap.resizeMode = resizeMode;
     cap.enableUndistortion = enableUndistortion;
+    cap.alphaScaling = alphaScaling;
     return pimpl->requestOutput(*this, cap, false);
 }
 
