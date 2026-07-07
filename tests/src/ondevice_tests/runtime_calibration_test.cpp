@@ -1,6 +1,5 @@
-#include <catch2/catch_all.hpp>
-
 #include <algorithm>
+#include <catch2/catch_all.hpp>
 #include <memory>
 #include <stdexcept>
 #include <tuple>
@@ -8,9 +7,9 @@
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
-#include "depthai/common/EepromData.hpp"
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraSensorType.hpp"
+#include "depthai/common/EepromData.hpp"
 #include "depthai/common/StereoPair.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/utility/CompilerWarnings.hpp"
@@ -301,6 +300,53 @@ TEST_CASE("getStereoPairs filters out pairs when extrinsics link is missing") {
     REQUIRE_FALSE(ctx.pairPresent(ctx.device->getStereoPairs()));
 }
 
+TEST_CASE("getStereoPairs accepts reverse-direction extrinsics links") {
+    StereoPairTestContext ctx;
+    ctx.requireStereoPair();
+
+    const auto [socket1, socket2] = ctx.featureOrderForPair();
+
+    auto features = ctx.originalFeatures;
+    for(auto& feature : features) {
+        if(feature.socket == socket1 || feature.socket == socket2) {
+            feature.sensorName = "OV9282";
+            feature.width = 1280;
+            feature.height = 800;
+            feature.supportedTypes = {dai::CameraSensorType::MONO};
+        }
+    }
+    ctx.device->overrideCameraFeatures(features);
+
+    auto eeprom = ctx.originalCalibration.getEepromData();
+    const auto intrinsics = makeIntrinsics();
+    eeprom.cameraData.at(socket1).intrinsicMatrix = intrinsics;
+    eeprom.cameraData.at(socket1).width = 1280;
+    eeprom.cameraData.at(socket1).height = 800;
+    eeprom.cameraData.at(socket1).specHfovDeg = 70.0f;
+    eeprom.cameraData.at(socket1).extrinsics.rotationMatrix = makeIdentityRotation();
+    eeprom.cameraData.at(socket1).extrinsics.translation = {0.0f, 0.0f, 0.0f};
+    eeprom.cameraData.at(socket1).extrinsics.specTranslation = {0.0f, 0.0f, 0.0f};
+    eeprom.cameraData.at(socket1).extrinsics.toCameraSocket = dai::CameraBoardSocket::AUTO;
+
+    eeprom.cameraData.at(socket2).intrinsicMatrix = intrinsics;
+    eeprom.cameraData.at(socket2).width = 1280;
+    eeprom.cameraData.at(socket2).height = 800;
+    eeprom.cameraData.at(socket2).specHfovDeg = 70.0f;
+    eeprom.cameraData.at(socket2).extrinsics.rotationMatrix = makeIdentityRotation();
+    eeprom.cameraData.at(socket2).extrinsics.translation = {-5.0f, 0.0f, 0.0f};
+    eeprom.cameraData.at(socket2).extrinsics.specTranslation = {-5.0f, 0.0f, 0.0f};
+    eeprom.cameraData.at(socket2).extrinsics.toCameraSocket = socket1;
+
+    ctx.applyCalibration(dai::CalibrationHandler(eeprom));
+
+    const auto pairs = ctx.device->getStereoPairs();
+    const auto& pair = ctx.requirePairPresent(pairs);
+    REQUIRE_FALSE(pair.isVertical);
+    REQUIRE(pair.baseline == Catch::Approx(5.0f));
+    REQUIRE(pair.left == socket2);
+    REQUIRE(pair.right == socket1);
+}
+
 TEST_CASE("getStereoPairs builds a horizontal stereo pair with expected ordering") {
     StereoPairTestContext ctx;
     ctx.requireStereoPair();
@@ -352,29 +398,31 @@ TEST_CASE("getStereoPairs keeps only the linked pair when a third camera has no 
     }
     ctx.device->overrideCameraFeatures(features);
 
-    auto eeprom = ctx.originalCalibration.getEepromData();
+    dai::EepromData eeprom;
     const auto [socket1, socket2] = ctx.featureOrderForPair();
     const auto intrinsics = makeIntrinsics();
-    eeprom.cameraData.at(socket1).intrinsicMatrix = intrinsics;
-    eeprom.cameraData.at(socket1).width = 1280;
-    eeprom.cameraData.at(socket1).height = 800;
-    eeprom.cameraData.at(socket1).specHfovDeg = 70.0f;
-    eeprom.cameraData.at(socket2).intrinsicMatrix = intrinsics;
-    eeprom.cameraData.at(socket2).width = 1280;
-    eeprom.cameraData.at(socket2).height = 800;
-    eeprom.cameraData.at(socket2).specHfovDeg = 70.0f;
-    eeprom.cameraData.at(*thirdSocket).intrinsicMatrix = intrinsics;
-    eeprom.cameraData.at(*thirdSocket).width = 1280;
-    eeprom.cameraData.at(*thirdSocket).height = 800;
-    eeprom.cameraData.at(*thirdSocket).specHfovDeg = 70.0f;
-    eeprom.cameraData.at(socket1).extrinsics.rotationMatrix = makeIdentityRotation();
-    eeprom.cameraData.at(socket1).extrinsics.translation = {5.0f, 1.0f, 0.0f};
-    eeprom.cameraData.at(socket1).extrinsics.specTranslation = {5.0f, 1.0f, 0.0f};
-    eeprom.cameraData.at(socket1).extrinsics.toCameraSocket = socket2;
-    eeprom.cameraData.at(*thirdSocket).extrinsics.rotationMatrix = makeIdentityRotation();
-    eeprom.cameraData.at(*thirdSocket).extrinsics.translation = {5.0f, 1.0f, 0.0f};
-    eeprom.cameraData.at(*thirdSocket).extrinsics.specTranslation = {5.0f, 1.0f, 0.0f};
-    eeprom.cameraData.at(*thirdSocket).extrinsics.toCameraSocket = dai::CameraBoardSocket::AUTO;
+
+    auto initCamera = [&](dai::CameraBoardSocket socket) {
+        auto& camera = eeprom.cameraData[socket];
+        camera.intrinsicMatrix = intrinsics;
+        camera.width = 1280;
+        camera.height = 800;
+        camera.specHfovDeg = 70.0f;
+        camera.cameraType = dai::CameraModel::Perspective;
+        camera.extrinsics.rotationMatrix = makeIdentityRotation();
+        camera.extrinsics.translation = {0.0f, 0.0f, 0.0f};
+        camera.extrinsics.specTranslation = {0.0f, 0.0f, 0.0f};
+        camera.extrinsics.toCameraSocket = dai::CameraBoardSocket::AUTO;
+    };
+
+    initCamera(socket1);
+    initCamera(socket2);
+    initCamera(*thirdSocket);
+
+    eeprom.cameraData[socket1].extrinsics.translation = {5.0f, 1.0f, 0.0f};
+    eeprom.cameraData[socket1].extrinsics.specTranslation = {5.0f, 1.0f, 0.0f};
+    eeprom.cameraData[socket1].extrinsics.toCameraSocket = socket2;
+
     ctx.applyCalibration(dai::CalibrationHandler(eeprom));
 
     const auto pairs = ctx.device->getStereoPairs();
@@ -382,8 +430,7 @@ TEST_CASE("getStereoPairs keeps only the linked pair when a third camera has no 
     REQUIRE_FALSE(linkedPair.isVertical);
     REQUIRE(linkedPair.baseline == Catch::Approx(5.0f));
 
-    const bool thirdSocketUsed = std::any_of(pairs.begin(), pairs.end(), [&](const dai::StereoPair& candidate) {
-        return candidate.left == *thirdSocket || candidate.right == *thirdSocket;
-    });
+    const bool thirdSocketUsed = std::any_of(
+        pairs.begin(), pairs.end(), [&](const dai::StereoPair& candidate) { return candidate.left == *thirdSocket || candidate.right == *thirdSocket; });
     REQUIRE_FALSE(thirdSocketUsed);
 }

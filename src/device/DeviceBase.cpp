@@ -1665,7 +1665,7 @@ std::vector<StereoPair> DeviceBase::getStereoPairs() {
                 const auto socket2 = sockets[j];
                 const auto& feature2 = featureBySocket.at(socket2);
                 if(!calibrationHandler.hasCameraCalibration(socket2)) continue;
-                if(!calibrationHandler.checkExtrinsicsLink(socket1, socket2)) continue;
+                if(!calibrationHandler.checkExtrinsicsLink(socket1, socket2) && !calibrationHandler.checkExtrinsicsLink(socket2, socket1)) continue;
 
                 const float fov2 = calibrationHandler.getFov(socket2, false);
                 if(feature1.sensorName != feature2.sensorName) {
