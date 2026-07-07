@@ -9,6 +9,7 @@
 #include <variant>
 
 // depth map source nodes
+#include <depthai/pipeline/node/Depth.hpp>
 #include <depthai/pipeline/node/NeuralDepth.hpp>
 #include <depthai/pipeline/node/StereoDepth.hpp>
 #include <depthai/pipeline/node/ToF.hpp>
@@ -23,9 +24,9 @@ namespace node {
 
 /**
  * @brief Variant type representing different depth sources.
- * Supported depth sources: StereoDepth, NeuralDepth, ToF
+ * Supported depth sources: StereoDepth, NeuralDepth, ToF, Depth
  */
-using DepthSource = std::variant<std::shared_ptr<StereoDepth>, std::shared_ptr<NeuralDepth>, std::shared_ptr<ToF>>;
+using DepthSource = std::variant<std::shared_ptr<Depth>, std::shared_ptr<StereoDepth>, std::shared_ptr<NeuralDepth>, std::shared_ptr<ToF>>;
 
 /**
  * @brief SpatialDetectionNetwork node. Runs a neural inference on input image and calculates spatial location data.
@@ -57,7 +58,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs and configure the
      * inference model
      * @param inputRgb Camera node
-     * @param depthSource Depth source node (StereoDepth, NeuralDepth, or ToF)
+     * @param depthSource Depth source node (StereoDepth, NeuralDepth, ToF, or Depth)
      * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param fps Desired frames per second
      * @param resizeMode Resize mode for input color frames
@@ -73,7 +74,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
      * @brief Build SpatialDetectionNetwork node with specified depth source. Connect Camera and depth source outputs to this node's inputs and configure the
      * inference model.
      * @param inputRgb Camera node
-     * @param depthSource Depth source node (StereoDepth, NeuralDepth, or ToF)
+     * @param depthSource Depth source node (StereoDepth, NeuralDepth, ToF, or Depth)
      * @param model: Neural network model description, NNArchive or HubAI model id string
      * @param capability: Camera capabilities
      * @returns Shared pointer to SpatialDetectionNetwork node
@@ -288,6 +289,7 @@ class SpatialDetectionNetwork : public DeviceNodeGroup {
     void alignDepth(const DepthSource& depthSource, const std::shared_ptr<Camera>& camera);
 
     // Type-specific alignment implementations
+    void alignDepthImpl(const std::shared_ptr<Depth>& depth, const std::shared_ptr<Camera>& camera);
     void alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera);
     void alignDepthImpl(const std::shared_ptr<NeuralDepth>& neuralDepth, const std::shared_ptr<Camera>& camera);
     void alignDepthImpl(const std::shared_ptr<ToF>& tof, const std::shared_ptr<Camera>& camera);

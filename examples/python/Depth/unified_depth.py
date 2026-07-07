@@ -66,7 +66,7 @@ def colorizeConfidence(frame: np.ndarray) -> np.ndarray:
     return cv2.applyColorMap(vis, _COLOR_MAP)
 
 
-def parse_config(name: str):
+def parseConfig(name: str):
     if hasattr(dai.DeviceModelZoo, name):
         return getattr(dai.DeviceModelZoo, name)
     if hasattr(dai.node.StereoDepth.PresetMode, name):
@@ -77,7 +77,7 @@ def parse_config(name: str):
     )
 
 
-def stereo_size_from_args(args: argparse.Namespace) -> tuple[int, int] | None:
+def stereoSizeFromArgs(args: argparse.Namespace) -> tuple[int, int] | None:
     if args.width is None and args.height is None:
         return None
     if args.width is None or args.height is None:
@@ -85,7 +85,7 @@ def stereo_size_from_args(args: argparse.Namespace) -> tuple[int, int] | None:
     return args.width, args.height
 
 
-def build_user_stereo_cameras(pipeline: dai.Pipeline, args: argparse.Namespace) -> None:
+def buildUserStereoCameras(pipeline: dai.Pipeline, args: argparse.Namespace) -> None:
     device = pipeline.getDefaultDevice()
     if device is None:
         raise RuntimeError("Connect a device (host-only pipeline cannot use Depth).")
@@ -95,16 +95,16 @@ def build_user_stereo_cameras(pipeline: dai.Pipeline, args: argparse.Namespace) 
         raise RuntimeError("This device has no stereo pair; Depth cannot run.")
 
     stereoPair = stereoPairs[0]
-    stereoSize = stereo_size_from_args(args)
+    stereoSize = stereoSizeFromArgs(args)
     pipeline.create(dai.node.Camera).build(stereoPair.left, stereoSize, args.fps)
     pipeline.create(dai.node.Camera).build(stereoPair.right, stereoSize, args.fps)
 
 
-def configure_depth(depthNode: dai.node.Depth, args: argparse.Namespace) -> None:
-    fps = None if args.user_cameras else args.fps
-    stereoSize = None if args.user_cameras else stereo_size_from_args(args)
+def configureDepth(depthNode: dai.node.Depth, args: argparse.Namespace) -> None:
+    fps = None if args.userCameras else args.fps
+    stereoSize = None if args.userCameras else stereoSizeFromArgs(args)
     algorithm = _ALGORITHM_CHOICES[args.algorithm] if args.algorithm is not None else None
-    config = parse_config(args.config) if args.config is not None else None
+    config = parseConfig(args.config) if args.config is not None else None
 
     if algorithm is not None and config is not None:
         depthNode.build(algorithm, config, fps=fps, stereo_size=stereoSize)
@@ -118,7 +118,7 @@ def configure_depth(depthNode: dai.node.Depth, args: argparse.Namespace) -> None
         depthNode.build(dai.node.Depth.Algorithm.AUTO, stereo_size=stereoSize)
 
 
-def build_parser() -> argparse.ArgumentParser:
+def buildParser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -150,13 +150,14 @@ Examples:
     )
     parser.add_argument(
         "--config",
-        type=parse_config,
+        type=parseConfig,
         default=None,
         metavar="NAME",
         help="Algorithm config: DeviceModelZoo (NEURAL*) or StereoDepth.PresetMode (DEFAULT, ...)",
     )
     parser.add_argument(
         "--user-cameras",
+        dest="userCameras",
         action="store_true",
         help="Pre-build stereo Camera nodes; fps/res come from args instead of Depth.build()",
     )
@@ -164,11 +165,11 @@ Examples:
 
 
 def main() -> int:
-    parser = build_parser()
+    parser = buildParser()
     args = parser.parse_args()
 
     try:
-        stereo_size_from_args(args)
+        stereoSizeFromArgs(args)
     except argparse.ArgumentTypeError as exc:
         parser.error(str(exc))
 
@@ -181,11 +182,11 @@ def main() -> int:
     else:
         pipeline = dai.Pipeline()
 
-    if args.user_cameras:
-        build_user_stereo_cameras(pipeline, args)
+    if args.userCameras:
+        buildUserStereoCameras(pipeline, args)
 
     depthNode = pipeline.create(dai.node.Depth)
-    configure_depth(depthNode, args)
+    configureDepth(depthNode, args)
 
     depthQueue = depthNode.depth.createOutputQueue()
     confidenceQueue = depthNode.confidence.createOutputQueue()

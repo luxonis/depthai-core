@@ -73,7 +73,7 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             static_cast<std::shared_ptr<Depth> (Depth::*)(Depth::Algorithm, std::optional<float>, std::optional<std::pair<uint32_t, uint32_t>>)>(&Depth::build),
             py::arg("algorithm"),
             py::arg("fps") = std::nullopt,
-            py::arg("stereo_size") = std::nullopt,
+            py::arg("stereoSize") = std::nullopt,
             DOC(dai, node, Depth, build, 3))
         .def(
             "build",
@@ -85,7 +85,7 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             py::arg("algorithm"),
             py::arg("config"),
             py::arg("fps") = std::nullopt,
-            py::arg("stereo_size") = std::nullopt,
+            py::arg("stereoSize") = std::nullopt,
             DOC(dai, node, Depth, build, 4))
         .def(
             "build",
@@ -97,7 +97,7 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             py::arg("algorithm"),
             py::arg("config"),
             py::arg("fps") = std::nullopt,
-            py::arg("stereo_size") = std::nullopt,
+            py::arg("stereoSize") = std::nullopt,
             DOC(dai, node, Depth, build, 4))
         .def(
             "build",
@@ -107,7 +107,7 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             py::arg("algorithm"),
             py::arg("config"),
             py::arg("fps") = std::nullopt,
-            py::arg("stereo_size") = std::nullopt,
+            py::arg("stereoSize") = std::nullopt,
             DOC(dai, node, Depth, build, 4))
         .def_property_readonly(
             "depth", [](Depth& d) -> Node::Output& { return d.depth(); }, py::return_value_policy::reference_internal, DOC(dai, node, Depth, depth))
