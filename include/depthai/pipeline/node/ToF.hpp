@@ -101,7 +101,7 @@ class ToF : public DeviceNodeGroup {
      */
     [[deprecated("Use build(boardSocket, dai::ToFConfig::Profile, fps) instead")]] std::shared_ptr<ToF> build(dai::CameraBoardSocket boardSocket,
                                                                                                               dai::ImageFiltersPresetMode presetMode,
-                                                                                                              std::optional<float> fps);
+                                                                                                              std::optional<float> fps = std::nullopt);
 
     /**
      * Build the ToF node with a specific board socket, profile, and optional FPS.
