@@ -48,9 +48,10 @@ rgbOut = camRgb.requestOutput((640, 400), dai.ImgFrame.Type.RGB888i, enableUndis
 # (StereoDepth's native alignTo or an ImageAlign node) depending on the platform
 # and the resolved backend, so no ImageAlign node is needed.
 depthNode.setAlignTo(rgbOut)
+requestedOutput = depthNode.requestOutput()
 
 rgbOut.link(sync.inputs["rgb"])
-depthNode.depth.link(sync.inputs["depth_aligned"])
+requestedOutput.depth.link(sync.inputs["depth_aligned"])
 
 queue = sync.out.createOutputQueue()
 

@@ -32,11 +32,38 @@ namespace node {
  * On RVC4 this prefers NeuralDepth when available; on other platforms it uses ToF when a ToF sensor is
  * connected, otherwise StereoDepth.
  *
- * Use build() to pin algorithm, FPS, or resolution before the first depth() / confidence() access.
+ * Use build() to pin algorithm or config, then requestOutput() to request a coupled depth/confidence output pair.
  * Use setAlignTo() to align depth to another camera output.
  */
 class Depth : public DeviceNodeGroup {
    public:
+    using DeviceNodeGroup::requestOutput;
+
+    class RequestedOutput {
+       public:
+        class OutputHandle {
+           public:
+            Node::Output& get() const;
+            Node::Output* operator->() const;
+            operator Node::Output&() const;
+
+           private:
+            friend class RequestedOutput;
+            using Resolver = Node::Output& (Depth::*)();
+            OutputHandle(Depth& parent, Resolver resolver) : parent_(parent), resolver_(resolver) {}
+
+            Depth& parent_;
+            Resolver resolver_;
+        };
+
+        OutputHandle depth;
+        OutputHandle confidence;
+
+       private:
+        friend class Depth;
+        explicit RequestedOutput(Depth& parent) : depth(parent, &Depth::resolveDepthOutput), confidence(parent, &Depth::resolveConfidenceOutput) {}
+    };
+
     /**
      * Backend selection for the Depth node.
      */
@@ -85,53 +112,42 @@ class Depth : public DeviceNodeGroup {
     }
 
     /**
-     * Set stereo camera FPS for stereo-based backends.
-     * Must be called before first depth() or confidence() access.
-     * @param fps Requested FPS; uses Camera default if not set
+     * Build Depth with Algorithm::AUTO.
      */
-    std::shared_ptr<Depth> build(std::optional<float> fps = std::nullopt);
+    std::shared_ptr<Depth> build();
 
     /**
-     * Set algorithm and optional FPS before wiring.
+     * Set algorithm before wiring.
      * @param algorithm Backend to use
-     * @param fps Requested stereo camera FPS
      */
-    std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps = std::nullopt);
+    std::shared_ptr<Depth> build(Algorithm algorithm);
 
     /**
-     * Set algorithm, optional FPS, and stereo frame size before wiring.
-     * @param algorithm Backend to use
-     * @param fps Requested stereo camera FPS
-     * @param stereoSize Stereo frame size used when no upstream Camera is present
+     * Request the default coupled depth/confidence output pair before wiring.
+     * This uses the backend's default sizing behavior and optional requested FPS.
+     * @param fps Optional requested stereo camera FPS for the output
      */
-    std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize);
+    RequestedOutput* requestOutput(std::optional<float> fps = std::nullopt);
+
+    /**
+     * Request a coupled depth/confidence output pair before wiring.
+     * This drives AUTO backend selection and the auto-created stereo camera outputs when needed.
+     * @param size Requested depth output size
+     * @param fps Optional requested stereo camera FPS for the output
+     */
+    RequestedOutput* requestOutput(const std::pair<uint32_t, uint32_t>& size, std::optional<float> fps = std::nullopt);
 
     /**
      * Set algorithm and config before wiring. algorithm must not be AUTO.
      * @param algorithm Backend to use
      * @param config Algorithm-specific configuration
-     * @param fps Requested stereo camera FPS
-     * @param stereoSize Stereo frame size used when no upstream Camera is present
      */
-    std::shared_ptr<Depth> build(Algorithm algorithm,
-                                 Config config,
-                                 std::optional<float> fps = std::nullopt,
-                                 std::optional<std::pair<uint32_t, uint32_t>> stereoSize = std::nullopt);
-
-    /**
-     * Output depth map from the active backend.
-     */
-    Node::Output& depth();
-
-    /**
-     * Output confidence map from the active backend.
-     */
-    Node::Output& confidence();
+    std::shared_ptr<Depth> build(Algorithm algorithm, Config config);
 
     /**
      * Align depth output to another image source.
-     * Must be called before first depth() or confidence() access.
-     * Only depth() is aligned; confidence() stays in the backend frame.
+     * Must be called before first requested output access.
+     * Only the requested depth output is aligned; confidence stays in the backend frame.
      * @param alignTo Output to align depth to
      */
     std::shared_ptr<Depth> setAlignTo(Node::Output& alignTo);
@@ -166,7 +182,7 @@ class Depth : public DeviceNodeGroup {
 
     /**
      * Get the algorithm actually wired (AUTO resolved).
-     * Valid after first depth() access.
+     * Valid after first requested output access.
      */
     [[nodiscard]] Algorithm getResolvedAlgorithm() const {
         return resolved_.algorithm;
@@ -216,6 +232,8 @@ class Depth : public DeviceNodeGroup {
                                      const std::optional<float>& fps);
 
     void wireAlignment(Algorithm active, const std::shared_ptr<Device>& device);
+    Node::Output& resolveDepthOutput();
+    Node::Output& resolveConfidenceOutput();
 
     Algorithm algorithmOverride_{Algorithm::AUTO};
     Selection resolved_{Algorithm::AUTO, std::monostate{}};
@@ -227,6 +245,7 @@ class Depth : public DeviceNodeGroup {
 
     Node::Output* depthOut_{nullptr};
     Node::Output* confidenceOut_{nullptr};
+    std::unique_ptr<RequestedOutput> requestedOutput_;
 
     std::unique_ptr<::dai::Subnode<StereoDepth>> stereoBackend_;
     std::unique_ptr<::dai::Subnode<NeuralDepth>> neuralBackend_;

@@ -100,7 +100,9 @@ TEST_CASE("SpatialDetectionNetwork NNArchive API") {
 TEST_CASE("SpatialDetectionNetwork model description API with Depth source") {
     dai::Pipeline p;
     auto camera = p.create<dai::node::Camera>()->build();
-    auto depth = p.create<dai::node::Depth>()->build(dai::node::Depth::Algorithm::AUTO, 30.0f, std::pair<uint32_t, uint32_t>{640, 400});
+    auto depth = p.create<dai::node::Depth>()->build(dai::node::Depth::Algorithm::AUTO);
+    auto* depthOutput = depth->requestOutput({640, 400}, 30.0f);
+    REQUIRE(depthOutput != nullptr);
 
     dai::NNModelDescription modelDesc{"yolov6-nano"};
     auto nn = p.create<dai::node::SpatialDetectionNetwork>();

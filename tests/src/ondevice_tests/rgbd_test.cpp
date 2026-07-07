@@ -92,7 +92,9 @@ TEST_CASE("rgbd build with Depth source") {
     dai::Pipeline pipeline;
 
     auto color = pipeline.create<dai::node::Camera>()->build();
-    auto depth = pipeline.create<dai::node::Depth>()->build(dai::node::Depth::Algorithm::AUTO, 30.0f, std::pair<uint32_t, uint32_t>{640, 400});
+    auto depth = pipeline.create<dai::node::Depth>()->build(dai::node::Depth::Algorithm::AUTO);
+    auto* depthOutput = depth->requestOutput({640, 400}, 30.0f);
+    REQUIRE(depthOutput != nullptr);
     auto rgbd = pipeline.create<dai::node::RGBD>()->build(color, depth, {640, 400}, 30.0f);
 
     auto outQ = rgbd->pcl.createOutputQueue();

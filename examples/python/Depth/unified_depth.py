@@ -8,8 +8,8 @@ via CLI or Depth.build().
 
 Supported algorithms: AUTO, STEREO, NEURAL, NEURAL_ASSISTED_STEREO, TOF, GPU_STEREO.
 
-Configure the node via CLI to exercise Depth.build() overloads (fps-only, algorithm + fps/res,
-algorithm + config) or pre-built user stereo cameras.
+Configure the node via CLI to exercise Depth.build() for algorithm/config selection and
+Depth.requestOutput() for fps/size selection, or pre-built user stereo cameras.
 """
 
 from __future__ import annotations
@@ -101,21 +101,13 @@ def buildUserStereoCameras(pipeline: dai.Pipeline, args: argparse.Namespace) -> 
 
 
 def configureDepth(depthNode: dai.node.Depth, args: argparse.Namespace) -> None:
-    fps = None if args.userCameras else args.fps
-    stereoSize = None if args.userCameras else stereoSizeFromArgs(args)
     algorithm = _ALGORITHM_CHOICES[args.algorithm] if args.algorithm is not None else None
     config = parseConfig(args.config) if args.config is not None else None
 
     if algorithm is not None and config is not None:
-        depthNode.build(algorithm, config, fps=fps, stereo_size=stereoSize)
+        depthNode.build(algorithm, config)
     elif algorithm is not None:
-        depthNode.build(algorithm, fps=fps, stereo_size=stereoSize)
-    elif fps is not None and stereoSize is not None:
-        depthNode.build(dai.node.Depth.Algorithm.AUTO, fps=fps, stereo_size=stereoSize)
-    elif fps is not None:
-        depthNode.build(fps=fps)
-    elif stereoSize is not None:
-        depthNode.build(dai.node.Depth.Algorithm.AUTO, stereo_size=stereoSize)
+        depthNode.build(algorithm)
 
 
 def buildParser() -> argparse.ArgumentParser:
@@ -139,7 +131,7 @@ Examples:
         default=None,
         help="Device IP for TCP/IP (e.g. PoE). If omitted, the default device search is used (often first USB).",
     )
-    parser.add_argument("--fps", type=float, default=None, help="Stereo camera FPS for Depth.build() or user cameras")
+    parser.add_argument("--fps", type=float, default=None, help="Stereo camera FPS for Depth.requestOutput() or user cameras")
     parser.add_argument("--width", type=int, default=None, help="Stereo frame width (requires --height)")
     parser.add_argument("--height", type=int, default=None, help="Stereo frame height (requires --width)")
     parser.add_argument(
@@ -159,7 +151,7 @@ Examples:
         "--user-cameras",
         dest="userCameras",
         action="store_true",
-        help="Pre-build stereo Camera nodes; fps/res come from args instead of Depth.build()",
+        help="Pre-build stereo Camera nodes; fps/res come from args instead of Depth.requestOutput()",
     )
     return parser
 
@@ -187,9 +179,20 @@ def main() -> int:
 
     depthNode = pipeline.create(dai.node.Depth)
     configureDepth(depthNode, args)
+    stereoSize = None if args.userCameras else stereoSizeFromArgs(args)
+    fps = None if args.userCameras else args.fps
 
-    depthQueue = depthNode.depth.createOutputQueue()
-    confidenceQueue = depthNode.confidence.createOutputQueue()
+    if stereoSize is not None and fps is not None:
+        requestedOutput = depthNode.requestOutput(stereoSize, fps)
+    elif stereoSize is not None:
+        requestedOutput = depthNode.requestOutput(stereoSize)
+    elif fps is not None:
+        requestedOutput = depthNode.requestOutput(fps)
+    else:
+        requestedOutput = depthNode.requestOutput()
+
+    depthQueue = requestedOutput.depth.createOutputQueue()
+    confidenceQueue = requestedOutput.confidence.createOutputQueue()
 
     pipeline.build()
 

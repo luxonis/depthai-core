@@ -7,8 +7,8 @@
  *
  * Supported algorithms: AUTO, STEREO, NEURAL, NEURAL_ASSISTED_STEREO, TOF, GPU_STEREO.
  *
- * Configure the node via CLI to exercise Depth::build() overloads (fps-only, algorithm + fps/res,
- * algorithm + config) or pre-built user stereo cameras.
+ * Configure the node via CLI to exercise Depth::build() for algorithm/config selection and
+ * Depth::requestOutput() for fps/size selection, or pre-built user stereo cameras.
  */
 #include <algorithm>
 #include <argparse/argparse.hpp>
@@ -217,8 +217,6 @@ void buildUserStereoCameras(dai::Pipeline& pipeline, const CliOptions& options) 
 }
 
 void configureDepth(const std::shared_ptr<dai::node::Depth>& depth, const CliOptions& options) {
-    const auto fps = options.userCameras ? std::nullopt : options.fps;
-    const auto stereoSize = options.userCameras ? std::nullopt : stereoSizeFromOptions(options);
     const auto algorithm = options.algorithm ? parseAlgorithm(*options.algorithm) : std::nullopt;
     const auto config = options.config ? parseConfig(*options.config) : std::nullopt;
 
@@ -230,15 +228,9 @@ void configureDepth(const std::shared_ptr<dai::node::Depth>& depth, const CliOpt
     }
 
     if(algorithm && config) {
-        depth->build(*algorithm, *config, fps, stereoSize);
+        depth->build(*algorithm, *config);
     } else if(algorithm) {
-        depth->build(*algorithm, fps, stereoSize);
-    } else if(fps && stereoSize) {
-        depth->build(dai::node::Depth::Algorithm::AUTO, *fps, stereoSize);
-    } else if(fps) {
-        depth->build(*fps);
-    } else if(stereoSize) {
-        depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, stereoSize);
+        depth->build(*algorithm);
     }
 }
 
@@ -276,15 +268,15 @@ int main(int argc, char** argv) {
         "target FPS, and/or stereo resolution (Algorithm::AUTO). You can also pin the algorithm yourself "
         "via CLI or Depth::build().\n\n"
         "Supported algorithms: AUTO, STEREO, NEURAL, NEURAL_ASSISTED_STEREO, TOF, GPU_STEREO.\n\n"
-        "Configure the node via CLI to exercise Depth::build() overloads (fps-only, algorithm + fps/res, "
-        "algorithm + config) or pre-built user stereo cameras.");
+        "Configure the node via CLI to exercise Depth::build() for algorithm/config selection and "
+        "Depth::requestOutput() for fps/size selection, or pre-built user stereo cameras.");
     program.add_argument("--ip").default_value(std::string("")).help("Device IP for TCP/IP (e.g. PoE)");
-    program.add_argument("--fps").scan<'g', float>().help("Stereo camera FPS for Depth.build() or user cameras");
+    program.add_argument("--fps").scan<'g', float>().help("Stereo camera FPS for Depth::requestOutput() or user cameras");
     program.add_argument("--width").scan<'u', uint32_t>().help("Stereo frame width (requires --height)");
     program.add_argument("--height").scan<'u', uint32_t>().help("Stereo frame height (requires --width)");
     program.add_argument("--algorithm").help("Depth backend: auto, stereo, neural, neural_assisted_stereo, tof, gpu_stereo");
     program.add_argument("--config").help("DeviceModelZoo (NEURAL_*) or StereoDepth.PresetMode (DEFAULT, ...)");
-    program.add_argument("--user-cameras").flag().help("Pre-build stereo Camera nodes instead of using Depth.build() for fps/res");
+    program.add_argument("--user-cameras").flag().help("Pre-build stereo Camera nodes instead of using Depth::requestOutput() for fps/res");
 
     try {
         program.parse_args(argc, argv);
@@ -334,9 +326,21 @@ int main(int argc, char** argv) {
 
         auto depthNode = pipeline.create<dai::node::Depth>();
         configureDepth(depthNode, options);
+        const auto stereoSize = options.userCameras ? std::nullopt : stereoSizeFromOptions(options);
+        const auto fps = options.userCameras ? std::nullopt : options.fps;
+        dai::node::Depth::RequestedOutput* requestedOutput = nullptr;
+        if(stereoSize && fps) {
+            requestedOutput = depthNode->requestOutput(*stereoSize, *fps);
+        } else if(stereoSize) {
+            requestedOutput = depthNode->requestOutput(*stereoSize);
+        } else if(fps) {
+            requestedOutput = depthNode->requestOutput(*fps);
+        } else {
+            requestedOutput = depthNode->requestOutput();
+        }
 
-        auto depthQueue = depthNode->depth().createOutputQueue();
-        auto confidenceQueue = depthNode->confidence().createOutputQueue();
+        auto depthQueue = requestedOutput->depth->createOutputQueue();
+        auto confidenceQueue = requestedOutput->confidence->createOutputQueue();
 
         pipeline.build();
 

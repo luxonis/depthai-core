@@ -471,7 +471,8 @@ void RGBD::alignDepthImpl(const std::shared_ptr<Depth>& depth,
     auto* colorCamOutput = camera->requestOutput(frameSize, colorCamOutputType, ImgResizeMode::CROP, fps, true);
     colorCamOutput->link(inColor);
     depth->setAlignTo(*colorCamOutput);
-    depth->depth().link(inDepth);
+    auto* depthOutput = depth->requestOutput({static_cast<uint32_t>(frameSize.first), static_cast<uint32_t>(frameSize.second)}, fps);
+    depthOutput->depth->link(inDepth);
 
     if(depth->getResolvedAlgorithm() == Depth::Algorithm::TOF) {
         constexpr float DEFAULT_TOF_FPS = 30.0f;

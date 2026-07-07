@@ -450,37 +450,60 @@ Depth::Depth() : DeviceNodeGroup(nullptr) {}
 
 // --- Build methods ---
 
-std::shared_ptr<Depth> Depth::build(std::optional<float> fps) {
-    requireNotBuilt("Depth::build(fps)");
-    stereoOutputFps_ = fps;  // Applied to Camera outputs when a stereo-based backend is wired.
+Node::Output& Depth::RequestedOutput::OutputHandle::get() const {
+    return (parent_.*resolver_)();
+}
+
+Node::Output* Depth::RequestedOutput::OutputHandle::operator->() const {
+    return &get();
+}
+
+Depth::RequestedOutput::OutputHandle::operator Node::Output&() const {
+    return get();
+}
+
+std::shared_ptr<Depth> Depth::build() {
+    requireNotBuilt("Depth::build()");
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
-std::shared_ptr<Depth> Depth::build(Algorithm algorithm, std::optional<float> fps) {
-    return build(algorithm, fps, std::nullopt);
-}
-
-std::shared_ptr<Depth> Depth::build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize) {
-    requireNotBuilt("Depth::build(algorithm, fps, stereoSize)");
+std::shared_ptr<Depth> Depth::build(Algorithm algorithm) {
+    requireNotBuilt("Depth::build(algorithm)");
     algorithmOverride_ = algorithm;
-    stereoOutputFps_ = fps;
-    stereoSizeOverride_ = stereoSize;
     configOverride_.reset();
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
-std::shared_ptr<Depth> Depth::build(Algorithm algorithm, Config config, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize) {
-    requireNotBuilt("Depth::build(algorithm, config, fps, stereoSize)");
+Depth::RequestedOutput* Depth::requestOutput(std::optional<float> fps) {
+    requireNotBuilt("Depth::requestOutput(fps)");
+    stereoSizeOverride_.reset();
+    stereoOutputFps_ = fps;
+    if(!requestedOutput_) {
+        requestedOutput_ = std::unique_ptr<RequestedOutput>(new RequestedOutput(*this));
+    }
+    return requestedOutput_.get();
+}
+
+Depth::RequestedOutput* Depth::requestOutput(const std::pair<uint32_t, uint32_t>& size, std::optional<float> fps) {
+    requireNotBuilt("Depth::requestOutput(size, fps)");
+    stereoSizeOverride_ = size;
+    stereoOutputFps_ = fps;
+    if(!requestedOutput_) {
+        requestedOutput_ = std::unique_ptr<RequestedOutput>(new RequestedOutput(*this));
+    }
+    return requestedOutput_.get();
+}
+
+std::shared_ptr<Depth> Depth::build(Algorithm algorithm, Config config) {
+    requireNotBuilt("Depth::build(algorithm, config)");
     algorithmOverride_ = algorithm;
     configOverride_ = std::move(config);
-    stereoOutputFps_ = fps;
-    stereoSizeOverride_ = stereoSize;
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
 // --- Outputs ---
 
-Node::Output& Depth::depth() {
+Node::Output& Depth::resolveDepthOutput() {
     if(!graphBuilt_) {
         buildInternal();
     }
@@ -488,7 +511,7 @@ Node::Output& Depth::depth() {
     return *depthOut_;
 }
 
-Node::Output& Depth::confidence() {
+Node::Output& Depth::resolveConfidenceOutput() {
     if(!graphBuilt_) {
         buildInternal();
     }
@@ -519,7 +542,7 @@ std::shared_ptr<Depth> Depth::setAlignTo(Node::Output& alignTo) {
 // --- Internal ---
 
 void Depth::requireNotBuilt(const char* method) const {
-    DAI_CHECK_V(!graphBuilt_, "{} must be called before the graph is wired (before first depth()/confidence() access).", method);
+    DAI_CHECK_V(!graphBuilt_, "{} must be called before the graph is wired (before first requested output access).", method);
 }
 
 std::vector<Depth::Algorithm> Depth::getSupportedAlgorithms(const std::shared_ptr<Device>& device, const std::vector<DeviceModelZoo>& supportedModels) const {
@@ -634,7 +657,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
     const auto& resolution = inputs.resolution;
 
     if(algorithmOverride_ == Algorithm::AUTO) {
-        // Only enforce an exact FPS+resolution match when the user pinned both via build().
+        // Only enforce an exact FPS+resolution match when the user pinned both before requesting the output.
         const bool userPinnedFpsAndResolution = stereoOutputFps_.has_value() && stereoSizeOverride_.has_value();
         resolved_ = selectBackend(resolution, targetFps, supported, supportedModels, userPinnedFpsAndResolution);
         if(resolved_.algorithm == Algorithm::STEREO && resolution) {

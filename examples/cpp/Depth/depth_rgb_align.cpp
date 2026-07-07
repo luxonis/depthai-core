@@ -159,9 +159,10 @@ int main() {
     auto* rgbOut = camRgb->requestOutput(std::make_pair(640u, 400u), dai::ImgFrame::Type::RGB888i, dai::ImgResizeMode::CROP, std::nullopt, true);
 
     depthNode->setAlignTo(*rgbOut);
+    auto* requestedOutput = depthNode->requestOutput();
 
     rgbOut->link(sync->inputs["rgb"]);
-    depthNode->depth().link(sync->inputs["depth_aligned"]);
+    requestedOutput->depth->link(sync->inputs["depth_aligned"]);
 
     auto queue = sync->out.createOutputQueue();
 

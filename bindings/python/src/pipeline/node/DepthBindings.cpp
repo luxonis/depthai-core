@@ -40,6 +40,12 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .value("TOF", Depth::Algorithm::TOF)
         .value("GPU_STEREO", Depth::Algorithm::GPU_STEREO);
 
+    py::class_<Depth::RequestedOutput>(node, "RequestedOutput")
+        .def_property_readonly(
+            "depth", [](Depth::RequestedOutput& output) -> Node::Output& { return output.depth.get(); }, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "confidence", [](Depth::RequestedOutput& output) -> Node::Output& { return output.confidence.get(); }, py::return_value_policy::reference_internal);
+
     node.def("getRequestedAlgorithm", &Depth::getRequestedAlgorithm, DOC(dai, node, Depth, getRequestedAlgorithm))
         .def("setAlgorithm", &Depth::setAlgorithm, py::arg("algorithm"), DOC(dai, node, Depth, setAlgorithm))
         .def(
@@ -59,61 +65,35 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
         .def(
             "getResolvedConfig", [configToPy](const Depth& d) { return configToPy(d.getResolvedConfig()); }, DOC(dai, node, Depth, getResolvedConfig))
         .def("setAlignTo", &Depth::setAlignTo, py::arg("alignTo"), DOC(dai, node, Depth, setAlignTo))
-        .def("build",
-             static_cast<std::shared_ptr<Depth> (Depth::*)(std::optional<float>)>(&Depth::build),
+        .def("requestOutput",
+             static_cast<Depth::RequestedOutput* (Depth::*)(std::optional<float>)>(&Depth::requestOutput),
              py::arg("fps") = std::nullopt,
-             DOC(dai, node, Depth, build))
-        .def("build",
-             static_cast<std::shared_ptr<Depth> (Depth::*)(Depth::Algorithm, std::optional<float>)>(&Depth::build),
-             py::arg("algorithm"),
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, Depth, depth))
+        .def("requestOutput",
+             static_cast<Depth::RequestedOutput* (Depth::*)(const std::pair<uint32_t, uint32_t>&, std::optional<float>)>(&Depth::requestOutput),
+             py::arg("size"),
              py::arg("fps") = std::nullopt,
-             DOC(dai, node, Depth, build))
+             py::return_value_policy::reference_internal,
+             DOC(dai, node, Depth, depth))
+        .def("build", static_cast<std::shared_ptr<Depth> (Depth::*)()>(&Depth::build), DOC(dai, node, Depth, build))
+        .def("build", static_cast<std::shared_ptr<Depth> (Depth::*)(Depth::Algorithm)>(&Depth::build), py::arg("algorithm"), DOC(dai, node, Depth, build))
         .def(
             "build",
-            static_cast<std::shared_ptr<Depth> (Depth::*)(Depth::Algorithm, std::optional<float>, std::optional<std::pair<uint32_t, uint32_t>>)>(&Depth::build),
-            py::arg("algorithm"),
-            py::arg("fps") = std::nullopt,
-            py::arg("stereoSize") = std::nullopt,
-            DOC(dai, node, Depth, build, 3))
-        .def(
-            "build",
-            [](Depth& self,
-               Depth::Algorithm algorithm,
-               DeviceModelZoo config,
-               std::optional<float> fps,
-               std::optional<std::pair<uint32_t, uint32_t>> stereoSize) { return self.build(algorithm, config, fps, stereoSize); },
+            [](Depth& self, Depth::Algorithm algorithm, DeviceModelZoo config) { return self.build(algorithm, config); },
             py::arg("algorithm"),
             py::arg("config"),
-            py::arg("fps") = std::nullopt,
-            py::arg("stereoSize") = std::nullopt,
             DOC(dai, node, Depth, build, 4))
         .def(
             "build",
-            [](Depth& self,
-               Depth::Algorithm algorithm,
-               StereoDepth::PresetMode config,
-               std::optional<float> fps,
-               std::optional<std::pair<uint32_t, uint32_t>> stereoSize) { return self.build(algorithm, config, fps, stereoSize); },
+            [](Depth& self, Depth::Algorithm algorithm, StereoDepth::PresetMode config) { return self.build(algorithm, config); },
             py::arg("algorithm"),
             py::arg("config"),
-            py::arg("fps") = std::nullopt,
-            py::arg("stereoSize") = std::nullopt,
             DOC(dai, node, Depth, build, 4))
         .def(
             "build",
-            [](Depth& self, Depth::Algorithm algorithm, py::none, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize) {
-                return self.build(algorithm, std::monostate{}, fps, stereoSize);
-            },
+            [](Depth& self, Depth::Algorithm algorithm, py::none) { return self.build(algorithm, std::monostate{}); },
             py::arg("algorithm"),
             py::arg("config"),
-            py::arg("fps") = std::nullopt,
-            py::arg("stereoSize") = std::nullopt,
-            DOC(dai, node, Depth, build, 4))
-        .def_property_readonly(
-            "depth", [](Depth& d) -> Node::Output& { return d.depth(); }, py::return_value_policy::reference_internal, DOC(dai, node, Depth, depth))
-        .def_property_readonly(
-            "confidence",
-            [](Depth& d) -> Node::Output& { return d.confidence(); },
-            py::return_value_policy::reference_internal,
-            DOC(dai, node, Depth, confidence));
+            DOC(dai, node, Depth, build, 4));
 }

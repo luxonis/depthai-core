@@ -178,16 +178,20 @@ struct PipelineStopGuard {
 
 /** Host queues must exist before pipeline.start() (start() calls build()). */
 void requireDepthPipelineBuilds(Pipeline& pipeline, const std::shared_ptr<node::Depth>& depth) {
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW((void)&depth->confidence());
+    auto* output = depth->requestOutput();
+    REQUIRE(output != nullptr);
+    REQUIRE_NOTHROW((void)output->depth.operator->());
+    REQUIRE_NOTHROW((void)output->confidence.operator->());
     REQUIRE_NOTHROW(pipeline.build());
 }
 
 void startPipelineAndRequireFirstFrames(Pipeline& pipeline, const std::shared_ptr<node::Depth>& depth) {
     PipelineStopGuard guard(pipeline);
 
-    auto depthQueue = depth->depth().createOutputQueue();
-    auto confidenceQueue = depth->confidence().createOutputQueue();
+    auto* output = depth->requestOutput();
+    REQUIRE(output != nullptr);
+    auto depthQueue = output->depth->createOutputQueue();
+    auto confidenceQueue = output->confidence->createOutputQueue();
 
     pipeline.start();
 
@@ -315,11 +319,9 @@ UserDepthCameraSetup wireUserStereoCamerasAndDepth(Pipeline& pipeline, const Ste
     }
 
     setup.depth = pipeline.create<node::Depth>();
-    if(depthRequestedFps.has_value()) {
-        setup.depth->build(*depthRequestedFps);
-    }
-
-    setup.depthFrameQueue = setup.depth->depth().createOutputQueue();
+    auto* requestedOutput = setup.depth->requestOutput(depthRequestedFps);
+    REQUIRE(requestedOutput != nullptr);
+    setup.depthFrameQueue = requestedOutput->depth->createOutputQueue();
 
     return setup;
 }
@@ -413,8 +415,10 @@ TEST_CASE("Depth: depth/confidence outputs exist before pipeline.build") {
     Pipeline pipeline;
     (void)requireDefaultDevice(pipeline);
     auto depth = pipeline.create<node::Depth>();
-    REQUIRE_NOTHROW((void)&depth->depth());
-    REQUIRE_NOTHROW((void)&depth->confidence());
+    auto* output = depth->requestOutput();
+    REQUIRE(output != nullptr);
+    REQUIRE_NOTHROW((void)output->depth.operator->());
+    REQUIRE_NOTHROW((void)output->confidence.operator->());
 }
 
 TEST_CASE("Depth: build(algorithm) exposes algorithm via getRequestedAlgorithm") {
@@ -459,7 +463,7 @@ TEST_CASE("Depth: GPU_STEREO requires RVC4") {
         SKIP("Skipping negative GPU_STEREO test on RVC4.");
     }
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::GPU_STEREO);
-    REQUIRE_THROWS((void)&depth->depth());
+    REQUIRE_THROWS((void)depth->requestOutput()->depth.operator->());
 }
 
 TEST_CASE("Depth: TOF requires connected ToF camera") {
@@ -469,7 +473,7 @@ TEST_CASE("Depth: TOF requires connected ToF camera") {
         SKIP("Skipping negative TOF test: device reports a ToF sensor.");
     }
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF);
-    REQUIRE_THROWS((void)&depth->depth());
+    REQUIRE_THROWS((void)depth->requestOutput()->depth.operator->());
 }
 
 TEST_CASE("Depth: resolved algorithm + config can rebuild the same backend explicitly") {
@@ -482,13 +486,17 @@ TEST_CASE("Depth: resolved algorithm + config can rebuild the same backend expli
 
     // Resolve once with AUTO, then feed the resolved pair into a second node's explicit build().
     auto depth = pipeline.create<node::Depth>();
-    REQUIRE_NOTHROW((void)&depth->depth());
+    auto* output = depth->requestOutput();
+    REQUIRE(output != nullptr);
+    REQUIRE_NOTHROW((void)output->depth.operator->());
     const auto resolvedAlgorithm = depth->getResolvedAlgorithm();
     const auto resolvedConfig = depth->getResolvedConfig();
 
     auto explicitDepth = pipeline.create<node::Depth>();
     explicitDepth->build(resolvedAlgorithm, resolvedConfig);
-    REQUIRE_NOTHROW((void)&explicitDepth->depth());
+    auto* explicitOutput = explicitDepth->requestOutput();
+    REQUIRE(explicitOutput != nullptr);
+    REQUIRE_NOTHROW((void)explicitOutput->depth.operator->());
     REQUIRE(explicitDepth->getRequestedAlgorithm() == resolvedAlgorithm);
     REQUIRE(explicitDepth->getResolvedAlgorithm() == resolvedAlgorithm);
     REQUIRE(explicitDepth->getResolvedConfig() == resolvedConfig);
@@ -503,7 +511,7 @@ TEST_CASE("Depth: explicit algorithm + config rejects algorithms unsupported by 
 
     auto depth = pipeline.create<node::Depth>();
     depth->build(node::Depth::Algorithm::GPU_STEREO, node::Depth::Config{std::monostate{}});
-    REQUIRE_THROWS_WITH((void)&depth->depth(), Catch::Matchers::ContainsSubstring("GPU_STEREO"));
+    REQUIRE_THROWS_WITH((void)depth->requestOutput()->depth.operator->(), Catch::Matchers::ContainsSubstring("GPU_STEREO"));
 }
 
 TEST_CASE("Depth: build reuses stereo cameras created before Depth node") {
@@ -544,7 +552,7 @@ TEST_CASE("Depth: NEURAL_ASSISTED_STEREO rejected off RVC4") {
         SKIP("Skipping Depth test: RVC4 device (negative NAS test not applicable).");
     }
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::NEURAL_ASSISTED_STEREO);
-    REQUIRE_THROWS((void)&depth->depth());
+    REQUIRE_THROWS((void)depth->requestOutput()->depth.operator->());
 }
 
 TEST_CASE("Depth: NEURAL_ASSISTED_STEREO wires NeuralAssistedStereo on RVC4") {
@@ -588,8 +596,9 @@ TEST_CASE("Depth: GPU_STEREO wires GPUStereo on RVC4 when build and device allow
 
     auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::GPU_STEREO);
     try {
-        (void)&depth->depth();
-        (void)&depth->confidence();
+        auto* output = depth->requestOutput();
+        (void)output->depth.operator->();
+        (void)output->confidence.operator->();
     } catch(const std::exception& ex) {
         SKIP(std::string("Skipping GPU_STEREO positive test: ") + ex.what());
     }
@@ -629,7 +638,7 @@ TEST_CASE("Depth: pipeline with SystemLogger and optional third camera still bui
     REQUIRE_NOTHROW(requireDepthPipelineBuilds(pipeline, depth));
 }
 
-TEST_CASE("Depth: user stereo cameras keep 30 FPS with AUTO and no build(fps)") {
+TEST_CASE("Depth: user stereo cameras keep 30 FPS with AUTO and no requestOutput(fps)") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     skipUnlessUserStereoDepthScenario(device);
@@ -638,18 +647,18 @@ TEST_CASE("Depth: user stereo cameras keep 30 FPS with AUTO and no build(fps)") 
     REQUIRE_NOTHROW(runUserCameraDepthTest(pipeline, device, pair, std::nullopt, false, true));
 }
 
-TEST_CASE("Depth: user preview and depth share the same build(fps) on pre-built cameras") {
+TEST_CASE("Depth: user preview and depth share the same requestOutput(fps) on pre-built cameras") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     skipUnlessUserStereoDepthScenario(device);
     const auto pair = requireFirstStereoPairForTest(device);
 
-    // A separate user preview stream and a lower Depth.build(fps) on the same Camera currently desyncs
+    // A separate user preview stream and a lower Depth.requestOutput(fps) on the same Camera currently desyncs
     // on device (dual-rate outputs). Match the preview rate until Camera supports mixed output FPS.
     REQUIRE_NOTHROW(runUserCameraDepthTest(pipeline, device, pair, kUserStereoFps, false, true));
 }
 
-TEST_CASE("Depth: pre-built user stereo cameras with depth build(fps) at 15 FPS") {
+TEST_CASE("Depth: pre-built user stereo cameras with depth requestOutput(fps) at 15 FPS") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     skipUnlessUserStereoDepthScenario(device);
@@ -684,8 +693,12 @@ TEST_CASE("Depth: RVC4 AUTO selects neural model from stereo_size and fps") {
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(expected.second) == DeviceModelZoo::NEURAL_DEPTH_576X360);
 
-    depth->build(node::Depth::Algorithm::AUTO, 30.f, std::pair<uint32_t, uint32_t>{640, 400});
-    REQUIRE_NOTHROW((void)&depth->depth());
+    depth->build(node::Depth::Algorithm::AUTO);
+    auto* output = depth->requestOutput({640, 400}, 30.f);
+    REQUIRE(output != nullptr);
+    REQUIRE_NOTHROW((void)output->depth.operator->());
+    REQUIRE(output->depth.operator->() == depth->requestOutput({640, 400}, 30.f)->depth.operator->());
+    REQUIRE(output->confidence.operator->() == depth->requestOutput({640, 400}, 30.f)->confidence.operator->());
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedConfig()) == std::get<DeviceModelZoo>(expected.second));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
@@ -718,7 +731,9 @@ TEST_CASE("Depth: RVC4 AUTO uses requested output size from existing stereo came
         std::make_pair(640u, 400u), 20.f, node::DepthTestAccess::getSupportedAlgorithms(*depth, device), device->getSupportedDeviceModels());
     REQUIRE(expected.first == node::Depth::Algorithm::NEURAL);
 
-    REQUIRE_NOTHROW((void)&depth->depth());
+    auto* output = depth->requestOutput();
+    REQUIRE(output != nullptr);
+    REQUIRE_NOTHROW((void)output->depth.operator->());
     REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::NEURAL);
     REQUIRE(std::get<DeviceModelZoo>(depth->getResolvedConfig()) == std::get<DeviceModelZoo>(expected.second));
     requireDepthSingleBackendChild(*depth, "NeuralDepth");
