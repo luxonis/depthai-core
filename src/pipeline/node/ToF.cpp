@@ -112,13 +112,9 @@ void ToF::postBuildStage() {
         }
     }
     if(device->getPlatform() == Platform::RVC4) {
-        const bool hasIntensityConnections = !intensity.getConnections().empty() || !intensity.getQueueConnections().empty();
         const bool hasRawDepthConnections = !rawDepth.getConnections().empty() || !rawDepth.getQueueConnections().empty();
-        if(hasIntensityConnections || hasRawDepthConnections) {
-            const auto unsupportedOutputs = hasIntensityConnections && hasRawDepthConnections
-                                                ? "intensity and rawDepth outputs"
-                                                : (hasIntensityConnections ? "intensity output" : "rawDepth output");
-            throw std::runtime_error(fmt::format("ToF on RVC4 does not support {}.", unsupportedOutputs));
+        if(hasRawDepthConnections) {
+            throw std::runtime_error("ToF on RVC4 does not support rawDepth output.");
         }
     }
 #endif
