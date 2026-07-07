@@ -54,7 +54,7 @@ def enableUARTonAllDevices(enable):
     if len(devs) == 0:
         print("WARNING: No devices connected, skipping UART enable/disable")
         return
-
+    
     for dev in devs:
         dev.root()
 
@@ -64,7 +64,7 @@ def enableUARTonAllDevices(enable):
         else:
             val = disableValue
             print(f"Disabling UART on {dev.serial}")
-
+        
         for reg in regs:
             dev.shell(f"devmem {reg} 32 {val}")
 
@@ -72,7 +72,7 @@ def enableUARTonAllDevices(enable):
 def run_ctest(env_vars, labels, excluded_labels=None, blocking=True, name=""):
     env = os.environ.copy()
     env_vars["DEPTHAI_PIPELINE_DEBUGGING"] = "1"
-
+    
     # Add LSAN suppressions if the file exists
     lsan_supp_path = pathlib.Path(__file__).parent / "lsan.supp"
     if lsan_supp_path.exists():
@@ -81,7 +81,7 @@ def run_ctest(env_vars, labels, excluded_labels=None, blocking=True, name=""):
             env["LSAN_OPTIONS"] += f":suppressions={lsan_supp_path}"
         else:
             env["LSAN_OPTIONS"] = f"suppressions={lsan_supp_path}"
-
+            
     env.update(env_vars)
 
     cmd = [
