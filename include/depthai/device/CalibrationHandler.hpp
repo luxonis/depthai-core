@@ -803,6 +803,8 @@ class CalibrationHandler {
  * It preserves the underlying EepromData layout, including the cameraData map,
  * but camera-specific APIs use CameraBoardSocket::CBA as the logical
  * single-camera data key without requiring the caller to pass it again.
+ *
+ * @warning Experimental feature. This API might change or be removed in a future release.
  */
 class CBACalibrationHandler : private CalibrationHandler {
    public:

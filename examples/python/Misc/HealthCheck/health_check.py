@@ -10,10 +10,12 @@ import depthai as dai
 def main() -> int:
     config = dai.HealthCheckConfig(powerSupplyCheckDuration=timedelta(milliseconds=20000))
 
-    found, deviceInfo = dai.Device.getFirstAvailableDevice(False)
-    if not found:
+    deviceInfos = dai.Device.getAllConnectedDevices()
+    if not deviceInfos:
         print("No DepthAI device found.", file=sys.stderr)
         return 1
+
+    deviceInfo = deviceInfos[0]
 
     print(f"Device: {deviceInfo}")
     print(f"Power supply check duration: {int(config.powerSupplyCheckDuration.total_seconds() * 1000)} ms")

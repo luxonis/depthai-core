@@ -1345,6 +1345,9 @@ if(DEPTHAI_INSTALL)
     # Install depthai public headers
     install(DIRECTORY include/depthai DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     install(FILES "${DEPTHAI_VERSION_HEADER}" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai/build")
+    # Install license and notices
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/notices/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/notices")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install resources if not RC'd
