@@ -35,6 +35,14 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @param nnArchive: Neural network archive
      */
     std::shared_ptr<DetectionParser> build(Node::Output& nnInput, const NNArchive& nnArchive);
+
+    /**
+     * @brief Build DetectionParser node with a specific NNArchive head.
+     * @param nnInput: Output to link
+     * @param head: Specific head from NNArchive to use for this parser
+     */
+    std::shared_ptr<DetectionParser> build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head);
+
     /**
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5
@@ -64,6 +72,13 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * @param nnArchive: NNArchive to set
      */
     void setNNArchive(const NNArchive& nnArchive);
+
+    /**
+     * @brief Set NNArchive head for this Node.
+     *
+     * @param head: NNArchive head to set
+     */
+    void setNNArchiveHead(const dai::nn_archive::v1::Head& head);
 
     /**
      * Load network xml and bin files into assets.
@@ -295,6 +310,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setNNArchiveSuperblob(const NNArchive& nnArchive, int numShaves);
     void setNNArchiveOther(const NNArchive& nnArchive);
     void setConfig(const dai::NNArchiveVersionedConfig& config);
+    void setConfig(const dai::nn_archive::v1::Head& head);
     YoloDecodingFamily yoloDecodingFamilyResolver(const std::string& subtype);
     bool decodeSegmentationResolver(const std::vector<std::string>& outputs);
     void configureYOLONetworkParser(DetectionParserOptions& parser, const nn_archive::v1::Head& metadata);
@@ -306,9 +322,6 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     uint32_t imgWidth;
     uint32_t imgHeight;
     uint32_t imgSizesSet = false;
-    //
-
-    std::optional<NNArchive> mArchive;
 
     std::optional<NNArchiveVersionedConfig> archiveConfig;
 };

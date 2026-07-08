@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <memory>
@@ -74,9 +75,29 @@ NNArchive SegmentationParser::decodeModel(const Model& model) {
     return *nnArchive;
 }
 
+void SegmentationParser::setNNArchive(const NNArchive& nnArchive) {
+    setConfig(nnArchive.getVersionedConfig());
+}
+
+void SegmentationParser::setNNArchiveHead(const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
+}
+
 std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const Model& model) {
     auto nnArchive = decodeModel(model);
     setConfig(nnArchive.getVersionedConfig());
+    nnInput.link(input);
+    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
+}
+
+std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
+    setConfig(nnArchive.getVersionedConfig());
+    nnInput.link(input);
+    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
+}
+
+std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
     nnInput.link(input);
     return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
@@ -101,12 +122,6 @@ void SegmentationParser::setConfig(const dai::NNArchiveVersionedConfig& config) 
     DAI_CHECK_V(segmentationHeads == 1, "NNArchive contains {} segmentation heads. Please build with a specific head.", segmentationHeads);
 
     setConfig(segHead);
-}
-
-std::shared_ptr<SegmentationParser> SegmentationParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
-    setConfig(head);
-    nnInput.link(input);
-    return std::static_pointer_cast<SegmentationParser>(shared_from_this());
 }
 
 void SegmentationParser::setConfig(const dai::nn_archive::v1::Head& head) {
@@ -247,6 +262,10 @@ void SegmentationParser::run() {
 
         auto outMask = std::make_shared<dai::SegmentationMask>();
         if(!classesInSingleLayer) {
+            // Handle single-channel foreground score outputs, with no threshold configuration.
+            if(tensorInfo->getChannels() == 1 && !properties.backgroundClass && inConfig->getConfidenceThreshold() == -1.0f) {
+                inConfig->setConfidenceThreshold(0.0f);
+            }
             utilities::SegmentationParserUtils::computeSegmentationMask(*outMask, *sharedNNData, *tensorInfo, *inConfig, properties.backgroundClass, logger);
         } else {
             // assume data is stored as INT in shape N x H x W  with N = 1

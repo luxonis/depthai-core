@@ -5,6 +5,7 @@
 #include <csignal>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "common/DetectionNetworkType.hpp"
@@ -45,8 +46,18 @@ void DetectionParser::setNNArchive(const NNArchive& nnArchive) {
     }
 }
 
+void DetectionParser::setNNArchiveHead(const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
+}
+
 std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, const NNArchive& nnArchive) {
     setNNArchive(nnArchive);
+    nnInput.link(input);
+    return std::static_pointer_cast<DetectionParser>(shared_from_this());
+}
+
+std::shared_ptr<DetectionParser> DetectionParser::build(Node::Output& nnInput, const dai::nn_archive::v1::Head& head) {
+    setConfig(head);
     nnInput.link(input);
     return std::static_pointer_cast<DetectionParser>(shared_from_this());
 }
@@ -154,11 +165,11 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
     DAI_CHECK_V(config.getVersion() == NNArchiveConfigVersion::V1, "Only NNArchive config V1 is supported.");
     auto configV1 = config.getConfig<nn_archive::v1::Config>();
 
-    const auto model = configV1.model;
+    const auto& model = configV1.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
 
-    std::vector<nn_archive::v1::Head> modelHeads = *model.heads;
+    const auto& modelHeads = *model.heads;
     int yoloHeadIndex = 0;
     int numYoloHeads = 0;
     int numMobilenetHeads = 0;
@@ -180,8 +191,19 @@ void DetectionParser::setConfig(const dai::NNArchiveVersionedConfig& config) {
                 numMobilenetHeads);
 
     int headIndex = (numYoloHeads > 0) ? yoloHeadIndex : mobilenetHeadIndex;
+    const auto& head = modelHeads[headIndex];
 
-    const auto head = (*model.heads)[headIndex];
+    pimpl->logger->info(
+        "Auto-selected NN Archive detection head at index {} of {} (parser: {}, name: {}). Use setNNArchiveHead(...) to select a specific head.",
+        headIndex,
+        modelHeads.size(),
+        head.parser,
+        head.name.value_or("<unnamed>"));
+
+    setConfig(head);
+}
+
+void DetectionParser::setConfig(const dai::nn_archive::v1::Head& head) {
     auto& parser = properties.parser;
     resetParser(parser);
 
