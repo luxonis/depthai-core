@@ -1,7 +1,6 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
-#include <tuple>
 
 #include "depthai/depthai.hpp"
 
@@ -9,13 +8,12 @@ int main() {
     dai::HealthCheckConfig config;
     config.powerSupplyCheckDuration = std::chrono::milliseconds(20000);
 
-    dai::DeviceInfo deviceInfo;
-    bool found = false;
-    std::tie(found, deviceInfo) = dai::Device::getFirstAvailableDevice(false);
-    if(!found) {
+    const auto devices = dai::Device::getAllConnectedDevices();
+    if(devices.empty()) {
         std::cerr << "No DepthAI device found." << std::endl;
         return EXIT_FAILURE;
     }
+    const auto& deviceInfo = devices.front();
 
     std::cout << "Device: " << deviceInfo.toString() << std::endl;
     std::cout << "Power supply check duration: " << config.powerSupplyCheckDuration.count() << " ms" << std::endl;
