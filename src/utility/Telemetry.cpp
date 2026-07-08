@@ -54,7 +54,10 @@ constexpr char DEFAULT_POSTHOG_HOST[] = "https://b.luxonis.com";
 constexpr char DEFAULT_POSTHOG_API_KEY[] = "phc_ojEByaCiZZ5eigzaM43PaEVbfLfFDF5NgkXEMPabrT9a";
 constexpr char DEFAULT_TELEMETRY_ROOT_DIR[] = "telemetry";
 constexpr char TMP_IDS_FILENAME[] = "tmpIds.json";
-constexpr auto TMP_ID_TTL = std::chrono::hours(24);
+//constexpr auto TMP_ID_TTL = std::chrono::hours(24);
+constexpr auto TMP_ID_TTL = std::chrono::minutes(10);
+// constexpr std::int64_t RATE_LIMIT_MAX_EVENTS = 30000;
+constexpr std::int64_t RATE_LIMIT_MAX_EVENTS = 5;
 
 std::atomic_bool telemetryUsesPython{false};
 
@@ -167,9 +170,16 @@ struct TemporaryDeviceIdEntry {
     int64_t expiresAtMs = 0;
 };
 
+struct RateLimitEntry {
+    int64_t expiresAtMs = 0;
+    int64_t value = 0;
+    bool triggered = false;
+};
+
 struct TemporaryIdsDocument {
     TemporaryIdEntry host;
     std::vector<TemporaryDeviceIdEntry> devices;
+    RateLimitEntry rateLimit;
 };
 
 bool isExpired(const TemporaryIdEntry& entry, int64_t currentMs) {
@@ -178,6 +188,33 @@ bool isExpired(const TemporaryIdEntry& entry, int64_t currentMs) {
 
 bool isExpired(const TemporaryDeviceIdEntry& entry, int64_t currentMs) {
     return entry.tmpDeviceId.empty() || entry.expiresAtMs <= currentMs;
+}
+
+bool isExpired(const RateLimitEntry& entry, int64_t currentMs) {
+    return entry.expiresAtMs <= currentMs;
+}
+
+void normalizeTemporaryIdsDocument(TemporaryIdsDocument& document, int64_t currentMs, bool& changed) {
+    const auto originalSize = document.devices.size();
+    document.devices.erase(std::remove_if(document.devices.begin(),
+                                          document.devices.end(),
+                                          [&](const TemporaryDeviceIdEntry& entry) { return entry.mxid.empty() || isExpired(entry, currentMs); }),
+                           document.devices.end());
+    changed = changed || document.devices.size() != originalSize;
+}
+
+void normalizeRateLimitEntry(RateLimitEntry& rateLimit, int64_t currentMs, bool& changed) {
+    if(rateLimit.value < 0) {
+        rateLimit.value = 0;
+        changed = true;
+    }
+
+    if(isExpired(rateLimit, currentMs)) {
+        rateLimit.expiresAtMs = currentMs + std::chrono::duration_cast<std::chrono::milliseconds>(TMP_ID_TTL).count();
+        rateLimit.value = 0;
+        rateLimit.triggered = false;
+        changed = true;
+    }
 }
 
 std::string getTelemetryHostOSImpl() {
@@ -242,6 +279,13 @@ TemporaryIdsDocument readTemporaryIdsDocument(const std::filesystem::path& path)
         }
     }
 
+    if(json.contains("rate_limit") && json["rate_limit"].is_object()) {
+        const auto& rateLimit = json["rate_limit"];
+        document.rateLimit.expiresAtMs = rateLimit.value("expires_at_ms", int64_t{0});
+        document.rateLimit.value = rateLimit.value("value", int64_t{0});
+        document.rateLimit.triggered = rateLimit.value("triggered", false);
+    }
+
     return document;
 }
 
@@ -260,6 +304,12 @@ nlohmann::json writeTemporaryIdsDocument(const TemporaryIdsDocument& document) {
             {"expires_at_ms", entry.expiresAtMs},
         });
     }
+
+    json["rate_limit"] = {
+        {"expires_at_ms", document.rateLimit.expiresAtMs},
+        {"value", document.rateLimit.value},
+        {"triggered", document.rateLimit.triggered},
+    };
 
     return json;
 }
@@ -339,12 +389,7 @@ class TemporaryIdsManager {
 
     TemporaryIdsDocument loadLocked(int64_t currentMs, bool& changed) {
         auto document = readTemporaryIdsDocument(tmpIdsPath());
-        const auto originalSize = document.devices.size();
-        document.devices.erase(std::remove_if(document.devices.begin(),
-                                              document.devices.end(),
-                                              [&](const TemporaryDeviceIdEntry& entry) { return entry.mxid.empty() || isExpired(entry, currentMs); }),
-                               document.devices.end());
-        changed = changed || document.devices.size() != originalSize;
+        normalizeTemporaryIdsDocument(document, currentMs, changed);
         return document;
     }
 
@@ -500,6 +545,45 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
         }
     }
 
+    const auto hostId = safeTemporaryTelemetryHostId();
+    std::unique_ptr<dai::platform::FileLock> rateLimitLock;
+    TemporaryIdsDocument rateLimitDocument;
+    bool trackRateLimit = false;
+
+    try {
+        std::filesystem::create_directories(defaultTelemetryBaseDir());
+        rateLimitLock = dai::platform::FileLock::lock(tmpIdsLockPath(), true);
+
+        const auto currentMs = nowMs();
+        bool changed = false;
+        rateLimitDocument = readTemporaryIdsDocument(tmpIdsPath());
+        normalizeTemporaryIdsDocument(rateLimitDocument, currentMs, changed);
+        normalizeRateLimitEntry(rateLimitDocument.rateLimit, currentMs, changed);
+
+        if(eventName != "depthai_rate_limit" && rateLimitDocument.rateLimit.expiresAtMs > currentMs
+           && rateLimitDocument.rateLimit.value > RATE_LIMIT_MAX_EVENTS) {
+            if(rateLimitDocument.rateLimit.triggered) {
+                if(changed) {
+                    persistTemporaryIdsDocument(tmpIdsPath(), rateLimitDocument);
+                }
+                return;
+            }
+
+            rateLimitDocument.rateLimit.triggered = true;
+            persistTemporaryIdsDocument(tmpIdsPath(), rateLimitDocument);
+            rateLimitLock.reset();
+            event("depthai_rate_limit", nlohmann::json{{"time_till_reset", nowMs() - rateLimitDocument.rateLimit.expiresAtMs}});
+            return;
+        }
+
+        if(changed) {
+            persistTemporaryIdsDocument(tmpIdsPath(), rateLimitDocument);
+        }
+        trackRateLimit = true;
+    } catch(const std::exception& ex) {
+        logger::debug("Failed to evaluate telemetry rate limit for '{}': {}", eventName, ex.what());
+    }
+
     if(!properties.contains("$lib")) {
         properties["$lib"] = "depthai-core";
     }
@@ -515,8 +599,6 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
     properties["source_product"] = "depthai";
     properties["source_component"] = "depthai-core";
 
-    const auto hostId = safeTemporaryTelemetryHostId();
-
     const auto payload = nlohmann::json{
         {"event", eventName},
         {"distinct_id", hostId},
@@ -525,7 +607,7 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
         {"uuid", generateUuidV4()},
     };
 
-    std::string filename;
+    bool queued = false;
     {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -536,7 +618,7 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
             logger::debug("Telemetry queue is full, dropping oldest event '{}'", oldest);
         }
 
-        filename = makeQueueFilename();
+        const auto filename = makeQueueFilename();
         const auto eventPath = queueDir / filename;
         std::ofstream output(eventPath, std::ios::binary | std::ios::trunc);
         if(!output) {
@@ -557,9 +639,20 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
         if(queuedFiles.size() >= flushAt) {
             flushRequested = true;
         }
+        queued = true;
     }
 
-    condition.notify_one();
+    if(queued) {
+        try {
+            if(trackRateLimit) {
+                rateLimitDocument.rateLimit.value += 1;
+                persistTemporaryIdsDocument(tmpIdsPath(), rateLimitDocument);
+            }
+        } catch(const std::exception& ex) {
+            logger::debug("Failed to update telemetry rate limit for '{}': {}", eventName, ex.what());
+        }
+        condition.notify_one();
+    }
 }
 
 void TelemetrySharedState::addAggregateMetrics(Telemetry::AggregateMetricsCallback functionLikeCb) {
