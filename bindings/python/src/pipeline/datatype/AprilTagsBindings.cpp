@@ -47,8 +47,5 @@ void bind_apriltags(pybind11::module& m, void* pCallstack) {
         .def("__repr__", &AprilTags::str)
         .def_readwrite("aprilTags", &AprilTags::aprilTags)
         .def("transformTo", &AprilTags::transformTo, py::arg("target"), DOC(dai, AprilTags, transformTo))
-        // .def("setTimestamp", &AprilTags::setTimestamp, DOC(dai, Buffer, setTimestamp))
-        // .def("setTimestampDevice", &AprilTags::setTimestampDevice, DOC(dai, Buffer, setTimestampDevice))
-        // .def("setSequenceNum", &AprilTags::setSequenceNum, DOC(dai, Buffer, setSequenceNum))
         ;
 }

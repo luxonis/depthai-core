@@ -55,8 +55,5 @@ void bind_trackedfeatures(pybind11::module& m, void* pCallstack) {
             [](TrackedFeatures& feat) -> std::vector<TrackedFeature>& { return feat.trackedFeatures; },
             [](TrackedFeatures& feat, std::vector<TrackedFeature> val) { feat.trackedFeatures = std::move(val); },
             DOC(dai, TrackedFeatures, trackedFeatures))
-        // .def("setTimestamp", &TrackedFeatures::setTimestamp, DOC(dai, TrackedFeatures, setTimestamp))
-        // .def("setTimestampDevice", &TrackedFeatures::setTimestampDevice, DOC(dai, TrackedFeatures, setTimestampDevice))
-        // .def("setSequenceNum", &TrackedFeatures::setSequenceNum, DOC(dai, TrackedFeatures, setSequenceNum))
         ;
 }

@@ -92,13 +92,6 @@ void bind_encodedframe(pybind11::module& m, void* pCallstack) {
         .def("getLossless", &EncodedFrame::getLossless, DOC(dai, EncodedFrame, getLossless))
         .def("getProfile", &EncodedFrame::getProfile, DOC(dai, EncodedFrame, getProfile))
         .def("getTransformation", [](EncodedFrame& msg) { return msg.transformation; })
-        //  // setters
-        //  .def("setTimestamp", &EncodedFrame::setTimestamp,
-        //       DOC(dai, EncodedFrame, setTimestamp))
-        //  .def("setTimestampDevice", &EncodedFrame::setTimestampDevice,
-        //       DOC(dai, EncodedFrame, setTimestampDevice))
-        //  .def("setSequenceNum", &EncodedFrame::setSequenceNum,
-        //       DOC(dai, EncodedFrame, setSequenceNum))
         .def("setWidth", &EncodedFrame::setWidth, py::arg("width"), DOC(dai, EncodedFrame, setWidth))
         .def("setHeight", &EncodedFrame::setHeight, py::arg("height"), DOC(dai, EncodedFrame, setHeight))
         .def("setSize",

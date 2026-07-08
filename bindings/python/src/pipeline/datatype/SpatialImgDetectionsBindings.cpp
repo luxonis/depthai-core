@@ -158,8 +158,5 @@ void bind_spatialimgdetections(pybind11::module& m, void* pCallstack) {
             py::arg("semantic_class"),
             DOC(dai, ImgDetectionsT, getCvSegmentationMaskByClass))
 #endif
-        // .def("setTimestamp", &SpatialImgDetections::setTimestamp, DOC(dai, SpatialImgDetections, setTimestamp))
-        // .def("setTimestampDevice", &SpatialImgDetections::setTimestampDevice, DOC(dai, SpatialImgDetections, setTimestampDevice))
-        // .def("setSequenceNum", &SpatialImgDetections::setSequenceNum, DOC(dai, SpatialImgDetections, setSequenceNum))
         ;
 }
