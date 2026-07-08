@@ -608,7 +608,7 @@ void TelemetrySharedState::event(std::string eventName, nlohmann::json propertie
             rateLimitDocument.rateLimit.triggered = true;
             persistTemporaryIdsDocument(tmpIdsPath(), rateLimitDocument);
             rateLimitLock.reset();
-            event("depthai_rate_limit", nlohmann::json{{"time_till_reset", nowMs() - rateLimitDocument.rateLimit.expiresAtMs}});
+            event("depthai_rate_limit", nlohmann::json{{"time_till_reset", rateLimitDocument.rateLimit.expiresAtMs - nowMs()}});
             return;
         }
 
