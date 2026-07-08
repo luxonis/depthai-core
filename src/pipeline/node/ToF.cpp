@@ -116,6 +116,10 @@ void ToF::postBuildStage() {
         if(hasRawDepthConnections) {
             throw std::runtime_error("ToF on RVC4 does not support rawDepth output.");
         }
+        const bool hasPhaseConnections = !phase.getConnections().empty() || !phase.getQueueConnections().empty();
+        if(hasPhaseConnections) {
+            throw std::runtime_error("ToF on RVC4 does not support Phase output.");
+        }
     }
 #endif
 }
