@@ -23,7 +23,7 @@ class Telemetry {
     static std::string getTemporaryTelemetryDeviceId(const std::string& mxid);
     static bool isTelemetryEnabled();
     static void setTelemetryUsesPython(bool value);
-    static void emitDepthaiTelemetryLoadEvent();
+    void init();
 
     Telemetry(const Telemetry&) = delete;
     Telemetry& operator=(const Telemetry&) = delete;
