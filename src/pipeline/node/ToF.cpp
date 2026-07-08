@@ -8,6 +8,7 @@
 #include "depthai/pipeline/node/Camera.hpp"
 #include "pipeline/ThreadedNodeImpl.hpp"
 #include "spdlog/fmt/fmt.h"
+#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 namespace node {
@@ -23,7 +24,7 @@ bool usesImageFilters(const std::shared_ptr<Device>& device) {
 #endif
 }
 
-bool usesAutoCamera(const std::shared_ptr<Device>& device) {
+bool usesAutoCamera(const std::shared_ptr<const Device>& device) {
     return device && device->getPlatform() == Platform::RVC4;
 }
 
@@ -171,12 +172,26 @@ void ToF::buildInternal() {
 #endif
 }
 
+void ToF::buildAutoCamera() {
+    if(!autoCamera || !usesAutoCamera(getDevice())) {
+        return;
+    }
+
+    auto& camera = **autoCamera;
+    camera.setSensorType(CameraSensorType::TOF);
+    camera.build(tofBase->getBoardSocket(),
+                 std::pair<uint32_t, uint32_t>{1344, 7244},
+                 tofBase->properties.fps > 0 ? std::optional<float>(tofBase->properties.fps) : std::nullopt);
+    camera.raw.link(tofBase->rawInput);
+}
+
 std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ImageFiltersPresetMode presetMode, std::optional<float> fps) {
     return build(boardSocket, presetModeToProfile(presetMode), fps);
 }
 
 std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ToFConfig::Profile profile, std::optional<float> fps) {
     tofBase->build(boardSocket, profile, fps);
+    buildAutoCamera();
 
     const auto presetMode = profileToPresetMode(profile);
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -184,16 +199,6 @@ std::shared_ptr<ToF> ToF::build(dai::CameraBoardSocket boardSocket, dai::ToFConf
         (*imageFilters)->build(presetMode);
     }
 #endif
-
-    if(autoCamera) {
-        (*autoCamera)->setSensorType(CameraSensorType::TOF);
-        (*autoCamera)
-            ->build(tofBase->getBoardSocket(),
-                    std::pair<uint32_t, uint32_t>{1344, 7244},
-                    tofBase->properties.fps > 0 ? std::optional<float>(tofBase->properties.fps) : std::nullopt);
-
-        (*autoCamera)->raw.link(tofBase->rawInput);
-    }
     return std::static_pointer_cast<ToF>(shared_from_this());
 }
 
@@ -207,33 +212,30 @@ std::shared_ptr<ToFBase> ToFBase::build(CameraBoardSocket boardSocket, ToFConfig
 
     const auto cameraFeatures = device->getConnectedCameraFeatures();
     const auto tofSockets = getAllToFSockets(cameraFeatures);
+    DAI_CHECK_V(!tofSockets.empty(), "No ToF sensors found on the connected device.");
     const auto pipeline = getParentPipeline();
 
     if(boardSocket == CameraBoardSocket::AUTO) {
         bool foundAvailableSocket = false;
         for(const auto& tofSocket : tofSockets) {
             if(!isSocketAlreadyConnected(pipeline, tofSocket)) {
-                boardSocket = tofSocket;
+                properties.boardSocket = tofSocket;
                 foundAvailableSocket = true;
                 break;
             }
         }
-        if(!foundAvailableSocket) {
-            throw std::runtime_error("No available ToF camera socket found on the connected device");
-        }
+        DAI_CHECK_V(foundAvailableSocket, "All ToF-capable sensors are already used by other Camera or ToF nodes in this pipeline.");
     } else {
-        if(isSocketAlreadyConnected(pipeline, boardSocket)) {
-            throw std::runtime_error(fmt::format("Camera socket {} is already used by another Camera node in this pipeline", static_cast<int>(boardSocket)));
-        }
+        DAI_CHECK_V(!isSocketAlreadyConnected(pipeline, boardSocket),
+                    "Camera socket {} is already used by another Camera node in this pipeline.",
+                    static_cast<int>(boardSocket));
         const bool isToFSocket = std::find(tofSockets.begin(), tofSockets.end(), boardSocket) != tofSockets.end();
-        if(!isToFSocket) {
-            throw std::runtime_error(fmt::format("Camera socket {} is not a ToF-capable socket on the connected device", static_cast<int>(boardSocket)));
-        }
+        DAI_CHECK_V(isToFSocket, "Camera socket {} is not a ToF-capable socket on the connected device.", static_cast<int>(boardSocket));
+        properties.boardSocket = boardSocket;
     }
 
     initialConfig->setProfilePreset(profile);
 
-    properties.boardSocket = boardSocket;
     properties.fps = fps.value_or(ToFProperties::AUTO);
 
     isBuilt = true;

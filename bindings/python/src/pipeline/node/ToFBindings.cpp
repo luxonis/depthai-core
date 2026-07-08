@@ -99,17 +99,17 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
             "tofBaseInputConfig",
             [](const ToF& self) -> const dai::DeviceNode::Input& { return self.tofBaseInputConfig; },
             DOC(dai, node, ToF, tofBaseInputConfig));
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     tof.def_property_readonly(
-            "imageFiltersInputConfig",
-            [](const ToF& self) -> const dai::DeviceNode::Input& {
-                if(self.imageFiltersInputConfig == nullptr) {
-                    throw std::runtime_error("imageFiltersInputConfig is not available on this platform");
-                }
-                return *self.imageFiltersInputConfig;
-            },
-            DOC(dai, node, ToF, imageFiltersInputConfig));
-#endif
+        "imageFiltersInputConfig",
+        [](const ToF& self) -> const dai::DeviceNode::Input& {
+            if(self.imageFiltersInputConfig == nullptr) {
+                throw std::runtime_error("imageFiltersInputConfig is not available on this platform");
+            }
+            return *self.imageFiltersInputConfig;
+        },
+        DOC(dai, node, ToF, imageFiltersInputConfig));
+    #endif
 #endif
 
     // ALIAS
