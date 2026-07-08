@@ -17,26 +17,23 @@ import numpy as np
 FPS = 10.0
 CAMERA_SIZE = (640, 400)
 
+# show depth in range 0m - 7m
+MIN_DEPTH = 0
+MAX_DEPTH = 7000
 
-def colorizeDepth(frameDepth: np.ndarray) -> np.ndarray:
+
+def colorizeDepth(frameDepth: np.ndarray, minDepth: float, maxDepth: float) -> np.ndarray:
     invalidMask = frameDepth == 0
     try:
-        minDepth = np.percentile(frameDepth[frameDepth != 0], 3)
-        maxDepth = np.percentile(frameDepth[frameDepth != 0], 95)
-        logDepth = np.log(frameDepth, where=frameDepth != 0)
-        logMinDepth = np.log(minDepth)
-        logMaxDepth = np.log(maxDepth)
-        np.nan_to_num(logDepth, copy=False, nan=logMinDepth)
-        logDepth = np.clip(logDepth, logMinDepth, logMaxDepth)
-        depthFrameColor = np.interp(logDepth, (logMinDepth, logMaxDepth), (0, 255))
-        depthFrameColor = np.nan_to_num(depthFrameColor)
+        logDepth = np.log(frameDepth.astype(np.float32) + 1e-6)
+        logDepth[invalidMask] = 0.0
+        logDepth = np.clip(logDepth, np.log(minDepth + 1e-6), np.log(maxDepth + 1e-6))
+        depthFrameColor = np.interp(logDepth, (logDepth[~invalidMask].min(), logDepth[~invalidMask].max()), (0, 255))
         depthFrameColor = depthFrameColor.astype(np.uint8)
         depthFrameColor = cv2.applyColorMap(depthFrameColor, cv2.COLORMAP_JET)
         depthFrameColor[invalidMask] = 0
-    except IndexError:
+    except (IndexError, ValueError):
         depthFrameColor = np.zeros((frameDepth.shape[0], frameDepth.shape[1], 3), dtype=np.uint8)
-    except Exception as e:
-        raise e
     return depthFrameColor
 
 
@@ -114,7 +111,7 @@ def main():
             if len(cvFrame.shape) == 2:
                 cvFrame = cv2.cvtColor(cvFrame, cv2.COLOR_GRAY2BGR)
 
-            depthColorized = colorizeDepth(frameDepth.getFrame())
+            depthColorized = colorizeDepth(frameDepth.getFrame(), MIN_DEPTH, MAX_DEPTH)
             if depthColorized.shape[:2] != cvFrame.shape[:2]:
                 depthColorized = cv2.resize(
                     depthColorized, (cvFrame.shape[1], cvFrame.shape[0])

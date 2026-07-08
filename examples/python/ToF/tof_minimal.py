@@ -30,9 +30,9 @@ def colorizeDepth(frame: np.ndarray, minDepth: float, maxDepth: float) -> np.nda
 def main():
     pipeline = dai.Pipeline()
 
-    # show depth in range 0.5m - 10m
-    minDepth = 500
-    maxDepth = 10000
+    # show depth in range 0m - 7m
+    minDepth = 0
+    maxDepth = 7000
 
     # choose one of profiles LOW_RANGE / MID_RANGE / HIGH_RANGE
     profile = dai.ToFConfig.Profile.MID_RANGE

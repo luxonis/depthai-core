@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Simple ToF script showing all main ToF output queues.
 
-RVC2 displays: depth, amplitude, intensity, rawDepth, phase.
+RVC2 displays: depth, amplitude, intensity, rawDepth.
 RVC4 displays: depth, amplitude, intensity, confidence.
 
 Press 'q' to quit.
@@ -34,9 +34,9 @@ def normalizeFrame(frame: np.ndarray) -> np.ndarray:
 def main():
     pipeline = dai.Pipeline()
 
-    # show depth in range 0.5m - 10m
-    minDepth = 500
-    maxDepth = 10000
+    # show depth in range 0m - 7m
+    minDepth = 0
+    maxDepth = 7000
 
     # choose one of profiles LOW_RANGE / MID_RANGE / HIGH_RANGE
     profile = dai.ToFConfig.Profile.MID_RANGE
@@ -56,9 +56,8 @@ def main():
             "intensity": tof.intensity.createOutputQueue(maxSize=1, blocking=False),
         }
         if isRVC2:
-            # rawDepth and phase are only supported on RVC2
+            # rawDepth are only supported on RVC2
             outputQueues["rawDepth"] = tof.rawDepth.createOutputQueue(maxSize=1, blocking=False)
-            outputQueues["phase"] = tof.phase.createOutputQueue(maxSize=1, blocking=False)
         else:
             # confidence is only supported on RVC4
             outputQueues["confidence"] = tof.confidence.createOutputQueue(maxSize=1, blocking=False)
