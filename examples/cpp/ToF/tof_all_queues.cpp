@@ -1,5 +1,7 @@
 #include <cmath>
+#include <map>
 #include <opencv2/opencv.hpp>
+#include <string>
 
 #include "depthai/depthai.hpp"
 
@@ -39,25 +41,50 @@ cv::Mat colorizeDepth(const cv::Mat& frame, float minDepth, float maxDepth) {
     }
 }
 
-int main() {
-    auto device = std::make_shared<dai::Device>();
-    dai::Pipeline pipeline(device);
+cv::Mat normalizeFrame(const cv::Mat& frame) {
+    cv::Mat normalized;
+    cv::normalize(frame, normalized, 0, 255, cv::NORM_MINMAX, CV_8U);
+    return normalized;
+}
 
-    // Show depth in range 0.5 m to 10 m.
+int main() {
+    dai::Pipeline pipeline;
+
+    // show depth in range 0.5m - 10m
     constexpr float minDepth = 500.0f;
     constexpr float maxDepth = 10000.0f;
 
-    // Choose one of the profiles: LOW_RANGE, MID_RANGE, or HIGH_RANGE.
+    // choose one of profiles LOW_RANGE / MID_RANGE / HIGH_RANGE
     auto profile = dai::ToFConfig::Profile::MID_RANGE;
 
     auto tof = pipeline.create<dai::node::ToF>()->build(dai::CameraBoardSocket::AUTO, profile);
 
-    auto depthOutputQueue = tof->depth.createOutputQueue();
+    std::map<std::string, std::shared_ptr<dai::MessageQueue>> outputQueues = {
+        {"depth", tof->depth.createOutputQueue(1, false)},
+        {"amplitude", tof->amplitude.createOutputQueue(1, false)},
+        {"intensity", tof->intensity.createOutputQueue(1, false)},
+        // {"rawDepth", tof->rawDepth.createOutputQueue(1, false)},  // not supported on RVC4
+        // {"confidence", tof->confidence.createOutputQueue(1, false)},  // not supported on RVC2
+    };
 
     pipeline.start();
     while(pipeline.isRunning()) {
-        auto depth = depthOutputQueue->get<dai::ImgFrame>();
-        cv::imshow("depth", colorizeDepth(depth->getCvFrame(), minDepth, maxDepth));
+        for(const auto& [name, queue] : outputQueues) {
+            auto frame = queue->tryGet<dai::ImgFrame>();
+            if(frame == nullptr) {
+                continue;
+            }
+
+            cv::Mat displayFrame;
+
+            if(name == "depth" || name == "rawDepth") {
+                displayFrame = colorizeDepth(frame->getCvFrame(), minDepth, maxDepth);
+            } else {
+                displayFrame = normalizeFrame(frame->getCvFrame());
+            }
+
+            cv::imshow(name, displayFrame);
+        }
 
         if(cv::waitKey(1) == 'q') {
             break;

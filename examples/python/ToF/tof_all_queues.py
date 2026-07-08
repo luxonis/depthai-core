@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Minimal ToF script showing the main output stream.
+"""Simple ToF script showing all main ToF output queues.
 
-Displays depth.
-For more streams, see tof_all_queues.py.
+Displays depth, rawDepth, amplitude, intensity, confidence, phase and raw.
 
 Press 'q' to quit.
 """
 
 import cv2
 import numpy as np
+import sys
+sys.path.insert(0, '/home/jakub/Code/depthai-device-kb/external/depthai-core/build/bindings/python/')
 import depthai as dai
 
 
@@ -27,6 +28,9 @@ def colorizeDepth(frame: np.ndarray, minDepth: float, maxDepth: float) -> np.nda
     return colored
 
 
+def normalizeFrame(frame: np.ndarray) -> np.ndarray:
+    return cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
+
 def main():
     pipeline = dai.Pipeline()
 
@@ -42,13 +46,27 @@ def main():
         profile=profile
     )
 
-    depthOutputQueue = tof.depth.createOutputQueue()
+    outputQueues = {
+        "depth": tof.depth.createOutputQueue(maxSize=1, blocking=False),
+        "amplitude": tof.amplitude.createOutputQueue(maxSize=1, blocking=False),
+        "intensity": tof.intensity.createOutputQueue(maxSize=1, blocking=False),
+        # "rawDepth": tof.rawDepth.createOutputQueue(maxSize=1, blocking=False), # not supported on RVC4
+        # "confidence": tof.confidence.createOutputQueue(maxSize=1, blocking=False), # not supported on RVC2
+    }
 
     with pipeline as p:
         p.start()
         while p.isRunning():
-            depth = depthOutputQueue.get()
-            cv2.imshow("depth", colorizeDepth(depth.getCvFrame(), minDepth, maxDepth))
+            for name, queue in outputQueues.items():
+                frame = queue.tryGet()
+                if frame is None:
+                    continue
+
+                if name in {"depth", "rawDepth"}:
+                    display = colorizeDepth(frame.getCvFrame(), minDepth, maxDepth)
+                else:
+                    display = normalizeFrame(frame.getCvFrame())
+                cv2.imshow(name, display)
 
             if cv2.waitKey(1) == ord("q"):
                 break
