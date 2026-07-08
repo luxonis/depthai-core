@@ -667,7 +667,7 @@ TEST_CASE("Depth: user camera resolution unchanged; depth uses backend size") {
     REQUIRE_NOTHROW(runUserCameraDepthTest(pipeline, device, pair, std::nullopt, true, true));
 }
 
-TEST_CASE("Depth: RVC4 AUTO selects neural model from stereo_size and fps") {
+TEST_CASE("Depth: RVC4 AUTO selects neural model from size and fps") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);
     if(device->getPlatform() != Platform::RVC4) {

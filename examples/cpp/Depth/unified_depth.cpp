@@ -187,7 +187,7 @@ struct CliOptions {
     bool userCameras{false};
 };
 
-std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromOptions(const CliOptions& options) {
+std::optional<std::pair<uint32_t, uint32_t>> sizeFromOptions(const CliOptions& options) {
     if(!options.width && !options.height) {
         return std::nullopt;
     }
@@ -209,16 +209,16 @@ void buildUserStereoCameras(dai::Pipeline& pipeline, const CliOptions& options) 
     }
 
     const auto stereoPair = stereoPairs[0];
-    const auto stereoSize = stereoSizeFromOptions(options);
+    const auto size = sizeFromOptions(options);
     const std::optional<float> fps = options.fps;
 
-    pipeline.create<dai::node::Camera>()->build(stereoPair.left, stereoSize, fps);
-    pipeline.create<dai::node::Camera>()->build(stereoPair.right, stereoSize, fps);
+    pipeline.create<dai::node::Camera>()->build(stereoPair.left, size, fps);
+    pipeline.create<dai::node::Camera>()->build(stereoPair.right, size, fps);
 }
 
 void configureDepth(const std::shared_ptr<dai::node::Depth>& depth, const CliOptions& options) {
     const auto fps = options.userCameras ? std::nullopt : options.fps;
-    const auto stereoSize = options.userCameras ? std::nullopt : stereoSizeFromOptions(options);
+    const auto size = options.userCameras ? std::nullopt : sizeFromOptions(options);
     const auto algorithm = options.algorithm ? parseAlgorithm(*options.algorithm) : std::nullopt;
     const auto config = options.config ? parseConfig(*options.config) : std::nullopt;
 
@@ -230,15 +230,15 @@ void configureDepth(const std::shared_ptr<dai::node::Depth>& depth, const CliOpt
     }
 
     if(algorithm && config) {
-        depth->build(*algorithm, *config, fps, stereoSize);
+        depth->build(*algorithm, *config, fps, size);
     } else if(algorithm) {
-        depth->build(*algorithm, fps, stereoSize);
-    } else if(fps && stereoSize) {
-        depth->build(dai::node::Depth::Algorithm::AUTO, *fps, stereoSize);
+        depth->build(*algorithm, fps, size);
+    } else if(fps && size) {
+        depth->build(dai::node::Depth::Algorithm::AUTO, *fps, size);
     } else if(fps) {
         depth->build(*fps);
-    } else if(stereoSize) {
-        depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, stereoSize);
+    } else if(size) {
+        depth->build(dai::node::Depth::Algorithm::AUTO, std::nullopt, size);
     }
 }
 
@@ -319,7 +319,7 @@ int main(int argc, char** argv) {
     }
 
     try {
-        stereoSizeFromOptions(options);
+        sizeFromOptions(options);
     } catch(const std::runtime_error& err) {
         std::cerr << err.what() << '\n';
         return EXIT_FAILURE;

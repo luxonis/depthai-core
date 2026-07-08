@@ -330,7 +330,7 @@ std::pair<std::shared_ptr<Camera>, std::shared_ptr<Camera>> findCamerasForPair(c
     return {left, right};
 }
 
-std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromExistingCameras(const std::shared_ptr<Camera>& left, const std::shared_ptr<Camera>& right) {
+std::optional<std::pair<uint32_t, uint32_t>> sizeFromExistingCameras(const std::shared_ptr<Camera>& left, const std::shared_ptr<Camera>& right) {
     if(!left || !right) {
         return std::nullopt;
     }
@@ -342,7 +342,7 @@ std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromExistingCameras(const
     return std::nullopt;
 }
 
-std::optional<std::pair<uint32_t, uint32_t>> stereoSizeFromDeviceFeatures(const std::shared_ptr<Device>& device, const StereoPair& pair) {
+std::optional<std::pair<uint32_t, uint32_t>> sizeFromDeviceFeatures(const std::shared_ptr<Device>& device, const StereoPair& pair) {
     const auto features = device->getConnectedCameraFeatures();
     auto findSocket = [&](CameraBoardSocket socket) -> std::optional<std::pair<uint32_t, uint32_t>> {
         for(const auto& f : features) {
@@ -395,7 +395,7 @@ WiringInputs gatherWiringInputs(const std::shared_ptr<Device>& device,
                                 const std::shared_ptr<Camera>& left,
                                 const std::shared_ptr<Camera>& right,
                                 std::optional<float> stereoOutputFps,
-                                std::optional<std::pair<uint32_t, uint32_t>> stereoSizeOverride) {
+                                std::optional<std::pair<uint32_t, uint32_t>> sizeOverride) {
     WiringInputs inputs{};
     inputs.targetFps = stereoOutputFps.value_or(0.f);
     if(inputs.targetFps <= 0.f && left && right) {
@@ -403,12 +403,12 @@ WiringInputs gatherWiringInputs(const std::shared_ptr<Device>& device,
     }
     inputs.targetFps = targetFpsWithDefault(inputs.targetFps);
 
-    inputs.resolution = stereoSizeOverride;
+    inputs.resolution = sizeOverride;
     if(!inputs.resolution) {
-        inputs.resolution = stereoSizeFromExistingCameras(left, right);
+        inputs.resolution = sizeFromExistingCameras(left, right);
     }
     if(!inputs.resolution) {
-        inputs.resolution = stereoSizeFromDeviceFeatures(device, pair);
+        inputs.resolution = sizeFromDeviceFeatures(device, pair);
     }
     return inputs;
 }
@@ -460,21 +460,21 @@ std::shared_ptr<Depth> Depth::build(Algorithm algorithm, std::optional<float> fp
     return build(algorithm, fps, std::nullopt);
 }
 
-std::shared_ptr<Depth> Depth::build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize) {
-    requireNotBuilt("Depth::build(algorithm, fps, stereoSize)");
+std::shared_ptr<Depth> Depth::build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> size) {
+    requireNotBuilt("Depth::build(algorithm, fps, size)");
     algorithmOverride_ = algorithm;
     stereoOutputFps_ = fps;
-    stereoSizeOverride_ = stereoSize;
+    sizeOverride_ = size;
     configOverride_.reset();
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
-std::shared_ptr<Depth> Depth::build(Algorithm algorithm, Config config, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize) {
-    requireNotBuilt("Depth::build(algorithm, config, fps, stereoSize)");
+std::shared_ptr<Depth> Depth::build(Algorithm algorithm, Config config, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> size) {
+    requireNotBuilt("Depth::build(algorithm, config, fps, size)");
     algorithmOverride_ = algorithm;
     configOverride_ = std::move(config);
     stereoOutputFps_ = fps;
-    stereoSizeOverride_ = stereoSize;
+    sizeOverride_ = size;
     return std::static_pointer_cast<Depth>(shared_from_this());
 }
 
@@ -600,8 +600,8 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         validateExplicitConfig(
             algorithmOverride_, *configOverride_, supported, algorithmOverride_ == Algorithm::NEURAL ? supportedModels : std::vector<DeviceModelZoo>{});
         resolved_ = {algorithmOverride_, *configOverride_};
-        if(resolved_.algorithm == Algorithm::STEREO && stereoSizeOverride_) {
-            validateStereoDepthResolution(stereoSizeOverride_->first, stereoSizeOverride_->second);
+        if(resolved_.algorithm == Algorithm::STEREO && sizeOverride_) {
+            validateStereoDepthResolution(sizeOverride_->first, sizeOverride_->second);
         }
         return;
     }
@@ -617,7 +617,7 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
         if(chosen == Algorithm::STEREO) {
             const auto pair = requireFirstStereoPair(device);
             const auto [left, right] = findCamerasForPair(pipeline, pair);
-            const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, stereoSizeOverride_);
+            const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
             if(inputs.resolution) {
                 validateStereoDepthResolution(inputs.resolution->first, inputs.resolution->second);
             }
@@ -629,13 +629,13 @@ void Depth::resolveWiring(const std::shared_ptr<Device>& device, Pipeline& pipel
 
     const auto pair = requireFirstStereoPair(device);
     const auto [left, right] = findCamerasForPair(pipeline, pair);
-    const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, stereoSizeOverride_);
+    const auto inputs = gatherWiringInputs(device, pair, left, right, stereoOutputFps_, sizeOverride_);
     const float targetFps = inputs.targetFps;
     const auto& resolution = inputs.resolution;
 
     if(algorithmOverride_ == Algorithm::AUTO) {
         // Only enforce an exact FPS+resolution match when the user pinned both via build().
-        const bool userPinnedFpsAndResolution = stereoOutputFps_.has_value() && stereoSizeOverride_.has_value();
+        const bool userPinnedFpsAndResolution = stereoOutputFps_.has_value() && sizeOverride_.has_value();
         resolved_ = selectBackend(resolution, targetFps, supported, supportedModels, userPinnedFpsAndResolution);
         if(resolved_.algorithm == Algorithm::STEREO && resolution) {
             validateStereoDepthResolution(resolution->first, resolution->second);
@@ -699,7 +699,7 @@ Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
     // When @p frameSize is unset and both stereo cameras already exist, match their sensor resolution.
     std::optional<std::pair<uint32_t, uint32_t>> outputSize = frameSize;
     if(stereoCamerasPreexist && !frameSize.has_value()) {
-        if(const auto existingSize = stereoSizeFromExistingCameras(left, right)) {
+        if(const auto existingSize = sizeFromExistingCameras(left, right)) {
             outputSize = existingSize;
         }
     }
@@ -786,7 +786,7 @@ void Depth::buildInternal() {
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);
             add(nasBackend_);
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), stereoSizeOverride_, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
             nasBackend_->build(*stereo.left, *stereo.right, DEFAULT_NAS_NEURAL_MODEL, DEFAULT_NAS_RECTIFY);
             depthOut_ = &nasBackend_->depth;
             confidenceOut_ = &(*nasBackend_->stereoDepth).confidenceMap;
@@ -798,7 +798,7 @@ void Depth::buildInternal() {
         }
         case Algorithm::GPU_STEREO: {
             gpuStereoBackend_ = std::make_unique<Subnode<GPUStereo>>(*this, "gpuStereo");
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), stereoSizeOverride_, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
             (*gpuStereoBackend_)->setRectification(true).build(*stereo.left, *stereo.right);
             depthOut_ = &(**gpuStereoBackend_).depth;
             confidenceOut_ = &(**gpuStereoBackend_).confidenceMap;
@@ -825,7 +825,7 @@ void Depth::buildInternal() {
         }
         case Algorithm::STEREO: {
             stereoBackend_ = std::make_unique<Subnode<StereoDepth>>(*this, "stereoDepth");
-            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), stereoSizeOverride_, stereoOutputFps_);
+            const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), sizeOverride_, stereoOutputFps_);
             validateStereoDepthResolution(stereo.resolution.first, stereo.resolution.second);
             (*stereoBackend_)->build(*stereo.left, *stereo.right, stereoPresetFromConfig(resolved_.config));
             depthOut_ = &(**stereoBackend_).depth;

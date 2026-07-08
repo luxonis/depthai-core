@@ -99,24 +99,24 @@ class Depth : public DeviceNodeGroup {
     std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps = std::nullopt);
 
     /**
-     * Set algorithm, optional FPS, and stereo frame size before wiring.
+     * Set algorithm, optional FPS, and preferred depth output size before wiring.
      * @param algorithm Backend to use
      * @param fps Requested stereo camera FPS
-     * @param stereoSize Stereo frame size used when no upstream Camera is present
+     * @param size preferred depth output size. Used when no upstream Camera is present
      */
-    std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> stereoSize);
+    std::shared_ptr<Depth> build(Algorithm algorithm, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> size);
 
     /**
      * Set algorithm and config before wiring. algorithm must not be AUTO.
      * @param algorithm Backend to use
      * @param config Algorithm-specific configuration
      * @param fps Requested stereo camera FPS
-     * @param stereoSize Stereo frame size used when no upstream Camera is present
+     * @param size preferred depth output size. Used when no upstream Camera is present
      */
     std::shared_ptr<Depth> build(Algorithm algorithm,
                                  Config config,
                                  std::optional<float> fps = std::nullopt,
-                                 std::optional<std::pair<uint32_t, uint32_t>> stereoSize = std::nullopt);
+                                 std::optional<std::pair<uint32_t, uint32_t>> size = std::nullopt);
 
     /**
      * Output depth map from the active backend.
@@ -221,7 +221,7 @@ class Depth : public DeviceNodeGroup {
     Selection resolved_{Algorithm::AUTO, std::monostate{}};
     bool graphBuilt_{false};
     std::optional<float> stereoOutputFps_{};
-    std::optional<std::pair<uint32_t, uint32_t>> stereoSizeOverride_{};
+    std::optional<std::pair<uint32_t, uint32_t>> sizeOverride_{};
     std::optional<Config> configOverride_{};
     Node::Output* alignToOutput_{nullptr};
 

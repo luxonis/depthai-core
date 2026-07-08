@@ -77,7 +77,7 @@ def parseConfig(name: str):
     )
 
 
-def stereoSizeFromArgs(args: argparse.Namespace) -> tuple[int, int] | None:
+def sizeFromArgs(args: argparse.Namespace) -> tuple[int, int] | None:
     if args.width is None and args.height is None:
         return None
     if args.width is None or args.height is None:
@@ -95,27 +95,27 @@ def buildUserStereoCameras(pipeline: dai.Pipeline, args: argparse.Namespace) -> 
         raise RuntimeError("This device has no stereo pair; Depth cannot run.")
 
     stereoPair = stereoPairs[0]
-    stereoSize = stereoSizeFromArgs(args)
-    pipeline.create(dai.node.Camera).build(stereoPair.left, stereoSize, args.fps)
-    pipeline.create(dai.node.Camera).build(stereoPair.right, stereoSize, args.fps)
+    size = sizeFromArgs(args)
+    pipeline.create(dai.node.Camera).build(stereoPair.left, size, args.fps)
+    pipeline.create(dai.node.Camera).build(stereoPair.right, size, args.fps)
 
 
 def configureDepth(depthNode: dai.node.Depth, args: argparse.Namespace) -> None:
     fps = None if args.userCameras else args.fps
-    stereoSize = None if args.userCameras else stereoSizeFromArgs(args)
+    size = None if args.userCameras else sizeFromArgs(args)
     algorithm = _ALGORITHM_CHOICES[args.algorithm] if args.algorithm is not None else None
     config = parseConfig(args.config) if args.config is not None else None
 
     if algorithm is not None and config is not None:
-        depthNode.build(algorithm, config, fps=fps, stereo_size=stereoSize)
+        depthNode.build(algorithm, config, fps=fps, size=size)
     elif algorithm is not None:
-        depthNode.build(algorithm, fps=fps, stereo_size=stereoSize)
-    elif fps is not None and stereoSize is not None:
-        depthNode.build(dai.node.Depth.Algorithm.AUTO, fps=fps, stereo_size=stereoSize)
+        depthNode.build(algorithm, fps=fps, size=size)
+    elif fps is not None and size is not None:
+        depthNode.build(dai.node.Depth.Algorithm.AUTO, fps=fps, size=size)
     elif fps is not None:
         depthNode.build(fps=fps)
-    elif stereoSize is not None:
-        depthNode.build(dai.node.Depth.Algorithm.AUTO, stereo_size=stereoSize)
+    elif size is not None:
+        depthNode.build(dai.node.Depth.Algorithm.AUTO, size=size)
 
 
 def buildParser() -> argparse.ArgumentParser:
@@ -169,7 +169,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        stereoSizeFromArgs(args)
+        sizeFromArgs(args)
     except argparse.ArgumentTypeError as exc:
         parser.error(str(exc))
 
