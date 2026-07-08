@@ -1266,7 +1266,6 @@ class DeviceBase {
     void startTelemetryLifecycle(bool reconnect);
     void stopTelemetryLifecycle();
     void telemetryEventLoop();
-    void telemetryPingLoop();
     struct PrevInfo {
         DeviceInfo deviceInfo;
         Config cfg;
@@ -1339,10 +1338,6 @@ class DeviceBase {
     std::atomic<bool> telemetryEventRunning{false};
     std::mutex telemetryEventStreamMtx;
     std::shared_ptr<XLinkStream> telemetryEventStream;
-    std::thread telemetryPingThread;
-    std::atomic<bool> telemetryPingRunning{false};
-    std::condition_variable telemetryPingCondVar;
-    std::mutex telemetryPingMtx;
     std::string tmpDeviceId;
     std::chrono::steady_clock::time_point telemetryCreatedAt;
     bool telemetryLifecycleStarted = false;

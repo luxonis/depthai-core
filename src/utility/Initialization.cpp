@@ -157,7 +157,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
 
         logger::debug("Initialize - finished");
 
-        utility::Telemetry::emitDepthaiTelemetryLoadEvent();
+        utility::Telemetry::getInstance().init();
 
         return true;
     }();

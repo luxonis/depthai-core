@@ -417,7 +417,7 @@ with dai.Pipeline(dai.Device(*dai_device_args)) as pipeline:
         else:
             cam[c] = pipeline.create(dai.node.Camera)
             cam[c].setSensorType(dai.CameraSensorType.COLOR if cam_type_color[c] else dai.CameraSensorType.MONO)
-            cam[c].build(cam_socket_opts[c], get_socket_resolution(c), args.fps)
+            cam[c].build(cam_socket_opts[c], sensorFps=args.fps)
             cap = dai.ImgFrameCapability()
             cap.size.fixed(get_socket_resolution(c))
             cap.fps.fixed(args.fps)
