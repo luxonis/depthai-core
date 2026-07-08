@@ -5,6 +5,7 @@
 #include <depthai/common/variant.hpp>
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <nlohmann/json.hpp>
+#include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -266,5 +267,24 @@ class DynamicCalibrationControl : public Buffer {
         return DatatypeEnum::DynamicCalibrationControl;
     }
 };
+
+inline std::string toString(DynamicCalibrationControl::PerformanceMode mode) {
+    switch(mode) {
+        case DynamicCalibrationControl::PerformanceMode::DEFAULT:
+            return "DEFAULT";
+        case DynamicCalibrationControl::PerformanceMode::STATIC_SCENERY:
+            return "STATIC_SCENERY";
+        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_SPEED:
+            return "OPTIMIZE_SPEED";
+        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_PERFORMANCE:
+            return "OPTIMIZE_PERFORMANCE";
+        case DynamicCalibrationControl::PerformanceMode::SKIP_CHECKS:
+            return "SKIP_CHECKS";
+        case DynamicCalibrationControl::PerformanceMode::RELAXED_COVERAGE:
+            return "RELAXED_COVERAGE";
+        default:
+            return "UNKNOWN";
+    }
+}
 
 }  // namespace dai
