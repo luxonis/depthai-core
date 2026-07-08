@@ -347,7 +347,7 @@ class Warp {
     uint32_t backgroundColor[3] = {0, 0, 0};
     bool enableUndistort = false;
     bool undistortOneShot = false;
-    float alphaScaling = 0.0f;
+    std::optional<float> alphaScaling;
 
     ImgFrame::Type type;
     FrameSpecs srcSpecs;
@@ -372,7 +372,7 @@ class Warp {
                                 const std::array<float, 9>& cameraMatrix,
                                 const std::array<float, 9>& newCameraMatrix,
                                 const std::vector<float>& distCoeffs,
-                                const float alpha,
+                                const std::optional<float> alpha,
                                 const ImgFrame::Type type,
                                 const uint32_t srcWidth,
                                 const uint32_t srcHeight,
@@ -421,7 +421,7 @@ class WarpH : public Warp {
                         const std::array<float, 9>& cameraMatrix,
                         const std::array<float, 9>& newCameraMatrix,
                         const std::vector<float>& distCoeffs,
-                        const float alpha,
+                        const std::optional<float> alpha,
                         const ImgFrame::Type type,
                         const uint32_t srcWidth,
                         const uint32_t srcHeight,
@@ -518,7 +518,7 @@ class ImageManipOperations {
                                          const std::array<float, 9>& cameraMatrix,
                                          const std::array<float, 9>& newCameraMatrix,
                                          const std::vector<float>& distCoeffs,
-                                         const float alpha,
+                                         const std::optional<float> alpha,
                                          const ImgFrame::Type type,
                                          const uint32_t srcWidth,
                                          const uint32_t srcHeight,
@@ -541,7 +541,7 @@ class ImageManipOperations {
     bool undistortEnabled() const {
         return warpEngine.enableUndistort;
     }
-    float getUndistortAlpha() const {
+    std::optional<float> getUndistortAlpha() const {
         return warpEngine.alphaScaling;
     }
 
@@ -851,7 +851,7 @@ ImageManipOperations<ImageManipData, ColorChangeBackend, WarpBackend>& ImageMani
     const std::array<float, 9>& cameraMatrix,
     const std::array<float, 9>& newCameraMatrix,
     const std::vector<float>& distCoeffs,
-    const float alpha,
+    const std::optional<float> alpha,
     const ImgFrame::Type type,
     const uint32_t srcWidth,
     const uint32_t srcHeight,
