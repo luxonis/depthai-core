@@ -144,24 +144,6 @@ void addDynamicCalibrationResultTelemetry(DynamicCalibrationTelemetryAggregateSt
     }
 }
 
-const char* telemetryDynamicCalibrationPerformanceModeName(const DynamicCalibrationControl::PerformanceMode mode) {
-    switch(mode) {
-        case DynamicCalibrationControl::PerformanceMode::DEFAULT:
-            return "DEFAULT";
-        case DynamicCalibrationControl::PerformanceMode::STATIC_SCENERY:
-            return "STATIC_SCENERY";
-        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_SPEED:
-            return "OPTIMIZE_SPEED";
-        case DynamicCalibrationControl::PerformanceMode::OPTIMIZE_PERFORMANCE:
-            return "OPTIMIZE_PERFORMANCE";
-        case DynamicCalibrationControl::PerformanceMode::SKIP_CHECKS:
-            return "SKIP_CHECKS";
-        case DynamicCalibrationControl::PerformanceMode::RELAXED_COVERAGE:
-            return "RELAXED_COVERAGE";
-    }
-    return "UNKNOWN";
-}
-
 }  // namespace
 
 std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
@@ -1048,11 +1030,10 @@ void DynamicCalibration::run() {
         logger->error("DynamicCalibration initialization failed with error code {}", static_cast<int>(initResult));
         return;
     }
-    utility::Telemetry::getInstance().event(getParentPipeline(),
-                                            "depthai_dynamic_calibration_node_started",
-                                            nlohmann::json{{"run_on_host", runOnHost()},
-                                                           {"performance_mode", telemetryDynamicCalibrationPerformanceModeName(performanceMode)},
-                                                           {"connected_sensor_count", connectedSensors.size()}});
+    utility::Telemetry::getInstance().event(
+        getParentPipeline(),
+        "depthai_dynamic_calibration_node_started",
+        nlohmann::json{{"run_on_host", runOnHost()}, {"performance_mode", toString(performanceMode)}, {"connected_sensor_count", connectedSensors.size()}});
     while(mainLoop()) {
         slept = false;
         doWork(previousLoadingTime);
