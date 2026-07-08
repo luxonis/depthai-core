@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Simple ToF script showing all main ToF output queues.
 
-Displays depth, rawDepth, amplitude, intensity, confidence, phase and raw.
+RVC2 displays: depth, amplitude, intensity, rawDepth, phase.
+RVC4 displays: depth, amplitude, intensity, confidence.
 
 Press 'q' to quit.
 """
 
 import cv2
 import numpy as np
-import sys
-sys.path.insert(0, '/home/jakub/Code/depthai-device-kb/external/depthai-core/build/bindings/python/')
 import depthai as dai
 
 
@@ -31,6 +30,7 @@ def colorizeDepth(frame: np.ndarray, minDepth: float, maxDepth: float) -> np.nda
 def normalizeFrame(frame: np.ndarray) -> np.ndarray:
     return cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
 
+
 def main():
     pipeline = dai.Pipeline()
 
@@ -46,15 +46,26 @@ def main():
         profile=profile
     )
 
-    outputQueues = {
-        "depth": tof.depth.createOutputQueue(maxSize=1, blocking=False),
-        "amplitude": tof.amplitude.createOutputQueue(maxSize=1, blocking=False),
-        "intensity": tof.intensity.createOutputQueue(maxSize=1, blocking=False),
-        # "rawDepth": tof.rawDepth.createOutputQueue(maxSize=1, blocking=False), # not supported on RVC4
-        # "confidence": tof.confidence.createOutputQueue(maxSize=1, blocking=False), # not supported on RVC2
-    }
-
     with pipeline as p:
+        device = p.getDefaultDevice()
+        isRVC2 = device.getPlatform() == dai.Platform.RVC2
+
+        outputQueues = {
+            "depth": tof.depth.createOutputQueue(maxSize=1, blocking=False),
+            "amplitude": tof.amplitude.createOutputQueue(maxSize=1, blocking=False),
+            "intensity": tof.intensity.createOutputQueue(maxSize=1, blocking=False),
+        }
+        if isRVC2:
+            # rawDepth and phase are only supported on RVC2
+            outputQueues["rawDepth"] = tof.rawDepth.createOutputQueue(maxSize=1, blocking=False)
+            outputQueues["phase"] = tof.phase.createOutputQueue(maxSize=1, blocking=False)
+        else:
+            # confidence is only supported on RVC4
+            outputQueues["confidence"] = tof.confidence.createOutputQueue(maxSize=1, blocking=False)
+
+        platformName = "RVC2" if isRVC2 else "RVC4"
+        print(f"Detected {platformName} - showing queues: {', '.join(outputQueues)}")
+
         p.start()
         while p.isRunning():
             for name, queue in outputQueues.items():
