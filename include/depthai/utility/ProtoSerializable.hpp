@@ -23,6 +23,11 @@ class ProtoSerializable {
     virtual std::vector<std::uint8_t> serializeProto(bool metadataOnly = false) const = 0;
 
     /**
+     * @brief Set from a deserialized protobuf message of this object
+     */
+    virtual void deserializeProto(const std::vector<std::uint8_t>& bytes) = 0;
+
+    /**
      * @brief Serialize the schema of this object
      * @return schemaPair
      */
