@@ -102,8 +102,11 @@ class ImgFrame : public Buffer, public ProtoSerializable {
      */
     ProtoSerializable::SchemaPair serializeSchema() const override;
 
-#endif
+   protected:
+    void deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) override;
 
+   public:
+#endif
     // getters
     /**
      * Retrieves image timestamp (at the specified offset of exposure) related to dai::Clock::now()
@@ -769,11 +772,6 @@ class ImgFrame : public Buffer, public ProtoSerializable {
     dai::FrameEvent event = dai::FrameEvent::NONE;
     ImgTransformation transformation;
 
-#ifdef DEPTHAI_ENABLE_PROTOBUF
-   protected:
-    void deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) override;
-#endif
-   public:
     DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::tsSystem, Buffer::sequenceNum, fb, sourceFb, cam, category, instanceNum, transformation);
 };
 
