@@ -289,6 +289,13 @@ dai_set_example_test_labels(stereo ondevice rvc2_all rvc4 ci)
 add_python_example(stereo_depth_from_host StereoDepth/stereo_depth_from_host.py)
 dai_set_example_test_labels(stereo_depth_from_host ondevice rvc2_all rvc4 ci)
 
+## Depth (dai.node.Depth composite)
+add_python_example(unified_depth Depth/unified_depth.py)
+dai_set_example_test_labels(unified_depth ondevice rvc2_all rvc4 ci)
+
+add_python_example(depth_rgb_align Depth/depth_rgb_align.py)
+dai_set_example_test_labels(depth_rgb_align ondevice rvc2_all rvc4 ci)
+
 ## VideoEncoder
 add_python_example(video_encoder VideoEncoder/video_encode.py)
 dai_set_example_test_labels(video_encoder ondevice rvc2_all rvc4 rvc4rgb ci)
