@@ -341,6 +341,7 @@ set(TARGET_CORE_SOURCES
     src/pipeline/datatype/ADataType.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/node/NeuralDepth.cpp
+    src/pipeline/node/Depth.cpp
     src/pipeline/node/GPUStereo.cpp
     src/pipeline/node/NeuralAssistedStereo.cpp
     src/pipeline/node/Rectification.cpp

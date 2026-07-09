@@ -164,6 +164,12 @@ void SpatialDetectionNetwork::alignDepth(const DepthSource& depthSource, const s
     std::visit([this, &camera](const auto& source) { alignDepthImpl(source, camera); }, depthSource);
 }
 
+void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<Depth>& depth, const std::shared_ptr<Camera>& camera) {
+    (void)camera;  // Alignment target comes from the network passthrough output.
+    depth->setAlignTo(neuralNetwork->passthrough);
+    depth->depth().link(spatialLocationCalculator->inputDepth);
+}
+
 void SpatialDetectionNetwork::alignDepthImpl(const std::shared_ptr<StereoDepth>& stereo, const std::shared_ptr<Camera>& camera) {
     auto device = getDevice();
     if(device) {
