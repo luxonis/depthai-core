@@ -202,6 +202,11 @@ ProtoSerializable::SchemaPair ImgDetections::serializeSchema() const {
 std::vector<std::uint8_t> ImgDetections::serializeProto(bool) const {
     return utility::serializeProto(utility::getProtoMessage(this));
 }
+
+void ImgDetections::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
+}
+
 #endif
 
 }  // namespace dai
