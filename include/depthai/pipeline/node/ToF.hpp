@@ -28,6 +28,12 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
    protected:
     Properties& getProperties();
+    /**
+     * Input for raw sensor frames used by the RVC4 host implementation.
+     * This stays internal to the node group API, but must remain on the base
+     * node so the auto-created ToF camera can be linked in the pipeline schema.
+     */
+    Input rawInput{*this, {"rawInput", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
    public:
     ToFBase() = default;
@@ -68,12 +74,6 @@ class ToFBase : public DeviceNodeCRTP<DeviceNode, ToFBase, ToFProperties> {
 
    private:
     friend class ToF;
-    /**
-     * Input for raw sensor frames used by the RVC4 host implementation.
-     * This stays internal to the node group API, but must remain on the base
-     * node so the auto-created ToF camera can be linked in the pipeline schema.
-     */
-    Input rawInput{*this, {"rawInput", DEFAULT_GROUP, true, 8, {{{DatatypeEnum::ImgFrame, false}}}, DEFAULT_WAIT_FOR_MESSAGE}};
 
     bool isBuilt = false;
     uint32_t maxWidth = 0;
