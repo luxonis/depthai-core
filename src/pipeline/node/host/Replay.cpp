@@ -2,7 +2,11 @@
 
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
+#include "depthai/pipeline/datatype/ImgAnnotations.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
+#include "depthai/pipeline/datatype/SegmentationMask.hpp"
+#include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #define _USE_MATH_DEFINES
 #include <chrono>
 #include <cmath>
@@ -22,8 +26,12 @@
 
     #include "depthai/schemas/EncodedFrame.pb.h"
     #include "depthai/schemas/IMUData.pb.h"
+    #include "depthai/schemas/ImageAnnotations.pb.h"
+    #include "depthai/schemas/ImgDetections.pb.h"
     #include "depthai/schemas/ImgFrame.pb.h"
     #include "depthai/schemas/PointCloudData.pb.h"
+    #include "depthai/schemas/SegmentationMask.pb.h"
+    #include "depthai/schemas/SpatialImgDetections.pb.h"
     #include "utility/ProtoSerialize.hpp"
 #endif
 
@@ -64,14 +72,32 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
             utility::setProtoMessage(*pclData, metadata.get(), false);
             return pclData;
         }
+        case DatatypeEnum::ImgAnnotations: {
+            auto annotations = std::make_shared<ImgAnnotations>();
+            utility::setProtoMessage(*annotations, metadata.get(), false);
+            return annotations;
+        }
+        case DatatypeEnum::ImgDetections: {
+            auto detections = std::make_shared<ImgDetections>();
+            utility::setProtoMessage(*detections, metadata.get(), false);
+            return detections;
+        }
+        case DatatypeEnum::SpatialImgDetections: {
+            auto detections = std::make_shared<SpatialImgDetections>();
+            utility::setProtoMessage(*detections, metadata.get(), false);
+            return detections;
+        }
+        case DatatypeEnum::SegmentationMask: {
+            auto mask = std::make_shared<SegmentationMask>();
+            utility::setProtoMessage(*mask, metadata.get(), false);
+            return mask;
+        }
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
         case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
-        case DatatypeEnum::ImgDetections:
-        case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
@@ -94,7 +120,6 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
-        case DatatypeEnum::ImgAnnotations:
         case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
@@ -110,7 +135,6 @@ inline std::shared_ptr<Buffer> getMessage(const std::shared_ptr<google::protobuf
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
-        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
         case DatatypeEnum::COUNT:
@@ -149,14 +173,40 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
+        case DatatypeEnum::ImgAnnotations: {
+            auto msg = bytePlayer.next<proto::image_annotations::ImageAnnotations>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::image_annotations::ImageAnnotations>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::ImgDetections: {
+            auto msg = bytePlayer.next<proto::img_detections::ImgDetections>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::img_detections::ImgDetections>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::SpatialImgDetections: {
+            auto msg = bytePlayer.next<proto::spatial_img_detections::SpatialImgDetections>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::spatial_img_detections::SpatialImgDetections>(msg.value());
+            }
+            break;
+        }
+        case DatatypeEnum::SegmentationMask: {
+            auto msg = bytePlayer.next<proto::segmentation_mask::SegmentationMask>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::segmentation_mask::SegmentationMask>(msg.value());
+            }
+            break;
+        }
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
         case DatatypeEnum::NNData:
         case DatatypeEnum::ImageManipConfig:
         case DatatypeEnum::CameraControl:
-        case DatatypeEnum::ImgDetections:
-        case DatatypeEnum::SpatialImgDetections:
         case DatatypeEnum::SystemInformation:
         case DatatypeEnum::SystemInformationRVC4:
         case DatatypeEnum::SpatialLocationCalculatorConfig:
@@ -179,7 +229,6 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::TransformData:
         case DatatypeEnum::PointCloudConfig:
         case DatatypeEnum::ImageAlignConfig:
-        case DatatypeEnum::ImgAnnotations:
         case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
         case DatatypeEnum::RGBDData:
@@ -195,7 +244,6 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::PipelineState:
         case DatatypeEnum::PipelineEventAggregationConfig:
         case DatatypeEnum::NeuralDepthConfig:
-        case DatatypeEnum::SegmentationMask:
         case DatatypeEnum::VppConfig:
         case DatatypeEnum::PacketizedData:
         case DatatypeEnum::COUNT:

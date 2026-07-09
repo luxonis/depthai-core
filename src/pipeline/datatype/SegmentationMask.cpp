@@ -17,6 +17,7 @@
 #endif
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/SegmentationMask.pb.h"
     #include "utility/ProtoSerialize.hpp"
 #endif
 
@@ -361,6 +362,11 @@ ProtoSerializable::SchemaPair SegmentationMask::serializeSchema() const {
 std::vector<std::uint8_t> SegmentationMask::serializeProto(bool) const {
     return utility::serializeProto(utility::getProtoMessage(this));
 }
+
+void SegmentationMask::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
+}
+
 #endif
 
 }  // namespace dai
