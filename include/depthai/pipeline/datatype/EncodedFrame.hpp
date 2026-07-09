@@ -215,9 +215,7 @@ class EncodedFrame : public Buffer, public ProtoSerializable {
      * @returns serialized schema
      */
     ProtoSerializable::SchemaPair serializeSchema() const override;
-#endif
 
-#ifdef DEPTHAI_ENABLE_PROTOBUF
    protected:
     void deserializeProtoMessage(const std::vector<std::uint8_t>& bytes, bool metadataOnly) override;
 
