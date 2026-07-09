@@ -77,11 +77,9 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             DOC(dai, node, Depth, build, 3))
         .def(
             "build",
-            [](Depth& self,
-               Depth::Algorithm algorithm,
-               DeviceModelZoo config,
-               std::optional<float> fps,
-               std::optional<std::pair<uint32_t, uint32_t>> size) { return self.build(algorithm, config, fps, size); },
+            [](Depth& self, Depth::Algorithm algorithm, DeviceModelZoo config, std::optional<float> fps, std::optional<std::pair<uint32_t, uint32_t>> size) {
+                return self.build(algorithm, config, fps, size);
+            },
             py::arg("algorithm"),
             py::arg("config"),
             py::arg("fps") = std::nullopt,

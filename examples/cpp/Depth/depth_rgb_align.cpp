@@ -7,8 +7,8 @@
 #include <optional>
 #include <string>
 #include <type_traits>
-#include <vector>
 #include <variant>
+#include <vector>
 
 #include "depthai/depthai.hpp"
 
@@ -199,14 +199,7 @@ int main() {
 
             cv::Mat blended;
             cv::addWeighted(cvFrame, rgbWeight, alignedDepthColorized, depthWeight, 0, blended);
-            cv::putText(
-                blended,
-                "FPS: " + std::to_string(fpsCounter.getFps()),
-                cv::Point(10, 30),
-                cv::FONT_HERSHEY_SIMPLEX,
-                1,
-                cv::Scalar(255, 255, 255),
-                2);
+            cv::putText(blended, "FPS: " + std::to_string(fpsCounter.getFps()), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 255, 255), 2);
             cv::imshow(windowName, blended);
         }
 
