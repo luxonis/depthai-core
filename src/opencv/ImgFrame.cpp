@@ -7,10 +7,6 @@
 #include <opencv2/core/types.hpp>
 #include <opencv2/imgproc.hpp>
 
-#ifdef DEPTHAI_ENABLE_PROTOBUF
-    #include "utility/ProtoFileIO.hpp"
-#endif
-
 // #include "spdlog/spdlog.h"
 
 namespace dai {
