@@ -216,7 +216,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<ImgFrame>> frames) {
             basalt::Calibration<Scalar>::SE3 T_i_c(q, trans);
             pimpl->calib->T_i_c.push_back(T_i_c);
         } else {
-            std::vector<std::vector<float>> imuExtr = calibHandler.getCameraToImuExtrinsics(camID, useSpecTranslation, LengthUnit::METER);
+            std::vector<std::vector<float>> imuExtr = calibHandler.getCameraToImuExtrinsics(camID, LengthUnit::METER);
 
             Eigen::Matrix<Scalar, 3, 3> R;
             R << double(imuExtr[0][0]), double(imuExtr[0][1]), double(imuExtr[0][2]), double(imuExtr[1][0]), double(imuExtr[1][1]), double(imuExtr[1][2]),

@@ -252,7 +252,6 @@ class CalibrationHandler {
      *
      * @param srcCamera Camera Id of the camera which will be considered as origin.
      * @param dstCamera  Camera Id of the destination camera to which we are fetching the rotation and translation from the SrcCamera
-     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
      * @param unit Units of the returned translation (default: centimeters)
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      *
@@ -268,8 +267,6 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera,
                                                         CameraBoardSocket dstCamera,
                                                         LengthUnit unit = LengthUnit::CENTIMETER) const;
-    [[deprecated("Use getCameraExtrinsics(srcCamera, dstCamera, unit) instead")]] std::vector<std::vector<float>> getCameraExtrinsics(
-        CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the transformation matrix between a camera and a chosen housing
@@ -277,15 +274,9 @@ class CalibrationHandler {
      * points from the camera's coordinate system into the specified housing
      * coordinate system.
      *
-     * The transformation consists of a rotation matrix and translation vector
-     * extracted either from the calibration data or from the board design
-     * (specification) data, depending on the `useSpecTranslation` flag.
-     *
      * @param srcCamera         Camera whose coordinate frame will be treated as the origin.
      * @param housingCS         The housing coordinate system to which the camera
      *                          transformation is requested (e.g. VESA_RIGHT, FRONT_COVER_LEFT, etc.).
-     * @param useSpecTranslation If true, uses board-design (spec) translation values.
-     *                           If false, uses calibrated translation values.
      * @param unit Units of the returned translation (default: centimeters)
      *
      * @return A 4x4 homogeneous transformation matrix.
@@ -306,23 +297,18 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getHousingCalibration(CameraBoardSocket srcCamera,
                                                           const HousingCoordinateSystem housingCS,
                                                           LengthUnit unit = LengthUnit::CENTIMETER) const;
-    [[deprecated("Use getHousingCalibration(srcCamera, housingCS, unit) instead")]] std::vector<std::vector<float>> getHousingCalibration(
-        CameraBoardSocket srcCamera, const HousingCoordinateSystem housingCS, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Camera translation vector between two cameras from the calibration data.
      *
      * @param srcCamera Camera Id of the camera which will be considered as origin.
      * @param dstCamera  Camera Id of the destination camera to which we are fetching the translation vector from the SrcCamera
-     * @param useSpecTranslation Disabling this bool uses the translation information from the calibration data (not the board design data)
      * @param unit Units of the returned translation (default: centimeters)
      * @return a translation vector like [x, y, z]
      */
     std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera,
                                                   CameraBoardSocket dstCamera,
                                                   LengthUnit unit = LengthUnit::CENTIMETER) const;
-    [[deprecated("Use getCameraTranslationVector(srcCamera, dstCamera, unit) instead")]] std::vector<float> getCameraTranslationVector(
-        CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Camera rotation matrix between two cameras from the calibration data.
@@ -345,17 +331,12 @@ class CalibrationHandler {
      *
      * @param cam1 First camera
      * @param cam2 Second camera
-     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data (not the calibration data)
      * @param unit Units of the returned baseline distance (default: centimeters)
      * @return baseline distance
      */
     float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::CAM_C,
                               CameraBoardSocket cam2 = CameraBoardSocket::CAM_B,
                               LengthUnit unit = LengthUnit::CENTIMETER) const;
-    [[deprecated("Use getBaselineDistance(cam1, cam2, unit) instead")]] float getBaselineDistance(CameraBoardSocket cam1,
-                                                                                                   CameraBoardSocket cam2,
-                                                                                                   bool useSpecTranslation,
-                                                                                                   LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Camera To Imu Extrinsics object
@@ -363,7 +344,6 @@ class CalibrationHandler {
      * is returned.
      *
      * @param cameraId Camera Id of the camera which will be considered as origin. from which Transformation matrix to the IMU will be found
-     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
      * @param unit Units of the returned translation (default: centimeters)
      * @return Returns a transformationMatrix which is 4x4 in homogeneous coordinate system
      *
@@ -377,8 +357,6 @@ class CalibrationHandler {
      *
      */
     std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, LengthUnit unit = LengthUnit::CENTIMETER) const;
-    [[deprecated("Use getCameraToImuExtrinsics(cameraId, unit) instead")]] std::vector<std::vector<float>> getCameraToImuExtrinsics(
-        CameraBoardSocket cameraId, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Imu To Camera Extrinsics object from the data loaded if there is a linked connection
@@ -386,7 +364,6 @@ class CalibrationHandler {
      * is returned.
      *
      * @param cameraId Camera Id of the camera which will be considered as destination. To which Transformation matrix from the IMU will be found.
-     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
      * @param unit Units of the returned translation (default: centimeters)
      * @return Returns a transformationMatrix which is 4x4 in homogeneous coordinate system
      *
@@ -400,8 +377,6 @@ class CalibrationHandler {
      *
      */
     std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, LengthUnit unit = LengthUnit::CENTIMETER) const;
-    [[deprecated("Use getImuToCameraExtrinsics(cameraId, unit) instead")]] std::vector<std::vector<float>> getImuToCameraExtrinsics(
-        CameraBoardSocket cameraId, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      *
@@ -650,18 +625,11 @@ class CalibrationHandler {
      * @param destCameraId Camera Id of the camera which will be considered as destination from srcCameraId.
      * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
      * @param translation Translation between srcCameraId and destCameraId origins, in centimeters (cm).
-     * @param specTranslation Translation between srcCameraId and destCameraId origins from the design, in centimeters (cm).
      */
     void setCameraExtrinsics(CameraBoardSocket srcCameraId,
                              CameraBoardSocket destCameraId,
                              const std::vector<std::vector<float>>& rotationMatrix,
                              const std::vector<float>& translation);
-    [[deprecated("Use setCameraExtrinsics(srcCameraId, destCameraId, rotationMatrix, translation) instead")]] void setCameraExtrinsics(
-        CameraBoardSocket srcCameraId,
-        CameraBoardSocket destCameraId,
-        const std::vector<std::vector<float>>& rotationMatrix,
-        const std::vector<float>& translation,
-        const std::vector<float>& specTranslation);
 
     /**
      * Overwrite the Camera Extrinsics object where the link already exists
@@ -685,17 +653,10 @@ class CalibrationHandler {
      * @param destCameraId Camera Id of the camera which will be considered as destination from IMU.
      * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
      * @param translation Translation between IMU and destCameraId origins, in centimeters (cm).
-     * @param specTranslation Translation between IMU and destCameraId origins from the design, in centimeters (cm).
      */
-
     void setImuExtrinsics(CameraBoardSocket destCameraId,
                           const std::vector<std::vector<float>>& rotationMatrix,
                           const std::vector<float>& translation);
-    [[deprecated("Use setImuExtrinsics(destCameraId, rotationMatrix, translation) instead")]] void setImuExtrinsics(
-        CameraBoardSocket destCameraId,
-        const std::vector<std::vector<float>>& rotationMatrix,
-        const std::vector<float>& translation,
-        const std::vector<float>& specTranslation);
 
     /**
      * Set the Stereo Left Rectification object
@@ -773,7 +734,7 @@ class CalibrationHandler {
      */
     // bool isCameraArrayConnected;
     dai::EepromData eepromData;
-    std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
+    std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
     bool checkSrcLinks(CameraBoardSocket headSocket) const;
     enum class ExtrinsicGraphError { None, CycleDetected, DanglingReference, DisconnectedGraph };
@@ -788,12 +749,10 @@ class CalibrationHandler {
      * Get the Transformation matrix from the given camera to the coordinate system origin (one without extrinsics
      * and linked to CameraBoardSocket.AUTO)
      * @param cameraId Camera Id of the camera for which the origin matrix is being calculated
-     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
-    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, bool useSpecTranslation, CameraBoardSocket& originSocket) const;
+    std::vector<std::vector<float>> getExtrinsicsToOrigin(CameraBoardSocket cameraId, CameraBoardSocket& originSocket) const;
     std::vector<std::vector<float>> getHousingToHousingOriginExtrinsics(const HousingCoordinateSystem housingCS,
-                                                                        bool useSpecTranslation,
                                                                         CameraBoardSocket& originSocket,
                                                                         LengthUnit unit = LengthUnit::CENTIMETER) const;
 

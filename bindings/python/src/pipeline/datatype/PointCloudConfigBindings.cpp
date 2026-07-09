@@ -70,24 +70,6 @@ void bind_pointcloudconfig(pybind11::module& m, void* pCallstack) {
         .def("getCoordinateSystemType", &PointCloudConfig::getCoordinateSystemType, DOC(dai, PointCloudConfig, getCoordinateSystemType))
         .def("getTargetCameraSocket", &PointCloudConfig::getTargetCameraSocket, DOC(dai, PointCloudConfig, getTargetCameraSocket))
         .def("getTargetHousingCS", &PointCloudConfig::getTargetHousingCS, DOC(dai, PointCloudConfig, getTargetHousingCS))
-        .def(
-            "getUseSpecTranslation",
-            [](const PointCloudConfig& cfg) {
-                if(PyErr_WarnEx(PyExc_DeprecationWarning, "getUseSpecTranslation() is deprecated and will be removed in depthai 3.11.", 1) < 0)
-                    throw py::error_already_set();
-                return cfg.getUseSpecTranslation();
-            },
-            DOC(dai, PointCloudConfig, getUseSpecTranslation))
-        .def("setTargetCoordinateSystem",
-             py::overload_cast<CameraBoardSocket, bool>(&PointCloudConfig::setTargetCoordinateSystem),
-             py::arg("targetCamera"),
-             py::arg("useSpecTranslation"),
-             "**Deprecated:** Use setTargetCoordinateSystem(targetCamera) instead.")
-        .def("setTargetCoordinateSystem",
-             py::overload_cast<HousingCoordinateSystem, bool>(&PointCloudConfig::setTargetCoordinateSystem),
-             py::arg("housingCS"),
-             py::arg("useSpecTranslation"),
-             "**Deprecated:** Use setTargetCoordinateSystem(housingCS) instead.")
         // Deprecated
         .def(
             "getSparse",

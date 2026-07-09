@@ -171,30 +171,6 @@ void StereoDepth::setFocalLength(float focalLength) {
     properties.focalLength = focalLength;
 }
 
-void StereoDepth::setDisparityToDepthUseSpecTranslation(bool specTranslation) {
-    if(specTranslation) {
-        spdlog::warn(
-            "StereoDepth::setDisparityToDepthUseSpecTranslation(true) is deprecated and will be removed in depthai 3.11. Use calibrated translation defaults instead.");
-    }
-    properties.disparityToDepthUseSpecTranslation = specTranslation;
-}
-
-void StereoDepth::setRectificationUseSpecTranslation(bool specTranslation) {
-    if(specTranslation) {
-        spdlog::warn(
-            "StereoDepth::setRectificationUseSpecTranslation(true) is deprecated and will be removed in depthai 3.11. Use calibrated translation defaults instead.");
-    }
-    properties.rectificationUseSpecTranslation = specTranslation;
-}
-
-void StereoDepth::setDepthAlignmentUseSpecTranslation(bool specTranslation) {
-    if(specTranslation) {
-        spdlog::warn(
-            "StereoDepth::setDepthAlignmentUseSpecTranslation(true) is deprecated and will be removed in depthai 3.11. Use calibrated translation defaults instead.");
-    }
-    properties.depthAlignmentUseSpecTranslation = specTranslation;
-}
-
 void StereoDepth::setAlphaScaling(float alpha) {
     properties.alphaScaling = alpha;
 }

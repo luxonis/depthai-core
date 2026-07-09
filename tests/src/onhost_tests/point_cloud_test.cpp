@@ -87,7 +87,8 @@ dai::CalibrationHandler makeTwoCameraHandler(const std::vector<std::vector<float
     auto intr = defaultIntrinsics();
     handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_B, intr, 640, 480);
     handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_C, intr, 640, 480);
-    handler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, rotation, translationCm, specTranslationCm);
+    static_cast<void>(specTranslationCm);
+    handler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, rotation, translationCm);
     return handler;
 }
 
@@ -541,7 +542,7 @@ TEST_CASE("CalibrationHandler camera-to-camera pure translation", "[PointCloud][
     auto handler = makeTwoCameraHandler(eye3(), {7.5f, 0.f, 0.f});
 
     SECTION("Translation in millimeters") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::MILLIMETER);
+        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::MILLIMETER);
         REQUIRE(mat.size() == 4);
         // Rotation block is identity
         REQUIRE(mat[0][0] == Catch::Approx(1.f));
@@ -554,12 +555,12 @@ TEST_CASE("CalibrationHandler camera-to-camera pure translation", "[PointCloud][
     }
 
     SECTION("Translation in meters") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::METER);
+        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::METER);
         REQUIRE(mat[0][3] == Catch::Approx(0.075f));
     }
 
     SECTION("Translation in centimeters") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::CENTIMETER);
+        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::CENTIMETER);
         REQUIRE(mat[0][3] == Catch::Approx(7.5f));
     }
 }
@@ -570,7 +571,7 @@ TEST_CASE("CalibrationHandler camera-to-camera pure translation", "[PointCloud][
 TEST_CASE("Camera-to-camera translation applied to point cloud", "[PointCloud][CalibrationHandler][CameraExtrinsics]") {
     auto handler = makeTwoCameraHandler(eye3(), {7.5f, 0.f, 0.f});  // 7.5 cm = 75 mm
 
-    auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::MILLIMETER);
+    auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::MILLIMETER);
 
     dai::node::PointCloud::Impl impl;
     constexpr unsigned W = 4, H = 4;
@@ -599,7 +600,7 @@ TEST_CASE("Camera-to-camera 90-deg Y rotation with translation", "[PointCloud][C
     // 90° around Y: x→z, z→-x
     auto handler = makeTwoCameraHandler(rot90y(), {0.f, 0.f, 10.f});  // 10 cm Z translation
 
-    auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::MILLIMETER);
+    auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::MILLIMETER);
 
     // Rotation block
     REQUIRE(mat[0][0] == Catch::Approx(0.f).margin(1e-6));
@@ -627,8 +628,8 @@ TEST_CASE("Camera-to-camera 90-deg Y rotation with translation", "[PointCloud][C
 TEST_CASE("Camera-to-camera inverse direction", "[PointCloud][CalibrationHandler][CameraExtrinsics]") {
     auto handler = makeTwoCameraHandler(eye3(), {7.5f, 0.f, 0.f});
 
-    auto fwd = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::MILLIMETER);
-    auto inv = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B, false, dai::LengthUnit::MILLIMETER);
+    auto fwd = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::MILLIMETER);
+    auto inv = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B, dai::LengthUnit::MILLIMETER);
 
     // Forward: +75 mm X, Inverse: -75 mm X
     REQUIRE(fwd[0][3] == Catch::Approx(75.f));
@@ -658,42 +659,20 @@ TEST_CASE("Three-camera chain extrinsics", "[PointCloud][CalibrationHandler][Cam
     auto handler = makeThreeCameraHandler(eye3(), {5.f, 0.f, 0.f}, eye3(), {3.f, 0.f, 0.f});
 
     SECTION("CAM_A to CAM_C: translations add up") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::MILLIMETER);
+        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::MILLIMETER);
         // 5 cm + 3 cm = 8 cm = 80 mm
         REQUIRE(mat[0][3] == Catch::Approx(80.f));
     }
 
     SECTION("CAM_A to CAM_B: only first link") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_B, false, dai::LengthUnit::MILLIMETER);
+        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_B, dai::LengthUnit::MILLIMETER);
         // 5 cm = 50 mm
         REQUIRE(mat[0][3] == Catch::Approx(50.f));
     }
 
     SECTION("CAM_B to CAM_A: inverse of first link") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_A, false, dai::LengthUnit::MILLIMETER);
+        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_A, dai::LengthUnit::MILLIMETER);
         REQUIRE(mat[0][3] == Catch::Approx(-50.f));
-    }
-}
-
-// ============================================================================
-// Camera-to-camera: spec translation vs measured translation
-// ============================================================================
-TEST_CASE("Spec translation vs measured translation", "[PointCloud][CalibrationHandler][CameraExtrinsics]") {
-    // Measured: (7.5, 0.2, 0.1) cm   Spec: (7.5, 0, 0) cm
-    auto handler = makeTwoCameraHandler(eye3(), {7.5f, 0.2f, 0.1f}, {7.5f, 0.f, 0.f});
-
-    SECTION("useSpecTranslation=false uses measured translation") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::MILLIMETER);
-        REQUIRE(mat[0][3] == Catch::Approx(75.f));
-        REQUIRE(mat[1][3] == Catch::Approx(2.f));  // 0.2 cm → 2 mm
-        REQUIRE(mat[2][3] == Catch::Approx(1.f));  // 0.1 cm → 1 mm
-    }
-
-    SECTION("useSpecTranslation=true uses spec translation") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, true, dai::LengthUnit::MILLIMETER);
-        REQUIRE(mat[0][3] == Catch::Approx(75.f));
-        REQUIRE(mat[1][3] == Catch::Approx(0.f));
-        REQUIRE(mat[2][3] == Catch::Approx(0.f));
     }
 }
 
@@ -704,7 +683,7 @@ TEST_CASE("Camera-to-camera 90-deg Z rotation applied to dense cloud", "[PointCl
     // 90° Z rotation: (x,y,z) → (-y, x, z)
     auto handler = makeTwoCameraHandler(rot90z(), {5.f, 0.f, 0.f});  // 5 cm = 50 mm X
 
-    auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::MILLIMETER);
+    auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::MILLIMETER);
 
     dai::node::PointCloud::Impl impl;
     constexpr unsigned W = 4, H = 4;
@@ -734,7 +713,7 @@ TEST_CASE("Extrinsics unit must match point cloud unit", "[PointCloud][Calibrati
     auto handler = makeTwoCameraHandler(eye3(), {10.f, 0.f, 0.f});  // 10 cm
 
     SECTION("Both in meters") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::METER);
+        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::METER);
         dai::node::PointCloud::Impl impl;
         impl.setLengthUnit(dai::LengthUnit::METER);
         impl.setIntrinsics(100.f, 100.f, 2.f, 2.f, 4, 4);
@@ -751,7 +730,7 @@ TEST_CASE("Extrinsics unit must match point cloud unit", "[PointCloud][Calibrati
     }
 
     SECTION("Both in centimeters") {
-        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::CENTIMETER);
+        auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::CENTIMETER);
         dai::node::PointCloud::Impl impl;
         impl.setLengthUnit(dai::LengthUnit::CENTIMETER);
         impl.setIntrinsics(100.f, 100.f, 2.f, 2.f, 4, 4);
@@ -773,10 +752,10 @@ TEST_CASE("Extrinsics unit must match point cloud unit", "[PointCloud][Calibrati
 TEST_CASE("Housing identity transform equals camera-to-origin inverse", "[PointCloud][CalibrationHandler][Housing]") {
     // Housing origin = CAM_B (which IS the origin since toCameraSocket=AUTO).
     // Housing rotation = I, translation = (0,0,0).
-    // So getHousingCalibration(CAM_B, AUTO, false, MM) should be identity.
+    // So getHousingCalibration(CAM_B, AUTO, MM) should be identity.
     auto handler = makeHousingHandler(dai::CameraBoardSocket::CAM_B, eye3(), {0.f, 0.f, 0.f});
 
-    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::MILLIMETER);
+    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::MILLIMETER);
 
     // Should be identity
     for(int r = 0; r < 4; ++r)
@@ -796,7 +775,7 @@ TEST_CASE("Housing pure translation offset", "[PointCloud][CalibrationHandler][H
     //             = [I|(-5,-3,0)] * I * I = [I|(-5,-3,0)] in cm → (-50,-30,0) mm
     auto handler = makeHousingHandler(dai::CameraBoardSocket::CAM_B, eye3(), {5.f, 3.f, 0.f});
 
-    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::MILLIMETER);
+    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::MILLIMETER);
 
     REQUIRE(mat[0][0] == Catch::Approx(1.f));
     REQUIRE(mat[0][3] == Catch::Approx(-50.f));
@@ -828,7 +807,7 @@ TEST_CASE("Housing 90-deg Z rotation", "[PointCloud][CalibrationHandler][Housing
     // Point (10, 0, 1000) in CAM_B → in housing: (0*10+1*0, -1*10+0*0, 1000) = (0, -10, 1000)
     auto handler = makeHousingHandler(dai::CameraBoardSocket::CAM_B, rot90z(), {0.f, 0.f, 0.f});
 
-    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::MILLIMETER);
+    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::MILLIMETER);
 
     dai::node::PointCloud::Impl impl;
     impl.setExtrinsics(mat);
@@ -852,7 +831,7 @@ TEST_CASE("Housing rotation and translation combined", "[PointCloud][Calibration
     // -R_90z^T * (5,0,0) = -(0*5+1*0, -1*5+0*0, 0*5+0*0) = -(0, -5, 0) = (0, 5, 0) cm → (0, 50, 0) mm
     auto handler = makeHousingHandler(dai::CameraBoardSocket::CAM_B, rot90z(), {5.f, 0.f, 0.f});
 
-    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::MILLIMETER);
+    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::MILLIMETER);
 
     // Translation column
     REQUIRE(mat[0][3] == Catch::Approx(0.f).margin(1e-3));
@@ -877,7 +856,7 @@ TEST_CASE("Housing transform with source camera not at housing origin", "[PointC
     // Setup: CAM_B → CAM_C (identity, 10 cm X), CAM_C is origin.
     // Housing linked to CAM_C (origin) with identity rotation, translation (2, 0, 0) cm.
     //
-    // getHousingCalibration(CAM_B, AUTO, false, MM):
+    // getHousingCalibration(CAM_B, AUTO, MM):
     //   housingToHousingOrigin = [I | (2,0,0)] cm, originSocket = CAM_C
     //   housingOriginToOrigin = getExtrinsicsToOrigin(CAM_C) = I  (CAM_C is origin)
     //   camToOrigin = getExtrinsicsToOrigin(CAM_B) = [I | (10,0,0)] cm  (CAM_B→CAM_C)
@@ -896,7 +875,7 @@ TEST_CASE("Housing transform with source camera not at housing origin", "[PointC
     handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_C, intr, 640, 480);
     handler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, eye3(), {10.f, 0.f, 0.f});
 
-    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::MILLIMETER);
+    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::MILLIMETER);
 
     REQUIRE(mat[0][3] == Catch::Approx(80.f));
     REQUIRE(mat[1][3] == Catch::Approx(0.f).margin(1e-4));
@@ -923,36 +902,14 @@ TEST_CASE("Housing transform with source camera not at housing origin", "[PointC
 }
 
 // ============================================================================
-// Housing transform: spec translation (no database lookup)
-// ============================================================================
-TEST_CASE("Housing spec translation without database", "[PointCloud][CalibrationHandler][Housing]") {
-    // Housing linked to CAM_B (origin) with spec translation (3, 1, 0) cm
-    // (measured translation is (3.1, 1.2, 0.05) cm)
-    auto handler = makeHousingHandler(dai::CameraBoardSocket::CAM_B, eye3(), {3.1f, 1.2f, 0.05f}, {3.f, 1.f, 0.f});
-
-    auto matMeasured = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::MILLIMETER);
-    auto matSpec = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, true, dai::LengthUnit::MILLIMETER);
-
-    // Measured: translation = -(3.1, 1.2, 0.05) cm → (-31, -12, -0.5) mm
-    REQUIRE(matMeasured[0][3] == Catch::Approx(-31.f));
-    REQUIRE(matMeasured[1][3] == Catch::Approx(-12.f));
-    REQUIRE(matMeasured[2][3] == Catch::Approx(-0.5f));
-
-    // Spec: translation = -(3, 1, 0) cm → (-30, -10, 0) mm
-    REQUIRE(matSpec[0][3] == Catch::Approx(-30.f));
-    REQUIRE(matSpec[1][3] == Catch::Approx(-10.f));
-    REQUIRE(matSpec[2][3] == Catch::Approx(0.f).margin(1e-4));
-}
-
-// ============================================================================
 // Housing unit scaling: mm vs m
 // ============================================================================
 TEST_CASE("Housing transform unit scaling", "[PointCloud][CalibrationHandler][Housing][LengthUnit]") {
     auto handler = makeHousingHandler(dai::CameraBoardSocket::CAM_B, eye3(), {10.f, 5.f, 0.f});
 
-    auto matMm = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::MILLIMETER);
-    auto matM = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER);
-    auto matCm = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::CENTIMETER);
+    auto matMm = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::MILLIMETER);
+    auto matM = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::METER);
+    auto matCm = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::CENTIMETER);
 
     // Housing (10, 5, 0) cm → inverse translation (-10, -5, 0) cm
     REQUIRE(matMm[0][3] == Catch::Approx(-100.f));  // -10 cm → -100 mm
@@ -981,7 +938,7 @@ TEST_CASE("Housing full pipeline: depth to transformed cloud", "[PointCloud][Cal
     handler.setCameraIntrinsics(dai::CameraBoardSocket::CAM_C, intr, 640, 480);
     handler.setCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, eye3(), {5.f, 0.f, 0.f});
 
-    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::METER);
+    auto mat = handler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::METER);
 
     dai::node::PointCloud::Impl impl;
     constexpr unsigned W = 8, H = 8;
@@ -1007,7 +964,7 @@ TEST_CASE("Housing full pipeline: depth to transformed cloud", "[PointCloud][Cal
 TEST_CASE("getCameraExtrinsics throws for missing camera", "[PointCloud][CalibrationHandler][CameraExtrinsics]") {
     auto handler = makeTwoCameraHandler(eye3(), {5.f, 0.f, 0.f});
 
-    REQUIRE_THROWS(handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::MILLIMETER));
+    REQUIRE_THROWS(handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::MILLIMETER));
 }
 
 // ============================================================================
@@ -1016,7 +973,7 @@ TEST_CASE("getCameraExtrinsics throws for missing camera", "[PointCloud][Calibra
 TEST_CASE("getHousingCalibration throws for missing source camera", "[PointCloud][CalibrationHandler][Housing]") {
     auto handler = makeHousingHandler(dai::CameraBoardSocket::CAM_B, eye3(), {0.f, 0.f, 0.f});
 
-    REQUIRE_THROWS(handler.getHousingCalibration(dai::CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::AUTO, false, dai::LengthUnit::MILLIMETER));
+    REQUIRE_THROWS(handler.getHousingCalibration(dai::CameraBoardSocket::CAM_A, dai::HousingCoordinateSystem::AUTO, dai::LengthUnit::MILLIMETER));
 }
 
 // ############################################################################
@@ -1455,7 +1412,7 @@ TEST_CASE("Colored sparse output via filter", "[PointCloud][Impl][Colored][Integ
 TEST_CASE("Colored camera-to-camera translation applied to point cloud", "[PointCloud][Impl][Colored][CameraExtrinsics]") {
     auto handler = makeTwoCameraHandler(eye3(), {7.5f, 0.f, 0.f});  // 7.5 cm = 75 mm
 
-    auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, false, dai::LengthUnit::MILLIMETER);
+    auto mat = handler.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C, dai::LengthUnit::MILLIMETER);
 
     dai::node::PointCloud::Impl impl;
     constexpr unsigned W = 4, H = 4;
@@ -1774,26 +1731,19 @@ TEST_CASE("Extrinsics getTransformationMatrix(false) uses measured translation, 
 }
 
 // ============================================================================
-// PointCloudConfig: new overloads preserve the current useSpecTranslation value
+// PointCloudConfig coordinate-system setters update the target metadata
 // ============================================================================
-TEST_CASE("PointCloudConfig overloads preserve useSpecTranslation behavior", "[PointCloud][Config]") {
+TEST_CASE("PointCloudConfig coordinate-system setters update target metadata", "[PointCloud][Config]") {
     dai::PointCloudConfig cfg;
-
-    REQUIRE_FALSE(cfg.getUseSpecTranslation());
 
     cfg.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A);
     REQUIRE(cfg.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET);
     REQUIRE(cfg.getTargetCameraSocket() == dai::CameraBoardSocket::CAM_A);
-    REQUIRE_FALSE(cfg.getUseSpecTranslation());
-
-    cfg.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_B, false);
-    REQUIRE_FALSE(cfg.getUseSpecTranslation());
 
     cfg.setTargetCoordinateSystem(dai::HousingCoordinateSystem::VESA_A);
     REQUIRE(cfg.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::HOUSING);
     REQUIRE(cfg.getTargetHousingCS() == dai::HousingCoordinateSystem::VESA_A);
-    REQUIRE_FALSE(cfg.getUseSpecTranslation());
 
-    cfg.setTargetCoordinateSystem(dai::HousingCoordinateSystem::VESA_B, true);
-    REQUIRE(cfg.getUseSpecTranslation());
+    cfg.setTargetCoordinateSystem(dai::HousingCoordinateSystem::VESA_B);
+    REQUIRE(cfg.getTargetHousingCS() == dai::HousingCoordinateSystem::VESA_B);
 }

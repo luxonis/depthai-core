@@ -62,15 +62,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
             "useHomographyRectification", &StereoDepthProperties::useHomographyRectification, DOC(dai, StereoDepthProperties, useHomographyRectification))
         .def_readwrite("baseline", &StereoDepthProperties::baseline, DOC(dai, StereoDepthProperties, baseline))
         .def_readwrite("focalLength", &StereoDepthProperties::focalLength, DOC(dai, StereoDepthProperties, focalLength))
-        .def_readwrite("disparityToDepthUseSpecTranslation",
-                       &StereoDepthProperties::disparityToDepthUseSpecTranslation,
-                       DOC(dai, StereoDepthProperties, disparityToDepthUseSpecTranslation))
-        .def_readwrite("rectificationUseSpecTranslation",
-                       &StereoDepthProperties::rectificationUseSpecTranslation,
-                       DOC(dai, StereoDepthProperties, rectificationUseSpecTranslation))
-        .def_readwrite("depthAlignmentUseSpecTranslation",
-                       &StereoDepthProperties::depthAlignmentUseSpecTranslation,
-                       DOC(dai, StereoDepthProperties, depthAlignmentUseSpecTranslation))
         .def_readwrite("alphaScaling", &StereoDepthProperties::alphaScaling, DOC(dai, StereoDepthProperties, alphaScaling));
 
     stereoDepthPresetMode.value("FAST_ACCURACY", StereoDepth::PresetMode::FAST_ACCURACY)
@@ -175,39 +166,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack) {
         .def("enableDistortionCorrection", &StereoDepth::enableDistortionCorrection, DOC(dai, node, StereoDepth, enableDistortionCorrection))
         .def("setBaseline", &StereoDepth::setBaseline, DOC(dai, node, StereoDepth, setBaseline))
         .def("setFocalLength", &StereoDepth::setFocalLength, DOC(dai, node, StereoDepth, setFocalLength))
-        .def("setDisparityToDepthUseSpecTranslation",
-             [](StereoDepth& self, bool specTranslation) {
-                 if(specTranslation
-                    && PyErr_WarnEx(PyExc_DeprecationWarning,
-                                    "setDisparityToDepthUseSpecTranslation(True) is deprecated. Use calibrated translation defaults instead.",
-                                    1)
-                           < 0)
-                     throw py::error_already_set();
-                 self.setDisparityToDepthUseSpecTranslation(specTranslation);
-             },
-             DOC(dai, node, StereoDepth, setDisparityToDepthUseSpecTranslation))
-        .def("setRectificationUseSpecTranslation",
-             [](StereoDepth& self, bool specTranslation) {
-                 if(specTranslation
-                    && PyErr_WarnEx(PyExc_DeprecationWarning,
-                                    "setRectificationUseSpecTranslation(True) is deprecated. Use calibrated translation defaults instead.",
-                                    1)
-                           < 0)
-                     throw py::error_already_set();
-                 self.setRectificationUseSpecTranslation(specTranslation);
-             },
-             DOC(dai, node, StereoDepth, setRectificationUseSpecTranslation))
-        .def("setDepthAlignmentUseSpecTranslation",
-             [](StereoDepth& self, bool specTranslation) {
-                 if(specTranslation
-                    && PyErr_WarnEx(PyExc_DeprecationWarning,
-                                    "setDepthAlignmentUseSpecTranslation(True) is deprecated. Use calibrated translation defaults instead.",
-                                    1)
-                           < 0)
-                     throw py::error_already_set();
-                 self.setDepthAlignmentUseSpecTranslation(specTranslation);
-             },
-             DOC(dai, node, StereoDepth, setDepthAlignmentUseSpecTranslation))
         .def("setAlphaScaling", &StereoDepth::setAlphaScaling, DOC(dai, node, StereoDepth, setAlphaScaling));
     // ALIAS
     daiNodeModule.attr("StereoDepth").attr("Properties") = stereoDepthProperties;

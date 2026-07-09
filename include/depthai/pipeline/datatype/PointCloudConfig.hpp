@@ -33,7 +33,6 @@ class PointCloudConfig : public Buffer {
     CoordinateSystemType coordSystemType = CoordinateSystemType::DEFAULT;
     CameraBoardSocket targetCameraSocket = CameraBoardSocket::AUTO;
     HousingCoordinateSystem targetHousingCS = HousingCoordinateSystem::AUTO;
-    bool useSpecTranslation = false;
 
    public:
     PointCloudConfig() = default;
@@ -91,18 +90,6 @@ class PointCloudConfig : public Buffer {
     PointCloudConfig& setTargetCoordinateSystem(HousingCoordinateSystem housingCS);
 
     /**
-     * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
-     */
-    [[deprecated("Use setTargetCoordinateSystem(targetCamera) instead")]] PointCloudConfig& setTargetCoordinateSystem(CameraBoardSocket targetCamera,
-                                                                                                                      bool useSpecTranslation);
-
-    /**
-     * Deprecated: use setTargetCoordinateSystem(housingCS) instead.
-     */
-    [[deprecated("Use setTargetCoordinateSystem(housingCS) instead")]] PointCloudConfig& setTargetCoordinateSystem(HousingCoordinateSystem housingCS,
-                                                                                                                   bool useSpecTranslation);
-
-    /**
      * Retrieve the coordinate system type.
      */
     CoordinateSystemType getCoordinateSystemType() const;
@@ -116,11 +103,6 @@ class PointCloudConfig : public Buffer {
      * Retrieve the target housing coordinate system (valid when coordSystemType == HOUSING).
      */
     HousingCoordinateSystem getTargetHousingCS() const;
-
-    /**
-     * Retrieve whether spec translation is used.
-     */
-    [[deprecated("No replacement. Spec translation mode will be removed in 3.11")]] bool getUseSpecTranslation() const;
 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::PointCloudConfig;
@@ -138,8 +120,7 @@ class PointCloudConfig : public Buffer {
                       lengthUnit,
                       coordSystemType,
                       targetCameraSocket,
-                      targetHousingCS,
-                      useSpecTranslation);
+                      targetHousingCS);
 };
 
 }  // namespace dai

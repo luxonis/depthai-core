@@ -36,8 +36,7 @@ pc->setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A);
 ```
 
 Available sockets: `CAM_A` … `CAM_J`.
-This preferred overload uses calibrated translations. The legacy
-`setTargetCoordinateSystem(socket, useSpecTranslation)` overload is deprecated.
+This overload uses calibrated translations.
 
 **B) Housing coordinate system** — uses housing calibration stored on the device.
 

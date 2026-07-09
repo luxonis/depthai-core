@@ -493,14 +493,6 @@ void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS) {
     initialConfig->setTargetCoordinateSystem(housingCS);
 }
 
-void PointCloud::setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation) {
-    initialConfig->setTargetCoordinateSystem(targetCamera, useSpecTranslation);
-}
-
-void PointCloud::setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation) {
-    initialConfig->setTargetCoordinateSystem(housingCS, useSpecTranslation);
-}
-
 bool PointCloud::hasTransformationChanged(const ImgFrame& frame) {
     if(lastTransformation_ && lastTransformation_->isEqualTransformation(frame.transformation)) return false;
     pimpl->logger->debug("Frame transformation changed, reinitializing...");
@@ -537,7 +529,6 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
     auto coordSystemType = config.getCoordinateSystemType();
     auto targetCameraSocket = config.getTargetCameraSocket();
     auto targetHousingCS = config.getTargetHousingCS();
-    auto useSpecTranslation = config.getUseSpecTranslation();
 
     // Read T_frame→ref from the depth frame's extrinsics
     // After rectification, the rotation already accounts for the rectification change.
@@ -548,7 +539,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
             "PointCloud: depth frame extrinsics toCameraSocket is AUTO. "
             "Ensure the depth frame has valid extrinsics with a specific camera socket set.");
     }
-    auto T_frame_to_ref = matrix::toVecMatrix4x4(frameExtrinsics.getTransformationMatrix(useSpecTranslation, unit));
+    auto T_frame_to_ref = matrix::toVecMatrix4x4(frameExtrinsics.getTransformationMatrix(unit));
     logMatrix4x4(pimpl->logger, spdlog::level::debug, "T_frame_to_ref", T_frame_to_ref);
 
     // Get calibration data
@@ -566,7 +557,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
     switch(coordSystemType) {
         case PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET: {
             pimpl->logger->info("Using CAMERA_SOCKET transformation to {}, via ref camera {}", toString(targetCameraSocket), toString(refCamera));
-            auto T_ref_to_target = calibHandler.getCameraExtrinsics(refCamera, targetCameraSocket, useSpecTranslation, unit);
+            auto T_ref_to_target = calibHandler.getCameraExtrinsics(refCamera, targetCameraSocket, unit);
             T_final = matrix::matMul(T_ref_to_target, T_frame_to_ref);
             targetExtrinsics_ = Extrinsics(T_ref_to_target, targetCameraSocket, unit);
             break;
@@ -574,7 +565,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
 
         case PointCloudConfig::CoordinateSystemType::HOUSING: {
             pimpl->logger->info("Using HOUSING transformation to housing {}, via ref camera {}", static_cast<int>(targetHousingCS), toString(refCamera));
-            auto T_ref_to_housing = calibHandler.getHousingCalibration(refCamera, targetHousingCS, useSpecTranslation, unit);
+            auto T_ref_to_housing = calibHandler.getHousingCalibration(refCamera, targetHousingCS, unit);
             T_final = matrix::matMul(T_ref_to_housing, T_frame_to_ref);
             targetExtrinsics_ = Extrinsics(T_ref_to_housing, CameraBoardSocket::AUTO, unit);
             break;

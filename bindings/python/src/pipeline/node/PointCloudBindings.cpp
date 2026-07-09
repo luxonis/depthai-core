@@ -54,17 +54,7 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack) {
         .def("setTargetCoordinateSystem",
              py::overload_cast<HousingCoordinateSystem>(&PointCloud::setTargetCoordinateSystem),
              py::arg("housingCS"),
-             DOC(dai, node, PointCloud, setTargetCoordinateSystem, 2))
-        .def("setTargetCoordinateSystem",
-             py::overload_cast<CameraBoardSocket, bool>(&PointCloud::setTargetCoordinateSystem),
-             py::arg("targetCamera"),
-             py::arg("useSpecTranslation"),
-             "**Deprecated:** Use setTargetCoordinateSystem(targetCamera) instead.")
-        .def("setTargetCoordinateSystem",
-             py::overload_cast<HousingCoordinateSystem, bool>(&PointCloud::setTargetCoordinateSystem),
-             py::arg("housingCS"),
-             py::arg("useSpecTranslation"),
-             "**Deprecated:** Use setTargetCoordinateSystem(housingCS) instead.");
+             DOC(dai, node, PointCloud, setTargetCoordinateSystem, 2));
 
     // ALIAS
     daiNodeModule.attr("PointCloud").attr("Properties") = properties;

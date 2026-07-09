@@ -214,18 +214,6 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
      */
     void setTargetCoordinateSystem(HousingCoordinateSystem housingCS);
 
-    /**
-     * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
-     */
-    [[deprecated("Use setTargetCoordinateSystem(targetCamera) instead")]] void setTargetCoordinateSystem(CameraBoardSocket targetCamera,
-                                                                                                         bool useSpecTranslation);
-
-    /**
-     * Deprecated: use setTargetCoordinateSystem(housingCS) instead.
-     */
-    [[deprecated("Use setTargetCoordinateSystem(housingCS) instead")]] void setTargetCoordinateSystem(HousingCoordinateSystem housingCS,
-                                                                                                      bool useSpecTranslation);
-
     bool runOnHost() const override;
 
 #ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4

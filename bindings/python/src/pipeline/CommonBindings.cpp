@@ -550,20 +550,10 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::overload_cast<LengthUnit>(&Extrinsics::getTransformationMatrix, py::const_),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getTransformationMatrix))
-        .def("getTransformationMatrix",
-             py::overload_cast<bool, LengthUnit>(&Extrinsics::getTransformationMatrix, py::const_),
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getTransformationMatrix(unit) instead.")
         .def("getInverseTransformationMatrix",
              py::overload_cast<LengthUnit>(&Extrinsics::getInverseTransformationMatrix, py::const_),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getInverseTransformationMatrix))
-        .def("getInverseTransformationMatrix",
-             py::overload_cast<bool, LengthUnit>(&Extrinsics::getInverseTransformationMatrix, py::const_),
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getInverseTransformationMatrix(unit) instead.")
         .def("setTransformationMatrix",
              py::overload_cast<const std::vector<std::vector<float>>&, LengthUnit>(&Extrinsics::setTransformationMatrix),
              py::arg("matrix"),
@@ -574,33 +564,16 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("translationVector"),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, setTranslationVector))
-        .def("setTranslationVector",
-             py::overload_cast<const dai::Point3f&, LengthUnit, bool>(&Extrinsics::setTranslationVector),
-             py::arg("translationVector"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             py::arg("useSpecTranslation"),
-             "**Deprecated:** Use setTranslationVector(translationVector, unit) instead.")
         .def("getTranslationVector",
              py::overload_cast<LengthUnit>(&Extrinsics::getTranslationVector, py::const_),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, Extrinsics, getTranslationVector))
-        .def("getTranslationVector",
-             py::overload_cast<bool, LengthUnit>(&Extrinsics::getTranslationVector, py::const_),
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getTranslationVector(unit) instead.")
         .def("isEqualExtrinsics", &Extrinsics::isEqualExtrinsics, py::arg("other"), py::arg("epsilon") = 1e-6f, DOC(dai, Extrinsics, isEqualExtrinsics))
         .def("getExtrinsicsTransformationTo",
              py::overload_cast<const Extrinsics&, LengthUnit>(&Extrinsics::getExtrinsicsTransformationTo, py::const_),
              py::arg("to"),
              py::arg("unit") = LengthUnit::CENTIMETER,
-             DOC(dai, Extrinsics, getExtrinsicsTransformationTo))
-        .def("getExtrinsicsTransformationTo",
-             py::overload_cast<const Extrinsics&, bool, LengthUnit>(&Extrinsics::getExtrinsicsTransformationTo, py::const_),
-             py::arg("to"),
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getExtrinsicsTransformationTo(to, unit) instead.");
+             DOC(dai, Extrinsics, getExtrinsicsTransformationTo));
 
     // CameraInfo
     cameraInfo.def(py::init<>())

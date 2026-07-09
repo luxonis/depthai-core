@@ -529,8 +529,8 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data with housing base
     auto calibrationHandler = getHandler(true);
     device->setCalibration(calibrationHandler);
 
-    auto leftToHousingBefore = calibrationHandler.getHousingCalibration(dai::CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::AUTO, false);
-    auto rightToHousingBefore = calibrationHandler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false);
+    auto leftToHousingBefore = calibrationHandler.getHousingCalibration(dai::CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::AUTO);
+    auto rightToHousingBefore = calibrationHandler.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO);
 
     auto group = stereoImageToMessageGroup(makeFilename("data/LeftCam_", 0, helper), makeFilename("data/RightCam_", 0, helper), calibrationHandler);
     p.start();
@@ -564,10 +564,8 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data with housing base
     REQUIRE(std::fabs(rvec[1]) < thresholdRotation);
     REQUIRE(std::fabs(rvec[2]) < thresholdRotation);
 
-    auto leftToHousing =
-        result->calibrationData->newCalibration.getHousingCalibration(dai::CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::AUTO, false);
-    auto rightToHousing =
-        result->calibrationData->newCalibration.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO, false);
+    auto leftToHousing = result->calibrationData->newCalibration.getHousingCalibration(dai::CameraBoardSocket::CAM_C, dai::HousingCoordinateSystem::AUTO);
+    auto rightToHousing = result->calibrationData->newCalibration.getHousingCalibration(dai::CameraBoardSocket::CAM_B, dai::HousingCoordinateSystem::AUTO);
 
     float thresholdTransform = 1e-5f;
     for(int row = 0; row < 4; ++row) {

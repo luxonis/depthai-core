@@ -250,7 +250,7 @@ void ImageAlign::run() {
         auto alignDistortionCoefficients = calibHandler.getDistortionCoefficients(alignTo);
 
         auto depthToAlignRotation = calibHandler.getCameraRotationMatrix(alignFrom, alignTo);
-        auto depthToAlignTranslation = calibHandler.getCameraTranslationVector(alignFrom, alignTo, false);
+        auto depthToAlignTranslation = calibHandler.getCameraTranslationVector(alignFrom, alignTo);
 
         for(auto& t : depthToAlignTranslation) {
             t *= 10;  // convert to mm

@@ -209,7 +209,7 @@ void SpatialImgDetection::transform(const ImgTransformation& source, const ImgTr
     RotatedRect rect = getBoundingBox();
 
     if(depth > 0) {
-        const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, false, lengthUnit);
+        const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, lengthUnit);
         setBoundingBox(source.projectRectTo(target, rect, depth));
         setSpatialCoordinate(matrix::transformPoint3f(transMatrix, spatialCoordinates));
     } else {

@@ -1601,7 +1601,7 @@ std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
         for(auto const& camIdAndInfo2 : calibHandler.getEepromData().cameraData) {
             auto camId2 = camIdAndInfo2.first;
             try {
-                auto translationVector = calibHandler.getCameraTranslationVector(camId1, camId2, false);
+                auto translationVector = calibHandler.getCameraTranslationVector(camId1, camId2);
                 auto baseline = std::abs(translationVector[0]) > std::abs(translationVector[1]) ? translationVector[0] : translationVector[1];  // X or Y
                 auto leftSocket = baseline < 0 ? camId1 : camId2;
                 auto rightSocket = leftSocket == camId1 ? camId2 : camId1;

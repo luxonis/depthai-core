@@ -1,32 +1,6 @@
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 
-#include <mutex>
-#include <unordered_set>
-
-#include <spdlog/spdlog.h>
-
 namespace dai {
-
-namespace {
-
-void warnDeprecatedSpecTranslationUsage(const char* apiName) {
-    static std::mutex mutex;
-    static std::unordered_set<std::string> warnedApis;
-    std::lock_guard<std::mutex> lock(mutex);
-    if(warnedApis.insert(apiName).second) {
-        spdlog::warn("{} with useSpecTranslation=true is deprecated and will be removed in depthai 3.11. Use the overload without useSpecTranslation instead.",
-                     apiName);
-    }
-}
-
-void warnDeprecatedStateAccess(const char* apiName) {
-    static std::once_flag once;
-    std::call_once(once, [apiName]() {
-        spdlog::warn("{} is deprecated and will be removed in depthai 3.11. No replacement is planned.", apiName);
-    });
-}
-
-}  // namespace
 
 PointCloudConfig::~PointCloudConfig() = default;
 
@@ -80,22 +54,6 @@ PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateS
     return *this;
 }
 
-PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpec) {
-    if(useSpec) warnDeprecatedSpecTranslationUsage("PointCloudConfig::setTargetCoordinateSystem(CameraBoardSocket, bool)");
-    coordSystemType = CoordinateSystemType::CAMERA_SOCKET;
-    targetCameraSocket = targetCamera;
-    useSpecTranslation = useSpec;
-    return *this;
-}
-
-PointCloudConfig& PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpec) {
-    if(useSpec) warnDeprecatedSpecTranslationUsage("PointCloudConfig::setTargetCoordinateSystem(HousingCoordinateSystem, bool)");
-    coordSystemType = CoordinateSystemType::HOUSING;
-    targetHousingCS = housingCS;
-    useSpecTranslation = useSpec;
-    return *this;
-}
-
 PointCloudConfig::CoordinateSystemType PointCloudConfig::getCoordinateSystemType() const {
     return coordSystemType;
 }
@@ -106,11 +64,6 @@ CameraBoardSocket PointCloudConfig::getTargetCameraSocket() const {
 
 HousingCoordinateSystem PointCloudConfig::getTargetHousingCS() const {
     return targetHousingCS;
-}
-
-bool PointCloudConfig::getUseSpecTranslation() const {
-    warnDeprecatedStateAccess("PointCloudConfig::getUseSpecTranslation");
-    return useSpecTranslation;
 }
 
 }  // namespace dai

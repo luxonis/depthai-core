@@ -216,12 +216,6 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
              py::arg("to"),
              py::arg("sourceUnit") = LengthUnit::CENTIMETER,
              DOC(dai, ImgTransformation, getExtrinsicsTransformationMatrixTo))
-        .def("getExtrinsicsTransformationMatrixTo",
-             py::overload_cast<const ImgTransformation&, bool, LengthUnit>(&ImgTransformation::getExtrinsicsTransformationMatrixTo, py::const_),
-             py::arg("to"),
-             py::arg("useSpecTranslation"),
-             py::arg("sourceUnit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getExtrinsicsTransformationMatrixTo(to, sourceUnit) instead.")
         .def("isAlignedTo", &ImgTransformation::isAlignedTo, py::arg("to"), DOC(dai, ImgTransformation, isAlignedTo))
         .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid));
 

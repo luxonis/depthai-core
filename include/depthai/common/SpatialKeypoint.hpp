@@ -124,7 +124,7 @@ struct SpatialKeypointsList : KeypointsListT<SpatialKeypoint> {
     SpatialKeypointsList transformTo(const ImgTransformation& source, const ImgTransformation& target) const {
         SpatialKeypointsList transformed = *this;
 
-        const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, false, transformed.unit);
+        const auto transMatrix = source.getExtrinsicsTransformationMatrixTo(target, transformed.unit);
         float depthScale = getDistanceUnitScale(LengthUnit::MILLIMETER, transformed.unit);
         for(auto& kp : transformed.keypoints) {
             Point2f imgCoordinates2f{kp.imageCoordinates.x, kp.imageCoordinates.y};

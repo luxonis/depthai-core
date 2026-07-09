@@ -432,7 +432,7 @@ dai::Point2f ImgTransformation::projectPointTo(const ImgTransformation& to, dai:
     auto yMm = thisRay[1] * depth;
     dai::Point3f source3dPoint = {xMm, yMm, depth};
 
-    const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to, false, LengthUnit::MILLIMETER);
+    const auto extriniscTransformation = getExtrinsicsTransformationMatrixTo(to, LengthUnit::MILLIMETER);
     dai::Point3f target3dPoint = matrix::transformPoint3f(extriniscTransformation, source3dPoint);
     if(target3dPoint.z <= 0) {
         throw std::runtime_error(fmt::format("Projected point is behind the target camera socket. Cannot project to 2D. Target spatial point: ({}, {}, {})",
@@ -521,23 +521,13 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getRotationMatrixTo(const
 }
 
 std::array<float, 3> ImgTransformation::getTranslationVectorTo(const ImgTransformation& to, const LengthUnit sourceUnit) const {
-    return getTranslationVectorTo(to, false, sourceUnit);
-}
-
-std::array<float, 3> ImgTransformation::getTranslationVectorTo(const ImgTransformation& to, const bool useSpecTranslation, const LengthUnit sourceUnit) const {
-    const auto transform = getExtrinsicsTransformationMatrixTo(to, useSpecTranslation, sourceUnit);
+    const auto transform = getExtrinsicsTransformationMatrixTo(to, sourceUnit);
     return {transform[0][3], transform[1][3], transform[2][3]};
 }
 
 std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
                                                                                             const LengthUnit sourceUnit) const {
-    return getExtrinsicsTransformationMatrixTo(to, false, sourceUnit);
-}
-
-std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
-                                                                                           const bool useSpecTranslation,
-                                                                                           const LengthUnit sourceUnit) const {
-    return this->extrinsics.getExtrinsicsTransformationTo(to.getExtrinsics(), useSpecTranslation, sourceUnit);
+    return this->extrinsics.getExtrinsicsTransformationTo(to.getExtrinsics(), sourceUnit);
 }
 
 bool ImgTransformation::isAlignedTo(const ImgTransformation& to) const {

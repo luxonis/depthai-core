@@ -192,7 +192,7 @@ void Rectification::run() {
 
             auto R = calib.getCameraRotationMatrix(leftSocket, rightSocket);
             auto cv_R = vecToCvMat(3, 3, CV_32FC1, R);
-            auto T = calib.getCameraTranslationVector(leftSocket, rightSocket, false);
+            auto T = calib.getCameraTranslationVector(leftSocket, rightSocket);
             auto cv_T = vecToCvMat(1, 3, CV_32FC1, T);
 
             cv::Mat cv_R1, cv_R2;

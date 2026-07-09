@@ -212,10 +212,10 @@ std::vector<std::vector<float>> DclUtils::computeBaseToSocketTransform(const Cal
         if(*cameraBase == boardSocket) {
             return {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
         }
-        return currentCalibration.getCameraExtrinsics(*cameraBase, boardSocket, false, LengthUnit::METER);
+        return currentCalibration.getCameraExtrinsics(*cameraBase, boardSocket, LengthUnit::METER);
     }
 
-    auto socketToHousingTransform = currentCalibration.getHousingCalibration(boardSocket, HousingCoordinateSystem::AUTO, false, LengthUnit::METER);
+    auto socketToHousingTransform = currentCalibration.getHousingCalibration(boardSocket, HousingCoordinateSystem::AUTO, LengthUnit::METER);
     matrix::invertSe3Matrix4x4InPlace(socketToHousingTransform);
     return socketToHousingTransform;
 }
@@ -519,8 +519,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
                 const auto sensorIndexA = static_cast<std::size_t>(sensorAInChain - connectedSensorsBegin);
                 const auto sensorIndexB = static_cast<std::size_t>(sensorBInChain - connectedSensorsBegin);
                 const auto baselineLength =
-                    static_cast<double>(currentHandler.getBaselineDistance(sensorAInChain->socket, sensorBInChain->socket, true, LengthUnit::METER));
-                keptBaselineEdges.push_back({sensorIndexA, sensorIndexB, baselineLength});
+                    static_cast<double>(currentHandler.getBaselineDistance(sensorAInChain->socket, sensorBInChain->socket, LengthUnit::METER));
+                dcl::EdgeBaseline edgeBaseline;
+                edgeBaseline.edgeIndex1 = sensorIndexA;
+                edgeBaseline.edgeIndex2 = sensorIndexB;
+                edgeBaseline.baselineLength = baselineLength;
+                keptBaselineEdges.push_back(edgeBaseline);
             }
         }
     }

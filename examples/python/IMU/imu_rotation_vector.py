@@ -88,9 +88,7 @@ with dai.Pipeline() as pipeline:
 
     destinationSocket = resolveImuExtrinsicsDestination(eepromData)
     translation = [imuExtrinsics.translation.x, imuExtrinsics.translation.y, imuExtrinsics.translation.z]
-    specTranslation = [imuExtrinsics.specTranslation.x, imuExtrinsics.specTranslation.y, imuExtrinsics.specTranslation.z]
-
-    calibration.setImuExtrinsics(destinationSocket, yzSwapRotation, translation, specTranslation)
+    calibration.setImuExtrinsics(destinationSocket, yzSwapRotation, translation)
     device.setCalibration(calibration)
 
     pipeline.start()

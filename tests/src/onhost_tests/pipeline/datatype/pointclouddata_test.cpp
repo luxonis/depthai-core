@@ -247,7 +247,7 @@ TEST_CASE("PointCloudConfig serialization roundtrip", "[PointCloudConfig][Serial
     dai::PointCloudConfig cfg;
     cfg.setOrganized(true);
     cfg.setLengthUnit(dai::LengthUnit::METER);
-    cfg.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A, false);
+    cfg.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A);
     std::array<std::array<float, 4>, 4> mat = {{{0.5f, 0, 0, 1}, {0, 0.5f, 0, 2}, {0, 0, 0.5f, 3}, {0, 0, 0, 1}}};
     cfg.setTransformationMatrix(mat);
 
@@ -263,7 +263,6 @@ TEST_CASE("PointCloudConfig serialization roundtrip", "[PointCloudConfig][Serial
     REQUIRE(cfg2.getLengthUnit() == dai::LengthUnit::METER);
     REQUIRE(cfg2.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET);
     REQUIRE(cfg2.getTargetCameraSocket() == dai::CameraBoardSocket::CAM_A);
-    REQUIRE_FALSE(cfg2.getUseSpecTranslation());
     auto out = cfg2.getTransformationMatrix();
     for(int i = 0; i < 4; ++i)
         for(int j = 0; j < 4; ++j) REQUIRE(out[i][j] == Catch::Approx(mat[i][j]));
@@ -280,7 +279,7 @@ TEST_CASE("PointCloudProperties defaults and serialization", "[PointCloudPropert
     props.numFramesPool = 16;
     props.initialConfig.setOrganized(true);
     props.initialConfig.setLengthUnit(dai::LengthUnit::METER);
-    props.initialConfig.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A, false);
+    props.initialConfig.setTargetCoordinateSystem(dai::CameraBoardSocket::CAM_A);
     std::array<std::array<float, 4>, 4> mat = {{{0.f, -1.f, 0.f, 10.f}, {1.f, 0.f, 0.f, 20.f}, {0.f, 0.f, 1.f, 30.f}, {0.f, 0.f, 0.f, 1.f}}};
     props.initialConfig.setTransformationMatrix(mat);
 
@@ -292,8 +291,6 @@ TEST_CASE("PointCloudProperties defaults and serialization", "[PointCloudPropert
     REQUIRE(props2.initialConfig.getLengthUnit() == dai::LengthUnit::METER);
     REQUIRE(props2.initialConfig.getCoordinateSystemType() == dai::PointCloudConfig::CoordinateSystemType::CAMERA_SOCKET);
     REQUIRE(props2.initialConfig.getTargetCameraSocket() == dai::CameraBoardSocket::CAM_A);
-    REQUIRE_FALSE(props2.initialConfig.getUseSpecTranslation());
-
     auto out = props2.initialConfig.getTransformationMatrix();
     for(int i = 0; i < 4; ++i) {
         for(int j = 0; j < 4; ++j) {

@@ -95,13 +95,6 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("dstCamera"),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getCameraExtrinsics))
-        .def("getCameraExtrinsics",
-             py::overload_cast<CameraBoardSocket, CameraBoardSocket, bool, LengthUnit>(&CalibrationHandler::getCameraExtrinsics, py::const_),
-             py::arg("srcCamera"),
-             py::arg("dstCamera"),
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getCameraExtrinsics(srcCamera, dstCamera, unit) instead.")
 
         .def("getHousingCalibration",
              py::overload_cast<CameraBoardSocket, HousingCoordinateSystem, LengthUnit>(&CalibrationHandler::getHousingCalibration, py::const_),
@@ -109,13 +102,6 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("housingCS"),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getHousingCalibration))
-        .def("getHousingCalibration",
-             py::overload_cast<CameraBoardSocket, HousingCoordinateSystem, bool, LengthUnit>(&CalibrationHandler::getHousingCalibration, py::const_),
-             py::arg("srcCamera"),
-             py::arg("housingCS"),
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getHousingCalibration(srcCamera, housingCS, unit) instead.")
 
         .def("getCameraTranslationVector",
              py::overload_cast<CameraBoardSocket, CameraBoardSocket, LengthUnit>(&CalibrationHandler::getCameraTranslationVector, py::const_),
@@ -123,13 +109,6 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("dstCamera"),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getCameraTranslationVector))
-        .def("getCameraTranslationVector",
-             py::overload_cast<CameraBoardSocket, CameraBoardSocket, bool, LengthUnit>(&CalibrationHandler::getCameraTranslationVector, py::const_),
-             py::arg("srcCamera"),
-             py::arg("dstCamera"),
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getCameraTranslationVector(srcCamera, dstCamera, unit) instead.")
         .def("getCameraRotationMatrix",
              &CalibrationHandler::getCameraRotationMatrix,
              py::arg("srcCamera"),
@@ -141,36 +120,17 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("cam2") = dai::CameraBoardSocket::CAM_B,
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getBaselineDistance))
-        .def("getBaselineDistance",
-             py::overload_cast<dai::CameraBoardSocket, dai::CameraBoardSocket, bool, LengthUnit>(&CalibrationHandler::getBaselineDistance, py::const_),
-             py::arg("cam1") = dai::CameraBoardSocket::CAM_C,
-             py::arg("cam2") = dai::CameraBoardSocket::CAM_B,
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getBaselineDistance(cam1, cam2, unit) instead.")
 
         .def("getCameraToImuExtrinsics",
              py::overload_cast<CameraBoardSocket, LengthUnit>(&CalibrationHandler::getCameraToImuExtrinsics, py::const_),
              py::arg("cameraId"),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getCameraToImuExtrinsics))
-        .def("getCameraToImuExtrinsics",
-             py::overload_cast<CameraBoardSocket, bool, LengthUnit>(&CalibrationHandler::getCameraToImuExtrinsics, py::const_),
-             py::arg("cameraId"),
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getCameraToImuExtrinsics(cameraId, unit) instead.")
         .def("getImuToCameraExtrinsics",
              py::overload_cast<CameraBoardSocket, LengthUnit>(&CalibrationHandler::getImuToCameraExtrinsics, py::const_),
              py::arg("cameraId"),
              py::arg("unit") = LengthUnit::CENTIMETER,
              DOC(dai, CalibrationHandler, getImuToCameraExtrinsics))
-        .def("getImuToCameraExtrinsics",
-             py::overload_cast<CameraBoardSocket, bool, LengthUnit>(&CalibrationHandler::getImuToCameraExtrinsics, py::const_),
-             py::arg("cameraId"),
-             py::arg("useSpecTranslation"),
-             py::arg("unit") = LengthUnit::CENTIMETER,
-             "**Deprecated:** Use getImuToCameraExtrinsics(cameraId, unit) instead.")
 
         .def("getStereoRightRectificationRotation",
              &CalibrationHandler::getStereoRightRectificationRotation,
@@ -282,32 +242,12 @@ void CalibrationHandlerBindings::bind(pybind11::module& m, void* pCallstack) {
              py::arg("rotationMatrix"),
              py::arg("translation"),
              DOC(dai, CalibrationHandler, setCameraExtrinsics))
-        .def("setCameraExtrinsics",
-             py::overload_cast<CameraBoardSocket,
-                               CameraBoardSocket,
-                               const std::vector<std::vector<float>>&,
-                               const std::vector<float>&,
-                               const std::vector<float>&>(&CalibrationHandler::setCameraExtrinsics),
-             py::arg("srcCameraId"),
-             py::arg("destCameraId"),
-             py::arg("rotationMatrix"),
-             py::arg("translation"),
-             py::arg("specTranslation"),
-             "**Deprecated:** Use setCameraExtrinsics(srcCameraId, destCameraId, rotationMatrix, translation) instead.")
         .def("setImuExtrinsics",
              py::overload_cast<CameraBoardSocket, const std::vector<std::vector<float>>&, const std::vector<float>&>(&CalibrationHandler::setImuExtrinsics),
              py::arg("destCameraId"),
              py::arg("rotationMatrix"),
              py::arg("translation"),
              DOC(dai, CalibrationHandler, setImuExtrinsics))
-        .def("setImuExtrinsics",
-             py::overload_cast<CameraBoardSocket, const std::vector<std::vector<float>>&, const std::vector<float>&, const std::vector<float>&>(
-                 &CalibrationHandler::setImuExtrinsics),
-             py::arg("destCameraId"),
-             py::arg("rotationMatrix"),
-             py::arg("translation"),
-             py::arg("specTranslation"),
-             "**Deprecated:** Use setImuExtrinsics(destCameraId, rotationMatrix, translation) instead.")
 
         .def(
             "setStereoLeft", &CalibrationHandler::setStereoLeft, py::arg("cameraId"), py::arg("rectifiedRotation"), DOC(dai, CalibrationHandler, setStereoLeft))
