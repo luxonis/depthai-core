@@ -64,6 +64,22 @@ struct Extrinsics {
 
     /**
      * Get the Camera Extrinsics object to the toCameraSocket.
+     * @param unit Units of the returned translation vector
+     * @return 4x4 homogeneous transformation matrix
+     *
+     * The returned matrix has the following layout:
+     * ```
+     * [ r00 r01 r02 Tx ]
+     * [ r10 r11 r12 Ty ]
+     * [ r20 r21 r22 Tz ]
+     * [  0   0   0  1 ]
+     * ```
+     * @note The full transformation matrix can only be obtained if both the rotation matrix and the translation vector are set.
+     */
+    std::array<std::array<float, 4>, 4> getTransformationMatrix(LengthUnit unit = LengthUnit::CENTIMETER) const;
+
+    /**
+     * Get the Camera Extrinsics object to the toCameraSocket.
      * @param useSpecTranslation Set to true to force using spec translation
      * @param unit Units of the returned translation vector
      * @return 4x4 homogeneous transformation matrix
@@ -77,7 +93,15 @@ struct Extrinsics {
      * ```
      * @note The full transformation matrix can only be obtained if both the rotation matrix and the translation vector are set.
      */
-    std::array<std::array<float, 4>, 4> getTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getTransformationMatrix(unit) instead")]] std::array<std::array<float, 4>, 4> getTransformationMatrix(
+        bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
+
+    /**
+     * Get the inverse of the extrinsic transformation matrix which is equal to the transformation from the toCameraSocket to the current camera socket.
+     * @param unit Units of the returned translation vector
+     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
+     */
+    std::array<std::array<float, 4>, 4> getInverseTransformationMatrix(LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the inverse of the extrinsic transformation matrix which is equal to the transformation from the toCameraSocket to the current camera socket.
@@ -85,7 +109,8 @@ struct Extrinsics {
      * @param unit Units of the returned translation vector
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
-    std::array<std::array<float, 4>, 4> getInverseTransformationMatrix(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getInverseTransformationMatrix(unit) instead")]] std::array<std::array<float, 4>, 4> getInverseTransformationMatrix(
+        bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Set the extrinsic transformation matrix.
@@ -121,16 +146,32 @@ struct Extrinsics {
      * Set the translation vector
      * @param translationVector The translation vector to set
      * @param unit Units of the provided translation vector
+     */
+    void setTranslationVector(const dai::Point3f& translationVector, LengthUnit unit = LengthUnit::CENTIMETER);
+
+    /**
+     * Set the translation vector
+     * @param translationVector The translation vector to set
+     * @param unit Units of the provided translation vector
      * @param useSpecTranslation Set to true to force setting spec translation
      */
-    void setTranslationVector(const dai::Point3f& translationVector, LengthUnit unit = LengthUnit::CENTIMETER, bool useSpecTranslation = false);
+    [[deprecated("Use setTranslationVector(translation, unit) instead")]] void setTranslationVector(
+        const dai::Point3f& translationVector, LengthUnit unit, bool useSpecTranslation);
 
     /**
      * Get the translation vector
      * @param unit Units of the returned translation vector
      * @return translation vector in specified units
      */
-    std::vector<float> getTranslationVector(bool useSpecTranslation = false, LengthUnit unit = LengthUnit::CENTIMETER) const;
+    std::vector<float> getTranslationVector(LengthUnit unit = LengthUnit::CENTIMETER) const;
+
+    /**
+     * Get the translation vector
+     * @param unit Units of the returned translation vector
+     * @return translation vector in specified units
+     */
+    [[deprecated("Use getTranslationVector(unit) instead")]] std::vector<float> getTranslationVector(bool useSpecTranslation,
+                                                                                                      LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Two Extrinsics objects are equal if their rotation matrices and translation vectors are equal (within a small epsilon).
@@ -143,13 +184,20 @@ struct Extrinsics {
     /**
      * Get the extrinsic transformation matrix from this Extrinsics to the target Extrinsics.
      * @param to The target Extrinsics to get the transformation matrix to
+     * @param sourceUnit Units of the translation vector in the source Extrinsics (this).
+     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
+     */
+    std::array<std::array<float, 4>, 4> getExtrinsicsTransformationTo(const Extrinsics& to, LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+
+    /**
+     * Get the extrinsic transformation matrix from this Extrinsics to the target Extrinsics.
+     * @param to The target Extrinsics to get the transformation matrix to
      * @param useSpecTranslation Set to true to force using spec translation
      * @param sourceUnit Units of the translation vector in the source Extrinsics (this). Only relevant if useSpecTranslation is false.
      * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      */
-    std::array<std::array<float, 4>, 4> getExtrinsicsTransformationTo(const Extrinsics& to,
-                                                                      bool useSpecTranslation = false,
-                                                                      LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getExtrinsicsTransformationTo(to, unit) instead")]] std::array<std::array<float, 4>, 4> getExtrinsicsTransformationTo(
+        const Extrinsics& to, bool useSpecTranslation, LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
     DEPTHAI_SERIALIZE_OPTIONAL(Extrinsics, rotationMatrix, translation, specTranslation, toCameraSocket, lengthUnit);
 };

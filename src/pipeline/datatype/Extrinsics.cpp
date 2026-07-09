@@ -4,11 +4,27 @@
 #include <cmath>
 #include <cstring>
 #include <depthai/utility/matrixOps.hpp>
+#include <mutex>
+#include <spdlog/spdlog.h>
+#include <unordered_set>
 #include <vector>
 
 #include "depthai/common/Point3f.hpp"
 
 namespace dai {
+
+namespace {
+
+void warnDeprecatedSpecTranslationUsage(const char* apiName) {
+    static std::mutex mutex;
+    static std::unordered_set<std::string> warnedApis;
+    std::lock_guard<std::mutex> lock(mutex);
+    if(warnedApis.insert(apiName).second) {
+        spdlog::warn("{} with useSpecTranslation=true is deprecated and will be removed in depthai 3.11. Use calibrated translation instead.", apiName);
+    }
+}
+
+}  // namespace
 
 Extrinsics::Extrinsics(std::vector<std::vector<float>> rotationMatrix, Point3f translation, CameraBoardSocket toCameraSocket, LengthUnit lengthUnit)
     : translation(translation), toCameraSocket(toCameraSocket), lengthUnit(lengthUnit) {
@@ -41,7 +57,12 @@ std::vector<std::vector<float>> Extrinsics::getInverseRotationMatrix() const {
     return matrix::matrix3x3ToVectorMatrix(inv);
 }
 
+std::array<std::array<float, 4>, 4> Extrinsics::getTransformationMatrix(LengthUnit unit) const {
+    return getTransformationMatrix(false, unit);
+}
+
 std::array<std::array<float, 4>, 4> Extrinsics::getTransformationMatrix(bool useSpecTranslation, LengthUnit unit) const {
+    if(useSpecTranslation) warnDeprecatedSpecTranslationUsage("Extrinsics::getTransformationMatrix");
     if(!validRotationMatrix()) {
         throw std::runtime_error(
             "The full extrinsics transformation matrix can only be obtained if both the rotation matrix and the translation vector are properly set. Please "
@@ -50,7 +71,12 @@ std::array<std::array<float, 4>, 4> Extrinsics::getTransformationMatrix(bool use
     return matrix::createTransformationMatrix(getRotationMatrix(), getTranslationInUnit(useSpecTranslation, unit));
 }
 
+std::array<std::array<float, 4>, 4> Extrinsics::getInverseTransformationMatrix(LengthUnit unit) const {
+    return getInverseTransformationMatrix(false, unit);
+}
+
 std::array<std::array<float, 4>, 4> Extrinsics::getInverseTransformationMatrix(bool useSpecTranslation, LengthUnit unit) const {
+    if(useSpecTranslation) warnDeprecatedSpecTranslationUsage("Extrinsics::getInverseTransformationMatrix");
     auto transformMatrix = getTransformationMatrix(useSpecTranslation, unit);
     return matrix::invertSe3Matrix4x4(transformMatrix);
 }
@@ -83,7 +109,13 @@ void Extrinsics::setTransformationMatrix(const std::array<std::array<float, 4>, 
     lengthUnit = unit;
 }
 
+void Extrinsics::setTranslationVector(const dai::Point3f& translationVector, LengthUnit unit) {
+    translation = translationVector;
+    lengthUnit = unit;
+}
+
 void Extrinsics::setTranslationVector(const dai::Point3f& translationVector, LengthUnit unit, bool useSpecTranslation) {
+    if(useSpecTranslation) warnDeprecatedSpecTranslationUsage("Extrinsics::setTranslationVector");
     if(useSpecTranslation) {
         specTranslation = translationVector;
     } else {
@@ -92,7 +124,12 @@ void Extrinsics::setTranslationVector(const dai::Point3f& translationVector, Len
     lengthUnit = unit;
 }
 
+std::vector<float> Extrinsics::getTranslationVector(LengthUnit unit) const {
+    return getTranslationVector(false, unit);
+}
+
 std::vector<float> Extrinsics::getTranslationVector(bool useSpecTranslation, LengthUnit unit) const {
+    if(useSpecTranslation) warnDeprecatedSpecTranslationUsage("Extrinsics::getTranslationVector");
     std::vector<float> translationVector = {0, 0, 0};
     Point3f translationToUse = getTranslationInUnit(useSpecTranslation, unit);
     translationVector[0] = translationToUse.x;
@@ -121,9 +158,14 @@ bool Extrinsics::isEqualExtrinsics(const Extrinsics& other, float epsilon) const
     return true;
 }
 
+std::array<std::array<float, 4>, 4> Extrinsics::getExtrinsicsTransformationTo(const Extrinsics& to, const LengthUnit sourceUnit) const {
+    return getExtrinsicsTransformationTo(to, false, sourceUnit);
+}
+
 std::array<std::array<float, 4>, 4> Extrinsics::getExtrinsicsTransformationTo(const Extrinsics& to,
                                                                               const bool useSpecTranslation,
                                                                               const LengthUnit sourceUnit) const {
+    if(useSpecTranslation) warnDeprecatedSpecTranslationUsage("Extrinsics::getExtrinsicsTransformationTo");
     if(this->toCameraSocket == dai::CameraBoardSocket::AUTO || to.toCameraSocket == dai::CameraBoardSocket::AUTO) {
         throw std::runtime_error(
             "Cannot get extrinsics transformation to or from an extrinsics with AUTO camera socket. Please specify the camera socket for both extrinsics.");

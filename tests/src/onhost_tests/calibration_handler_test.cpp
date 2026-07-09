@@ -935,7 +935,7 @@ TEST_CASE("EEPROM data default set fields are present", "[getEepromData]") {
     REQUIRE(eeprom.batchTime == 0);
     REQUIRE(eeprom.boardOptions == 0);
     REQUIRE(eeprom.stereoEnableDistortionCorrection == false);
-    REQUIRE(eeprom.stereoUseSpecTranslation == true);
+    REQUIRE(eeprom.stereoUseSpecTranslation == false);
 }
 
 TEST_CASE("EEPROM data round-trip preserves basic fields", "[getEepromData]") {

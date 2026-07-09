@@ -267,8 +267,9 @@ class CalibrationHandler {
      */
     std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera,
                                                         CameraBoardSocket dstCamera,
-                                                        bool useSpecTranslation = false,
                                                         LengthUnit unit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getCameraExtrinsics(srcCamera, dstCamera, unit) instead")]] std::vector<std::vector<float>> getCameraExtrinsics(
+        CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the transformation matrix between a camera and a chosen housing
@@ -304,8 +305,9 @@ class CalibrationHandler {
      */
     std::vector<std::vector<float>> getHousingCalibration(CameraBoardSocket srcCamera,
                                                           const HousingCoordinateSystem housingCS,
-                                                          bool useSpecTranslation = false,
                                                           LengthUnit unit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getHousingCalibration(srcCamera, housingCS, unit) instead")]] std::vector<std::vector<float>> getHousingCalibration(
+        CameraBoardSocket srcCamera, const HousingCoordinateSystem housingCS, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Camera translation vector between two cameras from the calibration data.
@@ -318,8 +320,9 @@ class CalibrationHandler {
      */
     std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera,
                                                   CameraBoardSocket dstCamera,
-                                                  bool useSpecTranslation = true,
                                                   LengthUnit unit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getCameraTranslationVector(srcCamera, dstCamera, unit) instead")]] std::vector<float> getCameraTranslationVector(
+        CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Camera rotation matrix between two cameras from the calibration data.
@@ -348,8 +351,11 @@ class CalibrationHandler {
      */
     float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::CAM_C,
                               CameraBoardSocket cam2 = CameraBoardSocket::CAM_B,
-                              bool useSpecTranslation = true,
                               LengthUnit unit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getBaselineDistance(cam1, cam2, unit) instead")]] float getBaselineDistance(CameraBoardSocket cam1,
+                                                                                                   CameraBoardSocket cam2,
+                                                                                                   bool useSpecTranslation,
+                                                                                                   LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Camera To Imu Extrinsics object
@@ -370,9 +376,9 @@ class CalibrationHandler {
      *                                            \end{matrix} \right ] \f]
      *
      */
-    std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId,
-                                                             bool useSpecTranslation = false,
-                                                             LengthUnit unit = LengthUnit::CENTIMETER) const;
+    std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, LengthUnit unit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getCameraToImuExtrinsics(cameraId, unit) instead")]] std::vector<std::vector<float>> getCameraToImuExtrinsics(
+        CameraBoardSocket cameraId, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the Imu To Camera Extrinsics object from the data loaded if there is a linked connection
@@ -393,9 +399,9 @@ class CalibrationHandler {
      *                                            \end{matrix} \right ] \f]
      *
      */
-    std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId,
-                                                             bool useSpecTranslation = false,
-                                                             LengthUnit unit = LengthUnit::CENTIMETER) const;
+    std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, LengthUnit unit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getImuToCameraExtrinsics(cameraId, unit) instead")]] std::vector<std::vector<float>> getImuToCameraExtrinsics(
+        CameraBoardSocket cameraId, bool useSpecTranslation, LengthUnit unit = LengthUnit::CENTIMETER) const;
 
     /**
      *
@@ -649,8 +655,13 @@ class CalibrationHandler {
     void setCameraExtrinsics(CameraBoardSocket srcCameraId,
                              CameraBoardSocket destCameraId,
                              const std::vector<std::vector<float>>& rotationMatrix,
-                             const std::vector<float>& translation,
-                             const std::vector<float>& specTranslation = {0, 0, 0});
+                             const std::vector<float>& translation);
+    [[deprecated("Use setCameraExtrinsics(srcCameraId, destCameraId, rotationMatrix, translation) instead")]] void setCameraExtrinsics(
+        CameraBoardSocket srcCameraId,
+        CameraBoardSocket destCameraId,
+        const std::vector<std::vector<float>>& rotationMatrix,
+        const std::vector<float>& translation,
+        const std::vector<float>& specTranslation);
 
     /**
      * Overwrite the Camera Extrinsics object where the link already exists
@@ -679,8 +690,12 @@ class CalibrationHandler {
 
     void setImuExtrinsics(CameraBoardSocket destCameraId,
                           const std::vector<std::vector<float>>& rotationMatrix,
-                          const std::vector<float>& translation,
-                          const std::vector<float>& specTranslation = {0, 0, 0});
+                          const std::vector<float>& translation);
+    [[deprecated("Use setImuExtrinsics(destCameraId, rotationMatrix, translation) instead")]] void setImuExtrinsics(
+        CameraBoardSocket destCameraId,
+        const std::vector<std::vector<float>>& rotationMatrix,
+        const std::vector<float>& translation,
+        const std::vector<float>& specTranslation);
 
     /**
      * Set the Stereo Left Rectification object

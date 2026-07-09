@@ -520,9 +520,18 @@ std::array<std::array<float, 3>, 3> ImgTransformation::getRotationMatrixTo(const
     return rotation;
 }
 
+std::array<float, 3> ImgTransformation::getTranslationVectorTo(const ImgTransformation& to, const LengthUnit sourceUnit) const {
+    return getTranslationVectorTo(to, false, sourceUnit);
+}
+
 std::array<float, 3> ImgTransformation::getTranslationVectorTo(const ImgTransformation& to, const bool useSpecTranslation, const LengthUnit sourceUnit) const {
     const auto transform = getExtrinsicsTransformationMatrixTo(to, useSpecTranslation, sourceUnit);
     return {transform[0][3], transform[1][3], transform[2][3]};
+}
+
+std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
+                                                                                            const LengthUnit sourceUnit) const {
+    return getExtrinsicsTransformationMatrixTo(to, false, sourceUnit);
 }
 
 std::array<std::array<float, 4>, 4> ImgTransformation::getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,

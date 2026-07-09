@@ -459,8 +459,7 @@ TEST_CASE("DynamicCalibration: Recalibration on synthetic data.") {
 
     auto calibrationHandler = getHandler();
     device->setCalibration(calibrationHandler);
-    // Compare calibrated extrinsics. The default getter uses spec translations,
-    // which are a different quantity than the DCL/base-frame cvecs.
+    // Compare calibrated extrinsics. The default getter uses calibrated translations.
     auto cvecBaseToLeftBefore = calibrationHandler.getCameraTranslationVector(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_A, false);
     auto cvecBaseToRightBefore = calibrationHandler.getCameraTranslationVector(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_A, false);
 

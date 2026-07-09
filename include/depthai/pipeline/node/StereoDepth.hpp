@@ -352,20 +352,20 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * Use baseline information for disparity to depth conversion from specs (design data) or from calibration.
      * Default: true
      */
-    void setDisparityToDepthUseSpecTranslation(bool specTranslation);
+    [[deprecated("Use calibrated translation defaults instead")]] void setDisparityToDepthUseSpecTranslation(bool specTranslation);
 
     /**
      * Obtain rectification matrices using spec translation (design data) or from calibration in calculations.
      * Should be used only for debugging.
      * Default: false
      */
-    void setRectificationUseSpecTranslation(bool specTranslation);
+    [[deprecated("Use calibrated translation defaults instead")]] void setRectificationUseSpecTranslation(bool specTranslation);
 
     /**
      * Use baseline information for depth alignment from specs (design data) or from calibration.
      * Default: true
      */
-    void setDepthAlignmentUseSpecTranslation(bool specTranslation);
+    [[deprecated("Use calibrated translation defaults instead")]] void setDepthAlignmentUseSpecTranslation(bool specTranslation);
 
     /**
      * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)

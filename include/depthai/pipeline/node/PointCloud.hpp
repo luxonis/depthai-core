@@ -217,12 +217,14 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     /**
      * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
      */
-    void setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation);
+    [[deprecated("Use setTargetCoordinateSystem(targetCamera) instead")]] void setTargetCoordinateSystem(CameraBoardSocket targetCamera,
+                                                                                                         bool useSpecTranslation);
 
     /**
      * Deprecated: use setTargetCoordinateSystem(housingCS) instead.
      */
-    void setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation);
+    [[deprecated("Use setTargetCoordinateSystem(housingCS) instead")]] void setTargetCoordinateSystem(HousingCoordinateSystem housingCS,
+                                                                                                      bool useSpecTranslation);
 
     bool runOnHost() const override;
 

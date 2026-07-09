@@ -138,7 +138,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
         configPath = path;
     }
     void setConfig(const VioConfig& config);
-    void setUseSpecTranslation(bool use) {
+    [[deprecated("Use calibrated translation defaults instead")]] void setUseSpecTranslation(bool use) {
         useSpecTranslation = use;
     }
     void setLocalTransform(const std::shared_ptr<TransformData>& transform);
@@ -167,7 +167,7 @@ class BasaltVIO : public NodeCRTP<ThreadedHostNode, BasaltVIO> {
     std::string configPath = "";
     int imuUpdateRate = 200;
     int threadNum = 1;
-    bool useSpecTranslation = true;
+    bool useSpecTranslation = false;
     std::optional<std::shared_ptr<TransformData>> imuExtrinsics;
     std::optional<std::vector<double>> accelBias;
     std::optional<std::vector<double>> accelNoiseStd;

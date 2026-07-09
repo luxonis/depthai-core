@@ -574,7 +574,7 @@ void PointCloud::setCoordinateTransformation(const ImgFrame& depthFrame, const P
 
         case PointCloudConfig::CoordinateSystemType::HOUSING: {
             pimpl->logger->info("Using HOUSING transformation to housing {}, via ref camera {}", static_cast<int>(targetHousingCS), toString(refCamera));
-            auto T_ref_to_housing = calibHandler.getHousingCalibration(refCamera, targetHousingCS, true, unit);
+            auto T_ref_to_housing = calibHandler.getHousingCalibration(refCamera, targetHousingCS, useSpecTranslation, unit);
             T_final = matrix::matMul(T_ref_to_housing, T_frame_to_ref);
             targetExtrinsics_ = Extrinsics(T_ref_to_housing, CameraBoardSocket::AUTO, unit);
             break;

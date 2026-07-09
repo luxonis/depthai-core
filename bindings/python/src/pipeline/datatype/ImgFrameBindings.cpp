@@ -212,11 +212,16 @@ void bind_imgframe(pybind11::module& m, void* pCallstack) {
         .def("remap3DPointTo", &ImgTransformation::remap3DPointTo, py::arg("to"), py::arg("point"), DOC(dai, ImgTransformation, remap3DPointTo))
         .def("remap3DPointFrom", &ImgTransformation::remap3DPointFrom, py::arg("from"), py::arg("point"), DOC(dai, ImgTransformation, remap3DPointFrom))
         .def("getExtrinsicsTransformationMatrixTo",
-             &ImgTransformation::getExtrinsicsTransformationMatrixTo,
+             py::overload_cast<const ImgTransformation&, LengthUnit>(&ImgTransformation::getExtrinsicsTransformationMatrixTo, py::const_),
              py::arg("to"),
-             py::arg("useSpecTranslation") = false,
              py::arg("sourceUnit") = LengthUnit::CENTIMETER,
              DOC(dai, ImgTransformation, getExtrinsicsTransformationMatrixTo))
+        .def("getExtrinsicsTransformationMatrixTo",
+             py::overload_cast<const ImgTransformation&, bool, LengthUnit>(&ImgTransformation::getExtrinsicsTransformationMatrixTo, py::const_),
+             py::arg("to"),
+             py::arg("useSpecTranslation"),
+             py::arg("sourceUnit") = LengthUnit::CENTIMETER,
+             "**Deprecated:** Use getExtrinsicsTransformationMatrixTo(to, sourceUnit) instead.")
         .def("isAlignedTo", &ImgTransformation::isAlignedTo, py::arg("to"), DOC(dai, ImgTransformation, isAlignedTo))
         .def("isValid", &ImgTransformation::isValid, DOC(dai, ImgTransformation, isValid));
 

@@ -353,15 +353,25 @@ struct ImgTransformation {
      * Get the extrinsic transformation matrix from the source coordinate system of this transformation to the target coordinate system of the to
      * transformation.
      * @param to Target transformation to get extrinsics to
+     * @param sourceUnit The desired measurement unit in which to return the transformation matrix in.
+     * @return 4x4 homogeneous transformation matrix representing the extrinsics from this transformation to the target transformation
+     * @note Both transformations must have a common toCameraSocket. Otherwise extrinsics cannot be calculated.
+     */
+    std::array<std::array<float, 4>, 4> getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
+                                                                            LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+
+    /**
+     * Get the extrinsic transformation matrix from the source coordinate system of this transformation to the target coordinate system of the to
+     * transformation.
+     * @param to Target transformation to get extrinsics to
      * @param useSpecTranslation If true, the translation vector w.r.t. the CAD design will be used instead of the translation vector obtained through
      * calibration.
      * @param sourceUnit The desired measurement unit in which to return the transformation matrix in.
      * @return 4x4 homogeneous transformation matrix representing the extrinsics from this transformation to the target transformation
      * @note Both transformations must have a common toCameraSocket. Otherwise extrinsics cannot be calculated.
      */
-    std::array<std::array<float, 4>, 4> getExtrinsicsTransformationMatrixTo(const ImgTransformation& to,
-                                                                            bool useSpecTranslation = false,
-                                                                            LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+    [[deprecated("Use getExtrinsicsTransformationMatrixTo(to, unit) instead")]] std::array<std::array<float, 4>, 4> getExtrinsicsTransformationMatrixTo(
+        const ImgTransformation& to, bool useSpecTranslation, LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
 
     /**
      * Get the extrinsic rotation matrix from the source coordinate system of this transformation to the target coordinate system of the to transformation.
@@ -375,9 +385,17 @@ struct ImgTransformation {
      * @param to Transformation to get extrinsics to
      * @return 3x1 translation vector representing the extrinsic translation from this transformation to the target transformation
      */
-    std::array<float, 3> getTranslationVectorTo(const ImgTransformation& to,
-                                                bool useSpecTranslation = false,
-                                                LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+    std::array<float, 3> getTranslationVectorTo(const ImgTransformation& to, LengthUnit sourceUnit = LengthUnit::CENTIMETER) const;
+
+    /**
+     * Get the extrinsic translation vector from the source coordinate system of this transformation to the target coordinate system of the to transformation.
+     * @param to Transformation to get extrinsics to
+     * @return 3x1 translation vector representing the extrinsic translation from this transformation to the target transformation
+     */
+    [[deprecated("Use getTranslationVectorTo(to, unit) instead")]] std::array<float, 3> getTranslationVectorTo(const ImgTransformation& to,
+                                                                                                                 bool useSpecTranslation,
+                                                                                                                 LengthUnit sourceUnit
+                                                                                                                 = LengthUnit::CENTIMETER) const;
 
     /**
      * Check if the transformations are aligned

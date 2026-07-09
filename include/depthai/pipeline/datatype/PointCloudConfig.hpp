@@ -93,12 +93,14 @@ class PointCloudConfig : public Buffer {
     /**
      * Deprecated: use setTargetCoordinateSystem(targetCamera) instead.
      */
-    PointCloudConfig& setTargetCoordinateSystem(CameraBoardSocket targetCamera, bool useSpecTranslation);
+    [[deprecated("Use setTargetCoordinateSystem(targetCamera) instead")]] PointCloudConfig& setTargetCoordinateSystem(CameraBoardSocket targetCamera,
+                                                                                                                      bool useSpecTranslation);
 
     /**
      * Deprecated: use setTargetCoordinateSystem(housingCS) instead.
      */
-    PointCloudConfig& setTargetCoordinateSystem(HousingCoordinateSystem housingCS, bool useSpecTranslation);
+    [[deprecated("Use setTargetCoordinateSystem(housingCS) instead")]] PointCloudConfig& setTargetCoordinateSystem(HousingCoordinateSystem housingCS,
+                                                                                                                   bool useSpecTranslation);
 
     /**
      * Retrieve the coordinate system type.
@@ -118,7 +120,7 @@ class PointCloudConfig : public Buffer {
     /**
      * Retrieve whether spec translation is used.
      */
-    bool getUseSpecTranslation() const;
+    [[deprecated("No replacement. Spec translation mode will be removed in 3.11")]] bool getUseSpecTranslation() const;
 
     DatatypeEnum getDatatype() const override {
         return DatatypeEnum::PointCloudConfig;
