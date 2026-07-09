@@ -1,6 +1,7 @@
 #include "Common.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/node/ToF.hpp"
+#include "depthai/utility/CompilerWarnings.hpp"
 
 void bind_tof(pybind11::module& m, void* pCallstack) {
     using namespace dai;
@@ -40,14 +41,46 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_readonly("raw", &ToFBase::raw, DOC(dai, node, ToFBase, raw), DOC(dai, node, ToFBase, raw))
         .def_readonly("initialConfig", &ToFBase::initialConfig, DOC(dai, node, ToFBase, initialConfig), DOC(dai, node, ToFBase, initialConfig))
         .def("build",
-             &ToFBase::build,
+             py::overload_cast<CameraBoardSocket, ToFConfig::Profile, std::optional<float>>(&ToFBase::build),
              "boardSocket"_a = CameraBoardSocket::AUTO,
-             "presetMode"_a = ImageFiltersPresetMode::TOF_MID_RANGE,
+             "profile"_a = ToFConfig::Profile::MID_RANGE,
              "fps"_a = std::nullopt,
              DOC(dai, node, ToFBase, build))
         .def("getBoardSocket", &ToFBase::getBoardSocket, DOC(dai, node, ToFBase, getBoardSocket));
 
     // ToF Node (DeviceNodeGroup)
+    DEPTHAI_BEGIN_SUPPRESS_DEPRECATION_WARNING
+    tof.def_property_readonly(
+           "tofBaseNode", [](const ToF& self) -> const dai::node::ToFBase& { return self.tofBaseNode; }, DOC(dai, node, ToF, tofBaseNode))
+        .def_static("create", &ToF::create, "device"_a, DOC(dai, node, ToF, create))
+        .def("build",
+             py::overload_cast<CameraBoardSocket, ImageFiltersPresetMode, std::optional<float>>(&ToF::build),
+             "boardSocket"_a = CameraBoardSocket::AUTO,
+             "presetMode"_a = ImageFiltersPresetMode::TOF_MID_RANGE,
+             "fps"_a = std::nullopt,
+             DOC(dai, node, ToF, build))
+        .def("build",
+             py::overload_cast<CameraBoardSocket, ToFConfig::Profile, std::optional<float>>(&ToF::build),
+             "boardSocket"_a = CameraBoardSocket::AUTO,
+             "profile"_a = ToFConfig::Profile::MID_RANGE,
+             "fps"_a = std::nullopt)
+        .def("getInitialConfig", [&](const ToF& self) { return *self.tofBaseNode.initialConfig; })
+        .def("setInitialConfig", [&](ToF& self, ToFConfig& config) { self.tofBaseNode.initialConfig = std::make_shared<ToFConfig>(config); });
+    DEPTHAI_END_SUPPRESS_DEPRECATION_WARNING
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    tof.def_property_readonly(
+        "imageFiltersNode",
+        [](const ToF& self) -> const dai::node::ImageFilters& {
+            if(self.imageFiltersNode == nullptr) {
+                throw std::runtime_error("imageFiltersNode is not available on this platform");
+            }
+            return *self.imageFiltersNode;
+        },
+        DOC(dai, node, ToF, imageFiltersNode));
+#endif
+
+#ifndef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
     tof.def_property_readonly(
            "rawDepth", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.rawDepth; }, DOC(dai, node, ToF, rawDepth))
         .def_property_readonly(
@@ -59,28 +92,25 @@ void bind_tof(pybind11::module& m, void* pCallstack) {
         .def_property_readonly(
             "phase", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.phase; }, DOC(dai, node, ToF, phase))
         .def_property_readonly(
+            "confidence", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.confidence; }, DOC(dai, node, ToF, confidence))
+        .def_property_readonly(
             "raw", [](const ToF& self) -> const dai::DeviceNode::Output& { return self.raw; }, DOC(dai, node, ToF, raw))
         .def_property_readonly(
             "tofBaseInputConfig",
             [](const ToF& self) -> const dai::DeviceNode::Input& { return self.tofBaseInputConfig; },
-            DOC(dai, node, ToF, tofBaseInputConfig))
-        .def_property_readonly(
-            "imageFiltersInputConfig",
-            [](const ToF& self) -> const dai::DeviceNode::Input& { return self.imageFiltersInputConfig; },
-            DOC(dai, node, ToF, imageFiltersInputConfig))
-        .def_property_readonly(
-            "tofBaseNode", [](const ToF& self) -> const dai::node::ToFBase& { return self.tofBaseNode; }, DOC(dai, node, ToF, tofBaseNode))
-        .def_property_readonly(
-            "imageFiltersNode", [](const ToF& self) -> const dai::node::ImageFilters& { return self.imageFiltersNode; }, DOC(dai, node, ToF, imageFiltersNode))
-        .def_static("create", &ToF::create, "device"_a, DOC(dai, node, ToF, create))
-        .def("build",
-             &ToF::build,
-             "boardSocket"_a = CameraBoardSocket::AUTO,
-             "presetMode"_a = ImageFiltersPresetMode::TOF_MID_RANGE,
-             "fps"_a = std::nullopt,
-             DOC(dai, node, ToF, build))
-        .def("getInitialConfig", [&](const ToF& self) { return *self.tofBaseNode.initialConfig; })
-        .def("setInitialConfig", [&](ToF& self, ToFConfig& config) { self.tofBaseNode.initialConfig = std::make_shared<ToFConfig>(config); });
+            DOC(dai, node, ToF, tofBaseInputConfig));
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    tof.def_property_readonly(
+        "imageFiltersInputConfig",
+        [](const ToF& self) -> const dai::DeviceNode::Input& {
+            if(self.imageFiltersInputConfig == nullptr) {
+                throw std::runtime_error("imageFiltersInputConfig is not available on this platform");
+            }
+            return *self.imageFiltersInputConfig;
+        },
+        DOC(dai, node, ToF, imageFiltersInputConfig));
+    #endif
+#endif
 
     // ALIAS
     daiNodeModule.attr("ToFBase").attr("Properties") = tofProperties;

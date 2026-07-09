@@ -127,7 +127,8 @@ int main() {
     align->setRunOnHost(true);
 
     camRgb->build(RGB_SOCKET);
-    tof->build(TOF_SOCKET);
+    const auto profile = dai::ToFConfig::Profile::MID_RANGE;
+    tof->build(TOF_SOCKET, profile, FPS);
 
     // Set sync threshold
     sync->setSyncThreshold(std::chrono::milliseconds(static_cast<uint32_t>(500 / FPS)));
