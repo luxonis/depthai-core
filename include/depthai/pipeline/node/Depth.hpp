@@ -12,6 +12,7 @@
 #include "depthai/pipeline/DeviceNodeGroup.hpp"
 #include "depthai/pipeline/Subnode.hpp"
 #include "depthai/pipeline/node/Camera.hpp"
+#include "depthai/pipeline/node/FocusedDepth.hpp"
 #include "depthai/pipeline/node/GPUStereo.hpp"
 #include "depthai/pipeline/node/ImageAlign.hpp"
 #include "depthai/pipeline/node/NeuralAssistedStereo.hpp"
@@ -129,6 +130,8 @@ class Depth : public DeviceNodeGroup {
      */
     Node::Output& confidence();
 
+
+
     /**
      * Align depth output to another image source.
      * Must be called before first depth() or confidence() access.
@@ -183,6 +186,8 @@ class Depth : public DeviceNodeGroup {
     void buildInternal() override;
 
    private:
+    std::unique_ptr<::dai::Subnode<FocusedDepth>> focusedBackend_;
+
     friend struct DepthTestAccess;
 
     struct Selection {
@@ -218,6 +223,8 @@ class Depth : public DeviceNodeGroup {
 
     void wireAlignment(Algorithm active, const std::shared_ptr<Device>& device);
 
+    void buildFocusedBackend(Pipeline& pipeline, const std::shared_ptr<Device>& device);
+
     Algorithm algorithmOverride_{Algorithm::AUTO};
     Selection resolved_{Algorithm::AUTO, std::monostate{}};
     bool graphBuilt_{false};
@@ -229,6 +236,26 @@ class Depth : public DeviceNodeGroup {
     Node::Output* depthOut_{nullptr};
     Node::Output* confidenceOut_{nullptr};
 
+   public:
+    /**
+     * Input for detection regions that drive the focused depth computation.
+     * Each ImgDetection defines a region of interest for which a focused depth crop is computed.
+     */
+    Input& inputDetections;
+
+    /**
+     * Output focused depth map: a full-frame RAW16 depth map with focused regions filled and the rest zero.
+     */
+    Node::Output& focusedDepth();
+
+    /**
+     * Output focused confidence map matching the focused depth map.
+     */
+    Node::Output& focusedConfidence();
+
+   private:
+    Node::Output* focusedDepthOut_{nullptr};
+    Node::Output* focusedConfidenceOut_{nullptr};
     std::unique_ptr<::dai::Subnode<StereoDepth>> stereoBackend_;
     std::unique_ptr<::dai::Subnode<NeuralDepth>> neuralBackend_;
     std::unique_ptr<::dai::Subnode<GPUStereo>> gpuStereoBackend_;

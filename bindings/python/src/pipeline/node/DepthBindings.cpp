@@ -113,5 +113,20 @@ void bind_depth(pybind11::module& m, void* pCallstack) {
             "confidence",
             [](Depth& d) -> Node::Output& { return d.confidence(); },
             py::return_value_policy::reference_internal,
-            DOC(dai, node, Depth, confidence));
+            DOC(dai, node, Depth, confidence))
+        .def_property_readonly(
+            "inputDetections",
+            [](Depth& d) -> Node::Input& { return d.inputDetections; },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, Depth, inputDetections))
+        .def_property_readonly(
+            "focusedDepth",
+            [](Depth& d) -> Node::Output& { return d.focusedDepth(); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, Depth, focusedDepth))
+        .def_property_readonly(
+            "focusedConfidence",
+            [](Depth& d) -> Node::Output& { return d.focusedConfidence(); },
+            py::return_value_policy::reference_internal,
+            DOC(dai, node, Depth, focusedConfidence));
 }

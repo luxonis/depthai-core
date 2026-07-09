@@ -446,7 +446,11 @@ StereoDepth::PresetMode resolveStereoPreset(float targetFps, std::optional<std::
 
 // --- Construction ---
 
-Depth::Depth() : DeviceNodeGroup(nullptr) {}
+Depth::Depth()
+    : DeviceNodeGroup(nullptr),
+      focusedBackend_(std::make_unique<Subnode<FocusedDepth>>(*this, "focusedDepth")),
+      inputDetections((*focusedBackend_)->inputDetections)
+{}
 
 // --- Build methods ---
 
@@ -494,6 +498,22 @@ Node::Output& Depth::confidence() {
     }
     DAI_CHECK_V(confidenceOut_ != nullptr, "Depth backend confidence output missing.");
     return *confidenceOut_;
+}
+
+Node::Output& Depth::focusedDepth() {
+    if(!graphBuilt_) {
+        buildInternal();
+    }
+    DAI_CHECK_V(focusedDepthOut_ != nullptr, "Depth focused backend output missing.");
+    return *focusedDepthOut_;
+}
+
+Node::Output& Depth::focusedConfidence() {
+    if(!graphBuilt_) {
+        buildInternal();
+    }
+    DAI_CHECK_V(focusedConfidenceOut_ != nullptr, "Depth focused backend confidence output missing.");
+    return *focusedConfidenceOut_;
 }
 
 // --- Setters ---
@@ -725,6 +745,15 @@ Depth::StereoWiring Depth::ensureStereoOutputs(Pipeline& pipeline,
     return {lo, ro, resolution, maxCameraFps};
 }
 
+void Depth::buildFocusedBackend(Pipeline& pipeline, const std::shared_ptr<Device>& device) {
+    if(inputDetections.isConnected() || focusedDepthOut_ != nullptr || focusedConfidenceOut_ != nullptr) {
+        const auto stereo = ensureStereoOutputs(pipeline, requireFirstStereoPair(device), std::nullopt, stereoOutputFps_);
+        (*focusedBackend_)->build(*stereo.left, *stereo.right, stereo.maxCameraFps, std::nullopt);
+        focusedDepthOut_ = &(*focusedBackend_)->depth;
+        focusedConfidenceOut_ = &(*focusedBackend_)->confidence;
+    }
+}
+
 void Depth::wireAlignment(Algorithm active, const std::shared_ptr<Device>& device) {
     if(alignToOutput_ == nullptr) {
         return;
@@ -858,6 +887,8 @@ void Depth::buildInternal() {
                             wiredResolution->first,
                             wiredResolution->second);
     }
+
+    buildFocusedBackend(pipeline, device);
 
     graphBuilt_ = true;
 }
