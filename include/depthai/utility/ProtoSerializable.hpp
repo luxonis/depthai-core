@@ -17,7 +17,18 @@ class ProtoSerializable {
     virtual ~ProtoSerializable();
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    /**
+     * @brief Serialize this object and write it to disk
+     * @param path Output path. If it has no extension, the final on-disk filename is resolved to `<path>.dai`.
+     * @param metadataOnly If true, serialize only metadata and omit payload data where supported by the concrete type.
+     */
     void save(const std::filesystem::path& path, bool metadataOnly = false) const;
+
+    /**
+     * @brief Load this object from a serialized protobuf file on disk
+     * @param path Input path. If it has no extension, the file is resolved as `<path>.dai`.
+     * @param metadataOnly If true, load only metadata and omit payload data where supported by the concrete type.
+     */
     void load(const std::filesystem::path& path, bool metadataOnly = false);
 
     /**
