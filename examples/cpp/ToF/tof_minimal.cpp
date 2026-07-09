@@ -43,9 +43,9 @@ int main() {
     auto device = std::make_shared<dai::Device>();
     dai::Pipeline pipeline(device);
 
-    // Show depth in range 0.5 m to 10 m.
-    constexpr float minDepth = 500.0f;
-    constexpr float maxDepth = 10000.0f;
+    // Show depth in range 0.1 m to 7 m.
+    constexpr float minDepth = 100.0f;
+    constexpr float maxDepth = 7000.0f;
 
     // Choose one of the profiles: LOW_RANGE, MID_RANGE, or HIGH_RANGE.
     auto profile = dai::ToFConfig::Profile::MID_RANGE;

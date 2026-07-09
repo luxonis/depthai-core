@@ -50,9 +50,9 @@ cv::Mat normalizeFrame(const cv::Mat& frame) {
 int main() {
     dai::Pipeline pipeline;
 
-    // show depth in range 0.5m - 10m
-    constexpr float minDepth = 500.0f;
-    constexpr float maxDepth = 10000.0f;
+    // show depth in range 0.1m - 7m
+    constexpr float minDepth = 100.0f;
+    constexpr float maxDepth = 7000.0f;
 
     // choose one of profiles LOW_RANGE / MID_RANGE / HIGH_RANGE
     auto profile = dai::ToFConfig::Profile::MID_RANGE;
