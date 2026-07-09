@@ -2,6 +2,7 @@
 #include "depthai/pipeline/datatype/ImgAnnotations.hpp"
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
+    #include "depthai/schemas/ImageAnnotations.pb.h"
     #include "utility/ProtoSerializable.hpp"
     #include "utility/ProtoSerialize.hpp"
 #endif
@@ -23,6 +24,10 @@ ProtoSerializable::SchemaPair ImgAnnotations::serializeSchema() const {
 
 std::vector<std::uint8_t> ImgAnnotations::serializeProto(bool) const {
     return utility::serializeProto(utility::getProtoMessage(this));
+}
+
+void ImgAnnotations::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
 }
 
 #endif

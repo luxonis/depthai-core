@@ -24,6 +24,9 @@ ProtoSerializable::SchemaPair IMUData::serializeSchema() const {
 std::vector<std::uint8_t> IMUData::serializeProto(bool) const {
     return utility::serializeProto(utility::getProtoMessage(this));
 }
+void IMUData::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
+}
 #endif
 
 }  // namespace dai

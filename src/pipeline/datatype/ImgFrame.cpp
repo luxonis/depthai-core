@@ -368,5 +368,9 @@ ProtoSerializable::SchemaPair ImgFrame::serializeSchema() const {
 std::vector<std::uint8_t> ImgFrame::serializeProto(bool metadataOnly) const {
     return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }
+
+void ImgFrame::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
+}
 #endif
 }  // namespace dai

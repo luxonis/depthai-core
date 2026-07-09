@@ -247,5 +247,10 @@ std::vector<std::uint8_t> SpatialImgDetections::serializeProto(bool) const {
 ProtoSerializable::SchemaPair SpatialImgDetections::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));
 }
+
+void SpatialImgDetections::deserializeProto(const std::vector<std::uint8_t>& bytes) {
+    utility::deserializeProtoMessage(*this, bytes);
+}
+
 #endif
 }  // namespace dai
