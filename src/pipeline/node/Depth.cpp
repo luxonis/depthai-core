@@ -781,7 +781,7 @@ void Depth::buildInternal() {
             add(tofBackend_);
             tofBackend_->build(CameraBoardSocket::AUTO, ImageFiltersPresetMode::TOF_MID_RANGE, stereoOutputFps_);
             depthOut_ = &tofBackend_->depth;
-            confidenceOut_ = &tofBackend_->amplitude;  // ToF "confidence" is amplitude.
+            confidenceOut_ = &tofBackend_->confidence;
             break;
         case Algorithm::NEURAL_ASSISTED_STEREO: {
             nasBackend_ = std::make_shared<NeuralAssistedStereo>(device);

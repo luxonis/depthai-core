@@ -452,6 +452,25 @@ TEST_CASE("Depth: explicit STEREO on RVC4 uses StereoDepth") {
     requireDepthSingleBackendChild(*depth, "StereoDepth");
 }
 
+TEST_CASE("Depth: TOF confidence output maps to ToF confidence output") {
+    Pipeline pipeline;
+    auto device = requireDefaultDevice(pipeline);
+    if(!deviceReportsTofSensor(device)) {
+        SKIP("Skipping Depth test: device reports no ToF sensor.");
+    }
+
+    auto depth = pipeline.create<node::Depth>()->build(node::Depth::Algorithm::TOF);
+    REQUIRE_NOTHROW((void)&depth->confidence());
+    REQUIRE(depth->getResolvedAlgorithm() == node::Depth::Algorithm::TOF);
+
+    const auto& children = depth->getNodeMap();
+    REQUIRE(children.size() == 1);
+    const auto tof = std::dynamic_pointer_cast<node::ToF>(children[0]);
+    REQUIRE(tof != nullptr);
+    REQUIRE(&depth->confidence() == &tof->confidence);
+    REQUIRE(&depth->confidence() != &tof->amplitude);
+}
+
 TEST_CASE("Depth: GPU_STEREO requires RVC4") {
     Pipeline pipeline;
     auto device = requireDefaultDevice(pipeline);

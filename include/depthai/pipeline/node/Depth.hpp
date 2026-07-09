@@ -125,6 +125,7 @@ class Depth : public DeviceNodeGroup {
 
     /**
      * Output confidence map from the active backend.
+     * When ToF is active, this forwards the actual ToF confidence output.
      */
     Node::Output& confidence();
 
