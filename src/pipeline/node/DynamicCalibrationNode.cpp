@@ -4,8 +4,12 @@
     #include <opencv2/opencv.hpp>
 #endif
 #include <algorithm>
+#include <array>
+#include <map>
+#include <mutex>
 #include <optional>
 #include <pipeline/ThreadedNodeImpl.hpp>
+#include <string>
 #include <vector>
 
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -17,9 +21,130 @@
 #include "depthai/utility/matrixOps.hpp"
 #include "depthai/utility/spimpl.h"
 #include "pipeline/node/DynamicCalibrationUtils.hpp"
+#include "utility/Telemetry.hpp"
 
 namespace dai {
 namespace node {
+
+namespace {
+
+struct DynamicCalibrationTelemetryAggregateState {
+    std::mutex mutex;
+    std::string telemetryDeviceId;
+    std::uint64_t totalCommands = 0;
+    std::uint64_t calibrateCommands = 0;
+    std::uint64_t calibrationQualityCommands = 0;
+    std::uint64_t startCalibrationCommands = 0;
+    std::uint64_t loadImageCommands = 0;
+    std::uint64_t applyCalibrationCommands = 0;
+    std::uint64_t stopCalibrationCommands = 0;
+    std::uint64_t resetDataCommands = 0;
+    std::uint64_t setPerformanceModeCommands = 0;
+    std::uint64_t computeCalibrationMetricsCommands = 0;
+    std::uint64_t calibrationResultCallbacks = 0;
+    std::uint64_t metricsResultCallbacks = 0;
+    std::uint64_t qualityResultCallbacks = 0;
+    std::uint64_t applyResultCallbacks = 0;
+    std::uint64_t successfulCalibrations = 0;
+    std::uint64_t failedCalibrations = 0;
+    double sampsonErrorCurrentSum = 0.0;
+    double sampsonErrorNewSum = 0.0;
+    std::uint64_t sampsonErrorSamples = 0;
+    std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::array<double, 3>> pairwiseRotationDifferenceSums;
+    std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::uint64_t> pairwiseRotationDifferenceSamples;
+};
+
+void addPairwiseRotationDifferenceAverages(
+    nlohmann::json& properties,
+    const std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::array<double, 3>>& pairwiseRotationDifferenceSums,
+    const std::map<std::pair<CameraBoardSocket, CameraBoardSocket>, std::uint64_t>& pairwiseRotationDifferenceSamples) {
+    auto pairwiseProperties = nlohmann::json::array();
+    for(const auto& [socketPair, rotationSum] : pairwiseRotationDifferenceSums) {
+        const auto sampleCountIt = pairwiseRotationDifferenceSamples.find(socketPair);
+        const auto sampleCount = sampleCountIt == pairwiseRotationDifferenceSamples.end() ? std::uint64_t{0} : sampleCountIt->second;
+        if(sampleCount == 0) {
+            continue;
+        }
+
+        const auto socketA = dai::toString(socketPair.first);
+        const auto socketB = dai::toString(socketPair.second);
+        pairwiseProperties.push_back({{"socket_a", socketA},
+                                      {"socket_b", socketB},
+                                      {"rotation_difference_avg_deg",
+                                       {rotationSum[0] / static_cast<double>(sampleCount),
+                                        rotationSum[1] / static_cast<double>(sampleCount),
+                                        rotationSum[2] / static_cast<double>(sampleCount)}},
+                                      {"samples", sampleCount}});
+    }
+
+    properties["dynamic_calibration_pairwise_rotation_difference"] = std::move(pairwiseProperties);
+}
+
+void addDynamicCalibrationTelemetryProperties(nlohmann::json& properties, const DynamicCalibrationTelemetryAggregateState& state) {
+    properties["telemetry_device_id"] = state.telemetryDeviceId;
+    properties["dynamic_calibration_total_commands"] = properties.value("dynamic_calibration_total_commands", std::uint64_t{0}) + state.totalCommands;
+
+    auto& commandCounts = properties["dynamic_calibration_command_counts"];
+    if(!commandCounts.is_object()) {
+        commandCounts = nlohmann::json::object();
+    }
+    commandCounts["calibrate"] = commandCounts.value("calibrate", std::uint64_t{0}) + state.calibrateCommands;
+    commandCounts["calibration_quality"] = commandCounts.value("calibration_quality", std::uint64_t{0}) + state.calibrationQualityCommands;
+    commandCounts["start_calibration"] = commandCounts.value("start_calibration", std::uint64_t{0}) + state.startCalibrationCommands;
+    commandCounts["load_image"] = commandCounts.value("load_image", std::uint64_t{0}) + state.loadImageCommands;
+    commandCounts["apply_calibration"] = commandCounts.value("apply_calibration", std::uint64_t{0}) + state.applyCalibrationCommands;
+    commandCounts["stop_calibration"] = commandCounts.value("stop_calibration", std::uint64_t{0}) + state.stopCalibrationCommands;
+    commandCounts["reset_data"] = commandCounts.value("reset_data", std::uint64_t{0}) + state.resetDataCommands;
+    commandCounts["set_performance_mode"] = commandCounts.value("set_performance_mode", std::uint64_t{0}) + state.setPerformanceModeCommands;
+    commandCounts["compute_calibration_metrics"] =
+        commandCounts.value("compute_calibration_metrics", std::uint64_t{0}) + state.computeCalibrationMetricsCommands;
+
+    auto& callbackCounts = properties["dynamic_calibration_callback_counts"];
+    if(!callbackCounts.is_object()) {
+        callbackCounts = nlohmann::json::object();
+    }
+    callbackCounts["calibration_result"] = callbackCounts.value("calibration_result", std::uint64_t{0}) + state.calibrationResultCallbacks;
+    callbackCounts["metrics_result"] = callbackCounts.value("metrics_result", std::uint64_t{0}) + state.metricsResultCallbacks;
+    callbackCounts["quality_result"] = callbackCounts.value("quality_result", std::uint64_t{0}) + state.qualityResultCallbacks;
+    callbackCounts["apply_result"] = callbackCounts.value("apply_result", std::uint64_t{0}) + state.applyResultCallbacks;
+
+    properties["dynamic_calibration_successful_calibrations"] =
+        properties.value("dynamic_calibration_successful_calibrations", std::uint64_t{0}) + state.successfulCalibrations;
+    properties["dynamic_calibration_failed_calibrations"] =
+        properties.value("dynamic_calibration_failed_calibrations", std::uint64_t{0}) + state.failedCalibrations;
+    properties["dynamic_calibration_sampson_error_samples"] =
+        properties.value("dynamic_calibration_sampson_error_samples", std::uint64_t{0}) + state.sampsonErrorSamples;
+    properties["dynamic_calibration_sampson_error_current_sum"] =
+        properties.value("dynamic_calibration_sampson_error_current_sum", 0.0) + state.sampsonErrorCurrentSum;
+    properties["dynamic_calibration_sampson_error_new_sum"] = properties.value("dynamic_calibration_sampson_error_new_sum", 0.0) + state.sampsonErrorNewSum;
+
+    const auto sampsonErrorSamples = properties.value("dynamic_calibration_sampson_error_samples", std::uint64_t{0});
+    const auto sampsonErrorCurrentSum = properties.value("dynamic_calibration_sampson_error_current_sum", 0.0);
+    const auto sampsonErrorNewSum = properties.value("dynamic_calibration_sampson_error_new_sum", 0.0);
+    properties["dynamic_calibration_avg_sampson_error_current"] =
+        sampsonErrorSamples == 0 ? 0.0 : sampsonErrorCurrentSum / static_cast<double>(sampsonErrorSamples);
+    properties["dynamic_calibration_avg_sampson_error_new"] = sampsonErrorSamples == 0 ? 0.0 : sampsonErrorNewSum / static_cast<double>(sampsonErrorSamples);
+
+    addPairwiseRotationDifferenceAverages(properties, state.pairwiseRotationDifferenceSums, state.pairwiseRotationDifferenceSamples);
+}
+
+void addDynamicCalibrationResultTelemetry(DynamicCalibrationTelemetryAggregateState& state, const CalibrationQuality::Data& qualityData) {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.successfulCalibrations += 1;
+    state.sampsonErrorCurrentSum += static_cast<double>(qualityData.sampsonErrorCurrent);
+    state.sampsonErrorNewSum += static_cast<double>(qualityData.sampsonErrorNew);
+    state.sampsonErrorSamples += 1;
+    for(const auto& [socketPair, rotationChange] : qualityData.pairwiseRotationDifference) {
+        auto& rotationSum = state.pairwiseRotationDifferenceSums[socketPair];
+        const auto copyCount = std::min<std::size_t>(3, rotationChange.size());
+        for(std::size_t axis = 0; axis < copyCount; ++axis) {
+            rotationSum[axis] += static_cast<double>(rotationChange[axis]);
+        }
+        state.pairwiseRotationDifferenceSamples[socketPair] += 1;
+    }
+}
+
+}  // namespace
 
 std::vector<std::vector<float>> DclUtils::calibrationHandleToTransform(const std::shared_ptr<const dcl::CameraCalibrationHandle>& calibration) {
     dcl::scalar_t rvec[3];
@@ -102,7 +227,16 @@ class DynamicCalibration::Impl {
      */
     std::shared_ptr<dcl::Device> device;
     dcl::DynamicCalibration dynCalibImpl;
+    std::shared_ptr<DynamicCalibrationTelemetryAggregateState> telemetryAggregateState = std::make_shared<DynamicCalibrationTelemetryAggregateState>();
+    utility::Telemetry::AggregateMetricsHandle telemetryAggregateMetricsHandle = 0;
 };
+
+DynamicCalibration::~DynamicCalibration() {
+    if(pimplDCL && pimplDCL->telemetryAggregateMetricsHandle != 0) {
+        utility::Telemetry::getInstance().removeAggregateMetrics(pimplDCL->telemetryAggregateMetricsHandle);
+        pimplDCL->telemetryAggregateMetricsHandle = 0;
+    }
+}
 
 DynamicCalibration::Properties& DynamicCalibration::getProperties() {
     return properties;
@@ -126,6 +260,25 @@ bool DynamicCalibration::runOnHost() const {
 void DynamicCalibration::buildInternal() {
     pimplDCL = spimpl::make_impl<Impl>();
     logger = pimpl->logger;
+    auto telemetryState = pimplDCL->telemetryAggregateState;
+    pimplDCL->telemetryAggregateMetricsHandle = utility::Telemetry::getInstance().addAggregateMetrics([telemetryState](nlohmann::json& properties) {
+        std::lock_guard<std::mutex> stateLock(telemetryState->mutex);
+        if(telemetryState->telemetryDeviceId.empty()) {
+            return;
+        }
+
+        auto& byDevice = properties["dynamic_calibration_by_device"];
+        if(!byDevice.is_object()) {
+            byDevice = nlohmann::json::object();
+        }
+
+        auto& deviceProperties = byDevice[telemetryState->telemetryDeviceId];
+        if(!deviceProperties.is_object()) {
+            deviceProperties = nlohmann::json::object();
+        }
+
+        addDynamicCalibrationTelemetryProperties(deviceProperties, *telemetryState);
+    });
     sync->out.link(syncInput);
     sync->setRunOnHost(true);
 }
@@ -301,6 +454,10 @@ void DynamicCalibration::setCalibration(CalibrationHandler& handler, bool flash)
             DclUtils::convertDaiCalibrationToDcl(handler, daiSocketBase, sensor.socket, sensor.intrinsics, sensor.distortion, sensor.distortionModel);
         pimplDCL->dynCalibImpl.setCalibration(sensor.sensorDcl, calibration);
     }
+
+    auto& telemetryState = *pimplDCL->telemetryAggregateState;
+    std::lock_guard<std::mutex> lock(telemetryState.mutex);
+    telemetryState.applyResultCallbacks += 1;
 }
 
 void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
@@ -324,6 +481,10 @@ void DynamicCalibration::computeMetrics(const CalibrationHandler& handler) {
     auto calibrationConfidence = pimplDCL->dynCalibImpl.computeCalibrationConfidence(calibrations, sensors);
     metrics->calibrationConfidence = calibrationConfidence.passed() ? calibrationConfidence.value : 0.0;
     metricsOutput.send(metrics);
+
+    auto& telemetryState = *pimplDCL->telemetryAggregateState;
+    std::lock_guard<std::mutex> lock(telemetryState.mutex);
+    telemetryState.metricsResultCallbacks += 1;
 }
 
 DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::CalibrationHandler& currentHandler,
@@ -369,6 +530,10 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
         logger->warn("Calibration failed: {}", dclResult.errorMessage());
 
         calibrationOutput.send(result);
+        auto& telemetryState = *pimplDCL->telemetryAggregateState;
+        std::lock_guard<std::mutex> lock(telemetryState.mutex);
+        telemetryState.calibrationResultCallbacks += 1;
+        telemetryState.failedCalibrations += 1;
         return DynamicCalibration::ErrorCode::CALIBRATION_FAILED;
     }
 
@@ -449,7 +614,12 @@ DynamicCalibration::ErrorCode DynamicCalibration::runCalibration(const dai::Cali
 
     auto result = std::make_shared<DynamicCalibrationResult>(resultData, dclResult.errorMessage());
     calibrationOutput.send(result);
-
+    auto& telemetryState = *pimplDCL->telemetryAggregateState;
+    {
+        std::lock_guard<std::mutex> lock(telemetryState.mutex);
+        telemetryState.calibrationResultCallbacks += 1;
+    }
+    addDynamicCalibrationResultTelemetry(telemetryState, qualityData);
     return DynamicCalibration::ErrorCode::OK;
 }
 
@@ -670,13 +840,18 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
 
     // Early exit if command is not set
     if(std::holds_alternative<std::monostate>(cmd)) {
-        logger->trace("Received unset command");
+        logger->trace("Received UNSET Command");
         return ErrorCode::INVALID_COMMAND;
     }
     // Calibrate
     if(std::holds_alternative<DC::Commands::Calibrate>(cmd)) {
         const auto& c = std::get<DC::Commands::Calibrate>(cmd);
         logger->trace("Received Calibrate Command: force={}", c.force);
+        {
+            std::lock_guard<std::mutex> lock(pimplDCL->telemetryAggregateState->mutex);
+            pimplDCL->telemetryAggregateState->totalCommands += 1;
+            pimplDCL->telemetryAggregateState->calibrateCommands += 1;
+        }
         startCalibrationCommand.reset();  // stop the calibration if it is running
         return runCalibration(calibrationHandler, c.force, c.keepCameraCenters);
     }
@@ -684,6 +859,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     else if(std::holds_alternative<DC::Commands::CalibrationQuality>(cmd)) {
         const auto& c = std::get<DC::Commands::CalibrationQuality>(cmd);
         logger->trace("Received CalibrationQuality Command: force={}", c.force);
+        {
+            std::lock_guard<std::mutex> lock(pimplDCL->telemetryAggregateState->mutex);
+            pimplDCL->telemetryAggregateState->totalCommands += 1;
+            pimplDCL->telemetryAggregateState->calibrationQualityCommands += 1;
+        }
         logger->warn("CalibrationQuality command is deprecated and returns an empty result");
         qualityOutput.send(std::make_shared<CalibrationQuality>());
         return ErrorCode::OK;
@@ -692,12 +872,22 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     else if(std::holds_alternative<DC::Commands::StartCalibration>(cmd)) {
         const auto& c = std::get<DC::Commands::StartCalibration>(cmd);
         logger->trace("Received StartCalibration Command");
+        {
+            std::lock_guard<std::mutex> lock(pimplDCL->telemetryAggregateState->mutex);
+            pimplDCL->telemetryAggregateState->totalCommands += 1;
+            pimplDCL->telemetryAggregateState->startCalibrationCommands += 1;
+        }
         startCalibrationCommand = c;
         return ErrorCode::OK;
     }
     // Load a single image
     else if(std::holds_alternative<DC::Commands::LoadImage>(cmd)) {
         logger->trace("Received LoadImage Command: blocking load with coverage computation");
+        {
+            std::lock_guard<std::mutex> lock(pimplDCL->telemetryAggregateState->mutex);
+            pimplDCL->telemetryAggregateState->totalCommands += 1;
+            pimplDCL->telemetryAggregateState->loadImageCommands += 1;
+        }
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
         auto error = runLoadImage(true);
         computeCoverage();
@@ -710,6 +900,11 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     else if(std::holds_alternative<DC::Commands::ApplyCalibration>(cmd)) {
         const auto& c = std::get<DC::Commands::ApplyCalibration>(cmd);
         logger->trace("Received ApplyCalibrationCommand: applying new calibration to device");
+        {
+            std::lock_guard<std::mutex> lock(pimplDCL->telemetryAggregateState->mutex);
+            pimplDCL->telemetryAggregateState->totalCommands += 1;
+            pimplDCL->telemetryAggregateState->applyCalibrationCommands += 1;
+        }
         calibrationHandler = c.calibration;
         setCalibration(calibrationHandler, c.flash);
         return ErrorCode::OK;
@@ -717,12 +912,22 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     // Stop calibration loop
     else if(std::holds_alternative<DC::Commands::StopCalibration>(cmd)) {
         logger->trace("Received StopCalibrationCommand: stopping calibration");
+        {
+            std::lock_guard<std::mutex> lock(pimplDCL->telemetryAggregateState->mutex);
+            pimplDCL->telemetryAggregateState->totalCommands += 1;
+            pimplDCL->telemetryAggregateState->stopCalibrationCommands += 1;
+        }
         startCalibrationCommand.reset();
         return ErrorCode::OK;
     }
     // Reset/remove accumulated data
     else if(std::holds_alternative<DC::Commands::ResetData>(cmd)) {
         logger->trace("Received RemoveDataCommand: removing the data");
+        {
+            std::lock_guard<std::mutex> lock(pimplDCL->telemetryAggregateState->mutex);
+            pimplDCL->telemetryAggregateState->totalCommands += 1;
+            pimplDCL->telemetryAggregateState->resetDataCommands += 1;
+        }
         for(size_t i = 0; i < connectedSensors.size(); ++i) {
             for(size_t j = i + 1; j < connectedSensors.size(); ++j) {
                 pimplDCL->dynCalibImpl.removeAllData(connectedSensors[i].sensorDcl, connectedSensors[j].sensorDcl);
@@ -734,17 +939,27 @@ DynamicCalibration::ErrorCode DynamicCalibration::evaluateCommand(const std::sha
     else if(std::holds_alternative<DC::Commands::SetPerformanceMode>(cmd)) {
         const auto& c = std::get<DC::Commands::SetPerformanceMode>(cmd);
         logger->trace("Received SetPerformanceModeCommand: changing performance mode to {}", static_cast<int>(c.performanceMode));
+        {
+            std::lock_guard<std::mutex> lock(pimplDCL->telemetryAggregateState->mutex);
+            pimplDCL->telemetryAggregateState->totalCommands += 1;
+            pimplDCL->telemetryAggregateState->setPerformanceModeCommands += 1;
+        }
         performanceMode = c.performanceMode;
         return ErrorCode::OK;
     } else if(std::holds_alternative<DC::Commands::ComputeCalibrationMetrics>(cmd)) {
         logger->trace("Received ComputeCalibrationMetrics command");
         const auto& c = std::get<DC::Commands::ComputeCalibrationMetrics>(cmd);
+        {
+            std::lock_guard<std::mutex> lock(pimplDCL->telemetryAggregateState->mutex);
+            pimplDCL->telemetryAggregateState->totalCommands += 1;
+            pimplDCL->telemetryAggregateState->computeCalibrationMetricsCommands += 1;
+        }
         computeMetrics(c.calibration);
         return ErrorCode::OK;
     }
 
     // Fallback
-    logger->trace("Received unknown/unhandled command type");
+    logger->trace("evaluateCommand: Received unknown/unhandled command type");
     return ErrorCode::INVALID_COMMAND;
 }
 
@@ -799,6 +1014,12 @@ void DynamicCalibration::run() {
         return;
     }
 
+    auto& telemetryState = *pimplDCL->telemetryAggregateState;
+    {
+        std::lock_guard<std::mutex> lock(telemetryState.mutex);
+        telemetryState.telemetryDeviceId = device->getTemporaryTelemetryDeviceId();
+    }
+
     logger->trace("DynamicCalibration node started ");
 
     auto previousLoadingTimeFloat =
@@ -809,6 +1030,10 @@ void DynamicCalibration::run() {
         logger->error("DynamicCalibration initialization failed with error code {}", static_cast<int>(initResult));
         return;
     }
+    utility::Telemetry::getInstance().event(
+        getParentPipeline(),
+        "depthai_dynamic_calibration_node_started",
+        nlohmann::json{{"run_on_host", runOnHost()}, {"performance_mode", toString(performanceMode)}, {"connected_sensor_count", connectedSensors.size()}});
     while(mainLoop()) {
         slept = false;
         doWork(previousLoadingTime);

@@ -593,8 +593,6 @@ void DeviceBase::close() {
             // request stop now, but only join after closeImpl() closes the
             // connection and unblocks any blocking XLink reads.
             telemetryEventRunning = false;
-            telemetryPingRunning = false;
-            telemetryPingCondVar.notify_all();
         }
         closeImpl();
         stopTelemetryLifecycle();
@@ -665,22 +663,6 @@ void DeviceBase::telemetryEventLoop() {
     }
 }
 
-void DeviceBase::telemetryPingLoop() {
-    using namespace std::chrono_literals;
-    constexpr auto TELEMETRY_PING_INTERVAL = 5min;
-
-    std::unique_lock<std::mutex> lock(telemetryPingMtx);
-    while(telemetryPingRunning) {
-        if(telemetryPingCondVar.wait_for(lock, TELEMETRY_PING_INTERVAL, [this]() { return !telemetryPingRunning.load(); })) {
-            break;
-        }
-
-        lock.unlock();
-        dai::utility::Telemetry::getInstance().event(*this, "depthai_ping", nlohmann::json::object());
-        lock.lock();
-    }
-}
-
 void DeviceBase::startTelemetryLifecycle(bool reconnect) {
     if(reconnect || dumpOnly || telemetryLifecycleStarted || !dai::utility::Telemetry::isTelemetryEnabled()) {
         return;
@@ -712,8 +694,6 @@ void DeviceBase::startTelemetryLifecycle(bool reconnect) {
 
     telemetryEventRunning = true;
     telemetryEventThread = std::thread(&DeviceBase::telemetryEventLoop, this);
-    telemetryPingRunning = true;
-    telemetryPingThread = std::thread(&DeviceBase::telemetryPingLoop, this);
 }
 
 void DeviceBase::stopTelemetryLifecycle() {
@@ -724,11 +704,6 @@ void DeviceBase::stopTelemetryLifecycle() {
     telemetryEventRunning = false;
     if(telemetryEventThread.joinable()) {
         telemetryEventThread.join();
-    }
-    telemetryPingRunning = false;
-    telemetryPingCondVar.notify_all();
-    if(telemetryPingThread.joinable()) {
-        telemetryPingThread.join();
     }
 
     const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - telemetryCreatedAt).count();
