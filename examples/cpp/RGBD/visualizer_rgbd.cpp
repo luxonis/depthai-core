@@ -101,6 +101,7 @@ int main(int argc, char** argv) {
             depthSource = neuralDepth;
         } else if(depthSourceArg == "tof") {
             auto tof = pipeline.create<dai::node::ToF>();
+            tof->build(dai::CameraBoardSocket::AUTO, dai::ToFConfig::Profile::MID_RANGE, fps);
             depthSource = tof;
         }
 

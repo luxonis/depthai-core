@@ -278,11 +278,15 @@ std::shared_ptr<RGBD> RGBD::build(bool autocreate, StereoDepth::PresetMode mode,
             // Create the ToF node along with ImageAlign node and return
             bool setRunOnHost = true;
             auto tofFps = fps.value_or(30.0f);
-            auto tof = pipeline.create<node::ToF>()->build(feature.socket, ImageFiltersPresetMode::TOF_MID_RANGE, tofFps);
+            auto tof = pipeline.create<node::ToF>()->build(feature.socket, ToFConfig::Profile::MID_RANGE, tofFps);
             auto align = pipeline.create<node::ImageAlign>();
             auto* colorCamOutput = colorCam->requestOutput(size, colorCamOutputType, ImgResizeMode::CROP, tofFps, true);
             colorCamOutput->link(align->inputAlignTo);
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+            tof->tofBaseNode.depth.link(align->input);
+#else
             tof->depth.link(align->input);
+#endif
             colorCamOutput->link(inColor);
             align->outputAligned.link(inDepth);
             align->setRunOnHost(setRunOnHost);
@@ -540,7 +544,11 @@ void RGBD::alignDepthImpl(const std::shared_ptr<ToF>& tof,
 
     auto align = pipeline.create<node::ImageAlign>();
     colorCamOutput->link(inColor);
+#ifdef DEPTHAI_INTERNAL_DEVICE_BUILD_RVC4
+    tof->tofBaseNode.depth.link(align->input);
+#else
     tof->depth.link(align->input);
+#endif
     colorCamOutput->link(align->inputAlignTo);
     align->outputAligned.link(inDepth);
 
