@@ -220,6 +220,21 @@ TEST_CASE("ProtoSerializable save/load roundtrip for ImgFrame", "[ProtoSerializa
     requireImgFrame(reused, source, false);
 }
 
+TEST_CASE("ProtoSerializable preserves explicit file extensions", "[ProtoSerializable][Paths]") {
+    ScopedTempDir tempDir("depthai_proto_paths");
+    const auto path = tempDir.get() / "img_frame.pb";
+
+    const auto source = makeImgFrame(13);
+    source.save(path, false);
+
+    REQUIRE(fs::exists(path));
+    REQUIRE_FALSE(fs::exists(path.string() + ".dai"));
+
+    dai::ImgFrame restored;
+    restored.load(path);
+    requireImgFrame(restored, source);
+}
+
 TEST_CASE("ProtoSerializable save/load roundtrip for EncodedFrame", "[ProtoSerializable][EncodedFrame]") {
     ScopedTempDir tempDir("depthai_proto_encoded_frame");
     const auto path = tempDir.get() / "encoded_frame";
@@ -396,6 +411,8 @@ TEST_CASE("ProtoSerializable save/load roundtrip for ImgDetections", "[ProtoSeri
     ScopedTempDir tempDir("depthai_proto_img_detections");
     const auto path = tempDir.get() / "img_detections";
     const auto metadataPath = tempDir.get() / "img_detections_metadata";
+    const auto noTransformPath = tempDir.get() / "img_detections_no_transform";
+    const auto noTransformMetadataPath = tempDir.get() / "img_detections_no_transform_metadata";
 
     dai::ImgDetections source;
     applyBufferMetadata(source, 6);
@@ -433,12 +450,36 @@ TEST_CASE("ProtoSerializable save/load roundtrip for ImgDetections", "[ProtoSeri
     REQUIRE(reused.getSegmentationMaskWidth() == source.getSegmentationMaskWidth());
     REQUIRE(reused.getSegmentationMaskHeight() == source.getSegmentationMaskHeight());
     REQUIRE_FALSE(reused.getMaskData().has_value());
+
+    dai::ImgDetections noTransformSource;
+    applyBufferMetadata(noTransformSource, 16);
+    noTransformSource.detections.push_back(detection);
+    noTransformSource.setSegmentationMask(std::vector<std::uint8_t>{1, 2, 3, 4}, 2, 2);
+
+    const auto restoredWithoutTransform = saveLoad(noTransformSource, noTransformPath);
+    requireBufferMetadata(restoredWithoutTransform, noTransformSource);
+    REQUIRE_FALSE(restoredWithoutTransform.transformation.has_value());
+    REQUIRE(restoredWithoutTransform.getSegmentationMaskWidth() == noTransformSource.getSegmentationMaskWidth());
+    REQUIRE(restoredWithoutTransform.getSegmentationMaskHeight() == noTransformSource.getSegmentationMaskHeight());
+    REQUIRE(restoredWithoutTransform.getMaskData() == noTransformSource.getMaskData());
+    REQUIRE(restoredWithoutTransform.detections.size() == 1);
+
+    noTransformSource.save(noTransformMetadataPath, true);
+    dai::ImgDetections noTransformReused;
+    noTransformReused.load(noTransformMetadataPath);
+    requireBufferMetadata(noTransformReused, noTransformSource);
+    REQUIRE_FALSE(noTransformReused.transformation.has_value());
+    REQUIRE(noTransformReused.getSegmentationMaskWidth() == noTransformSource.getSegmentationMaskWidth());
+    REQUIRE(noTransformReused.getSegmentationMaskHeight() == noTransformSource.getSegmentationMaskHeight());
+    REQUIRE_FALSE(noTransformReused.getMaskData().has_value());
 }
 
 TEST_CASE("ProtoSerializable save/load roundtrip for SpatialImgDetections", "[ProtoSerializable][SpatialImgDetections]") {
     ScopedTempDir tempDir("depthai_proto_spatial_img_detections");
     const auto path = tempDir.get() / "spatial_img_detections";
     const auto metadataPath = tempDir.get() / "spatial_img_detections_metadata";
+    const auto noTransformPath = tempDir.get() / "spatial_img_detections_no_transform";
+    const auto noTransformMetadataPath = tempDir.get() / "spatial_img_detections_no_transform_metadata";
 
     dai::SpatialImgDetections source;
     applyBufferMetadata(source, 7);
@@ -499,6 +540,31 @@ TEST_CASE("ProtoSerializable save/load roundtrip for SpatialImgDetections", "[Pr
     REQUIRE_FALSE(reused.getMaskData().has_value());
     REQUIRE(reused.detections.size() == 1);
     requireRect(reused.detections[0].boundingBoxMapping.roi, source.detections[0].boundingBoxMapping.roi);
+
+    dai::SpatialImgDetections noTransformSource;
+    applyBufferMetadata(noTransformSource, 17);
+    noTransformSource.unit = dai::LengthUnit::CENTIMETER;
+    noTransformSource.detections.push_back(detection);
+    noTransformSource.setSegmentationMask(std::vector<std::uint8_t>{4, 3, 2, 1}, 2, 2);
+
+    const auto restoredWithoutTransform = saveLoad(noTransformSource, noTransformPath);
+    requireBufferMetadata(restoredWithoutTransform, noTransformSource);
+    REQUIRE_FALSE(restoredWithoutTransform.transformation.has_value());
+    REQUIRE(restoredWithoutTransform.unit == noTransformSource.unit);
+    REQUIRE(restoredWithoutTransform.getMaskData() == noTransformSource.getMaskData());
+    REQUIRE(restoredWithoutTransform.detections.size() == 1);
+    requireRect(restoredWithoutTransform.detections[0].boundingBoxMapping.roi, noTransformSource.detections[0].boundingBoxMapping.roi);
+
+    noTransformSource.save(noTransformMetadataPath, true);
+    dai::SpatialImgDetections noTransformReused;
+    noTransformReused.load(noTransformMetadataPath);
+    requireBufferMetadata(noTransformReused, noTransformSource);
+    REQUIRE_FALSE(noTransformReused.transformation.has_value());
+    REQUIRE(noTransformReused.unit == noTransformSource.unit);
+    REQUIRE(noTransformReused.getSegmentationMaskWidth() == noTransformSource.getSegmentationMaskWidth());
+    REQUIRE(noTransformReused.getSegmentationMaskHeight() == noTransformSource.getSegmentationMaskHeight());
+    REQUIRE_FALSE(noTransformReused.getMaskData().has_value());
+    REQUIRE(noTransformReused.detections.size() == 1);
 }
 
 TEST_CASE("ProtoSerializable save/load roundtrip for IMUData", "[ProtoSerializable][IMUData]") {
