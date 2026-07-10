@@ -240,8 +240,8 @@ SpatialImgDetections SpatialImgDetections::transformTo(const ImgTransformation& 
 }
 
 #ifdef DEPTHAI_ENABLE_PROTOBUF
-std::vector<std::uint8_t> SpatialImgDetections::serializeProto(bool) const {
-    return utility::serializeProto(utility::getProtoMessage(this));
+std::vector<std::uint8_t> SpatialImgDetections::serializeProto(bool metadataOnly) const {
+    return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }
 
 ProtoSerializable::SchemaPair SpatialImgDetections::serializeSchema() const {

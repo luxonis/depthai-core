@@ -359,8 +359,8 @@ ProtoSerializable::SchemaPair SegmentationMask::serializeSchema() const {
     return utility::serializeSchema(utility::getProtoMessage(this));
 }
 
-std::vector<std::uint8_t> SegmentationMask::serializeProto(bool) const {
-    return utility::serializeProto(utility::getProtoMessage(this));
+std::vector<std::uint8_t> SegmentationMask::serializeProto(bool metadataOnly) const {
+    return utility::serializeProto(utility::getProtoMessage(this, metadataOnly));
 }
 
 void SegmentationMask::deserializeProto(const std::vector<std::uint8_t>& bytes) {

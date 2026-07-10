@@ -201,6 +201,13 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
             }
             break;
         }
+        case DatatypeEnum::RGBDData: {
+            auto msg = bytePlayer.next<proto::rgbd_data::RGBDData>();
+            if(msg.has_value()) {
+                return std::make_shared<proto::rgbd_data::RGBDData>(msg.value());
+            }
+            break;
+        }
         case DatatypeEnum::ADatatype:
         case DatatypeEnum::Buffer:
         case DatatypeEnum::Transformable:
@@ -231,7 +238,6 @@ inline std::shared_ptr<google::protobuf::Message> getProtoMessage(utility::ByteP
         case DatatypeEnum::ImageAlignConfig:
         case DatatypeEnum::ImageFiltersConfig:
         case DatatypeEnum::ToFDepthConfidenceFilterConfig:
-        case DatatypeEnum::RGBDData:
         case DatatypeEnum::ObjectTrackerConfig:
         case DatatypeEnum::DynamicCalibrationControl:
         case DatatypeEnum::DynamicCalibrationResult:

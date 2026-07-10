@@ -87,6 +87,16 @@ void requireTransformation(const std::optional<dai::ImgTransformation>& actual, 
 void requirePoint2f(const dai::Point2f& actual, const dai::Point2f& expected) {
     REQUIRE(actual.x == Catch::Approx(expected.x));
     REQUIRE(actual.y == Catch::Approx(expected.y));
+    REQUIRE(actual.hasNormalized == expected.hasNormalized);
+    REQUIRE(actual.normalized == expected.normalized);
+    REQUIRE(actual.isNormalized() == expected.isNormalized());
+}
+
+void requireSize2f(const dai::Size2f& actual, const dai::Size2f& expected) {
+    REQUIRE(actual.width == Catch::Approx(expected.width));
+    REQUIRE(actual.height == Catch::Approx(expected.height));
+    REQUIRE(actual.hasNormalized == expected.hasNormalized);
+    REQUIRE(actual.normalized == expected.normalized);
     REQUIRE(actual.isNormalized() == expected.isNormalized());
 }
 
@@ -98,10 +108,18 @@ void requirePoint3f(const dai::Point3f& actual, const dai::Point3f& expected) {
 
 void requireRotatedRect(const dai::RotatedRect& actual, const dai::RotatedRect& expected) {
     requirePoint2f(actual.center, expected.center);
-    REQUIRE(actual.size.width == Catch::Approx(expected.size.width));
-    REQUIRE(actual.size.height == Catch::Approx(expected.size.height));
-    REQUIRE(actual.size.isNormalized() == expected.size.isNormalized());
+    requireSize2f(actual.size, expected.size);
     REQUIRE(actual.angle == Catch::Approx(expected.angle));
+}
+
+void requireRect(const dai::Rect& actual, const dai::Rect& expected) {
+    REQUIRE(actual.x == Catch::Approx(expected.x));
+    REQUIRE(actual.y == Catch::Approx(expected.y));
+    REQUIRE(actual.width == Catch::Approx(expected.width));
+    REQUIRE(actual.height == Catch::Approx(expected.height));
+    REQUIRE(actual.hasNormalized == expected.hasNormalized);
+    REQUIRE(actual.normalized == expected.normalized);
+    REQUIRE(actual.isNormalized() == expected.isNormalized());
 }
 
 void requireImgFrame(const dai::ImgFrame& actual, const dai::ImgFrame& expected, bool expectData = true) {
@@ -195,6 +213,11 @@ TEST_CASE("ProtoSerializable save/load roundtrip for ImgFrame", "[ProtoSerializa
     const auto source = makeImgFrame(1);
     const auto restored = saveLoad(source, path);
     requireImgFrame(restored, source);
+
+    source.save(path, true);
+    dai::ImgFrame reused = makeImgFrame(101);
+    reused.load(path);
+    requireImgFrame(reused, source, false);
 }
 
 TEST_CASE("ProtoSerializable save/load roundtrip for EncodedFrame", "[ProtoSerializable][EncodedFrame]") {
@@ -212,6 +235,10 @@ TEST_CASE("ProtoSerializable save/load roundtrip for EncodedFrame", "[ProtoSeria
 
     const auto metadataOnly = saveLoad(source, metadataPath, true);
     requireEncodedFrame(metadataOnly, source, false);
+
+    dai::EncodedFrame reused = makeEncodedFrame(102);
+    reused.load(metadataPath);
+    requireEncodedFrame(reused, source, false);
 }
 
 TEST_CASE("ProtoSerializable save/load roundtrip for PointCloudData", "[ProtoSerializable][PointCloudData]") {
@@ -250,11 +277,22 @@ TEST_CASE("ProtoSerializable save/load roundtrip for PointCloudData", "[ProtoSer
     REQUIRE(metadataOnly.getHeight() == source.getHeight());
     REQUIRE(metadataOnly.getInstanceNum() == source.getInstanceNum());
     REQUIRE(metadataOnly.getData().empty());
+
+    dai::PointCloudData reused;
+    reused.setPointsRGB({{9.f, 8.f, 7.f, 1, 2, 3, 255}});
+    reused.setSize(1, 1).setInstanceNum(99);
+    reused.load(metadataPath);
+    requireBufferMetadata(reused, source);
+    REQUIRE(reused.getWidth() == source.getWidth());
+    REQUIRE(reused.getHeight() == source.getHeight());
+    REQUIRE(reused.getInstanceNum() == source.getInstanceNum());
+    REQUIRE(reused.getData().empty());
 }
 
 TEST_CASE("ProtoSerializable save/load roundtrip for SegmentationMask", "[ProtoSerializable][SegmentationMask]") {
     ScopedTempDir tempDir("depthai_proto_segmentation_mask");
     const auto path = tempDir.get() / "segmentation_mask";
+    const auto metadataPath = tempDir.get() / "segmentation_mask_metadata";
 
     dai::SegmentationMask source;
     applyBufferMetadata(source, 4);
@@ -269,6 +307,16 @@ TEST_CASE("ProtoSerializable save/load roundtrip for SegmentationMask", "[ProtoS
     REQUIRE(restored.getHeight() == source.getHeight());
     REQUIRE(restored.getLabels() == source.getLabels());
     REQUIRE(restored.getMaskData() == source.getMaskData());
+
+    source.save(metadataPath, true);
+    dai::SegmentationMask reused(std::vector<std::uint8_t>{7, 7, 7, 7}, 2, 2);
+    reused.load(metadataPath);
+    requireBufferMetadata(reused, source);
+    requireTransformation(reused.transformation, source.transformation);
+    REQUIRE(reused.getWidth() == source.getWidth());
+    REQUIRE(reused.getHeight() == source.getHeight());
+    REQUIRE(reused.getLabels() == source.getLabels());
+    REQUIRE(reused.getMaskData().empty());
 }
 
 TEST_CASE("ProtoSerializable save/load roundtrip for ImgAnnotations", "[ProtoSerializable][ImgAnnotations]") {
@@ -303,9 +351,51 @@ TEST_CASE("ProtoSerializable save/load roundtrip for ImgAnnotations", "[ProtoSer
     REQUIRE(restored.annotations[0].texts[0].text == source.annotations[0].texts[0].text);
 }
 
+TEST_CASE("ProtoSerializable preserves explicit normalized geometry flags", "[ProtoSerializable][Geometry]") {
+    ScopedTempDir tempDir("depthai_proto_geometry");
+    const auto annotationsPath = tempDir.get() / "img_annotations";
+    const auto detectionsPath = tempDir.get() / "img_detections";
+
+    dai::ImgAnnotations annotations;
+    applyBufferMetadata(annotations, 50);
+    annotations.transformation = dai::ImgTransformation(640, 480);
+
+    dai::ImgAnnotation annotation;
+    annotation.circles.push_back({dai::Point2f{0.0F, 1.0F, true}, 0.1F, 2.0F, dai::Color{0.1F, 0.2F, 0.3F, 1.0F}, dai::Color{0.4F, 0.5F, 0.6F, 1.0F}});
+    annotation.points.push_back({dai::PointsAnnotationType::POINTS,
+                                 {{0.0F, 0.0F, true}, {1.0F, 1.0F, true}},
+                                 dai::Color{0.7F, 0.2F, 0.1F, 1.0F},
+                                 {},
+                                 dai::Color{0.1F, 0.1F, 0.9F, 0.5F},
+                                 3.0F});
+    annotation.texts.push_back({dai::Point2f{1.0F, 0.0F, true}, "edge", 18.0F, dai::Color{1.0F, 1.0F, 1.0F, 1.0F}, dai::Color{0.0F, 0.0F, 0.0F, 1.0F}});
+    annotations.annotations.push_back(annotation);
+
+    const auto restoredAnnotations = saveLoad(annotations, annotationsPath);
+    requirePoint2f(restoredAnnotations.annotations[0].circles[0].position, annotations.annotations[0].circles[0].position);
+    requirePoint2f(restoredAnnotations.annotations[0].points[0].points[0], annotations.annotations[0].points[0].points[0]);
+    requirePoint2f(restoredAnnotations.annotations[0].points[0].points[1], annotations.annotations[0].points[0].points[1]);
+    requirePoint2f(restoredAnnotations.annotations[0].texts[0].position, annotations.annotations[0].texts[0].position);
+
+    dai::ImgDetections detections;
+    applyBufferMetadata(detections, 51);
+    detections.transformation = dai::ImgTransformation(320, 240);
+
+    dai::ImgDetection detection;
+    detection.label = 3;
+    detection.labelName = "edge";
+    detection.confidence = 0.75F;
+    detection.setBoundingBox(dai::RotatedRect(dai::Point2f{0.0F, 1.0F, true}, dai::Size2f{1.0F, 0.0F, true}, 15.0F));
+    detections.detections.push_back(detection);
+
+    const auto restoredDetections = saveLoad(detections, detectionsPath);
+    requireRotatedRect(restoredDetections.detections[0].getBoundingBox(), detections.detections[0].getBoundingBox());
+}
+
 TEST_CASE("ProtoSerializable save/load roundtrip for ImgDetections", "[ProtoSerializable][ImgDetections]") {
     ScopedTempDir tempDir("depthai_proto_img_detections");
     const auto path = tempDir.get() / "img_detections";
+    const auto metadataPath = tempDir.get() / "img_detections_metadata";
 
     dai::ImgDetections source;
     applyBufferMetadata(source, 6);
@@ -333,15 +423,27 @@ TEST_CASE("ProtoSerializable save/load roundtrip for ImgDetections", "[ProtoSeri
     requireRotatedRect(restored.detections[0].getBoundingBox(), source.detections[0].getBoundingBox());
     REQUIRE(restored.detections[0].getKeypoints().size() == source.detections[0].getKeypoints().size());
     REQUIRE(restored.detections[0].getEdges() == source.detections[0].getEdges());
+
+    source.save(metadataPath, true);
+    dai::ImgDetections reused;
+    reused.setSegmentationMask(std::vector<std::uint8_t>{1, 1, 1, 1}, 2, 2);
+    reused.load(metadataPath);
+    requireBufferMetadata(reused, source);
+    requireTransformation(reused.transformation, source.transformation);
+    REQUIRE(reused.getSegmentationMaskWidth() == source.getSegmentationMaskWidth());
+    REQUIRE(reused.getSegmentationMaskHeight() == source.getSegmentationMaskHeight());
+    REQUIRE_FALSE(reused.getMaskData().has_value());
 }
 
 TEST_CASE("ProtoSerializable save/load roundtrip for SpatialImgDetections", "[ProtoSerializable][SpatialImgDetections]") {
     ScopedTempDir tempDir("depthai_proto_spatial_img_detections");
     const auto path = tempDir.get() / "spatial_img_detections";
+    const auto metadataPath = tempDir.get() / "spatial_img_detections_metadata";
 
     dai::SpatialImgDetections source;
     applyBufferMetadata(source, 7);
     source.transformation = dai::ImgTransformation(300, 200);
+    source.transformation->addSrcCrops({dai::RotatedRect{dai::Point2f{0.5F, 0.4F, true}, dai::Size2f{0.25F, 0.35F, true}, 12.0F}});
     source.unit = dai::LengthUnit::CENTIMETER;
 
     dai::SpatialImgDetection detection;
@@ -364,18 +466,39 @@ TEST_CASE("ProtoSerializable save/load roundtrip for SpatialImgDetections", "[Pr
     const auto restored = saveLoad(source, path);
     requireBufferMetadata(restored, source);
     requireTransformation(restored.transformation, source.transformation);
+    REQUIRE(restored.transformation.has_value());
+    REQUIRE(source.transformation.has_value());
+    REQUIRE(restored.transformation->getSrcCrops().size() == source.transformation->getSrcCrops().size());
+    requireRotatedRect(restored.transformation->getSrcCrops().at(0), source.transformation->getSrcCrops().at(0));
     REQUIRE(restored.unit == source.unit);
     REQUIRE(restored.detections.size() == 1);
     REQUIRE(restored.getMaskData() == source.getMaskData());
     REQUIRE(restored.detections[0].labelName == source.detections[0].labelName);
     requireRotatedRect(restored.detections[0].getBoundingBox(), source.detections[0].getBoundingBox());
     requirePoint3f(restored.detections[0].spatialCoordinates, source.detections[0].spatialCoordinates);
+    requireRect(restored.detections[0].boundingBoxMapping.roi, source.detections[0].boundingBoxMapping.roi);
     REQUIRE(restored.detections[0].boundingBoxMapping.depthThresholds.lowerThreshold == source.detections[0].boundingBoxMapping.depthThresholds.lowerThreshold);
     REQUIRE(restored.detections[0].boundingBoxMapping.depthThresholds.upperThreshold == source.detections[0].boundingBoxMapping.depthThresholds.upperThreshold);
     REQUIRE(restored.detections[0].boundingBoxMapping.calculationAlgorithm == source.detections[0].boundingBoxMapping.calculationAlgorithm);
     REQUIRE(restored.detections[0].boundingBoxMapping.stepSize == source.detections[0].boundingBoxMapping.stepSize);
     REQUIRE(restored.detections[0].getKeypoints().size() == source.detections[0].getKeypoints().size());
     REQUIRE(restored.detections[0].getEdges() == source.detections[0].getEdges());
+
+    source.save(metadataPath, true);
+    dai::SpatialImgDetections reused;
+    reused.setSegmentationMask(std::vector<std::uint8_t>{1, 1, 1, 1}, 2, 2);
+    reused.load(metadataPath);
+    requireBufferMetadata(reused, source);
+    requireTransformation(reused.transformation, source.transformation);
+    REQUIRE(reused.transformation.has_value());
+    REQUIRE(source.transformation.has_value());
+    REQUIRE(reused.transformation->getSrcCrops().size() == source.transformation->getSrcCrops().size());
+    requireRotatedRect(reused.transformation->getSrcCrops().at(0), source.transformation->getSrcCrops().at(0));
+    REQUIRE(reused.getSegmentationMaskWidth() == source.getSegmentationMaskWidth());
+    REQUIRE(reused.getSegmentationMaskHeight() == source.getSegmentationMaskHeight());
+    REQUIRE_FALSE(reused.getMaskData().has_value());
+    REQUIRE(reused.detections.size() == 1);
+    requireRect(reused.detections[0].boundingBoxMapping.roi, source.detections[0].boundingBoxMapping.roi);
 }
 
 TEST_CASE("ProtoSerializable save/load roundtrip for IMUData", "[ProtoSerializable][IMUData]") {
@@ -467,5 +590,29 @@ TEST_CASE("ProtoSerializable save/load roundtrip for RGBDData", "[ProtoSerializa
     REQUIRE(metadataOnly.getDepthFrame().has_value());
     requireImgFrame(*std::get<std::shared_ptr<dai::ImgFrame>>(metadataOnly.getRGBFrame().value()), *colorFrame, false);
     requireEncodedFrame(*std::get<std::shared_ptr<dai::EncodedFrame>>(metadataOnly.getDepthFrame().value()), *depthFrame, false);
+
+    dai::RGBDData reused;
+    reused.setRGBFrame(std::make_shared<dai::ImgFrame>(makeImgFrame(201)));
+    reused.setDepthFrame(std::make_shared<dai::EncodedFrame>(makeEncodedFrame(202)));
+    reused.load(metadataPath);
+    requireBufferMetadata(reused, source);
+    REQUIRE(reused.getRGBFrame().has_value());
+    REQUIRE(reused.getDepthFrame().has_value());
+    requireImgFrame(*std::get<std::shared_ptr<dai::ImgFrame>>(reused.getRGBFrame().value()), *colorFrame, false);
+    requireEncodedFrame(*std::get<std::shared_ptr<dai::EncodedFrame>>(reused.getDepthFrame().value()), *depthFrame, false);
+
+    dai::RGBDData depthOnly;
+    applyBufferMetadata(depthOnly, 12);
+    depthOnly.setDepthFrame(depthFrame);
+    const auto depthOnlyPath = tempDir.get() / "rgbd_data_depth_only";
+    depthOnly.save(depthOnlyPath, false);
+
+    reused.setRGBFrame(std::make_shared<dai::ImgFrame>(makeImgFrame(203)));
+    reused.setDepthFrame(std::make_shared<dai::EncodedFrame>(makeEncodedFrame(204)));
+    reused.load(depthOnlyPath);
+    requireBufferMetadata(reused, depthOnly);
+    REQUIRE_FALSE(reused.getRGBFrame().has_value());
+    REQUIRE(reused.getDepthFrame().has_value());
+    requireEncodedFrame(*std::get<std::shared_ptr<dai::EncodedFrame>>(reused.getDepthFrame().value()), *depthFrame);
 }
 #endif
