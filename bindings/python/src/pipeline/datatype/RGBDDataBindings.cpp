@@ -14,7 +14,7 @@
 void bind_rgbddata(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<RGBDData, Py<RGBDData>, Buffer, std::shared_ptr<RGBDData>> rgbdData(m, "RGBDData", DOC(dai, RGBDData));
+    py::class_<RGBDData, Py<RGBDData>, Buffer, ProtoSerializable, std::shared_ptr<RGBDData>> rgbdData(m, "RGBDData", DOC(dai, RGBDData));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
